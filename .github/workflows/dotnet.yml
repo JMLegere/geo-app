@@ -22,5 +22,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
 
+    - name: Build tests
+      run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
+
     - name: Run tests
       run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
