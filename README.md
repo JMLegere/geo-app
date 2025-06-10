@@ -17,6 +17,7 @@ This project purposely omits networking or cloud features so it can run entirely
 
 ## Running the tests
 
+Ensure you have the .NET 6 SDK installed to run the unit tests.
 Use the .NET CLI to execute unit tests from the repository root:
 
 ```bash
