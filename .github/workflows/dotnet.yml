@@ -27,3 +27,11 @@ jobs:
 
     - name: Run tests
       run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
+
+    - name: Build Unity project
+      uses: game-ci/unity-builder@v2
+      with:
+        projectPath: .
+      env:
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
