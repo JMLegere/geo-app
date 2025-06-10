@@ -23,3 +23,10 @@ Use the .NET CLI to execute unit tests from the repository root:
 ```bash
 dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj -v minimal
 ```
+
+## Continuous Integration
+
+This repository uses [GitHub Actions](.github/workflows/dotnet.yml) to
+run unit tests and build the Unity project on each pull request.
+The workflow requires Unity credentials provided as GitHub secrets in
+order to activate the editor during CI.
