@@ -1,0 +1,6 @@
+{
+  "waypoints": [
+    { "id": "wp1", "latitude": 37.7749, "longitude": -122.4194 },
+    { "id": "wp2", "latitude": 37.7750, "longitude": -122.4180 }
+  ]
+}
