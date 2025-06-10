@@ -1,32 +1,37 @@
+---
 name: .NET
 
-on:
+'on':
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup .NET 6
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 6.0.x
+      - name: Setup .NET 6
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
+      - name: Restore dependencies
+        run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
 
-    - name: Build tests
-      run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
+      - name: Build tests
+        run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
 
-    - name: Run tests
-      run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
+      - name: Run tests
+        run: |
+          dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj \
+            --no-build --verbosity minimal
 
   unity-build:
     needs: test
@@ -34,6 +39,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
       - name: Cache Library
         uses: actions/cache@v3
         with:
@@ -41,11 +47,16 @@ jobs:
           key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
           restore-keys: |
             Library-
+
       - name: Activate Unity
         uses: game-ci/unity-activate@v2
+        with:
+          unityVersion: 2023.1.0f1
         env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+
       - name: Build Unity project
         uses: game-ci/unity-builder@v2
         env:
