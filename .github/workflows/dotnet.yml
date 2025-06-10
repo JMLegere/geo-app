@@ -34,9 +34,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Cache Library
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
+          restore-keys: |
+            Library-
+      - name: Activate Unity
+        uses: game-ci/unity-activate@v2
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
       - name: Build Unity project
         uses: game-ci/unity-builder@v2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         with:
           projectPath: .
-          unityVersion: 6000.0.50f1
+          unityVersion: 2023.1.0f1
           targetPlatform: StandaloneLinux64
