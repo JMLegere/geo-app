@@ -97,12 +97,16 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          DOCKER_CLI_DEBUG: 1
+          BUILDKIT_PROGRESS: plain
 
       - name: Build Unity project
         uses: game-ci/unity-builder@v2
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          DOCKER_CLI_DEBUG: 1
+          BUILDKIT_PROGRESS: plain
         with:
           projectPath: .
           unityVersion: 2023.1.0f1

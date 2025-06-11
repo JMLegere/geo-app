@@ -44,3 +44,6 @@ will fail and the workflow will stop early. For a personal license generate the
 
 These secrets must be stored in an environment named **Unity Secrets** so that
 the workflow can access them during CI.
+
+Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
+Docker output during activation.
