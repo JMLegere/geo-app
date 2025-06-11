@@ -37,6 +37,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: 'Unity Secrets'
+    env:
+      DOCKER_CLI_DEBUG: '1'
+      BUILDKIT_PROGRESS: plain
     steps:
       - name: Verify Unity secrets
         env:
@@ -76,10 +79,10 @@ jobs:
             echo 'Provide UNITY_LICENSE or UNITY_SERIAL for activation' >&2
             exit 1
           fi
-          echo "UNITY_EMAIL=$EMAIL"
-          echo "UNITY_PASSWORD=$PASSWORD"
-          echo "UNITY_LICENSE=$LICENSE"
-          echo "UNITY_SERIAL=$SERIAL"
+          echo "UNITY_EMAIL length: ${#EMAIL}"
+          echo "UNITY_PASSWORD length: ${#PASSWORD}"
+          echo "UNITY_LICENSE length: ${#LICENSE}"
+          echo "UNITY_SERIAL length: ${#SERIAL}"
       - name: Checkout repository
         uses: actions/checkout@v3
 
