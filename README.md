@@ -48,8 +48,9 @@ the workflow can access them during CI.
 After Unity activates, the build is compiled and uploaded as a workflow
 artifact so you can download it from the Actions run summary.
 
-The workflow automatically uses the latest Unity Docker image. No Unity version
-needs to be specified in the configuration.
+The workflow uses Unity **6000.0.50f1** to match the project configuration.
+Update the `UNITY_VERSION` variable in `.github/workflows/dotnet.yml` if your
+project requires a different editor version.
 
 Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
 Docker output during activation.

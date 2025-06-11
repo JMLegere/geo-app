@@ -39,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: 'Unity Secrets'
     env:
+      UNITY_VERSION: 6000.0.50f1
       DOCKER_CLI_DEBUG: '1'
       BUILDKIT_PROGRESS: plain
     steps:
@@ -92,6 +93,7 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_VERSION: ${{ env.UNITY_VERSION }}
           DOCKER_CLI_DEBUG: 1
           BUILDKIT_PROGRESS: plain
 
@@ -105,6 +107,7 @@ jobs:
         with:
           projectPath: .
           targetPlatform: StandaloneLinux64
+          unityVersion: ${{ env.UNITY_VERSION }}
 
       - name: Upload build
         if: success()
