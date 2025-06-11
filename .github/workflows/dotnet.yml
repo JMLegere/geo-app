@@ -76,6 +76,10 @@ jobs:
             echo 'Provide UNITY_LICENSE or UNITY_SERIAL for activation' >&2
             exit 1
           fi
+          echo "UNITY_EMAIL=$EMAIL"
+          echo "UNITY_PASSWORD=$PASSWORD"
+          echo "UNITY_LICENSE=$LICENSE"
+          echo "UNITY_SERIAL=$SERIAL"
       - name: Checkout repository
         uses: actions/checkout@v3
 
