@@ -48,7 +48,7 @@ the workflow can access them during CI.
 After Unity activates, the build is compiled and uploaded as a workflow
 artifact so you can download it from the Actions run summary.
 
-The workflow uses Unity **6000.0.50f1** to match the project configuration.
+The workflow uses Unity **2023.1.0f1** to match the project configuration.
 Update the `UNITY_VERSION` variable in `.github/workflows/dotnet.yml` if your
 project requires a different editor version.
 

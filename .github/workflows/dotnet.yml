@@ -18,6 +18,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Show Unity project version
+        run: cat ProjectSettings/ProjectVersion.txt
+
       - name: Setup .NET 6
         uses: actions/setup-dotnet@v4
         with:
@@ -39,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: 'Unity Secrets'
     env:
-      UNITY_VERSION: 6000.0.50f1
+      UNITY_VERSION: 2023.1.0f1
       DOCKER_CLI_DEBUG: '1'
       BUILDKIT_PROGRESS: plain
     steps:
