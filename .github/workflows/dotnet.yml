@@ -45,7 +45,30 @@ jobs:
           LICENSE: ${{ secrets.UNITY_LICENSE }}
           SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
-          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+          missing=0
+          if [ -n "$EMAIL" ]; then
+            echo "UNITY_EMAIL provided"
+          else
+            echo "UNITY_EMAIL missing"
+            missing=1
+          fi
+          if [ -n "$PASSWORD" ]; then
+            echo "UNITY_PASSWORD provided"
+          else
+            echo "UNITY_PASSWORD missing"
+            missing=1
+          fi
+          if [ -n "$LICENSE" ]; then
+            echo "UNITY_LICENSE provided"
+          else
+            echo "UNITY_LICENSE missing"
+          fi
+          if [ -n "$SERIAL" ]; then
+            echo "UNITY_SERIAL provided"
+          else
+            echo "UNITY_SERIAL missing"
+          fi
+          if [ $missing -eq 1 ]; then
             echo 'UNITY_EMAIL and UNITY_PASSWORD secrets are required' >&2
             exit 1
           fi
