@@ -36,9 +36,23 @@ jobs:
   unity-build:
     needs: test
     runs-on: ubuntu-latest
-    if: ${{ secrets.UNITY_EMAIL != '' || secrets.UNITY_LICENSE != '' || secrets.UNITY_SERIAL != '' }}
     environment: 'Unity Secrets'
     steps:
+      - name: Verify Unity secrets
+        env:
+          EMAIL: ${{ secrets.UNITY_EMAIL }}
+          PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          LICENSE: ${{ secrets.UNITY_LICENSE }}
+          SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+            echo 'UNITY_EMAIL and UNITY_PASSWORD secrets are required' >&2
+            exit 1
+          fi
+          if [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; then
+            echo 'Provide UNITY_LICENSE or UNITY_SERIAL for activation' >&2
+            exit 1
+          fi
       - name: Checkout repository
         uses: actions/checkout@v3
 

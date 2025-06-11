@@ -40,6 +40,4 @@ Optionally you may also set one of the following if you use a paid license:
 - `UNITY_LICENSE` containing the contents of your `.ulf` license file
 - `UNITY_SERIAL` if you activate using a serial key
 
-Without these secrets the activation step will fail and the Unity project cannot be compiled.
-If these secrets are not available (for example when a pull request comes from a fork),
-the Unity build job is skipped automatically so CI will still succeed.
+Without these secrets the activation step fails and the workflow stops early.
