@@ -42,46 +42,27 @@ jobs:
       DOCKER_CLI_DEBUG: '1'
       BUILDKIT_PROGRESS: plain
     steps:
-      - name: Verify Unity secrets
+      - name: Check Unity login secrets
         env:
           EMAIL: ${{ secrets.UNITY_EMAIL }}
           PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          LICENSE: ${{ secrets.UNITY_LICENSE }}
-          SERIAL: ${{ secrets.UNITY_SERIAL }}
         run: |
-          missing=0
-          if [ -n "$EMAIL" ]; then
-            echo "UNITY_EMAIL provided"
-          else
-            echo "UNITY_EMAIL missing"
-            missing=1
-          fi
-          if [ -n "$PASSWORD" ]; then
-            echo "UNITY_PASSWORD provided"
-          else
-            echo "UNITY_PASSWORD missing"
-            missing=1
-          fi
-          if [ -n "$LICENSE" ]; then
-            echo "UNITY_LICENSE provided"
-          else
-            echo "UNITY_LICENSE missing"
-          fi
-          if [ -n "$SERIAL" ]; then
-            echo "UNITY_SERIAL provided"
-          else
-            echo "UNITY_SERIAL missing"
-          fi
-          if [ $missing -eq 1 ]; then
+          if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
             echo 'UNITY_EMAIL and UNITY_PASSWORD secrets are required' >&2
-            exit 1
-          fi
-          if [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; then
-            echo 'Provide UNITY_LICENSE or UNITY_SERIAL for activation' >&2
             exit 1
           fi
           echo "UNITY_EMAIL length: ${#EMAIL}"
           echo "UNITY_PASSWORD length: ${#PASSWORD}"
+
+      - name: Check Unity license secrets
+        env:
+          LICENSE: ${{ secrets.UNITY_LICENSE }}
+          SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$LICENSE" ] && [ -z "$SERIAL" ]; then
+            echo 'Provide UNITY_LICENSE or UNITY_SERIAL for activation' >&2
+            exit 1
+          fi
           echo "UNITY_LICENSE length: ${#LICENSE}"
           license_hash=$(echo -n "$LICENSE" | sha1sum | cut -d" " -f1)
           echo "UNITY_LICENSE sha1: $license_hash"
@@ -90,6 +71,7 @@ jobs:
             serial_hash=$(echo -n "$SERIAL" | sha1sum | cut -d" " -f1)
             echo "UNITY_SERIAL sha1: $serial_hash"
           fi
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -137,3 +119,10 @@ jobs:
           projectPath: .
           unityVersion: ${{ steps.unity.outputs.version }}
           targetPlatform: StandaloneLinux64
+
+      - name: Upload build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build
+          path: build
