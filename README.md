@@ -41,3 +41,6 @@ repository settings:
 If neither `UNITY_LICENSE` nor `UNITY_SERIAL` is present the activation step
 will fail and the workflow will stop early. For a personal license generate the
 `.ulf` file locally and store it in the `UNITY_LICENSE` secret.
+
+These secrets must be stored in an environment named **Unity Secrets** so that
+the workflow can access them during CI.

@@ -87,8 +87,8 @@ jobs:
           restore-keys: |
             Library-
 
+
       - name: Activate Unity
-        id: activate
         uses: game-ci/unity-activate@v2
         with:
           unityVersion: 2023.1.0f1
@@ -101,7 +101,7 @@ jobs:
       - name: Build Unity project
         uses: game-ci/unity-builder@v2
         env:
-          UNITY_LICENSE: ${{ steps.activate.outputs.unityLicense }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           projectPath: .
