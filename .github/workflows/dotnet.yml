@@ -75,17 +75,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Extract Unity version
-        id: unity
-        run: |
-          raw=$(grep m_EditorVersion ProjectSettings/ProjectVersion.txt | cut -d' ' -f2)
-          if [[ "$raw" =~ ^[0-9]+\.[0-9]+\.[0-9]+[a-z][0-9]+$ ]]; then
-            version="$raw"
-          else
-            echo "Unrecognized Unity version '$raw', using 2023.1.0f1" >&2
-            version="2023.1.0f1"
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Cache Library
         uses: actions/cache@v3
@@ -98,8 +87,6 @@ jobs:
 
       - name: Activate Unity
         uses: game-ci/unity-activate@v2
-        with:
-          unityVersion: ${{ steps.unity.outputs.version }}
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
@@ -117,7 +104,6 @@ jobs:
           BUILDKIT_PROGRESS: plain
         with:
           projectPath: .
-          unityVersion: ${{ steps.unity.outputs.version }}
           targetPlatform: StandaloneLinux64
 
       - name: Upload build

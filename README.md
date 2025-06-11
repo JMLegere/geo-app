@@ -48,9 +48,8 @@ the workflow can access them during CI.
 After Unity activates, the build is compiled and uploaded as a workflow
 artifact so you can download it from the Actions run summary.
 
-If the version specified in `ProjectVersion.txt` cannot be parsed, the workflow
-defaults to Unity `2023.1.0f1`. Adjust the value in that file if you require a
-different editor version.
+The workflow automatically uses the latest Unity Docker image. No Unity version
+needs to be specified in the configuration.
 
 Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
 Docker output during activation.
