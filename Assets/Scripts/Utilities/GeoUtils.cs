@@ -10,17 +10,17 @@ namespace GeoApp.Utilities
 
         public static double Haversine(Vector2d a, Vector2d b)
         {
-            var dLat = (b.x - a.x) * Deg2Rad;
-            var dLon = (b.y - a.y) * Deg2Rad;
+            double dLat = (b.x - a.x) * Deg2Rad;
+            double dLon = (b.y - a.y) * Deg2Rad;
 
-            var lat1 = a.x * Deg2Rad;
-            var lat2 = b.x * Deg2Rad;
+            double sinLat = Sin(dLat / 2d);
+            double sinLon = Sin(dLon / 2d);
 
-            var sinDLat = Sin(dLat * 0.5);
-            var sinDLon = Sin(dLon * 0.5);
+            double lat1 = a.x * Deg2Rad;
+            double lat2 = b.x * Deg2Rad;
 
-            var aa = sinDLat * sinDLat + Cos(lat1) * Cos(lat2) * sinDLon * sinDLon;
-            var c = 2 * Atan2(Sqrt(aa), Sqrt(1 - aa));
+            double h = sinLat * sinLat + Cos(lat1) * Cos(lat2) * sinLon * sinLon;
+            double c = 2d * Asin(Sqrt(h));
             return EarthRadius * c;
         }
     }

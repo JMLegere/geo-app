@@ -45,6 +45,10 @@ will fail and the workflow will stop early. For a personal license generate the
 These secrets must be stored in an environment named **Unity Secrets** so that
 the workflow can access them during CI.
 
+If the version specified in `ProjectVersion.txt` cannot be parsed, the workflow
+defaults to Unity `2023.1.0f1`. Adjust the value in that file if you require a
+different editor version.
+
 Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
 Docker output during activation.
 
