@@ -47,3 +47,10 @@ the workflow can access them during CI.
 
 Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
 Docker output during activation.
+
+When debugging activation failures check the log output from the
+`Verify Unity secrets` step. It prints the length and SHA‑1 hash of each
+secret so you can confirm the workflow received them. If the lengths are zero,
+ensure the **Unity Secrets** environment is configured for the workflow and
+that pull requests are allowed to access it. The `UNITY_LICENSE` secret should
+contain the entire contents of your `.ulf` file.

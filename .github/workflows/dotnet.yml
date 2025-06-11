@@ -82,7 +82,13 @@ jobs:
           echo "UNITY_EMAIL length: ${#EMAIL}"
           echo "UNITY_PASSWORD length: ${#PASSWORD}"
           echo "UNITY_LICENSE length: ${#LICENSE}"
+          license_hash=$(echo -n "$LICENSE" | sha1sum | cut -d" " -f1)
+          echo "UNITY_LICENSE sha1: $license_hash"
           echo "UNITY_SERIAL length: ${#SERIAL}"
+          if [ -n "$SERIAL" ]; then
+            serial_hash=$(echo -n "$SERIAL" | sha1sum | cut -d" " -f1)
+            echo "UNITY_SERIAL sha1: $serial_hash"
+          fi
       - name: Checkout repository
         uses: actions/checkout@v3
 
