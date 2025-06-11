@@ -30,14 +30,14 @@ This repository uses [GitHub Actions](.github/workflows/dotnet.yml) to
 run unit tests and build the Unity project on each pull request.
 The workflow requires Unity credentials provided as GitHub secrets in
 order to activate the editor during CI.
-At a minimum you must supply the following secrets in your repository settings:
+To run the Unity build job you must provide the following secrets in your
+repository settings:
 
 - `UNITY_EMAIL` – Unity account email used for activation
 - `UNITY_PASSWORD` – password for the account
+- `UNITY_LICENSE` – contents of your `.ulf` license file <strong>or</strong>
+- `UNITY_SERIAL` – your serial key
 
-Optionally you may also set one of the following if you use a paid license:
-
-- `UNITY_LICENSE` containing the contents of your `.ulf` license file
-- `UNITY_SERIAL` if you activate using a serial key
-
-Without these secrets the activation step fails and the workflow stops early.
+If neither `UNITY_LICENSE` nor `UNITY_SERIAL` is present the activation step
+will fail and the workflow will stop early. For a personal license generate the
+`.ulf` file locally and store it in the `UNITY_LICENSE` secret.
