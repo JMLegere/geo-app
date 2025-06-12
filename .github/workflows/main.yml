@@ -8,23 +8,51 @@ on:
     branches:
       - main
 
+env:
+  UNITY_VERSION: "2023.1.0f1"
+
 jobs:
-  unity-build:
+  test:
     runs-on: ubuntu-latest
-    env:
-      UNITY_VERSION: "2023.1.0f1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Activate Unity
+      - name: Setup .NET 6 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore test dependencies
+        run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
+
+      - name: Build test project
+        run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
+
+      - name: Run unit tests
+        run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
+
+  unity-build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Decode base64 Unity license
+        run: |
+          LICENSE=$(echo "${{ secrets.UNITY_LICENSE_B64 }}" | base64 --decode)
+          echo "UNITY_LICENSE<<EOF" >> $GITHUB_ENV
+          echo "$LICENSE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Activate Unity license
         uses: game-ci/unity-activate@v2
         with:
           unityVersion: ${{ env.UNITY_VERSION }}
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
 
       - name: Build Unity project
@@ -34,14 +62,9 @@ jobs:
           targetPlatform: WSAPlayer
           unityVersion: ${{ env.UNITY_VERSION }}
           customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-1
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
 
-      - name: Upload build artifact
+      - name: Upload Unity build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Build
+          name: UnityBuild
           path: build
