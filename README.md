@@ -48,11 +48,10 @@ the workflow can access them during CI.
 After Unity activates, the build is compiled and uploaded as a workflow
 artifact so you can download it from the Actions run summary.
 
-The workflow builds the project using a custom GameCI image based on Unity
-**6000.0.50f1**:
+The workflow builds the project using Unity **2023.1.0f1**:
 
 ```bash
-docker pull unityci/editor:windows-6000.0.50f1-universal-windows-platform-3.1.0
+docker pull unityci/editor:ubuntu-2023.1.0f1-linux-il2cpp-1
 ```
 
 The `UNITY_VERSION` variable in `.github/workflows/dotnet.yml` must match this
