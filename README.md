@@ -48,9 +48,12 @@ the workflow can access them during CI.
 After Unity activates, the build is compiled and uploaded as a workflow
 artifact so you can download it from the Actions run summary.
 
-The workflow uses Unity **2023.1.0f1** to match the project configuration.
-Update the `UNITY_VERSION` variable in `.github/workflows/dotnet.yml` if your
-project requires a different editor version.
+The workflow runs the build using Unity **2023.1.0f1**. Although the
+project's `ProjectVersion.txt` lists version `6000.0.50f1`, the GameCI
+actions currently only support officially released versions. The `UNITY_VERSION`
+variable in `.github/workflows/dotnet.yml` should therefore reference a
+supported editor version. Update this value if your project moves to a
+different, supported Unity release.
 
 Set the `DOCKER_CLI_DEBUG` variable to `1` in the workflow if you need verbose
 Docker output during activation.
