@@ -37,6 +37,7 @@ jobs:
   unity-build:
     needs: test
     runs-on: ubuntu-latest
+    environment: Unity Secrets
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v3
