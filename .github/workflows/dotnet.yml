@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: 'Unity Secrets'
     env:
-      UNITY_VERSION: 2023.1.0f1
+      UNITY_VERSION: 6000.0.50f1
       DOCKER_CLI_DEBUG: '1'
       BUILDKIT_PROGRESS: plain
     steps:
@@ -110,8 +110,9 @@ jobs:
           BUILDKIT_PROGRESS: plain
         with:
           projectPath: .
-          targetPlatform: StandaloneLinux64
+          targetPlatform: WSAPlayer
           unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:windows-6000.0.50f1-universal-windows-platform-3.1.0
 
       - name: Upload build
         if: success()
