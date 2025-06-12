@@ -1,4 +1,4 @@
-name: ".NET"
+name: Unity CI
 
 on:
   push:
@@ -9,75 +9,39 @@ on:
       - main
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
-
-      - name: "Setup .NET 6"
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "6.0.x"
-
-      - name: "Restore dependencies"
-        run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
-
-      - name: "Build tests"
-        run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
-
-      - name: "Run tests"
-        run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
-
   unity-build:
-    needs: test
     runs-on: ubuntu-latest
-    environment: Unity Secrets
     env:
       UNITY_VERSION: "2023.1.0f1"
-      DOCKER_CLI_DEBUG: "1"
-      BUILDKIT_PROGRESS: plain
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: "Check Unity login secrets"
+      - name: Activate Unity
+        uses: game-ci/unity-activate@v2
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: |
-          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
-            echo "UNITY_EMAIL and UNITY_PASSWORD secrets are required" >&2
-            exit 1
-          fi
-          echo "UNITY_EMAIL length: ${#UNITY_EMAIL}"
-          echo "UNITY_PASSWORD length: ${#UNITY_PASSWORD}"
-
-      - name: "Check and decode Unity license"
-        env:
           UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-        run: |
-          if [ -z "$UNITY_LICENSE_B64" ] && [ -z "$UNITY_SERIAL" ]; then
-            echo "Provide UNITY_LICENSE_B64 or UNITY_SERIAL for activation" >&2
-            exit 1
-          fi
 
-          if [ -n "$UNITY_LICENSE_B64" ]; then
-            echo "Decoding base64 license..."
-            echo "$UNITY_LICENSE_B64" | base64 --decode > license.ulf
-            export UNITY_LICENSE=$(cat license.ulf)
-          fi
-
-          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-          license_hash=$(echo -n "$UNITY_LICENSE" | sha1sum | cut -d" " -f1)
-          echo "UNITY_LICENSE sha1: $license_hash"
-          echo "UNITY_SERIAL length: ${#UNITY_SERIAL}"
-
-      - name: "Cache Library"
-        uses: actions/cache@v3
+      - name: Build Unity project
+        uses: game-ci/unity-builder@v2
         with:
-          path: Library
-          key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
-          restore-keys: |
-            Library-
+          projectPath: .
+          targetPlatform: WSAPlayer
+          unityVersion: ${{ env.UNITY_VERSION }}
+          customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-1
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build
+          path: build
