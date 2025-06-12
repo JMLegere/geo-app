@@ -1,4 +1,4 @@
-name: Unity CI
+name: "Unity CI"
 
 on:
   push:
@@ -9,44 +9,73 @@ on:
       - main
 
 env:
-  UNITY_VERSION: "2023.1.0f1"
+  UNITY_VERSION: "6000.0.50f1"
+  DOCKER_CLI_DEBUG: "1"
+  BUILDKIT_PROGRESS: plain
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        name: Checkout repository
+      - name: "Checkout repository"
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-dotnet@v4
-        name: Setup .NET 6 SDK
+      - name: "Setup .NET 6 SDK"
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "6.0.x"
 
-      - run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
-        name: Restore test dependencies
+      - name: "Restore test dependencies"
+        run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
 
-      - run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
-        name: Build test project
+      - name: "Build test project"
+        run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
 
-      - run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
-        name: Run unit tests
+      - name: "Run unit tests"
+        run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
 
   unity-build:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-        name: Checkout repository
+      - name: "Checkout repository"
+        uses: actions/checkout@v3
 
-      - name: Decode base64 Unity license
+      - name: "Check Unity login secrets"
+        env:
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
-          echo "${{ secrets.UNITY_LICENSE_B64 }}" | base64 --decode > unity.ulf
-          echo "UNITY_LICENSE<<EOF" >> $GITHUB_ENV
-          cat unity.ulf >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
+            echo "UNITY_EMAIL and UNITY_PASSWORD secrets are required" >&2
+            exit 1
+          fi
+          echo "UNITY_EMAIL length: ${#UNITY_EMAIL}"
+          echo "UNITY_PASSWORD length: ${#UNITY_PASSWORD}"
 
-      - name: Activate Unity license
+      - name: "Decode base64 Unity license"
+        env:
+          UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
+          UNITY_SERIAL:      ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_LICENSE_B64" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "Provide UNITY_LICENSE_B64 or UNITY_SERIAL for activation" >&2
+            exit 1
+          fi
+          if [ -n "$UNITY_LICENSE_B64" ]; then
+            echo "$UNITY_LICENSE_B64" | base64 --decode > license.ulf
+            export UNITY_LICENSE=$(<license.ulf)
+          fi
+
+      - name: "Cache Unity Library"
+        uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
+          restore-keys: |
+            Library-
+
+      - name: "Activate Unity license"
         uses: game-ci/unity-activate@v2
         with:
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -56,7 +85,7 @@ jobs:
           UNITY_LICENSE:  ${{ env.UNITY_LICENSE }}
           UNITY_SERIAL:   ${{ secrets.UNITY_SERIAL }}
 
-      - name: Build Unity project
+      - name: "Build Unity project"
         uses: game-ci/unity-builder@v2
         with:
           projectPath: .
@@ -64,7 +93,7 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           customImage: unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-1
 
-      - name: Upload Unity build artifact
+      - name: "Upload Unity build artifact"
         uses: actions/upload-artifact@v4
         with:
           name: UnityBuild
