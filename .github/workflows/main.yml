@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Unity Secrets
     env:
-      UNITY_VERSION: "2023.1.0f1"
+      UNITY_VERSION: "6000.0.50f1"
       DOCKER_CLI_DEBUG: "1"
       BUILDKIT_PROGRESS: plain
     steps:
@@ -54,6 +54,7 @@ jobs:
           echo "UNITY_PASSWORD length: ${#UNITY_PASSWORD}"
 
       - name: "Check and decode Unity license"
+        id: license
         env:
           UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
@@ -63,15 +64,23 @@ jobs:
             exit 1
           fi
 
+          license=""
           if [ -n "$UNITY_LICENSE_B64" ]; then
             echo "Decoding base64 license..."
             echo "$UNITY_LICENSE_B64" | base64 --decode > license.ulf
-            export UNITY_LICENSE=$(cat license.ulf)
+            license=$(cat license.ulf)
+            echo "UNITY_LICENSE<<EOF" >> $GITHUB_ENV
+            echo "$license" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
           fi
 
-          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-          license_hash=$(echo -n "$UNITY_LICENSE" | sha1sum | cut -d" " -f1)
-          echo "UNITY_LICENSE sha1: $license_hash"
+          echo "UNITY_SERIAL=$UNITY_SERIAL" >> $GITHUB_ENV
+
+          echo "UNITY_LICENSE length: ${#license}"
+          if [ -n "$license" ]; then
+            license_hash=$(echo -n "$license" | sha1sum | cut -d" " -f1)
+            echo "UNITY_LICENSE sha1: $license_hash"
+          fi
           echo "UNITY_SERIAL length: ${#UNITY_SERIAL}"
 
       - name: "Cache Library"
@@ -81,3 +90,14 @@ jobs:
           key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
           restore-keys: |
             Library-
+
+      - name: "Build project"
+        uses: game-ci/unity-builder@v2
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: StandaloneLinux64
+        env:
+          UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
