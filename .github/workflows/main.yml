@@ -7,26 +7,27 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: "Setup .NET 6"
+      - name: Setup .NET 6
         uses: actions/setup-dotnet@v4
-        with:
+        with: 
           dotnet-version: "6.0.x"
 
-      - name: "Restore dependencies"
+      - name: Restore dependencies
         run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
 
-      - name: "Build tests"
+      - name: Build tests
         run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
 
-      - name: "Run tests"
+      - name: Run tests
         run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
 
   unity-build:
@@ -34,20 +35,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: Unity Secrets
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: "Check Unity login secrets"
+      - name: Check Unity login secrets
         env:
-          UNITY_EMAIL:   ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD:${{ secrets.UNITY_PASSWORD }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         run: |
           if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
             echo "UNITY_EMAIL and UNITY_PASSWORD secrets are required" >&2
             exit 1
           fi
 
-      - name: "Check and decode Unity license"
+      - name: Check and decode Unity license
         env:
           UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
           UNITY_SERIAL:      ${{ secrets.UNITY_SERIAL }}
@@ -76,7 +77,7 @@ jobs:
           UNITY_LICENSE:   ${{ env.UNITY_LICENSE }}
           UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
-          # Uncomment if using a Pro serial:
+          # Uncomment if you need a Pro serial:
           # UNITY_SERIAL:  ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: StandaloneLinux64
