@@ -1,4 +1,4 @@
-name: ".NET"
+name: "Unity Test and Build"
 
 on:
   push:
@@ -33,10 +33,6 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     environment: Unity Secrets
-    env:
-      UNITY_VERSION: "2023.1.0f1"
-      DOCKER_CLI_DEBUG: "1"
-      BUILDKIT_PROGRESS: plain
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v3
@@ -50,13 +46,11 @@ jobs:
             echo "UNITY_EMAIL and UNITY_PASSWORD secrets are required" >&2
             exit 1
           fi
-          echo "UNITY_EMAIL length: ${#UNITY_EMAIL}"
-          echo "UNITY_PASSWORD length: ${#UNITY_PASSWORD}"
 
       - name: "Check and decode Unity license"
         env:
           UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_SERIAL:    ${{ secrets.UNITY_SERIAL }}
         run: |
           if [ -z "$UNITY_LICENSE_B64" ] && [ -z "$UNITY_SERIAL" ]; then
             echo "Provide UNITY_LICENSE_B64 or UNITY_SERIAL for activation" >&2
@@ -64,20 +58,32 @@ jobs:
           fi
 
           if [ -n "$UNITY_LICENSE_B64" ]; then
-            echo "Decoding base64 license..."
-            echo "$UNITY_LICENSE_B64" | base64 --decode > license.ulf
-            export UNITY_LICENSE=$(cat license.ulf)
+            echo "$UNITY_LICENSE_B64" | base64 --decode > UnityLicense.ulf
+            export UNITY_LICENSE=$(cat UnityLicense.ulf)
           fi
 
-          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-          license_hash=$(echo -n "$UNITY_LICENSE" | sha1sum | cut -d" " -f1)
-          echo "UNITY_LICENSE sha1: $license_hash"
-          echo "UNITY_SERIAL length: ${#UNITY_SERIAL}"
-
-      - name: "Cache Library"
+      - name: Cache Library
         uses: actions/cache@v3
         with:
           path: Library
-          key: Library-${{ hashFiles('**/Packages/packages-lock.json') }}
+          key: Library-${{ hashFiles('Assets/**','Packages/**','ProjectSettings/**') }}
           restore-keys: |
             Library-
+
+      - name: Build Unity project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE:   ${{ env.UNITY_LICENSE }}
+          UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
+          # Uncomment if using a Pro serial:
+          # UNITY_SERIAL:  ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: StandaloneLinux64
+          unityVersion:   6000.0.50f1
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: UnityBuild
+          path: build
