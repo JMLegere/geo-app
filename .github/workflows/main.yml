@@ -13,79 +13,45 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
-
-      - name: "Setup .NET 6"
-        uses: actions/setup-dotnet@v4
-        with: 
+      - uses: actions/checkout@v3
+      - uses: actions/setup-dotnet@v4
+        with:
           dotnet-version: "6.0.x"
-
-      - name: "Restore dependencies"
-        run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
-
-      - name: "Build tests"
-        run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
-
-      - name: "Run tests"
-        run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
+      - run: dotnet restore Tests/GeoApp.Tests/GeoApp.Tests.csproj
+      - run: dotnet build Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-restore
+      - run: dotnet test Tests/GeoApp.Tests/GeoApp.Tests.csproj --no-build --verbosity minimal
 
   unity-build:
     needs: test
     runs-on: ubuntu-latest
     environment: Unity Secrets
     steps:
-      - name: "Checkout repository"
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: "Check Unity login secrets"
-        env:
-          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        run: |
-          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ]; then
-            echo "UNITY_EMAIL and UNITY_PASSWORD secrets are required" >&2
-            exit 1
-          fi
-
-      - name: "Check and decode Unity license"
-        env:
-          UNITY_LICENSE_B64: ${{ secrets.UNITY_LICENSE_B64 }}
-          UNITY_SERIAL:      ${{ secrets.UNITY_SERIAL }}
-        run: |
-          if [ -z "$UNITY_LICENSE_B64" ] && [ -z "$UNITY_SERIAL" ]; then
-            echo "Provide UNITY_LICENSE_B64 or UNITY_SERIAL for activation" >&2
-            exit 1
-          fi
-
-          if [ -n "$UNITY_LICENSE_B64" ]; then
-            echo "$UNITY_LICENSE_B64" | base64 --decode > UnityLicense.ulf
-            export UNITY_LICENSE=$(cat UnityLicense.ulf)
-          fi
-
-      - name: "Cache Library"
-        uses: actions/cache@v3
+      # Cache Library to speed up builds
+      - uses: actions/cache@v3
         with:
           path: Library
           key: Library-${{ hashFiles('Assets/**','Packages/**','ProjectSettings/**') }}
           restore-keys: |
             Library-
 
-      - name: "Build Unity project"
+      # Build & activate license in one step
+      - name: Build Unity project
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE:   ${{ env.UNITY_LICENSE }}
+          # For Personal license:
+          UNITY_LICENSE:   ${{ secrets.UNITY_LICENSE }}
+          # For Professional license (uncomment):
+          # UNITY_SERIAL:  ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL:     ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD:  ${{ secrets.UNITY_PASSWORD }}
-          # Uncomment if using a Pro serial:
-          # UNITY_SERIAL:  ${{ secrets.UNITY_SERIAL }}
         with:
-          targetPlatform: StandaloneLinux64
-          unityVersion:   6000.0.50f1
-          allowDirtyBuild: true
+          targetPlatform:    StandaloneLinux64
+          unityVersion:      6000.0.50f1
+          allowDirtyBuild:   true
 
-      - name: "Upload build artifacts"
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: UnityBuild
           path: build
