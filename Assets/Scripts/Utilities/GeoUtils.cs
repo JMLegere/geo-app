@@ -5,7 +5,7 @@ namespace GeoApp.Utilities
 {
     public static class GeoUtils
     {
-        const double EarthRadius = 6371000; // meters
+        const double EarthRadius = 6371000d; // meters
         const double Deg2Rad = PI / 180d;
 
         public static double Haversine(Vector2d a, Vector2d b)

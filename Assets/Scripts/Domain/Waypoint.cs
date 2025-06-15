@@ -1,5 +1,3 @@
-using GeoApp.Domain;
-
 namespace GeoApp.Domain
 {
     [System.Serializable]
