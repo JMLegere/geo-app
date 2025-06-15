@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Android;
+using GeoApp.Domain;
 
 namespace GeoApp.Controllers
 {
@@ -11,12 +12,16 @@ namespace GeoApp.Controllers
         IEnumerator Start()
         {
             if (!Input.location.isEnabledByUser)
+            {
                 yield break;
+            }
 
             Input.location.Start(10f, 10f);
 
             while (Input.location.status == LocationServiceStatus.Initializing)
-                yield return new WaitForSeconds(1);
+            {
+                yield return new WaitForSeconds(1f);
+            }
 
             if (Input.location.status == LocationServiceStatus.Running)
             {
