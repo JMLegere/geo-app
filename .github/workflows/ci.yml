@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Check Unity license availability
+      - name: Prepare Unity license file
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
         run: |
@@ -26,6 +26,8 @@ jobs:
             echo "UNITY_LICENSE is unavailable. This usually means the run is from a forked PR or the Unity environment secret is not configured."
             exit 1
           fi
+          # Write the license to a file that is mounted into the build container.
+          printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/UnityLicense.ulf"
 
       - name: Cache Unity
         uses: actions/cache@v4
@@ -38,11 +40,13 @@ jobs:
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_LICENSE_FILE: ${{ github.workspace }}/UnityLicense.ulf
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: StandaloneLinux64
           buildName: ci-build
+          customParameters: -e UNITY_LICENSE_FILE=${{ github.workspace }}/UnityLicense.ulf
 
       - name: Upload Logs on Failure
         if: failure()
@@ -53,3 +57,7 @@ jobs:
             Logs
             Library/PackageCache
           if-no-files-found: ignore
+
+      - name: Clean up Unity license file
+        if: always()
+        run: rm -f "${GITHUB_WORKSPACE}/UnityLicense.ulf"
