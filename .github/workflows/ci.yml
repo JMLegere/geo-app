@@ -27,7 +27,8 @@ jobs:
             exit 1
           fi
           # Write the license to a file that is mounted into the build container.
-          printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/UnityLicense.ulf"
+          mkdir -p "${GITHUB_WORKSPACE}/.licenses"
+          printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
 
       - name: Cache Unity
         uses: actions/cache@v4
@@ -40,13 +41,13 @@ jobs:
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_LICENSE_FILE: ${{ github.workspace }}/UnityLicense.ulf
+          UNITY_LICENSE_FILE: ${{ github.workspace }}/.licenses/UnityLicense.ulf
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: StandaloneLinux64
           buildName: ci-build
-          customParameters: -e UNITY_LICENSE_FILE=${{ github.workspace }}/UnityLicense.ulf
+          customParameters: -e UNITY_LICENSE_FILE=${{ github.workspace }}/.licenses/UnityLicense.ulf
 
       - name: Upload Logs on Failure
         if: failure()
@@ -60,4 +61,4 @@ jobs:
 
       - name: Clean up Unity license file
         if: always()
-        run: rm -f "${GITHUB_WORKSPACE}/UnityLicense.ulf"
+        run: rm -f "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
