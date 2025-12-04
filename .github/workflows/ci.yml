@@ -13,10 +13,19 @@ jobs:
   build:
     name: Unity Build
     environment: Unity
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check Unity license availability
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "${UNITY_LICENSE}" ]; then
+            echo "UNITY_LICENSE is unavailable. This usually means the run is from a forked PR or the Unity environment secret is not configured."
+            exit 1
+          fi
 
       - name: Cache Unity
         uses: actions/cache@v4
