@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -14,12 +14,14 @@ jobs:
   build:
     name: Unity Build
     environment: Unity
+    # Run automatically on pushes and same-repo PRs; skip forks (secrets unavailable).
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # For PRs, build the contributor's head commit even though secrets are available (trust tradeoff).
+          # For PRs, build the contributor's head commit when the repo is trusted.
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
       - name: Prepare Unity license file
