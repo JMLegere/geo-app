@@ -12,6 +12,7 @@ env:
 jobs:
   build:
     name: Unity Build
+    environment: Unity
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,9 +21,8 @@ jobs:
       - name: Cache Unity
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/unity3d
-            ~/.local/share/unity3d
+          # Cache only the Unity downloader cache; avoid ~/.local/share/unity3d where the license is stored.
+          path: ~/.cache/unity3d
           key: ${{ runner.os }}-unity-${{ env.UNITY_VERSION }}
 
       - name: Build Project
