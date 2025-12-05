@@ -54,20 +54,12 @@ jobs:
             echo "UNITY_LICENSE_FILE=${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf" >> "${GITHUB_ENV}"
             echo "ACTIVATION_STRATEGY=license" >> "${GITHUB_ENV}"
             # Derive serial from the .ulf (GameCI v4 requires a serial even for personal licenses).
-            derived_serial="$(python - <<'PY'
-            import base64, os, re, sys
-
-            license = os.environ.get('UNITY_LICENSE', '')
-            match = re.search(r'<DeveloperData Value=\"([^\"]+)\"', license)
-            if not match:
-                sys.exit("DeveloperData not found in UNITY_LICENSE. Regenerate Unity_lic.ulf via Unity Hub and update the UNITY_LICENSE secret.")
-            try:
-                serial = base64.b64decode(match.group(1)).decode('latin1')[4:]
-            except Exception as exc:
-                sys.exit(f"Failed to decode UNITY_LICENSE serial: {exc}")
-            print(serial)
-            PY
-            )"
+            derived_serial="$(python -c 'import base64, os, re, sys; lic=os.environ.get("UNITY_LICENSE",""); \
+            m=re.search(r"<DeveloperData Value=\\\"([^\\\"]+)\\\"", lic); \
+            if not m: sys.exit("DeveloperData not found in UNITY_LICENSE. Regenerate Unity_lic.ulf via Unity Hub and update the UNITY_LICENSE secret."); \
+            try: serial=base64.b64decode(m.group(1)).decode("latin1")[4:]; \
+            except Exception as exc: sys.exit(f"Failed to decode UNITY_LICENSE serial: {exc}"); \
+            print(serial)' )"
             derived_serial="${derived_serial//$'\\r'/}"
             derived_serial="${derived_serial//$'\\n'/}"
             if [ "${#derived_serial}" -ne 27 ]; then
