@@ -35,6 +35,11 @@ jobs:
           # Write the license to a file that is mounted into the build container.
           mkdir -p "${GITHUB_WORKSPACE}/.licenses"
           printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
+      - name: Debug license presence (no secret content)
+        run: |
+          ls -la "${GITHUB_WORKSPACE}/.licenses"
+          wc -c "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
+          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
 
       - name: Cache Unity
         uses: actions/cache@v4
@@ -53,7 +58,7 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: StandaloneLinux64
           buildName: ci-build
-          customParameters: -e UNITY_LICENSE_FILE=${{ github.workspace }}/.licenses/UnityLicense.ulf
+          unityLicense: ${{ secrets.UNITY_LICENSE }}
 
       - name: Upload Logs on Failure
         if: failure()
