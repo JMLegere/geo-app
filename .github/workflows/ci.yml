@@ -9,7 +9,6 @@ on:
 
 env:
   UNITY_VERSION: 2022.3.64f1
-  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
 
 jobs:
   build:
@@ -18,6 +17,17 @@ jobs:
     # Run automatically on pushes and same-repo PRs; skip forks (secrets unavailable).
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    env:
+      # Provide one of the supported activation strategies:
+      # - UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD (personal license file)
+      # - UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD (Plus/Pro)
+      # - UNITY_LICENSING_SERVER (floating license server)
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_LICENSE_FILE: ${{ secrets.UNITY_LICENSE_FILE }}
+      UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      UNITY_LICENSING_SERVER: ${{ secrets.UNITY_LICENSING_SERVER }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,23 +35,39 @@ jobs:
           # For PRs, build the contributor's head commit when the repo is trusted.
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
-      - name: Prepare Unity license file
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+
+      - name: Resolve Unity activation strategy
         run: |
-          if [ -z "${UNITY_LICENSE}" ]; then
-            echo "UNITY_LICENSE is unavailable. This usually means the run is from a forked PR or the Unity environment secret is not configured."
-            exit 1
+          set -euo pipefail
+
+          if [ -n "${UNITY_LICENSING_SERVER:-}" ]; then
+            echo "Using Unity licensing server."
+            exit 0
           fi
-          # Write the license to a file that is mounted into the build container.
-          mkdir -p "${GITHUB_WORKSPACE}/.licenses"
-          printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
-      - name: Debug license presence (no secret content)
-        run: |
-          ls -la "${GITHUB_WORKSPACE}/.licenses"
-          wc -c "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
-          echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-          env | grep '^UNITY_' || true
+
+          if [ -n "${UNITY_SERIAL:-}" ]; then
+            if [ -z "${UNITY_EMAIL:-}" ] || [ -z "${UNITY_PASSWORD:-}" ]; then
+              echo "UNITY_SERIAL is set but UNITY_EMAIL or UNITY_PASSWORD is missing."
+              exit 1
+            fi
+            echo "Using Unity serial activation."
+            exit 0
+          fi
+
+          if [ -n "${UNITY_LICENSE:-}" ]; then
+            if [ -z "${UNITY_EMAIL:-}" ] || [ -z "${UNITY_PASSWORD:-}" ]; then
+              echo "UNITY_LICENSE is set but UNITY_EMAIL or UNITY_PASSWORD is missing."
+              exit 1
+            fi
+            mkdir -p "${GITHUB_WORKSPACE}/.licenses"
+            printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
+            echo "UNITY_LICENSE_FILE=${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf" >> "${GITHUB_ENV}"
+            echo "Using Unity license file activation."
+            exit 0
+          fi
+
+          echo "No Unity license configuration found. Set UNITY_LICENSING_SERVER or UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD, or UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD."
+          exit 1
 
       - name: Cache Unity
         uses: actions/cache@v4
@@ -53,19 +79,17 @@ jobs:
       - name: Build Project
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_LICENSE_FILE: ${{ github.workspace }}/.licenses/UnityLicense.ulf
+          UNITY_LICENSE: ${{ env.UNITY_LICENSE }}
+          UNITY_LICENSE_FILE: ${{ env.UNITY_LICENSE_FILE }}
+          UNITY_SERIAL: ${{ env.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ env.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ env.UNITY_PASSWORD }}
+          UNITY_LICENSING_SERVER: ${{ env.UNITY_LICENSING_SERVER }}
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: StandaloneLinux64
           buildName: ci-build
-          preBuildSteps: |
-            - name: Dump UNITY env inside container
-              run: |
-                echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
-                echo "UNITY_LICENSE_FILE: ${UNITY_LICENSE_FILE}"
-                env | grep UNITY || true
 
       - name: Upload Logs on Failure
         if: failure()
