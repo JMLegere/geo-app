@@ -60,7 +60,12 @@ jobs:
           unityVersion: ${{ env.UNITY_VERSION }}
           targetPlatform: StandaloneLinux64
           buildName: ci-build
-          unityLicense: ${{ secrets.UNITY_LICENSE }}
+          preBuildSteps: |
+            - name: Dump UNITY env inside container
+              run: |
+                echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
+                echo "UNITY_LICENSE_FILE: ${UNITY_LICENSE_FILE}"
+                env | grep UNITY || true
 
       - name: Upload Logs on Failure
         if: failure()
