@@ -9,6 +9,7 @@ on:
 
 env:
   UNITY_VERSION: 2022.3.64f1
+  UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
 
 jobs:
   build:
@@ -40,6 +41,7 @@ jobs:
           ls -la "${GITHUB_WORKSPACE}/.licenses"
           wc -c "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
           echo "UNITY_LICENSE length: ${#UNITY_LICENSE}"
+          env | grep '^UNITY_' || true
 
       - name: Cache Unity
         uses: actions/cache@v4
