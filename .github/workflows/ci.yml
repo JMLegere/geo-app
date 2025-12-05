@@ -14,116 +14,45 @@ jobs:
   build:
     name: Unity Build
     environment: Unity
+    # Skip forked PRs because secrets are unavailable there.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # For PRs, build the contributor's head commit when the repo is trusted.
           repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
-      - name: Resolve Unity activation strategy
+      - name: Validate Unity secrets
         env:
-          # Provide one of the supported activation strategies:
-          # - UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD (personal license file)
-          # - UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD (Plus/Pro)
-          # - UNITY_LICENSING_SERVER (floating license server)
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_LICENSING_SERVER: ${{ secrets.UNITY_LICENSING_SERVER }}
         run: |
           set -euo pipefail
-
-          if [ -n "${UNITY_LICENSING_SERVER:-}" ]; then
-            echo "Using Unity licensing server."
-            echo "ACTIVATION_STRATEGY=server" >> "${GITHUB_ENV}"
-            echo "UNITY_LICENSING_SERVER=${UNITY_LICENSING_SERVER}" >> "${GITHUB_ENV}"
-            exit 0
+          missing=()
+          [ -z "${UNITY_LICENSE:-}" ] && missing+=("UNITY_LICENSE")
+          [ -z "${UNITY_EMAIL:-}" ] && missing+=("UNITY_EMAIL")
+          [ -z "${UNITY_PASSWORD:-}" ] && missing+=("UNITY_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}"
+            echo "Ensure UNITY_LICENSE (ulf contents), UNITY_EMAIL, and UNITY_PASSWORD are set."
+            exit 1
           fi
-
-          if [ -n "${UNITY_LICENSE:-}" ]; then
-            if [ -z "${UNITY_EMAIL:-}" ] || [ -z "${UNITY_PASSWORD:-}" ]; then
-              echo "UNITY_LICENSE is set but UNITY_EMAIL or UNITY_PASSWORD is missing."
-              exit 1
-            fi
-            mkdir -p "${GITHUB_WORKSPACE}/.licenses"
-            printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
-            echo "UNITY_LICENSE_FILE=${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf" >> "${GITHUB_ENV}"
-            echo "ACTIVATION_STRATEGY=license" >> "${GITHUB_ENV}"
-            # Derive serial from the .ulf (GameCI v4 requires a serial even for personal licenses).
-            derived_serial="$(python -c 'import base64, os, re, sys; lic=os.environ.get("UNITY_LICENSE",""); \
-            m=re.search(r"<DeveloperData Value=\\\"([^\\\"]+)\\\"", lic); \
-            if not m: sys.exit("DeveloperData not found in UNITY_LICENSE. Regenerate Unity_lic.ulf via Unity Hub and update the UNITY_LICENSE secret."); \
-            try: serial=base64.b64decode(m.group(1)).decode("latin1")[4:]; \
-            except Exception as exc: sys.exit(f"Failed to decode UNITY_LICENSE serial: {exc}"); \
-            print(serial)' )"
-            derived_serial="${derived_serial//$'\\r'/}"
-            derived_serial="${derived_serial//$'\\n'/}"
-            if [ "${#derived_serial}" -ne 27 ]; then
-              echo "Derived Unity serial length ${#derived_serial} (expected 27). Regenerate Unity_lic.ulf via Unity Hub (Personal license) and update the UNITY_LICENSE secret."
-              exit 1
-            fi
-            echo "::add-mask::${derived_serial}"
-            echo "UNITY_SERIAL=${derived_serial}" >> "${GITHUB_ENV}"
-            echo "Using Unity license file activation."
-            exit 0
-          fi
-
-          if [ -n "${UNITY_SERIAL:-}" ]; then
-            if [ -z "${UNITY_EMAIL:-}" ] || [ -z "${UNITY_PASSWORD:-}" ]; then
-              echo "UNITY_SERIAL is set but UNITY_EMAIL or UNITY_PASSWORD is missing."
-              exit 1
-            fi
-            echo "Using Unity serial activation."
-            echo "ACTIVATION_STRATEGY=serial" >> "${GITHUB_ENV}"
-            exit 0
-          fi
-
-          echo "No Unity license configuration found. Set UNITY_LICENSING_SERVER or UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD, or UNITY_LICENSE + UNITY_EMAIL + UNITY_PASSWORD."
-          exit 1
 
       - name: Cache Unity
         uses: actions/cache@v4
         with:
-          # Cache only the Unity downloader cache; avoid ~/.local/share/unity3d where the license is stored.
           path: ~/.cache/unity3d
           key: ${{ runner.os }}-unity-${{ env.UNITY_VERSION }}
 
-      - name: Build Project (personal license)
-        if: env.ACTIVATION_STRATEGY == 'license'
+      - name: Build Project
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_LICENSE_FILE: ${{ env.UNITY_LICENSE_FILE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: .
-          unityVersion: ${{ env.UNITY_VERSION }}
-          targetPlatform: StandaloneLinux64
-          buildName: ci-build
-
-      - name: Build Project (serial)
-        if: env.ACTIVATION_STRATEGY == 'serial'
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          projectPath: .
-          unityVersion: ${{ env.UNITY_VERSION }}
-          targetPlatform: StandaloneLinux64
-          buildName: ci-build
-
-      - name: Build Project (licensing server)
-        if: env.ACTIVATION_STRATEGY == 'server'
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSING_SERVER: ${{ secrets.UNITY_LICENSING_SERVER }}
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -139,7 +68,3 @@ jobs:
             Logs
             Library/PackageCache
           if-no-files-found: ignore
-
-      - name: Clean up Unity license file
-        if: always()
-        run: rm -f "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
