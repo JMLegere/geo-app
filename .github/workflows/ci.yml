@@ -55,6 +55,16 @@ jobs:
             printf '%s' "${UNITY_LICENSE}" > "${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf"
             echo "UNITY_LICENSE_FILE=${GITHUB_WORKSPACE}/.licenses/UnityLicense.ulf" >> "${GITHUB_ENV}"
             echo "ACTIVATION_STRATEGY=license" >> "${GITHUB_ENV}"
+            # Derive serial from the .ulf (GameCI v4 requires a serial even for personal licenses).
+            derived_serial="$(python - <<'PY'\nimport base64, os, re, sys\nlicense = os.environ.get('UNITY_LICENSE', '')\nmatch = re.search(r'<DeveloperData Value=\"([^\"]+)\"', license)\nif not match:\n    sys.exit(\"DeveloperData not found in UNITY_LICENSE. Regenerate Unity_lic.ulf via Unity Hub and update the UNITY_LICENSE secret.\")\ntry:\n    serial = base64.b64decode(match.group(1)).decode('latin1')[4:]\nexcept Exception as exc:\n    sys.exit(f\"Failed to decode UNITY_LICENSE serial: {exc}\")\nprint(serial)\nPY\n)"
+            derived_serial="${derived_serial//$'\\r'/}"
+            derived_serial="${derived_serial//$'\\n'/}"
+            if [ "${#derived_serial}" -ne 27 ]; then
+              echo "Derived Unity serial length ${#derived_serial} (expected 27). Regenerate Unity_lic.ulf via Unity Hub (Personal license) and update the UNITY_LICENSE secret."
+              exit 1
+            fi
+            echo "::add-mask::${derived_serial}"
+            echo "UNITY_SERIAL=${derived_serial}" >> "${GITHUB_ENV}"
             echo "Using Unity license file activation."
             exit 0
           fi
