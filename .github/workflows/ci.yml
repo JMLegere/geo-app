@@ -35,6 +35,11 @@ jobs:
           [ -z "${UNITY_LICENSE:-}" ] && missing+=("UNITY_LICENSE")
           [ -z "${UNITY_EMAIL:-}" ] && missing+=("UNITY_EMAIL")
           [ -z "${UNITY_PASSWORD:-}" ] && missing+=("UNITY_PASSWORD")
+          if [ -n "${UNITY_SERIAL:-}" ]; then
+            echo "UNITY_SERIAL is set, which forces Pro/Plus activation and causes serial invalid (20110) on Personal."
+            echo "Remove UNITY_SERIAL from repo/org/env secrets/variables so builder uses UNITY_LICENSE instead."
+            exit 1
+          fi
           if [ "${#missing[@]}" -gt 0 ]; then
             echo "Missing required secrets: ${missing[*]}"
             echo "Ensure UNITY_LICENSE (ulf contents), UNITY_EMAIL, and UNITY_PASSWORD are set."
