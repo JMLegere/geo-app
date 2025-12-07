@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  UNITY_VERSION: 2022.3.58f1
+
+jobs:
+  build:
+    name: Unity Build
+    environment: Unity
+    # Skip forked PRs because secrets are unavailable there.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+
+      - name: Validate Unity secrets
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL_CONFIGURED: ${{ secrets.UNITY_SERIAL != '' || vars.UNITY_SERIAL != '' }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -z "${UNITY_LICENSE:-}" ] && missing+=("UNITY_LICENSE")
+          [ -z "${UNITY_EMAIL:-}" ] && missing+=("UNITY_EMAIL")
+          [ -z "${UNITY_PASSWORD:-}" ] && missing+=("UNITY_PASSWORD")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "Missing required secrets: ${missing[*]}"
+            echo "Ensure UNITY_LICENSE (ulf contents), UNITY_EMAIL, and UNITY_PASSWORD are set."
+            exit 1
+          fi
+          if [ "${UNITY_SERIAL_CONFIGURED}" = "true" ] || env | grep -q '^UNITY_SERIAL='; then
+            echo "::error::UNITY_SERIAL is present (even if empty), which forces the serial activation path and yields code 20110 on Personal."
+            echo "Delete UNITY_SERIAL from repo/org/env secrets/variables so builder uses UNITY_LICENSE instead."
+            exit 1
+          fi
+          echo "UNITY_LICENSE present: ${UNITY_LICENSE:+yes}"
+          echo "UNITY_EMAIL present: ${UNITY_EMAIL:+yes}"
+          echo "UNITY_PASSWORD present: ${UNITY_PASSWORD:+yes}"
+          bytes=$(printf '%s' "${UNITY_LICENSE}" | wc -c)
+          lines=$(printf '%s\n' "${UNITY_LICENSE}" | wc -l)
+          echo "UNITY_LICENSE byte length: ${bytes}"
+          echo "UNITY_LICENSE line count: ${lines}"
+          if [ "${bytes}" -lt 500 ]; then
+            echo "::error::UNITY_LICENSE looks too short; ensure you pasted the full .ulf file contents (not base64/JSON)."
+            exit 1
+          fi
+          if ! printf '%s' "${UNITY_LICENSE}" | grep -q '<DeveloperData Value=\"'; then
+            echo "::error::UNITY_LICENSE does not contain <DeveloperData Value=\"; ensure you pasted the raw .ulf contents from Unity Hub Personal activation."
+            exit 1
+          fi
+
+      - name: Cache Unity
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/unity3d
+          key: ${{ runner.os }}-unity-${{ env.UNITY_VERSION }}
+
+      - name: Build Project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: .
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: StandaloneLinux64
+          buildName: ci-build
+
+      - name: Upload Logs on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-logs
+          path: |
+            Logs
+            Library/PackageCache
+          if-no-files-found: ignore
