@@ -72,10 +72,9 @@ namespace GeoApp.View
         {
             var verts = new Vector3[cell.PolygonMeters.Length];
             var scale = 1f / geoReference.MetersPerUnityUnit;
-            var originMeters = geoReference.OriginMeters;
             for (int i = 0; i < cell.PolygonMeters.Length; i++)
             {
-                var m = cell.PolygonMeters[i] - originMeters;
+                var m = cell.PolygonMeters[i];
                 verts[i] = new Vector3(m.x * scale, 0f, m.y * scale);
             }
             return verts;

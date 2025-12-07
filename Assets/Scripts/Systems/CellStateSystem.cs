@@ -41,9 +41,17 @@ namespace GeoApp.Systems
             return _cells.TryGetValue(id, out cell);
         }
 
-        public CellData FindContainingCell(UnityEngine.Vector2 latLon)
+        public CellData FindContainingCell(UnityEngine.Vector2 latLon, UnityEngine.Vector2? offsetMeters = null)
         {
-            var point = GeoUtils.LatLonToMeters(latLon);
+            UnityEngine.Vector2 point;
+            if (offsetMeters.HasValue)
+            {
+                point = offsetMeters.Value;
+            }
+            else
+            {
+                point = GeoUtils.LatLonToMeters(latLon) - _geo.OriginMeters;
+            }
             foreach (var kvp in _cells)
             {
                 var cell = kvp.Value;
@@ -61,9 +69,9 @@ namespace GeoApp.Systems
             return null;
         }
 
-        public void UpdatePlayerLocation(UnityEngine.Vector2 latLon)
+        public void UpdatePlayerLocation(UnityEngine.Vector2 latLon, UnityEngine.Vector2? offsetMeters = null)
         {
-            var nextCell = FindContainingCell(latLon);
+            var nextCell = FindContainingCell(latLon, offsetMeters);
             if (nextCell == null)
             {
                 return;

@@ -32,6 +32,7 @@ namespace GeoApp.Systems
         public event Action<Vector2> OnLocationReady;
 
         public Vector2 CurrentLatLon { get; private set; }
+        public Vector2 CurrentOffsetMeters { get; private set; }
         public bool UsingGps { get; private set; }
         public bool HasLocation { get; private set; }
 
@@ -39,12 +40,13 @@ namespace GeoApp.Systems
         private Vector2 _randomDir = Vector2.zero;
         private float _randomDirTimer = 0f;
         private float _lastUpdateLogTime = 0f;
-        private Vector2 _simulatedMeters;
+        private Vector2 _simulatedOffsetMeters;
 
         private void Start()
         {
             CurrentLatLon = simulatedStartLatLon;
-            _simulatedMeters = GeoUtils.LatLonToMeters(simulatedStartLatLon);
+            _simulatedOffsetMeters = Vector2.zero;
+            CurrentOffsetMeters = _simulatedOffsetMeters;
             _gpsRoutine = StartCoroutine(InitializeGps());
             Log("Start() completed, waiting for location.");
         }
@@ -118,7 +120,8 @@ namespace GeoApp.Systems
         {
             UsingGps = false;
             HasLocation = true;
-            _simulatedMeters = GeoUtils.LatLonToMeters(CurrentLatLon);
+            _simulatedOffsetMeters = Vector2.zero;
+            CurrentOffsetMeters = _simulatedOffsetMeters;
             if (Application.isEditor)
             {
                 randomWalkWhenIdle = true;
@@ -153,12 +156,13 @@ namespace GeoApp.Systems
             {
                 meters = _randomDir * randomWalkSpeedMps * Time.deltaTime;
             }
-            _simulatedMeters += meters;
-            CurrentLatLon = GeoUtils.MetersToLatLon(_simulatedMeters);
+            _simulatedOffsetMeters += meters;
+            CurrentOffsetMeters = _simulatedOffsetMeters;
+            CurrentLatLon = GeoUtils.OffsetLatLon(simulatedStartLatLon, _simulatedOffsetMeters);
             OnLocationUpdated?.Invoke(CurrentLatLon);
             if (Time.unscaledTime - _lastUpdateLogTime > 0.5f)
             {
-                Log($"Sim update -> lat {CurrentLatLon.x}, lon {CurrentLatLon.y}, dir {input}, metersStep {meters.magnitude}, metersPos {_simulatedMeters}");
+                Log($"Sim update -> lat {CurrentLatLon.x}, lon {CurrentLatLon.y}, dir {input}, metersStep {meters.magnitude}, offset {CurrentOffsetMeters}");
                 _lastUpdateLogTime = Time.unscaledTime;
             }
         }

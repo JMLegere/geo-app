@@ -79,8 +79,9 @@ public class FogOfWorldMvp : MonoBehaviour
 
     private void HandleLocationUpdate(Vector2 latLon)
     {
-        _stateSystem.UpdatePlayerLocation(latLon);
-        var worldPos = _geoReference.LatLonToWorld(latLon);
+        var offset = _locationTracker.CurrentOffsetMeters;
+        _stateSystem.UpdatePlayerLocation(latLon, offset);
+        var worldPos = new Vector3(offset.x / _geoReference.MetersPerUnityUnit, 0f, offset.y / _geoReference.MetersPerUnityUnit);
         _overlayController.UpdatePlayerMarker(_playerMarkerInstance, worldPos);
         PersistProgress();
         Log($"HandleLocationUpdate -> world {worldPos}");

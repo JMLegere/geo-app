@@ -12,7 +12,6 @@ namespace GeoApp.Map
         public static List<CellData> BuildGrid(Vector2 originLatLon, float spacingMeters = 200f, int radius = 2)
         {
             var cells = new List<CellData>();
-            var originMeters = GeoUtils.LatLonToMeters(originLatLon);
             var half = spacingMeters * 0.5f;
             int id = 0;
 
@@ -23,10 +22,10 @@ namespace GeoApp.Map
                     var centerMeters = new Vector2(x * spacingMeters, y * spacingMeters);
                     var polygonMeters = new[]
                     {
-                        originMeters + centerMeters + new Vector2(-half, -half),
-                        originMeters + centerMeters + new Vector2(-half, half),
-                        originMeters + centerMeters + new Vector2(half, half),
-                        originMeters + centerMeters + new Vector2(half, -half)
+                        centerMeters + new Vector2(-half, -half),
+                        centerMeters + new Vector2(-half, half),
+                        centerMeters + new Vector2(half, half),
+                        centerMeters + new Vector2(half, -half)
                     };
 
                     var polygonLatLon = new Vector2[polygonMeters.Length];
