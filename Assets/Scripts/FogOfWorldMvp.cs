@@ -11,21 +11,23 @@ using UnityEngine;
 /// </summary>
 public class FogOfWorldMvp : MonoBehaviour
     {
-        [Header("Cells")]
-        [SerializeField] private float cellSpacingMeters = 200f;
-        [SerializeField] private int gridRadius = 2;
+    [Header("Cells")]
+    [SerializeField] private float cellSpacingMeters = 200f;
+    [SerializeField] private int gridRadius = 2;
 
     [Header("Rendering")]
-        [SerializeField] private float metersPerUnityUnit = 1f;
-        [SerializeField] private Transform overlayRoot;
-        [SerializeField] private GameObject playerMarkerPrefab;
-        [SerializeField] private bool debugLogging = true;
+    [SerializeField] private float metersPerUnityUnit = 1f;
+    [SerializeField] private Transform overlayRoot;
+    [SerializeField] private GameObject playerMarkerPrefab;
+    [SerializeField] private bool debugLogging = true;
+    [SerializeField] private Color mapBaseColor = new Color(0.7f, 0.75f, 0.8f, 1f);
 
     private GeoReference _geoReference;
     private PlayerLocationTracker _locationTracker;
     private CellStateSystem _stateSystem;
     private CellOverlayController _overlayController;
     private GameObject _playerMarkerInstance;
+    private GameObject _mapBackgroundInstance;
 
     private void Awake()
     {
@@ -52,6 +54,9 @@ public class FogOfWorldMvp : MonoBehaviour
         // Build mock cells around the starting point.
         var cells = MockVoronoiBuilder.BuildGrid(_geoReference.OriginLatLon, cellSpacingMeters, gridRadius);
         Log($"Built mock grid with {cells.Count} cells.");
+
+        // Background map placeholder sized to the grid.
+        BuildBackground();
 
         // Load persisted states.
         var (explored, revealed) = CellPersistence.Load();
@@ -132,6 +137,23 @@ public class FogOfWorldMvp : MonoBehaviour
         {
             _locationTracker = gameObject.AddComponent<PlayerLocationTracker>();
         }
+    }
+
+    private void BuildBackground()
+    {
+        if (_mapBackgroundInstance != null)
+        {
+            return;
+        }
+
+        var span = (gridRadius * 2 + 1) * cellSpacingMeters;
+        _mapBackgroundInstance = new GameObject("MapBackground");
+        _mapBackgroundInstance.transform.SetParent(transform, false);
+        _mapBackgroundInstance.transform.position = new Vector3(0f, -0.05f, 0f); // slight offset to avoid z-fighting
+        var bg = _mapBackgroundInstance.AddComponent<MapBackground>();
+        var renderer = _mapBackgroundInstance.GetComponent<MeshRenderer>();
+        bg.Initialize(span, span, metersPerUnityUnit);
+        renderer.sharedMaterial.color = mapBaseColor;
     }
 
     private void Log(string message)

@@ -349,6 +349,7 @@ MonoBehaviour:
   overlayRoot: {fileID: 0}
   playerMarkerPrefab: {fileID: 0}
   debugLogging: 1
+  mapBaseColor: {r: 0.69999999, g: 0.75, b: 0.80000001, a: 1}
 --- !u!114 &1203
 MonoBehaviour:
   m_ObjectHideFlags: 0

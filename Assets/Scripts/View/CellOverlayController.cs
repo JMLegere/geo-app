@@ -11,10 +11,11 @@ namespace GeoApp.View
     public class CellOverlayController : MonoBehaviour
     {
         [Header("Appearance")]
-        [SerializeField] private Color unexploredColor = new Color(0f, 0f, 0f, 0.8f);
-        [SerializeField] private Color revealedColor = new Color(0.1f, 0.4f, 0.8f, 0.35f);
-        [SerializeField] private Color exploredColor = new Color(0.2f, 0.8f, 0.4f, 0.25f);
-        [SerializeField] private Color presentColor = new Color(1f, 0.9f, 0.2f, 0.55f);
+        [SerializeField] private Color fogBaseColor = new Color(0f, 0f, 0f, 1f);
+        [SerializeField, Range(0f, 1f)] private float unexploredAlpha = 1.0f;   // 100% opaque
+        [SerializeField, Range(0f, 1f)] private float revealedAlpha = 0.7f;   // 70% opaque
+        [SerializeField, Range(0f, 1f)] private float exploredAlpha = 0.4f;   // 40% opaque
+        [SerializeField, Range(0f, 1f)] private float presentAlpha = 0.0f;    // 0% opaque
 
         private readonly Dictionary<int, CellVisual> _visuals = new Dictionary<int, CellVisual>();
         private Material _material;
@@ -55,16 +56,21 @@ namespace GeoApp.View
 
         private Color ColorForState(CellState state)
         {
+            var baseCol = fogBaseColor;
             switch (state)
             {
                 case CellState.Revealed:
-                    return revealedColor;
+                    baseCol.a = revealedAlpha;
+                    return baseCol;
                 case CellState.Explored:
-                    return exploredColor;
+                    baseCol.a = exploredAlpha;
+                    return baseCol;
                 case CellState.Present:
-                    return presentColor;
+                    baseCol.a = presentAlpha;
+                    return baseCol;
                 default:
-                    return unexploredColor;
+                    baseCol.a = unexploredAlpha;
+                    return baseCol;
             }
         }
 
@@ -111,9 +117,17 @@ namespace GeoApp.View
             _material = new Material(shader)
             {
                 name = "CellOverlayMaterial",
-                renderQueue = 3000
+                renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent
             };
             _material.enableInstancing = true;
+            // Force transparent rendering so fog alpha lets the map show through.
+            _material.SetFloat("_Surface", 1f); // Transparent
+            _material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            _material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            _material.SetInt("_ZWrite", 0);
+            _material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            _material.DisableKeyword("_ALPHATEST_ON");
+            _material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
         }
     }
 }
