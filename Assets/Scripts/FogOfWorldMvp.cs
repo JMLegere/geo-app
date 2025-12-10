@@ -19,8 +19,19 @@ public class FogOfWorldMvp : MonoBehaviour
     [SerializeField] private float metersPerUnityUnit = 1f;
     [SerializeField] private Transform overlayRoot;
     [SerializeField] private GameObject playerMarkerPrefab;
-    [SerializeField] private bool debugLogging = true;
     [SerializeField] private Color mapBaseColor = new Color(0.7f, 0.75f, 0.8f, 1f);
+
+    [Header("MapTiler")]
+    [SerializeField] private bool enableMapTiler = true;
+    [SerializeField] private string mapTilerApiKey = "ntk9pZ3tCDGGdrzs9ajs";
+    [SerializeField] private MapTilerStaticLoader mapTilerLoader;
+
+    [Header("Debug")]
+    [SerializeField] private bool logRenderDetails = true;
+    [SerializeField] private bool suppressLocationDebugLogs = true;
+
+    private const string LegacyDefaultApiKey = "YA13yb8j8V4OehBzdMhC";
+    private const string CurrentDefaultApiKey = "ntk9pZ3tCDGGdrzs9ajs";
 
     private GeoReference _geoReference;
     private PlayerLocationTracker _locationTracker;
@@ -28,13 +39,24 @@ public class FogOfWorldMvp : MonoBehaviour
     private CellOverlayController _overlayController;
     private GameObject _playerMarkerInstance;
     private GameObject _mapBackgroundInstance;
+    private MapBackground _mapBackground;
+    private float _gridSpanMeters;
 
     private void Awake()
     {
         EnsureGeoReference();
         EnsureOverlayRoot();
         EnsureLocationTracker();
-        Log("Awake completed.");
+        EnsureMapTilerLoader();
+    }
+
+    private void OnValidate()
+    {
+        // Upgrade any serialized legacy key to the current default so the old masked key stops being used.
+        if (mapTilerApiKey == LegacyDefaultApiKey)
+        {
+            mapTilerApiKey = CurrentDefaultApiKey;
+        }
     }
 
     private void Start()
@@ -46,17 +68,17 @@ public class FogOfWorldMvp : MonoBehaviour
     {
         // Wait for first location fix or simulation start.
         yield return new WaitUntil(() => _locationTracker.HasLocation);
-        Log("Location ready.");
 
         _geoReference.SetOrigin(_locationTracker.CurrentLatLon);
         _geoReference.SetMetersPerUnit(metersPerUnityUnit);
 
         // Build mock cells around the starting point.
         var cells = MockVoronoiBuilder.BuildGrid(_geoReference.OriginLatLon, cellSpacingMeters, gridRadius);
-        Log($"Built mock grid with {cells.Count} cells.");
 
         // Background map placeholder sized to the grid.
         BuildBackground();
+        TryLoadBasemap();
+        LogRenderDetails("background ready");
 
         // Load persisted states.
         var (explored, revealed) = CellPersistence.Load();
@@ -65,7 +87,6 @@ public class FogOfWorldMvp : MonoBehaviour
         // Build visuals.
         _overlayController = overlayRoot.gameObject.AddComponent<CellOverlayController>();
         _overlayController.BuildCells(cells, _geoReference, _stateSystem);
-        Log("Overlay built.");
 
         // Player marker.
         _playerMarkerInstance = playerMarkerPrefab != null
@@ -74,12 +95,10 @@ public class FogOfWorldMvp : MonoBehaviour
         _playerMarkerInstance.name = "PlayerMarker";
         _playerMarkerInstance.transform.SetParent(overlayRoot, false);
         _playerMarkerInstance.transform.localScale = Vector3.one * 10f;
-        Log("Player marker created.");
 
         _locationTracker.OnLocationUpdated += HandleLocationUpdate;
         _stateSystem.UpdatePlayerLocation(_locationTracker.CurrentLatLon);
         HandleLocationUpdate(_locationTracker.CurrentLatLon);
-        Log("Bootstrap complete.");
     }
 
     private void HandleLocationUpdate(Vector2 latLon)
@@ -89,7 +108,6 @@ public class FogOfWorldMvp : MonoBehaviour
         var worldPos = new Vector3(offset.x / _geoReference.MetersPerUnityUnit, 0f, offset.y / _geoReference.MetersPerUnityUnit);
         _overlayController.UpdatePlayerMarker(_playerMarkerInstance, worldPos);
         PersistProgress();
-        Log($"HandleLocationUpdate -> world {worldPos}");
     }
 
     private void PersistProgress()
@@ -137,6 +155,11 @@ public class FogOfWorldMvp : MonoBehaviour
         {
             _locationTracker = gameObject.AddComponent<PlayerLocationTracker>();
         }
+
+        if (suppressLocationDebugLogs)
+        {
+            _locationTracker.SetDebugLogging(false);
+        }
     }
 
     private void BuildBackground()
@@ -154,15 +177,88 @@ public class FogOfWorldMvp : MonoBehaviour
         var renderer = _mapBackgroundInstance.GetComponent<MeshRenderer>();
         bg.Initialize(span, span, metersPerUnityUnit);
         renderer.sharedMaterial.color = mapBaseColor;
+        _mapBackground = bg;
+        _gridSpanMeters = span;
+
+        if (mapTilerLoader != null)
+        {
+            mapTilerLoader.mapBackground = bg;
+        }
     }
 
-    private void Log(string message)
+    private void EnsureMapTilerLoader()
     {
-        if (!debugLogging)
+        if (!enableMapTiler)
         {
             return;
         }
 
-        Debug.Log($"[FogOfWorldMvp] {message}");
+        if (mapTilerLoader == null)
+        {
+            mapTilerLoader = GetComponent<MapTilerStaticLoader>();
+            if (mapTilerLoader == null)
+            {
+                mapTilerLoader = gameObject.AddComponent<MapTilerStaticLoader>();
+            }
+        }
+
+        if (!string.IsNullOrEmpty(mapTilerApiKey))
+        {
+            mapTilerLoader.SetApiKey(mapTilerApiKey);
+        }
+
+        mapTilerLoader.SetGeoReference(_geoReference);
+        mapTilerLoader.OnTextureApplied += HandleMapTextureApplied;
+    }
+
+    private void TryLoadBasemap()
+    {
+        if (!enableMapTiler || mapTilerLoader == null || _mapBackground == null)
+        {
+            return;
+        }
+
+        var span = Mathf.Max(1f, _gridSpanMeters);
+        mapTilerLoader.mapBackground = _mapBackground;
+        mapTilerLoader.SetGeoReference(_geoReference);
+        if (!string.IsNullOrEmpty(mapTilerApiKey))
+        {
+            mapTilerLoader.SetApiKey(mapTilerApiKey);
+        }
+
+        mapTilerLoader.LoadForArea(_geoReference.OriginLatLon, span, span);
+        LogRenderDetails("requested basemap");
+    }
+
+    private void OnDestroy()
+    {
+        if (mapTilerLoader != null)
+        {
+            mapTilerLoader.OnTextureApplied -= HandleMapTextureApplied;
+        }
+    }
+
+    private void HandleMapTextureApplied(Texture2D texture)
+    {
+        LogRenderDetails(texture != null ? $"MapTiler texture '{texture.name}' applied" : "MapTiler returned null texture");
+    }
+
+    private void LogRenderDetails(string reason)
+    {
+        if (!logRenderDetails)
+        {
+            return;
+        }
+
+        var renderer = _mapBackgroundInstance != null ? _mapBackgroundInstance.GetComponent<MeshRenderer>() : null;
+        var material = renderer != null ? renderer.sharedMaterial : null;
+        var texture = material != null ? material.mainTexture : null;
+        var color = material != null ? material.color : mapBaseColor;
+        var colorHex = ColorUtility.ToHtmlStringRGBA(color);
+        var gridInfo = _gridSpanMeters > 0f ? $"{_gridSpanMeters:0.#}m grid span" : "grid not built";
+        var mapSource = texture != null ? $"texture '{texture.name}'" : $"flat color #{colorHex}";
+        var mapTilerState = enableMapTiler && mapTilerLoader != null ? "MapTiler enabled" : "MapTiler disabled";
+        var suffix = string.IsNullOrEmpty(reason) ? string.Empty : $" ({reason})";
+        Debug.Log($"[FogOfWorldMvp] Under-fog render: {mapSource}, {gridInfo}, {mapTilerState}{suffix}.");
     }
 }

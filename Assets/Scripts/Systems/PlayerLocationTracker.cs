@@ -53,10 +53,6 @@ namespace GeoApp.Systems
 
         private void OnValidate()
         {
-            if (Application.isEditor)
-            {
-                debugLogging = true;
-            }
             simulatedMoveSpeedMps = Mathf.Max(0.1f, simulatedMoveSpeedMps);
             randomWalkSpeedMps = Mathf.Max(0.1f, randomWalkSpeedMps);
             randomWalkDirectionSeconds = Mathf.Max(0.5f, randomWalkDirectionSeconds);
@@ -209,6 +205,11 @@ namespace GeoApp.Systems
                 _randomDirTimer = Mathf.Max(0.5f, randomWalkDirectionSeconds);
                 Log($"Random walk direction set to angle {angle} rad, dir {_randomDir}");
             }
+        }
+
+        public void SetDebugLogging(bool enabled)
+        {
+            debugLogging = enabled;
         }
 
         private void Log(string message)

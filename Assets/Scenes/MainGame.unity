@@ -309,6 +309,7 @@ GameObject:
   - component: {fileID: 1202}
   - component: {fileID: 1203}
   - component: {fileID: 1204}
+  - component: {fileID: 1205}
   m_Layer: 0
   m_Name: GameRoot
   m_TagString: Untagged
@@ -388,6 +389,27 @@ MonoBehaviour:
   randomWalkSpeedMps: 5
   randomWalkDirectionSeconds: 3
   debugLogging: 1
+--- !u!114 &1205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ec1e3b1eecc474bbca331b8c2f2c9e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  apiKey: YA13yb8j8V4OehBzdMhC
+  styleId: streets-v2
+  zoom: 15
+  imageWidth: 1024
+  imageHeight: 1024
+  useGeoReferenceOrigin: 1
+  manualCenterLatLon: {x: 37.7749, y: -122.4194}
+  mapBackground: {fileID: 0}
+  geoReference: {fileID: 1203}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

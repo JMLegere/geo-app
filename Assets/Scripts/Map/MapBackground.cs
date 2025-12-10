@@ -15,9 +15,17 @@ namespace GeoApp.Map
         private Mesh _mesh;
         private MeshFilter _meshFilter;
         private MeshRenderer _meshRenderer;
+        private Material _material;
+        private float _widthMeters;
+        private float _heightMeters;
+
+        public float WidthMeters => _widthMeters;
+        public float HeightMeters => _heightMeters;
 
         public void Initialize(float widthMeters, float heightMeters, float metersPerUnit)
         {
+            _widthMeters = widthMeters;
+            _heightMeters = heightMeters;
             _meshFilter = GetComponent<MeshFilter>();
             _meshRenderer = GetComponent<MeshRenderer>();
 
@@ -27,12 +35,12 @@ namespace GeoApp.Map
                 shader = Shader.Find("Unlit/Color");
             }
 
-            var mat = new Material(shader) { name = "MapBackgroundMat" };
-            mat.color = baseColor;
-            _meshRenderer.sharedMaterial = mat;
+            _material = new Material(shader) { name = "MapBackgroundMat" };
+            _material.color = baseColor;
+            _meshRenderer.sharedMaterial = _material;
 
             BuildQuad(widthMeters, heightMeters, metersPerUnit);
-            ApplyGridTexture(mat, widthMeters, heightMeters);
+            ApplyGridTexture(_material, widthMeters, heightMeters);
         }
 
         private void BuildQuad(float widthMeters, float heightMeters, float metersPerUnit)
@@ -94,6 +102,21 @@ namespace GeoApp.Map
             var tilesX = Mathf.Max(1f, widthMeters / gridStepMeters);
             var tilesY = Mathf.Max(1f, heightMeters / gridStepMeters);
             mat.mainTextureScale = new Vector2(tilesX, tilesY);
+        }
+
+        /// <summary>
+        /// Override the background with an external texture (e.g., MapTiler static map).
+        /// </summary>
+        public void ApplyTexture(Texture2D tex, Vector2? tiling = null)
+        {
+            if (tex == null || _material == null)
+            {
+                return;
+            }
+
+            _material.mainTexture = tex;
+            _material.color = Color.white;
+            _material.mainTextureScale = tiling ?? Vector2.one;
         }
 
         private void OnDestroy()
