@@ -21,10 +21,16 @@ namespace GeoApp.Systems
 
         [Header("Simulation (Editor/Desktop)")]
         [SerializeField] private bool allowSimulation = true;
-        [SerializeField] private Vector2 simulatedStartLatLon = new Vector2(37.7749f, -122.4194f);
-        [SerializeField] private float simulatedMoveSpeedMps = 5f;
-        [SerializeField] private bool randomWalkWhenIdle = true;
-        [SerializeField] private float randomWalkSpeedMps = 1.5f;
+        [SerializeField] private Vector2 simulatedStartLatLon = new Vector2(45.9636f, -66.6431f); // Fredericton, NB
+        [SerializeField] private float simulatedMoveSpeedMps = 50f;
+    [SerializeField] private bool randomWalkWhenIdle = true;
+    [SerializeField] private float randomWalkSpeedMps = 15f;
+    [SerializeField] private bool forceSimulationSpeeds = true;
+    [SerializeField] private float forcedMoveSpeedMps = 50f;
+    [SerializeField] private float forcedRandomWalkSpeedMps = 15f;
+    [SerializeField] private bool forceStartLocation = true;
+    [SerializeField] private Vector2 forcedStartLatLon = new Vector2(45.9636f, -66.6431f);
+    [SerializeField] private bool logConfigOnce = true;
         [SerializeField] private float randomWalkDirectionSeconds = 3f;
         [SerializeField] private bool debugLogging = false;
 
@@ -44,6 +50,8 @@ namespace GeoApp.Systems
 
         private void Start()
         {
+            ApplyForcedStartLocation();
+            ApplyForcedSimulationSpeeds();
             CurrentLatLon = simulatedStartLatLon;
             _simulatedOffsetMeters = Vector2.zero;
             CurrentOffsetMeters = _simulatedOffsetMeters;
@@ -124,6 +132,7 @@ namespace GeoApp.Systems
             }
             OnLocationReady?.Invoke(CurrentLatLon);
             Log($"Simulation ready at start lat {CurrentLatLon.x}, lon {CurrentLatLon.y}");
+            LogConfig();
         }
 
         private void Update()
@@ -207,9 +216,50 @@ namespace GeoApp.Systems
             }
         }
 
+        private void ApplyForcedSimulationSpeeds()
+        {
+            if (!forceSimulationSpeeds)
+            {
+                return;
+            }
+
+            simulatedMoveSpeedMps = Mathf.Max(0.1f, forcedMoveSpeedMps);
+            randomWalkSpeedMps = Mathf.Max(0.1f, forcedRandomWalkSpeedMps);
+        }
+
+        private void ApplyForcedStartLocation()
+        {
+            if (!forceStartLocation || !allowSimulation)
+            {
+                return;
+            }
+
+            simulatedStartLatLon = forcedStartLatLon;
+        }
+
+        private void LogConfig()
+        {
+            if (!logConfigOnce)
+            {
+                return;
+            }
+
+            Debug.Log($"[PlayerLocationTracker] Config -> allowSimulation:{allowSimulation}, UsingGps:{UsingGps}, startLatLon:{simulatedStartLatLon}, moveSpeed:{simulatedMoveSpeedMps} m/s, randomWalkSpeed:{randomWalkSpeedMps} m/s, randomWalkWhenIdle:{randomWalkWhenIdle}, forceSpeeds:{forceSimulationSpeeds}, forceStartLocation:{forceStartLocation}");
+            logConfigOnce = false;
+        }
+
         public void SetDebugLogging(bool enabled)
         {
             debugLogging = enabled;
+        }
+
+        public void ForceSimulatedStart(Vector2 latLon)
+        {
+            simulatedStartLatLon = latLon;
+            CurrentLatLon = latLon;
+            _simulatedOffsetMeters = Vector2.zero;
+            CurrentOffsetMeters = _simulatedOffsetMeters;
+            Log($"Forced simulated start to lat {latLon.x}, lon {latLon.y}");
         }
 
         private void Log(string message)

@@ -17,8 +17,8 @@ namespace GeoApp.Map
         [SerializeField] private string apiKey = "";
         [SerializeField] private string apiKeyEnvVar = "MAPTILER_API_KEY";
         [SerializeField] private string styleId = "streets-v2";
-        [SerializeField, Range(1, 22)] private int zoom = 15;
-        [SerializeField] private bool autoCalculateZoom = true;
+        [SerializeField, Range(1, 22)] private int zoom = 14;
+        [SerializeField] private bool autoCalculateZoom = false;
         [SerializeField, Range(1, 22)] private int minZoom = 1;
         [SerializeField, Range(1, 22)] private int maxZoom = 20;
         [SerializeField] private int imageWidth = 1024;
@@ -48,6 +48,12 @@ namespace GeoApp.Map
         [SerializeField] private bool fallbackToTileOnStaticError = true;
         [SerializeField] private bool fallbackToBasicStyleOnTileError = true;
 
+        [Header("Forced Overrides")]
+        [SerializeField] private bool forceZoomSettings = true;
+        [SerializeField, Range(1, 22)] private int forcedZoom = 14;
+        [SerializeField] private bool forcedAutoCalculateZoom = false;
+        [SerializeField] private string forcedStyleId = "streets-v2";
+
         public event Action<Texture2D> OnTextureApplied;
 
         private Coroutine _loadRoutine;
@@ -68,6 +74,7 @@ namespace GeoApp.Map
 
         private void Awake()
         {
+            ApplyForcedZoomSettings();
             if (mapBackground == null)
             {
                 mapBackground = GetComponentInChildren<MapBackground>();
@@ -283,6 +290,32 @@ namespace GeoApp.Map
             if (!string.IsNullOrWhiteSpace(style))
             {
                 styleId = style.Trim();
+            }
+        }
+
+        public void ForceZoomAndStyle(int zoomValue, bool autoCalc, string style)
+        {
+            zoom = Mathf.Clamp(zoomValue, minZoom, maxZoom);
+            autoCalculateZoom = autoCalc;
+            if (!string.IsNullOrWhiteSpace(style))
+            {
+                styleId = style.Trim();
+            }
+            Log($"Forced zoom/style -> zoom:{zoom}, autoCalc:{autoCalculateZoom}, style:{styleId}");
+        }
+
+        private void ApplyForcedZoomSettings()
+        {
+            if (!forceZoomSettings)
+            {
+                return;
+            }
+
+            zoom = forcedZoom;
+            autoCalculateZoom = forcedAutoCalculateZoom;
+            if (!string.IsNullOrWhiteSpace(forcedStyleId))
+            {
+                styleId = forcedStyleId.Trim();
             }
         }
 

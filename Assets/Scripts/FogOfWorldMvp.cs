@@ -29,6 +29,12 @@ public class FogOfWorldMvp : MonoBehaviour
     [Header("Debug")]
     [SerializeField] private bool logRenderDetails = true;
     [SerializeField] private bool suppressLocationDebugLogs = true;
+    [SerializeField] private bool forceStartOverride = true;
+    [SerializeField] private Vector2 forcedStartLatLon = new Vector2(45.9636f, -66.6431f);
+    [SerializeField] private bool forceZoomOverride = true;
+    [SerializeField, Range(1, 22)] private int forcedZoom = 14;
+    [SerializeField] private bool forcedAutoCalculateZoom = false;
+    [SerializeField] private string forcedStyleId = "streets-v2";
 
     private const string LegacyDefaultApiKey = "YA13yb8j8V4OehBzdMhC";
     private const string CurrentDefaultApiKey = "ntk9pZ3tCDGGdrzs9ajs";
@@ -48,6 +54,7 @@ public class FogOfWorldMvp : MonoBehaviour
         EnsureOverlayRoot();
         EnsureLocationTracker();
         EnsureMapTilerLoader();
+        ApplyRuntimeOverrides();
     }
 
     private void OnValidate()
@@ -160,6 +167,11 @@ public class FogOfWorldMvp : MonoBehaviour
         {
             _locationTracker.SetDebugLogging(false);
         }
+
+        if (forceStartOverride)
+        {
+            _locationTracker.ForceSimulatedStart(forcedStartLatLon);
+        }
     }
 
     private void BuildBackground()
@@ -209,6 +221,10 @@ public class FogOfWorldMvp : MonoBehaviour
 
         mapTilerLoader.SetGeoReference(_geoReference);
         mapTilerLoader.OnTextureApplied += HandleMapTextureApplied;
+        if (forceZoomOverride)
+        {
+            mapTilerLoader.ForceZoomAndStyle(forcedZoom, forcedAutoCalculateZoom, forcedStyleId);
+        }
     }
 
     private void TryLoadBasemap()
@@ -235,6 +251,19 @@ public class FogOfWorldMvp : MonoBehaviour
         if (mapTilerLoader != null)
         {
             mapTilerLoader.OnTextureApplied -= HandleMapTextureApplied;
+        }
+    }
+
+    private void ApplyRuntimeOverrides()
+    {
+        if (_geoReference != null && forceStartOverride)
+        {
+            _geoReference.SetOrigin(forcedStartLatLon);
+        }
+
+        if (mapTilerLoader != null && forceZoomOverride)
+        {
+            mapTilerLoader.ForceZoomAndStyle(forcedZoom, forcedAutoCalculateZoom, forcedStyleId);
         }
     }
 
