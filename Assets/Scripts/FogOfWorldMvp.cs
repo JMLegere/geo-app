@@ -35,6 +35,9 @@ public class FogOfWorldMvp : MonoBehaviour
     [SerializeField, Range(1, 22)] private int forcedZoom = 14;
     [SerializeField] private bool forcedAutoCalculateZoom = false;
     [SerializeField] private string forcedStyleId = "streets-v2";
+    [SerializeField] private bool enableCameraFollow = true;
+    [SerializeField] private Vector3 cameraOffset = new Vector3(0f, 200f, -200f);
+    [SerializeField] private float cameraFollowSmoothing = 5f;
 
     private const string LegacyDefaultApiKey = "YA13yb8j8V4OehBzdMhC";
     private const string CurrentDefaultApiKey = "ntk9pZ3tCDGGdrzs9ajs";
@@ -50,6 +53,8 @@ public class FogOfWorldMvp : MonoBehaviour
 
     private void Awake()
     {
+        forceStartOverride = true;
+        forceZoomOverride = true;
         EnsureGeoReference();
         EnsureOverlayRoot();
         EnsureLocationTracker();
@@ -106,6 +111,7 @@ public class FogOfWorldMvp : MonoBehaviour
         _locationTracker.OnLocationUpdated += HandleLocationUpdate;
         _stateSystem.UpdatePlayerLocation(_locationTracker.CurrentLatLon);
         HandleLocationUpdate(_locationTracker.CurrentLatLon);
+        SetupCameraFollow();
     }
 
     private void HandleLocationUpdate(Vector2 latLon)
@@ -115,6 +121,10 @@ public class FogOfWorldMvp : MonoBehaviour
         var worldPos = new Vector3(offset.x / _geoReference.MetersPerUnityUnit, 0f, offset.y / _geoReference.MetersPerUnityUnit);
         _overlayController.UpdatePlayerMarker(_playerMarkerInstance, worldPos);
         PersistProgress();
+        if (mapTilerLoader != null)
+        {
+            mapTilerLoader.UpdateTilesForLatLon(latLon);
+        }
     }
 
     private void PersistProgress()
@@ -171,6 +181,7 @@ public class FogOfWorldMvp : MonoBehaviour
         if (forceStartOverride)
         {
             _locationTracker.ForceSimulatedStart(forcedStartLatLon);
+            Debug.Log($"[FogOfWorldMvp] Forced player start -> lat {forcedStartLatLon.x}, lon {forcedStartLatLon.y}");
         }
     }
 
@@ -243,6 +254,7 @@ public class FogOfWorldMvp : MonoBehaviour
         }
 
         mapTilerLoader.LoadForArea(_geoReference.OriginLatLon, span, span);
+        mapTilerLoader.UpdateTilesForLatLon(_geoReference.OriginLatLon);
         LogRenderDetails("requested basemap");
     }
 
@@ -259,12 +271,38 @@ public class FogOfWorldMvp : MonoBehaviour
         if (_geoReference != null && forceStartOverride)
         {
             _geoReference.SetOrigin(forcedStartLatLon);
+            Debug.Log($"[FogOfWorldMvp] GeoReference origin forced to {forcedStartLatLon}");
         }
 
         if (mapTilerLoader != null && forceZoomOverride)
         {
             mapTilerLoader.ForceZoomAndStyle(forcedZoom, forcedAutoCalculateZoom, forcedStyleId);
+            Debug.Log($"[FogOfWorldMvp] MapTiler forced zoom/style -> zoom:{forcedZoom}, autoCalc:{forcedAutoCalculateZoom}, style:{forcedStyleId}");
         }
+    }
+
+    private void SetupCameraFollow()
+    {
+        if (!enableCameraFollow || _playerMarkerInstance == null)
+        {
+            Debug.Log("[FogOfWorldMvp] Camera follow skipped (disabled or player marker missing).");
+            return;
+        }
+
+        var cam = Camera.main ?? FindObjectOfType<Camera>();
+
+        if (cam == null)
+        {
+            Debug.LogWarning("[FogOfWorldMvp] No camera found; camera follow not applied.");
+            return;
+        }
+
+        var follower = cam.GetComponent<PlayerCameraFollower>() ?? cam.gameObject.AddComponent<PlayerCameraFollower>();
+        follower.SetTarget(_playerMarkerInstance.transform);
+        follower.SetOffset(cameraOffset);
+        follower.SetSmoothing(cameraFollowSmoothing);
+        follower.SnapToTarget();
+        Debug.Log($"[FogOfWorldMvp] Camera follow enabled -> offset {cameraOffset}, smoothing {cameraFollowSmoothing}, camera '{cam.name}'.");
     }
 
     private void HandleMapTextureApplied(Texture2D texture)

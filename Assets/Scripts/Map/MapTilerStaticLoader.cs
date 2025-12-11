@@ -47,6 +47,12 @@ namespace GeoApp.Map
         [SerializeField] private bool useStaticSnapshots = false; // static snapshots require paid tier; free by default uses tile snapshot
         [SerializeField] private bool fallbackToTileOnStaticError = true;
         [SerializeField] private bool fallbackToBasicStyleOnTileError = true;
+        [SerializeField, Range(0, 3)] private int tileRadius = 1; // how many tiles outward from center to fetch (0 = just center)
+        [SerializeField] private bool streamTilesOnMove = true;
+
+        [Header("Runtime Anchoring")]
+        [SerializeField] private bool anchorBackgroundToTiles = true;
+        [SerializeField] private float coveragePaddingMeters = 100f;
 
         [Header("Forced Overrides")]
         [SerializeField] private bool forceZoomSettings = true;
@@ -63,6 +69,13 @@ namespace GeoApp.Map
         private bool _apiKeyFromEnv;
         private bool _staticForbidden;
         private bool _tileStyleFallbackUsed;
+        private Coroutine _tileStreamRoutine;
+        private int? _lastTileX;
+        private int? _lastTileY;
+        private int? _lastZoom;
+        private int _activeZoom;
+        private Vector3 _baseBackgroundScale = Vector3.one;
+        private bool _capturedBaseBackgroundScale;
 
         private struct MapRequest
         {
@@ -75,6 +88,7 @@ namespace GeoApp.Map
         private void Awake()
         {
             ApplyForcedZoomSettings();
+            _activeZoom = Mathf.Clamp(zoom, minZoom, maxZoom);
             if (mapBackground == null)
             {
                 mapBackground = GetComponentInChildren<MapBackground>();
@@ -169,6 +183,7 @@ namespace GeoApp.Map
             var widthMeters = request.WidthMeters > 0.01f ? request.WidthMeters : fallbackAreaMeters;
             var heightMeters = request.HeightMeters > 0.01f ? request.HeightMeters : fallbackAreaMeters;
             var resolvedZoom = ResolveZoom(request, widthMeters, heightMeters);
+            _activeZoom = resolvedZoom;
             Log($"Requesting MapTiler map -> center {request.Center.x},{request.Center.y}, zoom {resolvedZoom}, meters {widthMeters}x{heightMeters}, pixels {imageWidth}x{imageHeight}.");
 
             if (useStaticSnapshots && !_staticForbidden)
@@ -177,8 +192,38 @@ namespace GeoApp.Map
             }
             else
             {
-                yield return FetchTileSnapshot(request.Center, resolvedZoom);
+                yield return FetchTilesSnapshot(request.Center, resolvedZoom);
             }
+        }
+
+        /// <summary>
+        /// Stream tiles as the player moves; will refetch when tile coordinates change.
+        /// </summary>
+        public void UpdateTilesForLatLon(Vector2 centerLatLon)
+        {
+            if (!streamTilesOnMove)
+            {
+                return;
+            }
+
+            var zoomLevel = Mathf.Clamp(_activeZoom > 0 ? _activeZoom : zoom, minZoom, maxZoom);
+            var (tileX, tileY) = LatLonToTile(centerLatLon, zoomLevel);
+            if (_lastTileX == tileX && _lastTileY == tileY && _lastZoom == zoomLevel)
+            {
+                return;
+            }
+
+            _lastTileX = tileX;
+            _lastTileY = tileY;
+            _lastZoom = zoomLevel;
+
+            if (_tileStreamRoutine != null)
+            {
+                StopCoroutine(_tileStreamRoutine);
+            }
+
+            _tileStreamRoutine = StartCoroutine(FetchTilesSnapshot(centerLatLon, zoomLevel));
+            Log($"Tile stream update -> z{zoomLevel} tile {tileX},{tileY} (radius {tileRadius})");
         }
 
         private IEnumerator FetchStaticMap(Vector2 centerLatLon, int resolvedZoom, float widthMeters, float heightMeters)
@@ -199,7 +244,7 @@ namespace GeoApp.Map
                     {
                         _staticForbidden = true;
                         Log("Static snapshots forbidden for this key/plan; falling back to tile snapshot (free tier).");
-                        yield return FetchTileSnapshot(centerLatLon, resolvedZoom);
+                        yield return FetchTilesSnapshot(centerLatLon, resolvedZoom);
                     }
                     yield break;
                 }
@@ -207,47 +252,46 @@ namespace GeoApp.Map
                 var tex = DownloadHandlerTexture.GetContent(req);
                 tex.wrapMode = TextureWrapMode.Clamp;
                 tex.filterMode = FilterMode.Bilinear;
+                var metersPerTile = CalculateMetersPerTile(centerLatLon, resolvedZoom);
+                var coverageWidthMeters = metersPerTile * (imageWidth / (float)TileSize);
+                var coverageHeightMeters = metersPerTile * (imageHeight / (float)TileSize);
+                AnchorBackground(centerLatLon, coverageWidthMeters, coverageHeightMeters, resolvedZoom, imageWidth, imageHeight, "static snapshot");
                 mapBackground.ApplyTexture(tex, Vector2.one);
-                Log($"Applied MapTiler texture {tex.width}x{tex.height} to background.");
+                Log($"Applied MapTiler texture {tex.width}x{tex.height} to background (static snapshot).");
                 OnTextureApplied?.Invoke(tex);
             }
         }
 
-        private IEnumerator FetchTileSnapshot(Vector2 centerLatLon, int resolvedZoom)
+        private IEnumerator FetchTilesSnapshot(Vector2 centerLatLon, int resolvedZoom)
         {
             var (tileX, tileY) = LatLonToTile(centerLatLon, resolvedZoom);
-            var url = BuildTileUrl(styleId, resolvedZoom, tileX, tileY);
-            var maskedUrl = MaskUrl(url);
-            Log($"Requesting tile snapshot: {maskedUrl} (z{resolvedZoom} x{tileX} y{tileY})");
-            using (var req = UnityWebRequestTexture.GetTexture(url))
+            int radius = Mathf.Max(0, tileRadius);
+            int tilesPerSide = radius * 2 + 1;
+            int totalTiles = tilesPerSide * tilesPerSide;
+            var tiles = new Texture2D[totalTiles];
+            int idx = 0;
+
+            for (int dy = radius; dy >= -radius; dy--)
             {
-                yield return req.SendWebRequest();
-
-                if (req.result != UnityWebRequest.Result.Success)
+                for (int dx = -radius; dx <= radius; dx++)
                 {
-                    LogMapRequestFailure(req, url);
-                    if (ShouldTryBasicStyle(req.responseCode))
-                    {
-                        var fallbackStyle = "basic-v2";
-                        Log($"Tile endpoint returned {req.responseCode}; retrying with fallback style '{fallbackStyle}'.");
-                        var fallbackUrl = BuildTileUrl(fallbackStyle, resolvedZoom, tileX, tileY);
-                        _tileStyleFallbackUsed = true;
-                        yield return FetchTileSnapshotWithUrl(fallbackUrl, resolvedZoom, tileX, tileY, true);
-                    }
-                    yield break;
+                    int tx = tileX + dx;
+                    int ty = tileY + dy;
+                    yield return FetchSingleTile(styleId, resolvedZoom, tx, ty, false, tex => tiles[idx] = tex);
+                    idx++;
                 }
+            }
 
-                var tex = DownloadHandlerTexture.GetContent(req);
-                tex.wrapMode = TextureWrapMode.Clamp;
-                tex.filterMode = FilterMode.Bilinear;
-                mapBackground.ApplyTexture(tex, Vector2.one);
-                Log($"Applied single-tile snapshot {tex.width}x{tex.height} (free tier) to background.");
-                OnTextureApplied?.Invoke(tex);
+            var stitched = StitchTiles(tiles, tilesPerSide, TileSize);
+            if (stitched != null)
+            {
+                ApplyTileAtlas(stitched, centerLatLon, resolvedZoom, tilesPerSide);
             }
         }
 
-        private IEnumerator FetchTileSnapshotWithUrl(string url, int resolvedZoom, int tileX, int tileY, bool isFallback)
+        private IEnumerator FetchSingleTile(string style, int resolvedZoom, int tileX, int tileY, bool isFallback, Action<Texture2D> onResult)
         {
+            var url = BuildTileUrl(style, resolvedZoom, tileX, tileY);
             var maskedUrl = MaskUrl(url);
             Log($"Requesting tile snapshot{(isFallback ? " (fallback)" : string.Empty)}: {maskedUrl} (z{resolvedZoom} x{tileX} y{tileY})");
             using (var req = UnityWebRequestTexture.GetTexture(url))
@@ -257,15 +301,20 @@ namespace GeoApp.Map
                 if (req.result != UnityWebRequest.Result.Success)
                 {
                     LogMapRequestFailure(req, url);
+                    if (!isFallback && ShouldTryBasicStyle(req.responseCode))
+                    {
+                        var fallbackStyle = "basic-v2";
+                        _tileStyleFallbackUsed = true;
+                        yield return FetchSingleTile(fallbackStyle, resolvedZoom, tileX, tileY, true, onResult);
+                        yield break;
+                    }
+
+                    onResult?.Invoke(null);
                     yield break;
                 }
 
                 var tex = DownloadHandlerTexture.GetContent(req);
-                tex.wrapMode = TextureWrapMode.Clamp;
-                tex.filterMode = FilterMode.Bilinear;
-                mapBackground.ApplyTexture(tex, Vector2.one);
-                Log($"Applied single-tile snapshot {tex.width}x{tex.height}{(isFallback ? " (fallback style)" : string.Empty)} to background.");
-                OnTextureApplied?.Invoke(tex);
+                onResult?.Invoke(tex);
             }
         }
 
@@ -297,6 +346,7 @@ namespace GeoApp.Map
         {
             zoom = Mathf.Clamp(zoomValue, minZoom, maxZoom);
             autoCalculateZoom = autoCalc;
+            _activeZoom = zoom;
             if (!string.IsNullOrWhiteSpace(style))
             {
                 styleId = style.Trim();
@@ -313,6 +363,7 @@ namespace GeoApp.Map
 
             zoom = forcedZoom;
             autoCalculateZoom = forcedAutoCalculateZoom;
+            _activeZoom = zoom;
             if (!string.IsNullOrWhiteSpace(forcedStyleId))
             {
                 styleId = forcedStyleId.Trim();
@@ -374,6 +425,12 @@ namespace GeoApp.Map
             var x = (int)Math.Floor((latLon.y + 180.0) / 360.0 * n);
             var y = (int)Math.Floor((1.0 - Math.Log(Math.Tan(latRad) + 1.0 / Math.Cos(latRad)) / Math.PI) / 2.0 * n);
             return (x, y);
+        }
+
+        private float CalculateMetersPerTile(Vector2 centerLatLon, int zoomLevel)
+        {
+            var cosLat = Mathf.Max(0.0001f, Mathf.Cos(centerLatLon.x * Mathf.Deg2Rad));
+            return (float)(EarthCircumferenceMeters * cosLat / Math.Pow(2.0, zoomLevel));
         }
 
         private void Log(string message)
@@ -488,6 +545,40 @@ namespace GeoApp.Map
             return status == 403 || status == 404;
         }
 
+        private Texture2D StitchTiles(Texture2D[] tiles, int tilesPerSide, int tileSize)
+        {
+            if (tiles == null || tiles.Length == 0)
+            {
+                return null;
+            }
+
+            var output = new Texture2D(tileSize * tilesPerSide, tileSize * tilesPerSide, TextureFormat.RGBA32, false)
+            {
+                name = $"TileAtlas_{tilesPerSide}x{tilesPerSide}"
+            };
+
+            for (int row = 0; row < tilesPerSide; row++)
+            {
+                for (int col = 0; col < tilesPerSide; col++)
+                {
+                    int idx = row * tilesPerSide + col;
+                    var src = tiles[idx];
+                    if (src == null)
+                    {
+                        continue;
+                    }
+
+                    var pixels = src.GetPixels32();
+                    int x = col * tileSize;
+                    int y = (tilesPerSide - 1 - row) * tileSize; // flip Y to keep north up
+                    output.SetPixels32(x, y, tileSize, tileSize, pixels);
+                }
+            }
+
+            output.Apply();
+            return output;
+        }
+
         private string MaskKey(string key)
         {
             if (string.IsNullOrEmpty(key))
@@ -514,6 +605,58 @@ namespace GeoApp.Map
             }
 
             return url.Replace(apiKey, MaskKey(apiKey));
+        }
+
+        private void ApplyTileAtlas(Texture2D stitched, Vector2 centerLatLon, int zoomLevel, int tilesPerSide)
+        {
+            if (stitched == null || mapBackground == null)
+            {
+                return;
+            }
+
+            stitched.wrapMode = TextureWrapMode.Clamp;
+            stitched.filterMode = FilterMode.Bilinear;
+            var metersPerTile = CalculateMetersPerTile(centerLatLon, zoomLevel);
+            var coverageMeters = metersPerTile * tilesPerSide;
+            AnchorBackground(centerLatLon, coverageMeters, coverageMeters, zoomLevel, stitched.width, stitched.height, $"{tilesPerSide}x{tilesPerSide} tiles");
+            mapBackground.ApplyTexture(stitched, Vector2.one);
+            Log($"Applied {tilesPerSide}x{tilesPerSide} tile snapshot {stitched.width}x{stitched.height} to background.");
+            OnTextureApplied?.Invoke(stitched);
+        }
+
+        private void AnchorBackground(Vector2 centerLatLon, float coverageWidthMeters, float coverageHeightMeters, int zoomLevel, int pixelWidth, int pixelHeight, string reason)
+        {
+            if (!anchorBackgroundToTiles || mapBackground == null)
+            {
+                return;
+            }
+
+            if (!_capturedBaseBackgroundScale)
+            {
+                _baseBackgroundScale = mapBackground.transform.localScale;
+                _capturedBaseBackgroundScale = true;
+            }
+
+            var padding = Mathf.Max(0f, coveragePaddingMeters);
+            var paddedWidth = Mathf.Max(10f, coverageWidthMeters + padding * 2f);
+            var paddedHeight = Mathf.Max(10f, coverageHeightMeters + padding * 2f);
+            var baseWidth = Mathf.Max(1f, mapBackground.WidthMeters);
+            var baseHeight = Mathf.Max(1f, mapBackground.HeightMeters);
+            var targetScale = new Vector3(_baseBackgroundScale.x * (paddedWidth / baseWidth), _baseBackgroundScale.y, _baseBackgroundScale.z * (paddedHeight / baseHeight));
+            mapBackground.transform.localScale = targetScale;
+
+            if (geoReference != null)
+            {
+                var world = geoReference.LatLonToWorld(centerLatLon);
+                var current = mapBackground.transform.position;
+                mapBackground.transform.position = new Vector3(world.x, current.y, world.z);
+            }
+            else
+            {
+                Log("GeoReference missing; background anchoring skipped.");
+            }
+
+            Log($"Anchored map background -> center {centerLatLon.x:0.0000},{centerLatLon.y:0.0000}, zoom {zoomLevel}, coverage ~{paddedWidth:0.#}x{paddedHeight:0.#}m, pixels {pixelWidth}x{pixelHeight}, reason {reason}.");
         }
     }
 }
