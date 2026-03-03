@@ -41,3 +41,11 @@ build/
 # Supabase local state
 supabase/.branches/
 supabase/.temp/
+
+# Node modules (playwright E2E tooling)
+node_modules/
+
+# E2E screenshots (ephemeral)
+e2e-screenshot.png
+web-app-initial.png
+web-app-loaded.png
