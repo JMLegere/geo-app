@@ -1,0 +1,246 @@
+TASK 4: Supabase Project Setup + Schema
+========================================
+
+DELIVERABLES COMPLETED:
+✅ Database schema created (4 tables: profiles, cell_progress, species, collected_species)
+✅ Row Level Security (RLS) enabled on all tables with correct policies
+✅ 30 species seeded (5 biomes × 6 each, 3 rarity tiers per biome)
+✅ Edge Function created: generate-species-for-cell (deterministic seeding)
+✅ Flutter config: lib/core/config/supabase_config.dart (environment-based credentials)
+✅ Environment files: .env.example and .env (placeholder values)
+✅ Setup documentation: SUPABASE_SETUP.md (complete guide)
+
+FILES CREATED:
+- supabase/migrations/001_initial_schema.sql
+- supabase/migrations/002_seed_species.sql
+- supabase/functions/generate-species-for-cell/index.ts
+- lib/core/config/supabase_config.dart
+- .env.example
+- .env
+- SUPABASE_SETUP.md
+
+VERIFICATION CHECKLIST:
+======================
+
+To verify this task is complete, follow these steps:
+
+1. CREATE SUPABASE PROJECT
+   - Go to https://supabase.com/dashboard
+   - Create new project named "fog-of-world"
+   - Wait for initialization (2-3 minutes)
+
+2. RUN SCHEMA MIGRATION
+   - Open SQL Editor in Supabase dashboard
+   - Copy contents of supabase/migrations/001_initial_schema.sql
+   - Paste and run in SQL Editor
+   - Verify tables exist: profiles, cell_progress, species, collected_species
+   - Verify RLS is enabled on all tables
+
+3. SEED SPECIES DATA
+   - Open SQL Editor
+   - Copy contents of supabase/migrations/002_seed_species.sql
+   - Paste and run in SQL Editor
+   - Verify 30 species in species table:
+     * 6 forest species (3 common, 2 uncommon, 1 rare)
+     * 6 grassland species (3 common, 2 uncommon, 1 rare)
+     * 6 wetland species (3 common, 2 uncommon, 1 rare)
+     * 6 urban species (3 common, 2 uncommon, 1 rare)
+     * 6 coastal species (3 common, 2 uncommon, 1 rare)
+
+4. DEPLOY EDGE FUNCTION
+   - Go to Edge Functions in Supabase dashboard
+   - Create new function: generate-species-for-cell
+   - Copy contents of supabase/functions/generate-species-for-cell/index.ts
+   - Paste and deploy
+
+5. GET CREDENTIALS
+   - Go to Project Settings → API
+   - Copy Project URL (https://[project-id].supabase.co)
+   - Copy Anon Key
+   - Update .env file with these values
+
+6. VERIFY WITH CURL COMMANDS
+
+   a) Test species table (public read):
+      curl -X GET \
+        'https://[your-project-id].supabase.co/rest/v1/species?select=*' \
+        -H 'apikey: [your-anon-key]'
+      
+      Expected: 200 OK with 30 species records
+
+   b) Test RLS (cell_progress should be blocked):
+      curl -X GET \
+        'https://[your-project-id].supabase.co/rest/v1/cell_progress?select=*' \
+        -H 'apikey: [your-anon-key]'
+      
+      Expected: 401 Unauthorized (RLS blocks unauthenticated access)
+
+   c) Test Edge Function (deterministic output):
+      curl -X POST \
+        'https://[your-project-id].supabase.co/functions/v1/generate-species-for-cell' \
+        -H 'Authorization: Bearer [your-anon-key]' \
+        -H 'Content-Type: application/json' \
+        -d '{"cell_id": "test_cell_001", "biome": "forest"}'
+      
+      Expected: 200 OK with species array
+      
+      Run again with same input:
+      curl -X POST \
+        'https://[your-project-id].supabase.co/functions/v1/generate-species-for-cell' \
+        -H 'Authorization: Bearer [your-anon-key]' \
+        -H 'Content-Type: application/json' \
+        -d '{"cell_id": "test_cell_001", "biome": "forest"}'
+      
+      Expected: Same species array (deterministic)
+
+SCHEMA DETAILS:
+===============
+
+profiles table:
+- id (UUID, PK, FK to auth.users)
+- display_name (TEXT)
+- current_streak (INT, default 0)
+- longest_streak (INT, default 0)
+- total_distance_km (DOUBLE PRECISION, default 0)
+- current_season (TEXT, default 'summer')
+- created_at, updated_at (TIMESTAMPTZ)
+
+cell_progress table:
+- id (UUID, PK)
+- user_id (UUID, FK to auth.users, NOT NULL)
+- cell_id (TEXT, NOT NULL)
+- fog_state (TEXT, default 'undetected')
+- distance_walked (DOUBLE PRECISION, default 0)
+- visit_count (INT, default 0)
+- restoration_level (DOUBLE PRECISION, default 0)
+- last_visited (TIMESTAMPTZ)
+- created_at, updated_at (TIMESTAMPTZ)
+- UNIQUE(user_id, cell_id)
+
+species table:
+- id (TEXT, PK)
+- name (TEXT, NOT NULL)
+- biome (TEXT, NOT NULL)
+- rarity (TEXT, NOT NULL)
+- description (TEXT)
+- season_availability (TEXT[], default '{summer,winter}')
+- created_at (TIMESTAMPTZ)
+
+collected_species table:
+- id (UUID, PK)
+- user_id (UUID, FK to auth.users, NOT NULL)
+- species_id (TEXT, FK to species, NOT NULL)
+- cell_id (TEXT, NOT NULL)
+- collected_at (TIMESTAMPTZ)
+- UNIQUE(user_id, species_id)
+
+RLS POLICIES:
+=============
+
+profiles:
+- SELECT: auth.uid() = id
+- UPDATE: auth.uid() = id
+- INSERT: auth.uid() = id
+
+cell_progress:
+- SELECT: auth.uid() = user_id
+- INSERT: auth.uid() = user_id
+- UPDATE: auth.uid() = user_id
+
+species:
+- SELECT: true (public read)
+
+collected_species:
+- SELECT: auth.uid() = user_id
+- INSERT: auth.uid() = user_id
+- DELETE: auth.uid() = user_id
+
+SPECIES SEED DATA:
+==================
+
+Forest (6):
+- forest_001: Eastern Bluebird (common)
+- forest_002: White Oak (common)
+- forest_003: Red Fox (common)
+- forest_004: Scarlet Tanager (uncommon)
+- forest_005: Black Birch (uncommon)
+- forest_006: Pileated Woodpecker (rare)
+
+Grassland (6):
+- grassland_001: Eastern Meadowlark (common)
+- grassland_002: Big Bluestem (common)
+- grassland_003: Coyote (common)
+- grassland_004: Prairie Blazing Star (uncommon)
+- grassland_005: Black-footed Ferret (uncommon)
+- grassland_006: Greater Prairie-Chicken (rare)
+
+Wetland (6):
+- wetland_001: Great Blue Heron (common)
+- wetland_002: Cattail (common)
+- wetland_003: Muskrat (common)
+- wetland_004: American Bittern (uncommon)
+- wetland_005: Sphagnum Moss (uncommon)
+- wetland_006: Wood Stork (rare)
+
+Urban (6):
+- urban_001: Pigeon (common)
+- urban_002: Ragweed (common)
+- urban_003: Squirrel (common)
+- urban_004: Peregrine Falcon (uncommon)
+- urban_005: Window Box Herb (uncommon)
+- urban_006: Ocelot (rare)
+
+Coastal (6):
+- coastal_001: Seagull (common)
+- coastal_002: Beach Grass (common)
+- coastal_003: Crab (common)
+- coastal_004: Roseate Tern (uncommon)
+- coastal_005: Sea Lettuce (uncommon)
+- coastal_006: Horseshoe Crab (rare)
+
+EDGE FUNCTION DETAILS:
+======================
+
+Function: generate-species-for-cell
+Input: { cell_id: string, biome: string }
+Output: { cell_id, biome, species: Species[], count: number }
+
+Algorithm:
+1. Hash cell_id to get deterministic seed
+2. Use seed to shuffle species list (Fisher-Yates)
+3. Return 3-5 species from the biome
+4. Same input always produces same output (deterministic)
+
+FLUTTER INTEGRATION:
+====================
+
+Configuration file: lib/core/config/supabase_config.dart
+- Loads SUPABASE_URL and SUPABASE_ANON_KEY from .env
+- Provides static accessors: projectUrl, anonKey, restUrl, functionsUrl
+- Throws exception if credentials missing
+
+Environment files:
+- .env.example: Template with placeholder values
+- .env: Actual credentials (add to .gitignore)
+
+Usage in Flutter:
+```dart
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'lib/core/config/supabase_config.dart';
+
+void main() async {
+  await dotenv.load(fileName: '.env');
+  SupabaseConfig.initialize();
+  runApp(const FogOfWorldApp());
+}
+```
+
+NEXT STEPS:
+===========
+
+1. Create Supabase project and run migrations
+2. Seed species data
+3. Deploy Edge Function
+4. Update .env with actual credentials
+5. Task 5: Riverpod state management scaffolding
+6. Task 16: Supabase auth + user profile integration
