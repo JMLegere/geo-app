@@ -15,7 +15,7 @@ The full MVP game loop is implemented and tested. A player can:
 7. **Restore habitats** (3 unique species per cell = fully restored)
 8. **Maintain a sanctuary** (species grouped by habitat, visit streaks tracked)
 9. **Earn achievements** (toast notifications on milestones)
-10. **Sync to cloud** (manual "sync now" button, offline-first queue — mocked backend)
+10. **Sync to cloud** (Supabase write-through when credentials configured, offline-only otherwise)
 
 ### By the Numbers
 
@@ -23,7 +23,7 @@ The full MVP game loop is implemented and tested. A player can:
 |--------|-------|
 | Dart source files | 189 (105 lib + 84 test) |
 | Lines of code | ~30,000 |
-| Tests passing | 993 |
+| Tests passing | 910 |
 | Analysis issues | 0 |
 | Features | 13 modules |
 | Species in dataset | 32,752 |
@@ -37,7 +37,7 @@ The full MVP game loop is implemented and tested. A player can:
 | # | Item | Effort | Notes |
 |---|------|--------|-------|
 | 1 | **Real GPS plugin** | Medium | Currently using `LocationSimulator`. Need `geolocator` or equivalent with permission handling for iOS + Android. `location_service.dart:53` has a TODO. |
-| 2 | **Live Supabase backend** | Medium | `MockAuthService` and `MockCloudSyncClient` need real implementations. Auth provider already has `SupabaseAuthService` shell. Schema is designed. |
+| 2 | ~~Live Supabase backend~~ | ~~Medium~~ | **DONE** — `SupabaseAuthService` with anonymous sign-in, `SupabasePersistence` write-through, conditional init in `main.dart`. |
 | 3 | **Map tile provider** | Medium | Need a real tile source (Mapbox, MapTiler, or self-hosted MBTiles). Currently renders whatever MapLibre's default provides. |
 | 4 | **App icons + splash screen** | Small | Standard Flutter asset setup. |
 | 5 | **Hardcoded coords → dynamic** | Small | `map_screen.dart` has SF coordinates and Voronoi grid bounds baked in. Need to derive from player's actual location. |
@@ -73,7 +73,7 @@ The full MVP game loop is implemented and tested. A player can:
 - **Offline-first** — SQLite is source of truth, sync is additive. Won't break if network is flaky.
 - **Swappable backends** — Mock → real Supabase is a provider override, not a rewrite.
 - **Deterministic game logic** — Species encounters are reproducible (SHA-256 seeded). Good for debugging and fairness.
-- **993 tests** — High coverage across unit, widget, and integration layers.
+- **910 tests** — High coverage across unit, widget, and integration layers.
 
 **Known debt** is documented in `AGENTS.md` under "Known Tech Debt" — mostly `map_screen.dart` lifecycle management and a few provider anti-patterns. Nothing architectural.
 

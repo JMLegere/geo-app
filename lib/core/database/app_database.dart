@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'dart:io';
+
+import 'connection.dart';
 
 part 'app_database.g.dart';
 
@@ -78,7 +78,8 @@ class LocalPlayerProfileTable extends Table {
   LocalPlayerProfileTable,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+  AppDatabase([QueryExecutor? executor])
+      : super(executor ?? createDatabaseConnection());
 
   @override
   int get schemaVersion => 1;
@@ -210,15 +211,4 @@ class AppDatabase extends _$AppDatabase {
         .go();
   }
 
-}
-
-// ============================================================================
-// DATABASE CONNECTION
-// ============================================================================
-
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final file = File('fog_of_world.db');
-    return NativeDatabase(file);
-  });
 }

@@ -13,9 +13,9 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 993 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 910 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 0 issues |
-| Backend | Mocked (`MockAuthService`, `MockCloudSyncClient`) — no live Supabase |
+| Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
 **Run commands:**
 ```bash
@@ -88,7 +88,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 4. **IUCN rarity = loot weights** — 6 IUCN statuses map to 10^x weights: Least Concern (100k), Near Threatened (10k), Vulnerable (1k), Endangered (100), Critically Endangered (10), Extinct (1). Path of Exile style.
 
-5. **Offline-first** — SQLite (Drift) is the source of truth. Cloud sync is manual ("sync now" button), uses a queue, and is mocked for MVP.
+5. **Offline-first** — SQLite (Drift) is the source of truth. Supabase write-through syncs data when credentials are configured. No sync queue — writes go directly to Supabase via `SupabasePersistence`.
 
 6. **Riverpod v3 Notifier** — All mutable state uses `NotifierProvider<T, S>` (not `StateNotifier`, not `ChangeNotifier`). Immutable state classes with `copyWith()`.
 
@@ -98,7 +98,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 9. **Restoration formula** — 3 unique species in a cell = fully restored (level 1.0). Formula: `min(uniqueSpeciesCount, 3) / 3.0`.
 
-10. **Mocked backend** — No live Supabase instance. `MockAuthService` and `MockCloudSyncClient` are defaults. Swap via provider overrides for production.
+10. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
 
 ---
 
@@ -202,7 +202,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 
 ### Drift (SQLite) ORM
 
-4 tables: `LocalCellProgressTable`, `LocalCollectedSpeciesTable`, `LocalPlayerProfileTable`, `SyncQueueTable`.
+3 tables: `LocalCellProgressTable`, `LocalCollectedSpeciesTable`, `LocalPlayerProfileTable`.
 
 **Critical Drift conventions:**
 - `copyWith` uses `Value<T>` wrappers — use `Value(x)` for set, `Value.absent()` for skip
@@ -218,18 +218,14 @@ Each repo wraps `AppDatabase` and provides domain-specific methods:
 - `ProfileRepository` — player profile CRUD
 - `CellProgressRepository` — per-cell fog state + distance + visits
 - `CollectionRepository` — collected species per user per cell
-- `SyncQueueRepository` — offline sync event queue (insert/update/delete as JSON)
-
 ### Sync architecture
 
 ```
-Local write (SQLite) → Queue sync event → Manual "sync now" → Cloud push
-                                                                   ↓
-                                           Conflict resolution: last-write-wins (cells)
-                                                                append-only (sightings)
+Local write (SQLite) ──→ SupabasePersistence.upsert*() ──→ Supabase table
+                         (write-through when configured)
 ```
 
-Swappable cloud client: `MockCloudSyncClient` (default) → `SupabaseCloudSyncClient` (production).
+When `SUPABASE_URL` is empty, `SupabasePersistence` is null and the app runs in offline-only mode. The `supabasePersistenceProvider` returns null, and the sync screen shows "Supabase not configured".
 
 ---
 
@@ -245,7 +241,7 @@ Tests mirror `lib/` exactly: `test/core/cells/cell_cache_test.dart` tests `lib/c
 
 Additional directories:
 - `test/fixtures/` — shared test data (`kSpeciesFixtureJson`: 50 species)
-- `test/integration/` — 6 offline workflow suites (full persistence round-trips)
+- `test/integration/` — 4 offline workflow suites (full persistence round-trips)
 
 ### Patterns
 
@@ -285,8 +281,6 @@ Additional directories:
 | Encounter slots per cell | 3 | Max species rolled per cell visit |
 | Max cells per tile | 100 | Mesh generation performance |
 | Tile prefetch radius | 1 | Network bandwidth, memory cache |
-| Sync queue limit | 1,000 events | Prevent unbounded growth |
-| Sync retry limit | 5 | With exponential backoff |
 | GPS update frequency | 1 Hz | Battery drain, state churn |
 | GPS accuracy threshold | 50 m | Switch to simulation if exceeded |
 

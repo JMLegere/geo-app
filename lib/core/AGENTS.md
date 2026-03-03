@@ -44,19 +44,18 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Drift ORM schema and database connection.
 
 **Public API**:
-- `AppDatabase`: Drift database with 4 tables
-  - `CellProgress`: `cellId` (text PK), `visitedAt` (datetime), `fogState` (text), `distanceTraveled` (real)
-  - `CollectedSpecies`: `scientificName` (text PK), `collectedAt` (datetime), `cellId` (text), `iucnStatus` (text)
-  - `Profiles`: `id` (text PK), `totalDistance` (real), `cellsExplored` (int), `currentStreak` (int), `longestStreak` (int)
-  - `SyncQueue`: `id` (int auto-increment PK), `action` (text), `payload` (text), `createdAt` (datetime)
-- Generated DAOs: `cellProgressDao`, `collectedSpeciesDao`, `profilesDao`, `syncQueueDao`
+- `AppDatabase`: Drift database with 3 tables
+  - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
+  - `LocalCollectedSpeciesTable`: `id` (text PK), `userId`, `speciesId`, `cellId`, `collectedAt`
+  - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
+- `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
 - Uses `part 'app_database.g.dart'` — run `dart run build_runner build` after schema changes
 - Upsert semantics: `onConflict: DoUpdate((old) => ...)`
-- Auto-increment only on `SyncQueue.id` — other tables use explicit PKs
-- `_openConnection()` uses `LazyDatabase(() => NativeDatabase.createInBackground(file))`
+- All tables use explicit text PKs (no auto-increment)
+- Platform-aware: `connection_native.dart` (file-backed) vs `connection_web.dart` (in-memory)
 - Nullable fields in updates use `Value.absent()`, not null
 
 ---
@@ -113,13 +112,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`
 - `CollectedSpeciesRepository`: `getCollectedSpecies(String)`, `addCollectedSpecies(SpeciesRecord, String)`, `getAllCollectedSpecies()`
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
-- `SyncQueueRepository`: `enqueue(String action, Map<String,dynamic> payload)`, `dequeue()`, `markSynced(int id)`, `getPendingCount()`
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor
 - Drift `Value<T>` wrappers for nullable fields: `Value(x)` or `Value.absent()`
 - Read-modify-write pattern for incremental updates (e.g., `addDistance` reads current, adds delta, writes back)
-- `SyncQueueRepository` stores actions as JSON strings in `payload` column
 - All methods return `Future<T>` — no synchronous database access
 
 ---
