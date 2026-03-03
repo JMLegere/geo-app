@@ -18,15 +18,12 @@ import 'package:fog_of_world/core/database/app_database.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
 import 'package:fog_of_world/core/models/species.dart';
-import 'package:fog_of_world/core/persistence/sync_queue_repository.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
 import 'package:fog_of_world/features/caretaking/services/caretaking_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
 import 'package:fog_of_world/features/restoration/services/restoration_service.dart';
-import 'package:fog_of_world/features/sync/services/mock_cloud_sync_client.dart';
-import 'package:fog_of_world/features/sync/services/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fixtures/species_fixture.dart';
@@ -71,8 +68,6 @@ class GameSession {
   final RestorationService restorationService;
   final CaretakingService caretakingService;
   final AppDatabase db;
-  final SyncQueueRepository syncQueue;
-  final SyncService syncService;
   final List<DiscoveryEvent> discoveryEvents;
 
   GameSession._({
@@ -83,8 +78,6 @@ class GameSession {
     required this.restorationService,
     required this.caretakingService,
     required this.db,
-    required this.syncQueue,
-    required this.syncService,
     required this.discoveryEvents,
   });
 
@@ -102,12 +95,6 @@ class GameSession {
     final restorationService = RestorationService();
     final caretakingService = CaretakingService();
     final db = makeDb();
-    final syncQueue = SyncQueueRepository(db);
-    final syncService = SyncService(
-      cloudClient: MockCloudSyncClient(),
-      syncQueueRepository: syncQueue,
-      db: db,
-    );
 
     return GameSession._(
       cellService: cellService,
@@ -117,8 +104,6 @@ class GameSession {
       restorationService: restorationService,
       caretakingService: caretakingService,
       db: db,
-      syncQueue: syncQueue,
-      syncService: syncService,
       discoveryEvents: discoveryEvents,
     );
   }
@@ -428,12 +413,6 @@ void main() {
         collectedAt: DateTime(2026, 3, 1),
       ));
 
-      // Enqueue a sync event.
-      await session.syncQueue.enqueueInsert(
-        tableName: 'cell_progress',
-        data: {'id': 'cp-golden', 'userId': 'player-1', 'cellId': cellId},
-      );
-
       // Verify everything is persisted.
       final profile = await session.db.getPlayerProfile('player-1');
       expect(profile, isNotNull);
@@ -446,38 +425,11 @@ void main() {
       final collected =
           await session.db.isSpeciesCollected('player-1', 'vulpes_vulpes', cellId);
       expect(collected, isTrue);
-
-      final queueSize = await session.syncQueue.getSize();
-      expect(queueSize, equals(1));
-    });
-
-    // ── Step 8: Sync offline queue ────────────────────────────────────────
-
-    test('8. sync succeeds offline using MockCloudSyncClient', () async {
-      await session.syncQueue.enqueueInsert(
-        tableName: 'cell_progress',
-        data: {
-          'id': 'cp-sync',
-          'userId': 'player-1',
-          'cellId': 'cell-1',
-          'fogState': 'observed',
-          'distanceWalked': 0.0,
-          'visitCount': 1,
-          'restorationLevel': 0.0,
-          'createdAt': '2026-03-01T00:00:00.000',
-          'updatedAt': '2026-03-01T00:00:00.000',
-        },
-      );
-
-      final result = await session.syncService.syncAll('player-1');
-      expect(result.isSuccess, isTrue);
-      expect(result.uploadedCount, equals(1));
-      expect(await session.syncQueue.getSize(), equals(0));
     });
 
     // ── Complete golden path as a single scenario ─────────────────────────
 
-    test('complete golden path: start → move → discover → restore → streak → sync',
+    test('complete golden path: start → move → discover → restore → streak → persist',
         () async {
       // 1. Start.
       session.fogResolver.onLocationUpdate(kStartLat, kStartLon);
@@ -532,24 +484,7 @@ void main() {
         updatedAt: DateTime(2026, 3, 3),
       ));
 
-      // 7. Sync (offline mock).
-      await session.syncQueue.enqueueInsert(
-        tableName: 'profiles',
-        data: {
-          'id': 'golden-player',
-          'displayName': 'Golden',
-          'currentStreak': 3,
-          'longestStreak': 3,
-          'totalDistanceKm': 0.5,
-          'currentSeason': 'summer',
-          'createdAt': '2026-03-01T00:00:00.000',
-          'updatedAt': '2026-03-03T00:00:00.000',
-        },
-      );
-      final syncResult = await session.syncService.syncAll('golden-player');
-      expect(syncResult.isSuccess, isTrue);
-
-      // 8. Verify final state.
+      // 7. Verify final state.
       final savedProfile = await session.db.getPlayerProfile('golden-player');
       expect(savedProfile, isNotNull);
       expect(savedProfile!.currentStreak, equals(3));

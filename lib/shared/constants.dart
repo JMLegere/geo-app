@@ -54,19 +54,6 @@ const int kMaxCellsPerTile = 100;
 /// Tile prefetch radius (in tiles).
 const int kTilePrefetchRadius = 1;
 
-// Persistence & Sync
-/// Maximum number of events in the sync queue.
-const int kMaxSyncQueueSize = 1000;
-
-/// Maximum number of sync retry attempts.
-const int kMaxSyncRetries = 5;
-
-/// Initial sync retry delay (milliseconds).
-const int kInitialSyncRetryDelayMs = 1000;
-
-/// Maximum sync retry delay (milliseconds).
-const int kMaxSyncRetryDelayMs = 30000;
-
 // Camera
 /// Camera follow distance (meters).
 const double kCameraFollowDistance = 50.0;
@@ -87,5 +74,4 @@ const bool kDebugLogFogState = true;
 /// Enable debug logging for persistence operations.
 const bool kDebugLogPersistence = true;
 
-/// Enable debug logging for sync events.
-const bool kDebugLogSync = true;
+

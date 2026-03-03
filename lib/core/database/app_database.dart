@@ -68,15 +68,6 @@ class LocalPlayerProfileTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('SyncQueueEntry')
-class SyncQueueTable extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get action => text()();
-  TextColumn get targetTable => text()();
-  TextColumn get data => text()();
-  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
-}
-
 // ============================================================================
 // DATABASE CLASS
 // ============================================================================
@@ -85,7 +76,6 @@ class SyncQueueTable extends Table {
   LocalCellProgressTable,
   LocalCollectedSpeciesTable,
   LocalPlayerProfileTable,
-  SyncQueueTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
@@ -220,44 +210,6 @@ class AppDatabase extends _$AppDatabase {
         .go();
   }
 
-  // ========================================================================
-  // SYNC QUEUE QUERIES
-  // ========================================================================
-
-  /// Get all pending sync events
-  Future<List<SyncQueueEntry>> getPendingSyncEvents() {
-    return select(syncQueueTable).get();
-  }
-
-  Future<List<SyncQueueEntry>> getPendingSyncEventsByTable(String table) {
-    return (select(syncQueueTable)
-          ..where((tbl) => tbl.targetTable.equals(table)))
-        .get();
-  }
-
-  Future<int> enqueueSyncEvent(SyncQueueTableCompanion entry) {
-    return into(syncQueueTable).insert(entry);
-  }
-
-  /// Dequeue a sync event (delete after successful sync)
-  Future<int> dequeueSyncEvent(int eventId) {
-    return (delete(syncQueueTable)..where((tbl) => tbl.id.equals(eventId)))
-        .go();
-  }
-
-  /// Clear all sync events (after successful batch sync)
-  Future<int> clearSyncQueue() {
-    return delete(syncQueueTable).go();
-  }
-
-  /// Get sync queue size
-  Future<int> getSyncQueueSize() async {
-    final result = await customSelect(
-      'SELECT COUNT(*) as count FROM sync_queue_table',
-      readsFrom: {syncQueueTable},
-    ).getSingle();
-    return result.read<int>('count');
-  }
 }
 
 // ============================================================================
