@@ -5,6 +5,7 @@ import 'package:fog_of_world/features/journal/widgets/journal_filter_bar.dart';
 import 'package:fog_of_world/features/journal/widgets/journal_progress_bar.dart';
 import 'package:fog_of_world/features/journal/widgets/species_card.dart';
 import 'package:fog_of_world/features/journal/widgets/species_detail_sheet.dart';
+import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
 /// Main collection journal screen.
 ///
@@ -16,6 +17,36 @@ import 'package:fog_of_world/features/journal/widgets/species_detail_sheet.dart'
 /// map-specific providers.
 class JournalScreen extends ConsumerWidget {
   const JournalScreen({super.key});
+
+  Widget _buildEmptyState(JournalState state) {
+    // Nothing collected yet — show exploration prompt.
+    final hasActiveCollectionFilter =
+        state.collectionFilter == CollectionFilter.collected;
+    final nothingCollected = state.collectedCount == 0;
+
+    if (nothingCollected && !hasActiveCollectionFilter) {
+      return const EmptyStateWidget(
+        icon: '🔬',
+        title: 'No species discovered yet',
+        subtitle: 'Start exploring to find wildlife!',
+      );
+    }
+
+    if (nothingCollected && hasActiveCollectionFilter) {
+      return const EmptyStateWidget(
+        icon: '🎒',
+        title: 'Nothing collected yet',
+        subtitle: 'Explore cells on the map to discover and collect species.',
+      );
+    }
+
+    // Has collections but active filters yield no results.
+    return const EmptyStateWidget(
+      icon: '🔍',
+      title: 'No species match filters',
+      subtitle: 'Try adjusting your filters to see more species.',
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,7 +93,7 @@ class JournalScreen extends ConsumerWidget {
           // Grid
           Expanded(
             child: filtered.isEmpty
-                ? const _EmptyState()
+                ? _buildEmptyState(state)
                 : GridView.builder(
                     padding: const EdgeInsets.all(16),
                     gridDelegate:
@@ -95,38 +126,4 @@ class JournalScreen extends ConsumerWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
 
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '🔍',
-            style: TextStyle(fontSize: 36),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'No species match filters',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Try adjusting your filters',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF9CA3AF),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

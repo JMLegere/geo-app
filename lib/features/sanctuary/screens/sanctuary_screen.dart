@@ -6,6 +6,7 @@ import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dar
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/streak_badge.dart';
+import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
 /// Ambient gallery of collected species grouped by habitat.
 ///
@@ -131,7 +132,20 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
             ),
           ),
 
-          // Habitat sections
+          // Empty state when nothing collected yet — replaces habitat sections.
+          if (state.totalCollected == 0)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: EmptyStateWidget(
+                icon: '🏡',
+                title: 'Your sanctuary is empty',
+                subtitle:
+                    'Discover species to populate it!\nExplore the map to find wildlife.',
+              ),
+            ),
+
+          // Habitat sections — only shown once at least one species is collected.
+          if (state.totalCollected > 0)
           SliverList.separated(
             itemCount: orderedHabitats.length,
             separatorBuilder: (_, __) => const Padding(

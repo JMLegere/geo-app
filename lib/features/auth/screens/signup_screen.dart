@@ -63,6 +63,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
 
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     // Pop back to login when auth succeeds; main.dart then shows MapScreen.
     ref.listen<AuthState>(authProvider, (_, next) {
       if (next.isLoggedIn && mounted && Navigator.canPop(context)) {
@@ -71,13 +74,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF2F2F7),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded,
-              color: Color(0xFF1A73E8)),
+          icon: Icon(Icons.arrow_back_ios_rounded, color: colors.primary),
           onPressed:
               isLoading ? null : () => Navigator.of(context).pop(),
         ),
@@ -93,21 +93,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 32),
 
                 // ── Title ─────────────────────────────────────────────────────
-                const Text(
+                Text(
                   'Sign Up',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1C1C1E),
-                    letterSpacing: -0.5,
-                  ),
+                  style: theme.textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Start your exploration journey',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF8E8E93),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -154,9 +148,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   Text(
                     authState.errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFFFF3B30),
+                      color: colors.error,
                     ),
                   ),
                 ],
@@ -167,12 +161,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 TextButton(
                   onPressed:
                       isLoading ? null : () => Navigator.of(context).pop(),
-                  child: const Text(
+                  child: Text(
                     'Already have an account? Sign In',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A73E8),
+                      color: colors.primary,
                     ),
                   ),
                 ),
@@ -194,27 +188,29 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     TextInputType? keyboardType,
     bool enabled = true,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       enabled: enabled,
+      style: TextStyle(color: colors.onSurface),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: colors.surfaceContainerHigh,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E5EA)),
+          borderSide: BorderSide(color: colors.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E5EA)),
+          borderSide: BorderSide(color: colors.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1A73E8), width: 1.5),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

@@ -114,7 +114,7 @@ void main() {
     test('getSpeciesForCell returns at most encounterSlots unique species', () {
       final result = speciesService.getSpeciesForCell(
         cellId: 'cell_0',
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
         encounterSlots: 3,
       );
@@ -127,12 +127,12 @@ void main() {
     test('getSpeciesForCell is deterministic for the same cellId', () {
       final r1 = speciesService.getSpeciesForCell(
         cellId: 'cell_42',
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       final r2 = speciesService.getSpeciesForCell(
         cellId: 'cell_42',
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       expect(r1.map((s) => s.id).toList(),
@@ -145,12 +145,12 @@ void main() {
       // extremely unlikely to fail with the fixture data.
       final r1 = speciesService.getSpeciesForCell(
         cellId: 'cell_1',
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       final r2 = speciesService.getSpeciesForCell(
         cellId: 'cell_99',
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       // Not a strict equality check — just verifying that cellId influences
@@ -160,7 +160,7 @@ void main() {
 
     test('getPoolForArea returns species valid for habitat+continent combo', () {
       final pool = speciesService.getPoolForArea(
-        habitat: Habitat.forest,
+        habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       for (final s in pool) {
@@ -175,7 +175,7 @@ void main() {
       // Desert + South America has no matches in our 50-species fixture.
       final result = speciesService.getSpeciesForCell(
         cellId: 'cell_0',
-        habitat: Habitat.desert,
+        habitats: {Habitat.desert},
         continent: Continent.southAmerica,
       );
       expect(result, isEmpty);

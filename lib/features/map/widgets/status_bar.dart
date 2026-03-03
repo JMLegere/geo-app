@@ -15,6 +15,9 @@ import 'package:fog_of_world/core/state/player_provider.dart';
 /// Uses a translucent frosted-glass background (BackdropFilter + ClipRect)
 /// and respects the device's safe area (status bar height).
 ///
+/// Adapts to the active theme — dark theme produces a naval frosted-glass
+/// panel; light theme produces the classic white frosted-glass panel.
+///
 /// ## Usage
 ///
 /// ```dart
@@ -30,36 +33,38 @@ class StatusBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(playerProvider);
     final topPadding = MediaQuery.of(context).padding.top;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = cs.brightness == Brightness.dark;
+
+    // Frosted-glass tint — dark for exploration mode, white for light mode.
+    final tintColor = isDark
+        ? cs.surfaceContainer.withValues(alpha: 0.82)
+        : cs.surfaceContainer.withValues(alpha: 0.88);
+
+    final borderColor = isDark
+        ? cs.outline.withValues(alpha: 0.25)
+        : cs.outline.withValues(alpha: 0.3);
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.88),
+            color: tintColor,
             border: Border(
-              bottom: BorderSide(
-                color: Colors.black.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
+              bottom: BorderSide(color: borderColor, width: 0.5),
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _StatPill(
-                emoji: '🔍',
-                value: '${player.cellsObserved} cells',
-              ),
+              _StatPill(emoji: '🔍', value: '${player.cellsObserved} cells'),
               _StatPill(
                 emoji: '🚶',
                 value: '${player.totalDistanceKm.toStringAsFixed(1)} km',
               ),
-              _StatPill(
-                emoji: '🔥',
-                value: '${player.currentStreak} days',
-              ),
+              _StatPill(emoji: '🔥', value: '${player.currentStreak} days'),
             ],
           ),
         ),
@@ -77,18 +82,23 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.05),
+        color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: cs.outline.withValues(alpha: 0.2),
+          width: 0.5,
+        ),
       ),
       child: Text(
         '$emoji $value',
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1A1A2E),
+        style: tt.labelMedium?.copyWith(
+          color: cs.onSurface,
           letterSpacing: 0.2,
         ),
       ),

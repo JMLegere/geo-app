@@ -1,12 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/features/map/map_screen.dart';
+import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
 import 'package:fog_of_world/main.dart';
+
+/// Stub notifier that reports onboarding as complete without touching
+/// SharedPreferences — safe to use in the headless test environment.
+class _CompletedOnboardingNotifier extends OnboardingNotifier {
+  @override
+  bool? build() => true;
+}
 
 void main() {
   testWidgets('App renders without crashing', (WidgetTester tester) async {
     // FogOfWorldApp uses ConsumerWidgets (Riverpod) so it needs a ProviderScope.
-    await tester.pumpWidget(const ProviderScope(child: FogOfWorldApp()));
+    // Override onboardingProvider so the test skips onboarding and exercises
+    // the existing auth → MapScreen routing path.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          onboardingProvider
+              .overrideWith(_CompletedOnboardingNotifier.new),
+        ],
+        child: const FogOfWorldApp(),
+      ),
+    );
 
     // MapLibreMap is a platform view (native map renderer). It throws
     // UnimplementedError in the headless Flutter test environment because

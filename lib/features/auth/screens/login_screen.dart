@@ -61,8 +61,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
 
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -73,35 +75,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 80),
 
-                // ── Logo / title ─────────────────────────────────────────────
-                const Icon(
+                Icon(
                   Icons.explore_rounded,
                   size: 64,
-                  color: Color(0xFF1A73E8),
+                  color: colors.primary,
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Fog of World',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1C1C1E),
-                    letterSpacing: -0.5,
-                  ),
+                  style: theme.textTheme.displaySmall,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Explore. Discover. Reveal.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF8E8E93),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 56),
 
-                // ── Email field ───────────────────────────────────────────────
                 _buildTextField(
                   controller: _emailController,
                   label: 'Email',
@@ -111,7 +105,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // ── Password field ────────────────────────────────────────────
                 _buildTextField(
                   controller: _passwordController,
                   label: 'Password',
@@ -121,31 +114,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 28),
 
-                // ── Sign in button ────────────────────────────────────────────
                 AuthButton(
                   label: 'Sign In',
                   isLoading: isLoading,
                   onPressed: _canSubmit(isLoading) ? _signIn : null,
                 ),
 
-                // ── Error message ─────────────────────────────────────────────
                 if (authState.errorMessage != null) ...[
                   const SizedBox(height: 16),
                   Text(
                     authState.errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFFFF3B30),
+                      color: colors.error,
                     ),
                   ),
                 ],
 
                 const SizedBox(height: 32),
-                const Divider(color: Color(0xFFE5E5EA)),
+                Divider(color: colors.outlineVariant),
                 const SizedBox(height: 24),
 
-                // ── Create account link ───────────────────────────────────────
                 TextButton(
                   onPressed: isLoading
                       ? null
@@ -157,28 +147,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           );
                         },
-                  child: const Text(
+                  child: Text(
                     'Create Account',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A73E8),
+                      color: colors.primary,
                     ),
                   ),
                 ),
 
-                // ── Guest mode link ───────────────────────────────────────────
                 TextButton(
                   onPressed: isLoading
                       ? null
                       : () {
                           ref.read(authProvider.notifier).continueAsGuest();
                         },
-                  child: const Text(
+                  child: Text(
                     'Continue as Guest',
                     style: TextStyle(
                       fontSize: 15,
-                      color: Color(0xFF8E8E93),
+                      color: colors.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -200,27 +189,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     TextInputType? keyboardType,
     bool enabled = true,
   }) {
+    final colors = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       enabled: enabled,
+      style: TextStyle(color: colors.onSurface),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: colors.surfaceContainerHigh,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E5EA)),
+          borderSide: BorderSide(color: colors.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E5EA)),
+          borderSide: BorderSide(color: colors.outline),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF1A73E8), width: 1.5),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import 'package:fog_of_world/features/map/controllers/camera_controller.dart';
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
@@ -8,6 +8,11 @@ import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 /// Displays a semi-transparent terminal-style panel with live diagnostics:
 /// camera position, zoom level, follow/free mode, visible cell count,
 /// visited cell count, and map readiness state.
+///
+/// The container background derives from
+/// [ColorScheme.surfaceContainerHighest] at high opacity so it integrates
+/// with both dark and light themes.  Text uses the classic terminal
+/// spring-green (`#00FF7F`) for instant visual distinction from game UI.
 ///
 /// Toggle visibility with the debug button in the map controls.
 ///
@@ -53,17 +58,23 @@ class DebugHud extends StatelessWidget {
     final zoom = mapState.zoom.toStringAsFixed(1);
     final ready = mapState.isReady ? 'ready' : 'waiting';
 
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xE0000000),
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFF00FF7F).withValues(alpha: 0.3),
+          width: 0.5,
+        ),
       ),
       child: DefaultTextStyle(
         style: const TextStyle(
           fontFamily: 'monospace',
           fontSize: 11,
-          color: Color(0xFF00FF7F),
+          color: Color(0xFF00FF7F), // spring green — intentional terminal look
           height: 1.6,
           decoration: TextDecoration.none,
         ),

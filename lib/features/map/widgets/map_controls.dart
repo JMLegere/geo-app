@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 ///   back to the player and resumes follow mode.
 /// - Debug toggle (kDebugMode only): opens/closes the debug HUD overlay.
 ///
+/// Colours adapt to the active theme via [Theme.of] — primary colour for
+/// icons, surfaceContainer for the button background.
+///
 /// ## Usage
 ///
 /// ```dart
@@ -69,13 +72,15 @@ class _ControlButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Tooltip(
       message: tooltip,
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(28),
-        color: Colors.white,
-        shadowColor: Colors.black26,
+        color: cs.surfaceContainerHigh,
+        shadowColor: cs.shadow.withValues(alpha: 0.4),
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(28),
@@ -85,7 +90,7 @@ class _ControlButton extends StatelessWidget {
             child: Icon(
               icon,
               size: 24,
-              color: const Color(0xFF1A73E8),
+              color: cs.primary,
             ),
           ),
         ),
