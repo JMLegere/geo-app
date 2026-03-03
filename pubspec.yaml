@@ -1,0 +1,53 @@
+name: fog_of_world
+description: A Flutter mobile game — iNaturalist × Stardew Valley × Pokemon Go.
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State management
+  flutter_riverpod: ^3.2.1
+  riverpod_annotation: ^4.0.2
+  
+  # Geospatial
+  geobase: ^1.5.0
+  h3_flutter_plus: ^1.0.0
+  
+  # Map rendering (josxha/flutter-maplibre — chosen in Task 7 spike for children API + WidgetLayer)
+  maplibre: ^0.1.2
+  
+  # Persistence
+  drift: ^2.14.0
+  sqlite3_flutter_libs: ^0.6.0+eol
+  
+  # Backend
+  supabase_flutter: ^2.12.0
+  
+  # GPS
+  flutter_background_geolocation: ^5.0.0
+  
+  # Utilities
+  intl: ^0.20.2
+  crypto: ^3.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.0
+  drift_dev: ^2.14.0
+  riverpod_generator: ^4.0.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+  shaders:
+    - shaders/fog.frag
