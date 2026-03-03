@@ -57,7 +57,6 @@ lib/
 │   ├── restoration/            # 🏗️ Cell restoration progress
 │   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
 │   ├── seasonal/               # ❄️ Summer/winter species availability
-│   ├── spikes/                 # 🧪 Experimental prototypes (not production)
 │   └── sync/                   # ☁️ Offline-first sync to Supabase
 ├── shared/
 │   └── constants.dart          # All game-balance constants (kDetectionRadiusMeters, etc.)
@@ -289,7 +288,7 @@ Additional directories:
 ## Forbidden Patterns
 
 - **No type-safety bypasses**: Never use `dynamic`, `as any`, `@ts-ignore` equivalents, or unchecked `as` casts without type guards. Use sealed classes and pattern matching.
-- **No global state**: Never use `static` variables or singletons. Use Riverpod providers. *(Known violation: `AchievementService` is a `static const` singleton in `achievement_provider.dart`.)*
+- **No global state**: Never use `static` variables or singletons. Use Riverpod providers.
 - **No monolithic bootstrap**: App uses `ProviderScope` → `ConsumerWidget`. Never create a single class that initializes all systems.
 - **No direct SQLite queries**: Always use repository abstractions. Never call `database.rawQuery()`.
 - **No blocking main thread**: All I/O (GPS, network, SQLite) must be async.
@@ -302,17 +301,7 @@ Additional directories:
 
 ## Known Tech Debt
 
-| Issue | Location | Severity |
-|-------|----------|----------|
-| Singleton `AchievementService` | `achievement_provider.dart:83` | Medium — should be a Provider |
-| Services instantiated in widget | `map_screen.dart:55-58` | High — should use Riverpod providers |
-| Hardcoded coordinates | `map_screen.dart:66-67, 75-81` | Medium — should move to constants.dart |
-| `ref.read()` in `build()` | journal, sanctuary, achievement providers | Medium — should use `ref.watch()` |
-| Stream subscriptions in widget fields | `map_screen.dart:60-61` | Medium — should use StreamProvider |
-| Manual service lifecycle in initState | `map_screen.dart:70-118` | High — should use `ref.onDispose()` |
-| Bidirectional notifier coupling | `caretaking_provider.dart:37,51` | Low — works but tight coupling |
-| TODO: real GPS plugin | `location_service.dart:53` | Low — using simulation for now |
-| Spike code with StatefulWidget | `fog_spike_screen.dart` | Low — experimental, not production |
+_All previously listed items have been resolved._ No known tech debt remains.
 
 ---
 

@@ -109,27 +109,25 @@ MapController.animateCamera(center: Position(lng, lat), nativeDuration: Duration
 
 At feature root (NOT in `screens/`). ConsumerStatefulWidget.
 
-**Heavy initState/dispose:** Manual service lifecycle. Uses `late final` fields for CellService, LocationService, DiscoveryService.
+All services injected via Riverpod providers. The widget manages:
+- `_mapController` (MapLibre controller, set in `onMapCreated`)
+- `_locationService` (saved field for safe `dispose()` — `ref.read()` is unsafe after unmount)
+- Stream subscriptions for location updates and discovery events
+- `_showDebugHud` toggle state
 
-**Known anti-pattern:** Services should be injected via Riverpod providers, not instantiated in StatefulWidget.
+The location → fog → camera → overlay pipeline is orchestrated in `_onLocationUpdate()`.
 
 ---
 
-## Known Issues / Tech Debt
+## Resolved Tech Debt
 
-### Hardcoded Values
+The following issues were resolved in the service injection refactoring:
 
-- **Default coordinates:** `_defaultLat = 37.7749`, `_defaultLon = -122.4194` in map_screen.dart. Should move to `constants.dart`.
-- **Voronoi grid bounds:** `minLat: 37.5, maxLat: 38.0, minLon: -122.7, maxLon: -122.1` hardcoded. Should be configurable.
-
-### State Management
-
-- **StreamSubscriptions stored as widget fields:** Should use Riverpod StreamProvider instead.
-- **Multiple `ref.read(...notifier)` calls in event handlers:** Should batch via callbacks or use `ref.listen()`.
-
-### Service Instantiation
-
-- **Services instantiated in StatefulWidget:** CellService, LocationService, DiscoveryService created in `initState()`. Should be provided via Riverpod providers.
+- **Default coordinates**: Moved to `constants.dart` as `kDefaultMapLat`, `kDefaultMapLon`.
+- **Voronoi grid bounds**: Moved to `constants.dart` as `kVoronoiMinLat/MaxLat/MinLon/MaxLon`, `kVoronoiGridRows/Cols/Seed`.
+- **Service instantiation in StatefulWidget**: All services now provided via Riverpod providers (`cellServiceProvider`, `fogResolverProvider`, `cameraControllerProvider`, `fogOverlayControllerProvider`, `discoveryServiceProvider`, `locationServiceProvider`).
+- **Manual service lifecycle in initState**: Provider lifecycle via `ref.onDispose()`.
+- **Stream subscriptions in widget fields**: Subscriptions still in widget (required for MapLibre integration), but services come from providers.
 
 ---
 

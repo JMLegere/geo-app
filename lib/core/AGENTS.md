@@ -155,7 +155,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
 - Notifiers extend `Notifier<T>` and override `build()` for initialization
-- `LocationNotifier.connectToService(LocationService)` takes the service from `features/location/` — core/ does NOT depend on features/
+- `LocationNotifier.connectToStream(Stream)` accepts a `({Geographic position, double accuracy})` stream — core/ does NOT depend on features/
 - `SeasonNotifier.build()` initializes from `DateTime.now()` via `Season.fromDate()`
 - State updates are synchronous — no async state setters
 - Providers are global singletons — no `.family` or `.autoDispose` modifiers
