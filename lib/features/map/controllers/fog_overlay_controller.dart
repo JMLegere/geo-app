@@ -36,6 +36,9 @@ class FogOverlayController {
   final FogStateResolver fogResolver;
 
   /// Sampling step in logical pixels. Lower = more samples, more CPU.
+  /// Must be smaller than cell diameter in screen pixels to avoid missing cells.
+  /// At zoom 15 with 0.002° grid step: cells ≈ 45px, so 25px step guarantees
+  /// every cell is sampled at least once. Neighbor expansion covers edge cases.
   final double sampleStepPx;
 
   int _renderVersion = 0;
@@ -52,7 +55,7 @@ class FogOverlayController {
   FogOverlayController({
     required this.cellService,
     required this.fogResolver,
-    this.sampleStepPx = 80.0,
+    this.sampleStepPx = 25.0,
   });
 
   /// Recomputes visible cells and their screen-projected polygons.

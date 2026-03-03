@@ -31,6 +31,54 @@ const int kSeasons = 2;
 /// Season names.
 const List<String> kSeasonNames = ['summer', 'winter'];
 
+// Default Map Position (SF Bay Area — simulation start point)
+/// Default map center latitude.
+const double kDefaultMapLat = 37.7749;
+
+/// Default map center longitude.
+const double kDefaultMapLon = -122.4194;
+
+// Lazy Voronoi Cell Grid (infinite world)
+//
+// Tuned for walking-speed exploration (5 km/h ≈ 83 m/min):
+// - Median cell diameter ~180m → ~2 min between discoveries (dopamine sweet spot)
+// - High jitter creates 100–280m range → variable ratio reinforcement schedule
+// - GPS accuracy (50m) well below min cell size → no false crossings
+/// Grid step in degrees for lazy Voronoi seed placement (≈ 180m at 45° lat).
+const double kVoronoiGridStep = 0.002;
+
+/// Jitter factor (0.0–1.0). Higher = more variable cell sizes = stronger
+/// variable-ratio reinforcement (the most addictive reward schedule).
+const double kVoronoiJitterFactor = 0.75;
+
+/// Global seed for deterministic Voronoi cell placement.
+const int kVoronoiGlobalSeed = 42;
+
+/// Grid radius for local Delaunay triangulation (radius=3 → 7×7 = 49 seeds).
+const int kVoronoiNeighborRadius = 3;
+
+// Legacy Voronoi Cell Grid (fixed bounding box — used by VoronoiCellService)
+/// Voronoi grid minimum latitude.
+const double kVoronoiMinLat = 37.5;
+
+/// Voronoi grid maximum latitude.
+const double kVoronoiMaxLat = 38.0;
+
+/// Voronoi grid minimum longitude.
+const double kVoronoiMinLon = -122.7;
+
+/// Voronoi grid maximum longitude.
+const double kVoronoiMaxLon = -122.2;
+
+/// Voronoi grid row count.
+const int kVoronoiGridRows = 40;
+
+/// Voronoi grid column count.
+const int kVoronoiGridCols = 40;
+
+/// Voronoi grid seed for deterministic cell placement.
+const int kVoronoiSeed = 42;
+
 // Map & Location
 /// Minimum map zoom level.
 const double kMinZoom = 12.0;
