@@ -1,0 +1,125 @@
+TASK 2: AGENTS.md + Project Documentation
+==========================================
+
+COMPLETION SUMMARY
+==================
+
+✅ AGENTS.md - Complete rewrite for Flutter project
+   - 26 references to Flutter/MapLibre/Impeller/Riverpod/Supabase
+   - 0 references to Unity/C#/GameObject/MeshRenderer
+   - All sections present: Architecture, Directory Structure, Patterns, Debugging, Constraints, Risks
+
+✅ lib/shared/constants.dart - Created with all game constants
+   - kMaxSpecies = 30
+   - kBiomeCount = 5
+   - kSpeciesPerBiome = 6
+   - kFogLevels = 5
+   - kFogDensityValues = [1.0, 0.75, 0.5, 0.25, 0.0]
+   - kRarityTiers = 3
+   - kRarityNames = ['common', 'uncommon', 'rare']
+   - kSeasons = 2
+   - kSeasonNames = ['summer', 'winter']
+   - Additional constants: zoom levels, GPS thresholds, sync limits, camera settings, logging flags
+   - Valid Dart syntax (no compilation errors)
+
+AGENTS.MD SECTIONS
+==================
+
+1. Core Principles
+   - Debug for root cause first
+   - Prefer high-signal logs
+   - Respect API constraints
+   - Surface runtime values
+   - Keep changes reversible
+
+2. Architecture / Design
+   - Runtime Shell (FogOfWorldApp)
+   - Map Layer (MapLibre + Impeller)
+   - Location Tracking (PlayerLocationTracker)
+   - Geo Mapping (GeoReference, GeoUtils)
+   - Fog State System (FogStateProvider, CellStateSystem)
+   - Persistence Layer (LocalFirstPersistence, SyncQueue)
+   - View Layer (CellTileView, FogOverlay, PlayerMarker)
+   - Camera Controller (PlayerCameraFollower)
+
+3. Directory Structure
+   - lib/core/ (constants, models, services, utils)
+   - lib/features/ (map, location, fog, persistence, species)
+   - lib/shared/ (constants, theme, extensions)
+   - test/ (core, features, fixtures)
+
+4. Key Patterns
+   - Riverpod Providers (StateNotifier, FutureProvider, StreamProvider, Family)
+   - Local-First Persistence (SQLite, SyncQueue, conflict resolution)
+   - Event-Driven State Transitions (OnCellStateChanged)
+   - High-Signal Logging (GPS, tiles, fog state, persistence, sync)
+
+5. Debugging Guide
+   - Widget Tree Inspection (FogOverlay, CustomPaint, Impeller)
+   - Riverpod Provider State Inspection (fogStateProvider, locationProvider)
+   - Map Rendering Diagnostics (MapLibre, tiles, fog shader)
+   - GPS Accuracy Logging (accuracy threshold, permission handling)
+   - Persistence Diagnostics (SQLite, sync queue, conflicts)
+
+6. Constraints
+   - Scope Ceilings table (30 species, 5 biomes, 6 per biome, 5 fog levels, 3 rarity tiers, 2 seasons, etc.)
+   - Forbidden Patterns (no monolithic bootstrap, no type-safety bypasses, no direct SQLite, no blocking I/O, no global state, no hardcoded constants, no platform-specific business logic)
+
+7. Known Risks
+   - Camera Sync (High) - map camera and player position drift
+   - Platform View Composition (High) - MapLibre + Impeller flickering
+   - GPS Accuracy Under Canopy (Medium) - accuracy degradation
+   - iOS Permission Handling (Medium) - permission request and fallback
+   - Offline-First Sync (Medium) - unbounded queue growth and conflicts
+
+8. Debugging Checklist
+   - Capture exact inputs/outputs
+   - Apply 5-why analysis
+   - Isolate the system
+   - Check constraints
+   - Verify reversibility
+   - Log the fix
+
+9. Future Work
+   - Real tile provider (MBTiles/Mapbox API)
+   - Species discovery mechanics
+   - Seasonal variation
+   - Multiplayer support
+   - Analytics tracking
+
+CONSTANTS.DART VERIFICATION
+============================
+
+File: lib/shared/constants.dart
+Lines: 95
+Syntax: Valid Dart (no errors)
+
+Constants by Category:
+- Species: kMaxSpecies, kBiomeCount, kSpeciesPerBiome
+- Fog: kFogLevels, kFogDensityValues
+- Rarity: kRarityTiers, kRarityNames
+- Seasons: kSeasons, kSeasonNames
+- Map & Location: kMinZoom, kMaxZoom, kDefaultZoom, kGpsAccuracyThreshold, kGpsUpdateFrequency
+- Cells & Tiles: kMaxCellsPerTile, kTilePrefetchRadius
+- Persistence & Sync: kMaxSyncQueueSize, kMaxSyncRetries, kInitialSyncRetryDelayMs, kMaxSyncRetryDelayMs
+- Camera: kCameraFollowDistance, kCameraZoomDurationMs
+- Logging: kDebugLogGps, kDebugLogTiles, kDebugLogFogState, kDebugLogPersistence, kDebugLogSync
+
+VERIFICATION CHECKLIST
+======================
+
+✅ AGENTS.md rewritten for Flutter (not Unity)
+✅ Architecture section includes Flutter + MapLibre + Impeller + Supabase + Riverpod
+✅ Directory structure documented (lib/core, lib/features, lib/shared, test/)
+✅ Patterns section covers Riverpod, local-first persistence, event-driven state
+✅ Debugging section includes 5 concrete patterns for Flutter
+✅ Constraints section with scope ceilings table
+✅ Forbidden patterns documented (no monolith, no type bypasses, etc.)
+✅ Known risks section with 5 high/medium risks
+✅ constants.dart created with all required constants
+✅ Constants match plan values (30 species, 5 biomes, 5 fog levels, 3 rarity tiers, 2 seasons)
+✅ No Unity references in AGENTS.md
+✅ Valid Dart syntax in constants.dart
+
+TASK COMPLETE
+=============
