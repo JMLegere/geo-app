@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
+import 'package:fog_of_world/shared/app_theme.dart';
 
 /// Duration the discovery card is visible before auto-dismissing.
 const _kAutoDissmissDuration = Duration(seconds: 3);
@@ -33,7 +34,9 @@ const _kAnimationDuration = Duration(milliseconds: 350);
 /// - Slides in (from above) when a notification becomes active.
 /// - Auto-dismisses after [_kAutoDissmissDuration] by calling
 ///   [DiscoveryNotifier.dismissNotification].
-/// - Apple Maps aesthetic: rounded corners, frosted glass, soft shadow.
+/// - Frosted-glass aesthetic adapts to the active theme — dark surface tint
+///   in dark mode, white tint in light mode.
+/// - Rarity badge colours come from [AppTheme.rarityColor] for consistency.
 class DiscoveryNotificationOverlay extends ConsumerStatefulWidget {
   const DiscoveryNotificationOverlay({super.key});
 
@@ -134,8 +137,22 @@ class _DiscoveryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final species = event.species;
-    final rarityColor = _rarityColor(species.iucnStatus);
+    final rarityColor = AppTheme.rarityColor(species.iucnStatus);
+    final rarityTextColor = AppTheme.onRarityColor(species.iucnStatus);
     final rarityLabel = _rarityLabel(species.iucnStatus);
+
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final isDark = cs.brightness == Brightness.dark;
+
+    // Frosted-glass tint — naval for dark, white for light.
+    final cardColor = isDark
+        ? cs.surfaceContainerHigh.withValues(alpha: 0.92)
+        : Colors.white.withValues(alpha: 0.88);
+
+    final borderColor = isDark
+        ? cs.outline.withValues(alpha: 0.25)
+        : Colors.white.withValues(alpha: 0.6);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -144,19 +161,16 @@ class _DiscoveryCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.88),
+            color: cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
+                color: cs.shadow.withValues(alpha: isDark ? 0.4 : 0.12),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 0.5,
-            ),
+            border: Border.all(color: borderColor, width: 0.5),
           ),
           child: Row(
             children: [
@@ -168,10 +182,10 @@ class _DiscoveryCard extends StatelessWidget {
                   color: rarityColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Center(
+                child: const Center(
                   child: Text(
                     '🦎',
-                    style: const TextStyle(fontSize: 24),
+                    style: TextStyle(fontSize: 24),
                   ),
                 ),
               ),
@@ -185,10 +199,9 @@ class _DiscoveryCard extends StatelessWidget {
                   children: [
                     Text(
                       species.commonName,
-                      style: const TextStyle(
-                        fontSize: 15,
+                      style: tt.titleSmall?.copyWith(
+                        color: cs.onSurface,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A2E),
                         letterSpacing: -0.2,
                       ),
                       maxLines: 1,
@@ -197,10 +210,9 @@ class _DiscoveryCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       species.scientificName,
-                      style: const TextStyle(
-                        fontSize: 11,
+                      style: tt.bodySmall?.copyWith(
                         fontStyle: FontStyle.italic,
-                        color: Color(0xFF6B7280),
+                        color: cs.onSurfaceVariant,
                         letterSpacing: 0.1,
                       ),
                       maxLines: 1,
@@ -220,7 +232,9 @@ class _DiscoveryCard extends StatelessWidget {
                   // Rarity badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: rarityColor,
                       borderRadius: BorderRadius.circular(8),
@@ -230,9 +244,7 @@ class _DiscoveryCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: rarityColor == const Color(0xFFFFEB3B)
-                            ? const Color(0xFF1A1A2E)
-                            : Colors.white,
+                        color: rarityTextColor,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -242,12 +254,11 @@ class _DiscoveryCard extends StatelessWidget {
                   // Collection status
                   Text(
                     event.isNew ? 'NEW!' : 'Already collected',
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: tt.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: event.isNew
-                          ? const Color(0xFF16A34A)
-                          : const Color(0xFF9CA3AF),
+                          ? AppTheme.tertiary
+                          : cs.onSurfaceVariant,
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -259,17 +270,6 @@ class _DiscoveryCard extends StatelessWidget {
       ),
     );
   }
-
-  /// Rarity badge colors per task spec: LC=green, NT=yellow, VU=orange,
-  /// EN=red, CR=darkRed, EX=black.
-  Color _rarityColor(IucnStatus status) => switch (status) {
-        IucnStatus.leastConcern => const Color(0xFF4CAF50),
-        IucnStatus.nearThreatened => const Color(0xFFFFEB3B),
-        IucnStatus.vulnerable => const Color(0xFFFF9800),
-        IucnStatus.endangered => const Color(0xFFF44336),
-        IucnStatus.criticallyEndangered => const Color(0xFFB71C1C),
-        IucnStatus.extinct => const Color(0xFF000000),
-      };
 
   /// Short IUCN code for the badge label.
   String _rarityLabel(IucnStatus status) => switch (status) {

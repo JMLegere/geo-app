@@ -10,7 +10,7 @@ import 'package:fog_of_world/features/caretaking/services/caretaking_service.dar
 /// - Syncing streak changes with [PlayerNotifier]
 /// - Restoring saved state from persistence
 class CaretakingNotifier extends Notifier<CaretakingState> {
-  late final CaretakingService _service = CaretakingService();
+  final CaretakingService _service = CaretakingService();
 
   @override
   CaretakingState build() {
@@ -33,12 +33,8 @@ class CaretakingNotifier extends Notifier<CaretakingState> {
     final newState = _service.recordVisit(state, now);
     state = newState;
 
-    // Sync with PlayerNotifier
-    final playerNotifier = ref.read(playerProvider.notifier);
-    playerNotifier.resetStreak();
-    for (int i = 0; i < newState.currentStreak; i++) {
-      playerNotifier.incrementStreak();
-    }
+    // Sync streak to player in one call — no reset-and-replay.
+    _syncStreakToPlayer(newState);
   }
 
   /// Restores caretaking state from persistence.
@@ -46,22 +42,15 @@ class CaretakingNotifier extends Notifier<CaretakingState> {
   /// Used when loading saved state from the database.
   void loadState(CaretakingState saved) {
     state = saved;
+    _syncStreakToPlayer(saved);
+  }
 
-    // Sync with PlayerNotifier
-    final playerNotifier = ref.read(playerProvider.notifier);
-    playerNotifier.resetStreak();
-    for (int i = 0; i < saved.currentStreak; i++) {
-      playerNotifier.incrementStreak();
-    }
-    // Also sync longestStreak if it's higher than what incrementStreak set
-    if (saved.longestStreak > saved.currentStreak) {
-      final playerState = ref.read(playerProvider);
-      if (saved.longestStreak > playerState.longestStreak) {
-        playerNotifier.state = playerState.copyWith(
-          longestStreak: saved.longestStreak,
+  /// Pushes caretaking streak values to the player provider.
+  void _syncStreakToPlayer(CaretakingState caretaking) {
+    ref.read(playerProvider.notifier).setStreak(
+          current: caretaking.currentStreak,
+          longest: caretaking.longestStreak,
         );
-      }
-    }
   }
 }
 

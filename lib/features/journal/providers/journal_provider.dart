@@ -176,15 +176,17 @@ class JournalState {
 class JournalNotifier extends Notifier<JournalState> {
   @override
   JournalState build() {
-    // Read initial state without watching — avoids filter reset on updates.
-    final collectionIds = ref.read(collectionProvider).collectedSpeciesIds;
-    final speciesService = ref.read(speciesServiceProvider);
+    // Watch species service — rebuilds if the species pool ever changes.
+    final speciesService = ref.watch(speciesServiceProvider);
 
     // Listen to collection changes and update collectedIds only,
     // preserving active filter selections.
     ref.listen(collectionProvider, (_, next) {
       updateCollectedIds(next.collectedSpeciesIds.toSet());
     });
+
+    // Read collection for initial state (listen handles ongoing changes).
+    final collectionIds = ref.read(collectionProvider).collectedSpeciesIds;
 
     return JournalState(
       allSpecies: speciesService.all,

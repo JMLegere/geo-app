@@ -74,13 +74,19 @@ final achievementNotificationProvider = NotifierProvider<
 // AchievementNotifier
 // ---------------------------------------------------------------------------
 
+/// Provider for [AchievementService] (pure logic, no Riverpod dependency).
+final achievementServiceProvider = Provider<AchievementService>(
+  (_) => const AchievementService(),
+);
+
 /// Riverpod notifier that owns the achievement progress state.
 ///
-/// Call [checkAchievements] after any state-changing action (cell observed,
-/// species collected, streak updated, distance added, cell restored) to
-/// re-evaluate all achievements and emit toast notifications for new unlocks.
+/// Call [AchievementNotifier.checkAchievements] after any state-changing action
+/// (cell observed, species collected, streak updated, distance added, cell
+/// restored) to re-evaluate all achievements and emit toast notifications for
+/// new unlocks.
+
 class AchievementNotifier extends Notifier<AchievementsState> {
-  static const _service = AchievementService();
 
   @override
   AchievementsState build() {
@@ -145,9 +151,10 @@ class AchievementNotifier extends Notifier<AchievementsState> {
       totalByHabitat: totalByHabitat,
     );
 
+    final service = ref.read(achievementServiceProvider);
     final before = state;
-    final after = _service.evaluate(before, context, now: now);
-    final newUnlocks = _service.findNewUnlocks(before, after);
+    final after = service.evaluate(before, context, now: now);
+    final newUnlocks = service.findNewUnlocks(before, after);
 
     state = after;
 

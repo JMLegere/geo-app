@@ -49,6 +49,15 @@ class PlayerNotifier extends Notifier<PlayerState> {
     state = state.copyWith(currentStreak: 0);
   }
 
+  /// Directly sets streak values. Used by caretaking to sync streak state
+  /// without the fragile reset-and-replay pattern.
+  void setStreak({required int current, required int longest}) {
+    state = state.copyWith(
+      currentStreak: current,
+      longestStreak: longest,
+    );
+  }
+
   void addDistance(double km) {
     state = state.copyWith(
       totalDistanceKm: state.totalDistanceKm + km,

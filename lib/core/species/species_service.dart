@@ -7,7 +7,7 @@ import 'package:fog_of_world/core/species/loot_table.dart';
 ///
 /// Uses a Path of Exile-style weighted loot table seeded by cell ID to
 /// deterministically select which species a player can encounter in a given
-/// cell. Species are filtered by habitat and continent before rolling.
+/// cell. Species are filtered by habitat(s) and continent before rolling.
 class SpeciesService {
   final List<SpeciesRecord> _allRecords;
 
@@ -30,20 +30,26 @@ class SpeciesService {
   /// Get species available in a specific cell.
   ///
   /// This is the core encounter mechanic:
-  /// 1. Filter species pool by [habitat] + [continent]
-  /// 2. Build a weighted loot table (weights from IucnStatus)
+  /// 1. Union species pools for all [habitats] × [continent] combinations
+  /// 2. Build a single weighted loot table (weights from IucnStatus)
   /// 3. Roll [encounterSlots] times deterministically (seeded by cellId)
   /// 4. Return the selected species (unique, no duplicates)
   ///
   /// [cellId] determines which species appear — same cell always gives same
   /// species. [encounterSlots] is how many rolls to attempt (default 3).
+  ///
+  /// Accepts a [Set<Habitat>] so that multi-biome cells (e.g. a coastal
+  /// forest) draw from the union of all relevant species pools.
   List<SpeciesRecord> getSpeciesForCell({
     required String cellId,
-    required Habitat habitat,
+    required Set<Habitat> habitats,
     required Continent continent,
     int encounterSlots = 3,
   }) {
-    final pool = _byHabitatAndContinent[(habitat, continent)] ?? [];
+    final pool = <SpeciesRecord>{};
+    for (final habitat in habitats) {
+      pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+    }
     if (pool.isEmpty) return [];
 
     final table = LootTable<SpeciesRecord>(
@@ -53,14 +59,19 @@ class SpeciesService {
     return table.rollMultiple(cellId, encounterSlots);
   }
 
-  /// Get ALL species that COULD appear in a habitat+continent combo.
+  /// Get ALL species that COULD appear in a set of habitats + continent.
   ///
+  /// Returns the union of species pools across all provided [habitats].
   /// Useful for UI (showing "species possible in this area").
   List<SpeciesRecord> getPoolForArea({
-    required Habitat habitat,
+    required Set<Habitat> habitats,
     required Continent continent,
   }) {
-    return _byHabitatAndContinent[(habitat, continent)] ?? [];
+    final pool = <SpeciesRecord>{};
+    for (final habitat in habitats) {
+      pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+    }
+    return pool.toList();
   }
 
   /// Filter by habitat only.

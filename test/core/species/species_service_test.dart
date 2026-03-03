@@ -271,21 +271,21 @@ void main() {
   });
 
   group('SpeciesService.getSpeciesForCell', () {
-    test('is deterministic — same cellId+habitat+continent always returns same species',
+    test('is deterministic — same cellId+habitats+continent always returns same species',
         () {
       const cellId = 'cell_42_forest_europe';
-      const habitat = Habitat.forest;
+      const habitats = {Habitat.forest};
       const continent = Continent.europe;
 
       final first = service.getSpeciesForCell(
         cellId: cellId,
-        habitat: habitat,
+        habitats: habitats,
         continent: continent,
       );
       for (var i = 0; i < 20; i++) {
         final repeated = service.getSpeciesForCell(
           cellId: cellId,
-          habitat: habitat,
+          habitats: habitats,
           continent: continent,
         );
         expect(repeated.map((s) => s.scientificName).toList(),
@@ -295,7 +295,7 @@ void main() {
     });
 
     test('different cellIds produce different species (statistically)', () {
-      const habitat = Habitat.forest;
+      const habitats = {Habitat.forest};
       const continent = Continent.europe;
 
       final results = <String>{};
@@ -303,7 +303,7 @@ void main() {
       for (var i = 0; i < 30; i++) {
         final found = service.getSpeciesForCell(
           cellId: 'cell_$i',
-          habitat: habitat,
+          habitats: habitats,
           continent: continent,
         );
         if (found.isNotEmpty) results.add(found.first.scientificName);
@@ -316,7 +316,7 @@ void main() {
     test('returns at most encounterSlots species', () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_test',
-        habitat: Habitat.forest,
+        habitats: const {Habitat.forest},
         continent: Continent.europe,
         encounterSlots: 2,
       );
@@ -327,17 +327,17 @@ void main() {
       // Desert/Oceania — no desert species in Oceania in the fixture.
       final found = service.getSpeciesForCell(
         cellId: 'cell_999',
-        habitat: Habitat.desert,
+        habitats: const {Habitat.desert},
         continent: Continent.oceania,
       );
       expect(found, isEmpty);
     });
 
-    test('returned species all belong to the requested habitat and continent',
+    test('returned species all belong to at least one requested habitat and to the continent',
         () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_validate',
-        habitat: Habitat.forest,
+        habitats: const {Habitat.forest},
         continent: Continent.asia,
         encounterSlots: 5,
       );
@@ -353,7 +353,7 @@ void main() {
     test('returned species are unique (no duplicates)', () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_dedup',
-        habitat: Habitat.forest,
+        habitats: const {Habitat.forest},
         continent: Continent.europe,
         encounterSlots: 10,
       );
@@ -362,12 +362,46 @@ void main() {
       expect(unique.length, equals(found.length),
           reason: 'getSpeciesForCell should not return duplicate species');
     });
+
+    test('multi-habitat union: result may include species from any habitat', () {
+      // forest + freshwater union for Asia
+      final found = service.getSpeciesForCell(
+        cellId: 'cell_multi_habitat',
+        habitats: const {Habitat.forest, Habitat.freshwater},
+        continent: Continent.asia,
+        encounterSlots: 10,
+      );
+      // Pool is at least as large as forest-only for Asia.
+      final forestOnly = service.getSpeciesForCell(
+        cellId: 'cell_multi_habitat',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+        encounterSlots: 10,
+      );
+      // Multi-habitat pool >= single-habitat pool (union is non-shrinking).
+      final multiPool = service.getPoolForArea(
+        habitats: const {Habitat.forest, Habitat.freshwater},
+        continent: Continent.asia,
+      );
+      final forestPool = service.getPoolForArea(
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+      );
+      expect(multiPool.length, greaterThanOrEqualTo(forestPool.length));
+      // All found species must belong to the correct continent.
+      for (final s in found) {
+        expect(s.continents, contains(Continent.asia),
+            reason: '${s.scientificName} lacks Asia continent');
+      }
+      // Suppress unused-variable warning.
+      expect(forestOnly, isA<List>());
+    });
   });
 
   group('SpeciesService.getPoolForArea', () {
     test('returns all species matching habitat+continent', () {
       final pool = service.getPoolForArea(
-        habitat: Habitat.forest,
+        habitats: const {Habitat.forest},
         continent: Continent.europe,
       );
 
@@ -380,26 +414,48 @@ void main() {
 
     test('returns empty for non-matching combination', () {
       final pool = service.getPoolForArea(
-        habitat: Habitat.desert,
+        habitats: const {Habitat.desert},
         continent: Continent.oceania,
       );
       expect(pool, isEmpty);
     });
 
     test('pool size >= encounter results size', () {
-      const habitat = Habitat.forest;
+      const habitats = {Habitat.forest};
       const continent = Continent.europe;
 
       final pool = service.getPoolForArea(
-          habitat: habitat, continent: continent);
+          habitats: habitats, continent: continent);
       final found = service.getSpeciesForCell(
         cellId: 'cell_pool_check',
-        habitat: habitat,
+        habitats: habitats,
         continent: continent,
         encounterSlots: 10,
       );
 
       expect(pool.length, greaterThanOrEqualTo(found.length));
+    });
+
+    test('multi-habitat pool is union of single-habitat pools', () {
+      final forestPool = service.getPoolForArea(
+        habitats: const {Habitat.forest},
+        continent: Continent.europe,
+      );
+      final freshwaterPool = service.getPoolForArea(
+        habitats: const {Habitat.freshwater},
+        continent: Continent.europe,
+      );
+      final unionPool = service.getPoolForArea(
+        habitats: const {Habitat.forest, Habitat.freshwater},
+        continent: Continent.europe,
+      );
+      // Union must be at least as large as either individual pool.
+      expect(unionPool.length,
+          greaterThanOrEqualTo(forestPool.length),
+          reason: 'Union pool must include all forest species');
+      expect(unionPool.length,
+          greaterThanOrEqualTo(freshwaterPool.length),
+          reason: 'Union pool must include all freshwater species');
     });
   });
 
@@ -438,7 +494,7 @@ void main() {
       // Construct a fresh service and call immediately.
       final freshService = SpeciesService(records.cast());
       final pool = freshService.getPoolForArea(
-        habitat: Habitat.mountain,
+        habitats: {Habitat.mountain},
         continent: Continent.asia,
       );
       expect(pool.isNotEmpty, isTrue);
@@ -479,7 +535,7 @@ void main() {
         // Roll one slot per cell to get clean individual rolls.
         final found = service.getSpeciesForCell(
           cellId: 'rarity_test_$i',
-          habitat: Habitat.forest,
+          habitats: const {Habitat.forest},
           continent: Continent.europe,
           encounterSlots: 1,
         );

@@ -6,6 +6,7 @@ import 'package:fog_of_world/features/location/services/location_simulator.dart'
 import 'package:fog_of_world/core/state/location_provider.dart';
 
 LocationService _testService({int seed = 1}) => LocationService(
+      mode: LocationMode.simulation,
       simulator: LocationSimulator(
         updateInterval: const Duration(milliseconds: 50),
         seed: seed,
@@ -15,14 +16,20 @@ LocationService _testService({int seed = 1}) => LocationService(
 
 void main() {
   group('LocationService', () {
-    test('starts in simulation mode by default', () {
+    test('defaults to realGps mode on mobile platforms', () {
       final service = LocationService();
+      expect(service.mode, LocationMode.realGps);
+      expect(service.gpsService, isNotNull);
+    });
+
+    test('uses simulation mode when explicitly requested', () {
+      final service = LocationService(mode: LocationMode.simulation);
       expect(service.mode, LocationMode.simulation);
       expect(service.simulator, isNotNull);
     });
 
     test('isTracking is false before start', () {
-      final service = LocationService();
+      final service = LocationService(mode: LocationMode.simulation);
       expect(service.isTracking, isFalse);
     });
 
@@ -85,15 +92,20 @@ void main() {
     });
   });
 
-  group('LocationNotifier.connectToService', () {
-    test('updates provider state when service emits locations', () async {
+  group('LocationNotifier.connectToStream', () {
+    test('updates provider state when stream emits locations', () async {
       final service = _testService(seed: 10);
 
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final notifier = container.read(locationProvider.notifier);
-      notifier.connectToService(service);
+      // Map the service stream to the core-owned record type.
+      notifier.connectToStream(
+        service.filteredLocationStream.map(
+          (loc) => (position: loc.position, accuracy: loc.accuracy),
+        ),
+      );
       service.start();
 
       await Future<void>.delayed(const Duration(milliseconds: 300));

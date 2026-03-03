@@ -1,5 +1,6 @@
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/biome/models/esa_land_cover.dart';
+import 'package:fog_of_world/features/biome/services/biome_feature_index.dart';
 
 /// Strategy interface for resolving a geographic coordinate to an ESA land
 /// cover code.
@@ -14,7 +15,7 @@ abstract interface class HabitatLookupStrategy {
 /// Default lookup strategy — no pre-loaded data.
 ///
 /// [getEsaCode] always returns null, so [HabitatService.classifyLocation]
-/// falls back to [Habitat.plains] for every coordinate.
+/// falls back to `{Habitat.plains}` for every coordinate.
 class DefaultHabitatLookup implements HabitatLookupStrategy {
   const DefaultHabitatLookup();
 
@@ -57,31 +58,57 @@ class CoordinateHabitatLookup implements HabitatLookupStrategy {
 
 /// Classifies geographic coordinates into the seven game [Habitat]s.
 ///
-/// Uses a pluggable [HabitatLookupStrategy] to resolve coordinates to ESA
-/// WorldCover codes, then maps those codes to [Habitat] values via
-/// [EsaLandCover.toHabitat].
+/// ## Modes
 ///
-/// When no data is available (strategy returns null or an unknown code is
-/// supplied), [Habitat.plains] is returned as the most generic fallback.
+/// 1. **Feature-index mode** (preferred) — constructed via
+///    [HabitatService.withFeatureIndex]. Uses a [BiomeFeatureIndex] loaded from
+///    `assets/biome_features.json` to detect multiple habitats near a
+///    coordinate. [classifyLocation] returns a `Set<Habitat>` that may contain
+///    more than one value (e.g. a coastal forest cell returns both
+///    `{Habitat.saltwater, Habitat.forest}`).
+///
+/// 2. **ESA-lookup mode** (legacy) — constructed via the default constructor
+///    with an optional [HabitatLookupStrategy]. Returns a single-element set
+///    derived from the ESA WorldCover code at the coordinate.
+///
+/// When no data is available from either source the returned set always
+/// contains `{Habitat.plains}` as the most generic fallback.
 class HabitatService {
   final HabitatLookupStrategy _lookup;
+  final BiomeFeatureIndex? _featureIndex;
 
-  /// Creates a [HabitatService].
+  /// Creates a [HabitatService] backed by a [HabitatLookupStrategy].
   ///
   /// [lookup] defaults to [DefaultHabitatLookup] (plains fallback for every
   /// coordinate) when omitted.
   HabitatService({HabitatLookupStrategy? lookup})
-      : _lookup = lookup ?? const DefaultHabitatLookup();
+      : _lookup = lookup ?? const DefaultHabitatLookup(),
+        _featureIndex = null;
 
-  /// Returns the [Habitat] for [lat]/[lon].
+  /// Creates a [HabitatService] backed by a [BiomeFeatureIndex].
   ///
-  /// Delegates to the configured [HabitatLookupStrategy] to obtain an ESA
-  /// code, then maps it via [classifyFromEsaCode]. Returns [Habitat.plains]
-  /// if the strategy has no data for the coordinate.
-  Habitat classifyLocation(double lat, double lon) {
+  /// [classifyLocation] will use spatial proximity queries against real-world
+  /// geographic features and can return multiple habitats per coordinate.
+  HabitatService.withFeatureIndex(BiomeFeatureIndex index)
+      : _lookup = const DefaultHabitatLookup(),
+        _featureIndex = index;
+
+  /// Returns the set of [Habitat]s for [lat]/[lon].
+  ///
+  /// In **feature-index mode** delegates to [BiomeFeatureIndex.getBiomesNear]
+  /// which may return multiple habitats.
+  ///
+  /// In **ESA-lookup mode** delegates to the configured
+  /// [HabitatLookupStrategy] and wraps the single result in a set. Returns
+  /// `{Habitat.plains}` if the strategy has no data for the coordinate.
+  Set<Habitat> classifyLocation(double lat, double lon) {
+    final index = _featureIndex;
+    if (index != null) {
+      return index.getBiomesNear(lat, lon);
+    }
     final esaCode = _lookup.getEsaCode(lat, lon);
-    if (esaCode == null) return Habitat.plains;
-    return classifyFromEsaCode(esaCode);
+    if (esaCode == null) return {Habitat.plains};
+    return {classifyFromEsaCode(esaCode)};
   }
 
   /// Maps an ESA WorldCover [esaCode] to the corresponding [Habitat].

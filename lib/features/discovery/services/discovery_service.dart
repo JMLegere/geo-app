@@ -1,11 +1,12 @@
 import 'dart:async';
 
+import 'package:fog_of_world/core/cells/cell_service.dart';
 import 'package:fog_of_world/core/fog/fog_event.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
+import 'package:fog_of_world/core/species/continent_resolver.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
+import 'package:fog_of_world/features/biome/services/biome_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/seasonal/services/season_service.dart';
 
@@ -16,9 +17,16 @@ import 'package:fog_of_world/features/seasonal/services/season_service.dart';
 /// this fully testable without Riverpod.
 ///
 /// ## Lifecycle
-/// 1. Create with a [FogStateResolver] and a [SpeciesService].
+/// 1. Create with a [FogStateResolver], a [SpeciesService], a
+///    [HabitatService], and a [CellService].
 /// 2. Subscribe to [onDiscovery] in the UI layer.
 /// 3. Call [dispose] when the screen is torn down.
+///
+/// ## Biome detection
+/// When a new cell is entered, [DiscoveryService] resolves the cell centre via
+/// [CellService.getCellCenter], then queries [HabitatService.classifyLocation]
+/// to obtain the full set of habitats present within 5 km. Species are drawn
+/// from the union of all matching habitat pools.
 ///
 /// ## Collection tracking
 /// An internal `Set` of collected species IDs determines whether a discovered
@@ -28,6 +36,8 @@ import 'package:fog_of_world/features/seasonal/services/season_service.dart';
 class DiscoveryService {
   final FogStateResolver _fogResolver;
   final SpeciesService _speciesService;
+  final HabitatService _habitatService;
+  final CellService? _cellService;
 
   /// Optional [SeasonService] for filtering out-of-season species.
   ///
@@ -53,24 +63,30 @@ class DiscoveryService {
 
   /// Creates a [DiscoveryService].
   ///
+  /// [habitatService] and [cellService] enable real biome detection. When
+  /// [cellService] is null the service falls back to `{Habitat.plains}` (and
+  /// still uses [habitatService] with lat=0/lon=0 as a worst-case fallback).
+  ///
   /// [initialCollectedIds] seeds the already-collected set from persisted
   /// state. Defaults to empty (fresh game).
   ///
   /// [seasonService] enables seasonal filtering. When provided, only species
   /// available in the current season are emitted. When null (default), all
   /// species from [SpeciesService.getSpeciesForCell] are emitted unchanged.
-  ///
-  /// Habitat and continent default to `Habitat.forest` and
-  /// `Continent.northAmerica` — appropriate for SF Bay Area simulation.
   DiscoveryService({
     required FogStateResolver fogResolver,
     required SpeciesService speciesService,
+    HabitatService? habitatService,
+    CellService? cellService,
     Set<String>? initialCollectedIds,
     SeasonService? seasonService,
   })  : _fogResolver = fogResolver,
         _speciesService = speciesService,
+        _habitatService = habitatService ?? HabitatService(),
+        _cellService = cellService,
         _seasonService = seasonService,
-        _collectedSpeciesIds = Set.from(initialCollectedIds ?? const <String>{}) {
+        _collectedSpeciesIds =
+            Set.from(initialCollectedIds ?? const <String>{}) {
     _fogSubscription =
         _fogResolver.onVisitedCellAdded.listen(_onFogStateChanged);
   }
@@ -102,11 +118,25 @@ class DiscoveryService {
     // Only react to a player entering a new cell for the first time.
     if (event.newState != FogState.observed) return;
 
-    // SF Bay Area simulation defaults — T21 will wire real habitat/continent.
+    // Resolve the cell centre and look up biomes.
+    final cellService = _cellService;
+    final double lat;
+    final double lon;
+    if (cellService != null) {
+      final center = cellService.getCellCenter(event.cellId);
+      lat = center.lat;
+      lon = center.lon;
+    } else {
+      lat = 0.0;
+      lon = 0.0;
+    }
+    final habitats = _habitatService.classifyLocation(lat, lon);
+    final continent = ContinentResolver.resolve(lat, lon);
+
     var species = _speciesService.getSpeciesForCell(
       cellId: event.cellId,
-      habitat: Habitat.forest,
-      continent: Continent.northAmerica,
+      habitats: habitats,
+      continent: continent,
     );
 
     // Filter by current season when a SeasonService is wired in.

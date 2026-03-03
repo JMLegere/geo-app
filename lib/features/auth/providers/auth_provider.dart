@@ -6,7 +6,7 @@ import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/services/auth_service.dart';
 import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
 import 'package:fog_of_world/features/auth/services/supabase_auth_service.dart';
-import 'package:fog_of_world/core/config/supabase_config.dart';
+import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
 
 /// Manages all auth state transitions.
 ///
@@ -21,19 +21,24 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    _authService = SupabaseConfig.projectUrl.isNotEmpty
+    _authService = supabaseInitialized
         ? SupabaseAuthService()
         : MockAuthService();
 
     // Mirror external auth state changes (e.g. token expiry, Supabase events).
-    _authSubscription =
-        _authService.authStateChanges.listen((user) {
-      if (user != null) {
-        state = AuthState.authenticated(user);
-      } else if (state.status != AuthStatus.guest) {
-        state = const AuthState.unauthenticated();
-      }
-    });
+    _authSubscription = _authService.authStateChanges.listen(
+      (user) {
+        if (user != null) {
+          state = AuthState.authenticated(user);
+        } else if (state.status != AuthStatus.guest) {
+          state = const AuthState.unauthenticated();
+        }
+      },
+      onError: (_) {
+        // Supabase may not be initialised (e.g. web locale crash).
+        // Fall through to _checkExistingSession which handles the fallback.
+      },
+    );
 
     ref.onDispose(() {
       _authSubscription?.cancel();
@@ -62,8 +67,12 @@ class AuthNotifier extends Notifier<AuthState> {
         state = const AuthState.unauthenticated();
       }
     } catch (_) {
-      // Provider disposed or session check failed — safe to ignore.
-      // Do NOT set state here: the provider may already be torn down.
+      // Provider disposed or session check failed.
+      // If still mounted, transition to unauthenticated so the user sees
+      // the login screen instead of being stuck in loading forever.
+      if (ref.mounted) {
+        state = const AuthState.unauthenticated();
+      }
     }
   }
 

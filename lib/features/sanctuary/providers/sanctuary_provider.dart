@@ -58,9 +58,8 @@ class SanctuaryState {
 class SanctuaryNotifier extends Notifier<SanctuaryState> {
   @override
   SanctuaryState build() {
-    final speciesService = ref.read(speciesServiceProvider);
-    final collectionState = ref.read(collectionProvider);
-    final playerState = ref.read(playerProvider);
+    // Watch species service — rebuilds if the species pool ever changes.
+    final speciesService = ref.watch(speciesServiceProvider);
 
     // Listen to collection changes to re-group species.
     ref.listen(collectionProvider, (_, next) {
@@ -71,6 +70,10 @@ class SanctuaryNotifier extends Notifier<SanctuaryState> {
     ref.listen(playerProvider, (_, next) {
       state = state.copyWith(currentStreak: next.currentStreak);
     });
+
+    // Read collection + player for initial state (listen handles ongoing).
+    final collectionState = ref.read(collectionProvider);
+    final playerState = ref.read(playerProvider);
 
     return _buildState(
       allSpecies: speciesService.all,

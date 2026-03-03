@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/biome/models/esa_land_cover.dart';
+import 'package:fog_of_world/features/biome/services/biome_feature_index.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
 
 void main() {
@@ -163,15 +164,15 @@ void main() {
       });
     });
 
-    group('classifyLocation', () {
-      test('returns plains when no data available (default lookup)', () {
+    group('classifyLocation (ESA lookup mode)', () {
+      test('returns {plains} when no data available (default lookup)', () {
         final service = HabitatService();
-        expect(service.classifyLocation(51.5, -0.1), Habitat.plains);
-        expect(service.classifyLocation(0.0, 0.0), Habitat.plains);
-        expect(service.classifyLocation(-33.8, 151.2), Habitat.plains);
+        expect(service.classifyLocation(51.5, -0.1), equals({Habitat.plains}));
+        expect(service.classifyLocation(0.0, 0.0), equals({Habitat.plains}));
+        expect(service.classifyLocation(-33.8, 151.2), equals({Habitat.plains}));
       });
 
-      test('returns correct habitat with pre-loaded region data', () {
+      test('returns correct single-element set with pre-loaded region data', () {
         final lookup = CoordinateHabitatLookup();
         lookup.loadRegionData({
           CoordinateHabitatLookup.gridKey(51.5, -0.1): 10,  // tree cover → forest
@@ -183,15 +184,15 @@ void main() {
         });
         final service = HabitatService(lookup: lookup);
 
-        expect(service.classifyLocation(51.5, -0.1), Habitat.forest);
-        expect(service.classifyLocation(51.5, 0.0), Habitat.desert);
-        expect(service.classifyLocation(51.5, -0.2), Habitat.swamp);
-        expect(service.classifyLocation(51.5, -0.3), Habitat.freshwater);
-        expect(service.classifyLocation(51.5, -0.4), Habitat.swamp);
-        expect(service.classifyLocation(51.5, -0.5), Habitat.mountain);
+        expect(service.classifyLocation(51.5, -0.1), equals({Habitat.forest}));
+        expect(service.classifyLocation(51.5, 0.0), equals({Habitat.desert}));
+        expect(service.classifyLocation(51.5, -0.2), equals({Habitat.swamp}));
+        expect(service.classifyLocation(51.5, -0.3), equals({Habitat.freshwater}));
+        expect(service.classifyLocation(51.5, -0.4), equals({Habitat.swamp}));
+        expect(service.classifyLocation(51.5, -0.5), equals({Habitat.mountain}));
       });
 
-      test('falls back to plains for coordinate absent from pre-loaded data',
+      test('falls back to {plains} for coordinate absent from pre-loaded data',
           () {
         final lookup = CoordinateHabitatLookup();
         lookup.loadRegionData({
@@ -199,15 +200,15 @@ void main() {
         });
         final service = HabitatService(lookup: lookup);
 
-        expect(service.classifyLocation(51.5, -0.1), Habitat.forest); // known
-        expect(service.classifyLocation(48.8, 2.3), Habitat.plains);  // absent
+        expect(service.classifyLocation(51.5, -0.1), equals({Habitat.forest})); // known
+        expect(service.classifyLocation(48.8, 2.3), equals({Habitat.plains}));  // absent
       });
     });
 
     test('uses DefaultHabitatLookup when no strategy is provided', () {
       final service = HabitatService();
-      expect(service.classifyLocation(0.0, 0.0), Habitat.plains);
-      expect(service.classifyLocation(51.5, -0.1), Habitat.plains);
+      expect(service.classifyLocation(0.0, 0.0), equals({Habitat.plains}));
+      expect(service.classifyLocation(51.5, -0.1), equals({Habitat.plains}));
     });
 
     test('accepts custom HabitatLookupStrategy via constructor', () {
@@ -217,7 +218,65 @@ void main() {
       });
       final service = HabitatService(lookup: lookup);
 
-      expect(service.classifyLocation(51.5, -0.1), Habitat.forest);
+      expect(service.classifyLocation(51.5, -0.1), equals({Habitat.forest}));
+    });
+
+    group('classifyLocation (feature-index mode)', () {
+      // Minimal JSON with one coastline point near (0.0, 0.0).
+      const kMinimalJson = '''
+{
+  "coastline": [[0.001, 0.001]],
+  "rivers": [],
+  "lakes": [],
+  "mountains": [],
+  "deserts": [],
+  "wetlands": [],
+  "forests": []
+}
+''';
+
+      test('returns {saltwater} for coordinate within 5km of a coastline point',
+          () {
+        final index = BiomeFeatureIndex.load(kMinimalJson);
+        final service = HabitatService.withFeatureIndex(index);
+        // 0.001° ≈ 110m — well within 5km.
+        final result = service.classifyLocation(0.0, 0.0);
+        expect(result, contains(Habitat.saltwater));
+      });
+
+      test('returns {plains} for coordinate with no nearby features', () {
+        final index = BiomeFeatureIndex.load(kMinimalJson);
+        final service = HabitatService.withFeatureIndex(index);
+        // 10° away — well outside 5km.
+        final result = service.classifyLocation(10.0, 10.0);
+        expect(result, equals({Habitat.plains}));
+      });
+
+      test('returns multiple habitats for multi-feature location', () {
+        // Coastline + forest region both cover (0.0, 0.0).
+        const json = '''
+{
+  "coastline": [[0.001, 0.001]],
+  "rivers": [],
+  "lakes": [],
+  "mountains": [],
+  "deserts": [],
+  "wetlands": [],
+  "forests": [[0.0, 0.0, 100]]
+}
+''';
+        final index = BiomeFeatureIndex.load(json);
+        final service = HabitatService.withFeatureIndex(index);
+        final result = service.classifyLocation(0.0, 0.0);
+        expect(result, containsAll([Habitat.saltwater, Habitat.forest]));
+      });
+
+      test('classifyLocation result is a Set — never empty (always has plains fallback)', () {
+        final index = BiomeFeatureIndex.load(kMinimalJson);
+        final service = HabitatService.withFeatureIndex(index);
+        final result = service.classifyLocation(50.0, 50.0);
+        expect(result, isNotEmpty);
+      });
     });
   });
 
@@ -228,7 +287,7 @@ void main() {
     test('BiomeService is usable as HabitatService', () {
       // BiomeService is a typedef for HabitatService
       final service = BiomeService();
-      expect(service.classifyLocation(0.0, 0.0), Habitat.plains);
+      expect(service.classifyLocation(0.0, 0.0), equals({Habitat.plains}));
     });
 
     test('CoordinateBiomeLookup is usable as CoordinateHabitatLookup', () {

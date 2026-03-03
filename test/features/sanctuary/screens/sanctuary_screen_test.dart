@@ -10,6 +10,7 @@ import 'package:fog_of_world/features/discovery/providers/discovery_provider.dar
 import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
+import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -77,16 +78,19 @@ void main() {
 
     testWidgets('shows HabitatSection widgets', (tester) async {
       await _pumpScreen(tester);
-      expect(find.byType(HabitatSection), findsWidgets);
+      // With no collected species, the sanctuary shows an empty-state widget
+      // and hides habitat sections until the first species is discovered.
+      expect(find.byType(EmptyStateWidget), findsOneWidget);
+      expect(find.byType(HabitatSection), findsNothing);
     });
 
     testWidgets('shows habitat sections (lazy list renders visible items)',
         (tester) async {
       await _pumpScreen(tester);
-      // SliverList renders lazily — only items in the viewport are built.
-      // Verify that at least some sections are present without asserting
-      // the exact count, which depends on the test viewport height.
-      expect(find.byType(HabitatSection), findsWidgets);
+      // With no collected species the empty state is shown, not the sliver
+      // list.  Habitat sections only render once totalCollected > 0.
+      expect(find.byType(EmptyStateWidget), findsOneWidget);
+      expect(find.byType(HabitatSection), findsNothing);
     });
 
     testWidgets('shows 0% health indicator when nothing collected',

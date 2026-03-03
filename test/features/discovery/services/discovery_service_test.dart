@@ -7,21 +7,38 @@ import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
+import 'package:fog_of_world/features/biome/services/biome_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
 
 // ---------------------------------------------------------------------------
+// MockHabitatService — always returns a fixed set of habitats.
+// ---------------------------------------------------------------------------
+class _MockHabitatService extends HabitatService {
+  @override
+  Set<Habitat> classifyLocation(double lat, double lon) =>
+      const {Habitat.forest};
+}
+
+// ---------------------------------------------------------------------------
 // Minimal MockCellService — deterministic grid: "row_col" from rounded coords.
+// Maps to North American coordinates so ContinentResolver returns northAmerica.
 // ---------------------------------------------------------------------------
 class _MockCellService implements CellService {
   @override
   String getCellId(double lat, double lon) =>
       '${lat.round()}_${lon.round()}';
 
+  /// Returns a coordinate in the North American bounding box (lat 40, lon -100)
+  /// offset by the cell's rounded lat/lon, so ContinentResolver always
+  /// returns Continent.northAmerica for test cells.
   @override
   Geographic getCellCenter(String cellId) {
     final parts = cellId.split('_');
-    return Geographic(lat: double.parse(parts[0]), lon: double.parse(parts[1]));
+    // Offset into North America: base (40, -100) + (parsedLat * 0.01, parsedLon * 0.01)
+    final dLat = double.parse(parts[0]) * 0.01;
+    final dLon = double.parse(parts[1]) * 0.01;
+    return Geographic(lat: 40.0 + dLat, lon: -100.0 + dLon);
   }
 
   @override
@@ -114,6 +131,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: speciesService,
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
       );
       addTearDown(service.dispose);
 
@@ -129,6 +148,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: _makeSpeciesService(),
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
         initialCollectedIds: const {},
       );
       addTearDown(service.dispose);
@@ -157,6 +178,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: _makeSpeciesService(),
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
         initialCollectedIds: collectedIds,
       );
       addTearDown(service.dispose);
@@ -178,6 +201,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: speciesService,
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
       );
       addTearDown(service.dispose);
 
@@ -212,6 +237,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: _makeSpeciesService(),
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
       );
       addTearDown(service.dispose);
 
@@ -230,6 +257,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: _makeSpeciesService(),
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
       );
 
       service.dispose();
@@ -253,6 +282,8 @@ void main() {
       final service = DiscoveryService(
         fogResolver: resolver,
         speciesService: _makeSpeciesService(),
+        habitatService: _MockHabitatService(),
+        cellService: cellService,
       );
       addTearDown(service.dispose);
 
