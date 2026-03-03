@@ -5,8 +5,11 @@ import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/auth/screens/login_screen.dart';
 import 'package:fog_of_world/features/map/map_screen.dart';
+import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeSupabase();
   runApp(const ProviderScope(child: FogOfWorldApp()));
 }
 

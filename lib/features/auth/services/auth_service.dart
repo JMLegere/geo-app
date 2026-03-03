@@ -40,6 +40,9 @@ abstract class AuthService {
   /// Returns the currently authenticated user, or null if no session exists.
   Future<UserProfile?> getCurrentUser();
 
+  /// Signs in anonymously (Supabase anonymous auth).
+  Future<UserProfile> signInAnonymously();
+
   /// Returns true when a valid session is present.
   Future<bool> isSessionValid();
 

@@ -77,6 +77,20 @@ class MockAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> signInAnonymously() async {
+    await Future<void>.delayed(_delay);
+    final profile = UserProfile(
+      id: 'anon-${DateTime.now().millisecondsSinceEpoch}',
+      email: '',
+      displayName: 'Explorer',
+      createdAt: DateTime.now(),
+    );
+    _currentUser = profile;
+    _authStateController.add(profile);
+    return profile;
+  }
+
+  @override
   Future<void> signOut() async {
     await Future<void>.delayed(_delay);
     _currentUser = null;

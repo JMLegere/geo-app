@@ -1,0 +1,97 @@
+import 'dart:async';
+import 'dart:js_interop';
+import 'dart:math';
+
+import 'package:geobase/geobase.dart';
+import 'package:web/web.dart';
+
+import 'keyboard_location_service.dart';
+import 'location_simulator.dart';
+
+KeyboardLocationService createKeyboardLocationService() =>
+    _KeyboardLocationWebService();
+
+class _KeyboardLocationWebService implements KeyboardLocationService {
+  static const _stepMeters = 10.0;
+  static const _earthRadius = 6371000.0;
+  static const _tickInterval = Duration(milliseconds: 100);
+
+  Geographic _position = const Geographic(lat: 37.7749, lon: -122.4194);
+
+  final _controller = StreamController<SimulatedLocation>.broadcast();
+  final _keysHeld = <String>{};
+
+  JSFunction? _keyDownHandler;
+  JSFunction? _keyUpHandler;
+  Timer? _ticker;
+
+  @override
+  Stream<SimulatedLocation> get locationStream => _controller.stream;
+
+  @override
+  void start() {
+    _keyDownHandler = _onKeyDown.toJS;
+    _keyUpHandler = _onKeyUp.toJS;
+    window.addEventListener('keydown', _keyDownHandler);
+    window.addEventListener('keyup', _keyUpHandler);
+    _ticker = Timer.periodic(_tickInterval, (_) => _tick());
+  }
+
+  @override
+  void stop() {
+    window.removeEventListener('keydown', _keyDownHandler);
+    window.removeEventListener('keyup', _keyUpHandler);
+    _keyDownHandler = null;
+    _keyUpHandler = null;
+    _ticker?.cancel();
+    _ticker = null;
+    _keysHeld.clear();
+  }
+
+  @override
+  void dispose() {
+    stop();
+    _controller.close();
+  }
+
+  void _onKeyDown(Event e) {
+    final key = (e as KeyboardEvent).key;
+    _keysHeld.add(key);
+  }
+
+  void _onKeyUp(Event e) {
+    final key = (e as KeyboardEvent).key;
+    _keysHeld.remove(key);
+  }
+
+  void _tick() {
+    double dLat = 0;
+    double dLon = 0;
+    final metersPerDegLat = _earthRadius * (pi / 180.0);
+    final metersPerDegLon = metersPerDegLat * cos(_position.lat * pi / 180.0);
+
+    if (_keysHeld.contains('w') || _keysHeld.contains('W') || _keysHeld.contains('ArrowUp')) {
+      dLat += _stepMeters / metersPerDegLat;
+    }
+    if (_keysHeld.contains('s') || _keysHeld.contains('S') || _keysHeld.contains('ArrowDown')) {
+      dLat -= _stepMeters / metersPerDegLat;
+    }
+    if (_keysHeld.contains('a') || _keysHeld.contains('A') || _keysHeld.contains('ArrowLeft')) {
+      dLon -= _stepMeters / metersPerDegLon;
+    }
+    if (_keysHeld.contains('d') || _keysHeld.contains('D') || _keysHeld.contains('ArrowRight')) {
+      dLon += _stepMeters / metersPerDegLon;
+    }
+
+    if (dLat == 0 && dLon == 0) return;
+
+    _position = Geographic(
+      lat: _position.lat + dLat,
+      lon: _position.lon + dLon,
+    );
+
+    _controller.add(
+      SimulatedLocation(position: _position, timestamp: DateTime.now()),
+    );
+  }
+}

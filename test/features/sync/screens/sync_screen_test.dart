@@ -27,9 +27,6 @@ class _FakeSyncNotifier extends SyncNotifier {
       pendingChanges: state.pendingChanges,
     );
   }
-
-  @override
-  Future<void> refreshPendingCount() async {}
 }
 
 // ---------------------------------------------------------------------------

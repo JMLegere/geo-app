@@ -166,24 +166,27 @@ void main() {
 
     // ── continueAsGuest ──────────────────────────────────────────────────────
 
-    test('continueAsGuest transitions to guest', () async {
+    test('continueAsGuest transitions to authenticated via anonymous sign-in',
+        () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
 
-      container.read(authProvider.notifier).continueAsGuest();
+      await container.read(authProvider.notifier).continueAsGuest();
 
-      expect(container.read(authProvider).status, AuthStatus.guest);
+      expect(
+          container.read(authProvider).status, AuthStatus.authenticated);
     });
 
-    test('continueAsGuest sets isGuest and isLoggedIn', () async {
+    test('continueAsGuest sets isLoggedIn and provides a user', () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
 
-      container.read(authProvider.notifier).continueAsGuest();
+      await container.read(authProvider.notifier).continueAsGuest();
 
       final state = container.read(authProvider);
-      expect(state.isGuest, isTrue);
       expect(state.isLoggedIn, isTrue);
+      expect(state.user, isNotNull);
+      expect(state.user!.displayName, 'Explorer');
     });
   });
 }

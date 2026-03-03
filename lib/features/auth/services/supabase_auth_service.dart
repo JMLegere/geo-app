@@ -84,6 +84,27 @@ class SupabaseAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> signInAnonymously() async {
+    try {
+      final response = await _auth.signInAnonymously();
+      final user = response.user;
+      if (user == null) {
+        throw const AuthException('Anonymous sign-in failed: no user returned');
+      }
+      return UserProfile(
+        id: user.id,
+        email: '',
+        displayName: 'Explorer',
+        createdAt: DateTime.now(),
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } catch (e) {
+      throw AuthException('Anonymous sign-in failed: $e');
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     try {
       await _auth.signOut();

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/services/auth_service.dart';
 import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
+import 'package:fog_of_world/features/auth/services/supabase_auth_service.dart';
+import 'package:fog_of_world/core/config/supabase_config.dart';
 
 /// Manages all auth state transitions.
 ///
@@ -19,7 +21,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
   @override
   AuthState build() {
-    _authService = MockAuthService();
+    _authService = SupabaseConfig.projectUrl.isNotEmpty
+        ? SupabaseAuthService()
+        : MockAuthService();
 
     // Mirror external auth state changes (e.g. token expiry, Supabase events).
     _authSubscription =
@@ -113,9 +117,16 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// Skips authentication — transitions directly to guest mode.
-  void continueAsGuest() {
-    state = const AuthState.guest();
+  /// Signs in anonymously via Supabase (or mock) anonymous auth.
+  /// The user gets a real session and can upgrade to email later.
+  Future<void> continueAsGuest() async {
+    state = const AuthState.loading();
+    try {
+      final user = await _authService.signInAnonymously();
+      state = AuthState.authenticated(user);
+    } on AuthException catch (e) {
+      state = AuthState.error(e.message);
+    }
   }
 }
 

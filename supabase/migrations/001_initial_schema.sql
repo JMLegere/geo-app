@@ -1,7 +1,8 @@
--- Fog of World - Initial Database Schema
--- Created for Wave 1, Task 4
+-- Fog of World — Initial Schema
+-- 3 tables: profiles, cell_progress, collected_species
+-- Species data stays client-side (33k IUCN records bundled as JSON asset)
 
--- Users (handled by Supabase Auth, extend with profile)
+-- Player profiles (extends Supabase auth.users)
 CREATE TABLE profiles (
   id UUID REFERENCES auth.users PRIMARY KEY,
   display_name TEXT,
@@ -13,7 +14,7 @@ CREATE TABLE profiles (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Cell progress per user
+-- Per-cell exploration progress
 CREATE TABLE cell_progress (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users NOT NULL,
@@ -28,80 +29,51 @@ CREATE TABLE cell_progress (
   UNIQUE(user_id, cell_id)
 );
 
--- Species catalog (seeded, not user-generated)
-CREATE TABLE species (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  biome TEXT NOT NULL,
-  rarity TEXT NOT NULL,
-  description TEXT,
-  season_availability TEXT[] DEFAULT '{summer,winter}',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- User's collected species
+-- Collected species per user per cell
 CREATE TABLE collected_species (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users NOT NULL,
-  species_id TEXT REFERENCES species NOT NULL,
+  species_id TEXT NOT NULL,
   cell_id TEXT NOT NULL,
   collected_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(user_id, species_id)
+  UNIQUE(user_id, species_id, cell_id)
 );
 
--- Enable Row Level Security
+-- Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cell_progress ENABLE ROW LEVEL SECURITY;
-ALTER TABLE species ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collected_species ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for profiles
-CREATE POLICY "Users can read their own profile"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
+-- Profiles: users can only access their own
+CREATE POLICY "profiles_select_own" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Users can update their own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+-- Cell progress: users can only access their own
+CREATE POLICY "cell_progress_select_own" ON cell_progress FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "cell_progress_insert_own" ON cell_progress FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "cell_progress_update_own" ON cell_progress FOR UPDATE USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own profile"
-  ON profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
+-- Collected species: users can only access their own
+CREATE POLICY "collected_species_select_own" ON collected_species FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "collected_species_insert_own" ON collected_species FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "collected_species_delete_own" ON collected_species FOR DELETE USING (auth.uid() = user_id);
 
--- RLS Policies for cell_progress
-CREATE POLICY "Users can read their own cell progress"
-  ON cell_progress FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own cell progress"
-  ON cell_progress FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own cell progress"
-  ON cell_progress FOR UPDATE
-  USING (auth.uid() = user_id);
-
--- RLS Policies for species (public read, no write)
-CREATE POLICY "Species table is publicly readable"
-  ON species FOR SELECT
-  USING (true);
-
--- RLS Policies for collected_species
-CREATE POLICY "Users can read their own collected species"
-  ON collected_species FOR SELECT
-  USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own collected species"
-  ON collected_species FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete their own collected species"
-  ON collected_species FOR DELETE
-  USING (auth.uid() = user_id);
-
--- Create indexes for performance
+-- Indexes
 CREATE INDEX idx_cell_progress_user_id ON cell_progress(user_id);
 CREATE INDEX idx_cell_progress_cell_id ON cell_progress(cell_id);
 CREATE INDEX idx_collected_species_user_id ON collected_species(user_id);
-CREATE INDEX idx_species_biome ON species(biome);
-CREATE INDEX idx_species_rarity ON species(rarity);
+
+-- Auto-create profile on user signup (including anonymous)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, display_name)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'display_name', 'Explorer'));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
