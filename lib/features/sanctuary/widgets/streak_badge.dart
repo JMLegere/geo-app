@@ -1,0 +1,51 @@
+import 'package:flutter/material.dart';
+
+/// Small pill badge showing the player's daily visit streak.
+///
+/// - When [streak] > 0: flame emoji + "Day N" with warm orange pill background.
+/// - When [streak] == 0: "Start your streak!" in muted italic gray, no flame.
+class StreakBadge extends StatelessWidget {
+  /// Player's current daily visit streak.
+  final int streak;
+
+  const StreakBadge({super.key, required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    if (streak == 0) {
+      return const Text(
+        'Start your streak!',
+        style: TextStyle(
+          fontSize: 13,
+          fontStyle: FontStyle.italic,
+          color: Color(0xFF9CA3AF),
+          letterSpacing: 0.1,
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 5),
+          Text(
+            'Day $streak',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF7C3A00),
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
