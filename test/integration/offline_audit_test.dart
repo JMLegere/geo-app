@@ -59,6 +59,11 @@ void main() {
 
       final violations = <String>[];
       for (final file in files) {
+        // supabase_bootstrap.dart is intentionally allowed in core/config —
+        // it is the single entry point for Supabase SDK initialisation and
+        // must live here to break the auth↔sync circular dependency.
+        if (file.path.endsWith('supabase_bootstrap.dart')) continue;
+
         final content = file.readAsStringSync();
         final found = findNetworkImports(content);
         if (found.isNotEmpty) {
@@ -127,8 +132,10 @@ void main() {
 
         // Allowed: anything under lib/features/sync/
         // Allowed: lib/features/auth/services/supabase_auth_service.dart
+        // Allowed: lib/core/config/supabase_bootstrap.dart (SDK init entry point)
         final isAllowed = path.contains('lib/features/sync/') ||
-            path.endsWith('supabase_auth_service.dart');
+            path.endsWith('supabase_auth_service.dart') ||
+            path.endsWith('supabase_bootstrap.dart');
 
         if (!isAllowed) {
           violations.add(path);

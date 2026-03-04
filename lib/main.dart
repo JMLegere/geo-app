@@ -7,7 +7,7 @@ import 'package:fog_of_world/features/auth/screens/login_screen.dart';
 import 'package:fog_of_world/features/map/map_screen.dart';
 import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
 import 'package:fog_of_world/features/onboarding/screens/onboarding_screen.dart';
-import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 import 'package:fog_of_world/shared/app_theme.dart';
 
 void main() {

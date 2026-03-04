@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 
 void main() {
   group('AuthNotifier initialization', () {

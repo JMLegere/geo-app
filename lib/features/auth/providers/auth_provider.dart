@@ -6,7 +6,7 @@ import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/services/auth_service.dart';
 import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
 import 'package:fog_of_world/features/auth/services/supabase_auth_service.dart';
-import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 
 /// Manages all auth state transitions.
 ///

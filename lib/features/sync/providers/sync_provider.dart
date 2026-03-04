@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 import 'package:fog_of_world/features/sync/models/sync_status.dart';
 
