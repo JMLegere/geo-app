@@ -14,7 +14,7 @@ void main() {
       final container = ProviderContainer();
       // Initialize provider.
       container.read(authProvider);
-      // Let _checkExistingSession() + signInAnonymously() complete.
+      // Let _initializeAuth() + signInAnonymously() complete.
       await Future<void>.delayed(const Duration(milliseconds: 200));
       return container;
     }
@@ -31,7 +31,7 @@ void main() {
       // AuthNotifier.build() returns AuthState.initial() == loading.
       expect(state.status, AuthStatus.loading);
       // NOTE: do NOT call container.dispose() here — addTearDown handles it.
-      // Calling dispose() explicitly here leaves _checkExistingSession() async
+      // Calling dispose() explicitly here leaves _initializeAuth() async
       // work pending, which would try to set state on a disposed provider.
     });
 

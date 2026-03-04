@@ -10,9 +10,9 @@ import 'package:fog_of_world/features/onboarding/screens/onboarding_screen.dart'
 import 'package:fog_of_world/features/sync/services/supabase_bootstrap.dart';
 import 'package:fog_of_world/shared/app_theme.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeSupabase();
+  initializeSupabase(); // Non-blocking — resolves in background.
   runApp(const ProviderScope(child: FogOfWorldApp()));
 }
 
@@ -57,11 +57,42 @@ class FogOfWorldApp extends ConsumerWidget {
 
     // Onboarding complete — use existing auth routing.
     return switch (authState.status) {
-      AuthStatus.authenticated ||
-      AuthStatus.guest ||
-      AuthStatus.loading =>
-        const MapScreen(),
+      AuthStatus.authenticated || AuthStatus.guest => const MapScreen(),
+      AuthStatus.loading => const _LoadingSplash(),
       _ => const LoginScreen(),
     };
+  }
+}
+
+/// Lightweight splash shown while Supabase initializes and auth resolves.
+///
+/// Replaces the previous behavior of routing [AuthStatus.loading] to
+/// [MapScreen], which triggered expensive Voronoi cell computation and
+/// location service startup before auth was ready — freezing the UI on web.
+class _LoadingSplash extends StatelessWidget {
+  const _LoadingSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D1B2A), // AppTheme._darkSurface
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('🌍', style: TextStyle(fontSize: 48)),
+            SizedBox(height: 20),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: Color(0xFF4FC3F7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

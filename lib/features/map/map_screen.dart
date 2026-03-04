@@ -189,20 +189,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _removeTextLabels();
     ref.read(mapStateProvider.notifier).markReady();
 
-    // Trigger initial fog overlay render with the default map center.
-    // On web, the keyboard location service may not have emitted yet when
-    // the style finishes loading, leaving the fog overlay empty.
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
-    if (fogOverlayController.renderData.isEmpty && _mapController != null) {
-      final camera = _mapController!.getCamera();
-      fogOverlayController.update(
-        cameraLat: camera.center.lat.toDouble(),
-        cameraLon: camera.center.lng.toDouble(),
-        zoom: camera.zoom,
-        viewportSize: MediaQuery.of(context).size,
-      );
-      setState(() {});
-    }
+    // Defer the initial fog computation to the next frame so the map base
+    // tiles can render first. On web (single-threaded JS) cold-cache Voronoi
+    // triangulation blocks the main thread for 100-500ms — deferring lets
+    // the user see the map immediately instead of a frozen white screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _mapController == null) return;
+      final fogOverlayController = ref.read(fogOverlayControllerProvider);
+      if (fogOverlayController.renderData.isEmpty) {
+        final camera = _mapController!.getCamera();
+        fogOverlayController.update(
+          cameraLat: camera.center.lat.toDouble(),
+          cameraLon: camera.center.lng.toDouble(),
+          zoom: camera.zoom,
+          viewportSize: MediaQuery.of(context).size,
+        );
+        setState(() {});
+      }
+    });
   }
 
   /// Strips all symbol (text/icon) layers from the map style.
