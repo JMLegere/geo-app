@@ -5,7 +5,6 @@ import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/season.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
