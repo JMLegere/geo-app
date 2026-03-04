@@ -68,15 +68,8 @@ class CollectionRepository {
   }
 
   Future<int> clearUserCollections(String userId) async {
-    final collected = await _db.getCollectedSpeciesByUser(userId);
-    int deleted = 0;
-    for (final item in collected) {
-      deleted += await _db.deleteCollectedSpecies(
-        item.userId,
-        item.speciesId,
-        item.cellId,
-      );
-    }
-    return deleted;
+    return (_db.delete(_db.localCollectedSpeciesTable)
+          ..where((t) => t.userId.equals(userId)))
+        .go();
   }
 }

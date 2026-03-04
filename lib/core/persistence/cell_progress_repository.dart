@@ -93,49 +93,53 @@ class CellProgressRepository {
     String cellId,
     double distance,
   ) async {
-    final existing = await _db.getCellProgress(userId, cellId);
-    if (existing == null) {
-      throw Exception('Cell progress not found: $userId/$cellId');
-    }
+    await _db.transaction(() async {
+      final existing = await _db.getCellProgress(userId, cellId);
+      if (existing == null) {
+        throw Exception('Cell progress not found: $userId/$cellId');
+      }
 
-    await update(
-      userId: userId,
-      cellId: cellId,
-      distanceWalked: existing.distanceWalked + distance,
-    );
+      await update(
+        userId: userId,
+        cellId: cellId,
+        distanceWalked: existing.distanceWalked + distance,
+      );
+    });
   }
 
   Future<void> incrementVisitCount(String userId, String cellId) async {
-    final existing = await _db.getCellProgress(userId, cellId);
-    if (existing == null) {
-      throw Exception('Cell progress not found: $userId/$cellId');
-    }
+    await _db.transaction(() async {
+      final existing = await _db.getCellProgress(userId, cellId);
+      if (existing == null) {
+        throw Exception('Cell progress not found: $userId/$cellId');
+      }
 
-    await update(
-      userId: userId,
-      cellId: cellId,
-      visitCount: existing.visitCount + 1,
-      lastVisited: DateTime.now(),
-    );
+      await update(
+        userId: userId,
+        cellId: cellId,
+        visitCount: existing.visitCount + 1,
+        lastVisited: DateTime.now(),
+      );
+    });
   }
 
   Future<List<LocalCellProgress>> getCellsByFogState(
     String userId,
     FogState state,
   ) async {
-    final allProgress = await _db.getCellProgressByUser(userId);
-    return allProgress
-        .where((p) => FogState.fromString(p.fogState) == state)
-        .toList();
+    return (_db.select(_db.localCellProgressTable)
+          ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
+        .get();
   }
 
   Future<Map<FogState, int>> getCellCountByFogState(String userId) async {
-    final allProgress = await _db.getCellProgressByUser(userId);
     final counts = <FogState, int>{};
     for (final state in FogState.values) {
-      counts[state] = allProgress
-          .where((p) => FogState.fromString(p.fogState) == state)
-          .length;
+      final count = await (_db.select(_db.localCellProgressTable)
+            ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
+          .get()
+          .then((rows) => rows.length);
+      counts[state] = count;
     }
     return counts;
   }

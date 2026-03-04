@@ -81,15 +81,17 @@ class ProfileRepository {
 
   /// Add distance to total
   Future<void> addDistance(String userId, double distanceKm) async {
-    final existing = await _db.getPlayerProfile(userId);
-    if (existing == null) {
-      throw Exception('Player profile not found: $userId');
-    }
+    await _db.transaction(() async {
+      final existing = await _db.getPlayerProfile(userId);
+      if (existing == null) {
+        throw Exception('Player profile not found: $userId');
+      }
 
-    await update(
-      userId: userId,
-      totalDistanceKm: existing.totalDistanceKm + distanceKm,
-    );
+      await update(
+        userId: userId,
+        totalDistanceKm: existing.totalDistanceKm + distanceKm,
+      );
+    });
   }
 
   /// Update current season
@@ -99,21 +101,23 @@ class ProfileRepository {
 
   /// Increment current streak
   Future<void> incrementCurrentStreak(String userId) async {
-    final existing = await _db.getPlayerProfile(userId);
-    if (existing == null) {
-      throw Exception('Player profile not found: $userId');
-    }
+    await _db.transaction(() async {
+      final existing = await _db.getPlayerProfile(userId);
+      if (existing == null) {
+        throw Exception('Player profile not found: $userId');
+      }
 
-    final newStreak = existing.currentStreak + 1;
-    final newLongest = newStreak > existing.longestStreak
-        ? newStreak
-        : existing.longestStreak;
+      final newStreak = existing.currentStreak + 1;
+      final newLongest = newStreak > existing.longestStreak
+          ? newStreak
+          : existing.longestStreak;
 
-    await update(
-      userId: userId,
-      currentStreak: newStreak,
-      longestStreak: newLongest,
-    );
+      await update(
+        userId: userId,
+        currentStreak: newStreak,
+        longestStreak: newLongest,
+      );
+    });
   }
 
   /// Reset current streak
