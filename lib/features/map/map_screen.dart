@@ -91,6 +91,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   static const _fogBaseLayerId = 'fog-base';
   static const _fogMidSrcId = 'fog-mid-src';
   static const _fogMidLayerId = 'fog-mid';
+  static const _fogBorderSrcId = 'fog-border-src';
+  static const _fogBorderLayerId = 'fog-border';
 
   @override
   void initState() {
@@ -184,6 +186,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         },
       ));
 
+      // Unexplored cell borders: line outlines on top of the opaque base fog.
+      // Gives the player a hint that cells are nearby without revealing content.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _fogBorderSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(LineLayer(
+        id: _fogBorderLayerId,
+        sourceId: _fogBorderSrcId,
+        paint: {
+          'line-color': '#4a5568',
+          'line-width': 1.0,
+          'line-opacity': 0.4,
+        },
+      ));
+
       _fogLayersInitialized = true;
     } catch (e) {
       // If layer initialization fails, fall back gracefully.
@@ -192,6 +211,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   /// Updates the fog GeoJSON sources with new data from the controller.
+  ///
+  /// All three sources are dispatched simultaneously via [Future.wait] to
+  /// prevent a single-frame flash where the base fog has holes punched but
+  /// the mid fog fill hasn't been applied yet.
   Future<void> _updateFogSources() async {
     final controller = _mapController;
     if (controller == null || !_fogLayersInitialized) return;
@@ -199,14 +222,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
     try {
-      await controller.updateGeoJsonSource(
-        id: _fogBaseSrcId,
-        data: fogOverlayController.baseFogGeoJson,
-      );
-      await controller.updateGeoJsonSource(
-        id: _fogMidSrcId,
-        data: fogOverlayController.midFogGeoJson,
-      );
+      await Future.wait([
+        controller.updateGeoJsonSource(
+          id: _fogBaseSrcId,
+          data: fogOverlayController.baseFogGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _fogMidSrcId,
+          data: fogOverlayController.midFogGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _fogBorderSrcId,
+          data: fogOverlayController.unexploredBorderGeoJson,
+        ),
+      ]);
     } catch (e) {
       debugPrint('Failed to update fog sources: $e');
     }
