@@ -7,6 +7,7 @@ import 'package:maplibre/maplibre.dart';
 import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
+import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
 import 'package:fog_of_world/features/location/services/location_service.dart';
@@ -58,6 +59,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   StreamSubscription<SimulatedLocation>? _locationSubscription;
   StreamSubscription<dynamic>? _discoverySubscription;
+  StreamSubscription<dynamic>? _fogCellSubscription;
 
   bool _showDebugHud = false;
 
@@ -89,6 +91,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _discoverySubscription = discoveryService.onDiscovery.listen((event) {
       ref.read(discoveryProvider.notifier).showDiscovery(event);
     });
+
+    // Wire fog resolver → player stats: increment cells observed on each new visit.
+    final fogResolver = ref.read(fogResolverProvider);
+    _fogCellSubscription = fogResolver.onVisitedCellAdded.listen((_) {
+      ref.read(playerProvider.notifier).incrementCellsObserved();
+    });
   }
 
   Future<void> _checkLocationPermission() async {
@@ -112,6 +120,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _fogUpdateTimer?.cancel();
     _locationSubscription?.cancel();
     _discoverySubscription?.cancel();
+    _fogCellSubscription?.cancel();
     _locationService.stop();
     super.dispose();
   }
@@ -375,12 +384,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final cameraController = ref.read(cameraControllerProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
-    if (event is MapEventStartMoveCamera) {
-      if (event.reason == CameraChangeReason.apiGesture) {
-        cameraController.onUserGesture();
-        ref.read(cameraModeProvider.notifier).setFree();
-      }
-    }
+    // Camera is locked to the player — ignore user pan gestures.
 
     if (event is MapEventMoveCamera) {
       final camera = event.camera;
