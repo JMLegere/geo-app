@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
 
+import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
@@ -12,7 +13,6 @@ import 'package:fog_of_world/features/location/services/location_service.dart';
 import 'package:fog_of_world/features/location/services/location_simulator.dart';
 import 'package:fog_of_world/features/location/services/real_gps_service.dart';
 import 'package:fog_of_world/features/location/widgets/location_permission_banner.dart';
-import 'package:fog_of_world/features/map/layers/fog_canvas_overlay.dart';
 import 'package:fog_of_world/features/map/layers/player_marker_widget.dart';
 import 'package:fog_of_world/features/map/providers/camera_controller_provider.dart';
 import 'package:fog_of_world/features/map/providers/camera_mode_provider.dart';
@@ -20,6 +20,7 @@ import 'package:fog_of_world/features/map/providers/discovery_service_provider.d
 import 'package:fog_of_world/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
+import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
 import 'package:fog_of_world/features/map/widgets/map_controls.dart';
 import 'package:fog_of_world/features/map/widgets/status_bar.dart';
@@ -29,16 +30,15 @@ import 'package:fog_of_world/shared/widgets/error_boundary.dart';
 /// Main map screen — the primary game view.
 ///
 /// Composes all map-phase layers in a [Stack]:
-/// 1. MapLibre base map (tiles)
-/// 2. [FogCanvasOverlay] full-screen fog of war
-/// 3. [PlayerMarkerWidget] geo-anchored via [WidgetLayer]
-/// 4. [StatusBar] translucent top panel
-/// 5. [DebugHud] toggle-able diagnostics overlay
-/// 6. [MapControls] recenter + debug FABs (bottom-right)
+/// 1. MapLibre base map (tiles) + native fog fill layers
+/// 2. [PlayerMarkerWidget] geo-anchored via [WidgetLayer]
+/// 3. [StatusBar] translucent top panel
+/// 4. [DebugHud] toggle-able diagnostics overlay
+/// 5. [MapControls] recenter + debug FABs (bottom-right)
 ///
-/// All services are injected via Riverpod providers. The map screen
-/// orchestrates the location → fog → camera → overlay pipeline by
-/// subscribing to the location service stream and coordinating updates.
+/// Fog is rendered as 2 MapLibre native GeoJSON fill layers that are
+/// geo-pinned to the map at 60 fps GPU-accelerated. This eliminates the
+/// Canvas overlay drift problem entirely.
 ///
 /// ## MapLibre API notes
 /// - `Position(lng, lat)` — longitude FIRST, latitude second.
@@ -61,43 +61,36 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   bool _showDebugHud = false;
 
-  /// Live camera position — updated on every MapEventMoveCamera (60 fps).
-  /// Passed to FogCanvasPainter for sub-frame offset compensation so the fog
-  /// tracks the map smoothly between full cell re-projections.
-  double _currentCameraLat = kDefaultMapLat;
-  double _currentCameraLon = kDefaultMapLon;
-  double _currentCameraZoom = kDefaultZoom;
+  /// Whether the MapLibre fog sources/layers have been added to the map.
+  bool _fogLayersInitialized = false;
 
   /// Throttle fog overlay updates during camera movement to ~10 fps.
-  /// Camera move events fire at 60 fps during gestures; recomputing 1700+
-  /// cells each frame is prohibitive on web.
   DateTime _lastFogUpdateTime = DateTime(0);
   Timer? _fogUpdateTimer;
+
+  // -- MapLibre source/layer IDs for the fog system --
+  static const _fogBaseSrcId = 'fog-base-src';
+  static const _fogBaseLayerId = 'fog-base';
+  static const _fogMidSrcId = 'fog-mid-src';
+  static const _fogMidLayerId = 'fog-mid';
 
   @override
   void initState() {
     super.initState();
 
-    // Start location tracking and subscribe to position updates.
     _locationService = ref.read(locationServiceProvider);
     _locationService.start();
     _locationSubscription =
         _locationService.filteredLocationStream.listen(_onLocationUpdate);
 
-    // Check GPS permission asynchronously and surface any denial to the UI.
     _checkLocationPermission();
 
-    // Forward discovery events to the DiscoveryNotifier for UI display.
     final discoveryService = ref.read(discoveryServiceProvider);
     _discoverySubscription = discoveryService.onDiscovery.listen((event) {
       ref.read(discoveryProvider.notifier).showDiscovery(event);
     });
   }
 
-  /// Checks GPS permission and updates [locationProvider] with any error.
-  ///
-  /// Called once after [initState]. For non-GPS modes (simulation, keyboard)
-  /// this is a no-op. Never throws — errors are surfaced via provider state.
   Future<void> _checkLocationPermission() async {
     final status = await _locationService.checkPermission();
     if (!mounted) return;
@@ -124,6 +117,127 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   // ---------------------------------------------------------------------------
+  // Fog layer management (MapLibre native GeoJSON layers)
+  // ---------------------------------------------------------------------------
+
+  /// Adds the fog GeoJSON sources and fill layers to the map.
+  ///
+  /// Called once in [_onStyleLoaded]. The layers are:
+  /// - `fog-base`: opaque world polygon with holes for revealed cells
+  /// - `fog-mid`: semi-transparent fill for hidden/concealed cells
+  ///
+  /// After initialization, [_updateFogSources] updates the GeoJSON data
+  /// on camera moves and location changes.
+  Future<void> _initFogLayers() async {
+    final controller = _mapController;
+    if (controller == null || _fogLayersInitialized) return;
+
+    try {
+      // Base fog: opaque world polygon (holes punched for revealed cells).
+      await controller.addSource(
+        GeoJsonSource(id: _fogBaseSrcId, data: FogGeoJsonBuilder.fullWorldFog),
+      );
+      await controller.addLayer(FillLayer(
+        id: _fogBaseLayerId,
+        sourceId: _fogBaseSrcId,
+        paint: {'fill-color': '#161620', 'fill-opacity': 1.0},
+      ));
+
+      // Mid fog: semi-transparent polygons for hidden/concealed cells.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _fogMidSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _fogMidLayerId,
+        sourceId: _fogMidSrcId,
+        paint: {
+          'fill-color': '#161620',
+          // Use data-driven opacity from the 'density' property on each Feature.
+          'fill-opacity': ['get', 'density'],
+        },
+      ));
+
+      _fogLayersInitialized = true;
+    } catch (e) {
+      // If layer initialization fails, fall back gracefully.
+      debugPrint('Failed to initialize fog layers: $e');
+    }
+  }
+
+  /// Updates the fog GeoJSON sources with new data from the controller.
+  Future<void> _updateFogSources() async {
+    final controller = _mapController;
+    if (controller == null || !_fogLayersInitialized) return;
+
+    final fogOverlayController = ref.read(fogOverlayControllerProvider);
+
+    try {
+      await controller.updateGeoJsonSource(
+        id: _fogBaseSrcId,
+        data: fogOverlayController.baseFogGeoJson,
+      );
+      await controller.updateGeoJsonSource(
+        id: _fogMidSrcId,
+        data: fogOverlayController.midFogGeoJson,
+      );
+    } catch (e) {
+      debugPrint('Failed to update fog sources: $e');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Zoom-to-fit
+  // ---------------------------------------------------------------------------
+
+  /// Fits the camera to the bounding box of all visited cells.
+  ///
+  /// If there are no visited cells, does nothing (camera stays at default).
+  /// Called once after fog layers are first populated.
+  void _zoomToFitExplored() {
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final fogResolver = ref.read(fogResolverProvider);
+    final visitedCells = fogResolver.visitedCellIds;
+    if (visitedCells.isEmpty) return;
+
+    final cellService = ref.read(cellServiceProvider);
+
+    var minLat = 90.0;
+    var maxLat = -90.0;
+    var minLon = 180.0;
+    var maxLon = -180.0;
+
+    for (final cellId in visitedCells) {
+      final center = cellService.getCellCenter(cellId);
+      if (center.lat < minLat) minLat = center.lat;
+      if (center.lat > maxLat) maxLat = center.lat;
+      if (center.lon < minLon) minLon = center.lon;
+      if (center.lon > maxLon) maxLon = center.lon;
+    }
+
+    // Add padding around the bounding box (~500m in lat/lon).
+    const pad = 0.005;
+    minLat -= pad;
+    maxLat += pad;
+    minLon -= pad;
+    maxLon += pad;
+
+    controller.fitBounds(
+      bounds: LngLatBounds(
+        longitudeWest: minLon,
+        longitudeEast: maxLon,
+        latitudeSouth: minLat,
+        latitudeNorth: maxLat,
+      ),
+      padding: const EdgeInsets.all(50),
+      nativeDuration: const Duration(seconds: 1),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Location handling
   // ---------------------------------------------------------------------------
 
@@ -136,7 +250,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     fogResolver.onLocationUpdate(loc.position.lat, loc.position.lon);
 
     // 2. Push position into Riverpod location state.
-    //    Also update the GPS accuracy error flag based on threshold.
     final locationNotifier = ref.read(locationProvider.notifier);
     locationNotifier.updateLocation(loc.position, loc.accuracy);
 
@@ -144,7 +257,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (_locationService.mode == LocationMode.realGps) {
       final currentError = ref.read(locationProvider).locationError;
       final isLowAccuracy = loc.accuracy > kGpsAccuracyThreshold;
-      // Only update when the flag changes to avoid spurious rebuilds.
       if (isLowAccuracy && currentError != LocationError.lowAccuracy) {
         locationNotifier.setError(LocationError.lowAccuracy);
       } else if (!isLowAccuracy && currentError == LocationError.lowAccuracy) {
@@ -170,7 +282,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             loc.position.lat,
             loc.position.lon,
           );
-      setState(() {});
+      _updateFogSources();
     }
   }
 
@@ -182,7 +294,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _mapController = controller;
     final cameraController = ref.read(cameraControllerProvider);
 
-    // Wire camera follow mode: CameraController delegates movement to MapLibre.
     cameraController.onCameraMove = (lat, lon) {
       // Position(lng, lat) — longitude first!
       controller.animateCamera(
@@ -196,38 +307,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _removeTextLabels();
     ref.read(mapStateProvider.notifier).markReady();
 
-    // Defer the initial fog computation to the next frame so the map base
-    // tiles can render first. Uses updateAsync to process cells in chunks,
-    // yielding to the event loop between batches so the browser can paint.
-    // This prevents cold-cache Voronoi triangulation from freezing the UI.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Initialize fog layers, then compute initial fog and zoom to fit.
+    // Capture viewport size synchronously before the async gap.
+    final viewportSize = MediaQuery.of(context).size;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _mapController == null) return;
+
+      await _initFogLayers();
+
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
-      if (fogOverlayController.renderData.isEmpty) {
-        final camera = _mapController!.getCamera();
-        fogOverlayController.updateAsync(
-          cameraLat: camera.center.lat.toDouble(),
-          cameraLon: camera.center.lng.toDouble(),
-          zoom: camera.zoom,
-          viewportSize: MediaQuery.of(context).size,
-          onBatchReady: () {
-            if (mounted) setState(() {});
-          },
-        );
+      final camera = _mapController!.getCamera();
+
+      await fogOverlayController.updateAsync(
+        cameraLat: camera.center.lat.toDouble(),
+        cameraLon: camera.center.lng.toDouble(),
+        zoom: camera.zoom,
+        viewportSize: viewportSize,
+        onBatchReady: () {
+          if (mounted) _updateFogSources();
+        },
+      );
+
+      if (mounted) {
+        await _updateFogSources();
+        _zoomToFitExplored();
       }
     });
   }
 
   /// Strips all symbol (text/icon) layers from the map style.
-  /// The fog overlay covers the map, making labels useless clutter.
-  ///
-  /// Layer IDs match the OpenFreeMap Positron style. Removals are
-  /// wrapped in try/catch so a style change won't break the app.
   void _removeTextLabels() {
     final controller = _mapController;
     if (controller == null) return;
 
-    // Every symbol layer in the OpenFreeMap Positron style.
     const symbolLayerIds = [
       'waterway_line_label',
       'water_name_point_label',
@@ -264,7 +376,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
     if (event is MapEventStartMoveCamera) {
-      // User gesture → release follow mode.
       if (event.reason == CameraChangeReason.apiGesture) {
         cameraController.onUserGesture();
         ref.read(cameraModeProvider.notifier).setFree();
@@ -274,53 +385,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (event is MapEventMoveCamera) {
       final camera = event.camera;
 
-      // Keep zoom in sync (cheap — just a provider write).
       ref.read(mapStateProvider.notifier).updateZoom(camera.zoom);
 
-      // ALWAYS update live camera state (unthrottled). The painter uses this
-      // for sub-frame offset compensation via canvas.translate(), keeping the
-      // fog pinned to the map at 60 fps without recomputing cell boundaries.
-      if (mounted) {
-        _currentCameraLat = camera.center.lat.toDouble();
-        _currentCameraLon = camera.center.lng.toDouble();
-        _currentCameraZoom = camera.zoom;
-        setState(() {});
+      // Throttle fog GeoJSON rebuilds to ~10 fps during camera movement.
+      // MapLibre renders the existing GeoJSON at 60fps GPU-side — no drift.
+      const throttleMs = 100;
+      final now = DateTime.now();
+      final elapsed = now.difference(_lastFogUpdateTime).inMilliseconds;
 
-        // Throttle full cell re-projection (~1700 cells) to ~10 fps.
-        // This discovers new cells at viewport edges and updates screen vertices.
-        const throttleMs = 100;
-        final now = DateTime.now();
-        final elapsed = now.difference(_lastFogUpdateTime).inMilliseconds;
-
-        if (elapsed >= throttleMs) {
-          fogOverlayController.update(
-            cameraLat: _currentCameraLat,
-            cameraLon: _currentCameraLon,
-            zoom: _currentCameraZoom,
-            viewportSize: MediaQuery.of(context).size,
-          );
-          _lastFogUpdateTime = now;
-          _fogUpdateTimer?.cancel();
-        } else {
-          // Schedule trailing update so the final camera position renders.
-          _fogUpdateTimer?.cancel();
-          _fogUpdateTimer = Timer(
-            Duration(milliseconds: throttleMs - elapsed),
-            () {
-              if (mounted && _mapController != null) {
-                final cam = _mapController!.getCamera();
-                fogOverlayController.update(
-                  cameraLat: cam.center.lat.toDouble(),
-                  cameraLon: cam.center.lng.toDouble(),
-                  zoom: cam.zoom,
-                  viewportSize: MediaQuery.of(context).size,
-                );
-                if (mounted) setState(() {});
-                _lastFogUpdateTime = DateTime.now();
-              }
-            },
-          );
-        }
+      if (elapsed >= throttleMs) {
+        fogOverlayController.update(
+          cameraLat: camera.center.lat.toDouble(),
+          cameraLon: camera.center.lng.toDouble(),
+          zoom: camera.zoom,
+          viewportSize: MediaQuery.of(context).size,
+        );
+        _updateFogSources();
+        _lastFogUpdateTime = now;
+        _fogUpdateTimer?.cancel();
+      } else {
+        _fogUpdateTimer?.cancel();
+        _fogUpdateTimer = Timer(
+          Duration(milliseconds: throttleMs - elapsed),
+          () {
+            if (mounted && _mapController != null) {
+              final cam = _mapController!.getCamera();
+              fogOverlayController.update(
+                cameraLat: cam.center.lat.toDouble(),
+                cameraLon: cam.center.lng.toDouble(),
+                zoom: cam.zoom,
+                viewportSize: MediaQuery.of(context).size,
+              );
+              _updateFogSources();
+              _lastFogUpdateTime = DateTime.now();
+            }
+          },
+        );
       }
     }
   }
@@ -343,7 +443,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       child: Scaffold(
         body: Stack(
           children: [
-          // ── Layer 1: MapLibre base map ─────────────────────────────────────
+          // ── Layer 1: MapLibre base map + native fog fill layers ────────────
           MapLibreMap(
             options: MapOptions(
               initStyle: 'https://tiles.openfreemap.org/styles/positron',
@@ -356,7 +456,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             onStyleLoaded: _onStyleLoaded,
             onEvent: _onMapEvent,
             children: [
-              // ── Layer 3: Player marker (geo-anchored) ───────────────────
+              // ── Layer 2: Player marker (geo-anchored) ───────────────────
               if (position != null)
                 WidgetLayer(
                   markers: [
@@ -371,20 +471,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ],
           ),
 
-          // ── Layer 2: Fog canvas overlay (full-screen) ──────────────────────
-          FogCanvasOverlay(
-            cells: fogOverlayController.renderData,
-            renderVersion: fogOverlayController.renderVersion,
-            lastCameraLat: fogOverlayController.lastCameraLat,
-            lastCameraLon: fogOverlayController.lastCameraLon,
-            lastZoom: fogOverlayController.lastZoom,
-            currentCameraLat: _currentCameraLat,
-            currentCameraLon: _currentCameraLon,
-            currentZoom: _currentCameraZoom,
-            viewportSize: MediaQuery.of(context).size,
-          ),
-
-          // ── Layer 4: Status bar ────────────────────────────────────────────
+          // ── Layer 3: Status bar ────────────────────────────────────────────
           const Positioned(
             top: 0,
             left: 0,
@@ -392,8 +479,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: StatusBar(),
           ),
 
-          // ── Layer 4.5: Discovery notification overlay ──────────────────────
-          // Positioned below the StatusBar (safe area + status bar height).
+          // ── Layer 3.5: Discovery notification overlay ─────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 64,
             left: 16,
@@ -401,8 +487,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: const DiscoveryNotificationOverlay(),
           ),
 
-          // ── Layer 4.6: Location permission banner ─────────────────────────
-          // Dismissable banner shown when GPS is denied or services are off.
+          // ── Layer 3.6: Location permission banner ─────────────────────────
           Positioned(
             top: MediaQuery.of(context).padding.top + 56,
             left: 0,
@@ -410,7 +495,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: const LocationPermissionBanner(),
           ),
 
-          // ── Layer 4.7: Low accuracy indicator ─────────────────────────────
+          // ── Layer 3.7: Low accuracy indicator ─────────────────────────────
           if (locationState.locationError == LocationError.lowAccuracy)
             Positioned(
               bottom: 72,
@@ -450,7 +535,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // ── Layer 5: Debug HUD (toggle-able) ──────────────────────────────
+          // ── Layer 4: Debug HUD (toggle-able) ──────────────────────────────
           if (_showDebugHud)
             Positioned(
               left: 8,
@@ -463,7 +548,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // ── Layer 6: Map controls (recenter + debug) ──────────────────────
+          // ── Layer 5: Map controls (recenter + debug) ──────────────────────
           Positioned(
             right: 16,
             bottom: 16,
@@ -491,9 +576,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 }
 
 /// Fallback shown by [ErrorBoundary] if the map screen's widget tree crashes.
-///
-/// Keeps the scaffold structure intact and gives users a clear, friendly
-/// message — no stack traces, no raw exception details.
 class _MapErrorFallback extends StatelessWidget {
   const _MapErrorFallback();
 

@@ -1,17 +1,18 @@
+import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 import 'package:fog_of_world/core/cells/cell_service.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
 import 'package:fog_of_world/features/map/controllers/fog_overlay_controller.dart';
+import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 
 // ---------------------------------------------------------------------------
-// MockCellService — simple 10×10 degree grid.
+// MockCellService — simple 1°×1° degree grid.
 //
-// Cell ID: "cell_{latBucket}_{lonBucket}" where bucket = floor(lat/10) etc.
-// Each cell covers a 10°×10° area for easy testing.
+// Cell ID: "cell_{latBucket}_{lonBucket}" where bucket = floor(lat) etc.
+// Each cell covers a 1°×1° area for easy testing.
 // ---------------------------------------------------------------------------
 class MockCellService implements CellService {
   @override
@@ -109,29 +110,48 @@ FogOverlayController _makeController({
   );
 }
 
+/// Parses a GeoJSON string and returns the decoded map.
+Map<String, dynamic> _parseGeoJson(String geoJson) {
+  return jsonDecode(geoJson) as Map<String, dynamic>;
+}
+
+/// Returns the list of features from a GeoJSON FeatureCollection string.
+List<dynamic> _getFeatures(String geoJson) {
+  final parsed = _parseGeoJson(geoJson);
+  return parsed['features'] as List<dynamic>;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 void main() {
   group('FogOverlayController', () {
-    // -------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
     // Initial state
-    // -------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
 
     test('renderVersion starts at 0', () {
       final controller = _makeController();
       expect(controller.renderVersion, equals(0));
     });
 
-    test('renderData is empty before first update', () {
+    test('baseFogGeoJson is full world fog before first update', () {
       final controller = _makeController();
-      expect(controller.renderData, isEmpty);
+      expect(controller.baseFogGeoJson, equals(FogGeoJsonBuilder.fullWorldFog));
     });
 
-    // -------------------------------------------------------------------------
+    test('midFogGeoJson is empty before first update', () {
+      final controller = _makeController();
+      expect(
+        controller.midFogGeoJson,
+        equals(FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+    });
+
+    // -----------------------------------------------------------------------
     // update — version increment
-    // -------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
 
     test('renderVersion increments on each update call', () {
       final controller = _makeController();
@@ -161,231 +181,8 @@ void main() {
       expect(controller.renderVersion, equals(3));
     });
 
-    // -------------------------------------------------------------------------
-    // update — undetected cells excluded
-    // -------------------------------------------------------------------------
-
-    test('undetected cells are excluded from renderData', () {
-      final cellService = MockCellService();
-      // No location update → all cells are undetected.
-      final fogResolver = FogStateResolver(cellService);
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      // With no visited cells, all resolved states are undetected.
-      for (final cell in controller.renderData) {
-        expect(cell.fogState, isNot(equals(FogState.undetected)));
-      }
-    });
-
-    // -------------------------------------------------------------------------
-    // update — visible cells produced after location update
-    // -------------------------------------------------------------------------
-
-    test('update produces CellRenderData for visible non-undetected cells', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-
-      // Visit the camera location — that cell and neighbors become non-undetected.
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      // At minimum the current cell (observed) should appear.
-      expect(controller.renderData, isNotEmpty);
-
-      for (final cell in controller.renderData) {
-        expect(cell.fogState, isNot(equals(FogState.undetected)));
-      }
-    });
-
-    test('current cell appears as observed in renderData', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      final currentCellId = fogResolver.currentCellId!;
-      final observedCell = controller.renderData
-          .where((c) => c.cellId == currentCellId)
-          .firstOrNull;
-
-      expect(observedCell, isNotNull);
-      expect(observedCell!.fogState, equals(FogState.observed));
-    });
-
-    // -------------------------------------------------------------------------
-    // update — screen vertices validity
-    // -------------------------------------------------------------------------
-
-    test('screen vertices are valid Offsets (finite, not NaN)', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      for (final cell in controller.renderData) {
-        for (final vertex in cell.screenVertices) {
-          expect(vertex.dx.isFinite, isTrue,
-              reason: 'vertex.dx is finite for cell ${cell.cellId}');
-          expect(vertex.dy.isFinite, isTrue,
-              reason: 'vertex.dy is finite for cell ${cell.cellId}');
-          expect(vertex.dx.isNaN, isFalse,
-              reason: 'vertex.dx is not NaN for cell ${cell.cellId}');
-          expect(vertex.dy.isNaN, isFalse,
-              reason: 'vertex.dy is not NaN for cell ${cell.cellId}');
-        }
-      }
-    });
-
-    test('observed cell has at least 3 screen vertices', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      final currentCellId = fogResolver.currentCellId!;
-      final observedCell = controller.renderData
-          .where((c) => c.cellId == currentCellId)
-          .firstOrNull;
-
-      // Current cell must be in render data with a valid polygon.
-      expect(observedCell, isNotNull);
-      expect(observedCell!.screenVertices.length, greaterThanOrEqualTo(3));
-
-      // All vertices must be finite and non-NaN (belt-and-suspenders with the
-      // dedicated finite-values test, but explicit per the spec requirement).
-      for (final v in observedCell.screenVertices) {
-        expect(v.dx.isFinite && !v.dx.isNaN, isTrue,
-            reason: 'vertex.dx must be finite');
-        expect(v.dy.isFinite && !v.dy.isNaN, isTrue,
-            reason: 'vertex.dy must be finite');
-      }
-    });
-
-    // -------------------------------------------------------------------------
-    // update — neighbor expansion
-    // -------------------------------------------------------------------------
-
-    test('renderData includes neighbor cells (unexplored) after location update', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      // Neighbors of the current cell should be concealed.
-      final concealedCells = controller.renderData
-          .where((c) => c.fogState == FogState.concealed)
-          .toList();
-
-      expect(concealedCells, isNotEmpty);
-    });
-
-    // -------------------------------------------------------------------------
-    // Repeated updates
-    // -------------------------------------------------------------------------
-
-    test('repeated updates with same camera produce stable renderData length', () {
-      final cellService = MockCellService();
-      final fogResolver = FogStateResolver(cellService);
-      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
-
-      final controller = FogOverlayController(
-        cellService: cellService,
-        fogResolver: fogResolver,
-        sampleStepPx: 80.0,
-      );
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-      final firstCount = controller.renderData.length;
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-      final secondCount = controller.renderData.length;
-
-      expect(secondCount, equals(firstCount));
-    });
-
-    test('renderVersion increments even when renderData is empty', () {
-      // No location updates → all cells undetected → empty renderData.
+    test('renderVersion increments even when no cells are visited', () {
+      // No location updates → all cells undetected → no holes in base fog.
       final controller = _makeController();
 
       controller.update(
@@ -396,14 +193,231 @@ void main() {
       );
 
       expect(controller.renderVersion, equals(1));
-      expect(controller.renderData, isEmpty);
     });
 
-    // -------------------------------------------------------------------------
-    // Different zoom levels
-    // -------------------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // update — base fog GeoJSON (world polygon with holes)
+    // -----------------------------------------------------------------------
 
-    test('lower zoom produces more cells in renderData (wider viewport coverage)', () {
+    test('baseFogGeoJson has no holes when no cells are visited', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      // No location update → all cells undetected.
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      // The base fog should be the full world polygon (no holes).
+      final features = _getFeatures(controller.baseFogGeoJson);
+      expect(features.length, equals(1));
+
+      final geometry = features[0]['geometry'] as Map<String, dynamic>;
+      expect(geometry['type'], equals('Polygon'));
+
+      final coordinates = geometry['coordinates'] as List<dynamic>;
+      // Only the exterior ring — no hole rings.
+      expect(coordinates.length, equals(1),
+          reason: 'No holes should be present when no cells are visited');
+    });
+
+    test('baseFogGeoJson has holes after visiting a location', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      // Visit the camera location → current cell becomes observed,
+      // neighbors become concealed/hidden.
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final features = _getFeatures(controller.baseFogGeoJson);
+      expect(features.length, equals(1));
+
+      final geometry = features[0]['geometry'] as Map<String, dynamic>;
+      final coordinates = geometry['coordinates'] as List<dynamic>;
+      // Should have more than just the exterior ring (holes for revealed cells).
+      expect(coordinates.length, greaterThan(1),
+          reason: 'Holes should be punched for observed/hidden/concealed cells');
+    });
+
+    test('baseFogGeoJson hole coordinates are valid closed rings', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final features = _getFeatures(controller.baseFogGeoJson);
+      final geometry = features[0]['geometry'] as Map<String, dynamic>;
+      final coordinates = geometry['coordinates'] as List<dynamic>;
+
+      // Skip the first ring (world exterior). Check all hole rings.
+      for (var i = 1; i < coordinates.length; i++) {
+        final ring = coordinates[i] as List<dynamic>;
+        // GeoJSON rings must have at least 4 points (3 vertices + closing).
+        expect(ring.length, greaterThanOrEqualTo(4),
+            reason: 'Ring $i must have at least 4 points');
+
+        // Ring must be closed (first == last).
+        final first = ring.first as List<dynamic>;
+        final last = ring.last as List<dynamic>;
+        expect(first[0], equals(last[0]),
+            reason: 'Ring $i longitude must close');
+        expect(first[1], equals(last[1]),
+            reason: 'Ring $i latitude must close');
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // update — mid fog GeoJSON (hidden/concealed cells)
+    // -----------------------------------------------------------------------
+
+    test('midFogGeoJson is empty when no cells are visited', () {
+      final controller = _makeController();
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final features = _getFeatures(controller.midFogGeoJson);
+      expect(features, isEmpty);
+    });
+
+    test('midFogGeoJson contains hidden/concealed cells after visiting', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final features = _getFeatures(controller.midFogGeoJson);
+      expect(features, isNotEmpty,
+          reason: 'Neighbor cells should be hidden or concealed');
+
+      // Each feature should have a density property.
+      for (final feature in features) {
+        final props = feature['properties'] as Map<String, dynamic>;
+        final density = props['density'] as num;
+        expect(density, isNotNull);
+        // Density should be 0.25 (concealed) or 0.5 (hidden).
+        expect(density, anyOf(equals(0.25), equals(0.5)));
+      }
+    });
+
+    test('midFogGeoJson does not include observed cells', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final features = _getFeatures(controller.midFogGeoJson);
+      for (final feature in features) {
+        final props = feature['properties'] as Map<String, dynamic>;
+        final density = props['density'] as num;
+        // Observed density is 0.0 — should not be present.
+        expect(density, isNot(equals(0.0)),
+            reason: 'Observed cells should not appear in mid fog');
+      }
+    });
+
+    // -----------------------------------------------------------------------
+    // Repeated updates — stability
+    // -----------------------------------------------------------------------
+
+    test('repeated updates with same camera produce stable GeoJSON', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      final firstBase = controller.baseFogGeoJson;
+      final firstMid = controller.midFogGeoJson;
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      final secondBase = controller.baseFogGeoJson;
+      final secondMid = controller.midFogGeoJson;
+
+      expect(secondBase, equals(firstBase));
+      expect(secondMid, equals(firstMid));
+    });
+
+    // -----------------------------------------------------------------------
+    // Different zoom levels
+    // -----------------------------------------------------------------------
+
+    test('lower zoom discovers more cells (wider viewport coverage)', () {
       final cellService = MockCellService();
       final fogResolver = FogStateResolver(cellService);
 
@@ -443,10 +457,62 @@ void main() {
         viewportSize: _viewport,
       );
 
-      expect(
-        lowZoomController.renderData.length,
-        greaterThanOrEqualTo(highZoomController.renderData.length),
+      // Lower zoom should produce more holes in the base fog.
+      final highZoomHoles = (_getFeatures(highZoomController.baseFogGeoJson)[0]
+              ['geometry']['coordinates'] as List<dynamic>)
+          .length;
+      final lowZoomHoles = (_getFeatures(lowZoomController.baseFogGeoJson)[0]
+              ['geometry']['coordinates'] as List<dynamic>)
+          .length;
+
+      expect(lowZoomHoles, greaterThanOrEqualTo(highZoomHoles));
+    });
+
+    // -----------------------------------------------------------------------
+    // GeoJSON validity
+    // -----------------------------------------------------------------------
+
+    test('baseFogGeoJson is valid JSON after update', () {
+      final controller = _makeController();
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
       );
+
+      // Should not throw.
+      final parsed = _parseGeoJson(controller.baseFogGeoJson);
+      expect(parsed['type'], equals('FeatureCollection'));
+    });
+
+    test('midFogGeoJson is valid JSON after update', () {
+      final controller = _makeController();
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final parsed = _parseGeoJson(controller.midFogGeoJson);
+      expect(parsed['type'], equals('FeatureCollection'));
+    });
+
+    test('restorationGeoJson is valid JSON after update', () {
+      final controller = _makeController();
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      final parsed = _parseGeoJson(controller.restorationGeoJson);
+      expect(parsed['type'], equals('FeatureCollection'));
     });
   });
 }
