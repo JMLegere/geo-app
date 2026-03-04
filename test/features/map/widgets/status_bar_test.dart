@@ -31,9 +31,8 @@ void main() {
         ),
       );
 
-      // Default PlayerState: cellsObserved=0, totalDistanceKm=0.0, currentStreak=0
+      // Default PlayerState: cellsObserved=0, currentStreak=0
       expect(find.textContaining('0 cells'), findsOneWidget);
-      expect(find.textContaining('0.0 km'), findsOneWidget);
       expect(find.textContaining('0 days'), findsOneWidget);
     });
 
@@ -58,14 +57,12 @@ void main() {
       container.read(playerProvider.notifier)
         ..incrementCellsObserved()
         ..incrementCellsObserved()
-        ..addDistance(3.7)
         ..incrementStreak()
         ..incrementStreak();
 
       await tester.pump();
 
       expect(find.textContaining('2 cells'), findsOneWidget);
-      expect(find.textContaining('3.7 km'), findsOneWidget);
       expect(find.textContaining('2 days'), findsOneWidget);
     });
 
@@ -81,8 +78,8 @@ void main() {
         ),
       );
 
-      // One pill per stat (cells, km, streak).
-      expect(find.byType(Text), findsAtLeastNWidgets(3));
+      // One pill per stat (cells, streak).
+      expect(find.byType(Text), findsAtLeastNWidgets(2));
     });
   });
 }

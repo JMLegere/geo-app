@@ -9,7 +9,6 @@ import 'package:fog_of_world/core/state/player_provider.dart';
 ///
 /// Reads [playerProvider] for live stats:
 /// - 🔍 Cells observed
-/// - 🚶 Distance walked in km
 /// - 🔥 Current exploration streak in days
 ///
 /// Uses a translucent frosted-glass background (BackdropFilter + ClipRect)
@@ -60,10 +59,6 @@ class StatusBar extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _StatPill(emoji: '🔍', value: '${player.cellsObserved} cells'),
-              _StatPill(
-                emoji: '🚶',
-                value: '${player.totalDistanceKm.toStringAsFixed(1)} km',
-              ),
               _StatPill(emoji: '🔥', value: '${player.currentStreak} days'),
             ],
           ),
