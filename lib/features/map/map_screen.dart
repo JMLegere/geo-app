@@ -471,12 +471,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     cameraController.onCameraMove = (lat, lon) {
       // Position(lng, lat) — longitude first!
-      // Duration.zero = instant snap. The rubber-band controller calls this
-      // at 60 fps with interpolated positions, so no animation is needed —
-      // the smoothness comes from the high frame rate itself.
-      controller.animateCamera(
+      // Use moveCamera (jumpTo on web) instead of animateCamera (flyTo).
+      // The rubber-band controller calls this at 60 fps — animateCamera
+      // starts a new flyTo animation each frame which causes cascading
+      // errors in MapLibre's web runtime. moveCamera is an instant jump
+      // with no animation overhead, perfect for high-frequency updates.
+      controller.moveCamera(
         center: Position(lon, lat),
-        nativeDuration: Duration.zero,
       );
     };
   }
