@@ -1,7 +1,10 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/rendering.dart';
 
 import 'package:fog_of_world/core/models/fog_state.dart';
 import 'package:fog_of_world/features/map/models/cell_render_data.dart';
+import 'package:fog_of_world/features/map/utils/mercator_projection.dart';
 
 /// CustomPainter that renders the fog-of-war overlay using the
 /// "dark overlay with punched holes" Canvas compositing technique.
@@ -46,26 +49,62 @@ class FogCanvasPainter extends CustomPainter {
   /// Absent keys imply a level of 0.0 (no tint).
   final Map<String, double>? restorationLevels;
 
+  // -- Camera offset compensation fields --
+  // Cell screen vertices are projected against `lastCamera*`. Between full
+  // re-projections the map camera moves, so we compute the pixel delta between
+  // lastCamera and currentCamera, then `canvas.translate()` to keep fog pinned
+  // to the map.
+
+  /// The camera position that was used when [cells] screen vertices were last
+  /// projected (output of `FogOverlayController.update()`).
+  final double lastCameraLat;
+  final double lastCameraLon;
+  final double lastZoom;
+
+  /// The LIVE camera position (updated every frame during gestures/animations).
+  final double currentCameraLat;
+  final double currentCameraLon;
+  final double currentZoom;
+
+  /// Viewport dimensions — needed for the Mercator offset calculation.
+  final ui.Size viewportSize;
+
   const FogCanvasPainter({
     required this.cells,
     required this.version,
     this.fogColor = const Color(0xD9161620),
     this.blurSigma = 0.0,
     this.restorationLevels,
+    this.lastCameraLat = 0,
+    this.lastCameraLon = 0,
+    this.lastZoom = 0,
+    this.currentCameraLat = 0,
+    this.currentCameraLon = 0,
+    this.currentZoom = 0,
+    this.viewportSize = ui.Size.zero,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. saveLayer — begin offscreen compositing buffer.
-    //    All subsequent draws are isolated until restore() is called.
-    canvas.saveLayer(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint(),
-    );
+    // Compute pixel offset to compensate for camera movement since last
+    // full cell projection. For a pure pan, all screen positions shift by a
+    // constant vector: geoToScreen(oldCamera, cameraAt=newCamera) − center.
+    // One MercatorProjection call — microseconds.
+    final correction = _cameraCorrection(size);
 
-    // 2. Fill the entire canvas with fog color (the dark overlay).
+    // 1. saveLayer — begin offscreen compositing buffer.
+    //    Expand the rect by the correction so translated content isn't clipped.
+    final layerRect = Rect.fromLTWH(0, 0, size.width, size.height)
+        .inflate(correction.distance + 1);
+    canvas.saveLayer(layerRect, Paint());
+
+    // Apply the translation so all cell polygons track the live camera.
+    canvas.translate(correction.dx, correction.dy);
+
+    // 2. Fill with fog color. The rect must cover the viewport AFTER the
+    //    inverse translate (i.e., the original viewport bounds).
     canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
+      Rect.fromLTWH(-correction.dx, -correction.dy, size.width, size.height),
       Paint()..color = fogColor,
     );
 
@@ -79,9 +118,13 @@ class FogCanvasPainter extends CustomPainter {
     }
 
     for (final cell in cells) {
-      if (cell.fogState == FogState.undetected) continue;
+      // Undetected and unexplored cells remain fully black (no hole punched).
+      if (cell.fogState == FogState.undetected ||
+          cell.fogState == FogState.unexplored) {
+        continue;
+      }
 
-      // revealStrength: 0.0 for fully undetected, 1.0 for fully observed.
+      // revealStrength: 0.0 for fully fogged, 1.0 for fully observed.
       final revealStrength = 1.0 - cell.fogState.density;
       holePaint.color = Color.fromARGB(
         (revealStrength * 255).round(),
@@ -105,6 +148,10 @@ class FogCanvasPainter extends CustomPainter {
     //    transparent there, so the tint appears on top of the visible map.
     final levels = restorationLevels;
     if (levels != null && levels.isNotEmpty) {
+      // Apply same camera correction so green tint tracks the cells.
+      canvas.save();
+      canvas.translate(correction.dx, correction.dy);
+
       final greenPaint = Paint()..blendMode = BlendMode.srcOver;
 
       for (final cell in cells) {
@@ -121,7 +168,37 @@ class FogCanvasPainter extends CustomPainter {
         final path = Path()..addPolygon(cell.screenVertices, true);
         canvas.drawPath(path, greenPaint);
       }
+      canvas.restore();
     }
+  }
+
+  /// Computes the pixel offset between the projection camera and the current
+  /// live camera. For a pure pan (no zoom change), this is a constant vector
+  /// that shifts all screen coordinates equally.
+  Offset _cameraCorrection(Size size) {
+    // If no projection has been done yet (lastZoom == 0), or if zoom changed
+    // (which distorts non-linearly), skip the correction — a full re-projection
+    // will run on the next throttle tick anyway.
+    if (lastZoom == 0 || lastZoom != currentZoom) return Offset.zero;
+    if (lastCameraLat == currentCameraLat &&
+        lastCameraLon == currentCameraLon) {
+      return Offset.zero;
+    }
+
+    // Where the old camera center appears on screen given the new camera.
+    final oldCameraOnScreen = MercatorProjection.geoToScreen(
+      lat: lastCameraLat,
+      lon: lastCameraLon,
+      cameraLat: currentCameraLat,
+      cameraLon: currentCameraLon,
+      zoom: currentZoom,
+      viewportSize: viewportSize,
+    );
+
+    // The old camera used to be at viewport center; now it's at
+    // oldCameraOnScreen. The difference is the correction to apply.
+    final center = Offset(viewportSize.width / 2, viewportSize.height / 2);
+    return oldCameraOnScreen - center;
   }
 
   /// Returns true if the painter needs to repaint.
@@ -135,5 +212,8 @@ class FogCanvasPainter extends CustomPainter {
       old.version != version ||
       old.fogColor != fogColor ||
       old.blurSigma != blurSigma ||
-      old.restorationLevels != restorationLevels;
+      old.restorationLevels != restorationLevels ||
+      old.currentCameraLat != currentCameraLat ||
+      old.currentCameraLon != currentCameraLon ||
+      old.currentZoom != currentZoom;
 }

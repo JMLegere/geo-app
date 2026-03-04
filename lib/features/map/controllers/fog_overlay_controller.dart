@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:fog_of_world/core/cells/cell_service.dart';
@@ -44,6 +45,15 @@ class FogOverlayController {
   int _renderVersion = 0;
   List<CellRenderData> _renderData = const [];
 
+  /// Camera position used during the last [update] / [updateAsync] projection.
+  ///
+  /// The painter uses these to compute a pixel offset between the projection
+  /// camera and the current live camera, then applies `canvas.translate()` to
+  /// compensate for camera movement between full re-projections.
+  double lastCameraLat = 0;
+  double lastCameraLon = 0;
+  double lastZoom = 0;
+
   /// Monotonically incremented on every `update` call.
   /// Use as a change token for `FogCanvasPainter.version`.
   int get renderVersion => _renderVersion;
@@ -81,11 +91,92 @@ class FogOverlayController {
       viewportSize: viewportSize,
     );
 
-    final newData = <CellRenderData>[];
+    _renderData = _projectCells(visibleCellIds, cameraLat, cameraLon, zoom, viewportSize);
+    _renderVersion++;
 
-    for (final cellId in visibleCellIds) {
+    lastCameraLat = cameraLat;
+    lastCameraLon = cameraLon;
+    lastZoom = zoom;
+  }
+
+  /// Non-blocking version of [update] for initial map load.
+  ///
+  /// Processes visible cells in batches, yielding to the event loop between
+  /// each chunk via `Future.delayed(Duration.zero)`. This prevents cold-cache
+  /// Voronoi computation (~100–500 ms on web) from freezing the UI.
+  ///
+  /// Each completed batch is published immediately so the fog progressively
+  /// appears on screen. The [onBatchReady] callback is invoked after each
+  /// batch — typically used to trigger `setState()`.
+  ///
+  /// Returns the total cell count once all batches are processed.
+  Future<int> updateAsync({
+    required double cameraLat,
+    required double cameraLon,
+    required double zoom,
+    required Size viewportSize,
+    void Function()? onBatchReady,
+    int chunkSize = 20,
+  }) async {
+    _asyncUpdateGeneration++;
+    final myGeneration = _asyncUpdateGeneration;
+
+    final visibleCellIds = _findVisibleCells(
+      cameraLat: cameraLat,
+      cameraLon: cameraLon,
+      zoom: zoom,
+      viewportSize: viewportSize,
+    ).toList();
+
+    final accumulated = <CellRenderData>[];
+
+    for (var i = 0; i < visibleCellIds.length; i += chunkSize) {
+      // Bail out if a newer async update was started.
+      if (_asyncUpdateGeneration != myGeneration) return accumulated.length;
+
+      final end = min(i + chunkSize, visibleCellIds.length);
+      final chunk = visibleCellIds.sublist(i, end);
+      final projected = _projectCells(
+        chunk.toSet(),
+        cameraLat,
+        cameraLon,
+        zoom,
+        viewportSize,
+      );
+      accumulated.addAll(projected);
+
+      _renderData = List.unmodifiable(accumulated);
+      _renderVersion++;
+      onBatchReady?.call();
+
+      // Yield to the event loop so the browser can paint.
+      if (end < visibleCellIds.length) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    lastCameraLat = cameraLat;
+    lastCameraLon = cameraLon;
+    lastZoom = zoom;
+
+    return accumulated.length;
+  }
+
+  /// Generation counter for [updateAsync] — newer calls cancel in-flight ones.
+  int _asyncUpdateGeneration = 0;
+
+  /// Projects a set of cell IDs to screen-space [CellRenderData].
+  List<CellRenderData> _projectCells(
+    Set<String> cellIds,
+    double cameraLat,
+    double cameraLon,
+    double zoom,
+    Size viewportSize,
+  ) {
+    final result = <CellRenderData>[];
+
+    for (final cellId in cellIds) {
       final fogState = fogResolver.resolve(cellId);
-      // Undetected cells stay fully covered by the fog fill; skip them.
       if (fogState == FogState.undetected) continue;
 
       final boundary = cellService.getCellBoundary(cellId);
@@ -102,15 +193,14 @@ class FogOverlayController {
           )
           .toList();
 
-      newData.add(CellRenderData(
+      result.add(CellRenderData(
         cellId: cellId,
         fogState: fogState,
         screenVertices: screenVertices,
       ));
     }
 
-    _renderData = newData;
-    _renderVersion++;
+    return result;
   }
 
   /// Discovers cell IDs visible in the current viewport via grid sampling.

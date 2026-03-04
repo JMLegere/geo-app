@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/widgets.dart';
 
 import 'package:fog_of_world/features/map/layers/fog_canvas_painter.dart';
@@ -13,10 +15,21 @@ import 'package:fog_of_world/features/map/models/cell_render_data.dart';
 /// Increment [renderVersion] whenever [cells] changes to trigger a repaint.
 /// The [FogCanvasPainter] uses the version for O(1) change detection.
 ///
+/// Pass both the projection camera (`lastCamera*`) and the live camera
+/// (`currentCamera*`) so the painter can apply a pixel offset correction
+/// between full re-projections — keeping the fog pinned to the map.
+///
 /// ```dart
 /// FogCanvasOverlay(
 ///   cells: controller.renderData,
 ///   renderVersion: controller.renderVersion,
+///   lastCameraLat: controller.lastCameraLat,
+///   lastCameraLon: controller.lastCameraLon,
+///   lastZoom: controller.lastZoom,
+///   currentCameraLat: _currentCameraLat,
+///   currentCameraLon: _currentCameraLon,
+///   currentZoom: _currentZoom,
+///   viewportSize: MediaQuery.of(context).size,
 /// )
 /// ```
 class FogCanvasOverlay extends StatelessWidget {
@@ -38,6 +51,19 @@ class FogCanvasOverlay extends StatelessWidget {
   /// level > 0 receive a green tint overlay at up to 30% opacity.
   final Map<String, double>? restorationLevels;
 
+  /// Camera position used during the last full cell projection.
+  final double lastCameraLat;
+  final double lastCameraLon;
+  final double lastZoom;
+
+  /// Live camera position — updated every frame during gestures/animations.
+  final double currentCameraLat;
+  final double currentCameraLon;
+  final double currentZoom;
+
+  /// Viewport dimensions for Mercator offset calculation.
+  final ui.Size viewportSize;
+
   const FogCanvasOverlay({
     super.key,
     required this.cells,
@@ -45,6 +71,13 @@ class FogCanvasOverlay extends StatelessWidget {
     this.fogColor = const Color(0xD9161620),
     this.blurSigma = 0.0,
     this.restorationLevels,
+    this.lastCameraLat = 0,
+    this.lastCameraLon = 0,
+    this.lastZoom = 0,
+    this.currentCameraLat = 0,
+    this.currentCameraLon = 0,
+    this.currentZoom = 0,
+    this.viewportSize = ui.Size.zero,
   });
 
   @override
@@ -58,6 +91,13 @@ class FogCanvasOverlay extends StatelessWidget {
             fogColor: fogColor,
             blurSigma: blurSigma,
             restorationLevels: restorationLevels,
+            lastCameraLat: lastCameraLat,
+            lastCameraLon: lastCameraLon,
+            lastZoom: lastZoom,
+            currentCameraLat: currentCameraLat,
+            currentCameraLon: currentCameraLon,
+            currentZoom: currentZoom,
+            viewportSize: viewportSize,
           ),
           // Fill available space — sized by parent (typically Stack).
           size: Size.infinite,

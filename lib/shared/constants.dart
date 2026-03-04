@@ -81,7 +81,7 @@ const int kVoronoiSeed = 42;
 
 // Map & Location
 /// Minimum map zoom level.
-const double kMinZoom = 12.0;
+const double kMinZoom = 14.0;
 
 /// Maximum map zoom level.
 const double kMaxZoom = 18.0;

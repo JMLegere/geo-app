@@ -61,6 +61,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   bool _showDebugHud = false;
 
+  /// Live camera position — updated on every MapEventMoveCamera (60 fps).
+  /// Passed to FogCanvasPainter for sub-frame offset compensation so the fog
+  /// tracks the map smoothly between full cell re-projections.
+  double _currentCameraLat = kDefaultMapLat;
+  double _currentCameraLon = kDefaultMapLon;
+  double _currentCameraZoom = kDefaultZoom;
+
   /// Throttle fog overlay updates during camera movement to ~10 fps.
   /// Camera move events fire at 60 fps during gestures; recomputing 1700+
   /// cells each frame is prohibitive on web.
@@ -190,21 +197,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ref.read(mapStateProvider.notifier).markReady();
 
     // Defer the initial fog computation to the next frame so the map base
-    // tiles can render first. On web (single-threaded JS) cold-cache Voronoi
-    // triangulation blocks the main thread for 100-500ms — deferring lets
-    // the user see the map immediately instead of a frozen white screen.
+    // tiles can render first. Uses updateAsync to process cells in chunks,
+    // yielding to the event loop between batches so the browser can paint.
+    // This prevents cold-cache Voronoi triangulation from freezing the UI.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _mapController == null) return;
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
       if (fogOverlayController.renderData.isEmpty) {
         final camera = _mapController!.getCamera();
-        fogOverlayController.update(
+        fogOverlayController.updateAsync(
           cameraLat: camera.center.lat.toDouble(),
           cameraLon: camera.center.lng.toDouble(),
           zoom: camera.zoom,
           viewportSize: MediaQuery.of(context).size,
+          onBatchReady: () {
+            if (mounted) setState(() {});
+          },
         );
-        setState(() {});
       }
     });
   }
@@ -251,25 +260,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
 
     if (event is MapEventMoveCamera) {
-      // Keep zoom in sync (cheap — just a provider write).
       final camera = event.camera;
+
+      // Keep zoom in sync (cheap — just a provider write).
       ref.read(mapStateProvider.notifier).updateZoom(camera.zoom);
 
-      // Throttle fog overlay recomputation to avoid recomputing ~1700 cells
-      // on every frame during pan/zoom gestures.
+      // ALWAYS update live camera state (unthrottled). The painter uses this
+      // for sub-frame offset compensation via canvas.translate(), keeping the
+      // fog pinned to the map at 60 fps without recomputing cell boundaries.
       if (mounted) {
+        _currentCameraLat = camera.center.lat.toDouble();
+        _currentCameraLon = camera.center.lng.toDouble();
+        _currentCameraZoom = camera.zoom;
+        setState(() {});
+
+        // Throttle full cell re-projection (~1700 cells) to ~10 fps.
+        // This discovers new cells at viewport edges and updates screen vertices.
         const throttleMs = 100;
         final now = DateTime.now();
         final elapsed = now.difference(_lastFogUpdateTime).inMilliseconds;
 
         if (elapsed >= throttleMs) {
           fogOverlayController.update(
-            cameraLat: camera.center.lat.toDouble(),
-            cameraLon: camera.center.lng.toDouble(),
-            zoom: camera.zoom,
+            cameraLat: _currentCameraLat,
+            cameraLon: _currentCameraLon,
+            zoom: _currentCameraZoom,
             viewportSize: MediaQuery.of(context).size,
           );
-          setState(() {});
           _lastFogUpdateTime = now;
           _fogUpdateTimer?.cancel();
         } else {
@@ -286,7 +303,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   zoom: cam.zoom,
                   viewportSize: MediaQuery.of(context).size,
                 );
-                setState(() {});
+                if (mounted) setState(() {});
                 _lastFogUpdateTime = DateTime.now();
               }
             },
@@ -346,6 +363,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FogCanvasOverlay(
             cells: fogOverlayController.renderData,
             renderVersion: fogOverlayController.renderVersion,
+            lastCameraLat: fogOverlayController.lastCameraLat,
+            lastCameraLon: fogOverlayController.lastCameraLon,
+            lastZoom: fogOverlayController.lastZoom,
+            currentCameraLat: _currentCameraLat,
+            currentCameraLon: _currentCameraLon,
+            currentZoom: _currentCameraZoom,
+            viewportSize: MediaQuery.of(context).size,
           ),
 
           // ── Layer 4: Status bar ────────────────────────────────────────────
