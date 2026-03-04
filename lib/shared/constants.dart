@@ -80,8 +80,9 @@ const int kVoronoiGridCols = 40;
 const int kVoronoiSeed = 42;
 
 // Map & Location
-/// Minimum map zoom level. Low enough to show all explored cells in world view.
-const double kMinZoom = 2.0;
+/// Minimum map zoom level. Set to 10 to prevent extreme zoom-out which
+/// causes rendering issues and is not useful for walking-speed exploration.
+const double kMinZoom = 10.0;
 
 /// Maximum map zoom level.
 const double kMaxZoom = 18.0;

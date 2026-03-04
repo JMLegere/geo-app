@@ -92,9 +92,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
-  /// Throttle fog overlay updates during camera movement to ~10 fps.
-  DateTime _lastFogUpdateTime = DateTime(0);
-  Timer? _fogUpdateTimer;
+  // (Throttle fields removed — fog updates no longer run from _onMapEvent.)
 
   // -- MapLibre source/layer IDs for the fog system --
   static const _fogBaseSrcId = 'fog-base-src';
@@ -151,7 +149,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void dispose() {
     _rubberBand.dispose();
-    _fogUpdateTimer?.cancel();
     _locationSubscription?.cancel();
     _discoverySubscription?.cancel();
     _fogCellSubscription?.cancel();
@@ -553,51 +550,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _onMapEvent(MapEvent event) {
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
-
-    // Camera is locked to the player — ignore user pan gestures.
-
-    if (event is MapEventMoveCamera) {
-      final camera = event.camera;
-
-      ref.read(mapStateProvider.notifier).updateZoom(camera.zoom);
-
-      // Throttle fog GeoJSON rebuilds to ~10 fps during camera movement.
-      // MapLibre renders the existing GeoJSON at 60fps GPU-side — no drift.
-      const throttleMs = 100;
-      final now = DateTime.now();
-      final elapsed = now.difference(_lastFogUpdateTime).inMilliseconds;
-
-      if (elapsed >= throttleMs) {
-        fogOverlayController.update(
-          cameraLat: camera.center.lat.toDouble(),
-          cameraLon: camera.center.lng.toDouble(),
-          zoom: camera.zoom,
-          viewportSize: MediaQuery.of(context).size,
-        );
-        _updateFogSources();
-        _lastFogUpdateTime = now;
-        _fogUpdateTimer?.cancel();
-      } else {
-        _fogUpdateTimer?.cancel();
-        _fogUpdateTimer = Timer(
-          Duration(milliseconds: throttleMs - elapsed),
-          () {
-            if (mounted && _mapController != null) {
-              final cam = _mapController!.getCamera();
-              fogOverlayController.update(
-                cameraLat: cam.center.lat.toDouble(),
-                cameraLon: cam.center.lng.toDouble(),
-                zoom: cam.zoom,
-                viewportSize: MediaQuery.of(context).size,
-              );
-              _updateFogSources();
-              _lastFogUpdateTime = DateTime.now();
-            }
-          },
-        );
-      }
-    }
+    // Fog GeoJSON layers are geo-pinned — they render correctly at any
+    // camera position without being recomputed. Only location changes
+    // (in _onLocationUpdate) need to rebuild fog state. Updating fog
+    // sources here on every MapEventMoveCamera caused a feedback loop:
+    //   animateCamera → MapEventMoveCamera → updateFogSources → MapLibre
+    //   layout → new MapEventMoveCamera → repeat (zoom jitter).
+    //
+    // We keep the handler for future user gesture detection (free mode)
+    // but no longer update fog or provider state from camera events.
   }
 
   // ---------------------------------------------------------------------------
@@ -607,7 +568,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationProvider);
-    final mapState = ref.watch(mapStateProvider);
+    // Read (not watch) mapState to avoid rebuilds on every camera move.
+    // The DebugHud receives mapState as a parameter; no widget needs
+    // reactive zoom tracking.
+    final mapState = ref.read(mapStateProvider);
     final cameraMode = ref.watch(cameraModeProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
     final fogResolver = ref.read(fogResolverProvider);
