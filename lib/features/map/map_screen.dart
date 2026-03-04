@@ -18,7 +18,6 @@ import 'package:fog_of_world/features/location/services/location_simulator.dart'
 import 'package:fog_of_world/features/location/services/real_gps_service.dart';
 import 'package:fog_of_world/features/location/widgets/location_permission_banner.dart';
 import 'package:fog_of_world/features/map/controllers/rubber_band_controller.dart';
-import 'package:fog_of_world/features/map/layers/player_marker_widget.dart';
 import 'package:fog_of_world/features/map/providers/camera_controller_provider.dart';
 import 'package:fog_of_world/features/map/providers/camera_mode_provider.dart';
 import 'package:fog_of_world/features/map/providers/discovery_service_provider.dart';
@@ -28,6 +27,7 @@ import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 import 'package:fog_of_world/features/map/utils/map_logger.dart';
 import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
+import 'package:fog_of_world/features/map/widgets/player_marker_layer.dart';
 import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
 import 'package:fog_of_world/features/map/widgets/map_controls.dart';
 import 'package:fog_of_world/features/map/widgets/status_bar.dart';
@@ -79,9 +79,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   late final RubberBandController _rubberBand;
 
   /// Interpolated display position for the player marker (updated at 60fps).
-  /// Null until the first GPS fix arrives.
-  double? _displayLat;
-  double? _displayLon;
+  ///
+  /// Updated via [ValueNotifier] so only [PlayerMarkerLayer] rebuilds on each
+  /// 60fps frame — the rest of [MapScreen] stays stable.
+  late final ValueNotifier<({double lat, double lon})?> _markerPosition;
 
   StreamSubscription<SimulatedLocation>? _locationSubscription;
   StreamSubscription<dynamic>? _discoverySubscription;
@@ -126,6 +127,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void initState() {
     super.initState();
 
+    _markerPosition = ValueNotifier(null);
+
     _rubberBand = RubberBandController(
       vsync: this,
       onDisplayUpdate: _onDisplayPositionUpdate,
@@ -169,6 +172,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void dispose() {
     _rubberBand.dispose();
+    _markerPosition.dispose();
     _locationSubscription?.cancel();
     _discoverySubscription?.cancel();
     _fogCellSubscription?.cancel();
@@ -463,11 +467,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     MapLogger.displayPositionUpdate(lat, lon);
 
-    // 1. Update marker widget (60 fps smooth).
-    setState(() {
-      _displayLat = lat;
-      _displayLon = lon;
-    });
+    // 1. Update marker position via ValueNotifier (60 fps smooth, no full rebuild).
+    _markerPosition.value = (lat: lat, lon: lon);
 
     // 2. Move camera to the interpolated position (instant snap).
     final cameraController = ref.read(cameraControllerProvider);
@@ -639,7 +640,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   Widget build(BuildContext context) {
-    final locationState = ref.watch(locationProvider);
     // Read (not watch) mapState to avoid rebuilds on every camera move.
     // The DebugHud receives mapState as a parameter; no widget needs
     // reactive zoom tracking.
@@ -647,11 +647,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final cameraMode = ref.watch(cameraModeProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
     final fogResolver = ref.read(fogResolverProvider);
-    // Use the interpolated display position for the marker (smooth 60fps).
-    // Falls back to raw GPS position if rubber band hasn't started yet.
-    final position = locationState.currentPosition;
-    final markerLat = _displayLat ?? position?.lat;
-    final markerLon = _displayLon ?? position?.lon;
 
     return ErrorBoundary(
       onError: (_) => const _MapErrorFallback(),
@@ -679,18 +674,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
             onEvent: _onMapEvent,
             children: [
               // ── Layer 2: Player marker (geo-anchored to display position) ─
-              if (markerLat != null && markerLon != null)
-                WidgetLayer(
-                  markers: [
-                    Marker(
-                      // Position(lng, lat) — longitude FIRST!
-                      // Uses the rubber-band interpolated position (60fps smooth).
-                      point: Position(markerLon, markerLat),
-                      size: const Size(44, 44),
-                      child: const PlayerMarkerWidget(size: 20),
-                    ),
-                  ],
-                ),
+              // PlayerMarkerLayer uses ValueListenableBuilder internally so
+              // only it rebuilds on each 60fps rubber-band update — the rest
+              // of MapScreen stays stable.
+              PlayerMarkerLayer(position: _markerPosition),
             ],
           ),
 
@@ -719,44 +706,55 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ),
 
           // ── Layer 3.7: Low accuracy indicator ─────────────────────────────
-          if (locationState.locationError == LocationError.lowAccuracy)
-            Positioned(
-              bottom: 72,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFF59E0B)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.gps_not_fixed_rounded,
-                        size: 14,
-                        color: Color(0xFFB45309),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'GPS accuracy is poor (>${kGpsAccuracyThreshold.toInt()} m)',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF92400E),
+          // Scoped Consumer so locationProvider rebuilds only this indicator,
+          // not the full MapScreen tree.
+          Positioned(
+            bottom: 72,
+            left: 0,
+            right: 0,
+            child: Consumer(
+              builder: (context, ref, child) {
+                final locationError = ref.watch(
+                  locationProvider.select((s) => s.locationError),
+                );
+                if (locationError != LocationError.lowAccuracy) {
+                  return const SizedBox.shrink();
+                }
+                return Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFF59E0B)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.gps_not_fixed_rounded,
+                          size: 14,
+                          color: Color(0xFFB45309),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          'GPS accuracy is poor (>${kGpsAccuracyThreshold.toInt()} m)',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
+          ),
 
           // ── Layer 4: Debug HUD (toggle-able) ──────────────────────────────
           if (_showDebugHud)
