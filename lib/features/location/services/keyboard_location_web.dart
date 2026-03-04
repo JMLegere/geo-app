@@ -16,7 +16,7 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
   static const _earthRadius = 6371000.0;
   static const _tickInterval = Duration(milliseconds: 100);
 
-  Geographic _position = const Geographic(lat: 37.7749, lon: -122.4194);
+  Geographic _position = const Geographic(lat: 45.9636, lon: -66.6431);
 
   final _controller = StreamController<SimulatedLocation>.broadcast();
   final _keysHeld = <String>{};
@@ -35,6 +35,12 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
     window.addEventListener('keydown', _keyDownHandler);
     window.addEventListener('keyup', _keyUpHandler);
     _ticker = Timer.periodic(_tickInterval, (_) => _tick());
+
+    // Emit initial position immediately so fog overlay renders before any
+    // keypress. Without this, the map appears "broken" until the user moves.
+    _controller.add(
+      SimulatedLocation(position: _position, timestamp: DateTime.now()),
+    );
   }
 
   @override

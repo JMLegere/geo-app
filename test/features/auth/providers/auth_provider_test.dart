@@ -7,12 +7,15 @@ import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 void main() {
   group('AuthNotifier', () {
     // Helper: create container, wait for session check to settle.
+    // When Supabase is not configured (the test default), AuthNotifier
+    // auto-signs-in anonymously via MockAuthService.signInAnonymously()
+    // which has a 100 ms simulated delay.
     Future<ProviderContainer> makeContainer() async {
       final container = ProviderContainer();
       // Initialize provider.
       container.read(authProvider);
-      // Let _checkExistingSession() complete (async but no delay in mock).
-      await Future<void>.delayed(Duration.zero);
+      // Let _checkExistingSession() + signInAnonymously() complete.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       return container;
     }
 
@@ -32,12 +35,18 @@ void main() {
       // work pending, which would try to set state on a disposed provider.
     });
 
-    test('State is unauthenticated after session check with no stored session',
+    test(
+        'Auto-signs in anonymously when Supabase is not configured '
+        '(offline / dev mode)',
         () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
 
-      expect(container.read(authProvider).status, AuthStatus.unauthenticated);
+      // Without Supabase, AuthNotifier auto-creates an anonymous session
+      // so the user goes straight to the map — no login screen.
+      expect(container.read(authProvider).status, AuthStatus.authenticated);
+      expect(container.read(authProvider).user, isNotNull);
+      expect(container.read(authProvider).user!.displayName, 'Explorer');
     });
 
     // ── signUp ───────────────────────────────────────────────────────────────
@@ -47,6 +56,11 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(authProvider.notifier);
+
+      // Sign out first to start from a clean unauthenticated state
+      // (makeContainer auto-signs-in when Supabase is not configured).
+      await notifier.signOut();
+
       final states = <AuthStatus>[];
       container.listen(authProvider, (_, next) => states.add(next.status));
 

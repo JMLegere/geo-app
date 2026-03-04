@@ -188,6 +188,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _onStyleLoaded() {
     _removeTextLabels();
     ref.read(mapStateProvider.notifier).markReady();
+
+    // Trigger initial fog overlay render with the default map center.
+    // On web, the keyboard location service may not have emitted yet when
+    // the style finishes loading, leaving the fog overlay empty.
+    final fogOverlayController = ref.read(fogOverlayControllerProvider);
+    if (fogOverlayController.renderData.isEmpty && _mapController != null) {
+      final camera = _mapController!.getCamera();
+      fogOverlayController.update(
+        cameraLat: camera.center.lat.toDouble(),
+        cameraLon: camera.center.lng.toDouble(),
+        zoom: camera.zoom,
+        viewportSize: MediaQuery.of(context).size,
+      );
+      setState(() {});
+    }
   }
 
   /// Strips all symbol (text/icon) layers from the map style.

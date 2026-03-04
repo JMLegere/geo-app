@@ -64,7 +64,13 @@ class AuthNotifier extends Notifier<AuthState> {
       if (user != null) {
         state = AuthState.authenticated(user);
       } else {
-        state = const AuthState.unauthenticated();
+        // No existing session — auto-create anonymous session so the user
+        // goes straight to the map. Supabase anonymous auth gives each
+        // device a persistent session via localStorage (effectively device
+        // ID login). MockAuthService does the same in offline mode.
+        final anonUser = await _authService.signInAnonymously();
+        if (!ref.mounted) return;
+        state = AuthState.authenticated(anonUser);
       }
     } catch (_) {
       // Provider disposed or session check failed.

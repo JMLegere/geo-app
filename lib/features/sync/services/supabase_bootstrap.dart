@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,14 +16,22 @@ bool supabaseInitialized = false;
 /// Does nothing when `SUPABASE_URL` / `SUPABASE_ANON_KEY` are not supplied
 /// via `--dart-define`, allowing the app to run in offline-only mode with
 /// `MockAuthService`.
+/// Maximum time to spend waiting for Supabase to initialize before falling
+/// back to offline mode. Prevents slow networks from blocking app startup.
+const _kSupabaseInitTimeout = Duration(seconds: 3);
+
 Future<void> initializeSupabase() async {
   if (SupabaseConfig.projectUrl.isNotEmpty) {
     try {
       await Supabase.initialize(
         url: SupabaseConfig.projectUrl,
         anonKey: SupabaseConfig.anonKey,
-      );
+      ).timeout(_kSupabaseInitTimeout);
       supabaseInitialized = true;
+    } on TimeoutException {
+      debugPrint('[SupabaseBootstrap] initialization timed out after '
+          '${_kSupabaseInitTimeout.inSeconds}s — continuing in offline mode');
+      supabaseInitialized = false;
     } catch (e) {
       // On web, Supabase init can fail with "invalid language tag: undefined"
       // when the browser doesn't expose a valid locale. The app falls back to

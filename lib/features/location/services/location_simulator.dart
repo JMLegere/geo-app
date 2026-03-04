@@ -27,7 +27,7 @@ class LocationSimulator {
     this.updateInterval = const Duration(seconds: 1),
     this.seed = 42,
   }) : startPosition =
-           startPosition ?? const Geographic(lat: 37.7749, lon: -122.4194);
+           startPosition ?? const Geographic(lat: 45.9636, lon: -66.6431);
 
   final StreamController<SimulatedLocation> _controller =
       StreamController<SimulatedLocation>.broadcast();

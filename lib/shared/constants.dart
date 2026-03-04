@@ -31,12 +31,12 @@ const int kSeasons = 2;
 /// Season names.
 const List<String> kSeasonNames = ['summer', 'winter'];
 
-// Default Map Position (SF Bay Area — simulation start point)
+// Default Map Position (Fredericton, NB, Canada)
 /// Default map center latitude.
-const double kDefaultMapLat = 37.7749;
+const double kDefaultMapLat = 45.9636;
 
 /// Default map center longitude.
-const double kDefaultMapLon = -122.4194;
+const double kDefaultMapLon = -66.6431;
 
 // Lazy Voronoi Cell Grid (infinite world)
 //
@@ -111,15 +111,15 @@ const int kCameraZoomDurationMs = 300;
 
 // Logging
 /// Enable debug logging for GPS updates.
-const bool kDebugLogGps = true;
+const bool kDebugLogGps = false;
 
 /// Enable debug logging for tile requests.
-const bool kDebugLogTiles = true;
+const bool kDebugLogTiles = false;
 
 /// Enable debug logging for fog state transitions.
-const bool kDebugLogFogState = true;
+const bool kDebugLogFogState = false;
 
 /// Enable debug logging for persistence operations.
-const bool kDebugLogPersistence = true;
+const bool kDebugLogPersistence = false;
 
 
