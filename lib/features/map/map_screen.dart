@@ -24,6 +24,7 @@ import 'package:fog_of_world/features/map/providers/fog_overlay_controller_provi
 import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
+import 'package:fog_of_world/features/map/utils/map_logger.dart';
 import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
 import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
 import 'package:fog_of_world/features/map/widgets/map_controls.dart';
@@ -217,9 +218,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ));
 
       _fogLayersInitialized = true;
-    } catch (e) {
-      // If layer initialization fails, fall back gracefully.
-      debugPrint('Failed to initialize fog layers: $e');
+      MapLogger.fogLayersInitialized();
+    } catch (e, stack) {
+      MapLogger.fogLayersInitError(e, stack);
     }
   }
 
@@ -234,6 +235,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
+    MapLogger.fogUpdateStarted();
     try {
       await Future.wait([
         controller.updateGeoJsonSource(
@@ -249,8 +251,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
           data: fogOverlayController.unexploredBorderGeoJson,
         ),
       ]);
-    } catch (e) {
-      debugPrint('Failed to update fog sources: $e');
+      MapLogger.fogUpdateCompleted();
+    } catch (e, stack) {
+      MapLogger.fogUpdateError(e, stack);
     }
   }
 
@@ -395,6 +398,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// The visible marker + camera are driven by the rubber-band controller
   /// which interpolates at 60 fps toward this target.
   void _onLocationUpdate(SimulatedLocation loc) {
+    MapLogger.locationUpdate(
+      loc.position.lat,
+      loc.position.lon,
+      source: _locationService.mode.name,
+    );
     final fogResolver = ref.read(fogResolverProvider);
 
     // 1. Update fog-of-war state (uses real GPS position).
@@ -449,6 +457,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onDisplayPositionUpdate(double lat, double lon) {
     if (!mounted) return;
 
+    MapLogger.displayPositionUpdate(lat, lon);
+
     // Update display position for the marker widget.
     setState(() {
       _displayLat = lat;
@@ -466,6 +476,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // ---------------------------------------------------------------------------
 
   void _onMapCreated(MapController controller) {
+    MapLogger.mapCreated();
     _mapController = controller;
     final cameraController = ref.read(cameraControllerProvider);
 
@@ -476,13 +487,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // starts a new flyTo animation each frame which causes cascading
       // errors in MapLibre's web runtime. moveCamera is an instant jump
       // with no animation overhead, perfect for high-frequency updates.
-      controller.moveCamera(
-        center: Position(lon, lat),
-      );
+      try {
+        MapLogger.cameraMove(lat, lon);
+        controller.moveCamera(
+          center: Position(lon, lat),
+        );
+      } catch (e, stack) {
+        MapLogger.cameraMoveError(lat, lon, e, stack);
+      }
     };
   }
 
   void _onStyleLoaded() {
+    MapLogger.styleLoaded();
     _removeTextLabels();
     ref.read(mapStateProvider.notifier).markReady();
 

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/scheduler.dart';
 
+import 'package:fog_of_world/features/map/utils/map_logger.dart';
 import 'package:fog_of_world/shared/constants.dart';
 
 /// Smoothly interpolates a display position toward a target GPS position.
@@ -91,6 +92,7 @@ class RubberBandController {
       _initialized = true;
       _lastTickTime = Duration.zero;
       _ticker.start();
+      MapLogger.rubberBandInitialized(lat, lon);
       // Emit initial position immediately.
       onDisplayUpdate(_displayLat, _displayLon);
     }
@@ -115,7 +117,25 @@ class RubberBandController {
       if (_displayLat != _targetLat || _displayLon != _targetLon) {
         _displayLat = _targetLat;
         _displayLon = _targetLon;
+        MapLogger.tickFired(
+          displayLat: _displayLat,
+          displayLon: _displayLon,
+          targetLat: _targetLat,
+          targetLon: _targetLon,
+          distanceM: distM,
+          skipped: false,
+        );
         onDisplayUpdate(_displayLat, _displayLon);
+      } else {
+        // At target, no update needed — log as skip.
+        MapLogger.tickFired(
+          displayLat: _displayLat,
+          displayLon: _displayLon,
+          targetLat: _targetLat,
+          targetLon: _targetLon,
+          distanceM: distM,
+          skipped: true,
+        );
       }
       return;
     }
@@ -133,6 +153,14 @@ class RubberBandController {
     _displayLat = _displayLat + (_targetLat - _displayLat) * t;
     _displayLon = _displayLon + (_targetLon - _displayLon) * t;
 
+    MapLogger.tickFired(
+      displayLat: _displayLat,
+      displayLon: _displayLon,
+      targetLat: _targetLat,
+      targetLon: _targetLon,
+      distanceM: distM,
+      skipped: false,
+    );
     onDisplayUpdate(_displayLat, _displayLon);
   }
 

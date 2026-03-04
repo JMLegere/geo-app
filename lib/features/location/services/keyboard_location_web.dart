@@ -74,11 +74,15 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
   void _onKeyDown(Event e) {
     final key = (e as KeyboardEvent).key;
     _keysHeld.add(key);
+    // ignore: avoid_print
+    print('[KEY] ↓ $key  held=${_keysHeld.toList()}');
   }
 
   void _onKeyUp(Event e) {
     final key = (e as KeyboardEvent).key;
     _keysHeld.remove(key);
+    // ignore: avoid_print
+    print('[KEY] ↑ $key  held=${_keysHeld.toList()}');
   }
 
   void _tick() {
