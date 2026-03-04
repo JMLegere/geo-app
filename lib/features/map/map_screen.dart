@@ -14,6 +14,7 @@ import 'package:fog_of_world/features/location/services/location_service.dart';
 import 'package:fog_of_world/features/location/services/location_simulator.dart';
 import 'package:fog_of_world/features/location/services/real_gps_service.dart';
 import 'package:fog_of_world/features/location/widgets/location_permission_banner.dart';
+import 'package:fog_of_world/features/map/controllers/rubber_band_controller.dart';
 import 'package:fog_of_world/features/map/layers/player_marker_widget.dart';
 import 'package:fog_of_world/features/map/providers/camera_controller_provider.dart';
 import 'package:fog_of_world/features/map/providers/camera_mode_provider.dart';
@@ -60,11 +61,22 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen>
+    with TickerProviderStateMixin {
   MapController? _mapController;
 
   // Saved in initState so dispose() can stop without ref.read() (unsafe after unmount).
   late final LocationService _locationService;
+
+  /// Rubber-band interpolation controller. Decouples the visible marker
+  /// position from raw GPS coordinates and drives 60fps camera + marker
+  /// updates via a Ticker.
+  late final RubberBandController _rubberBand;
+
+  /// Interpolated display position for the player marker (updated at 60fps).
+  /// Null until the first GPS fix arrives.
+  double? _displayLat;
+  double? _displayLon;
 
   StreamSubscription<SimulatedLocation>? _locationSubscription;
   StreamSubscription<dynamic>? _discoverySubscription;
@@ -97,6 +109,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+
+    _rubberBand = RubberBandController(
+      vsync: this,
+      onDisplayUpdate: _onDisplayPositionUpdate,
+    );
 
     _locationService = ref.read(locationServiceProvider);
     _locationService.start();
@@ -135,6 +152,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
+    _rubberBand.dispose();
     _fogUpdateTimer?.cancel();
     _locationSubscription?.cancel();
     _discoverySubscription?.cancel();
@@ -372,15 +390,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Location handling
   // ---------------------------------------------------------------------------
 
+  /// Handles raw GPS / simulator location updates (1 Hz).
+  ///
+  /// Game logic (fog, discovery, stats) runs on the real GPS position.
+  /// The visible marker + camera are driven by the rubber-band controller
+  /// which interpolates at 60 fps toward this target.
   void _onLocationUpdate(SimulatedLocation loc) {
     final fogResolver = ref.read(fogResolverProvider);
-    final cameraController = ref.read(cameraControllerProvider);
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
-    // 1. Update fog-of-war state.
+    // 1. Update fog-of-war state (uses real GPS position).
     fogResolver.onLocationUpdate(loc.position.lat, loc.position.lon);
 
-    // 2. Push position into Riverpod location state.
+    // 2. Push real position into Riverpod location state.
     final locationNotifier = ref.read(locationProvider.notifier);
     locationNotifier.updateLocation(loc.position, loc.accuracy);
 
@@ -395,13 +416,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     }
 
-    // 3. Animate camera if in following mode.
-    cameraController.onLocationUpdate(loc.position.lat, loc.position.lon);
+    // 3. Feed GPS target to rubber band (drives 60fps marker + camera).
+    _rubberBand.setTarget(loc.position.lat, loc.position.lon);
 
     // 4. Recompute fog overlay if the map is ready.
     if (!mounted) return;
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
+      final fogOverlayController = ref.read(fogOverlayControllerProvider);
       final camera = _mapController!.getCamera();
       fogOverlayController.update(
         cameraLat: camera.center.lat.toDouble(),
@@ -425,6 +447,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+  /// Called at ~60 fps by the rubber-band controller with the interpolated
+  /// display position. Moves the camera (instant snap) and triggers a
+  /// marker rebuild via setState.
+  void _onDisplayPositionUpdate(double lat, double lon) {
+    if (!mounted) return;
+
+    // Update display position for the marker widget.
+    setState(() {
+      _displayLat = lat;
+      _displayLon = lon;
+    });
+
+    // Move camera instantly to the interpolated position (no animation
+    // duration = no fighting between concurrent animateCamera calls).
+    final cameraController = ref.read(cameraControllerProvider);
+    cameraController.onLocationUpdate(lat, lon);
+  }
+
   // ---------------------------------------------------------------------------
   // MapLibre callbacks
   // ---------------------------------------------------------------------------
@@ -435,10 +475,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     cameraController.onCameraMove = (lat, lon) {
       // Position(lng, lat) — longitude first!
-      // Duration matches the GPS tick interval (1s) for smooth continuous glide.
+      // Duration.zero = instant snap. The rubber-band controller calls this
+      // at 60 fps with interpolated positions, so no animation is needed —
+      // the smoothness comes from the high frame rate itself.
       controller.animateCamera(
         center: Position(lon, lat),
-        nativeDuration: const Duration(milliseconds: 1000),
+        nativeDuration: Duration.zero,
       );
     };
   }
@@ -512,7 +554,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _onMapEvent(MapEvent event) {
-    final cameraController = ref.read(cameraControllerProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
     // Camera is locked to the player — ignore user pan gestures.
@@ -571,7 +612,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final cameraMode = ref.watch(cameraModeProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
     final fogResolver = ref.read(fogResolverProvider);
+    // Use the interpolated display position for the marker (smooth 60fps).
+    // Falls back to raw GPS position if rubber band hasn't started yet.
     final position = locationState.currentPosition;
+    final markerLat = _displayLat ?? position?.lat;
+    final markerLon = _displayLon ?? position?.lon;
 
     return ErrorBoundary(
       onError: (_) => const _MapErrorFallback(),
@@ -591,13 +636,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             onStyleLoaded: _onStyleLoaded,
             onEvent: _onMapEvent,
             children: [
-              // ── Layer 2: Player marker (geo-anchored) ───────────────────
-              if (position != null)
+              // ── Layer 2: Player marker (geo-anchored to display position) ─
+              if (markerLat != null && markerLon != null)
                 WidgetLayer(
                   markers: [
                     Marker(
                       // Position(lng, lat) — longitude FIRST!
-                      point: Position(position.lon, position.lat),
+                      // Uses the rubber-band interpolated position (60fps smooth).
+                      point: Position(markerLon, markerLat),
                       size: const Size(44, 44),
                       child: const PlayerMarkerWidget(size: 20),
                     ),
