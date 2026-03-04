@@ -38,6 +38,10 @@ class AuthNotifier extends Notifier<AuthState> {
 
   /// Awaits [supabaseReady], creates the auth service, and checks for an
   /// existing session — all without blocking the first frame.
+  ///
+  /// When Supabase anonymous sign-in fails (e.g. anonymous auth disabled,
+  /// 422 response), automatically falls back to [MockAuthService] so the
+  /// user always reaches the map.
   Future<void> _initializeAuth() async {
     try {
       await supabaseReady;
@@ -47,39 +51,73 @@ class AuthNotifier extends Notifier<AuthState> {
           ? SupabaseAuthService()
           : MockAuthService();
 
-      // Mirror external auth state changes (e.g. token expiry, Supabase events).
-      _authSubscription = _authService!.authStateChanges.listen(
-        (user) {
-          if (user != null) {
-            state = AuthState.authenticated(user);
-          } else if (state.status != AuthStatus.guest) {
-            state = const AuthState.unauthenticated();
-          }
-        },
-        onError: (_) {
-          // Supabase may not be initialised (e.g. web locale crash).
-          // Fall through to session check which handles the fallback.
-        },
-      );
+      _listenToAuthChanges();
 
       // Check for a persisted session.
       final user = await _authService!.getCurrentUser();
       if (!ref.mounted) return;
       if (user != null) {
         state = AuthState.authenticated(user);
-      } else {
-        // No existing session — auto-create anonymous session so the user
-        // goes straight to the map. Supabase anonymous auth gives each
-        // device a persistent session via localStorage (effectively device
-        // ID login). MockAuthService does the same in offline mode.
-        final anonUser = await _authService!.signInAnonymously();
-        if (!ref.mounted) return;
-        state = AuthState.authenticated(anonUser);
+        return;
       }
+
+      // No existing session — auto-create anonymous session so the user
+      // goes straight to the map.
+      await _signInAnonymouslyWithFallback();
     } catch (_) {
-      // Provider disposed or session check failed.
-      // If still mounted, transition to unauthenticated so the user sees
-      // the login screen instead of being stuck in loading forever.
+      // Provider disposed or session check failed — fall back to mock so
+      // the user always gets in.
+      if (ref.mounted) {
+        await _fallbackToMock();
+      }
+    }
+  }
+
+  /// Subscribes to external auth state changes (token expiry, Supabase events).
+  void _listenToAuthChanges() {
+    _authSubscription = _authService!.authStateChanges.listen(
+      (user) {
+        if (user != null) {
+          state = AuthState.authenticated(user);
+        } else if (state.status != AuthStatus.guest) {
+          state = const AuthState.unauthenticated();
+        }
+      },
+      onError: (_) {
+        // Supabase may not be initialised (e.g. web locale crash).
+        // Fall through — session check handles the fallback.
+      },
+    );
+  }
+
+  /// Tries Supabase anonymous auth first. If it fails (e.g. 422 — anonymous
+  /// auth disabled on the project), swaps to [MockAuthService] and retries.
+  Future<void> _signInAnonymouslyWithFallback() async {
+    try {
+      final anonUser = await _authService!.signInAnonymously();
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(anonUser);
+    } on AuthException {
+      // Supabase anonymous sign-in failed — fall back to mock.
+      if (!ref.mounted) return;
+      await _fallbackToMock();
+    }
+  }
+
+  /// Disposes the current auth service, replaces it with [MockAuthService],
+  /// and signs in anonymously. Guarantees the user reaches the map.
+  Future<void> _fallbackToMock() async {
+    _authSubscription?.cancel();
+    _authService?.dispose();
+
+    _authService = MockAuthService();
+    _listenToAuthChanges();
+
+    try {
+      final anonUser = await _authService!.signInAnonymously();
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(anonUser);
+    } catch (_) {
       if (ref.mounted) {
         state = const AuthState.unauthenticated();
       }
@@ -144,15 +182,18 @@ class AuthNotifier extends Notifier<AuthState> {
 
   /// Signs in anonymously via Supabase (or mock) anonymous auth.
   /// The user gets a real session and can upgrade to email later.
+  ///
+  /// Falls back to [MockAuthService] if Supabase anonymous auth fails,
+  /// ensuring the user always reaches the map.
   Future<void> continueAsGuest() async {
-    final service = _authService;
-    if (service == null) return;
+    if (_authService == null) return;
     state = const AuthState.loading();
     try {
-      final user = await service.signInAnonymously();
+      final user = await _authService!.signInAnonymously();
       state = AuthState.authenticated(user);
-    } on AuthException catch (e) {
-      state = AuthState.error(e.message);
+    } on AuthException {
+      // Supabase anonymous auth failed — fall back to mock.
+      await _fallbackToMock();
     }
   }
 }
