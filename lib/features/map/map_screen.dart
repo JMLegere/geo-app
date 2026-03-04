@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
@@ -24,6 +25,7 @@ import 'package:fog_of_world/features/map/providers/location_service_provider.da
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
+import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
 import 'package:fog_of_world/features/map/widgets/map_controls.dart';
 import 'package:fog_of_world/features/map/widgets/status_bar.dart';
 import 'package:fog_of_world/shared/constants.dart';
@@ -321,7 +323,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         latitudeNorth: maxLat,
       ),
       padding: const EdgeInsets.all(40),
-      nativeDuration: const Duration(milliseconds: 500),
+      // Instant snap — the rubber-band's 60fps animateCamera would cancel
+      // any ongoing fitBounds animation, causing zoom drift.
+      nativeDuration: Duration.zero,
     );
   }
 
@@ -382,7 +386,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         latitudeNorth: maxLat,
       ),
       padding: const EdgeInsets.all(50),
-      nativeDuration: const Duration(seconds: 1),
+      // Instant snap — same as player zoom, prevents rubber-band from
+      // cancelling mid-animation and causing zoom drift.
+      nativeDuration: Duration.zero,
     );
   }
 
@@ -726,6 +732,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 visibleCells: fogOverlayController.renderData.length,
                 visitedCells: fogResolver.visitedCellIds.length,
                 cameraMode: cameraMode,
+              ),
+            ),
+
+          // ── Layer 4.5: DPad controls (web only) ──────────────────────────
+          if (kIsWeb)
+            Positioned(
+              left: 16,
+              bottom: 16,
+              child: DPadControls(
+                keyboardService:
+                    ref.read(locationServiceProvider).keyboardService!,
               ),
             ),
 

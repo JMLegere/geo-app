@@ -60,6 +60,17 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
     _controller.close();
   }
 
+  @override
+  void moveStep(double dLat, double dLon) {
+    _position = Geographic(
+      lat: _position.lat + dLat,
+      lon: _position.lon + dLon,
+    );
+    _controller.add(
+      SimulatedLocation(position: _position, timestamp: DateTime.now()),
+    );
+  }
+
   void _onKeyDown(Event e) {
     final key = (e as KeyboardEvent).key;
     _keysHeld.add(key);

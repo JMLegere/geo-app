@@ -69,22 +69,26 @@ class LocationService {
       case LocationMode.simulation:
         final sim = simulator;
         if (sim != null) {
-          sim.start();
+          // Subscribe BEFORE start() — start() may emit an initial position
+          // synchronously on a broadcast stream. Subscribing after would lose it.
           _subscription = sim.locationStream
               .map((loc) => filter.filter(loc))
               .where((loc) => loc != null)
               .cast<SimulatedLocation>()
               .listen(_outputController.add);
+          sim.start();
         }
       case LocationMode.keyboard:
         final kb = keyboardService;
         if (kb != null) {
-          kb.start();
+          // Subscribe BEFORE start() — start() emits an initial position
+          // synchronously on a broadcast stream. Subscribing after would lose it.
           _subscription = kb.locationStream
               .map((loc) => filter.filter(loc))
               .where((loc) => loc != null)
               .cast<SimulatedLocation>()
               .listen(_outputController.add);
+          kb.start();
         }
       case LocationMode.realGps:
         final gps = gpsService;

@@ -12,5 +12,9 @@ abstract class KeyboardLocationService {
   void stop();
   void dispose();
 
+  /// Moves position by one step in the given direction.
+  /// [dLat] and [dLon] are in degrees.
+  void moveStep(double dLat, double dLon);
+
   factory KeyboardLocationService() => createKeyboardLocationService();
 }
