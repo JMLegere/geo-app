@@ -152,6 +152,42 @@ class FogGeoJsonBuilder {
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
+  /// Builds the "fog-border" GeoJSON: polygon outlines for [FogState.unexplored]
+  /// cells rendered as a [LineLayer] on top of the opaque base fog.
+  ///
+  /// Only unexplored cells get borders — undetected cells remain featureless.
+  /// This gives the player a visual hint that something is nearby without
+  /// revealing what's there.
+  static String buildUnexploredBorders({
+    required Map<String, FogState> cellStates,
+    required List<Geographic> Function(String cellId) getBoundary,
+  }) {
+    final features = StringBuffer();
+    var first = true;
+
+    for (final entry in cellStates.entries) {
+      if (entry.value != FogState.unexplored) continue;
+
+      final boundary = getBoundary(entry.key);
+      if (boundary.length < 3) continue;
+
+      if (!first) features.write(',');
+      first = false;
+
+      features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+          '"coordinates":[[');
+      for (var i = 0; i < boundary.length; i++) {
+        if (i > 0) features.write(',');
+        features.write('[${boundary[i].lon},${boundary[i].lat}]');
+      }
+      // Close ring.
+      features.write(',[${boundary[0].lon},${boundary[0].lat}]');
+      features.write(']]},"properties":{}}');
+    }
+
+    return '{"type":"FeatureCollection","features":[$features]}';
+  }
+
   /// Returns an empty GeoJSON FeatureCollection.
   static String get emptyFeatureCollection =>
       '{"type":"FeatureCollection","features":[]}';

@@ -398,6 +398,82 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // buildUnexploredBorders
+  // -------------------------------------------------------------------------
+
+  group('FogGeoJsonBuilder.buildUnexploredBorders', () {
+    test('with empty cell states returns empty features', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {},
+        getBoundary: _getBoundary,
+      );
+
+      expect(_features(result), isEmpty);
+    });
+
+    test('includes only unexplored cells', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+
+      final features = _features(result);
+      expect(features.length, equals(1));
+    });
+
+    test('excludes undetected cells', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {'cell_37_-122': FogState.undetected},
+        getBoundary: _getBoundary,
+      );
+
+      expect(_features(result), isEmpty);
+    });
+
+    test('excludes observed, hidden, and concealed cells', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {
+          'cell_37_-122': FogState.observed,
+          'cell_38_-122': FogState.hidden,
+          'cell_37_-121': FogState.concealed,
+        },
+        getBoundary: _getBoundary,
+      );
+
+      expect(_features(result), isEmpty);
+    });
+
+    test('mixed states only includes unexplored', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {
+          'cell_37_-122': FogState.observed,
+          'cell_38_-122': FogState.unexplored,
+          'cell_37_-121': FogState.undetected,
+          'cell_38_-121': FogState.unexplored,
+        },
+        getBoundary: _getBoundary,
+      );
+
+      final features = _features(result);
+      expect(features.length, equals(2));
+    });
+
+    test('polygon rings are closed', () {
+      final result = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+
+      final ring = _features(result)[0]['geometry']['coordinates'][0]
+          as List<dynamic>;
+      final first = ring.first as List<dynamic>;
+      final last = ring.last as List<dynamic>;
+      expect(first[0], equals(last[0]));
+      expect(first[1], equals(last[1]));
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // GeoJSON validity
   // -------------------------------------------------------------------------
 
@@ -425,6 +501,13 @@ void main() {
       );
       expect(() => jsonDecode(rest), returnsNormally);
 
+      // buildUnexploredBorders
+      final border = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+      expect(() => jsonDecode(border), returnsNormally);
+
       // Static getters
       expect(() => jsonDecode(FogGeoJsonBuilder.emptyFeatureCollection),
           returnsNormally);
@@ -451,6 +534,12 @@ void main() {
         getBoundary: _getBoundary,
       );
       expect(_parse(rest)['type'], equals('FeatureCollection'));
+
+      final border = FogGeoJsonBuilder.buildUnexploredBorders(
+        cellStates: {},
+        getBoundary: _getBoundary,
+      );
+      expect(_parse(border)['type'], equals('FeatureCollection'));
     });
   });
 }
