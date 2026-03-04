@@ -29,10 +29,18 @@ class MapControls extends StatelessWidget {
   /// Called when the debug toggle button is tapped. Only visible in debug builds.
   final VoidCallback onToggleDebug;
 
+  /// Called when the zoom level toggle is tapped.
+  final VoidCallback onToggleZoom;
+
+  /// Whether the current zoom preset is world (true) or player (false).
+  final bool isWorldZoom;
+
   const MapControls({
     super.key,
     required this.onRecenter,
     required this.onToggleDebug,
+    required this.onToggleZoom,
+    this.isWorldZoom = false,
   });
 
   @override
@@ -48,6 +56,12 @@ class MapControls extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
+        _ControlButton(
+          icon: isWorldZoom ? Icons.person_pin_circle : Icons.public,
+          tooltip: isWorldZoom ? 'Zoom to player' : 'Zoom to world',
+          onPressed: onToggleZoom,
+        ),
+        const SizedBox(height: 8),
         _ControlButton(
           icon: Icons.my_location,
           tooltip: 'Recenter map',

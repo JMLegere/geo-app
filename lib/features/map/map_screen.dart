@@ -28,6 +28,15 @@ import 'package:fog_of_world/features/map/widgets/status_bar.dart';
 import 'package:fog_of_world/shared/constants.dart';
 import 'package:fog_of_world/shared/widgets/error_boundary.dart';
 
+/// Fixed zoom presets for the map camera.
+enum ZoomLevel {
+  /// Fits the current cell + all adjacent cells into the viewport.
+  player,
+
+  /// Fits all explored (visited) cells into the viewport.
+  world,
+}
+
 /// Main map screen — the primary game view.
 ///
 /// Composes all map-phase layers in a [Stack]:
@@ -62,6 +71,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   StreamSubscription<dynamic>? _fogCellSubscription;
 
   bool _showDebugHud = false;
+
+  /// Current zoom preset. Defaults to player-level (tight around current cell).
+  ZoomLevel _zoomLevel = ZoomLevel.player;
 
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
@@ -200,10 +212,71 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Zoom-to-fit
   // ---------------------------------------------------------------------------
 
+  /// Applies the current [_zoomLevel] preset to the camera.
+  void _applyZoomLevel() {
+    switch (_zoomLevel) {
+      case ZoomLevel.player:
+        _zoomToFitPlayer();
+      case ZoomLevel.world:
+        _zoomToFitExplored();
+    }
+  }
+
+  /// Fits the camera to the current cell + all adjacent cells.
+  ///
+  /// If the fog resolver has no current cell yet, falls back to the default
+  /// camera position (no-op).
+  void _zoomToFitPlayer() {
+    final controller = _mapController;
+    if (controller == null) return;
+
+    final fogResolver = ref.read(fogResolverProvider);
+    final currentCellId = fogResolver.currentCellId;
+    if (currentCellId == null) return;
+
+    final cellService = ref.read(cellServiceProvider);
+    final neighborIds = fogResolver.currentNeighborIds;
+
+    var minLat = 90.0;
+    var maxLat = -90.0;
+    var minLon = 180.0;
+    var maxLon = -180.0;
+
+    void expandBounds(String cellId) {
+      final center = cellService.getCellCenter(cellId);
+      if (center.lat < minLat) minLat = center.lat;
+      if (center.lat > maxLat) maxLat = center.lat;
+      if (center.lon < minLon) minLon = center.lon;
+      if (center.lon > maxLon) maxLon = center.lon;
+    }
+
+    expandBounds(currentCellId);
+    for (final id in neighborIds) {
+      expandBounds(id);
+    }
+
+    // Padding around the neighborhood (~200m in lat/lon).
+    const pad = 0.002;
+    minLat -= pad;
+    maxLat += pad;
+    minLon -= pad;
+    maxLon += pad;
+
+    controller.fitBounds(
+      bounds: LngLatBounds(
+        longitudeWest: minLon,
+        longitudeEast: maxLon,
+        latitudeSouth: minLat,
+        latitudeNorth: maxLat,
+      ),
+      padding: const EdgeInsets.all(40),
+      nativeDuration: const Duration(milliseconds: 500),
+    );
+  }
+
   /// Fits the camera to the bounding box of all visited cells.
   ///
   /// If there are no visited cells, does nothing (camera stays at default).
-  /// Called once after fog layers are first populated.
   void _zoomToFitExplored() {
     final controller = _mapController;
     if (controller == null) return;
@@ -292,6 +365,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             loc.position.lon,
           );
       _updateFogSources();
+
+      // 5. Re-apply zoom preset so the camera tracks the player neighborhood
+      //    or world bounds on every position update.
+      _applyZoomLevel();
     }
   }
 
@@ -339,7 +416,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
       if (mounted) {
         await _updateFogSources();
-        _zoomToFitExplored();
+        _applyZoomLevel();
       }
     });
   }
@@ -557,6 +634,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             right: 16,
             bottom: 16,
             child: MapControls(
+              isWorldZoom: _zoomLevel == ZoomLevel.world,
               onRecenter: () {
                 final loc = ref.read(locationProvider);
                 final cameraController = ref.read(cameraControllerProvider);
@@ -567,6 +645,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   );
                 }
                 ref.read(cameraModeProvider.notifier).setFollowing();
+              },
+              onToggleZoom: () {
+                setState(() {
+                  _zoomLevel = _zoomLevel == ZoomLevel.player
+                      ? ZoomLevel.world
+                      : ZoomLevel.player;
+                });
+                _applyZoomLevel();
               },
               onToggleDebug: () =>
                   setState(() => _showDebugHud = !_showDebugHud),

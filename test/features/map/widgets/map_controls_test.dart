@@ -13,6 +13,7 @@ void main() {
             body: MapControls(
               onRecenter: () {},
               onToggleDebug: () {},
+              onToggleZoom: () {},
             ),
           ),
         ),
@@ -30,6 +31,7 @@ void main() {
             body: MapControls(
               onRecenter: () => recenterCalled = true,
               onToggleDebug: () {},
+              onToggleZoom: () {},
             ),
           ),
         ),
@@ -54,6 +56,7 @@ void main() {
             body: MapControls(
               onRecenter: () {},
               onToggleDebug: () => debugToggled = true,
+              onToggleZoom: () {},
             ),
           ),
         ),
@@ -74,6 +77,7 @@ void main() {
             body: MapControls(
               onRecenter: () {},
               onToggleDebug: () {},
+              onToggleZoom: () {},
             ),
           ),
         ),
@@ -90,6 +94,7 @@ void main() {
             body: MapControls(
               onRecenter: () {},
               onToggleDebug: () => debugToggled = true,
+              onToggleZoom: () {},
             ),
           ),
         ),
@@ -99,6 +104,63 @@ void main() {
       await tester.pump();
 
       expect(debugToggled, isFalse);
+    });
+
+    testWidgets('shows world icon by default (player zoom)',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MapControls(
+              onRecenter: () {},
+              onToggleDebug: () {},
+              onToggleZoom: () {},
+            ),
+          ),
+        ),
+      );
+      // Default isWorldZoom=false → shows globe icon to switch TO world.
+      expect(find.byIcon(Icons.public), findsOneWidget);
+    });
+
+    testWidgets('shows player icon when in world zoom',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MapControls(
+              onRecenter: () {},
+              onToggleDebug: () {},
+              onToggleZoom: () {},
+              isWorldZoom: true,
+            ),
+          ),
+        ),
+      );
+      // isWorldZoom=true → shows person icon to switch TO player.
+      expect(find.byIcon(Icons.person_pin_circle), findsOneWidget);
+    });
+
+    testWidgets('calls onToggleZoom when zoom button is tapped',
+        (tester) async {
+      var zoomToggled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MapControls(
+              onRecenter: () {},
+              onToggleDebug: () {},
+              onToggleZoom: () => zoomToggled = true,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.public));
+      await tester.pump();
+
+      expect(zoomToggled, isTrue);
     });
   });
 }
