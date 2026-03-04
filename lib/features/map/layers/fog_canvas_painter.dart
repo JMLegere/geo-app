@@ -50,7 +50,7 @@ class FogCanvasPainter extends CustomPainter {
     required this.cells,
     required this.version,
     this.fogColor = const Color(0xD9161620),
-    this.blurSigma = 3.0,
+    this.blurSigma = 0.0,
     this.restorationLevels,
   });
 

@@ -61,6 +61,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   bool _showDebugHud = false;
 
+  /// Throttle fog overlay updates during camera movement to ~10 fps.
+  /// Camera move events fire at 60 fps during gestures; recomputing 1700+
+  /// cells each frame is prohibitive on web.
+  DateTime _lastFogUpdateTime = DateTime(0);
+  Timer? _fogUpdateTimer;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +109,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
+    _fogUpdateTimer?.cancel();
     _locationSubscription?.cancel();
     _discoverySubscription?.cancel();
     _locationService.stop();
@@ -225,18 +232,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
 
     if (event is MapEventMoveCamera) {
-      // Keep zoom in sync and recompute fog cells for the new viewport.
+      // Keep zoom in sync (cheap — just a provider write).
       final camera = event.camera;
       ref.read(mapStateProvider.notifier).updateZoom(camera.zoom);
 
+      // Throttle fog overlay recomputation to avoid recomputing ~1700 cells
+      // on every frame during pan/zoom gestures.
       if (mounted) {
-        fogOverlayController.update(
-          cameraLat: camera.center.lat.toDouble(),
-          cameraLon: camera.center.lng.toDouble(),
-          zoom: camera.zoom,
-          viewportSize: MediaQuery.of(context).size,
-        );
-        setState(() {});
+        const throttleMs = 100;
+        final now = DateTime.now();
+        final elapsed = now.difference(_lastFogUpdateTime).inMilliseconds;
+
+        if (elapsed >= throttleMs) {
+          fogOverlayController.update(
+            cameraLat: camera.center.lat.toDouble(),
+            cameraLon: camera.center.lng.toDouble(),
+            zoom: camera.zoom,
+            viewportSize: MediaQuery.of(context).size,
+          );
+          setState(() {});
+          _lastFogUpdateTime = now;
+          _fogUpdateTimer?.cancel();
+        } else {
+          // Schedule trailing update so the final camera position renders.
+          _fogUpdateTimer?.cancel();
+          _fogUpdateTimer = Timer(
+            Duration(milliseconds: throttleMs - elapsed),
+            () {
+              if (mounted && _mapController != null) {
+                final cam = _mapController!.getCamera();
+                fogOverlayController.update(
+                  cameraLat: cam.center.lat.toDouble(),
+                  cameraLon: cam.center.lng.toDouble(),
+                  zoom: cam.zoom,
+                  viewportSize: MediaQuery.of(context).size,
+                );
+                setState(() {});
+                _lastFogUpdateTime = DateTime.now();
+              }
+            },
+          );
+        }
       }
     }
   }
@@ -262,7 +298,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           // ── Layer 1: MapLibre base map ─────────────────────────────────────
           MapLibreMap(
             options: MapOptions(
-              initStyle: 'https://tiles.openfreemap.org/styles/dark',
+              initStyle: 'https://tiles.openfreemap.org/styles/positron',
               initZoom: kDefaultZoom,
               initCenter: Position(kDefaultMapLon, kDefaultMapLat),
               minZoom: kMinZoom,

@@ -69,9 +69,9 @@ void main() {
       expect(p.fogColor, equals(const Color(0xD9161620)));
     });
 
-    test('default blurSigma is 3.0', () {
+    test('default blurSigma is 0.0', () {
       final p = FogCanvasPainter(cells: const [], version: 0);
-      expect(p.blurSigma, equals(3.0));
+      expect(p.blurSigma, equals(0.0));
     });
 
     // -------------------------------------------------------------------------
