@@ -8,12 +8,21 @@ import 'package:fog_of_world/features/map/map_screen.dart';
 import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
 import 'package:fog_of_world/features/onboarding/screens/onboarding_screen.dart';
 import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/shared/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  initializeSupabase(); // Non-blocking — resolves in background.
-  runApp(const ProviderScope(child: FogOfWorldApp()));
+  // Create and initialize bootstrap before ProviderScope so that all
+  // consumers receive the same pre-initialized instance via overrideWithValue.
+  final bootstrap = SupabaseBootstrap();
+  bootstrap.initialize(); // Non-blocking — resolves in background.
+  runApp(ProviderScope(
+    overrides: [
+      supabaseBootstrapProvider.overrideWithValue(bootstrap),
+    ],
+    child: const FogOfWorldApp(),
+  ));
 }
 
 /// Root widget — routes through onboarding on first launch, then to

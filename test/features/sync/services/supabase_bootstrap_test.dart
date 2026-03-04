@@ -3,47 +3,55 @@ import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 
 void main() {
   group('SupabaseBootstrap', () {
-    // Reset globals before each test to avoid state leakage.
-    setUp(() {
-      supabaseInitialized = false;
-      supabaseReady = Future<void>.value();
+    // ── initialize ───────────────────────────────────────────────────────────
+
+    test('initialize() sets initialized = false when credentials missing', () {
+      // When SUPABASE_URL is empty (the default in tests), initialize()
+      // should set ready to an already-resolved future and leave
+      // initialized = false.
+      final bootstrap = SupabaseBootstrap();
+      bootstrap.initialize();
+
+      // ready should be immediately resolved (no async work).
+      expect(bootstrap.ready, completes);
+      // initialized should remain false.
+      expect(bootstrap.initialized, isFalse);
     });
 
-    // ── initializeSupabase ───────────────────────────────────────────────────
+    test('ready completes immediately when no credentials', () async {
+      final bootstrap = SupabaseBootstrap();
+      bootstrap.initialize();
 
-    test('initializeSupabase sets supabaseInitialized = false when credentials missing',
-        () {
-      // When SUPABASE_URL is empty (the default in tests), initializeSupabase()
-      // should set supabaseReady to an already-resolved future and leave
-      // supabaseInitialized = false.
-      initializeSupabase();
-
-      // supabaseReady should be immediately resolved (no async work).
-      expect(supabaseReady, completes);
-      // supabaseInitialized should remain false.
-      expect(supabaseInitialized, isFalse);
-    });
-
-    test('supabaseReady completes immediately when no credentials', () async {
-      initializeSupabase();
-
-      // supabaseReady should resolve without delay.
+      // ready should resolve without delay.
       final stopwatch = Stopwatch()..start();
-      await supabaseReady;
+      await bootstrap.ready;
       stopwatch.stop();
 
       // Should complete in <100ms (no actual Supabase init).
       expect(stopwatch.elapsedMilliseconds, lessThan(100));
     });
 
-    test('supabaseReady Future resolves after initialization attempt', () async {
+    test('ready Future resolves after initialization attempt', () async {
       // Even though we can't actually initialize Supabase in tests (no valid
-      // credentials), we can verify that supabaseReady is a Future that
+      // credentials), we can verify that ready is a Future that
       // eventually resolves (either to success or failure).
-      initializeSupabase();
+      final bootstrap = SupabaseBootstrap();
+      bootstrap.initialize();
 
       // This should not hang or throw.
-      await expectLater(supabaseReady, completes);
+      await expectLater(bootstrap.ready, completes);
+    });
+
+    test('initialized defaults to false before initialize() is called', () {
+      final bootstrap = SupabaseBootstrap();
+      expect(bootstrap.initialized, isFalse);
+    });
+
+    test('ready defaults to resolved future before initialize() is called',
+        () async {
+      final bootstrap = SupabaseBootstrap();
+      // Should complete immediately without calling initialize().
+      await expectLater(bootstrap.ready, completes);
     });
   });
 }

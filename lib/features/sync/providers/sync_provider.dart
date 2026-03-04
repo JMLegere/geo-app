@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 import 'package:fog_of_world/features/sync/models/sync_status.dart';
 
@@ -11,7 +11,7 @@ import 'package:fog_of_world/features/sync/models/sync_status.dart';
 /// Returns a [SupabasePersistence] instance when Supabase actually initialised,
 /// or null when credentials are missing or init failed (e.g. web locale crash).
 final supabasePersistenceProvider = Provider<SupabasePersistence?>((ref) {
-  if (!supabaseInitialized) return null;
+  if (!ref.read(supabaseBootstrapProvider).initialized) return null;
   return SupabasePersistence(Supabase.instance.client);
 });
 

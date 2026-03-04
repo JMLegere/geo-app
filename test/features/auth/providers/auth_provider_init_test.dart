@@ -4,19 +4,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 
 void main() {
   group('AuthNotifier initialization', () {
-    // Reset bootstrap globals before each test to avoid state leakage.
-    setUp(() {
-      supabaseInitialized = false;
-      supabaseReady = Future<void>.value();
-    });
+    // Each test creates a fresh ProviderContainer with a fresh SupabaseBootstrap
+    // instance (initialized = false, ready = resolved future) via override.
+    // This replaces the old approach of mutating global variables.
+
+    ProviderContainer makeContainer() {
+      final bootstrap = SupabaseBootstrap();
+      // Do NOT call bootstrap.initialize() — no credentials in tests, so this
+      // matches the pre-refactor setUp() behavior of:
+      //   supabaseInitialized = false; supabaseReady = Future.value();
+      return ProviderContainer(
+        overrides: [
+          supabaseBootstrapProvider.overrideWithValue(bootstrap),
+        ],
+      );
+    }
 
     // ── Initial state ────────────────────────────────────────────────────────
 
     test('build() returns AuthState.initial() (loading) immediately', () {
-      final container = ProviderContainer();
+      final container = makeContainer();
       addTearDown(container.dispose);
 
       // Read synchronously before any async work completes.
@@ -31,7 +42,7 @@ void main() {
     // ── Fallback to MockAuthService ──────────────────────────────────────────
 
     test('falls back to MockAuthService when Supabase not configured', () async {
-      final container = ProviderContainer();
+      final container = makeContainer();
       addTearDown(container.dispose);
 
       // Read the provider to trigger initialization.
@@ -52,7 +63,7 @@ void main() {
     // ── State transitions ────────────────────────────────────────────────────
 
     test('transitions from loading to authenticated after init', () async {
-      final container = ProviderContainer();
+      final container = makeContainer();
       addTearDown(container.dispose);
 
       // Set up listener BEFORE reading the provider to capture initial state.
@@ -72,7 +83,7 @@ void main() {
     });
 
     test('provides a valid user after initialization', () async {
-      final container = ProviderContainer();
+      final container = makeContainer();
       addTearDown(container.dispose);
 
       container.read(authProvider);

@@ -6,13 +6,13 @@ import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/services/auth_service.dart';
 import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
 import 'package:fog_of_world/features/auth/services/supabase_auth_service.dart';
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 
 /// Manages all auth state transitions.
 ///
-/// On construction, awaits [supabaseReady] before deciding which
-/// [AuthService] to use. This allows `main()` to fire-and-forget
-/// `initializeSupabase()` while the UI renders a lightweight splash.
+/// On construction, awaits `supabaseBootstrapProvider.ready` before deciding
+/// which [AuthService] to use. This allows `main()` to fire-and-forget
+/// `bootstrap.initialize()` while the UI renders a lightweight splash.
 ///
 /// Uses `MockAuthService` when Supabase is not configured or init fails.
 class AuthNotifier extends Notifier<AuthState> {
@@ -36,7 +36,7 @@ class AuthNotifier extends Notifier<AuthState> {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  /// Awaits [supabaseReady], creates the auth service, and checks for an
+  /// Awaits `bootstrap.ready`, creates the auth service, and checks for an
   /// existing session — all without blocking the first frame.
   ///
   /// When Supabase anonymous sign-in fails (e.g. anonymous auth disabled,
@@ -44,10 +44,11 @@ class AuthNotifier extends Notifier<AuthState> {
   /// user always reaches the map.
   Future<void> _initializeAuth() async {
     try {
-      await supabaseReady;
+      final bootstrap = ref.read(supabaseBootstrapProvider);
+      await bootstrap.ready;
       if (!ref.mounted) return;
 
-      _authService = supabaseInitialized
+      _authService = bootstrap.initialized
           ? SupabaseAuthService()
           : MockAuthService();
 
