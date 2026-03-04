@@ -90,6 +90,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Current zoom preset. Defaults to player-level (tight around current cell).
   ZoomLevel _zoomLevel = ZoomLevel.player;
 
+  /// Explicitly tracked zoom level. We ALWAYS pass this to moveCamera() to
+  /// prevent MapLibre from resetting zoom when `zoom: null` is passed via
+  /// JS interop (null ≠ undefined in Dart-JS interop — MapLibre may interpret
+  /// null as "reset to default" instead of "preserve current").
+  double _currentZoom = kDefaultZoom;
+
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
@@ -311,6 +317,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     minLon -= pad;
     maxLon += pad;
 
+    final oldZoom = _currentZoom;
     controller.fitBounds(
       bounds: LngLatBounds(
         longitudeWest: minLon,
@@ -318,11 +325,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
         latitudeSouth: minLat,
         latitudeNorth: maxLat,
       ),
-      padding: const EdgeInsets.all(40),
-      // Instant snap — the rubber-band's 60fps animateCamera would cancel
-      // any ongoing fitBounds animation, causing zoom drift.
+      padding: const EdgeInsets.all(50),
+      // Instant snap — same as player zoom, prevents rubber-band from
+      // cancelling mid-animation and causing zoom drift.
       nativeDuration: Duration.zero,
     );
+    // Capture the resulting zoom so subsequent moveCamera calls preserve it.
+    _currentZoom = controller.getCamera().zoom;
+    MapLogger.zoomChanged(oldZoom, _currentZoom, 'fitExplored');
   }
 
   /// Fits the camera to the bounding box of all hidden cells (previously
@@ -487,10 +497,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // starts a new flyTo animation each frame which causes cascading
       // errors in MapLibre's web runtime. moveCamera is an instant jump
       // with no animation overhead, perfect for high-frequency updates.
+      //
+      // CRITICAL: Always pass zoom explicitly. When zoom is null in the
+      // Dart→JS interop, MapLibre GL JS may receive `zoom: null` (not
+      // `undefined`), which can reset zoom to a default. We read the
+      // map's ACTUAL current zoom and pass it back — this prevents both
+      // the null→blowout AND jitter from forcing a hardcoded value.
       try {
-        MapLogger.cameraMove(lat, lon);
+        final actualZoom = controller.getCamera().zoom;
+        MapLogger.cameraMove(lat, lon, zoom: actualZoom);
         controller.moveCamera(
           center: Position(lon, lat),
+          zoom: actualZoom,
         );
       } catch (e, stack) {
         MapLogger.cameraMoveError(lat, lon, e, stack);

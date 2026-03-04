@@ -60,10 +60,15 @@ class MapLogger {
 
   // -- Camera --
 
-  static void cameraMove(double lat, double lon) {
+  static void cameraMove(double lat, double lon, {double? zoom}) {
     _cameraCount++;
     if (_cameraCount % cameraLogInterval != 0) return;
-    _log('CAMERA', 'moveCamera #$_cameraCount  → ($lat, $lon)');
+    final zoomStr = zoom != null ? '  z=${zoom.toStringAsFixed(2)}' : '';
+    _log('CAMERA', 'moveCamera #$_cameraCount  → ($lat, $lon)$zoomStr');
+  }
+
+  static void zoomChanged(double oldZoom, double newZoom, String reason) {
+    _log('CAMERA', '🔍 ZOOM $reason: ${oldZoom.toStringAsFixed(2)} → ${newZoom.toStringAsFixed(2)}');
   }
 
   static void cameraMoveError(double lat, double lon, Object error, StackTrace stack) {
