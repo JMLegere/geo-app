@@ -11,7 +11,7 @@ import 'package:fog_of_world/features/map/models/cell_render_data.dart';
 FogCanvasPainter _painter({
   List<CellRenderData> cells = const [],
   int version = 0,
-  Color fogColor = const Color(0xD9161620),
+  Color fogColor = const Color(0xFF161620),
   double blurSigma = 3.0,
 }) =>
     FogCanvasPainter(
@@ -64,9 +64,9 @@ void main() {
       expect(() => _painter(cells: cells), returnsNormally);
     });
 
-    test('default fogColor is Color(0xD9161620)', () {
+    test('default fogColor is Color(0xFF161620)', () {
       final p = FogCanvasPainter(cells: const [], version: 0);
-      expect(p.fogColor, equals(const Color(0xD9161620)));
+      expect(p.fogColor, equals(const Color(0xFF161620)));
     });
 
     test('default blurSigma is 0.0', () {
@@ -118,7 +118,7 @@ void main() {
     });
 
     test('shouldRepaint returns false when fogColor is same instance', () {
-      const color = Color(0xD9161620);
+      const color = Color(0xFF161620);
       final old = _painter(fogColor: color, version: 2);
       final current = _painter(fogColor: color, version: 2);
       expect(current.shouldRepaint(old), isFalse);

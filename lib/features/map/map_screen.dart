@@ -220,30 +220,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   /// Strips all symbol (text/icon) layers from the map style.
   /// The fog overlay covers the map, making labels useless clutter.
+  ///
+  /// Layer IDs match the OpenFreeMap Positron style. Removals are
+  /// wrapped in try/catch so a style change won't break the app.
   void _removeTextLabels() {
     final controller = _mapController;
     if (controller == null) return;
 
+    // Every symbol layer in the OpenFreeMap Positron style.
     const symbolLayerIds = [
-      'water_name',
-      'road_oneway',
-      'road_oneway_opposite',
-      'highway_name_other',
-      'highway_name_motorway',
-      'place_other',
-      'place_suburb',
-      'place_village',
-      'place_town',
-      'place_city',
-      'place_city_large',
-      'place_state',
-      'place_country_other',
-      'place_country_minor',
-      'place_country_major',
+      'waterway_line_label',
+      'water_name_point_label',
+      'water_name_line_label',
+      'highway-name-path',
+      'highway-name-minor',
+      'highway-name-major',
+      'highway-shield-non-us',
+      'highway-shield-us-interstate',
+      'road_shield_us',
+      'airport',
+      'label_other',
+      'label_village',
+      'label_town',
+      'label_state',
+      'label_city',
+      'label_city_capital',
+      'label_country_3',
+      'label_country_2',
+      'label_country_1',
     ];
 
     for (final id in symbolLayerIds) {
-      controller.removeLayer(id);
+      try {
+        controller.removeLayer(id);
+      } catch (_) {
+        // Layer may not exist if style changes — ignore.
+      }
     }
   }
 
