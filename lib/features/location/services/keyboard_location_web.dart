@@ -71,8 +71,19 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
     );
   }
 
+  /// Keys we intercept — movement keys should not reach MapLibre's native
+  /// keyboard handler (which pans the map independently and fights our
+  /// rubber-band camera system).
+  static const _movementKeys = {
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
+  };
+
   void _onKeyDown(Event e) {
     final key = (e as KeyboardEvent).key;
+    if (_movementKeys.contains(key)) {
+      e.preventDefault();
+    }
     _keysHeld.add(key);
     // ignore: avoid_print
     print('[KEY] ↓ $key  held=${_keysHeld.toList()}');
@@ -80,6 +91,9 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
 
   void _onKeyUp(Event e) {
     final key = (e as KeyboardEvent).key;
+    if (_movementKeys.contains(key)) {
+      e.preventDefault();
+    }
     _keysHeld.remove(key);
     // ignore: avoid_print
     print('[KEY] ↑ $key  held=${_keysHeld.toList()}');

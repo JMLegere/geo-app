@@ -634,6 +634,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
               initCenter: Position(kDefaultMapLon, kDefaultMapLat),
               minZoom: kMinZoom,
               maxZoom: kMaxZoom,
+              // Disable pitch (tilt) — we never use it, and it's a 2D game.
+              // This also disables MapLibre's built-in KeyboardHandler (which
+              // requires allEnabled=true). Without this, arrow keys are
+              // processed by BOTH our KeyboardLocationService AND MapLibre's
+              // native pan handler, causing rapid oscillation when opposing
+              // keys are held or jitter during normal movement.
+              gestures: const MapGestures.all(pitch: false),
             ),
             onMapCreated: _onMapCreated,
             onStyleLoaded: _onStyleLoaded,
