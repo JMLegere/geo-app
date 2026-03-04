@@ -526,7 +526,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       if (mounted) {
         await _updateFogSources();
-        _applyZoomLevel();
+        // Do NOT call _applyZoomLevel() here. The map starts at kDefaultZoom
+        // (15.0) which is correct for walking-speed exploration. fitBounds on
+        // style load was causing the camera to zoom out to fit cell bounds,
+        // which at the Voronoi cell scale (~200m) often overshoots wildly.
+        // Zoom presets are only applied when the user presses the toggle.
       }
     });
   }
