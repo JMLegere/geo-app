@@ -248,7 +248,7 @@ void main() {
       expect(props['density'], equals(0.5));
     });
 
-    test('includes concealed cells with density 0.25', () {
+    test('includes concealed cells with density 0.95', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.concealed},
         getBoundary: _getBoundary,
@@ -258,7 +258,7 @@ void main() {
       expect(features.length, equals(1));
 
       final props = features[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.25));
+      expect(props['density'], equals(0.95));
     });
 
     test('excludes observed cells', () {
@@ -333,7 +333,7 @@ void main() {
       final densities = features
           .map((f) => (f['properties'] as Map<String, dynamic>)['density'])
           .toSet();
-      expect(densities, containsAll([0.5, 0.25]));
+      expect(densities, containsAll([0.5, 0.95]));
     });
   });
 

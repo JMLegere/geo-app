@@ -17,8 +17,8 @@ import 'package:fog_of_world/shared/constants.dart';
 /// | Priority | State        | Condition                                          | Fog Density |
 /// |----------|--------------|----------------------------------------------------|-------------|
 /// | 1        | Observed     | Player is currently in this cell                   | 0.0         |
-/// | 2        | Concealed    | Adjacent to player's current cell                  | 0.25        |
-/// | 3        | Hidden       | Previously visited, not in current view            | 0.5         |
+/// | 2        | Hidden       | Previously visited, not in current view            | 0.5         |
+/// | 3        | Concealed    | Adjacent to player's current cell                  | 0.95        |
 /// | 4        | Unexplored   | Frontier cell OR within [kDetectionRadiusMeters]   | 0.75        |
 /// | 5        | Undetected   | >50 km from player and none of the above           | 1.0         |
 ///
@@ -95,8 +95,8 @@ class FogStateResolver {
   /// player moves. See the class-level priority table for resolution order.
   FogState resolve(String cellId) {
     if (cellId == _currentCellId) return FogState.observed;
-    if (_currentNeighborIds.contains(cellId)) return FogState.concealed;
     if (_visitedCellIds.contains(cellId)) return FogState.hidden;
+    if (_currentNeighborIds.contains(cellId)) return FogState.concealed;
     if (_explorationFrontier.contains(cellId)) return FogState.unexplored;
     if (isCellWithinDetectionRadius(cellId)) return FogState.unexplored;
     return FogState.undetected;

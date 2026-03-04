@@ -22,7 +22,7 @@ const double kDetectionRadiusMeters = 50000.0;
 
 /// Fog density values for each state.
 /// Index 0 = Undetected (fully opaque), Index 4 = Observed (fully transparent).
-const List<double> kFogDensityValues = [1.0, 0.75, 0.5, 0.25, 0.0];
+const List<double> kFogDensityValues = [1.0, 0.95, 0.75, 0.5, 0.0];
 
 // Seasons
 /// Number of seasons in the game.

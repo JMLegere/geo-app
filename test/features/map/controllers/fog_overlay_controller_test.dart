@@ -343,8 +343,8 @@ void main() {
         final props = feature['properties'] as Map<String, dynamic>;
         final density = props['density'] as num;
         expect(density, isNotNull);
-        // Density should be 0.25 (concealed) or 0.5 (hidden).
-        expect(density, anyOf(equals(0.25), equals(0.5)));
+        // Density should be 0.95 (concealed) or 0.5 (hidden).
+        expect(density, anyOf(equals(0.95), equals(0.5)));
       }
     });
 

@@ -194,7 +194,7 @@ void main() {
       expect(FogState.undetected.density, equals(1.0)); // revealStrength = 0.0
       expect(FogState.unexplored.density, equals(0.75)); // revealStrength = 0.25
       expect(FogState.hidden.density, equals(0.5)); // revealStrength = 0.5
-      expect(FogState.concealed.density, equals(0.25)); // revealStrength = 0.75
+      expect(FogState.concealed.density, equals(0.95)); // revealStrength = 0.05
       expect(FogState.observed.density, equals(0.0)); // revealStrength = 1.0
     });
   });
