@@ -43,6 +43,11 @@ class FogStateResolver {
   /// Maintained incrementally on each new cell visit.
   final Set<String> _explorationFrontier = {};
 
+  /// All cells that have ever resolved as anything other than undetected.
+  /// Once a cell is detected (via proximity, frontier, or visit), it stays
+  /// at least [FogState.unexplored] permanently — fog never re-closes.
+  final Set<String> _everDetectedCellIds = {};
+
   /// The cell containing the player, or null before any location update.
   String? _currentCellId;
 
@@ -94,11 +99,28 @@ class FogStateResolver {
   /// State is NOT stored — repeated calls may return different results as the
   /// player moves. See the class-level priority table for resolution order.
   FogState resolve(String cellId) {
-    if (cellId == _currentCellId) return FogState.observed;
-    if (_visitedCellIds.contains(cellId)) return FogState.hidden;
-    if (_currentNeighborIds.contains(cellId)) return FogState.concealed;
-    if (_explorationFrontier.contains(cellId)) return FogState.unexplored;
-    if (isCellWithinDetectionRadius(cellId)) return FogState.unexplored;
+    if (cellId == _currentCellId) {
+      _everDetectedCellIds.add(cellId);
+      return FogState.observed;
+    }
+    if (_visitedCellIds.contains(cellId)) {
+      _everDetectedCellIds.add(cellId);
+      return FogState.hidden;
+    }
+    if (_currentNeighborIds.contains(cellId)) {
+      _everDetectedCellIds.add(cellId);
+      return FogState.concealed;
+    }
+    if (_explorationFrontier.contains(cellId)) {
+      _everDetectedCellIds.add(cellId);
+      return FogState.unexplored;
+    }
+    if (isCellWithinDetectionRadius(cellId)) {
+      _everDetectedCellIds.add(cellId);
+      return FogState.unexplored;
+    }
+    // Once detected, a cell never reverts to undetected.
+    if (_everDetectedCellIds.contains(cellId)) return FogState.unexplored;
     return FogState.undetected;
   }
 
@@ -150,18 +172,22 @@ class FogStateResolver {
   void loadVisitedCells(Set<String> cells) {
     _visitedCellIds.clear();
     _explorationFrontier.clear();
+    _everDetectedCellIds.clear();
 
     for (final cellId in cells) {
       _visitedCellIds.add(cellId);
+      _everDetectedCellIds.add(cellId);
       // Do NOT add to explorationFrontier yet — wait until all visited cells
       // are loaded to avoid re-adding visited cells as frontier.
     }
 
     // Build frontier from scratch after loading all visited cells.
+    // Frontier cells are also "ever detected".
     for (final cellId in _visitedCellIds) {
       for (final neighbor in _cellService.getNeighborIds(cellId)) {
         if (!_visitedCellIds.contains(neighbor)) {
           _explorationFrontier.add(neighbor);
+          _everDetectedCellIds.add(neighbor);
         }
       }
     }

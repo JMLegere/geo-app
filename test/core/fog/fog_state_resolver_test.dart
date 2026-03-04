@@ -454,6 +454,45 @@ void main() {
       expect(events[0].newState, equals(FogState.observed));
     });
 
+    // -------------------------------------------------------------------------
+    // Test: Once detected, cells never revert to undetected.
+    // -------------------------------------------------------------------------
+    test('once detected via proximity, cells stay unexplored when player moves away',
+        () {
+      resolver.onLocationUpdate(0.0, 0.0);
+
+      // cell_0.005_0 is ≈556 m away → within detection radius → unexplored.
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+
+      // Move far away — cell_0.005_0 is now outside detection radius AND
+      // not in the exploration frontier. Before the fix it would revert
+      // to undetected; now it should stay unexplored.
+      resolver.onLocationUpdate(50.0, 50.0);
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+    });
+
+    test('frontier cells stay unexplored when player moves far away', () {
+      // Visit cell_0_0 → cell_1_0 becomes frontier (neighbor of visited).
+      resolver.onLocationUpdate(0.0, 0.0);
+      expect(resolver.resolve('cell_1_0'), equals(FogState.concealed));
+
+      // Move far away — cell_1_0 is still in frontier.
+      resolver.onLocationUpdate(50.0, 50.0);
+      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+    });
+
+    test('loadVisitedCells seeds ever-detected set so frontier stays unexplored',
+        () {
+      resolver.loadVisitedCells({'cell_0_0'});
+
+      // cell_1_0 is in the frontier (neighbor of visited cell_0_0).
+      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+
+      // Move player far away — frontier cell should remain unexplored.
+      resolver.onLocationUpdate(50.0, 50.0);
+      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+    });
+
     test('event oldState is undetected when entering a never-detected cell', () {
       // Jump to a far cell — no prior frontier around cell_20_20.
       final events = collectEvents(resolver, () {
