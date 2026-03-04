@@ -8,6 +8,7 @@ import 'package:fog_of_world/core/cells/voronoi_cell_service.dart';
 import 'package:fog_of_world/core/fog/fog_event.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:fog_of_world/shared/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // ---------------------------------------------------------------------------
@@ -148,14 +149,14 @@ void main() {
       final neighbors = resolver.currentNeighborIds;
 
       // Find a cell that is NOT current and NOT a direct neighbor
-      // but IS within the 50 km detection radius.
+      // but IS within the detection radius.
       for (int i = 0; i < cellService.cellCount; i++) {
         final id = i.toString();
         if (id == currentId) continue;
         if (neighbors.contains(id)) continue;
 
         final dist = resolver.distanceToCell(id);
-        if (dist <= 50000.0) {
+        if (dist <= kDetectionRadiusMeters) {
           // Within detection radius → must be at least unexplored or better
           final state = resolver.resolve(id);
           expect(state, isNot(equals(FogState.undetected)),

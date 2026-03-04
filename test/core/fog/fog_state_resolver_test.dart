@@ -4,6 +4,7 @@ import 'package:fog_of_world/core/cells/cell_service.dart';
 import 'package:fog_of_world/core/fog/fog_event.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:fog_of_world/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — deterministic grid-based cell service.
@@ -176,23 +177,25 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Test 6: Unexplored for cells within 50km but not frontier/visited.
+    // Test 6: Unexplored for cells within detection radius but not
+    //         frontier/visited.
     // -------------------------------------------------------------------------
     test(
-        '6. resolve() returns unexplored for cells within 50km but not visited/frontier',
+        '6. resolve() returns unexplored for cells within detection radius but not visited/frontier',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // "cell_0.3_0" has center at (0.3°, 0°) ≈ 33 km from player.
-      // It is NOT in the frontier (mock frontier uses integer-coordinate cells).
-      expect(resolver.resolve('cell_0.3_0'), equals(FogState.unexplored));
+      // "cell_0.005_0" has center at (0.005°, 0°) ≈ 556 m from player.
+      // It is within kDetectionRadiusMeters (1 km) but is NOT in the frontier
+      // (mock frontier uses integer-coordinate cells only).
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
     });
 
     // -------------------------------------------------------------------------
-    // Test 7: Undetected for cells beyond 50km not in frontier.
+    // Test 7: Undetected for cells beyond detection radius not in frontier.
     // -------------------------------------------------------------------------
     test(
-        '7. resolve() returns undetected for cells beyond 50km that are not visited',
+        '7. resolve() returns undetected for cells beyond detection radius that are not visited',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
@@ -348,53 +351,53 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Test 18: isCellWithinDetectionRadius returns true for cells within 50km.
+    // Test 18: isCellWithinDetectionRadius respects kDetectionRadiusMeters.
     // -------------------------------------------------------------------------
     test(
-        '18. isCellWithinDetectionRadius returns true for cells within 50km',
+        '18. isCellWithinDetectionRadius returns true for cells within detection radius',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // ~33 km < 50 km.
-      expect(resolver.isCellWithinDetectionRadius('cell_0.3_0'), isTrue);
-      // ~111 km > 50 km.
-      expect(resolver.isCellWithinDetectionRadius('cell_1_0'), isFalse);
+      // cell_0.005_0 center at (0.005°, 0°) ≈ 556 m — within 1 km radius.
+      expect(resolver.isCellWithinDetectionRadius('cell_0.005_0'), isTrue);
+      // cell_0.02_0 center at (0.02°, 0°) ≈ 2.2 km — beyond 1 km radius.
+      expect(resolver.isCellWithinDetectionRadius('cell_0.02_0'), isFalse);
     });
 
     // -------------------------------------------------------------------------
-    // Test 19: 50km detection — cells within radius but not frontier/visited
+    // Test 19: detection — cells within radius but not frontier/visited
     //          are unexplored.
     // -------------------------------------------------------------------------
     test(
-        '19. 50km detection: cells within radius but not frontier/visited are unexplored',
+        '19. detection: cells within radius but not frontier/visited are unexplored',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // "cell_0.3_0" is ≈33 km away, not in integer-coordinate frontier.
-      expect(resolver.resolve('cell_0.3_0'), equals(FogState.unexplored));
+      // cell_0.005_0 is ≈556 m away, within detection radius.
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
 
-      // "cell_0.44_0" is ≈49 km away, also within detection radius.
-      final dist = resolver.distanceToCell('cell_0.44_0');
-      expect(dist, lessThanOrEqualTo(50000.0));
-      expect(resolver.resolve('cell_0.44_0'), equals(FogState.unexplored));
+      // cell_0.008_0 is ≈890 m away, also within detection radius.
+      final dist = resolver.distanceToCell('cell_0.008_0');
+      expect(dist, lessThanOrEqualTo(kDetectionRadiusMeters));
+      expect(resolver.resolve('cell_0.008_0'), equals(FogState.unexplored));
     });
 
     // -------------------------------------------------------------------------
     // Test 20: 50km detection — cells beyond radius are undetected.
     // -------------------------------------------------------------------------
     test(
-        '20. 50km detection: cells beyond radius are undetected',
+        '20. detection: cells beyond radius are undetected',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // cell_3_0 center at (3°, 0°) ≈ 333 km — well beyond 50 km.
+      // cell_3_0 center at (3°, 0°) ≈ 333 km — well beyond detection radius.
       // Not visited, not frontier.
       expect(resolver.resolve('cell_3_0'), equals(FogState.undetected));
 
-      // cell_0.6_0 center at (0.6°, 0°) ≈ 67 km — beyond 50 km.
+      // cell_0.6_0 center at (0.6°, 0°) ≈ 67 km — beyond detection radius.
       // Not in integer-coordinate frontier.
       final dist = resolver.distanceToCell('cell_0.6_0');
-      expect(dist, greaterThan(50000.0));
+      expect(dist, greaterThan(kDetectionRadiusMeters));
       expect(resolver.resolve('cell_0.6_0'), equals(FogState.undetected));
     });
 
