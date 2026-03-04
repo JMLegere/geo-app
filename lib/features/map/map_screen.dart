@@ -75,6 +75,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   /// Current zoom preset. Defaults to player-level (tight around current cell).
   ZoomLevel _zoomLevel = ZoomLevel.player;
 
+  /// Tracks the last cell ID for which we applied a zoom fit, so we only
+  /// re-fit when the player enters a new cell (not every GPS tick).
+  String? _lastFitCellId;
+
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
@@ -382,9 +386,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           );
       _updateFogSources();
 
-      // 5. Re-apply zoom preset so the camera tracks the player neighborhood
-      //    or world bounds on every position update.
-      _applyZoomLevel();
+      // 5. Re-fit zoom only when the player enters a new cell — not every
+      //    GPS tick. This prevents fitBounds from fighting animateCamera.
+      final currentCellId = fogResolver.currentCellId;
+      if (currentCellId != null && currentCellId != _lastFitCellId) {
+        _lastFitCellId = currentCellId;
+        _applyZoomLevel();
+      }
     }
   }
 
@@ -398,9 +406,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     cameraController.onCameraMove = (lat, lon) {
       // Position(lng, lat) — longitude first!
+      // Duration matches the GPS tick interval (1s) for smooth continuous glide.
       controller.animateCamera(
         center: Position(lon, lat),
-        nativeDuration: const Duration(milliseconds: 500),
+        nativeDuration: const Duration(milliseconds: 1000),
       );
     };
   }
