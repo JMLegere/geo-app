@@ -1,0 +1,21 @@
+Batch Delete Verification
+==========================
+
+collection_repository.dart clearUserCollections():
+- OLD: Load all records, loop through each, delete individually
+- NEW: (_db.delete(_db.localCollectedSpeciesTable)..where((t) => t.userId.equals(userId))).go()
+
+This is a single atomic DELETE WHERE operation instead of N individual deletes.
+
+Transaction Verification
+==========================
+
+cell_progress_repository.dart:
+- addDistance() wrapped in _db.transaction()
+- incrementVisitCount() wrapped in _db.transaction()
+
+profile_repository.dart:
+- addDistance() wrapped in _db.transaction()
+- incrementCurrentStreak() wrapped in _db.transaction()
+
+All read-modify-write operations are now atomic.

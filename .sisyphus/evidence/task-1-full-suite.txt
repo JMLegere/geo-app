@@ -1,0 +1,20 @@
+00:43 +984: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: Species lookup performance getSpeciesForCell (single habitat) completes in under 5ms
+00:44 +985: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: Species lookup performance getSpeciesForCell (3 habitats) completes in under 10ms
+00:44 +986: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: Species lookup performance getPoolForArea unions correctly with full dataset
+00:44 +987: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: Species lookup performance (tearDownAll)
+00:44 +987: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: BiomeFeatureIndex performance loads and indexes 509KB biome JSON in under 2 seconds
+00:44 +988: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: BiomeFeatureIndex performance getBiomesNear completes in under 1ms per query (cached)
+00:44 +989: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: BiomeFeatureIndex performance getBiomesNear cold queries complete in under 5ms each
+00:44 +990: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: HabitatService end-to-end classifyLocation returns sensible habitats for known locations
+00:44 +991: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) (setUpAll)
+00:44 +991: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) getCellId resolves in under 1ms per call
+00:44 +992: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) neighbor map builds in under 2 seconds
+00:44 +993: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) getNeighborIds is O(1) after initial build
+00:45 +994: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) getCellsInRing(k=2) completes in under 1ms
+00:45 +995: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: VoronoiCellService performance (40×40 = 1600 cells) (tearDownAll)
+00:45 +995: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: FogStateResolver performance onLocationUpdate processes in under 5ms
+00:45 +996: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: FogStateResolver performance resolve() is O(1) per cell
+00:45 +997: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: FogStateResolver performance loadVisitedCells with 500 cells completes in under 2 seconds
+00:45 +998: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: End-to-end discovery pipeline full pipeline (locate → biome → species → loot) completes in under 50ms
+00:45 +999: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: (tearDownAll)
+00:45 +999: All tests passed!

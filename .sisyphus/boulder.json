@@ -1,10 +1,10 @@
 {
-  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/fog-game-reboot.md",
-  "started_at": "2026-03-02T21:41:13.381Z",
+  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/fog-of-world-refactor.md",
+  "started_at": "2026-03-04T20:55:33.717Z",
   "session_ids": [
-    "ses_34fa3aaa5ffe19YCyseB4Ya0Ar"
+    "ses_346f45c5affeeF9l8qh1VN9xIs"
   ],
-  "plan_name": "fog-game-reboot",
+  "plan_name": "fog-of-world-refactor",
   "agent": "atlas",
   "worktree_path": "/home/jeremy/workspace/geo-app"
 }
