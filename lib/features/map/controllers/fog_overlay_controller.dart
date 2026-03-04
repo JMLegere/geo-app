@@ -37,6 +37,16 @@ class FogOverlayController {
 
   int _renderVersion = 0;
 
+  /// Persistent set of all cell IDs ever discovered via viewport sampling.
+  ///
+  /// Once a cell is found, it stays in this set permanently. This eliminates
+  /// the flickering caused by viewport sampling aliasing — at certain zoom
+  /// levels, cells near the edge of the viewport can fall between sample
+  /// points on one frame and be hit on the next, causing them to pop in/out
+  /// of the GeoJSON. MapLibre clips off-screen polygons natively, so
+  /// including out-of-viewport cells has negligible rendering cost.
+  final Set<String> _discoveredCellIds = {};
+
   // -- Legacy fields kept for backward compatibility during transition --
   // TODO(cleanup): Remove once FogCanvasOverlay is fully deleted.
   List<CellRenderData> _renderData = const [];
@@ -98,7 +108,11 @@ class FogOverlayController {
       viewportSize: viewportSize,
     );
 
-    _buildGeoJson(visibleCellIds);
+    // Accumulate — never remove cells from the discovered set.
+    // This prevents flickering caused by viewport sampling aliasing.
+    _discoveredCellIds.addAll(visibleCellIds);
+
+    _buildGeoJson(_discoveredCellIds);
     _renderVersion++;
 
     lastCameraLat = cameraLat;
@@ -128,17 +142,19 @@ class FogOverlayController {
       viewportSize: viewportSize,
     ).toList();
 
-    final accumulated = <String>{};
+    var addedCount = 0;
 
     for (var i = 0; i < visibleCellIds.length; i += chunkSize) {
-      if (_asyncUpdateGeneration != myGeneration) return accumulated.length;
+      if (_asyncUpdateGeneration != myGeneration) return addedCount;
 
       final end = min(i + chunkSize, visibleCellIds.length);
       final chunk = visibleCellIds.sublist(i, end);
-      accumulated.addAll(chunk);
+      // Accumulate into the persistent set — never remove.
+      _discoveredCellIds.addAll(chunk);
+      addedCount += chunk.length;
 
-      // Build GeoJSON from all accumulated cells so far.
-      _buildGeoJson(accumulated);
+      // Build GeoJSON from all discovered cells so far.
+      _buildGeoJson(_discoveredCellIds);
       _renderVersion++;
       onBatchReady?.call();
 
@@ -151,7 +167,7 @@ class FogOverlayController {
     lastCameraLon = cameraLon;
     lastZoom = zoom;
 
-    return accumulated.length;
+    return addedCount;
   }
 
   int _asyncUpdateGeneration = 0;
