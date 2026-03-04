@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
 
+import 'package:geobase/geobase.dart' show Geographic;
+
 import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
@@ -95,6 +97,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// JS interop (null ≠ undefined in Dart-JS interop — MapLibre may interpret
   /// null as "reset to default" instead of "preserve current").
   double _currentZoom = kDefaultZoom;
+
+  /// Last raw accuracy from GPS/simulator. Passed through to the location
+  /// provider when we update it from the rubber-band display position.
+  double _lastRawAccuracy = 0.0;
+
+  /// Frame counter for throttling game logic in [_onDisplayPositionUpdate].
+  /// Game logic (fog, stats) runs at ~10 Hz, not 60 fps.
+  int _gameLogicFrame = 0;
+
+  /// Game logic runs every Nth display-update frame (~10 Hz at 60 fps).
+  static const _kGameLogicInterval = 6;
 
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
@@ -402,28 +415,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // Location handling
   // ---------------------------------------------------------------------------
 
-  /// Handles raw GPS / simulator location updates (1 Hz).
+  /// Handles raw GPS / simulator location updates (1–10 Hz).
   ///
-  /// Game logic (fog, discovery, stats) runs on the real GPS position.
-  /// The visible marker + camera are driven by the rubber-band controller
-  /// which interpolates at 60 fps toward this target.
+  /// This method ONLY feeds the rubber-band controller. All game logic
+  /// (fog, discovery, stats, location state) runs from the rubber-band's
+  /// interpolated display position in [_onDisplayPositionUpdate]. This
+  /// makes the player marker the single source of truth for the game —
+  /// not the raw geolocation.
   void _onLocationUpdate(SimulatedLocation loc) {
     MapLogger.locationUpdate(
       loc.position.lat,
       loc.position.lon,
       source: _locationService.mode.name,
     );
-    final fogResolver = ref.read(fogResolverProvider);
 
-    // 1. Update fog-of-war state (uses real GPS position).
-    fogResolver.onLocationUpdate(loc.position.lat, loc.position.lon);
+    // Store raw accuracy for location provider updates.
+    _lastRawAccuracy = loc.accuracy;
 
-    // 2. Push real position into Riverpod location state.
-    final locationNotifier = ref.read(locationProvider.notifier);
-    locationNotifier.updateLocation(loc.position, loc.accuracy);
+    // Feed target to rubber band. The interpolated display position
+    // becomes the source of truth for all game logic.
+    _rubberBand.setTarget(loc.position.lat, loc.position.lon);
 
-    // Only flag low accuracy for real GPS (not simulation / keyboard).
+    // GPS accuracy UI (only for real GPS — keyboard/sim always accurate).
     if (_locationService.mode == LocationMode.realGps) {
+      final locationNotifier = ref.read(locationProvider.notifier);
       final currentError = ref.read(locationProvider).locationError;
       final isLowAccuracy = loc.accuracy > kGpsAccuracyThreshold;
       if (isLowAccuracy && currentError != LocationError.lowAccuracy) {
@@ -432,11 +447,56 @@ class _MapScreenState extends ConsumerState<MapScreen>
         locationNotifier.setError(LocationError.none);
       }
     }
+  }
 
-    // 3. Feed GPS target to rubber band (drives 60fps marker + camera).
-    _rubberBand.setTarget(loc.position.lat, loc.position.lon);
+  /// Called at ~60 fps by the rubber-band controller with the interpolated
+  /// display position. This is the single source of truth for the game:
+  ///
+  /// 1. Marker widget position (60 fps)
+  /// 2. Camera position (60 fps)
+  /// 3. Fog / stats / location state (~10 Hz, throttled)
+  ///
+  /// Raw GPS/keyboard position is ONLY used to feed the rubber-band target.
+  /// Everything the game "sees" comes through here.
+  void _onDisplayPositionUpdate(double lat, double lon) {
+    if (!mounted) return;
 
-    // 4. Recompute fog overlay if the map is ready.
+    MapLogger.displayPositionUpdate(lat, lon);
+
+    // 1. Update marker widget (60 fps smooth).
+    setState(() {
+      _displayLat = lat;
+      _displayLon = lon;
+    });
+
+    // 2. Move camera to the interpolated position (instant snap).
+    final cameraController = ref.read(cameraControllerProvider);
+    cameraController.onLocationUpdate(lat, lon);
+
+    // 3. Game logic: fog, stats, location state (throttled to ~10 Hz).
+    _gameLogicFrame++;
+    if (_gameLogicFrame == 1 || _gameLogicFrame % _kGameLogicInterval == 0) {
+      _processGameLogic(lat, lon);
+    }
+  }
+
+  /// Processes fog state, location provider, and fog overlay using the
+  /// rubber-band display position (the game's source of truth).
+  ///
+  /// Called at ~10 Hz from [_onDisplayPositionUpdate] (not every 60 fps
+  /// frame) to avoid redundant fog overlay rebuilds.
+  void _processGameLogic(double lat, double lon) {
+    // 1. Update fog-of-war state using marker position.
+    final fogResolver = ref.read(fogResolverProvider);
+    fogResolver.onLocationUpdate(lat, lon);
+
+    // 2. Push marker position as the official player location.
+    ref.read(locationProvider.notifier).updateLocation(
+          Geographic(lat: lat, lon: lon),
+          _lastRawAccuracy,
+        );
+
+    // 3. Recompute fog overlay if the map is ready.
     if (!mounted) return;
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
@@ -448,37 +508,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         zoom: camera.zoom,
         viewportSize: MediaQuery.of(context).size,
       );
-      ref.read(mapStateProvider.notifier).updateCameraPosition(
-            loc.position.lat,
-            loc.position.lon,
-          );
+      ref.read(mapStateProvider.notifier).updateCameraPosition(lat, lon);
       _updateFogSources();
-
-      // NOTE: Do NOT call _applyZoomLevel() here. Zoom is only set on
-      // initial load and when the user taps the zoom toggle button.
-      // Re-fitting on every cell change caused fitBounds to fight the
-      // 60fps rubber-band camera centering, producing severe zoom jitter.
     }
-  }
-
-  /// Called at ~60 fps by the rubber-band controller with the interpolated
-  /// display position. Moves the camera (instant snap) and triggers a
-  /// marker rebuild via setState.
-  void _onDisplayPositionUpdate(double lat, double lon) {
-    if (!mounted) return;
-
-    MapLogger.displayPositionUpdate(lat, lon);
-
-    // Update display position for the marker widget.
-    setState(() {
-      _displayLat = lat;
-      _displayLon = lon;
-    });
-
-    // Move camera instantly to the interpolated position (no animation
-    // duration = no fighting between concurrent animateCamera calls).
-    final cameraController = ref.read(cameraControllerProvider);
-    cameraController.onLocationUpdate(lat, lon);
   }
 
   // ---------------------------------------------------------------------------
