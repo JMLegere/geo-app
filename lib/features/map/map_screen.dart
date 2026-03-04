@@ -274,31 +274,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Fits the camera to the bounding box of all visited cells.
+  /// Fits the camera to the bounding box of all hidden cells (previously
+  /// visited cells that are not the current cell).
   ///
-  /// If there are no visited cells, does nothing (camera stays at default).
+  /// Falls back to player zoom if no hidden cells exist yet.
   void _zoomToFitExplored() {
     final controller = _mapController;
     if (controller == null) return;
 
     final fogResolver = ref.read(fogResolverProvider);
-    final visitedCells = fogResolver.visitedCellIds;
-    if (visitedCells.isEmpty) return;
-
+    final currentCellId = fogResolver.currentCellId;
     final cellService = ref.read(cellServiceProvider);
+
+    // Only include cells that resolve as hidden (visited but not current).
+    final hiddenCells = fogResolver.visitedCellIds
+        .where((id) => id != currentCellId)
+        .toList();
+
+    // If there are no hidden cells yet, fall back to player view.
+    if (hiddenCells.isEmpty) {
+      _zoomToFitPlayer();
+      return;
+    }
 
     var minLat = 90.0;
     var maxLat = -90.0;
     var minLon = 180.0;
     var maxLon = -180.0;
 
-    for (final cellId in visitedCells) {
+    // Include hidden cells + current cell so the player is always in frame.
+    void expandBounds(String cellId) {
       final center = cellService.getCellCenter(cellId);
       if (center.lat < minLat) minLat = center.lat;
       if (center.lat > maxLat) maxLat = center.lat;
       if (center.lon < minLon) minLon = center.lon;
       if (center.lon > maxLon) maxLon = center.lon;
     }
+
+    for (final cellId in hiddenCells) {
+      expandBounds(cellId);
+    }
+    if (currentCellId != null) expandBounds(currentCellId);
 
     // Add padding around the bounding box (~500m in lat/lon).
     const pad = 0.005;
