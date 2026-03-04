@@ -109,6 +109,24 @@ const double kCameraFollowDistance = 50.0;
 /// Camera zoom animation duration (milliseconds).
 const int kCameraZoomDurationMs = 300;
 
+// Rubber-Band Marker Interpolation
+//
+// The player marker is decoupled from raw GPS coordinates and smoothly
+// interpolated toward the target position at 60fps via a Ticker. The
+// invisible "real" GPS position drags the visible marker like a rubber band.
+
+/// Minimum marker speed in meters/second (5 km/h).
+/// Prevents the marker from creeping when the player is nearly stationary.
+const double kRubberBandMinSpeedMps = 1.389;
+
+/// Speed multiplier applied to the distance between display and target.
+/// Higher = snappier catch-up. `speed = max(minSpeed, k * distance)`.
+const double kRubberBandSpeedMultiplier = 2.5;
+
+/// Distance threshold in meters below which the marker snaps to the target.
+/// Prevents sub-pixel oscillation when effectively arrived.
+const double kRubberBandSnapThresholdMeters = 0.5;
+
 // Logging
 /// Enable debug logging for GPS updates.
 const bool kDebugLogGps = false;
