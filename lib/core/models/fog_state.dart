@@ -13,13 +13,13 @@ enum FogState {
   /// Player has never entered this cell.
   undetected(1.0),
 
+  /// Fog density: 1.0 (completely opaque, but cell borders are visible)
+  /// Within detection radius or on exploration frontier, never visited.
+  unexplored(1.0),
+
   /// Fog density: 0.95
   /// Adjacent to observed cell — barely visible through thick fog.
   concealed(0.95),
-
-  /// Fog density: 0.75
-  /// Within detection radius or on exploration frontier, never visited.
-  unexplored(0.75),
 
   /// Fog density: 0.5
   /// Previously visited cell, not currently in view.

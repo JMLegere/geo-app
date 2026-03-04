@@ -13,9 +13,9 @@ void main() {
 
     test('density mapping is correct', () {
       expect(FogState.undetected.density, equals(1.0));
-      expect(FogState.unexplored.density, equals(0.75));
-      expect(FogState.hidden.density, equals(0.5));
+      expect(FogState.unexplored.density, equals(1.0));
       expect(FogState.concealed.density, equals(0.95));
+      expect(FogState.hidden.density, equals(0.5));
       expect(FogState.observed.density, equals(0.0));
     });
 
@@ -37,14 +37,14 @@ void main() {
       expect(FogState.concealed.isVisited, isFalse);
     });
 
-    test('density ordering is consistent with state index', () {
-      // Higher index states have lower (more transparent) fog density.
+    test('density ordering is non-increasing with state index', () {
+      // Higher index states have equal or lower (more transparent) fog density.
       for (var i = 0; i < FogState.values.length - 1; i++) {
         expect(
           FogState.values[i].density,
-          greaterThan(FogState.values[i + 1].density),
+          greaterThanOrEqualTo(FogState.values[i + 1].density),
           reason:
-              '${FogState.values[i].name} should have higher density than '
+              '${FogState.values[i].name} should have >= density than '
               '${FogState.values[i + 1].name}',
         );
       }
