@@ -133,7 +133,7 @@ void main() {
       expect(coordinates.length, equals(2));
     });
 
-    test('with concealed cell punches a hole', () {
+    test('with concealed cell does NOT punch a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
         cellStates: {'cell_37_-122': FogState.concealed},
         getBoundary: _getBoundary,
@@ -141,7 +141,8 @@ void main() {
 
       final coordinates = _features(result)[0]['geometry']['coordinates']
           as List<dynamic>;
-      expect(coordinates.length, equals(2));
+      expect(coordinates.length, equals(1),
+          reason: 'Concealed cells stay under opaque fog');
     });
 
     test('with undetected cell does NOT punch a hole', () {
@@ -180,8 +181,8 @@ void main() {
 
       final coordinates = _features(result)[0]['geometry']['coordinates']
           as List<dynamic>;
-      // Exterior ring + 3 holes.
-      expect(coordinates.length, equals(4));
+      // Exterior ring + 2 holes (concealed excluded).
+      expect(coordinates.length, equals(3));
     });
 
     test('hole rings are closed (first == last vertex)', () {
@@ -248,17 +249,15 @@ void main() {
       expect(props['density'], equals(0.5));
     });
 
-    test('includes concealed cells with density 0.95', () {
+    test('excludes concealed cells', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.concealed},
         getBoundary: _getBoundary,
       );
 
       final features = _features(result);
-      expect(features.length, equals(1));
-
-      final props = features[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.95));
+      expect(features.isEmpty, isTrue,
+          reason: 'Concealed cells stay under opaque fog');
     });
 
     test('excludes observed cells', () {
@@ -298,7 +297,8 @@ void main() {
       );
 
       final features = _features(result);
-      expect(features.length, equals(2));
+      expect(features.length, equals(1),
+          reason: 'Only hidden cells included, concealed excluded');
     });
 
     test('feature polygons are closed rings', () {
@@ -315,25 +315,26 @@ void main() {
       expect(first[1], equals(last[1]));
     });
 
-    test('mixed states only includes hidden and concealed', () {
+    test('mixed states only includes hidden', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {
           'cell_37_-122': FogState.observed, // excluded
           'cell_38_-122': FogState.hidden, // included
           'cell_37_-121': FogState.undetected, // excluded
-          'cell_38_-121': FogState.concealed, // included
+          'cell_38_-121': FogState.concealed, // excluded
           'cell_39_-122': FogState.unexplored, // excluded
         },
         getBoundary: _getBoundary,
       );
 
       final features = _features(result);
-      expect(features.length, equals(2));
+      expect(features.length, equals(1),
+          reason: 'Only hidden cells included, concealed excluded');
 
       final densities = features
           .map((f) => (f['properties'] as Map<String, dynamic>)['density'])
           .toSet();
-      expect(densities, containsAll([0.5, 0.95]));
+      expect(densities, containsAll([0.5]));
     });
   });
 

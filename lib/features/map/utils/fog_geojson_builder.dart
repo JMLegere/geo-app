@@ -47,8 +47,8 @@ class FogGeoJsonBuilder {
     for (final entry in cellStates.entries) {
       final state = entry.value;
       // Only punch holes for cells that should show through the base fog.
-      // Hidden (0.5), concealed (0.25), and observed (0.0) get holes.
-      if (state == FogState.undetected || state == FogState.unexplored) {
+      // Hidden (0.5) and observed (0.0) get holes. Concealed stays under opaque fog.
+      if (state == FogState.undetected || state == FogState.unexplored || state == FogState.concealed) {
         continue;
       }
 
@@ -89,8 +89,8 @@ class FogGeoJsonBuilder {
 
     for (final entry in cellStates.entries) {
       final state = entry.value;
-      // Only include partially-fogged cells.
-      if (state != FogState.hidden && state != FogState.concealed) continue;
+      // Only include hidden cells. Concealed stays under opaque fog.
+      if (state != FogState.hidden) continue;
 
       final boundary = getBoundary(entry.key);
       if (boundary.length < 3) continue;
