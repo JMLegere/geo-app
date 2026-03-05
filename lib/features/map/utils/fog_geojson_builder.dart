@@ -153,12 +153,15 @@ class FogGeoJsonBuilder {
   }
 
   /// Builds the "fog-border" GeoJSON: polygon outlines for [FogState.unexplored]
-  /// cells rendered as a [LineLayer] on top of the opaque base fog.
+  /// and [FogState.concealed] cells rendered as a [LineLayer] on top of the fog.
   ///
-  /// Only unexplored cells get borders — undetected cells remain featureless.
-  /// This gives the player a visual hint that something is nearby without
-  /// revealing what's there.
-  static String buildUnexploredBorders({
+  /// Both states get borders with different opacity values:
+  /// - **Unexplored** (0.4): within detection radius, never visited.
+  /// - **Concealed** (0.25): adjacent to an observed cell, barely visible.
+  ///
+  /// Each Feature has an `opacity` property for data-driven `line-opacity`.
+  /// Undetected, hidden, and observed cells are excluded.
+  static String buildCellBorders({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
   }) {
@@ -166,7 +169,15 @@ class FogGeoJsonBuilder {
     var first = true;
 
     for (final entry in cellStates.entries) {
-      if (entry.value != FogState.unexplored) continue;
+      final double opacity;
+      switch (entry.value) {
+        case FogState.unexplored:
+          opacity = 0.4;
+        case FogState.concealed:
+          opacity = 0.25;
+        default:
+          continue;
+      }
 
       final boundary = getBoundary(entry.key);
       if (boundary.length < 3) continue;
@@ -182,7 +193,7 @@ class FogGeoJsonBuilder {
       }
       // Close ring.
       features.write(',[${boundary[0].lon},${boundary[0].lat}]');
-      features.write(']]},"properties":{}}');
+      features.write(']]},"properties":{"opacity":$opacity}}');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';

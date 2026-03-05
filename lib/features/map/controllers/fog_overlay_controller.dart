@@ -60,8 +60,8 @@ class FogOverlayController {
   /// GeoJSON string for the mid fog layer (hidden/concealed cells).
   String _midFogGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
 
-  /// GeoJSON string for the unexplored cell border outlines.
-  String _unexploredBorderGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
+  /// GeoJSON string for the cell border outlines (unexplored + concealed).
+  String _cellBorderGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
 
   /// GeoJSON string for the restoration overlay layer.
   final String _restorationGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
@@ -78,8 +78,8 @@ class FogOverlayController {
   /// GeoJSON for the semi-transparent mid fog (hidden/concealed cells).
   String get midFogGeoJson => _midFogGeoJson;
 
-  /// GeoJSON for unexplored cell border outlines.
-  String get unexploredBorderGeoJson => _unexploredBorderGeoJson;
+  /// GeoJSON for cell border outlines (unexplored + concealed).
+  String get cellBorderGeoJson => _cellBorderGeoJson;
 
   /// GeoJSON for the green restoration overlay.
   String get restorationGeoJson => _restorationGeoJson;
@@ -191,7 +191,7 @@ class FogOverlayController {
       getBoundary: cellService.getCellBoundary,
     );
 
-    _unexploredBorderGeoJson = FogGeoJsonBuilder.buildUnexploredBorders(
+    _cellBorderGeoJson = FogGeoJsonBuilder.buildCellBorders(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
     );

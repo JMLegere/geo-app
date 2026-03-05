@@ -236,7 +236,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         paint: {
           'line-color': '#4a5568',
           'line-width': 1.0,
-          'line-opacity': 0.4,
+          'line-opacity': ['get', 'opacity'],
         },
       ));
 
@@ -271,7 +271,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ),
         controller.updateGeoJsonSource(
           id: _fogBorderSrcId,
-          data: fogOverlayController.unexploredBorderGeoJson,
+          data: fogOverlayController.cellBorderGeoJson,
         ),
       ]);
       MapLogger.fogUpdateCompleted();
