@@ -1,10 +1,10 @@
 {
-  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/fog-of-world-refactor.md",
-  "started_at": "2026-03-04T20:55:33.717Z",
+  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/fog-flash-fix.md",
+  "started_at": "2026-03-05T16:25:03.194Z",
   "session_ids": [
-    "ses_346f45c5affeeF9l8qh1VN9xIs"
+    "ses_34152b0deffekguiisOl6pGpho"
   ],
-  "plan_name": "fog-of-world-refactor",
-  "agent": "atlas",
-  "worktree_path": "/home/jeremy/workspace/geo-app"
+  "plan_name": "fog-flash-fix",
+  "worktree_path": "/home/jeremy/workspace/geo-app",
+  "agent": "atlas"
 }

@@ -153,6 +153,44 @@ class MapLogger {
     );
   }
 
+  // -- Fog initialization timeline --
+
+  static final _initStopwatch = Stopwatch();
+
+  /// Call at the very start of the fog init sequence.
+  static void fogInitStart() {
+    _initStopwatch
+      ..reset()
+      ..start();
+    _log('FOG-INIT', 'T+0ms — _initFogAndReveal() started');
+  }
+
+  /// Call after _initFogLayers() completes.
+  static void fogInitLayersReady() {
+    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — _initFogLayers() done (sources+layers added to map)');
+  }
+
+  /// Call after fogOverlayController.updateAsync() completes.
+  static void fogInitDataComputed() {
+    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — updateAsync() done (fog GeoJSON computed)');
+  }
+
+  /// Call after _updateFogSources() completes.
+  static void fogInitSourcesApplied() {
+    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — _updateFogSources() done (GeoJSON pushed to MapLibre)');
+  }
+
+  /// Call when markReady + _fogReady = true.
+  static void fogInitComplete() {
+    _initStopwatch.stop();
+    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — COMPLETE: markReady() + _fogReady=true → cover fading out');
+  }
+
+  /// Call when the cover widget rebuilds (to track when AnimatedOpacity kicks in).
+  static void fogCoverBuild({required bool fogReady}) {
+    _log('FOG-INIT', 'Cover widget build: _fogReady=$fogReady (opacity=${fogReady ? '0.0→fading' : '1.0→opaque'})');
+  }
+
   // -- Map lifecycle --
 
   static void mapCreated() {
@@ -160,7 +198,7 @@ class MapLogger {
   }
 
   static void styleLoaded() {
-    _log('MAP', 'onStyleLoaded — initializing fog layers');
+    _log('MAP', 'onStyleLoaded — will call _initFogAndReveal()');
   }
 
   // -- Summary --
