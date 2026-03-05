@@ -26,6 +26,7 @@ import 'package:fog_of_world/features/map/providers/location_service_provider.da
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 import 'package:fog_of_world/features/map/utils/map_logger.dart';
+import 'package:fog_of_world/features/map/utils/map_visibility.dart';
 import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
 import 'package:fog_of_world/features/map/widgets/player_marker_layer.dart';
 import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
@@ -113,9 +114,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
-  /// Whether fog layers are initialized AND first fog data has been applied.
-  /// Until true, an opaque cover hides the map to prevent tile flash.
-  bool _fogReady = false;
+  /// Controls MapLibre container visibility via DOM on web, no-op on native.
+  late final MapVisibility _mapVisibility;
 
   // (Throttle fields removed — fog updates no longer run from _onMapEvent.)
 
@@ -130,6 +130,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void initState() {
     super.initState();
+
+    _mapVisibility = MapVisibility()..hideMapContainer();
 
     _markerPosition = ValueNotifier(null);
 
@@ -175,6 +177,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
+    _mapVisibility.dispose();
     _rubberBand.dispose();
     _markerPosition.dispose();
     _locationSubscription?.cancel();
@@ -598,9 +601,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapLogger.fogInitSourcesApplied();
 
     // NOW mark the map ready (gates _processGameLogic fog updates)
-    // and reveal the map by fading in the MapLibreMap widget (opacity 0→1).
+    // and reveal the map via DOM opacity (CSS transition handles animation).
     ref.read(mapStateProvider.notifier).markReady();
-    setState(() => _fogReady = true);
+    _mapVisibility.revealMapContainer();
     MapLogger.fogInitComplete();
   }
 
@@ -672,47 +675,44 @@ class _MapScreenState extends ConsumerState<MapScreen>
         body: Stack(
           children: [
           // ── Layer 0: Fog-colored backdrop ─────────────────────────────────
-          // Visible while MapLibreMap is at opacity 0. On Flutter web, the
-          // map's HtmlElementView renders in a separate HTML layer above the
-          // Flutter canvas — a Flutter cover widget AFTER the map in the
-          // Stack would render BEHIND the platform view. Instead, we start
-          // the map itself at opacity 0 and show this backdrop.
+          // Visible while the MapLibre container is hidden (CSS opacity 0).
+          // On Flutter web the map's HtmlElementView renders in a separate
+          // HTML layer above the Flutter canvas, so a Flutter widget cannot
+          // cover it — MapVisibility injects a CSS rule to hide the container
+          // until fog is initialised, and this backdrop fills the gap.
           Container(color: const Color(0xFF161620)),
 
           // ── Layer 1: MapLibre base map + native fog fill layers ────────────
-          // Starts invisible (opacity 0) and fades in once fog layers are
-          // initialized and first fog data is applied. AnimatedOpacity on a
-          // platform view sets CSS opacity on the HTML element itself,
-          // preventing base map tiles from ever being visible without fog.
-          AnimatedOpacity(
-            opacity: _fogReady ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: MapLibreMap(
-              options: MapOptions(
-                initStyle: 'https://tiles.openfreemap.org/styles/positron',
-                initZoom: kDefaultZoom,
-                initCenter: Position(kDefaultMapLon, kDefaultMapLat),
-                minZoom: kMinZoom,
-                maxZoom: kMaxZoom,
-                // Disable pitch (tilt) — we never use it, and it's a 2D game.
-                // This also disables MapLibre's built-in KeyboardHandler (which
-                // requires allEnabled=true). Without this, arrow keys are
-                // processed by BOTH our KeyboardLocationService AND MapLibre's
-                // native pan handler, causing rapid oscillation when opposing
-                // keys are held or jitter during normal movement.
-                gestures: const MapGestures.all(pitch: false),
-              ),
-              onMapCreated: _onMapCreated,
-              onStyleLoaded: _onStyleLoaded,
-              onEvent: _onMapEvent,
-              children: [
-                // ── Layer 2: Player marker (geo-anchored to display position) ─
-                // PlayerMarkerLayer uses ValueListenableBuilder internally so
-                // only it rebuilds on each 60fps rubber-band update — the rest
-                // of MapScreen stays stable.
-                PlayerMarkerLayer(position: _markerPosition),
-              ],
+          // On web, the container starts hidden via a CSS rule injected by
+          // MapVisibility.hideMapContainer() in initState(). Once fog layers
+          // are initialised and first data applied, revealMapContainer() sets
+          // inline opacity: 1, which overrides the stylesheet rule while the
+          // CSS transition (defined in the same rule) animates the fade-in.
+          MapLibreMap(
+            options: MapOptions(
+              initStyle: 'https://tiles.openfreemap.org/styles/positron',
+              initZoom: kDefaultZoom,
+              initCenter: Position(kDefaultMapLon, kDefaultMapLat),
+              minZoom: kMinZoom,
+              maxZoom: kMaxZoom,
+              // Disable pitch (tilt) — we never use it, and it's a 2D game.
+              // This also disables MapLibre's built-in KeyboardHandler (which
+              // requires allEnabled=true). Without this, arrow keys are
+              // processed by BOTH our KeyboardLocationService AND MapLibre's
+              // native pan handler, causing rapid oscillation when opposing
+              // keys are held or jitter during normal movement.
+              gestures: const MapGestures.all(pitch: false),
             ),
+            onMapCreated: _onMapCreated,
+            onStyleLoaded: _onStyleLoaded,
+            onEvent: _onMapEvent,
+            children: [
+              // ── Layer 2: Player marker (geo-anchored to display position) ─
+              // PlayerMarkerLayer uses ValueListenableBuilder internally so
+              // only it rebuilds on each 60fps rubber-band update — the rest
+              // of MapScreen stays stable.
+              PlayerMarkerLayer(position: _markerPosition),
+            ],
           ),
 
           // ── Layer 3: Status bar ────────────────────────────────────────────
