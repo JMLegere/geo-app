@@ -113,6 +113,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
+  /// Whether fog layers are initialized AND first fog data has been applied.
+  /// Until true, an opaque cover hides the map to prevent tile flash.
+  bool _fogReady = false;
+
   // (Throttle fields removed — fog updates no longer run from _onMapEvent.)
 
   // -- MapLibre source/layer IDs for the fog system --
@@ -552,38 +556,46 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onStyleLoaded() {
     MapLogger.styleLoaded();
     _removeTextLabels();
-    ref.read(mapStateProvider.notifier).markReady();
+    // NOTE: markReady() is deliberately NOT called here.
+    // It moves to _after_ fog initialization below, so that
+    // _processGameLogic() doesn't try to update fog sources
+    // before the layers exist.
 
-    // Initialize fog layers, then compute initial fog and zoom to fit.
-    // Capture viewport size synchronously before the async gap.
+    _initFogAndReveal();
+  }
+
+  /// Initializes fog layers, computes initial fog state, updates sources,
+  /// then marks the map ready and reveals it by fading out the cover.
+  ///
+  /// Extracted from [_onStyleLoaded] so the async flow is explicit.
+  Future<void> _initFogAndReveal() async {
+    // Capture viewport size synchronously before any async gap.
     final viewportSize = MediaQuery.of(context).size;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _mapController == null) return;
 
-      await _initFogLayers();
+    await _initFogLayers();
+    if (!mounted || _mapController == null) return;
 
-      final fogOverlayController = ref.read(fogOverlayControllerProvider);
-      final camera = _mapController!.getCamera();
+    final fogOverlayController = ref.read(fogOverlayControllerProvider);
+    final camera = _mapController!.getCamera();
 
-      await fogOverlayController.updateAsync(
-        cameraLat: camera.center.lat.toDouble(),
-        cameraLon: camera.center.lng.toDouble(),
-        zoom: camera.zoom,
-        viewportSize: viewportSize,
-        onBatchReady: () {
-          if (mounted) _updateFogSources();
-        },
-      );
+    // Compute initial fog state. Skip onBatchReady callback — we call
+    // _updateFogSources() once after updateAsync completes, avoiding the
+    // previous double-fire that could flash partial fog data.
+    await fogOverlayController.updateAsync(
+      cameraLat: camera.center.lat.toDouble(),
+      cameraLon: camera.center.lng.toDouble(),
+      zoom: camera.zoom,
+      viewportSize: viewportSize,
+    );
+    if (!mounted) return;
 
-      if (mounted) {
-        await _updateFogSources();
-        // Do NOT call _applyZoomLevel() here. The map starts at kDefaultZoom
-        // (15.0) which is correct for walking-speed exploration. fitBounds on
-        // style load was causing the camera to zoom out to fit cell bounds,
-        // which at the Voronoi cell scale (~200m) often overshoots wildly.
-        // Zoom presets are only applied when the user presses the toggle.
-      }
-    });
+    await _updateFogSources();
+    if (!mounted) return;
+
+    // NOW mark the map ready (gates _processGameLogic fog updates)
+    // and reveal the map by fading out the cover.
+    ref.read(mapStateProvider.notifier).markReady();
+    setState(() => _fogReady = true);
   }
 
   /// Strips all symbol (text/icon) layers from the map style.
@@ -807,6 +819,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
               },
               onToggleDebug: () =>
                   setState(() => _showDebugHud = !_showDebugHud),
+            ),
+          ),
+          // ── Layer 6: Fog loading cover ──────────────────────────────────────
+          // Opaque cover matching the fog color. Prevents base map tiles from
+          // flashing through before fog layers are initialized. Fades out once
+          // fog is ready, then becomes hit-test invisible.
+          IgnorePointer(
+            ignoring: _fogReady,
+            child: AnimatedOpacity(
+              opacity: _fogReady ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(color: const Color(0xFF161620)),
             ),
           ),
         ],
