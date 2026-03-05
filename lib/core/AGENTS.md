@@ -11,17 +11,17 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Cell geometry and spatial queries. Abstracts H3 and Voronoi implementations behind a common interface.
 
 **Public API**:
-- `CellService` interface: `getCellId(Geographic)`, `getCellCenter(String)`, `getCellBoundary(String)`, `getCellsInRing(String, int)`, `getDistance(String, String)`
-- `H3CellService`: H3 hexagons at resolution 10 (~15m edge length)
-- `VoronoiCellService`: Voronoi cells from seed points
-- `CellCache`: Decorator that memoizes boundary/center lookups
+- `CellService` interface: `getCellId(lat, lon)`, `getCellCenter(cellId)`, `getCellBoundary(cellId)`, `getNeighborIds(cellId)`, `getCellsInRing(cellId, k)`, `getCellsAroundLocation(lat, lon, k)`, `cellEdgeLengthMeters`, `systemName`
+- `LazyVoronoiCellService`: Infinite-world Voronoi with lazy seed materialization. Cell IDs: `"v_{row}_{col}"`. ~180m median diameter.
+- `H3CellService`: H3 hexagons at resolution 9 (~174m edge length). Cell IDs: hex BigInt strings.
+- `CellCache`: Decorator that memoizes center/boundary/neighbor/ring lookups. Does NOT cache `getCellId()`.
 
 **Conventions**:
-- Cell IDs are opaque strings (H3 uses hex strings, Voronoi uses "voronoi_lat_lon")
-- `getCellBoundary()` returns a closed polygon but does NOT repeat the first vertex as the last
+- Cell IDs are opaque strings (H3 uses hex strings, Voronoi uses `"v_{row}_{col}"`)
+- `getCellBoundary()` returns ordered polygon vertices, does NOT repeat first vertex
 - `getCellsInRing(cellId, k: 0)` returns a list containing only `cellId`
 - `getCellsInRing(cellId, k: 1)` returns the 6 immediate neighbors (H3) or nearest Voronoi cells
-- Strategy pattern: inject the service via Riverpod provider
+- Strategy pattern: inject via `cellServiceProvider` (currently `CellCache(LazyVoronoiCellService(...))`)
 
 ---
 
@@ -74,7 +74,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
   - Distance from player position to cell center
   - Whether cell is in `visitedCellIds`
 - Detection radius from `kDetectionRadiusMeters` constant
-- Priority order: Observed > Concealed > Hidden > Unexplored > Undetected
+- Priority order: Observed (in current cell) > Hidden (previously visited) > Concealed (adjacent to current) > Unexplored (frontier or within detection radius) > Undetected (default)
 - `onLocationUpdate()` emits a stream of `(cellId, FogState)` tuples for all cells whose state changed
 - Stream controller uses `sync: true` — events are emitted synchronously
 - Exploration frontier (Unexplored cells) is maintained incrementally: when a cell becomes Observed, its unvisited neighbors become Unexplored
@@ -86,21 +86,23 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Immutable value objects for domain entities.
 
 **Public API** (8 models):
-- `FogState`: enum with 5 values (undetected, unexplored, hidden, concealed, observed). `density` getter returns doubles for shader (1.0, 0.75, 0.5, 0.25, 0.0).
-- `IucnStatus`: enum (LC, NT, VU, EN, CR, EW, EX, DD, NE). `weight` getter follows 10^x progression (PoE loot table style): LC=1, NT=10, VU=100, EN=1000, CR=10000, EW=100000, EX=1000000, DD=1, NE=1.
-- `SpeciesRecord`: `scientificName`, `commonName`, `iucnStatus`, `habitat`, `continent`. Equality by `scientificName` only.
-- `PlayerLocation`: `position` (Geographic), `accuracy` (double), `timestamp` (DateTime), `isTracking` (bool).
-- `PlayerStats`: `totalDistance`, `cellsExplored`, `currentStreak`, `longestStreak`.
-- `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = Apr-Sep, winter = Oct-Mar.
-- `Continent`: enum (africa, asia, europe, northAmerica, southAmerica, oceania). `fromDataString(String)` handles IUCN format strings (e.g., "Africa", "North America").
-- `Habitat`: enum (forest, grassland, wetland, desert, urban, marine).
+- `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
+- `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 10^x progression (PoE loot table style): LC=100000, NT=10000, VU=1000, EN=100, CR=10, EX=1.
+- `SpeciesRecord`: `scientificName`, `commonName`, `taxonomicClass`, `continents: List<Continent>`, `habitats: List<Habitat>`, `iucnStatus`. Equality by `scientificName` only.
+- `CollectedSpecies`: `speciesId`, `collectedAt: DateTime`, `cellId`. Represents player collection entry.
+- `CellData`: `id`, `center: Geographic`, `fogState`, `speciesIds`, `restorationLevel`, `distanceWalked`, `visitCount`, `lastVisited`.
+- `PlayerProgress`: `userId`, `cellsObserved`, `speciesCollected`, `currentStreak`, `longestStreak`, `totalDistanceKm`.
+- `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
+- `Continent`: enum (asia, northAmerica, southAmerica, africa, oceania, europe). `fromDataString(String)` handles IUCN format strings.
+- `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
 
 **Conventions**:
 - All models are immutable with `@immutable` annotation
 - Manual `toJson()` / `fromJson()` — no code generation
-- `FogState.density` doubles for shader interpolation
-- `IucnStatus.weight` for weighted random selection
+- `FogState.density` doubles for shader interpolation (1.0=opaque, 0.0=clear)
+- `IucnStatus.weight` for weighted random selection (higher weight = more common)
 - `SpeciesRecord` equality ignores all fields except `scientificName`
+- `CellData.restorationLevel` clamped to [0.0, 1.0]
 
 ---
 
@@ -145,12 +147,15 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (5 providers):
-- `fogStateProvider`: `NotifierProvider<FogStateNotifier, Map<String, FogState>>` — per-cell fog state
-- `locationProvider`: `NotifierProvider<LocationNotifier, PlayerLocation>` — current position, accuracy, tracking status
-- `playerStatsProvider`: `NotifierProvider<PlayerStatsNotifier, PlayerStats>` — streaks, distance, cells explored
-- `collectionProvider`: `NotifierProvider<CollectionNotifier, Set<String>>` — collected species IDs (scientificName)
+**Public API** (8 providers):
+- `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
+- `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
+- `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
+- `collectionProvider`: `NotifierProvider<CollectionNotifier, CollectionState>` — collected species IDs
 - `seasonProvider`: `NotifierProvider<SeasonNotifier, Season>` — current season
+- `fogResolverProvider`: `Provider<FogStateResolver>` — singleton fog computation (watches cellServiceProvider)
+- `cellServiceProvider`: `Provider<CellService>` — singleton CellCache(LazyVoronoiCellService)
+- `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -159,6 +164,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `SeasonNotifier.build()` initializes from `DateTime.now()` via `Season.fromDate()`
 - State updates are synchronous — no async state setters
 - Providers are global singletons — no `.family` or `.autoDispose` modifiers
+- Infrastructure providers (`cellServiceProvider`, `fogResolverProvider`) use `Provider<T>` (not Notifier)
 
 ---
 
@@ -217,8 +223,8 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - Listeners must not perform async work in the callback
 
 ### Season Date Ranges
-- `Season.fromDate()` uses month ranges: Apr-Sep = summer, Oct-Mar = winter
-- Boundary months (Apr, Oct) are inclusive to the new season
+- `Season.fromDate()` uses month ranges: May-Oct = summer, Nov-Apr = winter
+- Boundary months (May, Nov) are inclusive to the new season
 - No support for southern hemisphere seasons
 
 ### Continent Bounding Boxes

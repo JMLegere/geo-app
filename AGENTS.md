@@ -1,11 +1,12 @@
-# Agent Guidance — Fog of World
+# Agent Guidance — EarthNova (working title)
 
-> iNaturalist × Stardew Valley × Pokémon Go. Explore the real world via GPS, reveal fog-of-war, discover 33k real IUCN species, build a sanctuary, restore habitats.
+> iNaturalist × Stardew Valley × Pokémon Go. Explore the real world via GPS, reveal fog-of-war, discover 33k real IUCN species, build a sanctuary, restore habitats. Working title: EarthNova.
 
 ## Quick Reference
 
 | Key | Value |
 |-----|-------|
+| Working Title | EarthNova |
 | Framework | Flutter 3.41.3 (Dart) |
 | State | Riverpod 3.2.1 — `Notifier` pattern (NOT `StateNotifier`) |
 | Map | `maplibre` by josxha v0.1.2 (NOT `maplibre_gl`) |
@@ -13,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 910 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1004 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 0 issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
@@ -39,7 +40,7 @@ lib/
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
 │   ├── cells/                  # Spatial indexing (CellService interface + impls)
 │   ├── config/                 # SupabaseConfig (env vars)
-│   ├── database/               # Drift ORM (4 tables)
+│   ├── database/               # Drift ORM (3 tables)
 │   ├── fog/                    # FogStateResolver (computed visibility)
 │   ├── models/                 # 8 immutable value objects
 │   ├── persistence/            # Repository pattern (4 repos)
@@ -62,16 +63,16 @@ lib/
 │   └── constants.dart          # All game-balance constants (kDetectionRadiusMeters, etc.)
 ```
 
-**See also:** `lib/core/AGENTS.md` and `lib/features/map/AGENTS.md` for subsystem-specific guidance.
+**See also:** `lib/core/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | 105 (lib/) + 84 (test/) |
-| Total lines | ~30,000 |
-| Largest file | `app_database.g.dart` (2,460 lines — generated) |
-| Largest feature | `map/` (14 files) |
+| Dart source files | ~130 (lib/) + 85 (test/) |
+| Total lines | ~34,000 |
+| Largest file | `app_database.g.dart` (1,989 lines — generated) |
+| Largest feature | `map/` (25 files) |
 
 ---
 
@@ -240,7 +241,7 @@ Tests mirror `lib/` exactly: `test/core/cells/cell_cache_test.dart` tests `lib/c
 
 Additional directories:
 - `test/fixtures/` — shared test data (`kSpeciesFixtureJson`: 50 species)
-- `test/integration/` — 4 offline workflow suites (full persistence round-trips)
+- `test/integration/` — 5 offline workflow suites (full persistence round-trips)
 
 ### Patterns
 
@@ -272,10 +273,10 @@ Additional directories:
 | Species | 32,752 (real IUCN dataset) | Full biodiversity catalog |
 | Habitats | 7 | Forest, Plains, Freshwater, Saltwater, Swamp, Mountain, Desert |
 | IUCN rarity tiers | 6 | LC, NT, VU, EN, CR, EX — with 10^x loot weights |
-| Fog levels | 5 | Undetected (1.0), Unexplored (0.75), Hidden (0.5), Concealed (0.25), Observed (0.0) |
+| Fog levels | 5 | Undetected (1.0), Unexplored (1.0), Concealed (0.95), Hidden (0.5), Observed (0.0) |
 | Seasons | 2 | Summer (May–Oct), Winter (Nov–Apr) |
 | Continents | 6 | Asia, North America, South America, Africa, Oceania, Europe |
-| Detection radius | 50 km | kDetectionRadiusMeters — cells within this radius are at least "unexplored" |
+| Detection radius | 1000 m | kDetectionRadiusMeters — cells within this radius are at least "unexplored" |
 | Restoration threshold | 3 species | 3 unique species per cell = fully restored |
 | Encounter slots per cell | 3 | Max species rolled per cell visit |
 | Max cells per tile | 100 | Mesh generation performance |
@@ -301,7 +302,10 @@ Additional directories:
 
 ## Known Tech Debt
 
-_All previously listed items have been resolved._ No known tech debt remains.
+| Item | Location | Impact |
+|------|----------|--------|
+| CI config is stale (Unity, not Flutter) | `.github/workflows/ci.yml` | CI won't run Flutter tests |
+| MapLogger has mutable static variables | `lib/features/map/utils/map_logger.dart` | Violates "no global state" constraint |
 
 ---
 
@@ -342,8 +346,94 @@ When a feature misbehaves:
 
 ---
 
+## Documentation Maintenance Protocol
+
+This project has two documentation systems. **Both must stay current.**
+
+### 1. Cross-Cutting Docs (`docs/`)
+
+Architecture, data flow, and reference docs designed for agent context loading. Start with `docs/INDEX.md` — it tells you what to read for any task type.
+
+```
+docs/
+├── INDEX.md           # Reading guide — what to read for which task
+├── architecture.md    # Layer diagram, dependency rules, feature boundaries
+├── game-loop.md       # GPS→render pipeline, fog state machine, tick rates
+├── state.md           # All 26 Riverpod providers, dependency graph, mutation patterns
+├── data-model.md      # Models, DB schema (3 tables), repositories, game constants
+└── tech-stack.md      # Versions, packages, build/run/deploy commands
+```
+
+**Update triggers for `docs/` files:**
+
+| File | Update when... |
+|------|----------------|
+| `architecture.md` | New feature module added, layer boundary changed, dependency rule added |
+| `game-loop.md` | Pipeline stage added/removed, tick rate changed, new state machine |
+| `state.md` | Provider added/removed/renamed, dependency between providers changed |
+| `data-model.md` | Model field added/removed, DB table changed, repository method added, constant changed |
+| `tech-stack.md` | Package added/removed/upgraded, build command changed, deploy config changed |
+| `INDEX.md` | New docs file added, reading recommendations changed |
+
+### 2. Local Context Docs (`AGENTS.md`)
+
+Per-directory files providing module-specific patterns, gotchas, and anti-patterns. These are **not** duplicates of `docs/` — they cover local concerns only.
+
+```
+AGENTS.md files (10 total):
+├── ./AGENTS.md                              # Root — quick ref, design decisions, forbidden patterns
+├── lib/core/AGENTS.md                       # Domain models, providers, persistence internals
+├── lib/core/cells/AGENTS.md                 # Voronoi/H3 cell system, CellCache
+├── lib/core/species/AGENTS.md               # LootTable, IUCN weights, ContinentResolver
+├── lib/features/map/AGENTS.md               # Fog overlay, camera, GeoJSON layers
+├── lib/features/location/AGENTS.md          # GPS stream, simulation, filtering
+├── lib/features/discovery/AGENTS.md         # Encounter flow, dual notifier pattern
+├── lib/features/achievements/AGENTS.md      # Achievement evaluation, toast notifications
+├── lib/shared/AGENTS.md                     # Constants, shared utilities
+└── test/AGENTS.md                           # Test fixtures, mock patterns, integration suites
+```
+
+**Update triggers for `AGENTS.md` files:**
+
+| Trigger | Action |
+|---------|--------|
+| New feature module created | Create `features/<name>/AGENTS.md` (30–80 lines) |
+| Provider renamed or rewired | Update the relevant `AGENTS.md` + `docs/state.md` |
+| New model or enum added | Update `lib/core/AGENTS.md` + `docs/data-model.md` |
+| New gotcha or anti-pattern discovered | Add to the nearest `AGENTS.md` |
+| File moved between directories | Update both old and new parent `AGENTS.md` |
+| Test pattern changed (new mock, new fixture) | Update `test/AGENTS.md` |
+| Design decision changed (requires explicit instruction) | Update root `AGENTS.md` Core Design Decisions + `docs/game-design.md` |
+
+### Maintenance Rules
+
+1. **Overwrite stale content, never append.** When a section is outdated, replace it entirely. Do not add "Update:" or "Note:" annotations — just fix the content.
+2. **Child AGENTS.md never repeats parent.** If root AGENTS.md covers it, the child should not. Each file owns its local scope only.
+3. **Format for AI.** Bullet points, tables, code blocks, type schemas. Zero narrative fluff. Telegraphic style.
+4. **Verify after changes.** After updating any doc, spot-check that cross-references between `docs/` files and `AGENTS.md` files remain consistent (e.g., provider count in `state.md` matches root AGENTS.md Quick Reference).
+5. **50–150 lines per AGENTS.md.** If a file grows past 150 lines, split into child directories or move cross-cutting content to `docs/`.
+
+---
+
 ## Future Work (Not Started)
 
+- 4-tab navigation (Map | Home | Town | Pack) — currently Map only
+- Museum (7 habitat wings, permanent donations, unlockable progression)
+- Town tab (NPC hub, discoverable NPCs on map)
+- Pack tab (inventory-first management, species as stacked items)
+- Rarity-scaled discovery reveals (LC = toast → EX = full-screen ceremony)
+- Tap-to-photograph for rare species (VU+)
+- Daily world seed (midnight GMT rotation, deterministic per-day)
+- Treasure maps (quest system for directed exploration)
+- NPC bundles (Stardew-style themed collections)
+- Sub-collections & sets (habitat sets, taxonomic sets, continent sets, rarity sets)
+- Sanctuary appeal system (Ark Nova-style placement puzzle)
+- Cell activities (forage, lure, survey, habitat care)
+- Weather-based spawns (rain = amphibians, night = different species)
+- Adjacent cell previews (silhouettes/glows of nearby species)
+- Plants/Flora collectibles (trees, flowers, fungi)
+- Minerals/Gems collectibles (rocks, crystals)
+- Artifacts/Fossils collectibles (ancient items, bones)
 - Camera/AI species identification
 - Multiplayer, social features, leaderboards, trading
 - Real-time Supabase sync (currently manual only)

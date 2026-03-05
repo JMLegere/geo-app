@@ -53,10 +53,10 @@ Fog rendering layer. Canvas compositing technique.
 canvas.saveLayer() → fill with fog color → punch holes with BlendMode.dstOut → canvas.restore()
 ```
 
-**FogState density values:**
-- `[1.0, 0.75, 0.5, 0.25, 0.0]` map to opacity
-- 1.0 = fully fogged (Undetected)
-- 0.0 = fully revealed (Observed)
+**FogState density values (fog opacity):**
+- Undetected: 1.0, Unexplored: 1.0, Concealed: 0.95, Hidden: 0.5, Observed: 0.0
+- Unexplored cells are pre-rendered in mid-fog at concealed density (0.95) behind the opaque base layer
+- When a cell transitions to concealed, the base-fog hole is punched, revealing the pre-rendered polygon
 
 ### models/
 
@@ -81,9 +81,67 @@ canvas.saveLayer() → fill with fog color → punch holes with BlendMode.dstOut
 
 UI components overlaid on the map:
 
-- **DebugHUD**: Shows lat/lon, zoom, cell ID, fog state
-- **MapControls**: Zoom in/out buttons, follow/free mode toggle
-- **StatusBar**: Top bar with connection status, GPS accuracy
+- **DebugHUD**: Terminal-style overlay with camera position, zoom, mode, visible/visited cell counts
+- **MapControls**: Stacked FABs: recenter, zoom toggle (player/world), debug toggle (kDebugMode only)
+- **StatusBar**: Frosted-glass top panel with cells observed + current streak. BackdropFilter blur.
+- **PlayerMarkerLayer**: ValueListenableBuilder scopes 60fps marker updates. `Position(lng, lat)` — longitude first.
+- **DPadControls**: On-screen directional pad for mobile web. 10m step per tap, 100ms long-press repeat.
+
+### utils/
+
+- **fog_geojson_builder.dart**: Static methods for 3-layer native GeoJSON fog system:
+  - `buildBaseFog()` — world polygon with holes for non-opaque cells
+  - `buildMidFog()` — individual polygons for hidden/concealed/unexplored with density property
+  - `buildCellBorders()` — line outlines for unexplored (0.4 opacity) + concealed (0.25 opacity)
+  - All coordinates are `[longitude, latitude]` (GeoJSON convention)
+- **mercator_projection.dart**: Pure Web Mercator math. `geoToScreen`/`screenToGeo`/`visibleBounds`. Lat clamped ±85.051129°.
+- **map_visibility.dart**: CSS-based MapLibre container visibility control for web. `AnimatedOpacity` cannot hide `HtmlElementView` — CSS injection required.
+- **map_logger.dart**: Rate-limited logger with channels (RUBBER, CAMERA, FOG, KEY, LOC). Errors always log immediately. **Known debt:** mutable static variables.
+
+---
+
+## 3-Layer Native GeoJSON Fog System
+
+The fog is rendered using 3 MapLibre native GeoJSON layers (NOT Canvas):
+
+1. **fog-base** — Opaque world polygon with holes punched for non-opaque cells. Covers the entire world.
+2. **fog-mid** — Semi-transparent fill polygons for hidden/concealed/unexplored cells. Each has a `density` property.
+3. **fog-border** — Line outlines at unexplored (0.4) and concealed (0.25) opacity.
+
+**Pre-rendering trick:** Unexplored cells are rendered in mid-fog at concealed density (0.95) but hidden behind the opaque base layer. When a cell transitions from unexplored to concealed, the base-fog hole is punched, revealing the already-rendered mid-fog polygon. This eliminates flash artifacts during transitions.
+
+---
+
+## Rubber-Band Controller
+
+Smooth 60fps interpolation decouples display position from raw GPS:
+
+- GPS updates (1 Hz) → `setTarget(lat, lon)` — sets target only
+- Ticker (60 fps) → interpolates display position toward target
+- Speed scales with distance: `max(minSpeedMps, speedMultiplier * distanceMeters)`
+- Snap threshold: below 5m, snaps instantly to prevent sub-pixel oscillation
+- Delta time clamped to 0.1s max to prevent huge jumps on tab-switch resume
+
+**Game logic throttle:** `_gameLogicFrame % 6 == 0` gates fog/location updates to ~10 Hz.
+
+---
+
+## Coordination Flow
+
+```
+GPS/Simulator (1 Hz)
+  → _onLocationUpdate() → _rubberBand.setTarget()
+  → _rubberBand._onTick() (60 fps)
+    → _onDisplayPositionUpdate(lat, lon)
+      ├─ _markerPosition.value = (lat, lon)  [ValueNotifier → PlayerMarkerLayer]
+      ├─ cameraController.onLocationUpdate()  [MapLibre moveCamera]
+      └─ _gameLogicFrame % 6 == 0?
+          └─ _processGameLogic(lat, lon)
+              ├─ fogResolver.onLocationUpdate()
+              ├─ locationProvider.notifier.updateLocation()
+              ├─ fogOverlayController.update()  [viewport sampling + GeoJSON build]
+              └─ _updateFogSources()  [MapLibre updateGeoJsonSource × 3 layers]
+```
 
 ---
 
@@ -101,7 +159,11 @@ Position(lng, lat)  // LONGITUDE FIRST
 MapController.animateCamera(center: Position(lng, lat), nativeDuration: Duration(...))
 ```
 
-**Player marker:** Widget overlay (not a map layer). Positioned via Stack + Positioned widget.
+**Player marker:** Widget overlay (not a map layer). Positioned via WidgetLayer + ValueListenableBuilder.
+
+**Camera movement:** Uses `moveCamera()` (instant), NOT `animateCamera()` (flyTo). Rubber-band calls at 60fps — cascading animations cause zoom jitter.
+
+**Zoom preservation:** Always pass explicit `zoom` to `moveCamera()`. Dart→JS interop sends `null` (not `undefined`), which MapLibre may interpret as "reset to default".
 
 ---
 
