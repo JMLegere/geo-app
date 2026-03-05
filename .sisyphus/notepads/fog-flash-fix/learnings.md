@@ -82,3 +82,36 @@ Source: `lib/features/map/map_screen.dart` lines 824-835
 
 ### Verdict: PASS for primary goal
 The fix prevents map tiles from flashing through. The blank canvas transient state is distinct from the "tile flash" problem and would be imperceptible to most users.
+
+## Session: Adjacent Cell Flash Fix (2026-03-05)
+
+### What was done
+Fixed the adjacent cell flash issue by excluding concealed cells from fog layer operations:
+
+1. **fog_geojson_builder.dart line 51**: Added `|| state == FogState.concealed` to skip condition in `buildBaseFog()`. Concealed cells now stay under the opaque base fog (no hole-punching).
+
+2. **fog_geojson_builder.dart line 93**: Changed condition from `if (state != FogState.hidden && state != FogState.concealed)` to `if (state != FogState.hidden)`. Concealed cells excluded from mid fog layer.
+
+3. **Test updates**: Updated 5 test assertions to reflect new behavior:
+   - Line 136: Concealed no longer punches hole (expect 1 coordinate)
+   - Line 171: Multiple cells produce 3 holes instead of 4
+   - Line 251: Concealed excluded from mid fog (empty features)
+   - Line 291: Multiple cells produce 1 feature instead of 2
+   - Line 318: Mixed states produce 1 feature instead of 2
+
+### Why this works
+- Concealed cells (0.95 opacity) are imperceptibly different from unexplored (1.0) on the near-black fog color
+- Visual differentiation comes from cell borders (0.25 opacity for concealed vs 0.4 for unexplored)
+- By keeping concealed under opaque base fog, no hole-punching operation is needed
+- Eliminates the animation frame gap where cell has no fog coverage
+
+### Test results
+- All 35 tests in fog_geojson_builder_test.dart PASS
+- No new analysis issues introduced
+- Changes are minimal and surgical (2 lines in implementation, 5 test assertions)
+
+### Architecture preserved
+- FogState computed on-demand (never stored)
+- 3-layer fog architecture intact (base, mid, border)
+- Cell state transitions still computed from player position + visit history
+- No animation added to fog state changes

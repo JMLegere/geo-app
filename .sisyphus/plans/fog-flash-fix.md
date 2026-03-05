@@ -496,14 +496,26 @@ Max Concurrent: 1
 
 ## Final Verification Wave
 
-- [ ] F1. **Visual QA via Playwright** — `unspecified-high` + `playwright` skill
+- [x] F1. **Visual QA via Playwright** — `unspecified-high` + `playwright` skill
 
-  **What to do**:
-  - Navigate to the deployed app at `https://fog-of-world-production.up.railway.app`
-  - Observe initial load behavior — verify solid dark cover appears before any map tiles
-  - Wait for fog to initialize and cover to fade out
-  - Verify map is visible with fog overlay after cover fades
-  - Take screenshots at key moments (cover visible, transition, fog visible)
+  **Result**: PASS. CSS injection fix verified on deployed build.
+  - Fix v1 (cover widget): FAILED — platform view layering on Flutter web
+  - Fix v2 (AnimatedOpacity): FAILED — doesn't affect HTML layer
+  - Fix v3 (CSS injection via `<style id="fog-hide-map">`): **VERIFIED WORKING**
+  - Frame 0 (0ms): Dark splash screen — no map visible ✅
+  - Frame 1 (~300ms): Auth screen — no map visible ✅
+  - Frame 2 (~600ms): Dark navy map surface — no base tiles visible ✅
+  - Frame 3 (~900ms): Fog fully initialized, player cell revealed ✅
+  - Frame 4+ (~1200ms+): Steady-state fog rendering, no glitches ✅
+  - Fog init timeline: T+0ms start → T+2ms layers → T+791ms updateAsync → T+800ms COMPLETE
+  - `fog-hide-map` style tag injected at initState, removed after reveal (cleanup confirmed)
+
+  **What was done**:
+  - Navigated to deployed app at `https://fog-of-world-production.up.railway.app`
+  - Captured 16 load-frame screenshots at 300ms intervals during fresh navigation
+  - Verified all frames show dark background until fog init completes
+  - Verified fog-hide-map style tag lifecycle (inject → hide → reveal → cleanup)
+  - Verified console logs show new FOG-INIT timeline markers
 
   **Recommended Agent Profile**:
   - **Category**: `unspecified-high`
@@ -558,8 +570,17 @@ flutter analyze                   # Expected: 0 issues
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" items present in implementation
-- [ ] All "Must NOT Have" items absent from changes
-- [ ] All 910+ tests pass
-- [ ] `flutter analyze` shows 0 issues
-- [ ] Deployed to Railway and visually verified — no tile flash on load
+- [x] All "Must Have" items present in implementation
+- [x] All "Must NOT Have" items absent from changes
+- [x] All 1002 tests pass (up from 910)
+- [x] `flutter analyze` shows 0 issues (29 infos)
+- [x] Deployed to Railway and visually verified — no tile flash on load
+
+### Implementation Notes
+The original plan called for a Flutter cover widget, but Flutter widgets render BEHIND
+MapLibre's HtmlElementView on Flutter web. After two failed approaches (cover widget,
+AnimatedOpacity), the fix was implemented at the DOM level:
+- `MapVisibility` abstraction with conditional imports (web/stub)
+- Web impl injects `<style id="fog-hide-map">` with `.maplibregl-map { opacity: 0 }` at initState
+- After fog init, sets inline `style.opacity = '1'` and removes the style tag
+- New files: `map_visibility.dart`, `map_visibility_stub.dart`, `map_visibility_web.dart`
