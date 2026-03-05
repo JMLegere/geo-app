@@ -548,19 +548,19 @@ Max Concurrent: 2 (Wave 1), then 4 (Final)
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Rejection → fix → re-run.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, run command). For each "Must NOT Have": search codebase for forbidden patterns — reject with file:line if found. Check evidence files exist in `.sisyphus/evidence/`. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `flutter analyze` + `LD_LIBRARY_PATH=. flutter test`. Review all changed files for: unused imports, commented-out code, debug print statements left behind. Check that no unintended files were modified.
   Output: `Analyze [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT`
 
-- [ ] F3. **Real Browser QA** — `unspecified-high` (+ `playwright` skill)
+- [x] F3. **Real Browser QA** — `unspecified-high` (+ `playwright` skill)
   Navigate to `https://fog-of-world-production.up.railway.app`. Wait for map to load. Screenshot immediately (before any keypress) — verify player marker is visible. Screenshot fog cells — verify concealed cells are visually different from unexplored. Press arrow key — verify marker moves smoothly without disappearing. Save all screenshots to `.sisyphus/evidence/final-qa/`.
   Output: `Marker visible on load [YES/NO] | Concealed cells differentiated [YES/NO] | Movement smooth [YES/NO] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   For each task: read "What to do", read actual diff (`git diff HEAD~N`). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance. Flag unaccounted changes.
   Output: `Tasks [N/N compliant] | Unaccounted [CLEAN/N files] | VERDICT`
 
