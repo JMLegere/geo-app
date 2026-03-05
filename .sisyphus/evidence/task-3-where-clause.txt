@@ -1,0 +1,11 @@
+WHERE Clause Verification
+==========================
+
+cell_progress_repository.dart:
+- getCellsByFogState() uses: ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name))
+- getCellCountByFogState() uses: ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name))
+
+collection_repository.dart:
+- clearUserCollections() uses: ..where((t) => t.userId.equals(userId))
+
+All methods now use Drift WHERE clauses instead of in-memory filtering.

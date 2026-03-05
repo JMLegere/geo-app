@@ -1,0 +1,51 @@
+# Shared Layer
+
+Cross-feature UI utilities and game constants. No business logic, no state management. Everything in `lib/shared/` is pure presentation or configuration that features/ can depend on.
+
+---
+
+## File Inventory
+
+### constants.dart
+
+Game-balance constants and tuning parameters. All magic numbers live here.
+
+**Categories:** Species/habitat/IUCN counts, fog-of-war parameters (detection radius, density values), season config, map defaults (Fredericton, NB), Voronoi grid parameters (lazy + legacy), camera settings (zoom, follow distance), rubber-band marker interpolation, debug logging flags.
+
+**Convention:** Never hardcode game-balance values in features/. Import from here.
+
+### app_theme.dart
+
+Material 3 theme definitions for dark and light modes. IUCN rarity badge colors.
+
+**Public API:** `AppTheme.dark()`, `AppTheme.light()`, `AppTheme.rarityColor(IucnStatus)`, `AppTheme.onRarityColor(IucnStatus)`.
+
+**Imports from core/:** `core/models/iucn_status.dart` — needed for rarity color mapping.
+
+### habitat_colors.dart
+
+Three-color palettes for each habitat (primary, secondary, accent).
+
+**Public API:** `HabitatPalette`, `HabitatColors.of(Habitat)`, `HabitatColors.primaryFor(Habitat)`, `HabitatColors.accentFor(Habitat)`.
+
+...
+
+### Error Boundaries
+
+Wrap feature screens at the route level: `ErrorBoundary(onError: (details) => DefaultErrorFallback(...), child: MapScreen())`.
+
+### Empty States
+
+Use `EmptyStateWidget` for all empty lists: `EmptyStateWidget(icon: '🔬', title: 'No species discovered yet', subtitle: 'Start exploring!')`.
+
+---
+
+## Gotchas
+
+**Theme Color Access:** Use `Theme.of(context).colorScheme.primary` or `AppTheme.rarityColor(species.iucnStatus)`. Don't access `AppTheme.primary` directly or hardcode colors.
+
+**Constants Naming:** All constants use `k` prefix and camelCase: `kDetectionRadiusMeters`, `kDefaultZoom`.
+
+**Error Boundary Scope:** Only one `ErrorBoundary` per route. Don't nest multiple boundaries — `FlutterError.onError` is global.
+
+**Habitat Colors:** Use `HabitatColors.of(habitat)` for full palette, not `Habitat.colorHex` (legacy single-color string).

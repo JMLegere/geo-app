@@ -1,0 +1,59 @@
+TEST RUN: fog_geojson_builder_test.dart
+========================================
+
+Command: LD_LIBRARY_PATH=. flutter test test/features/map/utils/fog_geojson_builder_test.dart
+
+Result: ALL 38 TESTS PASSED ✓
+
+Test Summary:
+- FogGeoJsonBuilder static getters: 3 tests ✓
+- FogGeoJsonBuilder.buildBaseFog: 9 tests ✓
+  - with concealed cell punches a hole ✓ (UPDATED)
+  - multiple cells produce multiple holes (4 rings) ✓ (UPDATED)
+- FogGeoJsonBuilder.buildMidFog: 11 tests ✓
+  - includes concealed cells with density 0.95 ✓ (UPDATED)
+  - includes unexplored cells with pre-rendered concealed density 0.95 ✓ (UPDATED)
+  - multiple cells produce multiple features (2 features) ✓ (UPDATED)
+  - mixed states includes unexplored, concealed, and hidden (3 features) ✓ (UPDATED)
+  - unexplored cells use concealed density not their own ✓ (NEW)
+  - unexplored cell pre-rendered: base-fog no hole, mid-fog has polygon ✓ (NEW)
+- FogGeoJsonBuilder.buildRestorationOverlay: 5 tests ✓
+- FogGeoJsonBuilder.buildCellBorders: 6 tests ✓
+- GeoJSON validity: 2 tests ✓
+
+Changes Made:
+=============
+
+1. fog_geojson_builder.dart (3 edits):
+   - Line 35-37: Updated buildBaseFog doc comment to reflect concealed cells now get holes
+   - Line 50-52: Reverted concealed exclusion in buildBaseFog (line 51)
+   - Line 73-82: Updated buildMidFog doc comment to explain unexplored pre-rendering
+   - Line 92-94: Changed filter to include unexplored+concealed (exclude undetected+observed)
+   - Line 109-113: Added density override for unexplored cells (use concealed.density = 0.95)
+
+2. fog_geojson_builder_test.dart (8 updates):
+   - Line 136: Test "with concealed cell punches a hole" - expect 2 rings
+   - Line 172: Test "multiple cells produce multiple holes" - expect 4 rings
+   - Line 252: Test "includes concealed cells with density 0.95" - NEW assertion
+   - Line 281: Test "includes unexplored cells with pre-rendered concealed density 0.95" - NEW assertion
+   - Line 290: Test "multiple cells produce multiple features" - expect 2 features
+   - Line 318: Test "mixed states includes unexplored, concealed, and hidden" - expect 3 features
+   - Line 317: NEW test "unexplored cells use concealed density not their own"
+   - Line 330: NEW test "unexplored cell pre-rendered: base-fog no hole, mid-fog has polygon"
+
+Architecture Preserved:
+=======================
+- 3-layer fog system intact (base, mid, restoration, borders)
+- No changes to buildCellBorders, buildRestorationOverlay
+- No changes to FogState density enum values
+- No changes to FogOverlayController or fog pipeline
+- Pre-rendering strategy: unexplored cells in mid-fog at 0.95 density, hidden behind opaque base fog
+- When concealed transition happens, base-fog hole is punched, revealing pre-rendered mid-fog polygon
+- No flash because mid-fog polygon already exists (no second source update needed)
+
+Verification:
+=============
+✓ All 38 tests pass
+✓ 0 failures
+✓ 0 errors
+✓ Code analysis clean (no changes to architecture)

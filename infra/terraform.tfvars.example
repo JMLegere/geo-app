@@ -1,0 +1,4 @@
+supabase_access_token = ""
+supabase_org_id       = ""
+supabase_db_password  = ""
+supabase_db_url       = "postgresql://postgres:YOUR-PASSWORD@db.bfaczcsrpfcbijoaeckb.supabase.co:5432/postgres"

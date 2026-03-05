@@ -1,0 +1,111 @@
+## F3 REAL BROWSER QA
+
+**Tested URL**: https://fog-of-world-production.up.railway.app
+**Test Date**: 2026-03-05
+**Browser**: Playwright / WebKit (headless)
+
+---
+
+### Scenario 1: Marker Visible on Load
+- Status: ✅ PASS
+- Evidence:
+  - Map loaded successfully (WebGL canvas 1260×1082, `preserveDrawingBuffer` WebKit WebGL)
+  - Console confirms full init sequence:
+      [LOG] [LOC] #1 from keyboard → (45.9636, -66.6431)
+      [LOG] [MAP] onMapCreated — controller received
+      [LOG] [MAP] onStyleLoaded — will call _initFogAndReveal
+      [LOG] [FOG-INIT] T+2052ms — COMPLETE: markReady()
+  - Visual inspection (look_at on s1-current-state.png):
+      "A blue circle with a white dot is clearly present at the top center
+       of the white cell, indicating the player's current position."
+  - Pixel scan confirmed bright region at x≈440-520, y≈490 (brightness 230+)
+    matching player's observed cell
+  - Marker positioned within map bounds at geographic coords (45.9636, -66.6431)
+
+---
+
+### Scenario 2: Concealed vs Unexplored Opacity
+- Status: ✅ PASS
+- Concealed opacity (effective fog density): 0.95
+  - Measured pixel brightness: 36 (RGB: 33,33,42)
+  - Cells immediately adjacent to player's observed cell
+- Unexplored opacity (effective fog density): 1.0
+  - Measured pixel brightness: 25 (RGB: 22,22,32)
+  - Cells further from player
+- Concealed IS lighter than unexplored (36 > 25) ✅
+- Methodology:
+  - Horizontal brightness scan at y=490 through player cell:
+      x=200-360: brightness=25 (unexplored/undetected)
+      x=380-420: brightness=36 (concealed — adjacent to player cell)
+      x=440-520: brightness=230+ (observed — player's cell)
+      x=540-640: brightness=36 (concealed — adjacent to player cell)
+      x=660+: brightness=25 (unexplored/undetected)
+  - Architecture confirmed from source code (fog_state.dart):
+      FogState.concealed = density 0.95 (hole in fog-base, mid-fog at 0.95)
+      FogState.unexplored = density 1.0 (fully opaque base fog)
+  - Visual inspection (look_at on s2-crop-player-cell.png):
+      "Adjacent cells: Light gray/off-white, slightly darker than central cell"
+      "Farther cells: Dark navy/charcoal, significantly darker"
+
+---
+
+### Scenario 3: No Flash on Transition
+- Status: ✅ PASS
+- Evidence:
+  - Player moved via keyboard input (ArrowRight × ~50 presses, ArrowUp × ~30 presses)
+  - Position moved from (45.9636, -66.6431) → (45.9661, -66.6365)
+  - Fog updated during movement: "[FOG] updateFogSources #10 started/completed"
+  - Camera followed player: "[CAMERA] moveCamera #60 → ..."
+  - Rubber-band system active: "[RUBBER] [MOVE] #4500 dist=48.8m"
+  - Frame analysis of 7 screenshots during movement:
+      Fog region brightness (dark corners): consistently 30 across ALL frames
+      Overall brightness gradually increased 34 → 40 (normal fog reveal)
+      Frame diffs: avg_diff 2.2→14.7 (steady movement, NOT flash pattern)
+      No spike indicating momentary full-white or full-black flash
+  - Visual inspection (look_at on s3-frame-final.png):
+      "Smooth and gradual — no jarring flashes or artifacts detected"
+      "Transition from dark → hatched gray → light gray is smooth and layered"
+      "No visual glitches: Cell boundaries are clean, no flickering"
+
+---
+
+### Scenario 4: Marker Persists After Reload
+- Status: ✅ PASS
+- Evidence:
+  - Page reloaded (page.reload with networkidle + 7s timeout)
+  - Full re-init logged:
+      [LOG] [LOC] #1 from keyboard → (45.9636, -66.6431)
+      [LOG] [RUBBER] INIT first target received: (45.963...)
+      [LOG] [MAP] onMapCreated — controller received
+      [LOG] [FOG-INIT] T+1045ms — COMPLETE: markReady()
+  - Visual inspection (look_at on s4-after-reload.png):
+      "Player marker (blue circle): ✅ Visible — Blue circle with white
+       center dot is clearly visible at the top of the white cell"
+      "Map fully loaded: ✅ Yes"
+      "Fog of war correctly rendered: ✅ Yes"
+  - HUD shows "1 cells" — visit history persisted from SQLite (Drift WASM)
+  - Marker visible WITHOUT any user interaction after reload
+  - Marker at same initial position (keyboard GPS resets to default on reload)
+
+---
+
+### GATE DECISION
+- Scenario 1 (Marker on Load):    ✅ PASS
+- Scenario 2 (Concealed Opacity):  ✅ PASS
+- Scenario 3 (No Flash):           ✅ PASS
+- Scenario 4 (Reload Persistence): ✅ PASS
+- All scenarios:                   ✅ PASS
+- PROCEED:                         ✅ YES
+
+**All 4 QA scenarios pass. The deployed app behaves as expected.**
+
+---
+
+### Screenshots Saved
+- s1-initial-load.png          — initial page load state
+- s1-current-state.png         — map after 5s init wait
+- s2-crop-player-cell.png      — 3× crop of player cell region for opacity analysis
+- s3-before-move.png           — state before movement
+- s3-frame-0.png through s3-frame-final.png — movement sequence (7 frames)
+- s4-before-reload.png         — state before page reload
+- s4-after-reload.png          — state after page reload (marker still visible)

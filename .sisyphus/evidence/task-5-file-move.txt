@@ -1,0 +1,6 @@
+=== NEW FILE ===
+-rw-r--r-- 1 jeremy jeremy 2474 Mar  4 10:12 lib/core/config/supabase_bootstrap.dart
+=== OLD PATH (must not exist) ===
+(correctly absent)
+=== All importers updated ===
+(no old imports found)
