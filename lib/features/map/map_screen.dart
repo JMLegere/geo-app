@@ -141,9 +141,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
 
     _locationService = ref.read(locationServiceProvider);
-    _locationService.start();
     _locationSubscription =
         _locationService.filteredLocationStream.listen(_onLocationUpdate);
+    _locationService.start();
 
     _checkLocationPermission();
 

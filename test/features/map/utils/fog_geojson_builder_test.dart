@@ -133,7 +133,7 @@ void main() {
       expect(coordinates.length, equals(2));
     });
 
-    test('with concealed cell does NOT punch a hole', () {
+    test('with concealed cell punches a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
         cellStates: {'cell_37_-122': FogState.concealed},
         getBoundary: _getBoundary,
@@ -141,8 +141,8 @@ void main() {
 
       final coordinates = _features(result)[0]['geometry']['coordinates']
           as List<dynamic>;
-      expect(coordinates.length, equals(1),
-          reason: 'Concealed cells stay under opaque fog');
+      expect(coordinates.length, equals(2),
+          reason: 'Concealed cells get holes for pre-rendered mid-fog');
     });
 
     test('with undetected cell does NOT punch a hole', () {
@@ -181,8 +181,8 @@ void main() {
 
       final coordinates = _features(result)[0]['geometry']['coordinates']
           as List<dynamic>;
-      // Exterior ring + 2 holes (concealed excluded).
-      expect(coordinates.length, equals(3));
+      // Exterior ring + 3 holes (observed, hidden, concealed).
+      expect(coordinates.length, equals(4));
     });
 
     test('hole rings are closed (first == last vertex)', () {
@@ -249,15 +249,17 @@ void main() {
       expect(props['density'], equals(0.5));
     });
 
-    test('excludes concealed cells', () {
+    test('includes concealed cells with density 0.95', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.concealed},
         getBoundary: _getBoundary,
       );
 
       final features = _features(result);
-      expect(features.isEmpty, isTrue,
-          reason: 'Concealed cells stay under opaque fog');
+      expect(features.length, equals(1));
+
+      final props = features[0]['properties'] as Map<String, dynamic>;
+      expect(props['density'], equals(0.95));
     });
 
     test('excludes observed cells', () {
@@ -278,13 +280,18 @@ void main() {
       expect(_features(result), isEmpty);
     });
 
-    test('excludes unexplored cells', () {
+    test('includes unexplored cells with pre-rendered concealed density 0.95', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.unexplored},
         getBoundary: _getBoundary,
       );
 
-      expect(_features(result), isEmpty);
+      final features = _features(result);
+      expect(features.length, equals(1));
+
+      final props = features[0]['properties'] as Map<String, dynamic>;
+      expect(props['density'], equals(0.95),
+          reason: 'Unexplored cells use concealed density for pre-rendering');
     });
 
     test('multiple cells produce multiple features', () {
@@ -297,8 +304,8 @@ void main() {
       );
 
       final features = _features(result);
-      expect(features.length, equals(1),
-          reason: 'Only hidden cells included, concealed excluded');
+      expect(features.length, equals(2),
+          reason: 'Both hidden and concealed cells included');
     });
 
     test('feature polygons are closed rings', () {
@@ -315,26 +322,68 @@ void main() {
       expect(first[1], equals(last[1]));
     });
 
-    test('mixed states only includes hidden', () {
+    test('unexplored cells use concealed density not their own', () {
+      final result = FogGeoJsonBuilder.buildMidFog(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+
+      final features = _features(result);
+      expect(features.length, equals(1));
+
+      final props = features[0]['properties'] as Map<String, dynamic>;
+      // Unexplored.density is 1.0, but should use concealed.density (0.95)
+      expect(props['density'], equals(0.95),
+          reason: 'Unexplored cells pre-rendered at concealed density');
+      expect(props['density'], isNot(equals(FogState.unexplored.density)),
+          reason: 'Should not use unexplored density (1.0)');
+    });
+
+    test('unexplored cell pre-rendered: base-fog no hole, mid-fog has polygon', () {
+      // Base fog should NOT punch a hole for unexplored
+      final baseFog = FogGeoJsonBuilder.buildBaseFog(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+      final baseCoordinates = _features(baseFog)[0]['geometry']['coordinates']
+          as List<dynamic>;
+      expect(baseCoordinates.length, equals(1),
+          reason: 'Unexplored cells do not get holes in base fog');
+
+      // Mid fog SHOULD include the unexplored cell
+      final midFog = FogGeoJsonBuilder.buildMidFog(
+        cellStates: {'cell_37_-122': FogState.unexplored},
+        getBoundary: _getBoundary,
+      );
+      final midFeatures = _features(midFog);
+      expect(midFeatures.length, equals(1),
+          reason: 'Unexplored cell is pre-rendered in mid fog');
+
+      final props = midFeatures[0]['properties'] as Map<String, dynamic>;
+      expect(props['density'], equals(0.95),
+          reason: 'Pre-rendered at concealed density');
+    });
+
+    test('mixed states includes unexplored, concealed, and hidden', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {
           'cell_37_-122': FogState.observed, // excluded
-          'cell_38_-122': FogState.hidden, // included
+          'cell_38_-122': FogState.hidden, // included (0.5)
           'cell_37_-121': FogState.undetected, // excluded
-          'cell_38_-121': FogState.concealed, // excluded
-          'cell_39_-122': FogState.unexplored, // excluded
+          'cell_38_-121': FogState.concealed, // included (0.95)
+          'cell_39_-122': FogState.unexplored, // included (0.95)
         },
         getBoundary: _getBoundary,
       );
 
       final features = _features(result);
-      expect(features.length, equals(1),
-          reason: 'Only hidden cells included, concealed excluded');
+      expect(features.length, equals(3),
+          reason: 'Hidden, concealed, and unexplored cells included');
 
       final densities = features
           .map((f) => (f['properties'] as Map<String, dynamic>)['density'])
           .toSet();
-      expect(densities, containsAll([0.5]));
+      expect(densities, containsAll([0.5, 0.95]));
     });
   });
 
