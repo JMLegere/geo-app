@@ -1,9 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/core/state/player_provider.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
 
 /// Top status bar showing key exploration stats (Apple Maps style).
 ///
@@ -11,7 +11,7 @@ import 'package:fog_of_world/core/state/player_provider.dart';
 /// - 🔍 Cells observed
 /// - 🔥 Current exploration streak in days
 ///
-/// Uses a translucent frosted-glass background (BackdropFilter + ClipRect)
+/// Uses a translucent frosted-glass background via [FrostedGlassContainer]
 /// and respects the device's safe area (status bar height).
 ///
 /// Adapts to the active theme — dark theme produces a naval frosted-glass
@@ -32,37 +32,18 @@ class StatusBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(playerProvider);
     final topPadding = MediaQuery.of(context).padding.top;
-    final cs = Theme.of(context).colorScheme;
-    final isDark = cs.brightness == Brightness.dark;
 
-    // Frosted-glass tint — dark for exploration mode, white for light mode.
-    final tintColor = isDark
-        ? cs.surfaceContainer.withValues(alpha: 0.82)
-        : cs.surfaceContainer.withValues(alpha: 0.88);
-
-    final borderColor = isDark
-        ? cs.outline.withValues(alpha: 0.25)
-        : cs.outline.withValues(alpha: 0.3);
-
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 10),
-          decoration: BoxDecoration(
-            color: tintColor,
-            border: Border(
-              bottom: BorderSide(color: borderColor, width: 0.5),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _StatPill(emoji: '🔍', value: '${player.cellsObserved} cells'),
-              _StatPill(emoji: '🔥', value: '${player.currentStreak} days'),
-            ],
-          ),
-        ),
+    return FrostedGlassContainer(
+      blur: Blurs.statusBar,
+      bottomBorderOnly: true,
+      borderRadius: 0,
+      padding: EdgeInsets.fromLTRB(Spacing.lg, topPadding + Spacing.sm, Spacing.lg, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _StatPill(emoji: '🔍', value: '${player.cellsObserved} cells'),
+          _StatPill(emoji: '🔥', value: '${player.currentStreak} days'),
+        ],
       ),
     );
   }
@@ -81,12 +62,12 @@ class _StatPill extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      padding: EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 5),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
+        color: cs.surfaceContainerHigh.withValues(alpha: Opacities.chipBackground),
+        borderRadius: Radii.borderXxxl,
         border: Border.all(
-          color: cs.outline.withValues(alpha: 0.2),
+          color: cs.outline.withValues(alpha: Opacities.borderSubtle),
           width: 0.5,
         ),
       ),

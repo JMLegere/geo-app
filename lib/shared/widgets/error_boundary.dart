@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// An error boundary that catches Flutter framework errors in its subtree
 /// and displays fallback UI instead of a red crash screen.
@@ -96,46 +97,46 @@ class DefaultErrorFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
+          padding: EdgeInsets.symmetric(horizontal: Spacing.huge),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('😕', style: TextStyle(fontSize: 52)),
-              const SizedBox(height: 20),
-              const Text(
+              Text('😕', style: TextStyle(fontSize: ComponentSizes.emptyStateEmoji)),
+              Spacing.gapXl,
+              Text(
                 'Something went wrong',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1F2937),
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              Spacing.gapSm,
+              Text(
                 "We hit an unexpected error. Your progress is safe.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF6B7280),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
                 ),
               ),
-              const SizedBox(height: 28),
+              SizedBox(height: Spacing.xxl + Spacing.xs),
               FilledButton(
                 onPressed: onRetry,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Spacing.xxl + Spacing.xs,
+                    vertical: Spacing.md,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: Radii.borderLg,
                   ),
                 ),
                 child: const Text(

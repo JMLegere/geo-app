@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
 import 'package:fog_of_world/features/onboarding/widgets/onboarding_page.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
 
 // ---------------------------------------------------------------------------
 // Page definitions
@@ -82,8 +83,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   void _goToNextPage() {
     _pageController.nextPage(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
+      duration: Durations.slow,
+      curve: AppCurves.standard,
     );
   }
 
@@ -98,7 +99,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -122,7 +123,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               count: _kPages.length,
               currentIndex: _currentPage,
             ),
-            const SizedBox(height: 24),
+            Spacing.gapXxl,
 
             // ── CTA button ─────────────────────────────────────────────────
             _CtaButton(
@@ -130,7 +131,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               onNext: _goToNextPage,
               onGetStarted: _complete,
             ),
-            const SizedBox(height: 40),
+            Spacing.gapHuge,
           ],
         ),
       ),
@@ -157,11 +158,11 @@ class _SkipButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         child: TextButton(
           onPressed: visible ? onSkip : null,
-          child: const Text(
+          child: Text(
             'Skip',
             style: TextStyle(
               fontSize: 15,
-              color: Color(0xFF8E8E93),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -187,16 +188,16 @@ class _DotIndicator extends StatelessWidget {
       children: List.generate(count, (index) {
         final isActive = index == currentIndex;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
+          duration: Durations.normal,
+          curve: AppCurves.standard,
+          margin: EdgeInsets.symmetric(horizontal: Spacing.xs),
           width: isActive ? 24 : 8,
           height: 8,
           decoration: BoxDecoration(
             color: isActive
-                ? const Color(0xFF1A73E8)
-                : const Color(0xFFD1D1D6),
-            borderRadius: BorderRadius.circular(4),
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outlineVariant,
+            borderRadius: Radii.borderXs,
           ),
         );
       }),
@@ -218,17 +219,17 @@ class _CtaButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: EdgeInsets.symmetric(horizontal: Spacing.xxxl),
       child: SizedBox(
         width: double.infinity,
-        height: 52,
+        height: ComponentSizes.buttonHeight,
         child: FilledButton(
           onPressed: isLastPage ? onGetStarted : onNext,
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF1A73E8),
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: Radii.borderXxl,
             ),
             textStyle: const TextStyle(
               fontSize: 16,

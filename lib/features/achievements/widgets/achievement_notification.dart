@@ -1,16 +1,12 @@
 import 'dart:async';
-import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/achievements/models/achievement.dart';
 import 'package:fog_of_world/features/achievements/providers/achievement_provider.dart';
-
-/// Duration the achievement toast is visible before auto-dismissing.
-const _kAutoDismissDuration = Duration(seconds: 4);
-
-/// Duration of the slide-in / slide-out animation.
-const _kAnimationDuration = Duration(milliseconds: 350);
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
 
 /// Animated overlay toast that slides in from above when an achievement unlocks.
 ///
@@ -30,7 +26,7 @@ const _kAnimationDuration = Duration(milliseconds: 350);
 /// ## Behaviour
 /// - Watches [achievementNotificationProvider] for active notifications.
 /// - Slides in from above when a notification becomes active.
-/// - Auto-dismisses after [_kAutoDismissDuration].
+/// - Auto-dismisses after [Durations.achievementToast].
 /// - Frosted-glass Apple Maps aesthetic, consistent with `DiscoveryNotificationOverlay`.
 class AchievementNotificationOverlay extends ConsumerStatefulWidget {
   const AchievementNotificationOverlay({super.key});
@@ -55,21 +51,21 @@ class _AchievementNotificationOverlayState
 
     _controller = AnimationController(
       vsync: this,
-      duration: _kAnimationDuration,
+      duration: Durations.slow,
     );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+      CurvedAnimation(parent: _controller, curve: AppCurves.slideIn),
     );
 
     _opacityAnimation = Tween<double>(
       begin: 0,
       end: 1,
     ).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      CurvedAnimation(parent: _controller, curve: AppCurves.fadeIn),
     );
   }
 
@@ -83,7 +79,7 @@ class _AchievementNotificationOverlayState
   void _showNotification() {
     _dismissTimer?.cancel();
     _controller.forward(from: 0);
-    _dismissTimer = Timer(_kAutoDismissDuration, () {
+    _dismissTimer = Timer(Durations.achievementToast, () {
       if (mounted) {
         ref
             .read(achievementNotificationProvider.notifier)
@@ -142,103 +138,81 @@ class _AchievementToast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.88),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+    return FrostedGlassContainer(
+      isNotification: true,
+      child: Row(
+        children: [
+          // Emoji icon
+          Container(
+            width: ComponentSizes.notificationIcon,
+            height: ComponentSizes.notificationIcon,
+            decoration: BoxDecoration(
+              color: context.earthNova.successContainerColor,
+              borderRadius: Radii.borderLg,
+            ),
+            child: Center(
+              child: Text(
+                definition.emoji,
+                style: const TextStyle(fontSize: ComponentSizes.notificationEmoji),
               ),
-            ],
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 0.5,
             ),
           ),
-          child: Row(
-            children: [
-              // Emoji icon
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    definition.emoji,
-                    style: const TextStyle(fontSize: 24),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
+          Spacing.gapHMd,
 
-              // Achievement info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      definition.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A2E1B),
-                        letterSpacing: -0.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      definition.description,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF6B7280),
-                        letterSpacing: 0.1,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // "Achievement Unlocked!" badge
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  'Achievement\nUnlocked!',
-                  textAlign: TextAlign.center,
+          // Achievement info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  definition.title,
                   style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
-                    height: 1.3,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    letterSpacing: -0.2,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                SizedBox(height: Spacing.xxs),
+                Text(
+                  definition.description,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ),
+
+          Spacing.gapHSm,
+
+          // "Achievement Unlocked!" badge
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 5),
+            decoration: BoxDecoration(
+              color: context.earthNova.successColor,
+              borderRadius: Radii.borderMd,
+            ),
+            child: const Text(
+              'Achievement\nUnlocked!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.3,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

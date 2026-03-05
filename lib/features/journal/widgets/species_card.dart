@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
+import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
 
 /// Grid card representing a single species in the collection journal.
 ///
@@ -33,14 +36,8 @@ class SpeciesCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: Radii.borderXxl,
+          boxShadow: Shadows.medium,
         ),
         clipBehavior: Clip.antiAlias,
         child: isCollected
@@ -64,7 +61,6 @@ class _CollectedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final primaryHabitat =
         species.habitats.isNotEmpty ? species.habitats.first : Habitat.forest;
-    final habitatColor = _habitatColor(primaryHabitat);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,22 +68,13 @@ class _CollectedCard extends StatelessWidget {
         // Artwork placeholder — watercolor gradient fill
         Expanded(
           child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  habitatColor.withValues(alpha: 0.35),
-                  habitatColor.withValues(alpha: 0.12),
-                ],
-              ),
-            ),
+            decoration: HabitatGradient.card(primaryHabitat),
             child: Stack(
               children: [
                 // Habitat emoji hint
                 Center(
                   child: Text(
-                    _habitatEmoji(primaryHabitat),
+                    HabitatGradient.emoji(primaryHabitat),
                     style: const TextStyle(fontSize: 32),
                   ),
                 ),
@@ -95,7 +82,7 @@ class _CollectedCard extends StatelessWidget {
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: _RarityBadge(status: species.iucnStatus),
+                  child: RarityBadge(status: species.iucnStatus),
                 ),
               ],
             ),
@@ -104,37 +91,37 @@ class _CollectedCard extends StatelessWidget {
 
         // Info panel
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+          padding: EdgeInsets.fromLTRB(Spacing.sm, 6, Spacing.sm, Spacing.sm),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 species.commonName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A2E),
+                  color: Theme.of(context).colorScheme.onSurface,
                   letterSpacing: -0.1,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              Spacing.gapXs,
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
                     size: 12,
-                    color: Color(0xFF16A34A),
+                    color: context.earthNova.successColor,
                   ),
                   const SizedBox(width: 3),
-                  const Text(
+                  Text(
                     '✓ Collected',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF16A34A),
+                      color: context.earthNova.successColor,
                     ),
                   ),
                 ],
@@ -164,22 +151,22 @@ class _UncollectedCard extends StatelessWidget {
         // Silhouette placeholder
         Expanded(
           child: Container(
-            color: const Color(0xFFF3F4F6),
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
             child: Center(
               child: Container(
-                width: 48,
-                height: 48,
+                width: ComponentSizes.silhouetteBox,
+                height: ComponentSizes.silhouetteBox,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: Radii.borderXl,
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     '?',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF9CA3AF),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -190,27 +177,27 @@ class _UncollectedCard extends StatelessWidget {
 
         // Info panel
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+          padding: EdgeInsets.fromLTRB(Spacing.sm, 6, Spacing.sm, Spacing.sm),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '???',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF9CA3AF),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   letterSpacing: 1,
                 ),
               ),
-              const SizedBox(height: 4),
-              const Text(
+              Spacing.gapXs,
+              Text(
                 'Not discovered',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFFD1D5DB),
+                  color: Theme.of(context).colorScheme.outline,
                 ),
               ),
             ],
@@ -221,81 +208,4 @@ class _UncollectedCard extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Rarity badge
-// ---------------------------------------------------------------------------
 
-class _RarityBadge extends StatelessWidget {
-  final IucnStatus status;
-
-  const _RarityBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _rarityColor(status);
-    final label = _rarityLabel(status);
-    final isLight = status == IucnStatus.nearThreatened;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-          color: isLight ? const Color(0xFF1A1A2E) : Colors.white,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Color / label helpers
-// ---------------------------------------------------------------------------
-
-/// Habitat placeholder art colors per task spec.
-Color _habitatColor(Habitat habitat) => switch (habitat) {
-      Habitat.forest => const Color(0xFF4CAF50),
-      Habitat.plains => const Color(0xFFFFC107),
-      Habitat.freshwater => const Color(0xFF03A9F4),
-      Habitat.saltwater => const Color(0xFF0277BD),
-      Habitat.swamp => const Color(0xFF795548),
-      Habitat.mountain => const Color(0xFF9E9E9E),
-      Habitat.desert => const Color(0xFFFF9800),
-    };
-
-String _habitatEmoji(Habitat habitat) => switch (habitat) {
-      Habitat.forest => '🌲',
-      Habitat.plains => '🌾',
-      Habitat.freshwater => '💧',
-      Habitat.saltwater => '🌊',
-      Habitat.swamp => '🌿',
-      Habitat.mountain => '⛰️',
-      Habitat.desert => '🏜️',
-    };
-
-/// IUCN rarity badge colors per task spec:
-/// LC=green, NT=yellow, VU=orange, EN=red, CR=darkRed, EX=black.
-Color _rarityColor(IucnStatus status) => switch (status) {
-      IucnStatus.leastConcern => const Color(0xFF4CAF50),
-      IucnStatus.nearThreatened => const Color(0xFFFFEB3B),
-      IucnStatus.vulnerable => const Color(0xFFFF9800),
-      IucnStatus.endangered => const Color(0xFFF44336),
-      IucnStatus.criticallyEndangered => const Color(0xFFB71C1C),
-      IucnStatus.extinct => const Color(0xFF000000),
-    };
-
-String _rarityLabel(IucnStatus status) => switch (status) {
-      IucnStatus.leastConcern => 'LC',
-      IucnStatus.nearThreatened => 'NT',
-      IucnStatus.vulnerable => 'VU',
-      IucnStatus.endangered => 'EN',
-      IucnStatus.criticallyEndangered => 'CR',
-      IucnStatus.extinct => 'EX',
-    };

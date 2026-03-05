@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// A reusable empty-state placeholder with an emoji icon, title, optional
 /// subtitle, and optional call-to-action button.
@@ -40,38 +41,38 @@ class EmptyStateWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
+        padding: EdgeInsets.symmetric(horizontal: Spacing.huge, vertical: Spacing.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon
             Text(
               icon,
-              style: const TextStyle(fontSize: 52),
+              style: TextStyle(fontSize: ComponentSizes.emptyStateEmoji),
             ),
-            const SizedBox(height: 20),
+            Spacing.gapXl,
 
             // Title
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF374151),
+                color: Theme.of(context).colorScheme.onSurface,
                 height: 1.4,
               ),
             ),
 
             // Subtitle
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              Spacing.gapSm,
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF6B7280),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
                 ),
               ),
@@ -79,16 +80,16 @@ class EmptyStateWidget extends StatelessWidget {
 
             // Action button
             if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 28),
+              SizedBox(height: Spacing.xxl + Spacing.xs),
               FilledButton(
                 onPressed: onAction,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      EdgeInsets.symmetric(horizontal: Spacing.xxl, vertical: Spacing.md),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: Radii.borderLg,
                   ),
                 ),
                 child: Text(

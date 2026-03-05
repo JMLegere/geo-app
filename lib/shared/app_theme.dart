@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Visual identity for *Fog of World*.
 ///
@@ -95,6 +96,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: colorScheme,
+      extensions: [EarthNovaTheme.dark(colorScheme)],
       textTheme: _buildTextTheme(
         baseColor: _darkOnSurface,
         mutedColor: _darkOnSurfaceVariant,
@@ -204,6 +206,7 @@ abstract final class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: colorScheme,
+      extensions: [EarthNovaTheme.light(colorScheme)],
       textTheme: _buildTextTheme(
         baseColor: _lightOnSurface,
         mutedColor: _lightOnSurfaceVariant,
