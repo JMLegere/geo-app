@@ -378,7 +378,7 @@ Max Concurrent: 1
   - Files: `lib/features/map/map_screen.dart`
   - Pre-commit: `LD_LIBRARY_PATH=. flutter test && flutter analyze`
 
-- [ ] 2. Run tests + analyze to verify no regressions
+- [x] 2. Run tests + analyze to verify no regressions
 
   **What to do**:
   - Run the full test suite: `LD_LIBRARY_PATH=. flutter test`
