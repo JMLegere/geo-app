@@ -604,6 +604,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // and reveal the map via DOM opacity (CSS transition handles animation).
     ref.read(mapStateProvider.notifier).markReady();
     _mapVisibility.revealMapContainer();
+
+    // Force player marker repaint after fog reveal on Flutter web.
+    // The CSS opacity transition needs at least one animation frame to start.
+    // By using addPostFrameCallback, we guarantee the DOM has processed the
+    // opacity change before forcing the marker to recalculate its screen position.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final currentPos = _markerPosition.value;
+      if (currentPos != null) {
+        _markerPosition.value = null;
+        _markerPosition.value = currentPos;
+      }
+    });
+
     MapLogger.fogInitComplete();
   }
 
