@@ -53,11 +53,11 @@ Fix two regressions so the player marker is visible on load and concealed cells 
 - Deployed to Railway at `https://fog-of-world-production.up.railway.app`
 
 ### Definition of Done
-- [ ] `LD_LIBRARY_PATH=. flutter test` → all tests pass (910+)
-- [ ] `flutter analyze` → 0 issues
-- [ ] Player marker visible on page load in browser without any keypress
-- [ ] Concealed cells visually lighter than unexplored cells
-- [ ] No flash when cells transition from unexplored → concealed
+- [x] `LD_LIBRARY_PATH=. flutter test` → all tests pass (910+)
+- [x] `flutter analyze` → 0 issues
+- [x] Player marker visible on page load in browser without any keypress
+- [x] Concealed cells visually lighter than unexplored cells
+- [x] No flash when cells transition from unexplored → concealed
 
 ### Must Have
 - Player marker visible on initial load (no user interaction required)
@@ -591,9 +591,9 @@ LD_LIBRARY_PATH=. flutter test test/features/map/utils/fog_geojson_builder_test.
 ```
 
 ### Final Checklist
-- [ ] Player marker visible on initial page load (no keypress needed)
-- [ ] Concealed cells visually distinct from unexplored cells (0.95 vs 1.0 density)
-- [ ] No flash on unexplored → concealed transition
-- [ ] All "Must NOT Have" guardrails respected
-- [ ] All tests pass, 0 analysis issues
-- [ ] Deployed and verified on Railway
+- [x] Player marker visible on initial page load (no keypress needed)
+- [x] Concealed cells visually distinct from unexplored cells (0.95 vs 1.0 density)
+- [x] No flash on unexplored → concealed transition
+- [x] All "Must NOT Have" guardrails respected
+- [x] All tests pass, 0 analysis issues
+- [x] Deployed and verified on Railway
