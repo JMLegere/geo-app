@@ -434,7 +434,7 @@ Max Concurrent: 1
 
   **Commit**: NO (testing only, commit was in Task 1)
 
-- [ ] 3. Deploy to Railway and verify
+- [x] 3. Deploy to Railway and verify
 
   **What to do**:
   - Push to remote: `git push`
