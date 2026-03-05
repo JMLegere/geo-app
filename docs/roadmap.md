@@ -251,18 +251,25 @@ Seasonal visuals, weather-based spawns, world immersion.
 
 Watercolour art pipeline, species illustrations, UI polish.
 
-### Project 11.1: Species Illustrations — Future
+### Project 11.1: Design System — Done
+- [x] Design tokens (spacing, radii, shadows, durations, curves, blurs, opacities, component sizes)
+- [x] EarthNovaTheme ThemeExtension with dark/light factories + BuildContext extension
+- [x] Shared components: FrostedGlassContainer, RarityBadge, HabitatGradient
+- [x] Refactor 8 widgets to use design system (eliminate duplicate rarity/habitat helpers)
+- [x] 23 new tests (design_tokens_test + earth_nova_theme_test)
+
+### Project 11.2: Species Illustrations — Future
 - [ ] AI-generated watercolour illustrations for species (MVP pipeline)
 - [ ] Illustration display in discovery splash, Pack, Museum, Sanctuary
 - [ ] Future: hand-drawn or commissioned replacements
 
-### Project 11.2: UI Polish — Future
+### Project 11.3: UI Polish — Future
 - [ ] iOS-clean + PuffPals-cute aesthetic pass
 - [ ] Fog reveal juice: satisfying dissolve, sound, color change
 - [ ] Particle effects at fog edges
 - [ ] Discovery ceremony animations (per rarity tier)
 
-### Project 11.3: Sound & Music — Deferred
+### Project 11.4: Sound & Music — Deferred
 - [ ] Not designed yet — deferred by designer
 
 ---
