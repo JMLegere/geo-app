@@ -197,6 +197,64 @@ class AuthNotifier extends Notifier<AuthState> {
       await _fallbackToMock();
     }
   }
+
+  /// Upgrades an anonymous account to a permanent email+password account.
+  ///
+  /// Preserves the existing UUID — no data is orphaned.
+  /// No-op if the user is already upgraded (non-anonymous).
+  Future<void> upgradeWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    if (_authService == null) return;
+    if (!state.isAnonymous) return;
+    state = const AuthState.loading();
+    try {
+      final user = await _authService!.upgradeWithEmail(
+        email: email,
+        password: password,
+        displayName: displayName,
+      );
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(user);
+    } on AuthException catch (e) {
+      if (!ref.mounted) return;
+      state = AuthState.error(e.message);
+    }
+  }
+
+  /// Links an OAuth provider (Google/Apple) to the current anonymous account.
+  ///
+  /// Preserves the existing UUID — no data is orphaned.
+  /// No-op if the user is already upgraded (non-anonymous).
+  /// State transition on success is handled by [_listenToAuthChanges].
+  Future<void> linkOAuth({required String provider}) async {
+    if (_authService == null) return;
+    if (!state.isAnonymous) return;
+    try {
+      await _authService!.linkOAuthIdentity(provider: provider);
+      if (!ref.mounted) return;
+    } on AuthException catch (e) {
+      if (!ref.mounted) return;
+      state = AuthState.error(e.message);
+    }
+  }
+
+  /// Signs out with a guard for anonymous users.
+  ///
+  /// Anonymous users cannot safely sign out — their local data would be lost.
+  /// Sets an error state instead of signing out when the current user is
+  /// anonymous.
+  Future<void> signOutWithWarning() async {
+    if (state.isAnonymous) {
+      state = AuthState.error(
+        'Cannot sign out anonymous user — data will be lost',
+      );
+      return;
+    }
+    await signOut();
+  }
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(
