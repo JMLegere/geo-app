@@ -119,7 +119,7 @@ class DiscoveryState {
 /// Wire up by subscribing to `DiscoveryService.onDiscovery` and calling
 /// [showDiscovery] for each incoming [DiscoveryEvent].
 ///
-/// Pattern matches `CollectionNotifier` — uses `Notifier` + `NotifierProvider`.
+/// Pattern matches `InventoryNotifier` — uses `Notifier` + `NotifierProvider`.
 class DiscoveryNotifier extends Notifier<DiscoveryState> {
   @override
   DiscoveryState build() => const DiscoveryState();

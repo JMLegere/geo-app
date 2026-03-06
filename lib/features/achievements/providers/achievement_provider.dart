@@ -143,7 +143,7 @@ class AchievementNotifier extends Notifier<AchievementsState> {
 
     final context = AchievementContext(
       cellsObserved: playerState.cellsObserved,
-      speciesCollected: inventoryState.totalItems,
+      speciesCollected: inventoryState.uniqueDefinitionsCount,
       currentStreak: playerState.currentStreak,
       totalDistanceKm: playerState.totalDistanceKm,
       restoredCellCount: restoredCellCount,

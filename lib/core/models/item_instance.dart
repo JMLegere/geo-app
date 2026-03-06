@@ -60,6 +60,10 @@ class ItemInstance {
   /// Whether this item was bred from two parents.
   bool get isBred => parentAId != null && parentBId != null;
 
+  // TODO(phase5): copyWith cannot null out optional fields (parentAId,
+  // parentBId, acquiredInCellId, dailySeed). When breeding needs to clear
+  // parentage, adopt a sentinel pattern (e.g. Value<T> wrappers or
+  // nullable Function() closures).
   ItemInstance copyWith({
     String? id,
     String? definitionId,

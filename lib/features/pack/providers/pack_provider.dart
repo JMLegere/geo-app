@@ -98,7 +98,7 @@ class PackState {
   /// Full pool of species available to the player.
   final List<FaunaDefinition> allSpecies;
 
-  /// IDs of species the player has collected (from [collectionProvider]).
+  /// IDs of species the player has collected (from [inventoryProvider]).
   final Set<String> collectedIds;
 
   /// Active habitat filter (default: [HabitatFilter.all]).

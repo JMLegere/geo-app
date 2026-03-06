@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
@@ -153,7 +154,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _discoverySubscription = discoveryService.onDiscovery.listen((event) {
       ref.read(discoveryProvider.notifier).showDiscovery(event);
       final instance = ItemInstance(
-        id: '${event.cellId}_${event.species.id}_${DateTime.now().microsecondsSinceEpoch}',
+        id: const Uuid().v4(),
         definitionId: event.species.id,
         acquiredAt: event.timestamp,
         acquiredInCellId: event.cellId,
