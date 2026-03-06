@@ -10,7 +10,7 @@ import 'package:fog_of_world/features/sync/providers/sync_provider.dart';
 /// A settings-style screen for manual cloud sync.
 ///
 /// Shows current sync status, last sync time, pending change count, and a
-/// "Sync Now" button.  Guest users see a prompt to sign in instead.
+/// "Sync Now" button.  Unauthenticated users see a prompt to sign in instead.
 class SyncScreen extends ConsumerWidget {
   const SyncScreen({super.key});
 
@@ -18,8 +18,7 @@ class SyncScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final syncStatus = ref.watch(syncProvider);
     final authState = ref.watch(authProvider);
-    final isGuest = authState.isGuest ||
-        authState.status == AuthStatus.unauthenticated;
+    final isUnauthenticated = authState.status == AuthStatus.unauthenticated;
     final isSyncing = syncStatus.type == SyncStatusType.syncing;
 
     return Scaffold(
@@ -32,20 +31,20 @@ class SyncScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _StatusCard(syncStatus: syncStatus, isGuest: isGuest),
+              _StatusCard(syncStatus: syncStatus, isUnauthenticated: isUnauthenticated),
               const SizedBox(height: 16),
               if (syncStatus.type == SyncStatusType.error &&
                   syncStatus.errorMessage != null)
                 _ErrorBanner(
                   message: syncStatus.errorMessage!,
-                  onRetry: isGuest
+                  onRetry: isUnauthenticated
                       ? null
                       : () => ref.read(syncProvider.notifier).syncNow(),
                 ),
               const SizedBox(height: 16),
               _SyncButton(
                 isSyncing: isSyncing,
-                isDisabled: isGuest,
+                isDisabled: isUnauthenticated,
                 onPressed: () => ref.read(syncProvider.notifier).syncNow(),
               ),
               const SizedBox(height: 24),
@@ -61,10 +60,10 @@ class SyncScreen extends ConsumerWidget {
 // ── Subwidgets ────────────────────────────────────────────────────────────────
 
 class _StatusCard extends StatelessWidget {
-  const _StatusCard({required this.syncStatus, required this.isGuest});
+  const _StatusCard({required this.syncStatus, required this.isUnauthenticated});
 
   final SyncStatus syncStatus;
-  final bool isGuest;
+  final bool isUnauthenticated;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +80,7 @@ class _StatusCard extends StatelessWidget {
                 _statusIcon(syncStatus.type),
                 const SizedBox(width: 8),
                 Text(
-                  _statusLabel(syncStatus.type, isGuest),
+                  _statusLabel(syncStatus.type, isUnauthenticated),
                   style: theme.textTheme.titleMedium,
                 ),
               ],
@@ -130,8 +129,8 @@ class _StatusCard extends StatelessWidget {
     }
   }
 
-  String _statusLabel(SyncStatusType type, bool isGuest) {
-    if (isGuest) return 'Sync unavailable';
+  String _statusLabel(SyncStatusType type, bool isUnauthenticated) {
+    if (isUnauthenticated) return 'Sync unavailable';
     switch (type) {
       case SyncStatusType.idle:
         return 'Ready to sync';

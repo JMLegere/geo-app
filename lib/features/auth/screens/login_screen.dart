@@ -9,7 +9,7 @@ import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
 /// Navigation:
-/// - Sign in success / guest: handled by the auth-state switch in
+/// - Sign in success / anonymous: handled by the auth-state switch in
 ///   `FogOfWorldApp` which replaces this screen with the map screen.
 /// - "Create Account": pushes [SignupScreen] via [Navigator.push].
 class LoginScreen extends ConsumerStatefulWidget {
