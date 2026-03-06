@@ -72,28 +72,38 @@ New tab showing discovered NPCs.
 - [ ] Trait inheritance rules TBD (dominant/recessive, mutation rate)
 - [ ] Parent lineage tracking (parentAId, parentBId on offspring)
 
-### Project 2.6: Species Stats System — Planned
-3 stats per species: **speed**, **brawn**, **wit**. Base stats hash-derived from scientific name, rolled per-instance with ±30% variance.
+### Project 2.6: Species Stats Infrastructure — Done
+`StatsService` with SHA-256 base derivation and intrinsic affix rolling. **Partially superseded by Project 2.7** — `deriveBaseStats()` will be removed (base stats now crowdsourced), but `rollIntrinsicAffix()` variance mechanism (±30%) survives for instances 51+.
 
-**Design decisions (confirmed):**
-- Base stats derived via SHA-256 of `scientificName` → 3 values on 1-100 scale. Deterministic, no data file changes.
-- Rolled stats stored as an **intrinsic affix** (`AffixType.intrinsic`). No DB migration — serializes as JSON like other affixes.
-- Rarity affects **affix count only** (prefix/suffix slots), not base stats or variance range.
-- Intrinsic affix is always 1 per instance, separate from rarity-gated prefix/suffix budget.
-- Breeding (Phase 5): offspring base = avg(parentA rolled, parentB rolled), tighter ±15% variance. Selective breeding converges upward.
+- [x] Add `AffixType.intrinsic` to enum
+- [x] Create `StatsService` with `deriveBaseStats()` and `rollIntrinsicAffix()`
+- [x] Wire into discovery pipeline: roll intrinsic affix before creating `ItemInstance`
+- [x] Intrinsic affix stored as JSON like other affixes (no DB migration)
 
-**Implementation:**
-- [ ] Add `AffixType.intrinsic` to enum (1 line change)
-- [ ] Create `StatsService` with `deriveBaseStats(scientificName)` and `rollIntrinsicStats(def, seed)`
-- [ ] Wire into discovery pipeline: roll intrinsic affix before creating `ItemInstance`
-- [ ] Server-validatable: `deriveBaseStats` is pure + deterministic, `rollIntrinsicStats` uses daily seed
-- [ ] UI: display stats on species detail sheet (speed/brawn/wit bars)
+**What survives:** `rollIntrinsicAffix()` applies ±30% variance to canonical base for instances 51+.
+**What's removed:** `deriveBaseStats()` — base stats come from crowdsourced triangle picks (Project 2.7).
 
-**Stat roll formula:**
-```
-base = sha256(scientificName).bytes[0..2] % 100 + 1   // 1-100 per stat
-rolled = clamp(base × random(0.70, 1.30), 1, 100)     // ±30% variance
-```
+### Project 2.7: Species Community Definition — Planned
+First 50 players to discover a species collectively define its stats, color, and art. See [species-community-system.md](species-community-system.md).
+
+**Core mechanics:**
+- **Triangle stat picker**: Barycentric `(α,β,γ)` where `α+β+γ=1.0`. Stats: `brawn=α×90, wit=β×90, speed=γ×90`. Always sum to 90.
+- **Species color**: RGB from stats: `R=α×255, G=γ×255, B=β×255`.
+- **Running median**: Component-wise median of all picks. Locks permanently at 50th unique player's vote.
+- **Art crowdsourcing**: First 50 can upload art. AI watercolor (Gemini) auto-generated as default. Art locks when one image hits 51% of all instances at daily reset.
+- **Instance badges**: First Discovery (★), Pioneer (#2-50), Founder, Artist, Beta. All instance-level, all stack.
+
+**Implementation (requires Supabase):**
+- [ ] `needsStatPick` flag on `ItemInstance` — instances 1-50 require triangle pick before stats exist
+- [ ] Triangle stat picker widget (barycentric coordinate system)
+- [ ] Supabase tables: `species_canonical`, `species_stat_votes`, `species_art`, `instance_art_selection`, `instance_badges`
+- [ ] Running median computation (Edge Function or client-side)
+- [ ] Art upload + selection UI (selecting art = vote)
+- [ ] Art moderation pipeline (AI pre-filter + community flagging)
+- [ ] Daily reset job: check 51% art threshold → lock canonical art
+- [ ] Proximity reward system (accuracy vs final median after 50th vote)
+- [ ] Species Card UI: Frame → Art → Badges → Stats → Color → Name plate
+- [ ] Modify `StatsService`: remove `deriveBaseStats()`, keep variance for instances 51+
 
 ---
 
@@ -297,10 +307,9 @@ Watercolour art pipeline, species illustrations, UI polish.
 - [x] Refactor 8 widgets to use design system (eliminate duplicate rarity/habitat helpers)
 - [x] 23 new tests (design_tokens_test + earth_nova_theme_test)
 
-### Project 11.2: Species Illustrations — Future
-- [ ] AI-generated watercolour illustrations for species (MVP pipeline)
-- [ ] Illustration display in discovery splash, Pack, Museum, Sanctuary
-- [ ] Future: hand-drawn or commissioned replacements
+### Project 11.2: Species Illustrations — Subsumed by 2.7
+AI watercolor generation is now part of the Species Community Definition system (Project 2.7). Gemini generates a default watercolor for each species; community can upload alternatives. Art locks when 51% of instances select the same image.
+- [ ] Illustration display in discovery splash, Pack, Museum, Sanctuary (depends on 2.7 art pipeline)
 
 ### Project 11.3: UI Polish — Future
 - [ ] iOS-clean + PuffPals-cute aesthetic pass
@@ -480,7 +489,7 @@ Based on design jam emphasis and dependency analysis:
 
 | Priority | Initiatives | Rationale |
 |----------|------------|-----------|
-| **P0 — Unblocks everything** | ~~1 (Navigation)~~, 2 (Inventory) | ~~Tab shell~~ **shipped**. Inventory model is the remaining prerequisite for Museum, Pack, NPC, and quest systems |
+| **P0 — Unblocks everything** | ~~1 (Navigation)~~, 2 (Inventory + Species Community) | ~~Tab shell~~ **shipped**. Inventory model + species identity system are prerequisites for Museum, Pack, NPC, and quest systems |
 | **P1 — Core game loop** | 3 (Discovery), 4 (Museum), 7 (Quests) | These define the collect→manage→place loop that IS the game |
 | **P2 — Depth & retention** | 5 (Sanctuary), 6 (NPCs), 9 (Sets) | Add progression depth, social layer, completionist goals |
 | **P3 — Engagement breadth** | 8 (Activities), 10 (World), 11 (Visual) | Polish, variety, immersion — make the world feel alive |

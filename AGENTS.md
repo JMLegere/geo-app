@@ -118,6 +118,22 @@ These are the target architecture decisions from the design jam. They describe W
 - **Collections are bundles:** Stardew community center model. Bundles group items with completion rewards. Museum = permanent donation bundle. NPC requests = consumable bundles. Achievements track milestones ("discover 100 forest fauna").
 - **Full spec:** `docs/item-system-design.md`
 
+### Wall 1b: Species Community Definition (Crowdsourcing)
+
+- **Crowdsourcing is a core game mechanic.** The first 50 players to discover a species collectively define its stats, color, and art. Species start as blank slates.
+- **Triangle stat picker:** Barycentric coordinate system. 3 corners = Brawn (red), Wit (blue), Speed (green). Any tap point gives `(α, β, γ)` where `α + β + γ = 1.0`. Stats: `brawn = α×90, wit = β×90, speed = γ×90`. Always sum to 90.
+- **RGB color from stats:** `R = α×255, G = γ×255, B = β×255`. Every species gets a unique color identity derived from its canonical stats.
+- **Instance stats:**
+  - Instances 1–50: Player's triangle pick IS their stats. No variance. Hand-crafted collectors' items.
+  - Instances 51+: Canonical median base ±30% SHA-256 variance.
+- **No stats until choice:** Instance created with `needsStatPick: true`. Player must use triangle picker before stats exist. No SHA-256 fallback for base stats.
+- **Running median → lock at 50:** Component-wise median of triangle picks is the species' current stats. Locks permanently at 50th unique player's vote.
+- **Art crowdsourcing:** First 50 can upload art. AI watercolor (Gemini) auto-generated as default. Player selects art per instance (= vote). Art locks when one image hits 51% of all instances at daily reset.
+- **Instance badges:** First Discovery (★, instance #1), Pioneer (instances #2–50), Founder (used triangle), Artist (winning art), Beta (beta period). All instance-level, not player-level. Badges stack.
+- **Species Card UI:** Layered composable system — Frame (rarity + badge-driven) → Art → Badge icons → Stats (RGB bars) → Color identity → Name plate.
+- **Proximity reward:** After 50th vote, voters rewarded proportional to accuracy vs final median. Schelling focal point incentive — trolling is self-punishing.
+- **Full spec:** `docs/species-community-system.md`
+
 ### Wall 2: GameCoordinator
 
 - **The map is a renderer, not an orchestrator.** Game logic lives in `GameCoordinator`, a pure Dart service above the UI.
@@ -146,6 +162,8 @@ These are the target architecture decisions from the design jam. They describe W
 | 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
 | 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
 | 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
+
+**Note:** Species Community Definition system (Wall 1b) can be implemented independently — it requires Supabase tables and Edge Functions but doesn't depend on GameCoordinator or write queue. See `docs/species-community-system.md`.
 
 ---
 

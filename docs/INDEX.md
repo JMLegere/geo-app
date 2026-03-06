@@ -17,6 +17,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **Planning / what to build next** | `roadmap.md` + `game-design.md` | `architecture.md` (dependency graph) |
 | **Architecture / design jam** | `current-architecture.md` + `ideal-architecture.md` | `roadmap.md` (Technical Roadmap section) |
 | **Item system / inventory** | `item-system-design.md` | `ideal-architecture.md` (server-authoritative context) |
+| **Species stats / art / crowdsourcing** | `species-community-system.md` | `item-system-design.md` (item model context) |
 | **UI/widget work** | `architecture.md` (layer rules) | Feature AGENTS.md |
 | **Test writing** | `test/AGENTS.md` | `data-model.md` (for fixtures) |
 
@@ -25,11 +26,12 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | File | Lines | Purpose | Staleness Signal |
 |------|-------|---------|------------------|
 | `game-design.md` | ~230 | Design vision, confirmed/tentative/deferred decisions, Current vs Target table | Design decision changed, new mechanic confirmed |
-| `roadmap.md` | ~430 | Nested hierarchy: 15 initiatives → ~35 projects → ~120 issues, priority matrix, technical roadmap | Initiative added/completed, priority shift, new project scoped |
+| `roadmap.md` | ~510 | Nested hierarchy: 15 initiatives → ~35 projects → ~120 issues, priority matrix, technical roadmap | Initiative added/completed, priority shift, new project scoped |
 | `architecture.md` | ~115 | System topology, layer boundaries, feature dependency graph, glossary | New feature added without updating graph |
 | `current-architecture.md` | ~220 | How the system works today — data flow, state, persistence, feature coupling | Architecture changes, for design jam reference |
 | `ideal-architecture.md` | ~370 | Server-authoritative target architecture, item model, GameCoordinator, daily seed, write queue | Product direction changes, new technical requirements |
 | `item-system-design.md` | ~345 | Item instance model (PoE/CryptoKitty), affixes, breeding, bundles, schema, migration plan | Item model design changes, new affix/breeding rules |
+| `species-community-system.md` | ~450 | Crowdsourced species identity: triangle stat picker, running median, art voting, badges, species card UI | Community system design changes, voting/art rules |
 | `game-loop.md` | ~113 | GPS-to-render pipeline, tick rates, event flow, streak rules | Pipeline stage added/changed |
 | `state.md` | ~105 | All Riverpod providers, types, dependencies, cross-feature wiring | Provider added/renamed/re-wired |
 | `data-model.md` | ~175 | Models, DB schema, persistence contracts, species JSON, ESA mapping | Model/table/field added or changed |
