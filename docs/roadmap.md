@@ -6,9 +6,9 @@ Nested hierarchy of all planned work for EarthNova. Derived from `game-design.md
 
 ---
 
-## Initiative 1: Core Navigation & App Shell
+## Initiative 1: Core Navigation & App Shell — Done
 
-Transition from single-screen map app to 4-tab experience.
+4-tab app shell shipped. Map | Home | Town | Pack with IndexedStack keep-alive, tab persistence, web MapVisibility.
 
 ### Project 1.1: Tab Navigation System — Done
 - [x] Implement 4-tab bottom bar scaffold (Map | Home | Town | Pack)
@@ -304,7 +304,7 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [x] Fix concealed cell visual layer (pre-rendered mid-fog)
 - [x] 3-layer fog architecture (base, mid, cell borders)
 - [x] Rubber-band smooth marker movement
-- [x] CSS injection for web platform map visibility
+- [x] CSS injection for web platform map visibility (TabShell ↔ MapVisibility integration)
 - [ ] Real tile provider (MBTiles or Mapbox API)
 - [ ] Fog reveal animations (dissolve/fade, not instant)
 
@@ -369,7 +369,7 @@ Based on design jam emphasis and dependency analysis:
 
 | Priority | Initiatives | Rationale |
 |----------|------------|-----------|
-| **P0 — Unblocks everything** | 1 (Navigation), 2 (Inventory) | Tab shell + inventory model are prerequisites for Museum, Pack, NPC, and quest systems |
+| **P0 — Unblocks everything** | ~~1 (Navigation)~~, 2 (Inventory) | ~~Tab shell~~ **shipped**. Inventory model is the remaining prerequisite for Museum, Pack, NPC, and quest systems |
 | **P1 — Core game loop** | 3 (Discovery), 4 (Museum), 7 (Quests) | These define the collect→manage→place loop that IS the game |
 | **P2 — Depth & retention** | 5 (Sanctuary), 6 (NPCs), 9 (Sets) | Add progression depth, social layer, completionist goals |
 | **P3 — Engagement breadth** | 8 (Activities), 10 (World), 11 (Visual) | Polish, variety, immersion — make the world feel alive |
