@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
@@ -65,9 +66,8 @@ class AuthNotifier extends Notifier<AuthState> {
       // No existing session — auto-create anonymous session so the user
       // goes straight to the map.
       await _signInAnonymouslyWithFallback();
-    } catch (_) {
-      // Provider disposed or session check failed — fall back to mock so
-      // the user always gets in.
+    } catch (e) {
+      debugPrint('[AuthNotifier] init failed, falling back to mock: $e');
       if (ref.mounted) {
         await _fallbackToMock();
       }
@@ -84,9 +84,8 @@ class AuthNotifier extends Notifier<AuthState> {
           state = const AuthState.unauthenticated();
         }
       },
-      onError: (_) {
-        // Supabase may not be initialised (e.g. web locale crash).
-        // Fall through — session check handles the fallback.
+      onError: (e) {
+        debugPrint('[AuthNotifier] auth state stream error: $e');
       },
     );
   }
@@ -118,7 +117,8 @@ class AuthNotifier extends Notifier<AuthState> {
       final anonUser = await _authService!.signInAnonymously();
       if (!ref.mounted) return;
       state = AuthState.authenticated(anonUser);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[AuthNotifier] mock fallback failed: $e');
       if (ref.mounted) {
         state = const AuthState.unauthenticated();
       }
@@ -144,8 +144,10 @@ class AuthNotifier extends Notifier<AuthState> {
         password: password,
         displayName: displayName,
       );
+      if (!ref.mounted) return;
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
+      if (!ref.mounted) return;
       state = AuthState.error(e.message);
     }
   }
@@ -163,8 +165,10 @@ class AuthNotifier extends Notifier<AuthState> {
         email: email,
         password: password,
       );
+      if (!ref.mounted) return;
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
+      if (!ref.mounted) return;
       state = AuthState.error(e.message);
     }
   }
@@ -175,8 +179,10 @@ class AuthNotifier extends Notifier<AuthState> {
     if (service == null) return;
     try {
       await service.signOut();
+      if (!ref.mounted) return;
       state = const AuthState.unauthenticated();
     } on AuthException catch (e) {
+      if (!ref.mounted) return;
       state = AuthState.error(e.message);
     }
   }
@@ -187,13 +193,16 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Falls back to [MockAuthService] if Supabase anonymous auth fails,
   /// ensuring the user always reaches the map.
   Future<void> continueAsGuest() async {
-    if (_authService == null) return;
+    final service = _authService;
+    if (service == null) return;
     state = const AuthState.loading();
     try {
-      final user = await _authService!.signInAnonymously();
+      final user = await service.signInAnonymously();
+      if (!ref.mounted) return;
       state = AuthState.authenticated(user);
     } on AuthException {
       // Supabase anonymous auth failed — fall back to mock.
+      if (!ref.mounted) return;
       await _fallbackToMock();
     }
   }
@@ -207,11 +216,12 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
     String? displayName,
   }) async {
-    if (_authService == null) return;
+    final service = _authService;
+    if (service == null) return;
     if (!state.isAnonymous) return;
     state = const AuthState.loading();
     try {
-      final user = await _authService!.upgradeWithEmail(
+      final user = await service.upgradeWithEmail(
         email: email,
         password: password,
         displayName: displayName,
@@ -230,10 +240,11 @@ class AuthNotifier extends Notifier<AuthState> {
   /// No-op if the user is already upgraded (non-anonymous).
   /// State transition on success is handled by [_listenToAuthChanges].
   Future<void> linkOAuth({required String provider}) async {
-    if (_authService == null) return;
+    final service = _authService;
+    if (service == null) return;
     if (!state.isAnonymous) return;
     try {
-      await _authService!.linkOAuthIdentity(provider: provider);
+      await service.linkOAuthIdentity(provider: provider);
       if (!ref.mounted) return;
     } on AuthException catch (e) {
       if (!ref.mounted) return;

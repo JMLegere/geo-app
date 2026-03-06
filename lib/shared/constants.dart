@@ -145,4 +145,7 @@ const bool kDebugLogPersistence = false;
 /// Number of collected species that triggers the "save your progress" upgrade prompt.
 const int kUpgradePromptThreshold = 5;
 
+/// Application version string displayed in Settings.
+const String kAppVersion = '0.1.0';
+
 

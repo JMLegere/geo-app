@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
+import 'package:fog_of_world/shared/constants.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// Account settings screen.
@@ -26,7 +27,13 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
     // Guard against widget disposal during async gap.
     if (!context.mounted) return;
-    await ref.read(authProvider.notifier).signOut();
+    if (isAnonymous) {
+      // Anonymous users confirmed via destructive dialog — sign out directly.
+      await ref.read(authProvider.notifier).signOut();
+    } else {
+      // Non-anonymous users go through the safety guard.
+      await ref.read(authProvider.notifier).signOutWithWarning();
+    }
   }
 
   Future<bool?> _showSignOutDialog(BuildContext context,
@@ -249,7 +256,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               trailing: Text(
-                'v0.1.0',
+                'v$kAppVersion',
                 style: TextStyle(
                   fontSize: 13,
                   color: colors.onSurfaceVariant,

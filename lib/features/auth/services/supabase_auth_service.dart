@@ -24,6 +24,18 @@ class SupabaseAuthService implements AuthService {
   }
 
   // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Safely extracts `display_name` from Supabase user metadata.
+  ///
+  /// Returns `null` if the value is missing or not a [String].
+  static String? _displayNameFrom(supa.User user) {
+    final raw = user.userMetadata?['display_name'];
+    return raw is String ? raw : null;
+  }
+
+  // ---------------------------------------------------------------------------
   // AuthService implementation
   // ---------------------------------------------------------------------------
 
@@ -44,7 +56,7 @@ class SupabaseAuthService implements AuthService {
         id: user.id,
         email: user.email ?? email,
         displayName: displayName,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(user.createdAt),
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -72,7 +84,8 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? email,
-        createdAt: DateTime.now(),
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -95,7 +108,7 @@ class SupabaseAuthService implements AuthService {
         id: user.id,
         email: '',
         displayName: 'Explorer',
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(user.createdAt),
         isAnonymous: true,
       );
     } on supa.AuthException catch (e) {
@@ -126,8 +139,8 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? email,
-        displayName: displayName ?? user.userMetadata?['display_name'] as String?,
-        createdAt: DateTime.now(),
+        displayName: displayName ?? _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
         isAnonymous: false,
       );
     } on supa.AuthException catch (e) {
@@ -156,8 +169,8 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? '',
-        displayName: user.userMetadata?['display_name'] as String?,
-        createdAt: DateTime.now(),
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
         isAnonymous: false,
       );
     } on supa.AuthException catch (e) {
@@ -188,7 +201,8 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? '',
-        createdAt: DateTime.now(),
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
         isAnonymous: user.isAnonymous == true,
       );
     } on AuthException {
@@ -217,7 +231,8 @@ class SupabaseAuthService implements AuthService {
         return UserProfile(
           id: user.id,
           email: user.email ?? '',
-          createdAt: DateTime.now(),
+          displayName: _displayNameFrom(user),
+          createdAt: DateTime.parse(user.createdAt),
           isAnonymous: user.isAnonymous == true,
         );
       });
