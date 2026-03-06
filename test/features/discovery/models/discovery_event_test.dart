@@ -21,13 +21,13 @@ void main() {
   group('DiscoveryEvent', () {
     test('stores all constructor fields', () {
       final event = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
       );
 
-      expect(event.species, same(redFox));
+      expect(event.item, same(redFox));
       expect(event.cellId, equals('cell_42'));
       expect(event.isNew, isTrue);
       expect(event.timestamp, equals(timestamp));
@@ -35,7 +35,7 @@ void main() {
 
     test('isNew can be false (already collected)', () {
       final event = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_99',
         isNew: false,
         timestamp: timestamp,
@@ -46,13 +46,13 @@ void main() {
 
     test('equality: two events with same fields are equal', () {
       final a = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
       );
       final b = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
@@ -63,13 +63,13 @@ void main() {
 
     test('equality: events with different cellId are not equal', () {
       final a = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
       );
       final b = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_99',
         isNew: true,
         timestamp: timestamp,
@@ -80,13 +80,13 @@ void main() {
 
     test('equality: events with different isNew are not equal', () {
       final a = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
       );
       final b = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: false,
         timestamp: timestamp,
@@ -97,13 +97,13 @@ void main() {
 
     test('hashCode matches for equal events', () {
       final a = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
       );
       final b = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,
@@ -112,9 +112,9 @@ void main() {
       expect(a.hashCode, equals(b.hashCode));
     });
 
-    test('toString includes species name and cellId', () {
+    test('toString includes item name and cellId', () {
       final event = DiscoveryEvent(
-        species: redFox,
+        item: redFox,
         cellId: 'cell_42',
         isNew: true,
         timestamp: timestamp,

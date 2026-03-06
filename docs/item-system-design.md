@@ -8,7 +8,7 @@
 
 **PoE / CryptoKitty model, not Stardew stacking.** Every item instance is unique — two Red Foxes found in different cells have different randomly-rolled stats. Items don't stack. Rarity gates affix pool depth. Breeding combines traits from two parents.
 
-**5 item categories:** Fauna, Flora, Mineral, Fossil, Artifact.
+**7 item categories:** Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb.
 
 ---
 
@@ -24,26 +24,28 @@ sealed class ItemDefinition {
   final String displayName;           // "Red Fox"
   final String? scientificName;       // "Vulpes vulpes" (fauna/flora)
   final String? description;
-  final ItemCategory category;        // fauna, flora, mineral, fossil, artifact
-  final IucnStatus? rarity;           // gates affix pool depth
+  final ItemCategory category;        // fauna, flora, mineral, fossil, artifact, food, orb
+  final IucnStatus? rarity;           // gates affix pool depth (fauna/flora/mineral/fossil/artifact)
   final List<Habitat> habitats;       // where it spawns
   final List<Continent> continents;   // geographic filter
   final Season? seasonRestriction;    // null = year-round
   final List<String> contextTags;     // flexible metadata for filtering
 }
 
-enum ItemCategory { fauna, flora, mineral, fossil, artifact }
+enum ItemCategory { fauna, flora, mineral, fossil, artifact, food, orb }
 ```
 
 **Concrete types:**
 
 | Type | Unique fields | Source |
 |------|--------------|--------|
-| `FaunaDefinition` | `taxonomicClass` | 32k IUCN dataset |
-| `FloraDefinition` | `plantType` (tree, flower, fungus, etc.) | TBD dataset |
-| `MineralDefinition` | `crystalSystem`, `hardness` | TBD dataset |
-| `FossilDefinition` | `era`, `fossilType` | TBD dataset |
-| `ArtifactDefinition` | `period`, `origin` | TBD dataset |
+| `FaunaDefinition` | `taxonomicClass`, `animalType: AnimalType?`, `animalClass: String?`, `foodPreference: String?`, `climate: Climate?` | 32k IUCN dataset + AI enrichment |
+| `FloraDefinition` | `plantType` (tree, flower, fungus, etc.) | Stub (no dataset yet) |
+| `MineralDefinition` | `crystalSystem`, `hardness` | Stub (no dataset yet) |
+| `FossilDefinition` | `era`, `fossilType` | Stub (no dataset yet) |
+| `ArtifactDefinition` | `period`, `origin` | Stub (no dataset yet) |
+| `FoodDefinition` | `foodType: FoodType` | Predefined (6 types) |
+| `OrbDefinition` | `dimension: OrbDimension`, `variant: String` | Predefined (3 dimensions, ~46 types) |
 
 ### ItemInstance (Unique Discovered Item)
 

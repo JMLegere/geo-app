@@ -20,7 +20,7 @@ DiscoveryEvent _makeEvent({
   bool isNew = true,
 }) {
   return DiscoveryEvent(
-    species: FaunaDefinition(
+    item: FaunaDefinition(
       id: 'fauna_${scientificName.toLowerCase().replaceAll(' ', '_')}',
       displayName: displayName,
       scientificName: scientificName,

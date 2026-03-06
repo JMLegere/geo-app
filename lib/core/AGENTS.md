@@ -85,15 +85,24 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Immutable value objects for domain entities.
 
-**Public API** (12 models):
+**Public API** (18 models):
 - `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 10^x progression (PoE loot table style): LC=100000, NT=10000, VU=1000, EN=100, CR=10, EX=1.
-- `ItemDefinition` (sealed): Base class for all item types. Subclasses: `FaunaDefinition` (fauna), Flora/Mineral/Fossil/Artifact (planned).
-- `FaunaDefinition`: `scientificName`, `commonName`, `taxonomicClass`, `continents: List<Continent>`, `habitats: List<Habitat>`, `iucnStatus`. Equality by `scientificName` only.
+- `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
+- `FaunaDefinition`: `scientificName`, `displayName`, `taxonomicClass`, `animalType`, `animalClass`, `foodPreference`, `climate`, `continents`, `habitats`, `rarity`. Equality by `id`. `animalType` auto-computed from `taxonomicClass`.
+- `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`: Stubs for Phase 1b. No dataset yet.
+- `FoodDefinition`: `foodType: FoodType`. Discovered during exploration, fed to sanctuary animals.
+- `OrbDefinition`: `dimension: OrbDimension`, `variant: String`. Primary currency, produced via sanctuary feeding.
 - `ItemInstance`: `id` (UUID), `definitionId`, `category`, `affixes: List<Affix>`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`. Represents unique item with rolled stats.
 - `Affix`: `type` (prefix/suffix), `key`, `value`. Flexible key-value stats for item instances.
-- `ItemCategory`: enum (fauna, flora, mineral, fossil, artifact).
+- `ItemCategory`: enum (fauna, flora, mineral, fossil, artifact, food, orb). 7 categories.
 - `ItemInstanceStatus`: enum (active, donated, placed, released, traded).
+- `AnimalType`: enum (mammal, bird, fish, reptile, bug). Deterministic from IUCN `taxonomicClass` via `fromTaxonomicClass()`.
+- `AnimalClass`: enum with 35 values (7 bird, 9 bug, 6 fish, 8 mammal, 5 reptile). `parentType` maps to `AnimalType`. AI-determined on first discovery.
+- `Climate`: enum (tropic, temperate, boreal, frigid). `fromLatitude(double)` derives from `abs(lat)` with boundaries 23.5°/55°/66.5°.
+- `FoodType`: enum (critter, fish, fruit, grub, nectar, veg). `id` getter: `'food-$name'`.
+- `OrbDimension`: enum (habitat, animalClass, climate). The 3 dimensions of orb types.
+- `ActivityType`: enum (explore, forage, dig, survey). Determines eligible loot categories.
 - `CellData`: `id`, `center: Geographic`, `fogState`, `speciesIds`, `restorationLevel`, `distanceWalked`, `visitCount`, `lastVisited`.
 - `PlayerProgress`: `userId`, `cellsObserved`, `speciesCollected`, `currentStreak`, `longestStreak`, `totalDistanceKm`.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
@@ -105,7 +114,9 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - Manual `toJson()` / `fromJson()` — no code generation
 - `FogState.density` doubles for shader interpolation (1.0=opaque, 0.0=clear)
 - `IucnStatus.weight` for weighted random selection (higher weight = more common)
-- `FaunaDefinition` equality ignores all fields except `scientificName`
+- `ItemDefinition` equality by `id` field
+- `FaunaDefinition.animalType` is auto-computed in constructor from `taxonomicClass`
+- `FaunaDefinition.scientificName` narrows base `String?` to non-null `String`
 - `ItemInstance.id` uses uuid package (v4 random UUIDs)
 - `ItemInstance.affixes` serialized as JSON in database
 - `CellData.restorationLevel` clamped to [0.0, 1.0]

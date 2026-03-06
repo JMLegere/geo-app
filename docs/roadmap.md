@@ -40,13 +40,18 @@ New tab showing discovered NPCs.
 
 ## Initiative 2: Item System Overhaul
 
-**KEY SHIFT**: Everything is an item. Each instance is unique with randomly-rolled affixes (PoE/CryptoKitty model). 5 categories: Fauna, Flora, Mineral, Fossil, Artifact. Breeding produces offspring with trait inheritance. See [item-system-design.md](item-system-design.md).
+**KEY SHIFT**: Everything is an item. Each instance is unique with randomly-rolled affixes (PoE/CryptoKitty model). 7 categories: Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb. Breeding produces offspring with trait inheritance. See [item-system-design.md](item-system-design.md).
 
-### Project 2.1: Item Model Foundation — Done
-- [x] Create `ItemDefinition` sealed class hierarchy (Fauna, Flora, Mineral, Fossil, Artifact)
+### Project 2.1: Item Model Foundation — COMPLETE (Phase 1b model layer)
+- [x] Create `ItemDefinition` sealed class hierarchy (7 subclasses: Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb)
 - [x] Create `ItemInstance` model with affix list + parentage fields
 - [x] Create `Affix` model (prefix/suffix with flexible key-value stats)
 - [x] Convert existing `SpeciesRecord` → `FaunaDefinition`
+- [x] Add 6 new enums: AnimalType (5 values), AnimalClass (35 values), Climate (4 values), FoodType (6 values), OrbDimension (3 values), ActivityType (4 values)
+- [x] Extend FaunaDefinition with AI enrichment fields: animalType, animalClass, foodPreference, climate
+- [x] Create FoodDefinition and OrbDefinition with category-specific fields
+- [x] Flora/Mineral/Fossil/Artifact stubs (no datasets yet)
+- [x] 1241 tests passing, 0 analyze errors
 
 ### Project 2.2: Database Schema Migration — Done
 - [x] Add `LocalItemInstanceTable` to Drift schema (9 columns, schema v2)
@@ -60,11 +65,14 @@ New tab showing discovered NPCs.
 - [x] Support lifecycle transitions: active → donated / placed / released / traded
 - [x] Migrate downstream consumers (pack, sanctuary, achievements) from collection → inventory
 
-### Project 2.4: Affix Rolling System — Planned
+### Project 2.4: Loot Rolling System — Planned
+- [ ] Refactor `LootRoller` to support 7 item categories (fauna, flora, mineral, fossil, artifact, food, orb)
+- [ ] Add climate filtering (tropic/temperate/boreal/frigid based on latitude)
+- [ ] Add activity type filtering (photograph/forage/lure/survey)
+- [ ] Integrate with discovery pipeline (roll category → roll definition → roll affixes)
 - [ ] Create `AffixRoller` service (deterministic: seed + cellId + definitionId → affixes)
 - [ ] Rarity-gated pool depth (LC = 0-1 affixes, CR/EX = more/better)
-- [ ] Integrate with discovery pipeline (each encounter rolls unique affixes)
-- [ ] Affix pool definitions TBD — schema supports arbitrary stats
+- [ ] Affix pool definitions stored server-side for tuning
 
 ### Project 2.5: Breeding System — Future
 - [ ] Create `BreedingService` (server-validated trait inheritance)

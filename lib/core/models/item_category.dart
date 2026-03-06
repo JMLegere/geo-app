@@ -1,4 +1,4 @@
-/// The 5 item categories in EarthNova.
+/// The 7 item categories in EarthNova.
 ///
 /// Every discoverable thing is an item. Categories group item definitions
 /// by their real-world origin.
@@ -7,7 +7,9 @@ enum ItemCategory {
   flora,
   mineral,
   fossil,
-  artifact;
+  artifact,
+  food,
+  orb;
 
   String get displayName => switch (this) {
         ItemCategory.fauna => 'Fauna',
@@ -15,6 +17,8 @@ enum ItemCategory {
         ItemCategory.mineral => 'Mineral',
         ItemCategory.fossil => 'Fossil',
         ItemCategory.artifact => 'Artifact',
+        ItemCategory.food => 'Food',
+        ItemCategory.orb => 'Orb',
       };
 
   static ItemCategory fromString(String value) {
