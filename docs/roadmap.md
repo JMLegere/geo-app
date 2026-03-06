@@ -10,29 +10,29 @@ Nested hierarchy of all planned work for EarthNova. Derived from `game-design.md
 
 Transition from single-screen map app to 4-tab experience.
 
-### Project 1.1: Tab Navigation System — Planned
-- [ ] Implement 4-tab bottom bar scaffold (Map | Home | Town | Pack)
-- [ ] Route between tabs with state preservation
-- [ ] Add gear icon → profile/settings screen
-- [ ] Persist selected tab across app restarts
+### Project 1.1: Tab Navigation System — Done
+- [x] Implement 4-tab bottom bar scaffold (Map | Home | Town | Pack)
+- [x] Route between tabs with state preservation (IndexedStack keep-alive)
+- [ ] Add gear icon → profile/settings screen (deferred to v2)
+- [x] Persist selected tab across app restarts (SharedPreferences)
 
-### Project 1.2: Pack Tab (Field Pack) — Planned
+### Project 1.2: Pack Tab (Field Pack) — In Progress
 Reconceptualize Journal from filtered catalog → inventory-first management hub.
-- [ ] Rename Journal → Pack throughout codebase
+- [x] Rename Journal → Pack throughout codebase
 - [ ] Redesign Pack as inventory grid (stacked items: "Mallard ×3")
 - [ ] Add "Donate to Museum" action per species
 - [ ] Add "Place in Sanctuary" action per species
 - [ ] Add "Release" action (return to wild, feel-good animation)
 - [ ] Bidirectional placement: Pack → Museum/Sanctuary AND Museum/Sanctuary → "Fill from inventory"
 
-### Project 1.3: Home Tab (Sanctuary Hub) — Planned
+### Project 1.3: Home Tab (Sanctuary Hub) — Done
 Current sanctuary screen becomes Home tab entry point.
-- [ ] Wire current sanctuary screen into Home tab
-- [ ] Redesign grouped species list into sanctuary overview
+- [x] Wire current sanctuary screen into Home tab
+- [x] Achievement access via trophy icon in SanctuaryScreen AppBar
 
-### Project 1.4: Town Tab (NPC Hub) — Planned
+### Project 1.4: Town Tab (NPC Hub) — In Progress
 New tab showing discovered NPCs.
-- [ ] Create empty Town tab scaffold
+- [x] Create empty Town tab scaffold (themed "Coming Soon" placeholder)
 - [ ] Show list of discovered NPCs with portraits/names
 - [ ] Tap NPC → conversation/interaction screen
 

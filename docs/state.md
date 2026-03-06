@@ -28,7 +28,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
 | `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | none (dev fixture) |
-| `journalProvider` | journal | `NotifierProvider<JournalNotifier, JournalState>` | watches: speciesService; listens: collection |
+| `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: collection |
+| `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
 | `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: collection, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
@@ -58,13 +59,15 @@ cellServiceProvider ──→ fogResolverProvider ──→ discoveryServiceProv
                                            ──→ fogOverlayControllerProvider
 
 speciesServiceProvider ──→ discoveryServiceProvider
-                       ──→ journalProvider
+                       ──→ packProvider
                        ──→ sanctuaryProvider
                        ──→ achievementProvider
 
-collectionProvider ──→ journalProvider (listen)
+collectionProvider ──→ packProvider (listen)
                    ──→ sanctuaryProvider (listen)
                    ──→ achievementProvider (read)
+
+tabIndexProvider ──→ (persists to SharedPreferences)
 
 playerProvider ──→ sanctuaryProvider (listen)
                ──→ achievementProvider (read)
@@ -76,7 +79,7 @@ playerProvider ──→ sanctuaryProvider (listen)
 | Pattern | When | Example |
 |---------|------|---------|
 | `ref.watch()` in `build()` | Reactive dependency — provider rebuilds when dep changes | fogResolverProvider watches cellServiceProvider |
-| `ref.listen()` in `build()` | React to changes without resetting own state | journalProvider listens to collectionProvider (preserves filters) |
+| `ref.listen()` in `build()` | React to changes without resetting own state | packProvider listens to collectionProvider (preserves filters) |
 | `ref.read()` in methods | One-shot mutation from event handler | caretakingProvider reads playerProvider.notifier |
 | Stream subscription | External event source (GPS, fog events) | LocationNotifier.connectToStream(), map_screen subscriptions |
 

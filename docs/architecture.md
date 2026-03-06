@@ -13,9 +13,10 @@
 ┌──────────────────────▼──────────────────────────┐
 │  features/                                       │
 │  ┌─────────┐ ┌─────────┐ ┌───────────────────┐  │
-│  │   map   │ │ journal │ │   achievements    │  │
+│  │   map   │ │  pack   │ │   achievements    │  │
 │  │  (hub)  │ │sanctuary│ │   discovery       │  │
 │  │         │ │  sync   │ │   caretaking      │  │
+│  │         │ │navigate │ │                   │  │
 │  └────┬────┘ └────┬────┘ └────────┬──────────┘  │
 │       │           │               │              │
 └───────┼───────────┼───────────────┼──────────────┘
@@ -47,7 +48,8 @@
 |---------|------|----------------------|
 | **map** | Hub | location, discovery, biome, seasonal (orchestrates everything) |
 | **achievements** | Hub | discovery, restoration, player, collection, species |
-| **journal** | Composite | discovery, collection, species |
+| **pack** | Composite | discovery, collection, species |
+| **navigation** | Hub | map, sanctuary, pack (TabShell orchestrates all tabs) |
 | **sanctuary** | Composite | discovery, collection, player, caretaking |
 | **sync** | Composite | auth, supabase bootstrap |
 | **auth** | Leaf | supabase bootstrap only |
@@ -81,7 +83,7 @@ main()
       → route:
           onboarded == null  → splash (loading)
           onboarded == false → OnboardingScreen
-          authenticated      → MapScreen
+          authenticated      → TabShell (4-tab: Map | Home | Town | Pack)
           loading            → _LoadingSplash
            unauthenticated    → LoginScreen
 ```
