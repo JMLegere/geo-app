@@ -103,36 +103,72 @@ These are **locked in** — do not revisit without explicit instruction.
 
 ---
 
-## Product Architecture (Design Jam Decisions — 2026-03-06)
+## Product Architecture (Design Jam Decisions — 2026-03-06, updated 2026-03-06 Jam 2)
 
-These are the target architecture decisions from the design jam. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: GameCoordinator (Phase 2), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
+These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: Item expansion (Phase 1b), GameCoordinator (Phase 2), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
 
 **This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
 
 ### Wall 1: Everything Is an Item
 
 - **PoE / CryptoKitty model, NOT Stardew stacking.** Every discovered item is a unique instance with randomly-rolled affixes (prefix/suffix). Items never stack. Two Red Foxes have different stats.
-- **5 item categories:** Fauna, Flora, Mineral, Fossil, Artifact. All share the `ItemDefinition` → `ItemInstance` pattern.
+- **7 item categories:** Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb. All share the `ItemDefinition` → `ItemInstance` pattern.
 - **Rarity gates affix depth:** LC = 0-1 affixes, NT = 1-2, VU = 2-3, EN = 3-4, CR = 4-5, EX = 5+.
 - **Breeding:** Two instances → offspring with inherited/combined traits. CryptoKitty-style trait inheritance. Server-validated.
 - **Collections are bundles:** Stardew community center model. Bundles group items with completion rewards. Museum = permanent donation bundle. NPC requests = consumable bundles. Achievements track milestones ("discover 100 forest fauna").
-- **Full spec:** `docs/item-system-design.md`
+- **Full spec:** `docs/item-system-design.md`, `docs/design-jam-2-item-expansion.md`
 
-### Wall 1b: Species Community Definition (Crowdsourcing)
+### Wall 1b: Fauna Taxonomy (3-Tier)
 
-- **Crowdsourcing is a core game mechanic.** The first 50 players to discover a species collectively define its stats, color, and art. Species start as blank slates.
-- **Triangle stat picker:** Barycentric coordinate system. 3 corners = Brawn (red), Wit (blue), Speed (green). Any tap point gives `(α, β, γ)` where `α + β + γ = 1.0`. Stats: `brawn = α×90, wit = β×90, speed = γ×90`. Always sum to 90.
-- **RGB color from stats:** `R = α×255, G = γ×255, B = β×255`. Every species gets a unique color identity derived from its canonical stats.
-- **Instance stats:**
-  - Instances 1–50: Player's triangle pick IS their stats. No variance. Hand-crafted collectors' items.
-  - Instances 51+: Canonical median base ±30% SHA-256 variance.
-- **No stats until choice:** Instance created with `needsStatPick: true`. Player must use triangle picker before stats exist. No SHA-256 fallback for base stats.
-- **Running median → lock at 50:** Component-wise median of triangle picks is the species' current stats. Locks permanently at 50th unique player's vote.
-- **Art crowdsourcing:** First 50 can upload art. AI watercolor (Gemini) auto-generated as default. Player selects art per instance (= vote). Art locks when one image hits 51% of all instances at daily reset.
-- **Instance badges:** First Discovery (★, instance #1), Pioneer (instances #2–50), Founder (used triangle), Artist (winning art), Beta (beta period). All instance-level, not player-level. Badges stack.
-- **Species Card UI:** Layered composable system — Frame (rarity + badge-driven) → Art → Badge icons → Stats (RGB bars) → Color identity → Name plate.
-- **Proximity reward:** After 50th vote, voters rewarded proportional to accuracy vs final median. Schelling focal point incentive — trolling is self-punishing.
-- **Full spec:** `docs/species-community-system.md`
+- **5 Animal Types:** Mammal, Bird, Fish, Reptile, Bug. Deterministic from IUCN `taxonomicClass` (Mammalia→Mammal, Aves→Bird, etc.).
+- **35 Animal Classes:** Game-designed sub-classifications. Canonical list:
+  - **Bird (7):** Bird of Prey, Game Bird, Nightbird, Parrot, Songbird, Waterfowl, Woodpecker
+  - **Bug (9):** Bee, Beetle, Butterfly, Cicada, Dragonfly, Land Mollusk, Locust, Scorpion, Spider
+  - **Fish (6):** Cartilaginous Fish, Cephalopod, Clams/Urchins & Crustaceans, Jawless Fish, Lobe-finned Fish, Ray-finned Fish
+  - **Mammal (8):** Bat, Carnivore, Hare, Herbivore, Primate, Rodent, Sea Mammal, Shrew
+  - **Reptile (5):** Amphibian, Crocodile, Lizard, Snake, Turtle
+- **Hierarchy:** Fauna → Type → Class → Species. E.g., Fauna → Mammal → Carnivore → Red Fox.
+- **Animal Class is AI-determined** on first global discovery. Canonical forever.
+
+### Wall 1c: Food & Orb Economy
+
+- **Food (6 subtypes):** food-critter, food-fish, food-fruit, food-grub, food-nectar, food-veg. Found during exploration. Fed to sanctuary animals.
+- **Food preference per species:** AI-determined on first discovery. Maps species to one of 6 food types based on real diet.
+- **Orbs = primary game currency.** 3 dimensions, ~46 types:
+  - **Habitat orbs (7):** orb-forest, orb-plains, orb-freshwater, orb-saltwater, orb-swamp, orb-mountain, orb-desert
+  - **Class orbs (~35):** orb-carnivore, orb-songbird, orb-rodent, orb-crocodile, etc. (one per animal class)
+  - **Climate orbs (4):** orb-tropic, orb-temperate, orb-boreal, orb-frigid
+- **Feeding produces 3 orbs:** Feed animal → 1 habitat orb + 1 class orb + 1 climate orb.
+- **Orb spend:** TBD. Candidates: restoration, breeding, lures, cosmetics, NPC shops.
+- **Orbs are NOT loot drops** — only produced via sanctuary feeding.
+
+### Wall 1d: Climate Zones
+
+- **4 climate zones:** Tropic (0°–23.5°), Temperate (23.5°–55°), Boreal (55°–66.5°), Frigid (66.5°–90°).
+- **Derived from real latitude:** `abs(playerLat)` → climate zone. No API needed.
+- **Climate drives spawning:** Tropical species only near equator. Boreal species only at high latitudes. Real geography = gameplay.
+- **Climate on species:** AI-enriched on first discovery, or inferrable from real-world range.
+
+### Wall 1e: Lazy AI Enrichment
+
+- **Trigger:** First global discovery of any item. Background AI job fires automatically.
+- **Fauna enrichment:** animalClass, foodPreference, stats (brawn+wit+speed=90), watercolor art.
+- **All categories enriched:** Flora, Mineral, Fossil, Artifact also get category-specific AI enrichment + watercolor art. Food and Orbs are predefined — no enrichment needed.
+- **AI is canonical for facts.** Stats, classification, food preference — AI sets, locked forever. No crowdsourcing for factual attributes.
+- **Art is crowd-canonical.** AI watercolor is the default. First 50 owners can upload art. Art locks when 51% of instances select same art at daily reset.
+- **Architecture:** Supabase enrichment_queue → Edge Function → LLM API (classification) + image gen API (art) → results stored in species_enrichment table → cached locally.
+- **Non-blocking:** Enrichment runs in background. Gameplay continues with just IUCN data. Enrichment adds richness over time.
+- **Full spec:** `docs/design-jam-2-item-expansion.md`
+
+### Wall 1f: Species Identity
+
+- **Stats:** AI-canonical. Brawn + Wit + Speed = 90. Based on real-world characteristics (cheetah=fast, elephant=strong, octopus=smart).
+- **Color:** RGB derived from stats. R=brawn/90×255, G=speed/90×255, B=wit/90×255.
+- **Instance variance:** All instances get canonical base ±30% SHA-256 variance. No special first-50 handling.
+- **Art:** Crowd-canonical. AI default + player uploads. 51% lock at daily reset.
+- **Badges:** First Discovery (★), Pioneer (#2–50), Artist (winning art), Beta (beta period). Instance-level, stack.
+- **Species Card UI:** Frame (rarity+badges) → Art → Badge icons → Stats (RGB bars) → Color identity → Name plate.
+- **Replaces:** `docs/species-community-system.md` stats sections. Art/badges/card UI unchanged.
 
 ### Wall 2: GameCoordinator
 
@@ -158,12 +194,14 @@ These are the target architecture decisions from the design jam. They describe W
 | Phase | Status | Change | Enables |
 |-------|--------|--------|---------|
 | 1 | **COMPLETE** | Item model (sealed classes, instances, affixes) | Everything downstream |
+| 1b | Not started | Item expansion (7 categories, taxonomy, food, orbs, climate) | Economy, sanctuary loop |
+| 1c | Not started | Lazy AI enrichment pipeline (Supabase Edge Functions) | Species identity, art, stats |
 | 2 | Not started | GameCoordinator (extract from map_screen) | Tab-independent game loop |
 | 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
 | 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
 | 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
 
-**Note:** Species Community Definition system (Wall 1b) can be implemented independently — it requires Supabase tables and Edge Functions but doesn't depend on GameCoordinator or write queue. See `docs/species-community-system.md`.
+**Note:** Lazy AI enrichment (Phase 1c) requires Supabase Edge Functions but doesn't depend on GameCoordinator or write queue.
 
 ---
 
