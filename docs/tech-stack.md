@@ -102,7 +102,12 @@ nginx.conf: SPA fallback (try_files → /index.html), gzip enabled
 
 ## CI Status
 
-**Stale.** `.github/workflows/ci.yml` runs Unity builds (from before Flutter migration). Does NOT run `flutter test` or `flutter analyze`. Needs complete rewrite for Flutter.
+**Working.** `.github/workflows/ci.yml` runs on every push and PR to `main`:
+
+1. **Analyze** — `flutter analyze` (must report 0 issues)
+2. **Test** — `LD_LIBRARY_PATH=. flutter test` (H3 FFI, 1154 tests)
+
+Both jobs use `subosito/flutter-action@v2` with Flutter `3.x` channel, `mise` for tooling, and cache `~/.pub-cache`. Analyze runs ~2 min, tests run ~3 min.
 
 ---
 

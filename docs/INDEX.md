@@ -15,6 +15,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **Build/deploy/infra** | `tech-stack.md` | — |
 | **Auth/login work** | `auth-prerequisites.md` + `state.md` | Feature AGENTS.md |
 | **Planning / what to build next** | `roadmap.md` + `game-design.md` | `architecture.md` (dependency graph) |
+| **Architecture / design jam** | `current-architecture.md` + `ideal-architecture.md` | `roadmap.md` (Technical Roadmap section) |
 | **UI/widget work** | `architecture.md` (layer rules) | Feature AGENTS.md |
 | **Test writing** | `test/AGENTS.md` | `data-model.md` (for fixtures) |
 
@@ -23,13 +24,15 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | File | Lines | Purpose | Staleness Signal |
 |------|-------|---------|------------------|
 | `game-design.md` | ~230 | Design vision, confirmed/tentative/deferred decisions, Current vs Target table | Design decision changed, new mechanic confirmed |
-| `roadmap.md` | ~370 | Nested hierarchy: 15 initiatives → ~35 projects → ~120 issues, priority matrix | Initiative added/completed, priority shift, new project scoped |
-| `architecture.md` | ~95 | System topology, layer boundaries, feature dependency graph, glossary | New feature added without updating graph |
-| `game-loop.md` | ~100 | GPS-to-render pipeline, tick rates, event flow, streak rules | Pipeline stage added/changed |
-| `state.md` | ~100 | All Riverpod providers, types, dependencies, cross-feature wiring | Provider added/renamed/re-wired |
-| `data-model.md` | ~140 | Models, DB schema, persistence contracts, species JSON, ESA mapping | Model/table/field added or changed |
-| `tech-stack.md` | ~115 | Framework versions, packages, build/deploy commands | Dependency upgraded or config changed |
-| `auth-prerequisites.md` | ~60 | Supabase dashboard, Google/Apple OAuth, dart-define setup | OAuth provider added/changed |
+| `roadmap.md` | ~430 | Nested hierarchy: 15 initiatives → ~35 projects → ~120 issues, priority matrix, technical roadmap | Initiative added/completed, priority shift, new project scoped |
+| `architecture.md` | ~115 | System topology, layer boundaries, feature dependency graph, glossary | New feature added without updating graph |
+| `current-architecture.md` | ~200 | How the system works today — data flow, state, persistence, feature coupling | Architecture changes, for design jam reference |
+| `ideal-architecture.md` | ~200 | Where architecture should evolve for product vision | Product direction changes, new technical requirements |
+| `game-loop.md` | ~113 | GPS-to-render pipeline, tick rates, event flow, streak rules | Pipeline stage added/changed |
+| `state.md` | ~105 | All Riverpod providers, types, dependencies, cross-feature wiring | Provider added/renamed/re-wired |
+| `data-model.md` | ~175 | Models, DB schema, persistence contracts, species JSON, ESA mapping | Model/table/field added or changed |
+| `tech-stack.md` | ~115 | Framework versions, packages, build/deploy commands, CI status | Dependency upgraded or config changed |
+| `auth-prerequisites.md` | ~250 | Supabase dashboard, Google/Apple OAuth, dart-define setup | OAuth provider added/changed |
 
 ## Maintenance Rules
 

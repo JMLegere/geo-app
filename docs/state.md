@@ -21,7 +21,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 
 | Provider | Feature | Type | Dependencies |
 |----------|---------|------|-------------|
-| `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | reads: supabaseBootstrapProvider. States: initial, unauthenticated, authenticated, guest, loading, error |
+| `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | reads: supabaseBootstrapProvider. States: unauthenticated, loading, authenticated |
+| `upgradePromptProvider` | auth | `NotifierProvider<UpgradePromptNotifier, UpgradePromptState>` | watches: authProvider, collectionProvider. Triggers save-progress banner at 5 collected species for anonymous users |
 | `onboardingProvider` | onboarding | `NotifierProvider<OnboardingNotifier, bool?>` | none (SharedPreferences) |
 | `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, restoration, speciesService |
 | `achievementNotificationProvider` | achievements | `NotifierProvider` | none (toast queue) |
@@ -52,8 +53,10 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 ## Cross-Feature Dependency Graph
 
 ```
-supabaseBootstrapProvider ──→ authProvider
+supabaseBootstrapProvider ──→ authProvider ──→ upgradePromptProvider
                           ──→ supabasePersistenceProvider ──→ syncProvider
+
+collectionProvider ──→ upgradePromptProvider (watch)
 
 cellServiceProvider ──→ fogResolverProvider ──→ discoveryServiceProvider
                                            ──→ fogOverlayControllerProvider

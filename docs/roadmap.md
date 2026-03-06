@@ -308,9 +308,9 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [ ] Real tile provider (MBTiles or Mapbox API)
 - [ ] Fog reveal animations (dissolve/fade, not instant)
 
-### Project 13.2: CI/CD — Planned
-- [ ] Fix CI config (currently stale Unity config, needs Flutter)
-- [ ] Automated `flutter test` + `flutter analyze` on PR
+### Project 13.2: CI/CD — In Progress
+- [x] Fix CI config (replaced stale Unity config with Flutter)
+- [x] Automated `flutter test` + `flutter analyze` on push/PR to main
 - [ ] Automated web build + deploy to Railway
 
 ### Project 13.3: Real-Time Supabase Sync — Future
@@ -380,6 +380,52 @@ Community features for sharing and interaction.
 
 ---
 
+## Technical Roadmap
+
+Architecture evolution required to support the product roadmap. See [current-architecture.md](current-architecture.md) and [ideal-architecture.md](ideal-architecture.md) for detailed analysis.
+
+### TR-1: Inventory Model Migration (blocks: Museum, Pack redesign, NPC bundles)
+Current: binary `CollectedSpecies` (collected or not). Target: quantity-tracked inventory items.
+- Schema migration (add quantity tracking or instance-based model)
+- Repository API changes (add/remove/count instead of toggle)
+- Provider rewiring (collectionProvider consumers → inventoryProvider)
+- Data migration for existing users (each collected species → quantity=1)
+
+### TR-2: Event-Sourced State Persistence (blocks: reliable sync, undo, replay)
+Current: in-memory Riverpod notifiers with manual DB writes. State and persistence are decoupled — easy to lose data.
+- Define domain events (SpeciesCollected, CellVisited, StreakUpdated, etc.)
+- Event store (append-only SQLite table or dedicated event log)
+- Notifiers rebuild from event stream, not ad-hoc state
+- Supabase sync becomes event replication, not row-level upsert
+
+### TR-3: Map Feature Decomposition (blocks: maintainability at scale)
+Current: `map/` is a "god feature" (25 files) that orchestrates fog, discovery, location, biome, seasonal, camera, GeoJSON rendering.
+- Extract map orchestration into a dedicated game loop service
+- Move discovery subscription out of map_screen into a standalone coordinator
+- Separate rendering concerns (GeoJSON layers) from game logic (fog transitions)
+
+### TR-4: Service Locator / DI Cleanup (blocks: testability, modularity)
+Current: services are created inline in notifiers or via `Provider<T>`. No formal DI.
+- Evaluate whether Riverpod `Provider<T>` is sufficient or if a lightweight DI container is needed
+- Ensure all services are injectable and mockable for integration testing
+- Remove any remaining tight coupling between notifiers and concrete implementations
+
+### TR-5: Species Data Pipeline (blocks: daily seed, categories expansion, performance)
+Current: 6 MB monolithic JSON asset loaded at startup into memory.
+- Lazy loading or pagination for species queries
+- Index by habitat, continent, rarity for efficient loot table lookups
+- Daily seed integration (cell × date → deterministic species pool)
+- Extensibility for non-fauna categories (plants, minerals, fossils)
+
+### TR-6: Sync Architecture (blocks: multi-device, real-time features)
+Current: write-through to Supabase (no queue, no conflict resolution, manual trigger).
+- Offline queue with retry for unreliable connections
+- Conflict resolution strategy (last-write-wins vs merge)
+- Real-time subscriptions for multi-device sync
+- Sync status observability (what's pending, what failed)
+
+---
+
 ## Priority Guidance
 
 Based on design jam emphasis and dependency analysis:
@@ -390,5 +436,5 @@ Based on design jam emphasis and dependency analysis:
 | **P1 — Core game loop** | 3 (Discovery), 4 (Museum), 7 (Quests) | These define the collect→manage→place loop that IS the game |
 | **P2 — Depth & retention** | 5 (Sanctuary), 6 (NPCs), 9 (Sets) | Add progression depth, social layer, completionist goals |
 | **P3 — Engagement breadth** | 8 (Activities), 10 (World), 11 (Visual) | Polish, variety, immersion — make the world feel alive |
-| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Auth upgrade shipped (P13.6); map polish in progress; CI/CD unblocks all future work; sync/analytics support retention |
+| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Auth upgrade shipped (P13.6); CI shipped (P13.2); map polish in progress; deploy automation + sync/analytics remain |
 | **P4 — Expansion** | 12 (Collectibles), 14 (Social), 15 (Monetization) | New content types, community, business model |
