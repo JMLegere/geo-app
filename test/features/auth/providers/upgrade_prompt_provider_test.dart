@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/models/user_profile.dart';
@@ -13,25 +14,40 @@ import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dar
 // Hand-written mocks (no mockito / mocktail)
 // ---------------------------------------------------------------------------
 
-/// Mutable mock collection notifier. [setCount] updates state so tests can
+/// Mutable mock inventory notifier. [setCount] updates state so tests can
 /// verify reactive rebuilds of [upgradePromptProvider].
 ///
-/// Extends the concrete `CollectionNotifier` class so it satisfies the type
-/// constraint of `collectionProvider.overrideWith`.
-class _MockCollectionNotifier extends CollectionNotifier {
+/// Extends the concrete `InventoryNotifier` class so it satisfies the type
+/// constraint of `inventoryProvider.overrideWith`.
+class _MockInventoryNotifier extends InventoryNotifier {
   final int _initialCount;
 
-  _MockCollectionNotifier(this._initialCount);
+  _MockInventoryNotifier(this._initialCount);
 
   @override
-  CollectionState build() => CollectionState(
-        collectedSpeciesIds:
-            List.generate(_initialCount, (i) => 'species_$i'),
+  InventoryState build() => InventoryState(
+        items: List.generate(
+          _initialCount,
+          (i) => ItemInstance(
+            id: 'mock_item_$i',
+            definitionId: 'species_$i',
+            acquiredAt: DateTime(2024),
+            acquiredInCellId: 'cell_1',
+          ),
+        ),
       );
 
   void setCount(int count) {
-    state = CollectionState(
-      collectedSpeciesIds: List.generate(count, (i) => 'species_$i'),
+    state = InventoryState(
+      items: List.generate(
+        count,
+        (i) => ItemInstance(
+          id: 'mock_item_$i',
+          definitionId: 'species_$i',
+          acquiredAt: DateTime(2024),
+          acquiredInCellId: 'cell_1',
+        ),
+      ),
     );
   }
 }
@@ -75,7 +91,7 @@ class _FakeBootstrap extends SupabaseBootstrap {
 
 /// Creates a [ProviderContainer] wired with mock implementations.
 ///
-/// [collectionCount] — how many species are in the collection initially.
+/// [collectionCount] — how many items are in the inventory initially.
 /// [isAnonymous] — whether the auth user is anonymous.
 /// [supabaseInitialized] — whether Supabase SDK initialized.
 ProviderContainer _makeContainer({
@@ -85,8 +101,8 @@ ProviderContainer _makeContainer({
 }) {
   final container = ProviderContainer(
     overrides: [
-      collectionProvider.overrideWith(
-        () => _MockCollectionNotifier(collectionCount),
+      inventoryProvider.overrideWith(
+        () => _MockInventoryNotifier(collectionCount),
       ),
       authProvider.overrideWith(
         () => _MockAuthNotifier(isAnonymous: isAnonymous),
@@ -306,7 +322,7 @@ void main() {
     // ── Reactive rebuild preserves hasBeenShown ────────────────────────────
 
     test(
-        'hasBeenShown is preserved across reactive rebuilds from collection changes',
+        'hasBeenShown is preserved across reactive rebuilds from inventory changes',
         () {
       final container = _makeContainer(
         collectionCount: 5,
@@ -319,8 +335,8 @@ void main() {
       container.read(upgradePromptProvider.notifier).markShown();
       expect(container.read(upgradePromptProvider).hasBeenShown, isTrue);
 
-      // Simulate more species being collected — triggers reactive rebuild.
-      (container.read(collectionProvider.notifier) as _MockCollectionNotifier)
+      // Simulate more items being collected — triggers reactive rebuild.
+      (container.read(inventoryProvider.notifier) as _MockInventoryNotifier)
           .setCount(8);
 
       // After rebuild, hasBeenShown must still be true.

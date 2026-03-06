@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/achievements/models/achievement.dart';
 import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
@@ -107,14 +107,14 @@ class AchievementNotifier extends Notifier<AchievementsState> {
   /// Re-evaluates all achievements using current provider state.
   ///
   /// Builds an [AchievementContext] from [playerProvider],
-  /// [collectionProvider], and [restorationProvider], then calls the pure
+  /// [inventoryProvider], and [restorationProvider], then calls the pure
   /// service to compute new progress. Any newly unlocked achievements trigger
   /// a toast notification via [achievementNotificationProvider].
   ///
   /// Pass [now] in tests to keep timestamps deterministic.
   void checkAchievements({DateTime? now}) {
     final playerState = ref.read(playerProvider);
-    final collectionState = ref.read(collectionProvider);
+    final inventoryState = ref.read(inventoryProvider);
     final restorationState = ref.read(restorationProvider);
     final speciesService = ref.read(speciesServiceProvider);
 
@@ -127,7 +127,7 @@ class AchievementNotifier extends Notifier<AchievementsState> {
 
     // Build collected-by-habitat: cross-reference collected IDs with records.
     final collectedByHabitat = <String, int>{};
-    final collectedIds = collectionState.collectedSpeciesIds.toSet();
+    final collectedIds = inventoryState.uniqueDefinitionIds;
     for (final record in speciesService.all) {
       if (collectedIds.contains(record.id)) {
         for (final habitat in record.habitats) {
@@ -143,7 +143,7 @@ class AchievementNotifier extends Notifier<AchievementsState> {
 
     final context = AchievementContext(
       cellsObserved: playerState.cellsObserved,
-      speciesCollected: collectionState.totalCollected,
+      speciesCollected: inventoryState.uniqueDefinitionsCount,
       currentStreak: playerState.currentStreak,
       totalDistanceKm: playerState.totalDistanceKm,
       restoredCellCount: restoredCellCount,

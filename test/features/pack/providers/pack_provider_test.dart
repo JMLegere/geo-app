@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 
@@ -13,31 +14,34 @@ import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-final _forestLC = SpeciesRecord(
-  commonName: 'Red Fox',
+final _forestLC = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.europe],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _plainsEN = SpeciesRecord(
-  commonName: 'African Elephant',
+final _plainsEN = FaunaDefinition(
+  id: 'fauna_loxodonta_africana',
+  displayName: 'African Elephant',
   scientificName: 'Loxodonta africana',
   taxonomicClass: 'Mammalia',
   continents: [Continent.africa],
   habitats: [Habitat.plains],
-  iucnStatus: IucnStatus.endangered,
+  rarity: IucnStatus.endangered,
 );
 
-final _mountainVU = SpeciesRecord(
-  commonName: 'Snow Leopard',
+final _mountainVU = FaunaDefinition(
+  id: 'fauna_panthera_uncia',
+  displayName: 'Snow Leopard',
   scientificName: 'Panthera uncia',
   taxonomicClass: 'Mammalia',
   continents: [Continent.asia],
   habitats: [Habitat.mountain],
-  iucnStatus: IucnStatus.vulnerable,
+  rarity: IucnStatus.vulnerable,
 );
 
 final _testSpecies = [_forestLC, _plainsEN, _mountainVU];
@@ -46,7 +50,7 @@ final _testSpecies = [_forestLC, _plainsEN, _mountainVU];
 // Container factory
 // ---------------------------------------------------------------------------
 
-ProviderContainer _makeContainer({List<SpeciesRecord>? species}) {
+ProviderContainer _makeContainer({List<FaunaDefinition>? species}) {
   final records = species ?? _testSpecies;
   final container = ProviderContainer(
     overrides: [
@@ -88,7 +92,7 @@ void main() {
       final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
-      expect(filtered.first.commonName, equals('Red Fox'));
+      expect(filtered.first.displayName, equals('Red Fox'));
     });
 
     test('setHabitatFilter(plains) returns only plains species', () {
@@ -100,7 +104,7 @@ void main() {
       final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
-      expect(filtered.first.commonName, equals('African Elephant'));
+      expect(filtered.first.displayName, equals('African Elephant'));
     });
 
     test('setRarityFilter(endangered) returns only endangered species', () {
@@ -112,7 +116,7 @@ void main() {
       final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
-      expect(filtered.first.commonName, equals('African Elephant'));
+      expect(filtered.first.displayName, equals('African Elephant'));
     });
 
     test('setRarityFilter(vulnerable) returns only vulnerable species', () {
@@ -124,13 +128,18 @@ void main() {
       final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
-      expect(filtered.first.commonName, equals('Snow Leopard'));
+      expect(filtered.first.displayName, equals('Snow Leopard'));
     });
 
     test('setCollectionFilter(collected) shows only collected species', () {
       final container = _makeContainer();
       // Collect Red Fox only
-      container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
+      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+            id: 'test_${_forestLC.id}',
+            definitionId: _forestLC.id,
+            acquiredAt: DateTime.now(),
+            acquiredInCellId: 'cell_1',
+          ));
 
       container
           .read(packProvider.notifier)
@@ -146,7 +155,12 @@ void main() {
         () {
       final container = _makeContainer();
       // Collect one species; the other two remain undiscovered
-      container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
+      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+            id: 'test_${_forestLC.id}',
+            definitionId: _forestLC.id,
+            acquiredAt: DateTime.now(),
+            acquiredInCellId: 'cell_1',
+          ));
 
       container
           .read(packProvider.notifier)
@@ -188,7 +202,7 @@ void main() {
 
       final filtered = container.read(packProvider).filteredSpecies;
       expect(filtered.length, equals(1));
-      expect(filtered.first.commonName, equals('African Elephant'));
+      expect(filtered.first.displayName, equals('African Elephant'));
     });
 
     test('filteredSpecies returns correct count after filter change', () {
@@ -222,8 +236,18 @@ void main() {
 
       expect(container.read(packProvider).collectedCount, equals(0));
 
-      container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
-      container.read(collectionProvider.notifier).addSpecies(_plainsEN.id);
+      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+            id: 'test_${_forestLC.id}',
+            definitionId: _forestLC.id,
+            acquiredAt: DateTime.now(),
+            acquiredInCellId: 'cell_1',
+          ));
+      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+            id: 'test_${_plainsEN.id}',
+            definitionId: _plainsEN.id,
+            acquiredAt: DateTime.now(),
+            acquiredInCellId: 'cell_1',
+          ));
 
       // Force the pack listener to fire by triggering a read
       // (listeners run synchronously in ProviderContainer in tests)
@@ -241,19 +265,20 @@ void main() {
   group('PackNotifier mutation methods', () {
     test('updateSpecies replaces the species list', () {
       final container = _makeContainer();
-      final extra = SpeciesRecord(
-        commonName: 'Jaguar',
+      final extra = FaunaDefinition(
+        id: 'fauna_panthera_onca',
+        displayName: 'Jaguar',
         scientificName: 'Panthera onca',
         taxonomicClass: 'Mammalia',
         continents: [Continent.southAmerica],
         habitats: [Habitat.forest],
-        iucnStatus: IucnStatus.nearThreatened,
+        rarity: IucnStatus.nearThreatened,
       );
 
       container.read(packProvider.notifier).updateSpecies([extra]);
       expect(container.read(packProvider).allSpecies.length, equals(1));
       expect(
-        container.read(packProvider).allSpecies.first.commonName,
+        container.read(packProvider).allSpecies.first.displayName,
         equals('Jaguar'),
       );
     });

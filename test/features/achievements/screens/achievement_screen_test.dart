@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/achievements/models/achievement.dart';
 import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
@@ -52,13 +52,14 @@ Future<void> _pumpScreen(
     overrides: [
       speciesServiceProvider.overrideWith(
         (_) => SpeciesService([
-          SpeciesRecord(
-            commonName: 'Red Fox',
+          FaunaDefinition(
+            id: 'fauna_vulpes_vulpes',
+            displayName: 'Red Fox',
             scientificName: 'Vulpes vulpes',
             taxonomicClass: 'Mammalia',
             continents: [Continent.northAmerica],
             habitats: [Habitat.forest],
-            iucnStatus: IucnStatus.leastConcern,
+            rarity: IucnStatus.leastConcern,
           ),
         ]),
       ),

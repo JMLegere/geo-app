@@ -1,5 +1,5 @@
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/features/seasonal/models/seasonal_species.dart';
 
 /// Determines seasonal availability for species and filters species pools.
@@ -24,7 +24,7 @@ class SeasonService {
   /// Uses `species.id.hashCode % 10` as the bucket selector.
   /// Dart's `int %` with a positive divisor always returns a non-negative
   /// result, so the bucket is guaranteed to be in [0, 9].
-  SeasonAvailability getAvailability(SpeciesRecord species) {
+  SeasonAvailability getAvailability(FaunaDefinition species) {
     final bucket = species.id.hashCode % 10;
     return switch (bucket) {
       0 => SeasonAvailability.summerOnly,
@@ -41,13 +41,13 @@ class SeasonService {
       Season.fromDate(now ?? DateTime.now());
 
   /// Returns every species in [species] that is available in [season].
-  List<SpeciesRecord> filterBySeason(
-    List<SpeciesRecord> species,
+  List<FaunaDefinition> filterBySeason(
+    List<FaunaDefinition> species,
     Season season,
   ) =>
       species.where((s) => isAvailable(s, season)).toList();
 
   /// Returns `true` if [species] is available during [season].
-  bool isAvailable(SpeciesRecord species, Season season) =>
+  bool isAvailable(FaunaDefinition species, Season season) =>
       getAvailability(species).isAvailableIn(season);
 }

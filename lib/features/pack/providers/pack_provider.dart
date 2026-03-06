@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -96,9 +96,9 @@ enum CollectionFilter {
 /// Immutable snapshot of the pack subsystem state.
 class PackState {
   /// Full pool of species available to the player.
-  final List<SpeciesRecord> allSpecies;
+  final List<FaunaDefinition> allSpecies;
 
-  /// IDs of species the player has collected (from [collectionProvider]).
+  /// IDs of species the player has collected (from [inventoryProvider]).
   final Set<String> collectedIds;
 
   /// Active habitat filter (default: [HabitatFilter.all]).
@@ -111,7 +111,7 @@ class PackState {
   final CollectionFilter collectionFilter;
 
   const PackState({
-    this.allSpecies = const [],
+    this.allSpecies = const <FaunaDefinition>[],
     this.collectedIds = const {},
     this.habitatFilter = HabitatFilter.all,
     this.rarityFilter = RarityFilter.all,
@@ -119,7 +119,7 @@ class PackState {
   });
 
   /// Applies all active filters (AND logic) and returns the matching subset.
-  List<SpeciesRecord> get filteredSpecies {
+  List<FaunaDefinition> get filteredSpecies {
     return allSpecies.where((s) {
       // Collection filter
       final isCollected = collectedIds.contains(s.id);
@@ -138,7 +138,7 @@ class PackState {
 
       // Rarity filter
       final targetStatus = rarityFilter.status;
-      if (targetStatus != null && s.iucnStatus != targetStatus) {
+      if (targetStatus != null && s.rarity != targetStatus) {
         return false;
       }
 
@@ -153,7 +153,7 @@ class PackState {
   int get collectedCount => collectedIds.length;
 
   PackState copyWith({
-    List<SpeciesRecord>? allSpecies,
+    List<FaunaDefinition>? allSpecies,
     Set<String>? collectedIds,
     HabitatFilter? habitatFilter,
     RarityFilter? rarityFilter,
@@ -179,18 +179,18 @@ class PackNotifier extends Notifier<PackState> {
     // Watch species service — rebuilds if the species pool ever changes.
     final speciesService = ref.watch(speciesServiceProvider);
 
-    // Listen to collection changes and update collectedIds only,
+    // Listen to inventory changes and update collectedIds only,
     // preserving active filter selections.
-    ref.listen(collectionProvider, (_, next) {
-      updateCollectedIds(next.collectedSpeciesIds.toSet());
+    ref.listen(inventoryProvider, (_, next) {
+      updateCollectedIds(next.uniqueDefinitionIds);
     });
 
-    // Read collection for initial state (listen handles ongoing changes).
-    final collectionIds = ref.read(collectionProvider).collectedSpeciesIds;
+    // Read inventory for initial state (listen handles ongoing changes).
+    final collectedIds = ref.read(inventoryProvider).uniqueDefinitionIds;
 
     return PackState(
       allSpecies: speciesService.all,
-      collectedIds: Set.from(collectionIds),
+      collectedIds: collectedIds,
     );
   }
 
@@ -207,7 +207,7 @@ class PackNotifier extends Notifier<PackState> {
   }
 
   /// Replaces the full species list (used when species pool changes).
-  void updateSpecies(List<SpeciesRecord> species) {
+  void updateSpecies(List<FaunaDefinition> species) {
     state = state.copyWith(allSpecies: species);
   }
 

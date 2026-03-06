@@ -5,7 +5,7 @@ import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
@@ -74,31 +74,34 @@ class _MockCellService implements CellService {
 // ---------------------------------------------------------------------------
 // Fixture species — Forest + North America so getSpeciesForCell returns results.
 // ---------------------------------------------------------------------------
-final _redFox = SpeciesRecord(
-  commonName: 'Red Fox',
+final _redFox = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.northAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _grayWolf = SpeciesRecord(
-  commonName: 'Gray Wolf',
+final _grayWolf = FaunaDefinition(
+  id: 'fauna_canis_lupus',
+  displayName: 'Gray Wolf',
   scientificName: 'Canis lupus',
   taxonomicClass: 'Mammalia',
   continents: [Continent.northAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _jaguar = SpeciesRecord(
-  commonName: 'Jaguar',
+final _jaguar = FaunaDefinition(
+  id: 'fauna_panthera_onca',
+  displayName: 'Jaguar',
   scientificName: 'Panthera onca',
   taxonomicClass: 'Mammalia',
   continents: [Continent.northAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.nearThreatened,
+  rarity: IucnStatus.nearThreatened,
 );
 
 SpeciesService _makeSpeciesService() =>
@@ -162,7 +165,7 @@ void main() {
       expect(events, isNotEmpty);
       for (final e in events) {
         expect(e.isNew, isTrue,
-            reason: '${e.species.commonName} should be new');
+            reason: '${e.species.displayName} should be new');
       }
     });
 
@@ -192,7 +195,7 @@ void main() {
       expect(events, isNotEmpty);
       for (final e in events) {
         expect(e.isNew, isFalse,
-            reason: '${e.species.commonName} was pre-collected');
+            reason: '${e.species.displayName} was pre-collected');
       }
     });
 
@@ -228,7 +231,7 @@ void main() {
       for (final e in secondEvents) {
         if (collectedIds.contains(e.species.id)) {
           expect(e.isNew, isFalse,
-              reason: '${e.species.commonName} was already collected');
+              reason: '${e.species.displayName} was already collected');
         }
       }
     });

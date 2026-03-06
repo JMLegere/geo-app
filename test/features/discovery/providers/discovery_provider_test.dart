@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 
@@ -17,13 +17,14 @@ DiscoveryEvent _makeEvent({
   DateTime? timestamp,
 }) {
   return DiscoveryEvent(
-    species: SpeciesRecord(
-      commonName: 'Red Fox',
+    species: FaunaDefinition(
+      id: 'fauna_vulpes_vulpes',
+      displayName: 'Red Fox',
       scientificName: 'Vulpes vulpes',
       taxonomicClass: 'Mammalia',
       continents: [Continent.northAmerica],
       habitats: [Habitat.forest],
-      iucnStatus: IucnStatus.leastConcern,
+      rarity: IucnStatus.leastConcern,
     ),
     cellId: cellId,
     isNew: isNew,

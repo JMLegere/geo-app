@@ -8,8 +8,8 @@ import 'package:crypto/crypto.dart';
 ///
 /// Typical usage with IUCN weights:
 /// ```dart
-/// final table = LootTable<SpeciesRecord>(
-///   species.map((s) => (s, s.iucnStatus.weight)).toList(),
+/// final table = LootTable<FaunaDefinition>(
+///   species.map((s) => (s, s.rarity!.weight)).toList(),
 /// );
 /// final result = table.roll('cell_x123_y456');
 /// ```

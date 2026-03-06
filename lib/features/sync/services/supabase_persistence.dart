@@ -110,57 +110,66 @@ class SupabasePersistence {
     }
   }
 
-  // -- Collection -------------------------------------------------------------
+  // -- Item Instances ---------------------------------------------------------
 
-  Future<List<Map<String, dynamic>>> fetchCollection(String userId) async {
+  Future<List<Map<String, dynamic>>> fetchItemInstances(String userId) async {
     try {
       final response = await _client
-          .from('collected_species')
+          .from('item_instances')
           .select()
           .eq('user_id', userId);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('[SupabasePersistence] fetchCollection failed: $e');
-      throw SyncException('Failed to load collection.', cause: e);
+      debugPrint('[SupabasePersistence] fetchItemInstances failed: $e');
+      throw SyncException('Failed to load item instances.', cause: e);
     }
   }
 
-  Future<void> addToCollection({
+  Future<void> upsertItemInstance({
+    required String id,
     required String userId,
-    required String speciesId,
-    required String cellId,
+    required String definitionId,
+    required String affixes,
+    String? parentAId,
+    String? parentBId,
+    required DateTime acquiredAt,
+    String? acquiredInCellId,
+    String? dailySeed,
+    required String status,
   }) async {
     try {
-      await _client.from('collected_species').upsert(
+      await _client.from('item_instances').upsert(
         {
+          'id': id,
           'user_id': userId,
-          'species_id': speciesId,
-          'cell_id': cellId,
-          'collected_at': DateTime.now().toIso8601String(),
+          'definition_id': definitionId,
+          'affixes': affixes,
+          'parent_a_id': parentAId,
+          'parent_b_id': parentBId,
+          'acquired_at': acquiredAt.toIso8601String(),
+          'acquired_in_cell_id': acquiredInCellId,
+          'daily_seed': dailySeed,
+          'status': status,
         },
-        onConflict: 'user_id,species_id,cell_id',
+        onConflict: 'id',
       );
     } catch (e) {
-      debugPrint('[SupabasePersistence] addToCollection failed: $e');
-      throw SyncException('Failed to save collected species.', cause: e);
+      debugPrint('[SupabasePersistence] upsertItemInstance failed: $e');
+      throw SyncException('Failed to save item instance.', cause: e);
     }
   }
 
-  Future<void> removeFromCollection({
-    required String userId,
-    required String speciesId,
-    required String cellId,
+  Future<void> deleteItemInstance({
+    required String id,
   }) async {
     try {
       await _client
-          .from('collected_species')
+          .from('item_instances')
           .delete()
-          .eq('user_id', userId)
-          .eq('species_id', speciesId)
-          .eq('cell_id', cellId);
+          .eq('id', id);
     } catch (e) {
-      debugPrint('[SupabasePersistence] removeFromCollection failed: $e');
-      throw SyncException('Failed to remove collected species.', cause: e);
+      debugPrint('[SupabasePersistence] deleteItemInstance failed: $e');
+      throw SyncException('Failed to delete item instance.', cause: e);
     }
   }
 }

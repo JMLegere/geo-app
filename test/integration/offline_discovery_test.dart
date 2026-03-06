@@ -12,7 +12,7 @@ import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
@@ -28,7 +28,7 @@ import '../fixtures/species_fixture.dart';
 SpeciesService buildSpeciesServiceFromFixture() {
   final List<dynamic> raw = jsonDecode(kSpeciesFixtureJson) as List<dynamic>;
   final records = raw
-      .map((j) => SpeciesRecord.fromJson(j as Map<String, dynamic>))
+      .map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>))
       .toList();
   return SpeciesService(records);
 }
@@ -62,9 +62,9 @@ void main() {
       expect(speciesService.totalSpecies, equals(50));
     });
 
-    test('all records have non-empty commonName and scientificName', () {
+    test('all records have non-empty displayName and scientificName', () {
       for (final s in speciesService.all) {
-        expect(s.commonName, isNotEmpty);
+        expect(s.displayName, isNotEmpty);
         expect(s.scientificName, isNotEmpty);
       }
     });
@@ -82,16 +82,16 @@ void main() {
     });
 
     test('IUCN statuses include all tiers', () {
-      final statuses = speciesService.all.map((s) => s.iucnStatus).toSet();
+      final statuses = speciesService.all.map((s) => s.rarity).toSet();
       expect(statuses, contains(IucnStatus.leastConcern));
       expect(statuses, contains(IucnStatus.endangered));
       expect(statuses, contains(IucnStatus.criticallyEndangered));
     });
 
-    test('species ID is derived from scientificName (stable, lowercase)', () {
+    test('species ID is derived from scientificName (stable, lowercase, fauna_ prefix)', () {
       for (final s in speciesService.all) {
         final expectedId =
-            s.scientificName.toLowerCase().replaceAll(' ', '_');
+            'fauna_${s.scientificName!.toLowerCase().replaceAll(' ', '_')}';
         expect(s.id, equals(expectedId));
       }
     });
@@ -223,7 +223,7 @@ void main() {
     test('discovered species have valid IUCN status', () {
       fogResolver.onLocationUpdate(kCentLat, kCentLon);
       for (final event in capturedEvents) {
-        expect(IucnStatus.values, contains(event.species.iucnStatus));
+        expect(IucnStatus.values, contains(event.species.rarity));
       }
     });
 
@@ -233,7 +233,7 @@ void main() {
         // All species are new on a fresh service.
         expect(event.isNew, isTrue,
             reason:
-                '${event.species.commonName} should be new on first discovery');
+                '${event.species.displayName} should be new on first discovery');
       }
     });
 
@@ -268,7 +268,7 @@ void main() {
         if (event.species.id == firstEvent.species.id) {
           expect(event.isNew, isFalse,
               reason:
-                  '${event.species.commonName} was already collected — isNew must be false');
+                  '${event.species.displayName} was already collected — isNew must be false');
         }
       }
 
@@ -308,7 +308,7 @@ void main() {
     test('discovered species have non-empty commonName and scientificName', () {
       fogResolver.onLocationUpdate(kCentLat, kCentLon);
       for (final event in capturedEvents) {
-        expect(event.species.commonName, isNotEmpty);
+        expect(event.species.displayName, isNotEmpty);
         expect(event.species.scientificName, isNotEmpty);
       }
     });

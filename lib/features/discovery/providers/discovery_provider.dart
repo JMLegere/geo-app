@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 
@@ -64,7 +64,7 @@ const _kDevSpeciesJson = r'''
 /// phase. T21 will upgrade to a FutureProvider backed by the full IUCN JSON.
 final speciesServiceProvider = Provider<SpeciesService>((ref) {
   final records = (jsonDecode(_kDevSpeciesJson) as List)
-      .map((j) => SpeciesRecord.fromJson(j as Map<String, dynamic>))
+      .map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>))
       .toList();
   return SpeciesService(records);
 });
@@ -119,7 +119,7 @@ class DiscoveryState {
 /// Wire up by subscribing to `DiscoveryService.onDiscovery` and calling
 /// [showDiscovery] for each incoming [DiscoveryEvent].
 ///
-/// Pattern matches `CollectionNotifier` — uses `Notifier` + `NotifierProvider`.
+/// Pattern matches `InventoryNotifier` — uses `Notifier` + `NotifierProvider`.
 class DiscoveryNotifier extends Notifier<DiscoveryState> {
   @override
   DiscoveryState build() => const DiscoveryState();

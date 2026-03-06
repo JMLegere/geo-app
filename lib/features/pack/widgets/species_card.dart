@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
@@ -18,7 +18,7 @@ import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
 ///
 /// Tap calls [onTap] so the parent can show the SpeciesDetailSheet.
 class SpeciesCard extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
   final bool isCollected;
   final VoidCallback onTap;
 
@@ -53,7 +53,7 @@ class SpeciesCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _CollectedCard extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
 
   const _CollectedCard({required this.species});
 
@@ -82,7 +82,7 @@ class _CollectedCard extends StatelessWidget {
                 Positioned(
                   top: 6,
                   right: 6,
-                  child: RarityBadge(status: species.iucnStatus),
+                  child: RarityBadge(status: species.rarity!),
                 ),
               ],
             ),
@@ -97,7 +97,7 @@ class _CollectedCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                species.commonName,
+                species.displayName,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -139,7 +139,7 @@ class _CollectedCard extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _UncollectedCard extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
 
   const _UncollectedCard({required this.species});
 

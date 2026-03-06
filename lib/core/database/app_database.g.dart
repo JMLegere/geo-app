@@ -522,12 +522,12 @@ class LocalCellProgressTableCompanion
   }
 }
 
-class $LocalCollectedSpeciesTableTable extends LocalCollectedSpeciesTable
-    with TableInfo<$LocalCollectedSpeciesTableTable, LocalCollectedSpecies> {
+class $LocalItemInstanceTableTable extends LocalItemInstanceTable
+    with TableInfo<$LocalItemInstanceTableTable, LocalItemInstance> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LocalCollectedSpeciesTableTable(this.attachedDatabase, [this._alias]);
+  $LocalItemInstanceTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -538,36 +538,77 @@ class $LocalCollectedSpeciesTableTable extends LocalCollectedSpeciesTable
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
       'user_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _speciesIdMeta =
-      const VerificationMeta('speciesId');
+  static const VerificationMeta _definitionIdMeta =
+      const VerificationMeta('definitionId');
   @override
-  late final GeneratedColumn<String> speciesId = GeneratedColumn<String>(
-      'species_id', aliasedName, false,
+  late final GeneratedColumn<String> definitionId = GeneratedColumn<String>(
+      'definition_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _cellIdMeta = const VerificationMeta('cellId');
+  static const VerificationMeta _affixesMeta =
+      const VerificationMeta('affixes');
   @override
-  late final GeneratedColumn<String> cellId = GeneratedColumn<String>(
-      'cell_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _collectedAtMeta =
-      const VerificationMeta('collectedAt');
-  @override
-  late final GeneratedColumn<DateTime> collectedAt = GeneratedColumn<DateTime>(
-      'collected_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
+  late final GeneratedColumn<String> affixes = GeneratedColumn<String>(
+      'affixes', aliasedName, false,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _parentAIdMeta =
+      const VerificationMeta('parentAId');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, userId, speciesId, cellId, collectedAt];
+  late final GeneratedColumn<String> parentAId = GeneratedColumn<String>(
+      'parent_a_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _parentBIdMeta =
+      const VerificationMeta('parentBId');
+  @override
+  late final GeneratedColumn<String> parentBId = GeneratedColumn<String>(
+      'parent_b_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _acquiredAtMeta =
+      const VerificationMeta('acquiredAt');
+  @override
+  late final GeneratedColumn<DateTime> acquiredAt = GeneratedColumn<DateTime>(
+      'acquired_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _acquiredInCellIdMeta =
+      const VerificationMeta('acquiredInCellId');
+  @override
+  late final GeneratedColumn<String> acquiredInCellId = GeneratedColumn<String>(
+      'acquired_in_cell_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _dailySeedMeta =
+      const VerificationMeta('dailySeed');
+  @override
+  late final GeneratedColumn<String> dailySeed = GeneratedColumn<String>(
+      'daily_seed', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('active'));
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        userId,
+        definitionId,
+        affixes,
+        parentAId,
+        parentBId,
+        acquiredAt,
+        acquiredInCellId,
+        dailySeed,
+        status
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'local_collected_species_table';
+  static const String $name = 'local_item_instance_table';
   @override
-  VerificationContext validateIntegrity(
-      Insertable<LocalCollectedSpecies> instance,
+  VerificationContext validateIntegrity(Insertable<LocalItemInstance> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -582,23 +623,51 @@ class $LocalCollectedSpeciesTableTable extends LocalCollectedSpeciesTable
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
-    if (data.containsKey('species_id')) {
-      context.handle(_speciesIdMeta,
-          speciesId.isAcceptableOrUnknown(data['species_id']!, _speciesIdMeta));
-    } else if (isInserting) {
-      context.missing(_speciesIdMeta);
-    }
-    if (data.containsKey('cell_id')) {
-      context.handle(_cellIdMeta,
-          cellId.isAcceptableOrUnknown(data['cell_id']!, _cellIdMeta));
-    } else if (isInserting) {
-      context.missing(_cellIdMeta);
-    }
-    if (data.containsKey('collected_at')) {
+    if (data.containsKey('definition_id')) {
       context.handle(
-          _collectedAtMeta,
-          collectedAt.isAcceptableOrUnknown(
-              data['collected_at']!, _collectedAtMeta));
+          _definitionIdMeta,
+          definitionId.isAcceptableOrUnknown(
+              data['definition_id']!, _definitionIdMeta));
+    } else if (isInserting) {
+      context.missing(_definitionIdMeta);
+    }
+    if (data.containsKey('affixes')) {
+      context.handle(_affixesMeta,
+          affixes.isAcceptableOrUnknown(data['affixes']!, _affixesMeta));
+    }
+    if (data.containsKey('parent_a_id')) {
+      context.handle(
+          _parentAIdMeta,
+          parentAId.isAcceptableOrUnknown(
+              data['parent_a_id']!, _parentAIdMeta));
+    }
+    if (data.containsKey('parent_b_id')) {
+      context.handle(
+          _parentBIdMeta,
+          parentBId.isAcceptableOrUnknown(
+              data['parent_b_id']!, _parentBIdMeta));
+    }
+    if (data.containsKey('acquired_at')) {
+      context.handle(
+          _acquiredAtMeta,
+          acquiredAt.isAcceptableOrUnknown(
+              data['acquired_at']!, _acquiredAtMeta));
+    } else if (isInserting) {
+      context.missing(_acquiredAtMeta);
+    }
+    if (data.containsKey('acquired_in_cell_id')) {
+      context.handle(
+          _acquiredInCellIdMeta,
+          acquiredInCellId.isAcceptableOrUnknown(
+              data['acquired_in_cell_id']!, _acquiredInCellIdMeta));
+    }
+    if (data.containsKey('daily_seed')) {
+      context.handle(_dailySeedMeta,
+          dailySeed.isAcceptableOrUnknown(data['daily_seed']!, _dailySeedMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
     }
     return context;
   }
@@ -606,75 +675,141 @@ class $LocalCollectedSpeciesTableTable extends LocalCollectedSpeciesTable
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  List<Set<GeneratedColumn>> get uniqueKeys => [
-        {userId, speciesId, cellId},
-      ];
-  @override
-  LocalCollectedSpecies map(Map<String, dynamic> data, {String? tablePrefix}) {
+  LocalItemInstance map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LocalCollectedSpecies(
+    return LocalItemInstance(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       userId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}user_id'])!,
-      speciesId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}species_id'])!,
-      cellId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}cell_id'])!,
-      collectedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}collected_at'])!,
+      definitionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}definition_id'])!,
+      affixes: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}affixes'])!,
+      parentAId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_a_id']),
+      parentBId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_b_id']),
+      acquiredAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}acquired_at'])!,
+      acquiredInCellId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}acquired_in_cell_id']),
+      dailySeed: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}daily_seed']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
     );
   }
 
   @override
-  $LocalCollectedSpeciesTableTable createAlias(String alias) {
-    return $LocalCollectedSpeciesTableTable(attachedDatabase, alias);
+  $LocalItemInstanceTableTable createAlias(String alias) {
+    return $LocalItemInstanceTableTable(attachedDatabase, alias);
   }
 }
 
-class LocalCollectedSpecies extends DataClass
-    implements Insertable<LocalCollectedSpecies> {
+class LocalItemInstance extends DataClass
+    implements Insertable<LocalItemInstance> {
+  /// UUID v4 — globally unique item ID.
   final String id;
+
+  /// Owner's user ID.
   final String userId;
-  final String speciesId;
-  final String cellId;
-  final DateTime collectedAt;
-  const LocalCollectedSpecies(
+
+  /// References ItemDefinition.id (e.g. "fauna_vulpes_vulpes").
+  final String definitionId;
+
+  /// JSON-encoded list of Affix objects.
+  final String affixes;
+
+  /// Null for wild-caught. Set for bred offspring.
+  final String? parentAId;
+
+  /// Null for wild-caught. Set for bred offspring.
+  final String? parentBId;
+
+  /// When the player acquired this item.
+  final DateTime acquiredAt;
+
+  /// Cell where this item was found. Null for bred items.
+  final String? acquiredInCellId;
+
+  /// Daily seed used for this roll (server re-derivation).
+  final String? dailySeed;
+
+  /// Lifecycle status: active, donated, placed, released, traded.
+  final String status;
+  const LocalItemInstance(
       {required this.id,
       required this.userId,
-      required this.speciesId,
-      required this.cellId,
-      required this.collectedAt});
+      required this.definitionId,
+      required this.affixes,
+      this.parentAId,
+      this.parentBId,
+      required this.acquiredAt,
+      this.acquiredInCellId,
+      this.dailySeed,
+      required this.status});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['user_id'] = Variable<String>(userId);
-    map['species_id'] = Variable<String>(speciesId);
-    map['cell_id'] = Variable<String>(cellId);
-    map['collected_at'] = Variable<DateTime>(collectedAt);
+    map['definition_id'] = Variable<String>(definitionId);
+    map['affixes'] = Variable<String>(affixes);
+    if (!nullToAbsent || parentAId != null) {
+      map['parent_a_id'] = Variable<String>(parentAId);
+    }
+    if (!nullToAbsent || parentBId != null) {
+      map['parent_b_id'] = Variable<String>(parentBId);
+    }
+    map['acquired_at'] = Variable<DateTime>(acquiredAt);
+    if (!nullToAbsent || acquiredInCellId != null) {
+      map['acquired_in_cell_id'] = Variable<String>(acquiredInCellId);
+    }
+    if (!nullToAbsent || dailySeed != null) {
+      map['daily_seed'] = Variable<String>(dailySeed);
+    }
+    map['status'] = Variable<String>(status);
     return map;
   }
 
-  LocalCollectedSpeciesTableCompanion toCompanion(bool nullToAbsent) {
-    return LocalCollectedSpeciesTableCompanion(
+  LocalItemInstanceTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalItemInstanceTableCompanion(
       id: Value(id),
       userId: Value(userId),
-      speciesId: Value(speciesId),
-      cellId: Value(cellId),
-      collectedAt: Value(collectedAt),
+      definitionId: Value(definitionId),
+      affixes: Value(affixes),
+      parentAId: parentAId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentAId),
+      parentBId: parentBId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentBId),
+      acquiredAt: Value(acquiredAt),
+      acquiredInCellId: acquiredInCellId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(acquiredInCellId),
+      dailySeed: dailySeed == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dailySeed),
+      status: Value(status),
     );
   }
 
-  factory LocalCollectedSpecies.fromJson(Map<String, dynamic> json,
+  factory LocalItemInstance.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LocalCollectedSpecies(
+    return LocalItemInstance(
       id: serializer.fromJson<String>(json['id']),
       userId: serializer.fromJson<String>(json['userId']),
-      speciesId: serializer.fromJson<String>(json['speciesId']),
-      cellId: serializer.fromJson<String>(json['cellId']),
-      collectedAt: serializer.fromJson<DateTime>(json['collectedAt']),
+      definitionId: serializer.fromJson<String>(json['definitionId']),
+      affixes: serializer.fromJson<String>(json['affixes']),
+      parentAId: serializer.fromJson<String?>(json['parentAId']),
+      parentBId: serializer.fromJson<String?>(json['parentBId']),
+      acquiredAt: serializer.fromJson<DateTime>(json['acquiredAt']),
+      acquiredInCellId: serializer.fromJson<String?>(json['acquiredInCellId']),
+      dailySeed: serializer.fromJson<String?>(json['dailySeed']),
+      status: serializer.fromJson<String>(json['status']),
     );
   }
   @override
@@ -683,120 +818,191 @@ class LocalCollectedSpecies extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'userId': serializer.toJson<String>(userId),
-      'speciesId': serializer.toJson<String>(speciesId),
-      'cellId': serializer.toJson<String>(cellId),
-      'collectedAt': serializer.toJson<DateTime>(collectedAt),
+      'definitionId': serializer.toJson<String>(definitionId),
+      'affixes': serializer.toJson<String>(affixes),
+      'parentAId': serializer.toJson<String?>(parentAId),
+      'parentBId': serializer.toJson<String?>(parentBId),
+      'acquiredAt': serializer.toJson<DateTime>(acquiredAt),
+      'acquiredInCellId': serializer.toJson<String?>(acquiredInCellId),
+      'dailySeed': serializer.toJson<String?>(dailySeed),
+      'status': serializer.toJson<String>(status),
     };
   }
 
-  LocalCollectedSpecies copyWith(
+  LocalItemInstance copyWith(
           {String? id,
           String? userId,
-          String? speciesId,
-          String? cellId,
-          DateTime? collectedAt}) =>
-      LocalCollectedSpecies(
+          String? definitionId,
+          String? affixes,
+          Value<String?> parentAId = const Value.absent(),
+          Value<String?> parentBId = const Value.absent(),
+          DateTime? acquiredAt,
+          Value<String?> acquiredInCellId = const Value.absent(),
+          Value<String?> dailySeed = const Value.absent(),
+          String? status}) =>
+      LocalItemInstance(
         id: id ?? this.id,
         userId: userId ?? this.userId,
-        speciesId: speciesId ?? this.speciesId,
-        cellId: cellId ?? this.cellId,
-        collectedAt: collectedAt ?? this.collectedAt,
+        definitionId: definitionId ?? this.definitionId,
+        affixes: affixes ?? this.affixes,
+        parentAId: parentAId.present ? parentAId.value : this.parentAId,
+        parentBId: parentBId.present ? parentBId.value : this.parentBId,
+        acquiredAt: acquiredAt ?? this.acquiredAt,
+        acquiredInCellId: acquiredInCellId.present
+            ? acquiredInCellId.value
+            : this.acquiredInCellId,
+        dailySeed: dailySeed.present ? dailySeed.value : this.dailySeed,
+        status: status ?? this.status,
       );
-  LocalCollectedSpecies copyWithCompanion(
-      LocalCollectedSpeciesTableCompanion data) {
-    return LocalCollectedSpecies(
+  LocalItemInstance copyWithCompanion(LocalItemInstanceTableCompanion data) {
+    return LocalItemInstance(
       id: data.id.present ? data.id.value : this.id,
       userId: data.userId.present ? data.userId.value : this.userId,
-      speciesId: data.speciesId.present ? data.speciesId.value : this.speciesId,
-      cellId: data.cellId.present ? data.cellId.value : this.cellId,
-      collectedAt:
-          data.collectedAt.present ? data.collectedAt.value : this.collectedAt,
+      definitionId: data.definitionId.present
+          ? data.definitionId.value
+          : this.definitionId,
+      affixes: data.affixes.present ? data.affixes.value : this.affixes,
+      parentAId: data.parentAId.present ? data.parentAId.value : this.parentAId,
+      parentBId: data.parentBId.present ? data.parentBId.value : this.parentBId,
+      acquiredAt:
+          data.acquiredAt.present ? data.acquiredAt.value : this.acquiredAt,
+      acquiredInCellId: data.acquiredInCellId.present
+          ? data.acquiredInCellId.value
+          : this.acquiredInCellId,
+      dailySeed: data.dailySeed.present ? data.dailySeed.value : this.dailySeed,
+      status: data.status.present ? data.status.value : this.status,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('LocalCollectedSpecies(')
+    return (StringBuffer('LocalItemInstance(')
           ..write('id: $id, ')
           ..write('userId: $userId, ')
-          ..write('speciesId: $speciesId, ')
-          ..write('cellId: $cellId, ')
-          ..write('collectedAt: $collectedAt')
+          ..write('definitionId: $definitionId, ')
+          ..write('affixes: $affixes, ')
+          ..write('parentAId: $parentAId, ')
+          ..write('parentBId: $parentBId, ')
+          ..write('acquiredAt: $acquiredAt, ')
+          ..write('acquiredInCellId: $acquiredInCellId, ')
+          ..write('dailySeed: $dailySeed, ')
+          ..write('status: $status')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, speciesId, cellId, collectedAt);
+  int get hashCode => Object.hash(id, userId, definitionId, affixes, parentAId,
+      parentBId, acquiredAt, acquiredInCellId, dailySeed, status);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LocalCollectedSpecies &&
+      (other is LocalItemInstance &&
           other.id == this.id &&
           other.userId == this.userId &&
-          other.speciesId == this.speciesId &&
-          other.cellId == this.cellId &&
-          other.collectedAt == this.collectedAt);
+          other.definitionId == this.definitionId &&
+          other.affixes == this.affixes &&
+          other.parentAId == this.parentAId &&
+          other.parentBId == this.parentBId &&
+          other.acquiredAt == this.acquiredAt &&
+          other.acquiredInCellId == this.acquiredInCellId &&
+          other.dailySeed == this.dailySeed &&
+          other.status == this.status);
 }
 
-class LocalCollectedSpeciesTableCompanion
-    extends UpdateCompanion<LocalCollectedSpecies> {
+class LocalItemInstanceTableCompanion
+    extends UpdateCompanion<LocalItemInstance> {
   final Value<String> id;
   final Value<String> userId;
-  final Value<String> speciesId;
-  final Value<String> cellId;
-  final Value<DateTime> collectedAt;
+  final Value<String> definitionId;
+  final Value<String> affixes;
+  final Value<String?> parentAId;
+  final Value<String?> parentBId;
+  final Value<DateTime> acquiredAt;
+  final Value<String?> acquiredInCellId;
+  final Value<String?> dailySeed;
+  final Value<String> status;
   final Value<int> rowid;
-  const LocalCollectedSpeciesTableCompanion({
+  const LocalItemInstanceTableCompanion({
     this.id = const Value.absent(),
     this.userId = const Value.absent(),
-    this.speciesId = const Value.absent(),
-    this.cellId = const Value.absent(),
-    this.collectedAt = const Value.absent(),
+    this.definitionId = const Value.absent(),
+    this.affixes = const Value.absent(),
+    this.parentAId = const Value.absent(),
+    this.parentBId = const Value.absent(),
+    this.acquiredAt = const Value.absent(),
+    this.acquiredInCellId = const Value.absent(),
+    this.dailySeed = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LocalCollectedSpeciesTableCompanion.insert({
+  LocalItemInstanceTableCompanion.insert({
     required String id,
     required String userId,
-    required String speciesId,
-    required String cellId,
-    this.collectedAt = const Value.absent(),
+    required String definitionId,
+    this.affixes = const Value.absent(),
+    this.parentAId = const Value.absent(),
+    this.parentBId = const Value.absent(),
+    required DateTime acquiredAt,
+    this.acquiredInCellId = const Value.absent(),
+    this.dailySeed = const Value.absent(),
+    this.status = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
-        speciesId = Value(speciesId),
-        cellId = Value(cellId);
-  static Insertable<LocalCollectedSpecies> custom({
+        definitionId = Value(definitionId),
+        acquiredAt = Value(acquiredAt);
+  static Insertable<LocalItemInstance> custom({
     Expression<String>? id,
     Expression<String>? userId,
-    Expression<String>? speciesId,
-    Expression<String>? cellId,
-    Expression<DateTime>? collectedAt,
+    Expression<String>? definitionId,
+    Expression<String>? affixes,
+    Expression<String>? parentAId,
+    Expression<String>? parentBId,
+    Expression<DateTime>? acquiredAt,
+    Expression<String>? acquiredInCellId,
+    Expression<String>? dailySeed,
+    Expression<String>? status,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (userId != null) 'user_id': userId,
-      if (speciesId != null) 'species_id': speciesId,
-      if (cellId != null) 'cell_id': cellId,
-      if (collectedAt != null) 'collected_at': collectedAt,
+      if (definitionId != null) 'definition_id': definitionId,
+      if (affixes != null) 'affixes': affixes,
+      if (parentAId != null) 'parent_a_id': parentAId,
+      if (parentBId != null) 'parent_b_id': parentBId,
+      if (acquiredAt != null) 'acquired_at': acquiredAt,
+      if (acquiredInCellId != null) 'acquired_in_cell_id': acquiredInCellId,
+      if (dailySeed != null) 'daily_seed': dailySeed,
+      if (status != null) 'status': status,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  LocalCollectedSpeciesTableCompanion copyWith(
+  LocalItemInstanceTableCompanion copyWith(
       {Value<String>? id,
       Value<String>? userId,
-      Value<String>? speciesId,
-      Value<String>? cellId,
-      Value<DateTime>? collectedAt,
+      Value<String>? definitionId,
+      Value<String>? affixes,
+      Value<String?>? parentAId,
+      Value<String?>? parentBId,
+      Value<DateTime>? acquiredAt,
+      Value<String?>? acquiredInCellId,
+      Value<String?>? dailySeed,
+      Value<String>? status,
       Value<int>? rowid}) {
-    return LocalCollectedSpeciesTableCompanion(
+    return LocalItemInstanceTableCompanion(
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      speciesId: speciesId ?? this.speciesId,
-      cellId: cellId ?? this.cellId,
-      collectedAt: collectedAt ?? this.collectedAt,
+      definitionId: definitionId ?? this.definitionId,
+      affixes: affixes ?? this.affixes,
+      parentAId: parentAId ?? this.parentAId,
+      parentBId: parentBId ?? this.parentBId,
+      acquiredAt: acquiredAt ?? this.acquiredAt,
+      acquiredInCellId: acquiredInCellId ?? this.acquiredInCellId,
+      dailySeed: dailySeed ?? this.dailySeed,
+      status: status ?? this.status,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -810,14 +1016,29 @@ class LocalCollectedSpeciesTableCompanion
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
-    if (speciesId.present) {
-      map['species_id'] = Variable<String>(speciesId.value);
+    if (definitionId.present) {
+      map['definition_id'] = Variable<String>(definitionId.value);
     }
-    if (cellId.present) {
-      map['cell_id'] = Variable<String>(cellId.value);
+    if (affixes.present) {
+      map['affixes'] = Variable<String>(affixes.value);
     }
-    if (collectedAt.present) {
-      map['collected_at'] = Variable<DateTime>(collectedAt.value);
+    if (parentAId.present) {
+      map['parent_a_id'] = Variable<String>(parentAId.value);
+    }
+    if (parentBId.present) {
+      map['parent_b_id'] = Variable<String>(parentBId.value);
+    }
+    if (acquiredAt.present) {
+      map['acquired_at'] = Variable<DateTime>(acquiredAt.value);
+    }
+    if (acquiredInCellId.present) {
+      map['acquired_in_cell_id'] = Variable<String>(acquiredInCellId.value);
+    }
+    if (dailySeed.present) {
+      map['daily_seed'] = Variable<String>(dailySeed.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -827,12 +1048,17 @@ class LocalCollectedSpeciesTableCompanion
 
   @override
   String toString() {
-    return (StringBuffer('LocalCollectedSpeciesTableCompanion(')
+    return (StringBuffer('LocalItemInstanceTableCompanion(')
           ..write('id: $id, ')
           ..write('userId: $userId, ')
-          ..write('speciesId: $speciesId, ')
-          ..write('cellId: $cellId, ')
-          ..write('collectedAt: $collectedAt, ')
+          ..write('definitionId: $definitionId, ')
+          ..write('affixes: $affixes, ')
+          ..write('parentAId: $parentAId, ')
+          ..write('parentBId: $parentBId, ')
+          ..write('acquiredAt: $acquiredAt, ')
+          ..write('acquiredInCellId: $acquiredInCellId, ')
+          ..write('dailySeed: $dailySeed, ')
+          ..write('status: $status, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1288,19 +1514,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $LocalCellProgressTableTable localCellProgressTable =
       $LocalCellProgressTableTable(this);
-  late final $LocalCollectedSpeciesTableTable localCollectedSpeciesTable =
-      $LocalCollectedSpeciesTableTable(this);
+  late final $LocalItemInstanceTableTable localItemInstanceTable =
+      $LocalItemInstanceTableTable(this);
   late final $LocalPlayerProfileTableTable localPlayerProfileTable =
       $LocalPlayerProfileTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [
-        localCellProgressTable,
-        localCollectedSpeciesTable,
-        localPlayerProfileTable
-      ];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [localCellProgressTable, localItemInstanceTable, localPlayerProfileTable];
 }
 
 typedef $$LocalCellProgressTableTableCreateCompanionBuilder
@@ -1562,28 +1785,38 @@ typedef $$LocalCellProgressTableTableProcessedTableManager
         ),
         LocalCellProgress,
         PrefetchHooks Function()>;
-typedef $$LocalCollectedSpeciesTableTableCreateCompanionBuilder
-    = LocalCollectedSpeciesTableCompanion Function({
+typedef $$LocalItemInstanceTableTableCreateCompanionBuilder
+    = LocalItemInstanceTableCompanion Function({
   required String id,
   required String userId,
-  required String speciesId,
-  required String cellId,
-  Value<DateTime> collectedAt,
+  required String definitionId,
+  Value<String> affixes,
+  Value<String?> parentAId,
+  Value<String?> parentBId,
+  required DateTime acquiredAt,
+  Value<String?> acquiredInCellId,
+  Value<String?> dailySeed,
+  Value<String> status,
   Value<int> rowid,
 });
-typedef $$LocalCollectedSpeciesTableTableUpdateCompanionBuilder
-    = LocalCollectedSpeciesTableCompanion Function({
+typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
+    = LocalItemInstanceTableCompanion Function({
   Value<String> id,
   Value<String> userId,
-  Value<String> speciesId,
-  Value<String> cellId,
-  Value<DateTime> collectedAt,
+  Value<String> definitionId,
+  Value<String> affixes,
+  Value<String?> parentAId,
+  Value<String?> parentBId,
+  Value<DateTime> acquiredAt,
+  Value<String?> acquiredInCellId,
+  Value<String?> dailySeed,
+  Value<String> status,
   Value<int> rowid,
 });
 
-class $$LocalCollectedSpeciesTableTableFilterComposer
-    extends Composer<_$AppDatabase, $LocalCollectedSpeciesTableTable> {
-  $$LocalCollectedSpeciesTableTableFilterComposer({
+class $$LocalItemInstanceTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalItemInstanceTableTable> {
+  $$LocalItemInstanceTableTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -1596,19 +1829,35 @@ class $$LocalCollectedSpeciesTableTableFilterComposer
   ColumnFilters<String> get userId => $composableBuilder(
       column: $table.userId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get speciesId => $composableBuilder(
-      column: $table.speciesId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get definitionId => $composableBuilder(
+      column: $table.definitionId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get cellId => $composableBuilder(
-      column: $table.cellId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get affixes => $composableBuilder(
+      column: $table.affixes, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get collectedAt => $composableBuilder(
-      column: $table.collectedAt, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get parentAId => $composableBuilder(
+      column: $table.parentAId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentBId => $composableBuilder(
+      column: $table.parentBId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get acquiredAt => $composableBuilder(
+      column: $table.acquiredAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get acquiredInCellId => $composableBuilder(
+      column: $table.acquiredInCellId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dailySeed => $composableBuilder(
+      column: $table.dailySeed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
 }
 
-class $$LocalCollectedSpeciesTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $LocalCollectedSpeciesTableTable> {
-  $$LocalCollectedSpeciesTableTableOrderingComposer({
+class $$LocalItemInstanceTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalItemInstanceTableTable> {
+  $$LocalItemInstanceTableTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -1621,19 +1870,36 @@ class $$LocalCollectedSpeciesTableTableOrderingComposer
   ColumnOrderings<String> get userId => $composableBuilder(
       column: $table.userId, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get speciesId => $composableBuilder(
-      column: $table.speciesId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get definitionId => $composableBuilder(
+      column: $table.definitionId,
+      builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get cellId => $composableBuilder(
-      column: $table.cellId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get affixes => $composableBuilder(
+      column: $table.affixes, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<DateTime> get collectedAt => $composableBuilder(
-      column: $table.collectedAt, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get parentAId => $composableBuilder(
+      column: $table.parentAId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get parentBId => $composableBuilder(
+      column: $table.parentBId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get acquiredAt => $composableBuilder(
+      column: $table.acquiredAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get acquiredInCellId => $composableBuilder(
+      column: $table.acquiredInCellId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dailySeed => $composableBuilder(
+      column: $table.dailySeed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
 }
 
-class $$LocalCollectedSpeciesTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LocalCollectedSpeciesTableTable> {
-  $$LocalCollectedSpeciesTableTableAnnotationComposer({
+class $$LocalItemInstanceTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalItemInstanceTableTable> {
+  $$LocalItemInstanceTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -1646,76 +1912,111 @@ class $$LocalCollectedSpeciesTableTableAnnotationComposer
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
 
-  GeneratedColumn<String> get speciesId =>
-      $composableBuilder(column: $table.speciesId, builder: (column) => column);
+  GeneratedColumn<String> get definitionId => $composableBuilder(
+      column: $table.definitionId, builder: (column) => column);
 
-  GeneratedColumn<String> get cellId =>
-      $composableBuilder(column: $table.cellId, builder: (column) => column);
+  GeneratedColumn<String> get affixes =>
+      $composableBuilder(column: $table.affixes, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get collectedAt => $composableBuilder(
-      column: $table.collectedAt, builder: (column) => column);
+  GeneratedColumn<String> get parentAId =>
+      $composableBuilder(column: $table.parentAId, builder: (column) => column);
+
+  GeneratedColumn<String> get parentBId =>
+      $composableBuilder(column: $table.parentBId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get acquiredAt => $composableBuilder(
+      column: $table.acquiredAt, builder: (column) => column);
+
+  GeneratedColumn<String> get acquiredInCellId => $composableBuilder(
+      column: $table.acquiredInCellId, builder: (column) => column);
+
+  GeneratedColumn<String> get dailySeed =>
+      $composableBuilder(column: $table.dailySeed, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
 }
 
-class $$LocalCollectedSpeciesTableTableTableManager extends RootTableManager<
+class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
     _$AppDatabase,
-    $LocalCollectedSpeciesTableTable,
-    LocalCollectedSpecies,
-    $$LocalCollectedSpeciesTableTableFilterComposer,
-    $$LocalCollectedSpeciesTableTableOrderingComposer,
-    $$LocalCollectedSpeciesTableTableAnnotationComposer,
-    $$LocalCollectedSpeciesTableTableCreateCompanionBuilder,
-    $$LocalCollectedSpeciesTableTableUpdateCompanionBuilder,
+    $LocalItemInstanceTableTable,
+    LocalItemInstance,
+    $$LocalItemInstanceTableTableFilterComposer,
+    $$LocalItemInstanceTableTableOrderingComposer,
+    $$LocalItemInstanceTableTableAnnotationComposer,
+    $$LocalItemInstanceTableTableCreateCompanionBuilder,
+    $$LocalItemInstanceTableTableUpdateCompanionBuilder,
     (
-      LocalCollectedSpecies,
-      BaseReferences<_$AppDatabase, $LocalCollectedSpeciesTableTable,
-          LocalCollectedSpecies>
+      LocalItemInstance,
+      BaseReferences<_$AppDatabase, $LocalItemInstanceTableTable,
+          LocalItemInstance>
     ),
-    LocalCollectedSpecies,
+    LocalItemInstance,
     PrefetchHooks Function()> {
-  $$LocalCollectedSpeciesTableTableTableManager(
-      _$AppDatabase db, $LocalCollectedSpeciesTableTable table)
+  $$LocalItemInstanceTableTableTableManager(
+      _$AppDatabase db, $LocalItemInstanceTableTable table)
       : super(TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LocalCollectedSpeciesTableTableFilterComposer(
+              $$LocalItemInstanceTableTableFilterComposer(
                   $db: db, $table: table),
           createOrderingComposer: () =>
-              $$LocalCollectedSpeciesTableTableOrderingComposer(
+              $$LocalItemInstanceTableTableOrderingComposer(
                   $db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$LocalCollectedSpeciesTableTableAnnotationComposer(
+              $$LocalItemInstanceTableTableAnnotationComposer(
                   $db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> userId = const Value.absent(),
-            Value<String> speciesId = const Value.absent(),
-            Value<String> cellId = const Value.absent(),
-            Value<DateTime> collectedAt = const Value.absent(),
+            Value<String> definitionId = const Value.absent(),
+            Value<String> affixes = const Value.absent(),
+            Value<String?> parentAId = const Value.absent(),
+            Value<String?> parentBId = const Value.absent(),
+            Value<DateTime> acquiredAt = const Value.absent(),
+            Value<String?> acquiredInCellId = const Value.absent(),
+            Value<String?> dailySeed = const Value.absent(),
+            Value<String> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
-              LocalCollectedSpeciesTableCompanion(
+              LocalItemInstanceTableCompanion(
             id: id,
             userId: userId,
-            speciesId: speciesId,
-            cellId: cellId,
-            collectedAt: collectedAt,
+            definitionId: definitionId,
+            affixes: affixes,
+            parentAId: parentAId,
+            parentBId: parentBId,
+            acquiredAt: acquiredAt,
+            acquiredInCellId: acquiredInCellId,
+            dailySeed: dailySeed,
+            status: status,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
             required String userId,
-            required String speciesId,
-            required String cellId,
-            Value<DateTime> collectedAt = const Value.absent(),
+            required String definitionId,
+            Value<String> affixes = const Value.absent(),
+            Value<String?> parentAId = const Value.absent(),
+            Value<String?> parentBId = const Value.absent(),
+            required DateTime acquiredAt,
+            Value<String?> acquiredInCellId = const Value.absent(),
+            Value<String?> dailySeed = const Value.absent(),
+            Value<String> status = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
-              LocalCollectedSpeciesTableCompanion.insert(
+              LocalItemInstanceTableCompanion.insert(
             id: id,
             userId: userId,
-            speciesId: speciesId,
-            cellId: cellId,
-            collectedAt: collectedAt,
+            definitionId: definitionId,
+            affixes: affixes,
+            parentAId: parentAId,
+            parentBId: parentBId,
+            acquiredAt: acquiredAt,
+            acquiredInCellId: acquiredInCellId,
+            dailySeed: dailySeed,
+            status: status,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -1725,22 +2026,22 @@ class $$LocalCollectedSpeciesTableTableTableManager extends RootTableManager<
         ));
 }
 
-typedef $$LocalCollectedSpeciesTableTableProcessedTableManager
+typedef $$LocalItemInstanceTableTableProcessedTableManager
     = ProcessedTableManager<
         _$AppDatabase,
-        $LocalCollectedSpeciesTableTable,
-        LocalCollectedSpecies,
-        $$LocalCollectedSpeciesTableTableFilterComposer,
-        $$LocalCollectedSpeciesTableTableOrderingComposer,
-        $$LocalCollectedSpeciesTableTableAnnotationComposer,
-        $$LocalCollectedSpeciesTableTableCreateCompanionBuilder,
-        $$LocalCollectedSpeciesTableTableUpdateCompanionBuilder,
+        $LocalItemInstanceTableTable,
+        LocalItemInstance,
+        $$LocalItemInstanceTableTableFilterComposer,
+        $$LocalItemInstanceTableTableOrderingComposer,
+        $$LocalItemInstanceTableTableAnnotationComposer,
+        $$LocalItemInstanceTableTableCreateCompanionBuilder,
+        $$LocalItemInstanceTableTableUpdateCompanionBuilder,
         (
-          LocalCollectedSpecies,
-          BaseReferences<_$AppDatabase, $LocalCollectedSpeciesTableTable,
-              LocalCollectedSpecies>
+          LocalItemInstance,
+          BaseReferences<_$AppDatabase, $LocalItemInstanceTableTable,
+              LocalItemInstance>
         ),
-        LocalCollectedSpecies,
+        LocalItemInstance,
         PrefetchHooks Function()>;
 typedef $$LocalPlayerProfileTableTableCreateCompanionBuilder
     = LocalPlayerProfileTableCompanion Function({
@@ -1979,10 +2280,9 @@ class $AppDatabaseManager {
   $$LocalCellProgressTableTableTableManager get localCellProgressTable =>
       $$LocalCellProgressTableTableTableManager(
           _db, _db.localCellProgressTable);
-  $$LocalCollectedSpeciesTableTableTableManager
-      get localCollectedSpeciesTable =>
-          $$LocalCollectedSpeciesTableTableTableManager(
-              _db, _db.localCollectedSpeciesTable);
+  $$LocalItemInstanceTableTableTableManager get localItemInstanceTable =>
+      $$LocalItemInstanceTableTableTableManager(
+          _db, _db.localItemInstanceTable);
   $$LocalPlayerProfileTableTableTableManager get localPlayerProfileTable =>
       $$LocalPlayerProfileTableTableTableManager(
           _db, _db.localPlayerProfileTable);

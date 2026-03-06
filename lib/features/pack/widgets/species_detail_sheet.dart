@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// Shows a modal bottom sheet with full or partial species details.
@@ -18,7 +18,7 @@ import 'package:fog_of_world/shared/design_tokens.dart';
 /// ```
 void showSpeciesDetailSheet(
   BuildContext context, {
-  required SpeciesRecord species,
+  required FaunaDefinition species,
   required bool isCollected,
 }) {
   showModalBottomSheet<void>(
@@ -34,7 +34,7 @@ void showSpeciesDetailSheet(
 
 /// The bottom sheet widget itself. Exported for testing.
 class SpeciesDetailSheet extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
   final bool isCollected;
 
   const SpeciesDetailSheet({
@@ -87,7 +87,7 @@ class SpeciesDetailSheet extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _CollectedContent extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
 
   const _CollectedContent({required this.species});
 
@@ -106,7 +106,7 @@ class _CollectedContent extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    species.commonName,
+                    species.displayName,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -116,7 +116,7 @@ class _CollectedContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    species.scientificName,
+                    species.scientificName!,
                     style: const TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
@@ -128,7 +128,7 @@ class _CollectedContent extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            _RarityBadge(status: species.iucnStatus),
+            _RarityBadge(status: species.rarity!),
           ],
         ),
 
@@ -175,7 +175,7 @@ class _CollectedContent extends StatelessWidget {
                 ),
               ),
             ),
-            _StatusPill(status: species.iucnStatus),
+            _StatusPill(status: species.rarity!),
           ],
         ),
 
@@ -222,7 +222,7 @@ class _CollectedContent extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _UncollectedContent extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
 
   const _UncollectedContent({required this.species});
 

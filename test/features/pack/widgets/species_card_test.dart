@@ -3,34 +3,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/pack/widgets/species_card.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-final _redFox = SpeciesRecord(
-  commonName: 'Red Fox',
+final _redFox = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.europe],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _jaguar = SpeciesRecord(
-  commonName: 'Jaguar',
+final _jaguar = FaunaDefinition(
+  id: 'fauna_panthera_onca',
+  displayName: 'Jaguar',
   scientificName: 'Panthera onca',
   taxonomicClass: 'Mammalia',
   continents: [Continent.southAmerica],
   habitats: [Habitat.forest, Habitat.swamp],
-  iucnStatus: IucnStatus.nearThreatened,
+  rarity: IucnStatus.nearThreatened,
 );
 
 Future<void> _pumpCard(
   WidgetTester tester, {
-  required SpeciesRecord species,
+  required FaunaDefinition species,
   required bool isCollected,
   VoidCallback? onTap,
 }) async {

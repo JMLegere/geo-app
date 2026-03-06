@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
@@ -11,7 +11,7 @@ import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
 /// - Gradient background keyed to the species' primary habitat (low opacity).
 /// - Common name (bold 13px), scientific name (italic 11px), IUCN badge.
 class SanctuarySpeciesTile extends StatelessWidget {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
 
   const SanctuarySpeciesTile({super.key, required this.species});
 
@@ -35,7 +35,7 @@ class SanctuarySpeciesTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                species.commonName,
+                species.displayName,
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -48,7 +48,7 @@ class SanctuarySpeciesTile extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                species.scientificName,
+                species.scientificName!,
                 style: TextStyle(
                   fontSize: 11,
                   fontStyle: FontStyle.italic,
@@ -66,7 +66,7 @@ class SanctuarySpeciesTile extends StatelessWidget {
           Positioned(
             top: 0,
             right: 0,
-            child: RarityBadge(status: species.iucnStatus),
+            child: RarityBadge(status: species.rarity!),
           ),
         ],
       ),

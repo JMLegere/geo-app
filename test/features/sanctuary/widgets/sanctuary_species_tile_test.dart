@@ -3,50 +3,54 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_species_tile.dart';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-final _forestFox = SpeciesRecord(
-  commonName: 'Red Fox',
+final _forestFox = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.europe],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _jaguar = SpeciesRecord(
-  commonName: 'Jaguar',
+final _jaguar = FaunaDefinition(
+  id: 'fauna_panthera_onca',
+  displayName: 'Jaguar',
   scientificName: 'Panthera onca',
   taxonomicClass: 'Mammalia',
   continents: [Continent.southAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.nearThreatened,
+  rarity: IucnStatus.nearThreatened,
 );
 
-final _snowLeopard = SpeciesRecord(
-  commonName: 'Snow Leopard',
+final _snowLeopard = FaunaDefinition(
+  id: 'fauna_panthera_uncia',
+  displayName: 'Snow Leopard',
   scientificName: 'Panthera uncia',
   taxonomicClass: 'Mammalia',
   continents: [Continent.asia],
   habitats: [Habitat.mountain],
-  iucnStatus: IucnStatus.vulnerable,
+  rarity: IucnStatus.vulnerable,
 );
 
-final _elephant = SpeciesRecord(
-  commonName: 'African Elephant',
+final _elephant = FaunaDefinition(
+  id: 'fauna_loxodonta_africana',
+  displayName: 'African Elephant',
   scientificName: 'Loxodonta africana',
   taxonomicClass: 'Mammalia',
   continents: [Continent.africa],
   habitats: [Habitat.plains],
-  iucnStatus: IucnStatus.endangered,
+  rarity: IucnStatus.endangered,
 );
 
-Future<void> _pumpTile(WidgetTester tester, SpeciesRecord species) async {
+Future<void> _pumpTile(WidgetTester tester, FaunaDefinition species) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(

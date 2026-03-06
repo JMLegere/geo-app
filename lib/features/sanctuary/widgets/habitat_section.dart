@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_species_tile.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';
@@ -16,7 +16,7 @@ class HabitatSection extends StatelessWidget {
   final Habitat habitat;
 
   /// Collected species belonging to this habitat. May be empty.
-  final List<SpeciesRecord> species;
+  final List<FaunaDefinition> species;
 
   const HabitatSection({
     super.key,

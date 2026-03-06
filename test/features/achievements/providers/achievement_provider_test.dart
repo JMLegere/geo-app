@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/achievements/models/achievement.dart';
 import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
@@ -92,14 +93,17 @@ void main() {
           state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
     });
 
-    test('checkAchievements updates species progress from collectionProvider',
+    test('checkAchievements updates species progress from inventoryProvider',
         () {
-      final collection = container.read(collectionProvider.notifier);
-      collection.addSpecies('species_1');
-      collection.addSpecies('species_2');
-      collection.addSpecies('species_3');
-      collection.addSpecies('species_4');
-      collection.addSpecies('species_5');
+      final inventory = container.read(inventoryProvider.notifier);
+      for (int i = 1; i <= 5; i++) {
+        inventory.addItem(ItemInstance(
+          id: 'item_$i',
+          definitionId: 'species_$i',
+          acquiredAt: DateTime.now(),
+          acquiredInCellId: 'cell_1',
+        ));
+      }
 
       container.read(achievementProvider.notifier).checkAchievements(
             now: DateTime(2024, 6, 1),

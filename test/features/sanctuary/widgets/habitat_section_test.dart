@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_species_tile.dart';
 
@@ -11,28 +11,30 @@ import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_species_tile.d
 // Fixtures
 // ---------------------------------------------------------------------------
 
-final _fox = SpeciesRecord(
-  commonName: 'Red Fox',
+final _fox = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.europe],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _bear = SpeciesRecord(
-  commonName: 'Grizzly Bear',
+final _bear = FaunaDefinition(
+  id: 'fauna_ursus_arctos_horribilis',
+  displayName: 'Grizzly Bear',
   scientificName: 'Ursus arctos horribilis',
   taxonomicClass: 'Mammalia',
   continents: [Continent.northAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
 Future<void> _pumpSection(
   WidgetTester tester, {
   required Habitat habitat,
-  required List<SpeciesRecord> species,
+  required List<FaunaDefinition> species,
 }) async {
   await tester.pumpWidget(
     MaterialApp(

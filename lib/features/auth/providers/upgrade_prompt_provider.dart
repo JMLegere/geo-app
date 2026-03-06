@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/shared/constants.dart';
@@ -14,10 +14,10 @@ import 'package:fog_of_world/shared/constants.dart';
 /// Tracks whether an anonymous user has crossed the collection threshold and
 /// should be prompted to create an account.
 ///
-/// Note: [shouldShow] is false on first build because [collectionProvider]
-/// initializes with an empty [CollectionState] (`totalCollected == 0`). The
+/// Note: [shouldShow] is false on first build because [inventoryProvider]
+/// initializes with an empty [InventoryState] (`totalItems == 0`). The
 /// prompt becomes eligible only after the discovery flow hydrates the
-/// collection by adding species via [CollectionNotifier.addSpecies].
+/// inventory by adding items via [InventoryNotifier.addItem].
 class UpgradePromptState {
   const UpgradePromptState({
     required this.totalCollected,
@@ -108,8 +108,8 @@ class UpgradePromptState {
 /// Reactive notifier that evaluates whether to prompt an anonymous user to
 /// upgrade their account after collecting [kUpgradePromptThreshold] species.
 ///
-/// Watches [collectionProvider] and [authProvider] so state recomputes
-/// automatically whenever collection or auth changes. Reads
+/// Watches [inventoryProvider] and [authProvider] so state recomputes
+/// automatically whenever inventory or auth changes. Reads
 /// [supabaseBootstrapProvider] once — the initialized flag is stable after
 /// app startup and does not change at runtime.
 ///
@@ -125,7 +125,7 @@ class UpgradePromptState {
 class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   @override
   UpgradePromptState build() {
-    final totalCollected = ref.watch(collectionProvider).totalCollected;
+    final totalCollected = ref.watch(inventoryProvider).totalItems;
     final isAnonymous = ref.watch(authProvider).isAnonymous;
     // supabaseBootstrapProvider is a plain Provider (not Notifier) — its value
     // is stable after app startup, so read() is sufficient here.
@@ -141,7 +141,7 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   }
 
   /// Session-level flag. Stored as an instance field so that reactive rebuilds
-  /// triggered by [collectionProvider] or [authProvider] do not reset it —
+  /// triggered by [inventoryProvider] or [authProvider] do not reset it —
   /// [build] reads [_hasBeenShown] directly rather than inspecting [state].
   bool _hasBeenShown = false;
 

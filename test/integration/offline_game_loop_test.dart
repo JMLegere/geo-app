@@ -17,7 +17,7 @@ import 'package:fog_of_world/core/cells/voronoi_cell_service.dart';
 import 'package:fog_of_world/core/database/app_database.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
 import 'package:fog_of_world/features/caretaking/services/caretaking_service.dart';
@@ -35,7 +35,7 @@ import '../fixtures/species_fixture.dart';
 SpeciesService buildSpeciesService() {
   final raw = jsonDecode(kSpeciesFixtureJson) as List<dynamic>;
   final records =
-      raw.map((j) => SpeciesRecord.fromJson(j as Map<String, dynamic>)).toList();
+      raw.map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>)).toList();
   return SpeciesService(records);
 }
 
@@ -240,23 +240,24 @@ void main() {
       expect(firstEvent.isNew, isTrue);
 
       // Record in DB.
-      await session.db.insertCollectedSpecies(LocalCollectedSpecies(
-        id: 'cs-golden',
+      await session.db.insertItemInstance(LocalItemInstance(
+        id: 'item-golden',
         userId: 'player-1',
-        speciesId: firstEvent.species.id,
-        cellId: firstEvent.cellId,
-        collectedAt: DateTime.now(),
+        definitionId: firstEvent.species.id,
+        affixes: '[]',
+        acquiredAt: DateTime.now(),
+        acquiredInCellId: firstEvent.cellId,
+        status: 'active',
       ));
 
       // Mark collected in discovery service.
       session.discoveryService.markCollected(firstEvent.species.id);
 
       // Verify persistence.
-      final collected = await session.db.isSpeciesCollected(
-        'player-1',
-        firstEvent.species.id,
-        firstEvent.cellId,
-      );
+      final items = await session.db.getItemInstancesByUser('player-1');
+      final collected = items.any((i) =>
+          i.definitionId == firstEvent.species.id &&
+          i.acquiredInCellId == firstEvent.cellId);
       expect(collected, isTrue);
     });
 
@@ -404,13 +405,15 @@ void main() {
         updatedAt: DateTime(2026, 3, 1),
       ));
 
-      // Persist a collected species.
-      await session.db.insertCollectedSpecies(LocalCollectedSpecies(
-        id: 'cs-golden',
+      // Persist a collected item.
+      await session.db.insertItemInstance(LocalItemInstance(
+        id: 'item-golden',
         userId: 'player-1',
-        speciesId: 'vulpes_vulpes',
-        cellId: cellId,
-        collectedAt: DateTime(2026, 3, 1),
+        definitionId: 'vulpes_vulpes',
+        affixes: '[]',
+        acquiredAt: DateTime(2026, 3, 1),
+        acquiredInCellId: cellId,
+        status: 'active',
       ));
 
       // Verify everything is persisted.
@@ -422,8 +425,9 @@ void main() {
       expect(progress, isNotNull);
       expect(progress!.fogState, equals('observed'));
 
-      final collected =
-          await session.db.isSpeciesCollected('player-1', 'vulpes_vulpes', cellId);
+      final items = await session.db.getItemInstancesByUser('player-1');
+      final collected = items.any((i) =>
+          i.definitionId == 'vulpes_vulpes' && i.acquiredInCellId == cellId);
       expect(collected, isTrue);
     });
 
@@ -452,7 +456,7 @@ void main() {
       // 3. Species discovered (may or may not have results for the fixture).
       // No assertion on count — just verify no errors.
       for (final event in session.discoveryEvents) {
-        expect(event.species.commonName, isNotEmpty);
+        expect(event.species.displayName, isNotEmpty);
       }
 
       // 4. Restoration: collect 3 species in a test cell.
