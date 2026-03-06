@@ -3,8 +3,8 @@
     "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/auto-auth.md",
     "branch": "feat/auto-auth",
     "started_at": "2026-03-06T20:00:00.000Z",
-    "current_wave": 1,
-    "completed_tasks": [],
+    "current_wave": 3,
+    "completed_tasks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
     "session_ids": {}
   },
   "completed_plans": [

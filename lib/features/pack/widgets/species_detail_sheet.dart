@@ -3,7 +3,6 @@ import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 
-
 /// Shows a modal bottom sheet with full or partial species details.
 ///
 /// ## Collected species
