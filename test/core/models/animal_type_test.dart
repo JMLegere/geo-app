@@ -102,6 +102,41 @@ void main() {
         expect(AnimalType.fromTaxonomicClass('DIPLOPODA'), equals(AnimalType.bug));
       });
 
+      test('Cephalopoda → fish', () {
+        expect(AnimalType.fromTaxonomicClass('Cephalopoda'), equals(AnimalType.fish));
+        expect(AnimalType.fromTaxonomicClass('CEPHALOPODA'), equals(AnimalType.fish));
+      });
+
+      test('Bivalvia → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Bivalvia'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('BIVALVIA'), equals(AnimalType.bug));
+      });
+
+      test('Anthozoa → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Anthozoa'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('ANTHOZOA'), equals(AnimalType.bug));
+      });
+
+      test('Clitellata → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Clitellata'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('CLITELLATA'), equals(AnimalType.bug));
+      });
+
+      test('Holothuroidea → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Holothuroidea'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('HOLOTHUROIDEA'), equals(AnimalType.bug));
+      });
+
+      test('Branchiopoda → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Branchiopoda'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('BRANCHIOPODA'), equals(AnimalType.bug));
+      });
+
+      test('Merostomata → bug', () {
+        expect(AnimalType.fromTaxonomicClass('Merostomata'), equals(AnimalType.bug));
+        expect(AnimalType.fromTaxonomicClass('MEROSTOMATA'), equals(AnimalType.bug));
+      });
+
       test('unknown class → null', () {
         expect(AnimalType.fromTaxonomicClass('PLANTAE'), isNull);
         expect(AnimalType.fromTaxonomicClass(''), isNull);

@@ -132,7 +132,10 @@ class _DiscoveryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final item = event.item;
-    final rarityColor = EarthNovaTheme.rarityColor(item.rarity!);
+    final rarity = item.rarity;
+    final rarityColor = rarity != null
+        ? EarthNovaTheme.rarityColor(rarity)
+        : Theme.of(context).colorScheme.outline;
 
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
@@ -196,8 +199,9 @@ class _DiscoveryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Rarity badge
-              RarityBadge(status: item.rarity!, size: RarityBadgeSize.medium),
+              // Rarity badge (hidden for items without conservation status)
+              if (rarity != null)
+                RarityBadge(status: rarity, size: RarityBadgeSize.medium),
               Spacing.gapXs,
 
               // Collection status

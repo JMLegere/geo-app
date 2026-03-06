@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fog_of_world/core/models/animal_class.dart';
 import 'package:fog_of_world/core/models/animal_type.dart';
 import 'package:fog_of_world/core/models/continent.dart';
+import 'package:fog_of_world/core/models/food_type.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
@@ -243,8 +245,8 @@ void main() {
         'foodPreference': 'critter',
         'climate': 'temperate',
       });
-      expect(record.animalClass, equals('carnivore'));
-      expect(record.foodPreference, equals('critter'));
+      expect(record.animalClass, equals(AnimalClass.carnivore));
+      expect(record.foodPreference, equals(FoodType.critter));
       expect(record.climate?.name, equals('temperate'));
     });
   });

@@ -48,8 +48,31 @@ enum AnimalType {
       'CHILOPODA' ||
       'Chilopoda' ||
       'DIPLOPODA' ||
-      'Diplopoda' =>
+      'Diplopoda' ||
+      // Invertebrates without a closer match — mapped to bug
+      'BIVALVIA' ||
+      'Bivalvia' ||
+      'ANTHOZOA' ||
+      'Anthozoa' ||
+      'CLITELLATA' ||
+      'Clitellata' ||
+      'HOLOTHUROIDEA' ||
+      'Holothuroidea' ||
+      'BRANCHIOPODA' ||
+      'Branchiopoda' ||
+      'UDEONYCHOPHORA' ||
+      'Udeonychophora' ||
+      'ENOPLA' ||
+      'Enopla' ||
+      'HYDROZOA' ||
+      'Hydrozoa' ||
+      'MEROSTOMATA' ||
+      'Merostomata' =>
         AnimalType.bug,
+      // Cephalopoda → fish (matches AnimalClass.cephalopod)
+      'CEPHALOPODA' ||
+      'Cephalopoda' =>
+        AnimalType.fish,
       _ => null,
     };
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'animal_class.dart';
 import 'animal_type.dart';
 import 'climate.dart';
 import 'continent.dart';
@@ -95,13 +96,13 @@ class FaunaDefinition extends ItemDefinition {
   /// Null for unrecognized taxonomic classes.
   final AnimalType? animalType;
 
-  /// AI-enriched animal class (e.g. "carnivore", "songbird").
+  /// AI-enriched animal class (e.g. AnimalClass.carnivore).
   /// Null until enriched on first global discovery.
-  final String? animalClass;
+  final AnimalClass? animalClass;
 
-  /// AI-enriched food preference (e.g. "critter", "veg").
+  /// AI-enriched food preference (e.g. FoodType.critter).
   /// Null until enriched on first global discovery.
-  final String? foodPreference;
+  final FoodType? foodPreference;
 
   /// AI-enriched or latitude-inferred climate zone.
   /// Null until enriched or computed.
@@ -145,8 +146,12 @@ class FaunaDefinition extends ItemDefinition {
       continents: (json['continents'] as List)
           .map((c) => Continent.fromDataString(c as String))
           .toList(),
-      animalClass: json['animalClass'] as String?,
-      foodPreference: json['foodPreference'] as String?,
+      animalClass: json['animalClass'] != null
+          ? AnimalClass.fromString(json['animalClass'] as String)
+          : null,
+      foodPreference: json['foodPreference'] != null
+          ? FoodType.fromString(json['foodPreference'] as String)
+          : null,
       climate: json['climate'] != null
           ? Climate.fromString(json['climate'] as String)
           : null,
@@ -160,8 +165,8 @@ class FaunaDefinition extends ItemDefinition {
         'continents': continents.map((c) => c.displayName).toList(),
         'habitats': habitats.map((h) => h.displayName).toList(),
         'iucnStatus': rarity!.displayName,
-        if (animalClass != null) 'animalClass': animalClass,
-        if (foodPreference != null) 'foodPreference': foodPreference,
+        if (animalClass != null) 'animalClass': animalClass!.name,
+        if (foodPreference != null) 'foodPreference': foodPreference!.name,
         if (climate != null) 'climate': climate!.name,
       };
 
