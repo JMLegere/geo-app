@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
+import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
 import 'package:fog_of_world/features/caretaking/providers/caretaking_provider.dart';
 import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
@@ -77,6 +78,20 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => const AchievementScreen(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
                 ),
               );
             },

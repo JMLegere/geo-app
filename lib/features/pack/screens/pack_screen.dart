@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
 import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
 import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
@@ -72,6 +73,22 @@ class PackScreen extends ConsumerWidget {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
