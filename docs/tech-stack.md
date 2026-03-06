@@ -35,6 +35,7 @@ eval "$(~/.local/bin/mise activate bash)"
 | `geolocator` | ^13.0.2 | GPS stream (iOS + Android + Web) |
 | `intl` | ^0.20.2 | Date/number formatting |
 | `crypto` | ^3.0.6 | SHA-256 hashing (deterministic species seeding) |
+| `uuid` | ^4.5.1 | UUID v4 generation (ItemInstance IDs) |
 | `web` | ^1.1.1 | Web platform interop |
 | `shared_preferences` | ^2.3.0 | Lightweight key-value storage |
 
@@ -105,7 +106,7 @@ nginx.conf: SPA fallback (try_files → /index.html), gzip enabled
 **Working.** `.github/workflows/ci.yml` runs on every push and PR to `main`:
 
 1. **Analyze** — `flutter analyze` (must report 0 issues)
-2. **Test** — `LD_LIBRARY_PATH=. flutter test` (H3 FFI, 1154 tests)
+2. **Test** — `LD_LIBRARY_PATH=. flutter test` (H3 FFI, 1156 tests)
 
 Both jobs use `subosito/flutter-action@v2` with Flutter `3.x` channel, `mise` for tooling, and cache `~/.pub-cache`. Analyze runs ~2 min, tests run ~3 min.
 

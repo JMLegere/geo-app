@@ -46,7 +46,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Public API**:
 - `AppDatabase`: Drift database with 3 tables
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
-  - `LocalCollectedSpeciesTable`: `id` (text PK), `userId`, `speciesId`, `cellId`, `collectedAt`
+  - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
 
@@ -85,11 +85,15 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Immutable value objects for domain entities.
 
-**Public API** (8 models):
+**Public API** (12 models):
 - `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 10^x progression (PoE loot table style): LC=100000, NT=10000, VU=1000, EN=100, CR=10, EX=1.
-- `SpeciesRecord`: `scientificName`, `commonName`, `taxonomicClass`, `continents: List<Continent>`, `habitats: List<Habitat>`, `iucnStatus`. Equality by `scientificName` only.
-- `CollectedSpecies`: `speciesId`, `collectedAt: DateTime`, `cellId`. Represents player collection entry.
+- `ItemDefinition` (sealed): Base class for all item types. Subclasses: `FaunaDefinition` (fauna), Flora/Mineral/Fossil/Artifact (planned).
+- `FaunaDefinition`: `scientificName`, `commonName`, `taxonomicClass`, `continents: List<Continent>`, `habitats: List<Habitat>`, `iucnStatus`. Equality by `scientificName` only.
+- `ItemInstance`: `id` (UUID), `definitionId`, `category`, `affixes: List<Affix>`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`. Represents unique item with rolled stats.
+- `Affix`: `type` (prefix/suffix), `key`, `value`. Flexible key-value stats for item instances.
+- `ItemCategory`: enum (fauna, flora, mineral, fossil, artifact).
+- `ItemInstanceStatus`: enum (active, donated, placed, released, traded).
 - `CellData`: `id`, `center: Geographic`, `fogState`, `speciesIds`, `restorationLevel`, `distanceWalked`, `visitCount`, `lastVisited`.
 - `PlayerProgress`: `userId`, `cellsObserved`, `speciesCollected`, `currentStreak`, `longestStreak`, `totalDistanceKm`.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
@@ -101,7 +105,9 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - Manual `toJson()` / `fromJson()` — no code generation
 - `FogState.density` doubles for shader interpolation (1.0=opaque, 0.0=clear)
 - `IucnStatus.weight` for weighted random selection (higher weight = more common)
-- `SpeciesRecord` equality ignores all fields except `scientificName`
+- `FaunaDefinition` equality ignores all fields except `scientificName`
+- `ItemInstance.id` uses uuid package (v4 random UUIDs)
+- `ItemInstance.affixes` serialized as JSON in database
 - `CellData.restorationLevel` clamped to [0.0, 1.0]
 
 ---
@@ -112,7 +118,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Public API**:
 - `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`
-- `CollectedSpeciesRepository`: `getCollectedSpecies(String)`, `addCollectedSpecies(SpeciesRecord, String)`, `getAllCollectedSpecies()`
+- `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `delete(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
 
 **Conventions**:
@@ -128,9 +134,9 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Deterministic species encounter generation and data loading.
 
 **Public API**:
-- `SpeciesService`: `getEncountersForCell(String cellId, Season, List<SpeciesRecord>)`, `rollMultiple(LootTable, int n, String seed)`
+- `SpeciesService`: `getEncountersForCell(String cellId, Season, List<FaunaDefinition>)`, `rollMultiple(LootTable, int n, String seed)`
 - `LootTable<T>`: Generic weighted random selection. `add(T item, int weight)`, `roll(String seed)`.
-- `SpeciesDataLoader`: `loadSpeciesData()` returns `Future<List<SpeciesRecord>>` from `assets/species_data.json`.
+- `SpeciesDataLoader`: `loadSpeciesData()` returns `Future<List<FaunaDefinition>>` from `assets/species_data.json`.
 - `ContinentResolver`: `getContinent(Geographic)` uses bounding boxes. Africa split at 20°E.
 
 **Conventions**:
@@ -151,7 +157,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
-- `collectionProvider`: `NotifierProvider<CollectionNotifier, CollectionState>` — collected species IDs
+- `inventoryProvider`: `NotifierProvider<InventoryNotifier, InventoryState>` — item instances by status
 - `seasonProvider`: `NotifierProvider<SeasonNotifier, Season>` — current season
 - `fogResolverProvider`: `Provider<FogStateResolver>` — singleton fog computation (watches cellServiceProvider)
 - `cellServiceProvider`: `Provider<CellService>` — singleton CellCache(LazyVoronoiCellService)

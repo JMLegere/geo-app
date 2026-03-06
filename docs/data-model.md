@@ -18,8 +18,12 @@ All domain models, database schema, and persistence contracts.
 
 | Class | Fields | Equality | Notes |
 |-------|--------|----------|-------|
-| `SpeciesRecord` | scientificName, commonName, taxonomicClass, continents: `List<Continent>`, habitats: `List<Habitat>`, iucnStatus | `scientificName` only | Loaded from JSON (32,752 records) |
-| `CollectedSpecies` | speciesId, collectedAt, cellId | all fields | Player collection entry |
+| `ItemDefinition` (sealed) | Base class for all item types | — | Subclasses: FaunaDefinition, Flora/Mineral/Fossil/Artifact (planned) |
+| `FaunaDefinition` | scientificName, commonName, taxonomicClass, continents: `List<Continent>`, habitats: `List<Habitat>`, iucnStatus | `scientificName` only | Loaded from JSON (32,752 records) |
+| `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
+| `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |
+| `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact | — | Item type classification |
+| `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |
 
@@ -48,7 +52,7 @@ All models are immutable with manual `toJson()`/`fromJson()`. No code generation
 }
 ```
 
-Loaded at startup by `SpeciesDataLoader`. Parsed into `List<SpeciesRecord>`.
+Loaded at startup by `SpeciesDataLoader`. Parsed into `List<FaunaDefinition>`.
 
 ### ESA WorldCover → Habitat Mapping
 
@@ -89,17 +93,20 @@ Loaded at startup by `SpeciesDataLoader`. Parsed into `List<SpeciesRecord>`.
 
 Unique constraint: `{userId, cellId}`
 
-### LocalCollectedSpeciesTable
+### LocalItemInstanceTable
 
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
-| `id` | text PK | — | |
+| `id` | text PK | — | UUID v4 |
 | `userId` | text | — | |
-| `speciesId` | text | — | |
-| `cellId` | text | — | |
-| `collectedAt` | datetime | now | |
-
-Unique constraint: `{userId, speciesId, cellId}`
+| `definitionId` | text | — | References ItemDefinition (e.g., scientificName for fauna) |
+| `categoryName` | text | — | Stored as enum name: "fauna", "flora", etc. |
+| `affixesJson` | text | — | JSON-serialized List<Affix> |
+| `parentAId` | text | nullable | For breeding lineage |
+| `parentBId` | text | nullable | For breeding lineage |
+| `dailySeed` | text | nullable | Server validation seed |
+| `status` | text | "active" | Stored as enum name: "active", "donated", etc. |
+| `createdAt` | datetime | — | |
 
 ### LocalPlayerProfileTable
 
@@ -120,7 +127,7 @@ Unique constraint: `{userId, speciesId, cellId}`
 |------------|-------|---------------|
 | `ProfileRepository` | LocalPlayerProfile | `create`, `read(userId)`, `update`, `updateCurrentStreak`, `addDistance`, `getAllProfiles` |
 | `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState` |
-| `CollectionRepository` | LocalCollectedSpecies | `addSpecies`, `removeSpecies`, `isCollected`, `getCollectedByUser`, `getCollectedByCell`, `getUniqueSpeciesIds` |
+| `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `delete(id)`, `readByStatus(userId, status)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 
@@ -137,10 +144,10 @@ Feature code → Repository method → AppDatabase → SQLite
 When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-only. No sync queue — writes go directly.
 
 ### Design Target: Inventory Model
-> These describe the INTENDED design, not current implementation. See `game-design.md`.
+> Phase 1 COMPLETE. ItemInstance model is now live. Remaining: breeding, bundles, museum, daily seed.
 
-Current model: `CollectedSpecies` is a binary flag (collected or not, unique per user+species+cell).
-Target model: Species as inventory items with quantity tracking.
+Current model: `ItemInstance` with affixes, status lifecycle, breeding lineage fields.
+Target model: Full breeding system, bundles, museum donations, daily seed rotation.
 
 Key changes planned:
 - Species stacked in Pack (inventory): "Mallard ×3" not just "Mallard: collected"

@@ -1,6 +1,6 @@
 # Test Suite
 
-1154 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1156 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -42,7 +42,7 @@ Only 2 mock classes exist (MockCellService variants). Other services are used di
 ## Factory Pattern
 
 `make*()` functions with sensible defaults for test setup:
-- `makeInMemoryDb()`, `makeCellProgress()`, `makeCollectedSpecies()`, `makeProfile()`
+- `makeInMemoryDb()`, `makeCellProgress()`, `makeItemInstance()`, `makeProfile()`
 - `makeSmallCellService()` — VoronoiCellService with 5×5 grid, seed=42
 - `buildSpeciesService()` — SpeciesService from kSpeciesFixtureJson
 

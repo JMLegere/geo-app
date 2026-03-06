@@ -58,7 +58,7 @@ User action → Notifier.method() → state = newState → UI rebuilds
 The "sometimes" is the problem. There's no guaranteed persistence pipeline. Each feature decides independently when/whether to persist. Example:
 - `fogProvider` — NEVER persists (correct — fog is computed)
 - `playerProvider` — persists via `ProfileRepository` (manual calls from caretaking)
-- `collectionProvider` — persists via `CollectionRepository` (on each discovery)
+- `inventoryProvider` — persists via `ItemInstanceRepository` (on each discovery)
 - `achievementProvider` — does NOT persist (state lost on restart)
 
 ---
@@ -126,11 +126,11 @@ App start → SupabaseBootstrap.initialize() (3s timeout)
 
 - `LocalPlayerProfileTable` — display name, streaks, distance, season
 - `LocalCellProgressTable` — per-cell fog state, visits, restoration, distance
-- `LocalCollectedSpeciesTable` — species × user × cell (binary: collected or not)
+- `LocalItemInstanceTable` — item instances with affixes, status, parentage (schema v2)
 
 ### Repository Pattern
 
-3 repositories wrap `AppDatabase`: `ProfileRepository`, `CellProgressRepository`, `CollectionRepository`. All return `Future<T>`. No reactive streams from DB — pull only.
+3 repositories wrap `AppDatabase`: `ProfileRepository`, `CellProgressRepository`, `ItemInstanceRepository`. All return `Future<T>`. No reactive streams from DB — pull only.
 
 ### Supabase Integration
 
@@ -138,7 +138,7 @@ App start → SupabaseBootstrap.initialize() (3s timeout)
 SupabasePersistence (nullable — null when no credentials)
   .upsertProfile()
   .upsertCellProgress()
-  .upsertCollectedSpecies()
+  .upsertItemInstance()
 ```
 
 Write-through: every local write optionally also writes to Supabase. No queue, no retry, no conflict resolution. If Supabase write fails, local data is fine but cloud is stale.
@@ -178,7 +178,7 @@ Write-through: every local write optionally also writes to Supabase. No queue, n
 
 **Input:** `assets/species_data.json` — 32,752 IUCN records, ~6 MB.
 
-**Loading:** `SpeciesDataLoader` reads entire file at startup, parses into `List<SpeciesRecord>`. All species live in memory for the app's lifetime.
+**Loading:** `SpeciesDataLoader` reads entire file at startup, parses into `List<FaunaDefinition>`. All species live in memory for the app's lifetime.
 
 **Querying:** `SpeciesService` filters in-memory list by habitat, continent, season. No index, no pagination — linear scan.
 

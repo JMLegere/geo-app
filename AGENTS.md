@@ -14,8 +14,8 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1154 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 0 issues |
+| Tests | 1156 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | 33 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
 **Run commands:**
@@ -42,10 +42,10 @@ lib/
 │   ├── config/                 # SupabaseConfig (env vars)
 │   ├── database/               # Drift ORM (3 tables)
 │   ├── fog/                    # FogStateResolver (computed visibility)
-│   ├── models/                 # 8 immutable value objects
-│   ├── persistence/            # Repository pattern (4 repos)
+│   ├── models/                 # 12 immutable value objects
+│   ├── persistence/            # Repository pattern (3 repos)
 │   ├── species/                # Loot table, species loader, continent resolver
-│   └── state/                  # Riverpod providers (fog, location, player, collection, season)
+│   └── state/                  # Riverpod providers (fog, location, player, inventory, season)
 ├── features/                   # Feature modules (UI + feature-specific logic)
 │   ├── achievements/           # 🏆 Achievement tracking + toast notifications
 │   ├── auth/                   # 🔐 Mock auth (swappable to Supabase)
@@ -105,7 +105,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 ## Product Architecture (Design Jam Decisions — 2026-03-06)
 
-These are the target architecture decisions from the design jam. They describe WHERE the product is going. The codebase hasn't been migrated yet — current implementation still uses the old patterns (binary CollectedSpecies, map-as-orchestrator, write-through Supabase). When working on new features, build toward these decisions. When reading existing code, understand it predates them.
+These are the target architecture decisions from the design jam. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: GameCoordinator (Phase 2), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
 
 **This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
 
@@ -137,15 +137,15 @@ These are the target architecture decisions from the design jam. They describe W
 - **Read-only offline:** Browse collection, sanctuary, cached map tiles. Fog animates visually but doesn't persist until server confirms.
 - **Full spec:** `docs/ideal-architecture.md`
 
-### Migration Phases (not started)
+### Migration Phases
 
-| Phase | Change | Enables |
-|-------|--------|---------|
-| 1 | Item model (sealed classes, instances, affixes) | Everything downstream |
-| 2 | GameCoordinator (extract from map_screen) | Tab-independent game loop |
-| 3 | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
-| 4 | Daily seed system | Deterministic encounters, social sharing |
-| 5+ | Breeding, bundles, museum, social | Endgame features |
+| Phase | Status | Change | Enables |
+|-------|--------|--------|---------|
+| 1 | **COMPLETE** | Item model (sealed classes, instances, affixes) | Everything downstream |
+| 2 | Not started | GameCoordinator (extract from map_screen) | Tab-independent game loop |
+| 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
+| 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
+| 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
 
 ---
 
@@ -186,7 +186,7 @@ features/X/
 | `NotifierProvider<T, S>` | Mutable state | `achievementProvider`, `authProvider`, `fogProvider` |
 | `Provider<T>` | Stateless service / infrastructure | `seasonServiceProvider`, `syncServiceProvider` |
 | Dual notifiers | State + notification queue | achievements, discovery |
-| `ref.listen()` | React to other provider changes | pack → collectionProvider, sanctuary → playerProvider |
+| `ref.listen()` | React to other provider changes | pack → inventoryProvider, sanctuary → playerProvider |
 | `ref.read()` in methods | One-shot mutations from event handlers | caretaking → playerProvider (bidirectional sync) |
 
 ### Service injection
@@ -249,7 +249,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 
 ### Drift (SQLite) ORM
 
-3 tables: `LocalCellProgressTable`, `LocalCollectedSpeciesTable`, `LocalPlayerProfileTable`.
+3 tables: `LocalCellProgressTable`, `LocalItemInstanceTable`, `LocalPlayerProfileTable`.
 
 **Critical Drift conventions:**
 - `copyWith` uses `Value<T>` wrappers — use `Value(x)` for set, `Value.absent()` for skip
@@ -264,7 +264,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 Each repo wraps `AppDatabase` and provides domain-specific methods:
 - `ProfileRepository` — player profile CRUD
 - `CellProgressRepository` — per-cell fog state + distance + visits
-- `CollectionRepository` — collected species per user per cell
+- `ItemInstanceRepository` — item instances (full CRUD with Drift domain conversion)
 ### Sync architecture
 
 ```
