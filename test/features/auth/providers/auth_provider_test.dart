@@ -263,19 +263,24 @@ void main() {
       expect(container.read(authProvider), equals(stateBeforeSecondCall));
     });
 
-    test('upgradeWithEmail with bad email sets error state', () async {
+    test('upgradeWithEmail with bad email restores anonymous session for retry',
+        () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
+
+      // User starts anonymous — capture pre-upgrade state.
+      final preUpgrade = container.read(authProvider);
+      expect(preUpgrade.isAnonymous, isTrue);
 
       await container.read(authProvider.notifier).upgradeWithEmail(
             email: 'not-an-email',
             password: 'pass123',
           );
 
+      // On failure, the anonymous session is restored so the user can retry.
       final state = container.read(authProvider);
-      expect(state.status, AuthStatus.unauthenticated);
-      expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage, contains('Invalid email format'));
+      expect(state.status, AuthStatus.authenticated);
+      expect(state.isAnonymous, isTrue);
     });
 
     // ── linkOAuth ────────────────────────────────────────────────────────────

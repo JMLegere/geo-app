@@ -78,6 +78,7 @@ class AuthNotifier extends Notifier<AuthState> {
   void _listenToAuthChanges() {
     _authSubscription = _authService!.authStateChanges.listen(
       (user) {
+        if (!ref.mounted) return;
         if (user != null) {
           state = AuthState.authenticated(user);
         } else if (state.status != AuthStatus.guest) {
@@ -219,6 +220,10 @@ class AuthNotifier extends Notifier<AuthState> {
     final service = _authService;
     if (service == null) return;
     if (!state.isAnonymous) return;
+    // Preserve the anonymous session so we can restore it on failure —
+    // AuthState.error() clears the user, which would block retry via the
+    // isAnonymous guard.
+    final previousUser = state.user;
     state = const AuthState.loading();
     try {
       final user = await service.upgradeWithEmail(
@@ -230,7 +235,12 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
       if (!ref.mounted) return;
-      state = AuthState.error(e.message);
+      // Restore anonymous session so the user can retry.
+      if (previousUser != null) {
+        state = AuthState.authenticated(previousUser);
+      } else {
+        state = AuthState.error(e.message);
+      }
     }
   }
 
@@ -243,12 +253,20 @@ class AuthNotifier extends Notifier<AuthState> {
     final service = _authService;
     if (service == null) return;
     if (!state.isAnonymous) return;
+    // Preserve the anonymous session so we can restore it on failure —
+    // same pattern as upgradeWithEmail.
+    final previousUser = state.user;
     try {
       await service.linkOAuthIdentity(provider: provider);
       if (!ref.mounted) return;
     } on AuthException catch (e) {
       if (!ref.mounted) return;
-      state = AuthState.error(e.message);
+      // Restore anonymous session so the user can retry.
+      if (previousUser != null) {
+        state = AuthState.authenticated(previousUser);
+      } else {
+        state = AuthState.error(e.message);
+      }
     }
   }
 
