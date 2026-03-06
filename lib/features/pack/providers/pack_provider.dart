@@ -93,8 +93,8 @@ enum CollectionFilter {
 // State
 // ---------------------------------------------------------------------------
 
-/// Immutable snapshot of the journal subsystem state.
-class JournalState {
+/// Immutable snapshot of the pack subsystem state.
+class PackState {
   /// Full pool of species available to the player.
   final List<SpeciesRecord> allSpecies;
 
@@ -110,7 +110,7 @@ class JournalState {
   /// Active collection filter (default: [CollectionFilter.all]).
   final CollectionFilter collectionFilter;
 
-  const JournalState({
+  const PackState({
     this.allSpecies = const [],
     this.collectedIds = const {},
     this.habitatFilter = HabitatFilter.all,
@@ -152,14 +152,14 @@ class JournalState {
   /// Number of species the player has collected.
   int get collectedCount => collectedIds.length;
 
-  JournalState copyWith({
+  PackState copyWith({
     List<SpeciesRecord>? allSpecies,
     Set<String>? collectedIds,
     HabitatFilter? habitatFilter,
     RarityFilter? rarityFilter,
     CollectionFilter? collectionFilter,
   }) {
-    return JournalState(
+    return PackState(
       allSpecies: allSpecies ?? this.allSpecies,
       collectedIds: collectedIds ?? this.collectedIds,
       habitatFilter: habitatFilter ?? this.habitatFilter,
@@ -173,9 +173,9 @@ class JournalState {
 // Notifier
 // ---------------------------------------------------------------------------
 
-class JournalNotifier extends Notifier<JournalState> {
+class PackNotifier extends Notifier<PackState> {
   @override
-  JournalState build() {
+  PackState build() {
     // Watch species service — rebuilds if the species pool ever changes.
     final speciesService = ref.watch(speciesServiceProvider);
 
@@ -188,7 +188,7 @@ class JournalNotifier extends Notifier<JournalState> {
     // Read collection for initial state (listen handles ongoing changes).
     final collectionIds = ref.read(collectionProvider).collectedSpeciesIds;
 
-    return JournalState(
+    return PackState(
       allSpecies: speciesService.all,
       collectedIds: Set.from(collectionIds),
     );
@@ -217,6 +217,6 @@ class JournalNotifier extends Notifier<JournalState> {
   }
 }
 
-/// Global provider for [JournalNotifier].
-final journalProvider =
-    NotifierProvider<JournalNotifier, JournalState>(JournalNotifier.new);
+/// Global provider for [PackNotifier].
+final packProvider =
+    NotifierProvider<PackNotifier, PackState>(PackNotifier.new);

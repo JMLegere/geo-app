@@ -391,7 +391,7 @@ abstract final class AppTheme {
   /// Badge background colour for each IUCN rarity tier.
   ///
   /// Used consistently across `DiscoveryNotificationOverlay`, species cards,
-  /// and journal filters.  Follows conservation-status convention:
+  /// and pack filters.  Follows conservation-status convention:
   /// green → yellow → orange → red → dark-red → near-black.
   static Color rarityColor(IucnStatus status) => switch (status) {
         IucnStatus.leastConcern => const Color(0xFF4CAF50), // green

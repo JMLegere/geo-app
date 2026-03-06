@@ -4,7 +4,7 @@ import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
-import 'package:fog_of_world/features/journal/widgets/species_card.dart';
+import 'package:fog_of_world/features/pack/widgets/species_card.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

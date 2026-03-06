@@ -7,10 +7,10 @@ import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/journal/screens/journal_screen.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_filter_bar.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_progress_bar.dart';
-import 'package:fog_of_world/features/journal/widgets/species_card.dart';
+import 'package:fog_of_world/features/pack/screens/pack_screen.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
+import 'package:fog_of_world/features/pack/widgets/species_card.dart';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -49,7 +49,7 @@ Future<void> _pumpScreen(WidgetTester tester) async {
     UncontrolledProviderScope(
       container: container,
       child: const MaterialApp(
-        home: JournalScreen(),
+        home: PackScreen(),
       ),
     ),
   );
@@ -63,25 +63,25 @@ Future<void> _pumpScreen(WidgetTester tester) async {
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('JournalScreen', () {
+  group('PackScreen', () {
     testWidgets('renders without error', (tester) async {
       await _pumpScreen(tester);
-      expect(find.byType(JournalScreen), findsOneWidget);
+      expect(find.byType(PackScreen), findsOneWidget);
     });
 
-    testWidgets('shows "Journal" title in AppBar', (tester) async {
+    testWidgets('shows "Pack" title in AppBar', (tester) async {
       await _pumpScreen(tester);
-      expect(find.text('Journal'), findsOneWidget);
+      expect(find.text('Pack'), findsOneWidget);
     });
 
-    testWidgets('shows JournalProgressBar', (tester) async {
+    testWidgets('shows PackProgressBar', (tester) async {
       await _pumpScreen(tester);
-      expect(find.byType(JournalProgressBar), findsOneWidget);
+      expect(find.byType(PackProgressBar), findsOneWidget);
     });
 
-    testWidgets('shows JournalFilterBar', (tester) async {
+    testWidgets('shows PackFilterBar', (tester) async {
       await _pumpScreen(tester);
-      expect(find.byType(JournalFilterBar), findsOneWidget);
+      expect(find.byType(PackFilterBar), findsOneWidget);
     });
 
     testWidgets('shows grid of SpeciesCard widgets', (tester) async {

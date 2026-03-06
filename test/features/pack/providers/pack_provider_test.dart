@@ -7,7 +7,7 @@ import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/core/state/collection_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
+import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -62,10 +62,10 @@ ProviderContainer _makeContainer({List<SpeciesRecord>? species}) {
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('JournalState.filteredSpecies', () {
+  group('PackState.filteredSpecies', () {
     test('initial state has all filters set to "all"', () {
       final container = _makeContainer();
-      final state = container.read(journalProvider);
+      final state = container.read(packProvider);
 
       expect(state.habitatFilter, equals(HabitatFilter.all));
       expect(state.rarityFilter, equals(RarityFilter.all));
@@ -74,7 +74,7 @@ void main() {
 
     test('initial filteredSpecies returns all species', () {
       final container = _makeContainer();
-      final state = container.read(journalProvider);
+      final state = container.read(packProvider);
 
       expect(state.filteredSpecies.length, equals(_testSpecies.length));
     });
@@ -82,10 +82,10 @@ void main() {
     test('setHabitatFilter(forest) returns only forest species', () {
       final container = _makeContainer();
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setHabitatFilter(HabitatFilter.forest);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
       expect(filtered.first.commonName, equals('Red Fox'));
@@ -94,10 +94,10 @@ void main() {
     test('setHabitatFilter(plains) returns only plains species', () {
       final container = _makeContainer();
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setHabitatFilter(HabitatFilter.plains);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
       expect(filtered.first.commonName, equals('African Elephant'));
@@ -106,10 +106,10 @@ void main() {
     test('setRarityFilter(endangered) returns only endangered species', () {
       final container = _makeContainer();
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setRarityFilter(RarityFilter.endangered);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
       expect(filtered.first.commonName, equals('African Elephant'));
@@ -118,10 +118,10 @@ void main() {
     test('setRarityFilter(vulnerable) returns only vulnerable species', () {
       final container = _makeContainer();
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setRarityFilter(RarityFilter.vulnerable);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
       expect(filtered.first.commonName, equals('Snow Leopard'));
@@ -133,10 +133,10 @@ void main() {
       container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
 
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setCollectionFilter(CollectionFilter.collected);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(1));
       expect(filtered.first.id, equals(_forestLC.id));
@@ -149,10 +149,10 @@ void main() {
       container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
 
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setCollectionFilter(CollectionFilter.undiscovered);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
 
       expect(filtered.length, equals(2));
       expect(
@@ -166,13 +166,13 @@ void main() {
 
       // Set forest + endangered — no species matches both
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setHabitatFilter(HabitatFilter.forest);
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setRarityFilter(RarityFilter.endangered);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
       expect(filtered, isEmpty);
     });
 
@@ -180,13 +180,13 @@ void main() {
       final container = _makeContainer();
 
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setHabitatFilter(HabitatFilter.plains);
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setRarityFilter(RarityFilter.endangered);
 
-      final filtered = container.read(journalProvider).filteredSpecies;
+      final filtered = container.read(packProvider).filteredSpecies;
       expect(filtered.length, equals(1));
       expect(filtered.first.commonName, equals('African Elephant'));
     });
@@ -196,49 +196,49 @@ void main() {
 
       // Default — all 3
       expect(
-        container.read(journalProvider).filteredSpecies.length,
+        container.read(packProvider).filteredSpecies.length,
         equals(3),
       );
 
       // After habitat filter — only 1
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .setHabitatFilter(HabitatFilter.mountain);
       expect(
-        container.read(journalProvider).filteredSpecies.length,
+        container.read(packProvider).filteredSpecies.length,
         equals(1),
       );
     });
   });
 
-  group('JournalState counts', () {
+  group('PackState counts', () {
     test('totalCount reflects allSpecies length', () {
       final container = _makeContainer();
-      expect(container.read(journalProvider).totalCount, equals(3));
+      expect(container.read(packProvider).totalCount, equals(3));
     });
 
     test('collectedCount reflects collectedIds', () {
       final container = _makeContainer();
 
-      expect(container.read(journalProvider).collectedCount, equals(0));
+      expect(container.read(packProvider).collectedCount, equals(0));
 
       container.read(collectionProvider.notifier).addSpecies(_forestLC.id);
       container.read(collectionProvider.notifier).addSpecies(_plainsEN.id);
 
-      // Force the journal listener to fire by triggering a read
+      // Force the pack listener to fire by triggering a read
       // (listeners run synchronously in ProviderContainer in tests)
-      container.read(journalProvider);
+      container.read(packProvider);
 
-      expect(container.read(journalProvider).collectedCount, equals(2));
+      expect(container.read(packProvider).collectedCount, equals(2));
     });
 
     test('collectedCount starts at zero when collection is empty', () {
       final container = _makeContainer();
-      expect(container.read(journalProvider).collectedCount, equals(0));
+      expect(container.read(packProvider).collectedCount, equals(0));
     });
   });
 
-  group('JournalNotifier mutation methods', () {
+  group('PackNotifier mutation methods', () {
     test('updateSpecies replaces the species list', () {
       final container = _makeContainer();
       final extra = SpeciesRecord(
@@ -250,10 +250,10 @@ void main() {
         iucnStatus: IucnStatus.nearThreatened,
       );
 
-      container.read(journalProvider.notifier).updateSpecies([extra]);
-      expect(container.read(journalProvider).allSpecies.length, equals(1));
+      container.read(packProvider.notifier).updateSpecies([extra]);
+      expect(container.read(packProvider).allSpecies.length, equals(1));
       expect(
-        container.read(journalProvider).allSpecies.first.commonName,
+        container.read(packProvider).allSpecies.first.commonName,
         equals('Jaguar'),
       );
     });
@@ -262,19 +262,19 @@ void main() {
       final container = _makeContainer();
 
       container
-          .read(journalProvider.notifier)
+          .read(packProvider.notifier)
           .updateCollectedIds({_forestLC.id, _plainsEN.id});
 
-      expect(container.read(journalProvider).collectedIds.length, equals(2));
+      expect(container.read(packProvider).collectedIds.length, equals(2));
       expect(
-        container.read(journalProvider).collectedIds,
+        container.read(packProvider).collectedIds,
         containsAll([_forestLC.id, _plainsEN.id]),
       );
     });
 
     test('filter methods preserve other filter state', () {
       final container = _makeContainer();
-      final notifier = container.read(journalProvider.notifier);
+      final notifier = container.read(packProvider.notifier);
 
       notifier.setHabitatFilter(HabitatFilter.forest);
       notifier.setRarityFilter(RarityFilter.leastConcern);
@@ -282,7 +282,7 @@ void main() {
       // Change only collection filter
       notifier.setCollectionFilter(CollectionFilter.undiscovered);
 
-      final state = container.read(journalProvider);
+      final state = container.read(packProvider);
       expect(state.habitatFilter, equals(HabitatFilter.forest));
       expect(state.rarityFilter, equals(RarityFilter.leastConcern));
       expect(state.collectionFilter, equals(CollectionFilter.undiscovered));

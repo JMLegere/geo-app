@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
-/// Horizontal scrolling filter bar for the collection journal.
+/// Horizontal scrolling filter bar for the collection pack.
 ///
 /// Renders three groups of [FilterChip]s:
 /// - Collection status: All / Collected / Undiscovered
@@ -12,7 +11,7 @@ import 'package:fog_of_world/shared/earth_nova_theme.dart';
 /// - Rarity: All / LC / NT / VU / EN / CR / EX
 ///
 /// Each group is separated by a subtle [VerticalDivider].
-class JournalFilterBar extends StatelessWidget {
+class PackFilterBar extends StatelessWidget {
   final CollectionFilter collectionFilter;
   final HabitatFilter habitatFilter;
   final RarityFilter rarityFilter;
@@ -21,7 +20,7 @@ class JournalFilterBar extends StatelessWidget {
   final ValueChanged<HabitatFilter> onHabitatFilterChanged;
   final ValueChanged<RarityFilter> onRarityFilterChanged;
 
-  const JournalFilterBar({
+  const PackFilterBar({
     super.key,
     required this.collectionFilter,
     required this.habitatFilter,

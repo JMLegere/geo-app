@@ -6,7 +6,7 @@ import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
 
-/// Grid card representing a single species in the collection journal.
+/// Grid card representing a single species in the collection pack.
 ///
 /// ## Collected state
 /// - Watercolor-inspired gradient background keyed to the species' primary habitat.

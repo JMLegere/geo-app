@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_filter_bar.dart';
+import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -19,7 +19,7 @@ Future<void> _pumpBar(
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: JournalFilterBar(
+        body: PackFilterBar(
           collectionFilter: collectionFilter,
           habitatFilter: habitatFilter,
           rarityFilter: rarityFilter,
@@ -37,10 +37,10 @@ Future<void> _pumpBar(
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('JournalFilterBar', () {
+  group('PackFilterBar', () {
     testWidgets('renders without error', (tester) async {
       await _pumpBar(tester);
-      expect(find.byType(JournalFilterBar), findsOneWidget);
+      expect(find.byType(PackFilterBar), findsOneWidget);
     });
 
     testWidgets('renders collection filter chips', (tester) async {

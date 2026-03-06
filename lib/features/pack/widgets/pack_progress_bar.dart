@@ -5,12 +5,12 @@ import 'package:fog_of_world/shared/earth_nova_theme.dart';
 /// Compact progress indicator showing how many species the player has collected.
 ///
 /// Displays "X / Y collected" label above a [LinearProgressIndicator].
-/// Used at the top of JournalScreen below the AppBar.
-class JournalProgressBar extends StatelessWidget {
+/// Used at the top of PackScreen below the AppBar.
+class PackProgressBar extends StatelessWidget {
   final int collected;
   final int total;
 
-  const JournalProgressBar({
+  const PackProgressBar({
     super.key,
     required this.collected,
     required this.total,

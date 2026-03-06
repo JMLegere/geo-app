@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_filter_bar.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_progress_bar.dart';
-import 'package:fog_of_world/features/journal/widgets/species_card.dart';
-import 'package:fog_of_world/features/journal/widgets/species_detail_sheet.dart';
+import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
+import 'package:fog_of_world/features/pack/widgets/species_card.dart';
+import 'package:fog_of_world/features/pack/widgets/species_detail_sheet.dart';
 import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
-/// Main collection journal screen.
+/// Main collection pack screen.
 ///
-/// Assembles [JournalProgressBar], [JournalFilterBar], and a 2-column
+/// Assembles [PackProgressBar], [PackFilterBar], and a 2-column
 /// [GridView] of [SpeciesCard] widgets. Tapping a card opens
 /// [SpeciesDetailSheet] as a modal bottom sheet.
 ///
 /// This is a standalone screen — it does not depend on MapScreen or any
 /// map-specific providers.
-class JournalScreen extends ConsumerWidget {
-  const JournalScreen({super.key});
+class PackScreen extends ConsumerWidget {
+  const PackScreen({super.key});
 
-  Widget _buildEmptyState(JournalState state) {
+  Widget _buildEmptyState(PackState state) {
     // Nothing collected yet — show exploration prompt.
     final hasActiveCollectionFilter =
         state.collectionFilter == CollectionFilter.collected;
@@ -51,8 +51,8 @@ class JournalScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(journalProvider);
-    final notifier = ref.read(journalProvider.notifier);
+    final state = ref.watch(packProvider);
+    final notifier = ref.read(packProvider.notifier);
     final filtered = state.filteredSpecies;
 
     return Scaffold(
@@ -63,8 +63,8 @@ class JournalScreen extends ConsumerWidget {
         scrolledUnderElevation: 0.5,
         shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
         title: Text(
-          'Journal',
-          style: TextStyle(
+           'Pack',
+           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
             color: Theme.of(context).colorScheme.onSurface,
@@ -75,14 +75,14 @@ class JournalScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Progress bar
-          JournalProgressBar(
-            collected: state.collectedCount,
-            total: state.totalCount,
-          ),
+           // Progress bar
+           PackProgressBar(
+             collected: state.collectedCount,
+             total: state.totalCount,
+           ),
 
-          // Filter bar
-          JournalFilterBar(
+           // Filter bar
+           PackFilterBar(
             collectionFilter: state.collectionFilter,
             habitatFilter: state.habitatFilter,
             rarityFilter: state.rarityFilter,

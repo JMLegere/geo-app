@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/journal/widgets/journal_progress_bar.dart';
+import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -14,7 +14,7 @@ Future<void> _pumpBar(
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        body: JournalProgressBar(
+        body: PackProgressBar(
           collected: collected,
           total: total,
         ),
@@ -28,10 +28,10 @@ Future<void> _pumpBar(
 // ---------------------------------------------------------------------------
 
 void main() {
-  group('JournalProgressBar', () {
+  group('PackProgressBar', () {
     testWidgets('renders without error', (tester) async {
       await _pumpBar(tester, collected: 0, total: 30);
-      expect(find.byType(JournalProgressBar), findsOneWidget);
+      expect(find.byType(PackProgressBar), findsOneWidget);
     });
 
     testWidgets('shows "0 / 30 collected" when nothing collected',
