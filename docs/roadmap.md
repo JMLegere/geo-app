@@ -38,26 +38,39 @@ New tab showing discovered NPCs.
 
 ---
 
-## Initiative 2: Inventory Model Overhaul
+## Initiative 2: Item System Overhaul
 
-**KEY SHIFT**: Species as inventory items with quantity, not binary collected flags. Touches persistence, state, and every downstream consumer.
+**KEY SHIFT**: Everything is an item. Each instance is unique with randomly-rolled affixes (PoE/CryptoKitty model). 5 categories: Fauna, Flora, Mineral, Fossil, Artifact. Breeding produces offspring with trait inheritance. See [item-system-design.md](item-system-design.md).
 
-### Project 2.1: Database Schema Migration — Planned
-- [ ] Migrate `LocalCollectedSpeciesTable` from binary flag to quantity-tracked model
-- [ ] Add `quantity` column (or individual instance tracking)
-- [ ] Migrate `CollectionRepository` to support add/remove/count operations
-- [ ] Write data migration for existing collected species (each becomes quantity=1)
+### Project 2.1: Item Model Foundation — Planned
+- [ ] Create `ItemDefinition` sealed class hierarchy (Fauna, Flora, Mineral, Fossil, Artifact)
+- [ ] Create `ItemInstance` model with affix list + parentage fields
+- [ ] Create `Affix` model (prefix/suffix with flexible key-value stats)
+- [ ] Convert existing `SpeciesRecord` → `FaunaDefinition` (adapter, not replace yet)
 
-### Project 2.2: Inventory State Management — Planned
-- [ ] Create `InventoryNotifier` (replaces collection notifier for inventory operations)
-- [ ] Support stacking: group by species ID, show count
-- [ ] Support consumption: donate (permanent remove), place (flexible remove), release (permanent remove)
-- [ ] Update `collectionProvider` downstream consumers
+### Project 2.2: Database Schema Migration — Planned
+- [ ] Add `LocalItemInstanceTable` to Drift schema (parallel to existing, not replacing yet)
+- [ ] Add `item_instances` table to Supabase with RLS
+- [ ] Create `ItemInstanceRepository` for local cache CRUD
+- [ ] Data migration: existing collected species → ItemInstance with 0 affixes
 
-### Project 2.3: Supabase Sync Updates — Planned
-- [ ] Update Supabase schema for inventory model
-- [ ] Update `SupabasePersistence` upsert methods for quantity tracking
-- [ ] Ensure offline-first: SQLite remains source of truth
+### Project 2.3: Inventory State Management — Planned
+- [ ] Create `InventoryNotifier` (parallel to existing `CollectionNotifier`)
+- [ ] Wire to `ItemInstanceRepository` for persistence
+- [ ] Support lifecycle transitions: active → donated / placed / released / traded
+- [ ] Migrate downstream consumers (pack, sanctuary, achievements) from collection → inventory
+
+### Project 2.4: Affix Rolling System — Planned
+- [ ] Create `AffixRoller` service (deterministic: seed + cellId + definitionId → affixes)
+- [ ] Rarity-gated pool depth (LC = 0-1 affixes, CR/EX = more/better)
+- [ ] Integrate with discovery pipeline (each encounter rolls unique affixes)
+- [ ] Affix pool definitions TBD — schema supports arbitrary stats
+
+### Project 2.5: Breeding System — Future
+- [ ] Create `BreedingService` (server-validated trait inheritance)
+- [ ] Breeding UI: select two parents → server returns offspring
+- [ ] Trait inheritance rules TBD (dominant/recessive, mutation rate)
+- [ ] Parent lineage tracking (parentAId, parentBId on offspring)
 
 ---
 
@@ -81,11 +94,14 @@ Evolve from auto-collect toast → TCG-style rarity-scaled reveals.
 - [ ] Species goes to Pack inventory after photograph/auto-collect
 
 ### Project 3.3: Daily World Seed — Planned
-- [ ] Implement midnight GMT seed rotation (seed = date + cellId, client-side)
+- [ ] Server generates seed per calendar day (midnight GMT rotation)
+- [ ] Client fetches seed on app open, caches locally (24h TTL)
 - [ ] First visit: permanent species seeded by cell ID (existing behavior)
-- [ ] Repeat visits: daily rotation pool from world seed
+- [ ] Repeat visits: daily rotation pool from server seed
+- [ ] Deterministic: `hash(seed + cellId + definitionId)` → same result for all players
+- [ ] Server re-derives offline rolls for validation on reconnect
+- [ ] Stale seed (>24h offline) → discoveries pause until reconnect
 - [ ] Show "daily species" indicator on map cells
-- [ ] Respawn cycle: cells offer new species each day
 
 ### Project 3.4: Adjacent Cell Previews — Planned
 - [ ] Show silhouettes/glows of species in adjacent fogged cells
@@ -313,10 +329,12 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [x] Automated `flutter test` + `flutter analyze` on push/PR to main
 - [ ] Automated web build + deploy to Railway
 
-### Project 13.3: Real-Time Supabase Sync — Future
-- [ ] Replace manual sync with real-time subscriptions
-- [ ] Conflict resolution for offline-first + cloud sync
-- [ ] Sync status indicator in UI
+### Project 13.3: Server-Authoritative Sync — Future
+- [ ] Supabase is source of truth (not SQLite)
+- [ ] Write queue: offline actions queued locally, flushed on reconnect, server validates
+- [ ] No conflict resolution needed — server wins, rejected actions roll back
+- [ ] Real-time subscriptions for multi-device state sync
+- [ ] Sync status indicator in UI (pending count, flush progress)
 
 ### Project 13.4: Analytics & Engagement — Future
 - [ ] Event tracking (species collected, cells visited, sessions, retention)
@@ -391,18 +409,21 @@ Current: binary `CollectedSpecies` (collected or not). Target: quantity-tracked 
 - Provider rewiring (collectionProvider consumers → inventoryProvider)
 - Data migration for existing users (each collected species → quantity=1)
 
-### TR-2: Event-Sourced State Persistence (blocks: reliable sync, undo, replay)
-Current: in-memory Riverpod notifiers with manual DB writes. State and persistence are decoupled — easy to lose data.
-- Define domain events (SpeciesCollected, CellVisited, StreakUpdated, etc.)
-- Event store (append-only SQLite table or dedicated event log)
-- Notifiers rebuild from event stream, not ad-hoc state
-- Supabase sync becomes event replication, not row-level upsert
+### TR-2: Write Queue & Server-Authoritative Persistence (blocks: reliable sync, offline resilience)
+Current: in-memory Riverpod notifiers with write-through Supabase. No queue, no conflict handling.
+- Write queue in SQLite: pending actions stored locally, flushed on reconnect
+- Queue entries: `{ type, payload, timestamp, status: pending|confirmed|rejected }`
+- Server validates and confirms; rejected actions roll back locally
+- NOT event sourcing — write queue is temporary outbox, server is the permanent record
+- Supabase is source of truth; SQLite mirrors server state + holds queue
 
-### TR-3: Map Feature Decomposition (blocks: maintainability at scale)
-Current: `map/` is a "god feature" (25 files) that orchestrates fog, discovery, location, biome, seasonal, camera, GeoJSON rendering.
-- Extract map orchestration into a dedicated game loop service
-- Move discovery subscription out of map_screen into a standalone coordinator
-- Separate rendering concerns (GeoJSON layers) from game logic (fog transitions)
+### TR-3: GameCoordinator Extraction (blocks: tab-independent game loop, background discoveries)
+Current: `map/` is a "god feature" (25 files) that orchestrates fog, discovery, location, biome, seasonal, camera, GeoJSON rendering. Game stops when map unmounts.
+- Extract GameCoordinator as pure Dart service at ProviderScope level (runs forever)
+- Owns: GPS subscription, game loop tick, fog computation, discovery processing, write queue, daily seed cache, streaks, restoration
+- Does NOT own: map rendering, camera, widget state, toast UI
+- Map screen becomes renderer only: reads GameCoordinator state → renders GeoJSON layers
+- New directory: `lib/core/game/` (game_coordinator.dart, game_state.dart, write_queue.dart, daily_seed_service.dart)
 
 ### TR-4: Service Locator / DI Cleanup (blocks: testability, modularity)
 Current: services are created inline in notifiers or via `Provider<T>`. No formal DI.
@@ -414,15 +435,17 @@ Current: services are created inline in notifiers or via `Provider<T>`. No forma
 Current: 6 MB monolithic JSON asset loaded at startup into memory.
 - Lazy loading or pagination for species queries
 - Index by habitat, continent, rarity for efficient loot table lookups
-- Daily seed integration (cell × date → deterministic species pool)
-- Extensibility for non-fauna categories (plants, minerals, fossils)
+- Daily seed integration: server generates seed per day (midnight GMT), client caches for 24h, deterministic roll = `hash(seed + cellId + definitionId)`
+- Server re-derives any offline roll for validation
+- Extensibility for non-fauna categories (plants, minerals, fossils, artifacts)
 
-### TR-6: Sync Architecture (blocks: multi-device, real-time features)
+### TR-6: Server-Authoritative Sync (blocks: multi-device, real-time features, anti-cheat)
 Current: write-through to Supabase (no queue, no conflict resolution, manual trigger).
-- Offline queue with retry for unreliable connections
-- Conflict resolution strategy (last-write-wins vs merge)
-- Real-time subscriptions for multi-device sync
-- Sync status observability (what's pending, what failed)
+- Server-authoritative: Supabase is source of truth, not SQLite
+- Write queue flushes on reconnect; server validates each action (seed-based re-derivation)
+- No conflict resolution needed — server wins, rejected actions roll back locally
+- Real-time subscriptions for multi-device state sync (future)
+- Sync status observability (pending count, flush progress, rejections)
 
 ---
 

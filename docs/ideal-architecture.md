@@ -1,313 +1,373 @@
 # Ideal Architecture
 
-> Where the architecture should evolve for the current product vision. For how it works today, see [current-architecture.md](current-architecture.md). For the implementation bridge, see the Technical Roadmap in [roadmap.md](roadmap.md).
+> Where the architecture should evolve. Joint decisions from the design jam (2026-03-06). For how it works today, see [current-architecture.md](current-architecture.md). For implementation order, see the Technical Roadmap in [roadmap.md](roadmap.md).
 
 ---
 
 ## Design Principles
 
-1. **Offline-first remains non-negotiable.** SQLite is always the source of truth. Cloud is a replication target, not a dependency.
-2. **Event-sourced state.** Every meaningful game action produces a domain event. State is derived from events. This enables sync, replay, undo, and audit.
-3. **Features are autonomous.** No god feature. Each feature owns its slice of the game loop and can be enabled/disabled independently.
-4. **Data scales lazily.** Species, cells, and game content load on-demand, not at startup. The app should handle 100k+ records without startup cost.
-5. **The map is a renderer, not an orchestrator.** Game logic lives in services. The map renders the result.
+1. **Server-authoritative.** Supabase is the source of truth. SQLite is a local cache and offline write queue.
+2. **Offline-resilient.** Read-only offline. Client rolls encounters using cached daily seed (24h grace). Server validates on reconnect.
+3. **Everything is an item.** Species, plants, minerals, fossils, artifacts — all items. Each instance has unique randomly-rolled affixes. Collections are bundles of items.
+4. **The map is a renderer, not an orchestrator.** Game logic lives in GameCoordinator. Map renders the result.
+5. **Build for the endgame.** Schema and services designed for the full product vision (5 item categories, breeding, NPCs, quests, trading, social).
 
 ---
 
 ## Target System Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                       Flutter App                             │
-│                                                               │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │  Map Screen  │  │  Pack Screen  │  │  Museum / Town     │  │
-│  │  (renderer)  │  │  (inventory)  │  │  Sanctuary Screen  │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬───────────┘  │
-│         │                 │                    │              │
-│  ┌──────▼─────────────────▼────────────────────▼───────────┐ │
-│  │                Feature Coordinators                      │ │
-│  │  ExplorationCoordinator · DiscoveryCoordinator           │ │
-│  │  InventoryCoordinator · MuseumCoordinator                │ │
-│  │  NPCCoordinator · QuestCoordinator                       │ │
-│  └──────────────────────┬──────────────────────────────────┘ │
-│                         │                                     │
-│  ┌──────────────────────▼──────────────────────────────────┐ │
-│  │                   Domain Services                        │ │
-│  │  FogService · CellService · SpeciesService               │ │
-│  │  LootService · SeasonService · BiomeService              │ │
-│  │  StreakService · RestorationService                      │ │
-│  └──────────────────────┬──────────────────────────────────┘ │
-│                         │                                     │
-│  ┌──────────────────────▼──────────────────────────────────┐ │
-│  │                   Event Bus + State                       │ │
-│  │  Domain Events → Event Store → Projections (Notifiers)   │ │
-│  └──────────────────────┬──────────────────────────────────┘ │
-│                         │                                     │
-│  ┌──────────────────────▼──────────────────────────────────┐ │
-│  │                   Persistence                             │ │
-│  │  Event Store (SQLite) · Repositories · Sync Engine       │ │
-│  └──────────────────────┬──────────────────────────────────┘ │
-│                         │                                     │
-│  ┌──────────────────────▼──────────────────────────────────┐ │
-│  │                   External                                │ │
-│  │  Supabase (sync) · GPS · Weather API · Tile Provider     │ │
-│  └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                         Flutter App                               │
+│                                                                   │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐ │
+│  │ Map Screen  │  │ Home Screen│  │ Town Screen│  │ Pack Screen│ │
+│  │ (renderer)  │  │ (sanctuary)│  │ (NPCs)     │  │ (inventory)│ │
+│  └─────┬───────┘  └─────┬──────┘  └─────┬──────┘  └─────┬──────┘ │
+│        └────────────────┼────────────────┼───────────────┘        │
+│                         │                                         │
+│  ┌──────────────────────▼──────────────────────────────────────┐ │
+│  │                  GameCoordinator                             │ │
+│  │  Pure Dart service. Owns GPS → game logic → write queue.    │ │
+│  │  Runs independently of any screen. Never stops on tab switch.│ │
+│  └──────────────────────┬──────────────────────────────────────┘ │
+│                         │                                         │
+│  ┌──────────────────────▼──────────────────────────────────────┐ │
+│  │                  Domain Services                             │ │
+│  │  FogService · CellService · SpeciesService · LootService    │ │
+│  │  SeasonService · BiomeService · BreedingService             │ │
+│  │  AffixRoller · DailySeedService                             │ │
+│  └──────────────────────┬──────────────────────────────────────┘ │
+│                         │                                         │
+│  ┌──────────────────────▼──────────────────────────────────────┐ │
+│  │                  State Layer (Riverpod)                       │ │
+│  │  Notifiers project from server state + local cache.          │ │
+│  │  UI watches notifiers. GameCoordinator emits via Stream.     │ │
+│  └──────────────────────┬──────────────────────────────────────┘ │
+│                         │                                         │
+│  ┌──────────────────────▼──────────────────────────────────────┐ │
+│  │                  Persistence                                  │ │
+│  │  SQLite (local cache) · Write Queue · Repositories          │ │
+│  └──────────────────────┬──────────────────────────────────────┘ │
+│                         │                                         │
+│  ┌──────────────────────▼──────────────────────────────────────┐ │
+│  │                  Server (Supabase)                            │ │
+│  │  Source of truth. Auth · Game state · Daily seed ·           │ │
+│  │  Encounter validation · Leaderboards · Social                │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │                  External                                     │ │
+│  │  GPS (device) · Tile Provider · Weather API (future)         │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Key Architectural Shifts
 
-### 1. Event-Sourced State (biggest change)
+### 1. Server-Authoritative with Offline Resilience
 
-**Current:** Notifiers hold state. Persistence is a manual afterthought.
-**Ideal:** Every game action emits a domain event. Notifiers project from events.
-
-```
-Domain Events (append-only):
-  SpeciesCollected { cellId, speciesId, quantity, timestamp }
-  CellVisited { cellId, position, timestamp }
-  StreakUpdated { current, longest, timestamp }
-  SpeciesDonated { speciesId, museumWing, timestamp }
-  SpeciesPlaced { speciesId, sanctuaryTile, timestamp }
-  SpeciesReleased { speciesId, timestamp }
-  QuestAccepted { questId, npcId, timestamp }
-  QuestCompleted { questId, reward, timestamp }
-  NPCDiscovered { npcId, location, timestamp }
-  ...
-
-Event Store (SQLite table):
-  id | type | payload (JSON) | timestamp | synced
-
-Projections (Notifiers rebuild from events):
-  InventoryNotifier → replay SpeciesCollected/Donated/Placed/Released → current inventory
-  FogNotifier → replay CellVisited → visited set → compute fog (unchanged)
-  AchievementNotifier → replay all events → evaluate achievements
-```
-
-**Why this matters:**
-- **Sync becomes event replication.** Send unsent events to Supabase. Receive events from other devices. Merge by timestamp.
-- **No data loss.** Every action is logged. Achievement state survives restart.
-- **Undo is free.** Remove last event, re-project.
-- **Analytics is free.** Events ARE the analytics.
-
-**Migration path:** Start with `SpeciesCollected` events (needed for inventory model). Expand to other events incrementally. Existing notifiers become projections over the event store instead of standalone state holders.
-
-### 2. Feature Coordinators (decompose the god feature)
-
-**Current:** `map_screen.dart` runs GPS, game logic, fog, discovery, camera, rendering.
-**Ideal:** Coordinators own game logic. Screens are pure renderers.
+**Current:** SQLite is source of truth. Supabase is optional write-through backup.
+**Ideal:** Supabase is source of truth. SQLite is local cache + offline write queue.
 
 ```
-ExplorationCoordinator (lives in core/, not features/):
-  - Owns GPS subscription lifecycle
-  - Runs game loop tick (fog computation, cell visits)
-  - Independent of any screen — runs even when map isn't visible
-  - Emits domain events (CellVisited, FogUpdated)
+ONLINE FLOW:
+  Player enters cell → client sends claim to server →
+  server rolls encounter (or validates client roll) →
+  server writes to DB → server responds with confirmed discovery →
+  client caches in SQLite → UI shows discovery
 
-DiscoveryCoordinator:
-  - Listens to CellVisited events
-  - Runs species loot rolls
-  - Emits SpeciesCollected events
-  - Handles daily seed rotation
+OFFLINE FLOW:
+  Player enters cell → client rolls encounter using cached daily seed →
+  UI shows discovery (optimistic, marked "syncing...") →
+  action queued in local write queue →
+  on reconnect: queue flushes to server →
+  server re-derives roll from seed + cellId →
+  match? confirmed. mismatch? rolled back.
+```
 
-InventoryCoordinator:
-  - Manages species inventory (add, donate, place, release)
-  - Emits SpeciesDonated, SpeciesPlaced, SpeciesReleased events
-  - Enforces museum permanence rule
+**Daily seed system:**
+- Server generates a seed per calendar day (midnight GMT rotation)
+- Client fetches seed on app open (cached locally)
+- Same seed + same cellId + same algorithm = same result for all players
+- Enables deterministic offline encounters AND server validation
+- Creates "Wordle effect" — social sharing of daily finds
+- Seed cached for 24h — offline grace period until next rotation
+- Stale seed (next day, still offline) → discoveries pause
 
-MapScreen (renderer only):
-  - Reads fog state → renders GeoJSON layers
-  - Reads player position → renders marker
+**Write queue:**
+- Temporary outbox of "actions taken offline that server doesn't know about"
+- Stored in SQLite (survives app restart)
+- Flushed on reconnect, deleted after server confirms
+- NOT a permanent event log — server is the permanent record
+- Queue entries: `{ type, payload, timestamp, status: pending|confirmed|rejected }`
+
+**What works offline (read-only from cache):**
+- Walk around, see cached map tiles
+- Fog animates visually (doesn't persist until confirmed)
+- Browse existing collection, sanctuary, pack
+- View cached leaderboards, stats
+- Camera / photograph
+
+**What requires server (writes to permanent record):**
+- Discover / collect items (with 24h seed-validated grace)
+- Commit fog reveals (persist visited cells)
+- Unlock achievements
+- Restore cells
+- Increment streaks
+- Trade with other players
+- Submit to leaderboards
+- Complete NPC bundles / quests
+
+### 2. Item Model — Unique Instances with Random Affixes
+
+**Current:** Binary collection — `CollectedSpecies` is a flag per species x cell.
+**Ideal:** Every item is a unique instance with randomly-rolled affixes, like PoE or CryptoKitty.
+
+**5 item categories:**
+
+| Category | Source | Examples |
+|----------|--------|---------|
+| Fauna | 32k IUCN dataset | Red Fox, Amur Leopard, Blue Whale |
+| Flora | TBD dataset | Chanterelle, Oak, Venus Flytrap |
+| Mineral | TBD dataset | Quartz, Obsidian, Emerald |
+| Fossil | TBD dataset | Ammonite, Trilobite, T-Rex Tooth |
+| Artifact | TBD dataset | Arrowhead, Roman Coin, Pottery Shard |
+
+**Item instance model:**
+
+```dart
+// Static blueprint (loaded from asset data)
+sealed class ItemDefinition {
+  String id;
+  String displayName;
+  ItemCategory category;       // fauna, flora, mineral, fossil, artifact
+  IucnStatus? rarity;          // gates affix pool depth
+  List<Habitat> habitats;
+  List<Continent> continents;
+  Season? seasonRestriction;
+  List<String> contextTags;    // flexible metadata
+}
+
+// Concrete types
+class FaunaDefinition extends ItemDefinition { ... }
+class FloraDefinition extends ItemDefinition { ... }
+class MineralDefinition extends ItemDefinition { ... }
+class FossilDefinition extends ItemDefinition { ... }
+class ArtifactDefinition extends ItemDefinition { ... }
+
+// Unique instance — each discovery is a distinct roll
+class ItemInstance {
+  String id;                   // UUID
+  String definitionId;         // → ItemDefinition
+  List<Affix> affixes;         // randomly rolled prefix/suffix stats
+  String? parentAId;           // null for wild-caught
+  String? parentBId;           // null for wild-caught
+  DateTime acquiredAt;
+  String? acquiredInCellId;
+  String? dailySeed;           // seed used for this roll (for validation)
+}
+
+// Affix — arbitrary stat modifier
+class Affix {
+  String key;                  // e.g. "swift", "resilient", "ancient"
+  AffixType type;              // prefix or suffix
+  Map<String, dynamic> values; // flexible stat payload
+}
+```
+
+**Key properties:**
+- Items do NOT stack — each instance is unique (different affixes)
+- Multiple instances of same species allowed (3 Red Foxes, each different)
+- Rarity (IUCN status) gates affix pool: LC = 0-1 affixes, CR/EX = more/better
+- Breeding: two instances → offspring inherits/combines traits (parent_a + parent_b)
+- Collections/bundles: groupings of items with reward on completion
+- Achievements: track item milestones ("discover 100 forest fauna")
+
+### 3. GameCoordinator — Extract from Map Screen
+
+**Current:** `map_screen.dart` (25 files) is a god feature. Owns GPS, fog, discovery, camera, streaks, rendering. Everything stops when map unmounts.
+**Ideal:** GameCoordinator is a pure Dart service that runs above the UI.
+
+```
+GameCoordinator (pure Dart, no Riverpod dependency):
+  OWNS:
+    - GPS subscription lifecycle
+    - Game loop tick (~10 Hz, throttled from GPS 1 Hz)
+    - Fog state computation (visual + pending confirmation)
+    - Discovery processing (roll items on cell visit)
+    - Write queue management (queue offline, flush on reconnect)
+    - Connectivity monitoring (online/offline state)
+    - Daily seed cache (fetch on connect, use offline)
+    - Streak tracking
+    - Restoration progress
+
+  DOES NOT OWN:
+    - Map rendering (MapLibre, GeoJSON layers)
+    - Widget state, navigation
+    - Camera position/mode
+    - Toast/notification UI
+    - RubberBand interpolation (stays in map for 60fps rendering)
+
+  EMITS:
+    - Stream<GameState> — notifiers project from this
+    - Discovery events — UI subscribes for toasts
+    - Connectivity state changes
+    - Write queue status (pending count, flush progress)
+
+  LIFECYCLE:
+    - Created at app start (ProviderScope level)
+    - Runs forever — never stops on tab switch
+    - Disposes on app shutdown
+```
+
+**Directory:**
+```
+lib/core/game/
+  ├── game_coordinator.dart     # Pure Dart service
+  ├── game_state.dart           # Immutable state class
+  ├── write_queue.dart          # Offline action queue
+  └── daily_seed_service.dart   # Seed fetch/cache/validate
+```
+
+**Map screen becomes renderer only:**
+```
+MapScreen:
+  - Reads fog state from GameCoordinator stream → renders GeoJSON layers
+  - Reads player position → renders marker via RubberBand (60fps)
   - Reads camera mode → controls MapLibre camera
   - Zero game logic
 ```
 
-**Why this matters:**
-- Map screen stays small and focused
-- Discovery works even when map isn't mounted (background mode)
-- New mechanics (quests, NPCs, weather) get their own coordinators instead of growing map_screen
-- Each coordinator is independently testable
+### 4. Persistence — Server-First with Local Cache
 
-### 3. Inventory Model (species as items)
+**Current:** 3 SQLite tables (profile, cell progress, collected species). Write-through to Supabase.
+**Ideal:** Server-first. SQLite mirrors server state + holds write queue.
 
-**Current:** Binary collection — `CollectedSpecies` is a unique flag per species × cell.
-**Ideal:** Quantity-tracked inventory items that can be consumed.
+**Local SQLite schema (cache + queue):**
 
 ```
-Inventory Item:
-  speciesId: String
-  quantity: int
-  instances: List<{cellId, collectedAt, dailySeed?}>
+-- Cache of server state
+item_definitions        -- static blueprints (loaded from bundled assets)
+item_instances          -- player's inventory (mirror of server)
+cell_progress           -- visited cells, fog state, restoration
+player_profile          -- stats, streaks, distance
 
-Operations:
-  collect(speciesId, cellId) → quantity++
-  donate(speciesId, museumWing) → quantity-- (permanent, emits SpeciesDonated)
-  place(speciesId, sanctuaryTile) → quantity-- (flexible, emits SpeciesPlaced)
-  release(speciesId) → quantity-- (permanent, emits SpeciesReleased)
-  retrieve(speciesId, sanctuaryTile) → quantity++ (sanctuary placement is reversible)
+-- Offline write queue
+write_queue             -- pending actions for server
+  id TEXT PK
+  type TEXT              -- 'discover', 'visit_cell', 'breed', etc.
+  payload TEXT           -- JSON
+  created_at DATETIME
+  status TEXT            -- 'pending', 'confirmed', 'rejected'
+  daily_seed TEXT        -- seed used (for validation)
+
+-- Local-only
+daily_seed_cache        -- current seed + expiry
 ```
 
-**DB schema change:** Either add `quantity` column to existing table, or move to instance-based tracking (one row per collected instance) for richer metadata.
-
-**Downstream impact:** Every consumer of `collectionProvider` needs updating — pack, sanctuary, achievements, discovery, sync.
-
-### 4. Lazy Species Data
-
-**Current:** 6 MB JSON loaded into memory at startup.
-**Ideal:** Indexed SQLite table queried on-demand.
+**Supabase schema (source of truth):**
 
 ```
-species table (SQLite, populated from JSON on first launch):
-  scientificName TEXT PK
-  commonName TEXT
-  taxonomicClass TEXT
-  iucnStatus TEXT
-  -- Indexed for loot table queries:
-  CREATE INDEX idx_species_habitat ON species_habitats(habitat)
-  CREATE INDEX idx_species_continent ON species_continents(continent)
-  CREATE INDEX idx_species_status ON species(iucnStatus)
+-- Auth (existing)
+auth.users
 
-species_habitats (many-to-many):
-  speciesName TEXT FK
-  habitat TEXT
+-- Game state
+item_instances          -- all player items, server-authoritative
+cell_visits             -- visited cells per player
+player_profiles         -- stats, streaks
+achievements            -- unlocked achievements
 
-species_continents (many-to-many):
-  speciesName TEXT FK
-  continent TEXT
+-- Game config (server-owned)
+daily_seeds             -- seed per day, generated by server
+affix_pools             -- affix definitions per rarity tier (future)
+
+-- Social (future)
+leaderboards
+trades
+sanctuary_visits
 ```
 
-**Why:** Startup time, memory, and extensibility. Adding 50k plant/mineral/fossil records to a monolithic JSON is unsustainable. SQLite handles 100k+ records with indexed queries in milliseconds.
-
-**Migration path:** Import JSON → SQLite on first launch (one-time migration). Keep JSON as the distribution format, SQLite as the runtime format.
-
-### 5. Sync Engine
-
-**Current:** Fire-and-forget write-through to Supabase. No queue, no retry, no conflict resolution.
-**Ideal:** Offline queue with reliable sync.
-
+**Sync flow:**
 ```
-Sync Engine:
-  1. Local write → SQLite event store (always succeeds)
-  2. Background worker picks up unsynced events
-  3. Batch upload to Supabase (with retry + exponential backoff)
-  4. Mark events as synced
-  5. Pull remote events (from other devices) → merge into local store
-  6. Conflict resolution: timestamp-based last-write-wins (simple, predictable)
-
-Sync States:
-  synced | pending | failed | conflicted
-
-Observability:
-  SyncStatusNotifier provides: pendingCount, lastSyncAt, errors
+App open → fetch daily seed + latest state from server → cache in SQLite
+Action (online) → server validates → writes to Supabase → updates local cache
+Action (offline) → write queue → flush on reconnect → server validates → cache updated
+Rejected action → remove from local cache → UI rolls back
 ```
-
-**Why:** Multi-device support (play on phone, check museum on web). Reliable data preservation. Foundation for real-time features.
 
 ---
 
-## New Systems Architecture
+## Future Systems (Schema-Ready, Not Yet Implemented)
 
-### Museum System
+### Breeding System
+- Two item instances → offspring with inherited/combined traits
+- `parent_a_id` + `parent_b_id` on ItemInstance (null for wild-caught)
+- Trait inheritance rules TBD
+- Server-validated (prevent impossible trait combinations)
 
-```
-MuseumService (pure domain logic):
-  - 7 fauna wings + 3 future non-fauna wings
-  - Wing unlock thresholds (donation milestones)
-  - Donation slot mapping (species → eligible wings via habitat)
-  - Permanent donation enforcement
+### Collection / Bundle System
+- Bundles = groupings of items with rewards (Stardew community center style)
+- `ItemCollection { id, requirements: List<ItemRequirement>, reward }`
+- Completing a bundle = submit items → receive reward
+- Museum donations = permanent bundle (items consumed, never returned)
 
-MuseumNotifier (projection):
-  - Rebuilds from SpeciesDonated events
-  - Tracks: donated species per wing, unlock state, completion %
-
-Museum DB:
-  museum_donations: speciesId, wing, donatedAt (append-only, never delete)
-  museum_wings: wing, unlocked, unlockedAt
-```
+### Achievement System
+- Track item-related milestones ("discover 100 forest fauna")
+- Server-side evaluation (anti-cheat)
+- Achievement definitions stored server-side (can add new ones without app update)
 
 ### NPC System
+- Discoverable NPCs on map (location-based spawning)
+- Dialogue, quests, bundle requests
+- NPC state persisted server-side
 
-```
-NPCService:
-  - NPC definitions (name, personality, dialogue trees, portrait, location)
-  - Spawn conditions: milestone-based + location-based
-  - Discovery evaluation (like achievement checks — pull-based)
+### Quest / Treasure Map System
+- NPC-issued or exploration-dropped quests
+- "Go to cell X, find species Y" directed exploration
+- Rewards: rare items, sanctuary progression, NPC relationship
 
-NPCNotifier (projection):
-  - Rebuilds from NPCDiscovered events
-  - Tracks: discovered NPCs, conversation state, active quests
+### Trading System
+- Player-to-player item trading (online only)
+- Server mediates (prevents duplication, validates ownership)
 
-NPC DB:
-  discovered_npcs: npcId, discoveredAt, location
-  npc_conversations: npcId, dialogueNodeId, timestamp
-```
-
-### Quest System
-
-```
-QuestService:
-  - Quest/treasure map generation from NPC requests, exploration drops, milestones
-  - Quest objective evaluation (arrive at location + find species)
-  - Reward calculation
-
-QuestNotifier (projection):
-  - Rebuilds from QuestAccepted/QuestCompleted events
-  - Tracks: active quests, completed quests, available maps
-
-Quest DB:
-  quests: questId, type, objective (JSON), sourceNpcId, reward (JSON), status, expiresAt
-  treasure_maps: questId, targetLat, targetLon, targetSpeciesId
-```
-
-### Daily Seed System
-
-```
-DailySeedService:
-  - seed = SHA-256(dateString + cellId)
-  - Generates daily species pool per cell (separate from permanent cell species)
-  - Reset at midnight GMT
-  - Deterministic: same cell + same day = same species for all players
-
-Integration:
-  - DiscoveryCoordinator checks both permanent (cell seed) and daily (date seed) pools
-  - Daily species show indicator on map
-  - Creates "Wordle effect" — social sharing of daily finds
-```
+### Leaderboards
+- Server-aggregated rankings
+- Categories: total species, rarest find, most cells explored, etc.
 
 ---
 
 ## Migration Strategy
 
-Prioritized by dependency order and product roadmap:
+Prioritized by dependency order:
 
 | Phase | Change | Enables |
 |-------|--------|---------|
-| **1** | Inventory model (schema + provider) | Museum, Pack redesign, NPC bundles, strategic collecting |
-| **2** | Event store for SpeciesCollected | Reliable persistence, sync foundation, analytics |
-| **3** | ExplorationCoordinator (extract from map) | Background discovery, cleaner map, new mechanics |
-| **4** | Species data → SQLite | Daily seed, categories expansion, performance |
-| **5** | Expand events to all domain actions | Full replay, achievement persistence, undo |
-| **6** | Sync engine | Multi-device, real-time, reliable cloud backup |
+| **1** | Item model (sealed classes, instance schema, affix system) | Everything downstream — this is the foundation |
+| **2** | GameCoordinator (extract from map_screen) | Background discoveries, tab-independent game loop |
+| **3** | Server-authoritative persistence (Supabase source of truth, write queue) | Online validation, daily seed, anti-cheat |
+| **4** | Daily seed system (server-generated, client-cached, 24h grace) | Deterministic encounters, social "Wordle effect" |
+| **5** | Breeding system | Trait inheritance, offspring generation |
+| **6** | Collections / bundles / museum | Stardew-style community center |
+| **7** | Social features (leaderboards, trading, sanctuary visits) | Multiplayer |
 
-Each phase is independently shippable. Phase 1 is the P0 prerequisite — everything else builds on inventory.
+Each phase is independently shippable. Phase 1 is the prerequisite for everything.
 
 ---
 
-## Design Jam Questions
+## Open Questions (TBD)
 
-Things worth discussing before committing to implementation:
-
-1. **Event sourcing granularity:** Full event sourcing (every action is an event) vs hybrid (events for sync-critical data, direct state for ephemeral)? Full is cleaner but more upfront work.
-
-2. **Coordinator lifecycle:** Should coordinators run globally (like a game engine) or only when relevant screens are mounted? Global = discoveries happen in background. Mounted = simpler lifecycle but misses events.
-
-3. **Species data format:** Keep JSON as distribution + import to SQLite at runtime? Or ship SQLite directly as an asset? JSON is human-editable, SQLite is faster to query.
-
-4. **Sync conflict model:** Last-write-wins is simple but loses data. CRDT-style merge is robust but complex. For a cozy game, is last-write-wins good enough?
-
-5. **Museum permanence:** If donations are permanent and event-sourced, should there be a "curator undo" NPC mechanic for regretted donations? Or is permanence the whole point (Stardew model)?
-
-6. **How far to go right now?** The inventory model (Phase 1) is clearly next. But should we also lay event store foundations in the same pass, or is that over-engineering for the current stage?
+| Question | Impact | Notes |
+|----------|--------|-------|
+| What are the actual affix stats? | Item schema `values` field | Ecological theme — "swift", "resilient", "ancient"? |
+| Affix rolling algorithm / weighting | AffixRoller service | Rarity gates pool depth, but exact weights TBD |
+| Breeding trait inheritance rules | BreedingService | CryptoKitty-style dominant/recessive? Random mix? |
+| Server plausibility checks beyond seed | Supabase Edge Functions | GPS speed limits? Time-based checks? |
+| Flora/Mineral/Fossil/Artifact datasets | Asset data files | Need real-world data sources like IUCN for fauna |
+| Decoration items | Schema supports it, no design yet | Sanctuary furniture/cosmetics |
+| Inventory limits | UX decision | Unlimited? Capacity upgrades? |
+| "Best in class" / favorite / pinned UX | UI feature | Display best roll vs all rolls |
+| Map tile offline caching | MapLibre OfflineManager | "Download for offline" feature |
+| Background execution (app backgrounded) | Platform services | Android WorkManager / iOS BackgroundModes |
