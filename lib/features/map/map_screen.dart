@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/species/stats_service.dart';
 import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/inventory_provider.dart';
@@ -150,14 +151,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     _checkLocationPermission();
 
+    const statsService = StatsService();
     final discoveryService = ref.read(discoveryServiceProvider);
     _discoverySubscription = discoveryService.onDiscovery.listen((event) {
       ref.read(discoveryProvider.notifier).showDiscovery(event);
+      final instanceId = const Uuid().v4();
+      final intrinsicAffix = statsService.rollIntrinsicAffix(
+        scientificName: event.species.scientificName!,
+        instanceSeed: instanceId,
+      );
       final instance = ItemInstance(
-        id: const Uuid().v4(),
+        id: instanceId,
         definitionId: event.species.id,
         acquiredAt: event.timestamp,
         acquiredInCellId: event.cellId,
+        affixes: [intrinsicAffix],
       );
       ref.read(inventoryProvider.notifier).addItem(instance);
     });

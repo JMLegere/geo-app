@@ -141,6 +141,22 @@ const bool kDebugLogFogState = false;
 /// Enable debug logging for persistence operations.
 const bool kDebugLogPersistence = false;
 
+// Species Stats
+/// Minimum stat value (speed, brawn, wit).
+const int kStatMin = 1;
+
+/// Maximum stat value (speed, brawn, wit).
+const int kStatMax = 100;
+
+/// Range used in `hash[i] % kStatRange + kStatMin` to produce 1–100.
+const int kStatRange = 100;
+
+/// Per-instance stat variance (±30%). Applied as multiplier: `base × (1 ± 0.3)`.
+const double kStatVariance = 0.30;
+
+/// Affix ID for the intrinsic base-stats affix.
+const String kIntrinsicAffixId = 'base_stats';
+
 // Auth & Upgrade
 /// Number of collected species that triggers the "save your progress" upgrade prompt.
 const int kUpgradePromptThreshold = 5;
