@@ -261,4 +261,41 @@ void main() {
       expect(AffixType.intrinsic.name, equals('intrinsic'));
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Regression pin — catches accidental algorithm changes
+  // ---------------------------------------------------------------------------
+
+  group('StatsService regression pins', () {
+    test('known input produces known output (algorithm anchor)', () {
+      // If this test breaks, the hash algorithm or byte offsets changed.
+      // That is a breaking change — all existing item stats in the wild
+      // would become inconsistent with server re-derivation.
+      final base = service.deriveBaseStats('Panthera leo');
+      expect(base.speed, equals(78));
+      expect(base.brawn, equals(27));
+      expect(base.wit, equals(85));
+
+      final affix = service.rollIntrinsicAffix(
+        scientificName: 'Panthera leo',
+        instanceSeed: 'test-uuid-001',
+      );
+      expect(affix.values['speed'], equals(74));
+      expect(affix.values['brawn'], equals(25));
+      expect(affix.values['wit'], equals(61));
+    });
+
+    test('empty instanceSeed produces valid stats', () {
+      final affix = service.rollIntrinsicAffix(
+        scientificName: 'Panthera leo',
+        instanceSeed: '',
+      );
+
+      expect(affix.values['speed'], inInclusiveRange(kStatMin, kStatMax));
+      expect(affix.values['brawn'], inInclusiveRange(kStatMin, kStatMax));
+      expect(affix.values['wit'], inInclusiveRange(kStatMin, kStatMax));
+      expect(affix.id, equals(kIntrinsicAffixId));
+      expect(affix.type, equals(AffixType.intrinsic));
+    });
+  });
 }

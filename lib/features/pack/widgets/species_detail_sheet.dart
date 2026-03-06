@@ -116,7 +116,7 @@ class _CollectedContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    species.scientificName!,
+                    species.scientificName,
                     style: const TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,

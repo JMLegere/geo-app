@@ -306,7 +306,7 @@ void main() {
           habitats: habitats,
           continent: continent,
         );
-        if (found.isNotEmpty) results.add(found.first.scientificName!);
+        if (found.isNotEmpty) results.add(found.first.scientificName);
       }
       // With 30 different cells, we expect at least some variety.
       expect(results.length, greaterThan(1),

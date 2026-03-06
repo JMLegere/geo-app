@@ -127,6 +127,10 @@ class FaunaDefinition extends ItemDefinition {
         'iucnStatus': rarity!.displayName,
       };
 
+  /// Fauna always has a scientific name — narrow the nullable base type.
+  @override
+  String get scientificName => super.scientificName!;
+
   @override
   String toString() =>
       'FaunaDefinition(id: $id, displayName: $displayName, '

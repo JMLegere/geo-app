@@ -157,7 +157,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ref.read(discoveryProvider.notifier).showDiscovery(event);
       final instanceId = const Uuid().v4();
       final intrinsicAffix = statsService.rollIntrinsicAffix(
-        scientificName: event.species.scientificName!,
+        scientificName: event.species.scientificName,
         instanceSeed: instanceId,
       );
       final instance = ItemInstance(
