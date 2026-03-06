@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/caretaking/providers/caretaking_provider.dart';
@@ -6,6 +6,8 @@ import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dar
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/streak_badge.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
 /// Ambient gallery of collected species grouped by habitat.
@@ -49,17 +51,17 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
     final orderedHabitats = [...populatedHabitats, ...emptyHabitats];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAF8),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAF8),
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         scrolledUnderElevation: 1,
-        title: const Text(
+        title: Text(
           'Sanctuary',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A2E1B),
+            color: Theme.of(context).colorScheme.onSurface,
             letterSpacing: -0.3,
           ),
         ),
@@ -70,18 +72,12 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
           // Summary header: health indicator + streak badge
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, Spacing.xxl),
+              padding: const EdgeInsets.all(Spacing.xl),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: Radii.borderXxxl,
+                boxShadow: Shadows.medium,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -91,37 +87,37 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
                       percentage: state.healthPercentage,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  Spacing.gapHLg,
                   // Vertical divider
                   Container(
                     width: 1,
                     height: 72,
-                    color: const Color(0xFFE5E7EB),
+                    color: Theme.of(context).colorScheme.outlineVariant,
                   ),
-                  const SizedBox(width: 16),
+                  Spacing.gapHLg,
                   Expanded(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Daily streak',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF9CA3AF),
+                            color: Theme.of(context).colorScheme.outline,
                             letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        Spacing.gapSm,
                         StreakBadge(streak: state.currentStreak),
-                        const SizedBox(height: 10),
+                        Spacing.gapMd,
                         Text(
                           '${state.totalCollected} / ${state.totalInPool} species',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Color(0xFF6B7280),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -148,9 +144,9 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
           if (state.totalCollected > 0)
           SliverList.separated(
             itemCount: orderedHabitats.length,
-            separatorBuilder: (_, __) => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(color: Color(0xFFE5E7EB), height: 32),
+            separatorBuilder: (_, __) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Divider(color: Theme.of(context).colorScheme.outlineVariant, height: 32),
             ),
             itemBuilder: (_, index) {
               final habitat = orderedHabitats[index];

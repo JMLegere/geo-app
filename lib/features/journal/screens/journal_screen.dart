@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
+import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
 import 'package:fog_of_world/features/journal/widgets/journal_filter_bar.dart';
@@ -55,18 +56,18 @@ class JournalScreen extends ConsumerWidget {
     final filtered = state.filteredSpecies;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         elevation: 0,
         scrolledUnderElevation: 0.5,
-        shadowColor: Colors.black.withValues(alpha: 0.08),
-        title: const Text(
+        shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+        title: Text(
           'Journal',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A2E),
+            color: Theme.of(context).colorScheme.onSurface,
             letterSpacing: -0.2,
           ),
         ),
@@ -95,7 +96,7 @@ class JournalScreen extends ConsumerWidget {
             child: filtered.isEmpty
                 ? _buildEmptyState(state)
                 : GridView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(Spacing.lg),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
