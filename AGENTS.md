@@ -10,7 +10,7 @@
 | Framework | Flutter 3.41.3 (Dart) |
 | State | Riverpod 3.2.1 — `Notifier` pattern (NOT `StateNotifier`) |
 | Map | `maplibre` by josxha v0.1.2 (NOT `maplibre_gl`) |
-| Persistence | Drift 2.14.0 (SQLite) — offline-first |
+| Persistence | Drift 2.14.0 (SQLite) — local cache + write queue. Supabase = source of truth |
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
@@ -89,7 +89,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 4. **IUCN rarity = loot weights** — 6 IUCN statuses map to 10^x weights: Least Concern (100k), Near Threatened (10k), Vulnerable (1k), Endangered (100), Critically Endangered (10), Extinct (1). Path of Exile style.
 
-5. **Offline-first** — SQLite (Drift) is the source of truth. Supabase write-through syncs data when credentials are configured. No sync queue — writes go directly to Supabase via `SupabasePersistence`.
+5. **Server-authoritative** — Supabase is the source of truth. SQLite is a local cache and offline write queue. Client can roll encounters offline using cached daily seed (24h grace); server re-derives and validates on reconnect. Rejected actions roll back locally.
 
 6. **Riverpod v3 Notifier** — All mutable state uses `NotifierProvider<T, S>` (not `StateNotifier`, not `ChangeNotifier`). Immutable state classes with `copyWith()`.
 
@@ -100,6 +100,52 @@ These are **locked in** — do not revisit without explicit instruction.
 9. **Restoration formula** — 3 unique species in a cell = fully restored (level 1.0). Formula: `min(uniqueSpeciesCount, 3) / 3.0`.
 
 10. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
+
+---
+
+## Product Architecture (Design Jam Decisions — 2026-03-06)
+
+These are the target architecture decisions from the design jam. They describe WHERE the product is going. The codebase hasn't been migrated yet — current implementation still uses the old patterns (binary CollectedSpecies, map-as-orchestrator, write-through Supabase). When working on new features, build toward these decisions. When reading existing code, understand it predates them.
+
+**This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
+
+### Wall 1: Everything Is an Item
+
+- **PoE / CryptoKitty model, NOT Stardew stacking.** Every discovered item is a unique instance with randomly-rolled affixes (prefix/suffix). Items never stack. Two Red Foxes have different stats.
+- **5 item categories:** Fauna, Flora, Mineral, Fossil, Artifact. All share the `ItemDefinition` → `ItemInstance` pattern.
+- **Rarity gates affix depth:** LC = 0-1 affixes, NT = 1-2, VU = 2-3, EN = 3-4, CR = 4-5, EX = 5+.
+- **Breeding:** Two instances → offspring with inherited/combined traits. CryptoKitty-style trait inheritance. Server-validated.
+- **Collections are bundles:** Stardew community center model. Bundles group items with completion rewards. Museum = permanent donation bundle. NPC requests = consumable bundles. Achievements track milestones ("discover 100 forest fauna").
+- **Full spec:** `docs/item-system-design.md`
+
+### Wall 2: GameCoordinator
+
+- **The map is a renderer, not an orchestrator.** Game logic lives in `GameCoordinator`, a pure Dart service above the UI.
+- **Runs forever** — created at ProviderScope level, never stops on tab switch. Map screen reads its state and renders.
+- **Owns:** GPS subscription, game loop tick (~10 Hz), fog computation, discovery processing, write queue, daily seed cache, streaks, restoration.
+- **Does NOT own:** map rendering, camera, widget state, toast UI, RubberBand interpolation.
+- **Emits:** `Stream<GameState>` — Riverpod notifiers project from this. Discovery events → UI subscribes for toasts.
+- **Target directory:** `lib/core/game/`
+
+### Wall 3: Server-Authoritative with Offline Resilience
+
+- **Supabase is source of truth.** SQLite is local cache + offline write queue. NOT offline-first.
+- **Online flow:** Player enters cell → server rolls encounter → writes to DB → client caches result.
+- **Offline flow:** Client rolls encounter using cached daily seed → UI shows optimistic result → action queued → flushed on reconnect → server re-derives and validates → match = confirmed, mismatch = rolled back.
+- **Daily seed:** Server generates per calendar day (midnight GMT). Client fetches on app open, caches 24h. Deterministic: `hash(seed + cellId + definitionId)` → same result. Stale seed (>24h offline) → discoveries pause.
+- **Write queue:** Temporary outbox in SQLite. NOT event sourcing — queue entries deleted after server confirms. Entries: `{ type, payload, timestamp, status: pending|confirmed|rejected }`.
+- **Read-only offline:** Browse collection, sanctuary, cached map tiles. Fog animates visually but doesn't persist until server confirms.
+- **Full spec:** `docs/ideal-architecture.md`
+
+### Migration Phases (not started)
+
+| Phase | Change | Enables |
+|-------|--------|---------|
+| 1 | Item model (sealed classes, instances, affixes) | Everything downstream |
+| 2 | GameCoordinator (extract from map_screen) | Tab-independent game loop |
+| 3 | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
+| 4 | Daily seed system | Deterministic encounters, social sharing |
+| 5+ | Breeding, bundles, museum, social | Endgame features |
 
 ---
 
