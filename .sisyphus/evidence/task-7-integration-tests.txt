@@ -1,0 +1,13 @@
+=== Task 7: Navigation integration tests ===
+00:01 +16: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration TabShell renders BottomNavigationBar with 4 labelled items
+00:01 +17: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration TabShell renders BottomNavigationBar with 4 labelled items
+00:01 +18: /home/jeremy/workspace/geo-app/test/features/navigation/screens/tab_shell_test.dart: TabShell navigation bar tapping Pack tab updates tab index to 3
+00:01 +19: /home/jeremy/workspace/geo-app/test/features/navigation/screens/tab_shell_test.dart: TabShell navigation bar tapping Pack tab updates tab index to 3
+00:01 +20: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration tapping each tab updates selection in provider and nav bar
+00:01 +21: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration tapping each tab updates selection in provider and nav bar
+00:01 +22: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration tapping each tab updates selection in provider and nav bar
+00:01 +23: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration tab switch persists to SharedPreferences
+00:01 +24: /home/jeremy/workspace/geo-app/test/features/navigation/integration/tab_navigation_test.dart: Tab navigation integration persisted tab index is restored on new provider container
+00:01 +25: All tests passed!
+
+RESULT: PASS

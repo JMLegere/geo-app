@@ -1,0 +1,17 @@
+=== Task 1: Pack rename verification ===
+
+--- grep -ri 'journal' lib/ test/ --include='*.dart' ---
+(no matches - PASS)
+
+--- grep -ri 'Journal' lib/ test/ --include='*.dart' ---
+(no matches - PASS)
+
+--- ls lib/features/pack/ ---
+providers
+screens
+widgets
+
+--- ls lib/features/journal/ ---
+ls: cannot access 'lib/features/journal/': No such file or directory
+
+RESULT: PASS

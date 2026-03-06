@@ -1,0 +1,11 @@
+=== Task 5: MapScreen tests pass (offsets N/A - Scaffold insets handle it) ===
+00:03 +156: /home/jeremy/workspace/geo-app/test/features/map/providers/map_state_provider_test.dart: MapStateNotifier updateZoom changes zoom level
+00:03 +157: /home/jeremy/workspace/geo-app/test/features/map/providers/map_state_provider_test.dart: MapStateNotifier updateZoom does not change isReady or camera position
+00:03 +158: /home/jeremy/workspace/geo-app/test/features/map/providers/map_state_provider_test.dart: MapStateNotifier reset returns state to initial values
+00:03 +159: /home/jeremy/workspace/geo-app/test/features/map/providers/map_state_provider_test.dart: MapStateNotifier provider emits new state on each mutation
+00:04 +160: All tests passed!
+
+NOTE: Task 5 (bottom offsets) was determined N/A because TabShell Scaffold
+bottomNavigationBar automatically insets the body area.
+
+RESULT: PASS

@@ -8,24 +8,28 @@ class UserProfile {
     required this.email,
     this.displayName,
     required this.createdAt,
+    this.isAnonymous = false,
   });
 
   final String id;
   final String email;
   final String? displayName;
   final DateTime createdAt;
+  final bool isAnonymous;
 
   UserProfile copyWith({
     String? id,
     String? email,
     String? displayName,
     DateTime? createdAt,
+    bool? isAnonymous,
   }) {
     return UserProfile(
       id: id ?? this.id,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 
@@ -35,6 +39,7 @@ class UserProfile {
       'email': email,
       'displayName': displayName,
       'createdAt': createdAt.toIso8601String(),
+      'isAnonymous': isAnonymous,
     };
   }
 
@@ -44,6 +49,7 @@ class UserProfile {
       email: json['email'] as String,
       displayName: json['displayName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      isAnonymous: json['isAnonymous'] as bool? ?? false,
     );
   }
 
@@ -54,13 +60,14 @@ class UserProfile {
         other.id == id &&
         other.email == email &&
         other.displayName == displayName &&
-        other.createdAt == createdAt;
+        other.createdAt == createdAt &&
+        other.isAnonymous == isAnonymous;
   }
 
   @override
-  int get hashCode => Object.hash(id, email, displayName, createdAt);
+  int get hashCode => Object.hash(id, email, displayName, createdAt, isAnonymous);
 
   @override
   String toString() =>
-      'UserProfile(id: $id, email: $email, displayName: $displayName)';
+      'UserProfile(id: $id, email: $email, displayName: $displayName, isAnonymous: $isAnonymous)';
 }

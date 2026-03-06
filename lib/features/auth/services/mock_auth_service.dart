@@ -84,6 +84,7 @@ class MockAuthService implements AuthService {
       email: '',
       displayName: 'Explorer',
       createdAt: DateTime.now(),
+      isAnonymous: true,
     );
     _currentUser = profile;
     _authStateController.add(profile);

@@ -96,6 +96,7 @@ class SupabaseAuthService implements AuthService {
         email: '',
         displayName: 'Explorer',
         createdAt: DateTime.now(),
+        isAnonymous: true,
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -124,6 +125,7 @@ class SupabaseAuthService implements AuthService {
         id: user.id,
         email: user.email ?? '',
         createdAt: DateTime.now(),
+        isAnonymous: user.isAnonymous == true,
       );
     } on AuthException {
       rethrow;
@@ -152,6 +154,7 @@ class SupabaseAuthService implements AuthService {
           id: user.id,
           email: user.email ?? '',
           createdAt: DateTime.now(),
+          isAnonymous: user.isAnonymous == true,
         );
       });
     } catch (e) {
