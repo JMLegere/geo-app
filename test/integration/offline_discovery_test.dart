@@ -91,7 +91,7 @@ void main() {
     test('species ID is derived from scientificName (stable, lowercase, fauna_ prefix)', () {
       for (final s in speciesService.all) {
         final expectedId =
-            'fauna_${s.scientificName!.toLowerCase().replaceAll(' ', '_')}';
+            'fauna_${s.scientificName.toLowerCase().replaceAll(' ', '_')}';
         expect(s.id, equals(expectedId));
       }
     });

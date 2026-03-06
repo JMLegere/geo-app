@@ -19,9 +19,11 @@ class ItemInstance {
   /// References [ItemDefinition.id] — the static blueprint for this item.
   final String definitionId;
 
-  /// Randomly-rolled prefix/suffix stat modifiers.
+  /// Item modifiers: one intrinsic (base stats) + rolled prefix/suffix.
   ///
-  /// Rarity gates pool depth: LC=0-1, NT=1-2, VU=2-3, EN=3-4, CR=4-5, EX=5+.
+  /// Every wild-caught instance has exactly one [AffixType.intrinsic] affix
+  /// containing speed, brawn, and wit stats.
+  /// Rarity gates prefix/suffix pool depth: LC=0-1, NT=1-2, VU=2-3, EN=3-4, CR=4-5, EX=5+.
   final List<Affix> affixes;
 
   /// Null for wild-caught. Set for bred offspring.

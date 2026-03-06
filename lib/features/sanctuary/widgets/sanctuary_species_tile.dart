@@ -48,7 +48,7 @@ class SanctuarySpeciesTile extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               Text(
-                species.scientificName!,
+                species.scientificName,
                 style: TextStyle(
                   fontSize: 11,
                   fontStyle: FontStyle.italic,

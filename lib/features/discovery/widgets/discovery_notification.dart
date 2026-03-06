@@ -176,7 +176,7 @@ class _DiscoveryCard extends StatelessWidget {
                 ),
                 SizedBox(height: Spacing.xxs),
                 Text(
-                  species.scientificName!,
+                  species.scientificName,
                   style: tt.bodySmall?.copyWith(
                     fontStyle: FontStyle.italic,
                     color: cs.onSurfaceVariant,

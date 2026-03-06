@@ -1,11 +1,14 @@
 import 'package:flutter/foundation.dart';
 
-/// PoE-style prefix/suffix modifier rolled on item discovery.
+/// PoE-style modifier rolled on item discovery.
 ///
-/// Affixes are CryptoKitty-style breeding traits — each item instance has
-/// a unique set of affixes, and breeding combines traits from two parents.
+/// Three types:
+/// - **intrinsic**: Base stats (speed, brawn, wit) derived from species +
+///   per-instance variance. Always exactly one per instance.
+/// - **prefix**: Rolled modifier (rarity-gated pool). CryptoKitty breeding trait.
+/// - **suffix**: Rolled modifier (rarity-gated pool). CryptoKitty breeding trait.
 ///
-/// The affix pool and stat values are TBD (Phase 5+). The schema supports
+/// The prefix/suffix pool and values are TBD (Phase 5+). The schema supports
 /// arbitrary key-value pairs via [values] so the stat system can evolve
 /// without schema migrations.
 @immutable
@@ -57,9 +60,16 @@ class Affix {
   String toString() => 'Affix($type:$id)';
 }
 
-/// Whether an affix is a prefix or suffix.
+/// Affix category: intrinsic base stats, or rolled prefix/suffix modifiers.
 enum AffixType {
+  /// Base stats (speed, brawn, wit). Always exactly one per instance.
+  /// Derived from species scientific name + per-instance variance.
+  intrinsic,
+
+  /// Rolled prefix modifier. Rarity-gated pool depth.
   prefix,
+
+  /// Rolled suffix modifier. Rarity-gated pool depth.
   suffix;
 
   static AffixType fromString(String value) {
