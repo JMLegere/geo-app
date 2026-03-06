@@ -57,16 +57,17 @@ final _mockUser = UserProfile(
 
 /// Pumps [SyncScreen] with controlled sync and auth state via [ProviderScope].
 ///
-/// [asGuest] → auth state is guest (button disabled, "Sign in" prompt shown).
+/// [asUnauthenticated] → auth state is unauthenticated (button disabled, "Sign in" prompt shown).
 /// Otherwise → authenticated with [_mockUser].
 Future<void> _pumpScreen(
   WidgetTester tester, {
   SyncStatus? syncStatus,
-  bool asGuest = false,
+  bool asUnauthenticated = false,
 }) async {
   final status = syncStatus ?? const SyncStatus(type: SyncStatusType.idle);
-  final auth =
-      asGuest ? const AuthState.guest() : AuthState.authenticated(_mockUser);
+  final auth = asUnauthenticated
+      ? const AuthState.unauthenticated()
+      : AuthState.authenticated(_mockUser);
 
   await tester.pumpWidget(
     ProviderScope(
@@ -202,10 +203,10 @@ void main() {
       expect(find.text('Try Again'), findsOneWidget);
     });
 
-    // ── guest user ────────────────────────────────────────────────────────────
+    // ── unauthenticated user ─────────────────────────────────────────────────
 
-    testWidgets('guest user sees "Sign in" prompt', (tester) async {
-      await _pumpScreen(tester, asGuest: true);
+    testWidgets('unauthenticated user sees "Sign in" prompt', (tester) async {
+      await _pumpScreen(tester, asUnauthenticated: true);
 
       expect(find.byKey(const Key('sign_in_prompt')), findsOneWidget);
       expect(
@@ -214,8 +215,8 @@ void main() {
       );
     });
 
-    testWidgets('Sync Now button is disabled for guest user', (tester) async {
-      await _pumpScreen(tester, asGuest: true);
+    testWidgets('Sync Now button is disabled for unauthenticated user', (tester) async {
+      await _pumpScreen(tester, asUnauthenticated: true);
 
       final button = tester.widget<ElevatedButton>(
         find.byType(ElevatedButton).first,

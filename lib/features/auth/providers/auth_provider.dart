@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
+import 'package:fog_of_world/features/auth/models/user_profile.dart';
 import 'package:fog_of_world/features/auth/services/auth_service.dart';
 import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
 import 'package:fog_of_world/features/auth/services/supabase_auth_service.dart';
@@ -18,7 +19,7 @@ import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 /// Uses `MockAuthService` when Supabase is not configured or init fails.
 class AuthNotifier extends Notifier<AuthState> {
   AuthService? _authService;
-  StreamSubscription<void>? _authSubscription;
+  StreamSubscription<UserProfile?>? _authSubscription;
 
   @override
   AuthState build() {
@@ -81,7 +82,7 @@ class AuthNotifier extends Notifier<AuthState> {
         if (!ref.mounted) return;
         if (user != null) {
           state = AuthState.authenticated(user);
-        } else if (state.status != AuthStatus.guest) {
+        } else {
           state = const AuthState.unauthenticated();
         }
       },

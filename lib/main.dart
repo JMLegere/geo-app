@@ -26,13 +26,13 @@ void main() {
 }
 
 /// Root widget — routes through onboarding on first launch, then to
-/// [TabShell] when the user is authenticated or in guest mode, and to
+/// [TabShell] when the user is authenticated (including anonymous), and to
 /// [LoginScreen] when there is no session.
 ///
 /// Routing order:
 /// 1. `onboardingProvider == null` → neutral splash (no flash on cold start)
 /// 2. `onboardingProvider == false` → [OnboardingScreen] (first launch only)
-/// 3. auth loading / authenticated / guest → [TabShell]
+/// 3. auth loading / authenticated → [TabShell]
 /// 4. unauthenticated → [LoginScreen]
 class FogOfWorldApp extends ConsumerWidget {
   const FogOfWorldApp({super.key});
@@ -66,7 +66,7 @@ class FogOfWorldApp extends ConsumerWidget {
 
     // Onboarding complete — use existing auth routing.
     return switch (authState.status) {
-      AuthStatus.authenticated || AuthStatus.guest => const TabShell(),
+      AuthStatus.authenticated => const TabShell(),
       AuthStatus.loading => const _LoadingSplash(),
       _ => const LoginScreen(),
     };

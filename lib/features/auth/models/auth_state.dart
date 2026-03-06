@@ -1,14 +1,13 @@
 import 'package:fog_of_world/features/auth/models/user_profile.dart';
 
-enum AuthStatus { unauthenticated, loading, authenticated, guest }
+enum AuthStatus { unauthenticated, loading, authenticated }
 
 /// Immutable auth state managed by `AuthNotifier`.
 ///
 /// Factory constructors cover every transition:
 /// - [AuthState.initial] — checking for a saved session (loading).
 /// - [AuthState.loading] — an auth operation is in progress.
-/// - [AuthState.authenticated] — user is signed in.
-/// - [AuthState.guest] — user chose to skip sign-in.
+/// - [AuthState.authenticated] — user is signed in (includes anonymous).
 /// - [AuthState.unauthenticated] — confirmed no session.
 /// - [AuthState.error] — last auth operation failed.
 class AuthState {
@@ -36,9 +35,6 @@ class AuthState {
   AuthState.authenticated(UserProfile user)
       : this._(status: AuthStatus.authenticated, user: user);
 
-  /// User chose to continue without an account.
-  const AuthState.guest() : this._(status: AuthStatus.guest);
-
   /// No session found after checking, or user signed out.
   const AuthState.unauthenticated() : this._(status: AuthStatus.unauthenticated);
 
@@ -58,12 +54,8 @@ class AuthState {
     );
   }
 
-  /// True when the user has an active session (signed in or guest).
-  bool get isLoggedIn =>
-      status == AuthStatus.authenticated || status == AuthStatus.guest;
-
-  /// True when the user is in guest mode.
-  bool get isGuest => status == AuthStatus.guest;
+  /// True when the user has an active session.
+  bool get isLoggedIn => status == AuthStatus.authenticated;
 
   /// True when the current user is an anonymous (not upgraded) user.
   bool get isAnonymous => user?.isAnonymous ?? false;

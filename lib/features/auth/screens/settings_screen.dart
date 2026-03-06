@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/shared/constants.dart';
@@ -103,9 +102,7 @@ class SettingsScreen extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
 
     final user = authState.user;
-    final isAnonymous = authState.isAnonymous ||
-        authState.status == AuthStatus.guest ||
-        user == null;
+    final isAnonymous = authState.isAnonymous || user == null;
 
     final displayName =
         (user?.displayName?.isNotEmpty == true) ? user!.displayName! : 'Explorer';
