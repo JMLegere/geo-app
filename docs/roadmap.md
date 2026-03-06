@@ -327,6 +327,23 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [ ] Android build verification and Play Store
 - [ ] Push notifications
 
+### Project 13.6: Authentication & Account Upgrade — In Progress
+- [x] Anonymous auto-login on app launch (Supabase anonymous auth)
+- [x] Session persistence across reloads (JWT in local storage)
+- [x] isAnonymous field on UserProfile model
+- [x] upgradeWithEmail() and linkOAuthIdentity() on AuthService
+- [x] 5-species upgrade prompt trigger
+- [x] Save-progress banner on Home/Pack tabs
+- [x] Upgrade bottom sheet (email + Google + Apple options)
+- [x] Settings screen with profile and sign-out
+- [x] Destructive sign-out warning for anonymous users
+- [x] Supabase/OAuth prerequisites documented
+- [x] End-to-end upgrade flow wiring + integration tests
+- [ ] Google OAuth external setup (manual, documented)
+- [ ] Apple OAuth external setup (manual, documented)
+- [ ] Email verification flow (v2)
+- [ ] Account deletion (v2)
+
 ---
 
 ## Initiative 14: Social & Multiplayer
@@ -373,5 +390,5 @@ Based on design jam emphasis and dependency analysis:
 | **P1 — Core game loop** | 3 (Discovery), 4 (Museum), 7 (Quests) | These define the collect→manage→place loop that IS the game |
 | **P2 — Depth & retention** | 5 (Sanctuary), 6 (NPCs), 9 (Sets) | Add progression depth, social layer, completionist goals |
 | **P3 — Engagement breadth** | 8 (Activities), 10 (World), 11 (Visual) | Polish, variety, immersion — make the world feel alive |
-| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Map polish is in progress; CI/CD unblocks all future work; sync/analytics support retention |
+| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Auth upgrade shipped (P13.6); map polish in progress; CI/CD unblocks all future work; sync/analytics support retention |
 | **P4 — Expansion** | 12 (Collectibles), 14 (Social), 15 (Monetization) | New content types, community, business model |
