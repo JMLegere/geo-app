@@ -2,17 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 
 void main() {
-  final redFox = SpeciesRecord(
-    commonName: 'Red Fox',
+  final redFox = FaunaDefinition(
+    id: 'fauna_vulpes_vulpes',
+    displayName: 'Red Fox',
     scientificName: 'Vulpes vulpes',
     taxonomicClass: 'Mammalia',
     continents: [Continent.northAmerica],
     habitats: [Habitat.forest],
-    iucnStatus: IucnStatus.leastConcern,
+    rarity: IucnStatus.leastConcern,
   );
 
   final timestamp = DateTime(2026, 3, 2, 10, 0, 0);

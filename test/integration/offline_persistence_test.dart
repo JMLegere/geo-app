@@ -2,7 +2,7 @@
 ///
 /// Uses an in-memory database so no file I/O occurs. Tests every repository
 /// operation and exercises the full workflow:
-///   create profile → explore cells → collect species → update streaks → reopen
+///   create profile → explore cells → collect items → update streaks → reopen
 library;
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -40,19 +40,21 @@ LocalCellProgress makeCellProgress({
       updatedAt: DateTime(2026, 3, 1),
     );
 
-/// Build a minimal [LocalCollectedSpecies] record.
-LocalCollectedSpecies makeCollectedSpecies({
-  String id = 'cs-1',
+/// Build a minimal [LocalItemInstance] record.
+LocalItemInstance makeItemInstance({
+  String id = 'item-1',
   String userId = 'user-1',
-  String speciesId = 'vulpes_vulpes',
+  String definitionId = 'fauna_vulpes_vulpes',
   String cellId = 'cell-42',
 }) =>
-    LocalCollectedSpecies(
+    LocalItemInstance(
       id: id,
       userId: userId,
-      speciesId: speciesId,
-      cellId: cellId,
-      collectedAt: DateTime(2026, 3, 1),
+      definitionId: definitionId,
+      affixes: '[]',
+      acquiredAt: DateTime(2026, 3, 1),
+      acquiredInCellId: cellId,
+      status: 'active',
     );
 
 /// Build a minimal [LocalPlayerProfile] record.
@@ -142,66 +144,86 @@ void main() {
     });
   });
 
-  group('Offline Persistence — CollectedSpecies', () {
+  group('Offline Persistence — ItemInstance', () {
     late AppDatabase db;
 
     setUp(() => db = makeInMemoryDb());
     tearDown(() => db.close());
 
-    test('insertCollectedSpecies adds a record', () async {
-      final species = makeCollectedSpecies();
-      await db.insertCollectedSpecies(species);
+    test('insertItemInstance adds a record', () async {
+      final item = makeItemInstance();
+      await db.insertItemInstance(item);
 
-      final result =
-          await db.getCollectedSpeciesByUser(species.userId);
-      expect(result.length, equals(1));
-      expect(result.first.speciesId, equals('vulpes_vulpes'));
+      final results = await db.getItemInstancesByUser(item.userId);
+      expect(results.length, equals(1));
+      expect(results.first.definitionId, equals('fauna_vulpes_vulpes'));
     });
 
-    test('getCollectedSpeciesByUser returns all for user', () async {
-      await db.insertCollectedSpecies(
-          makeCollectedSpecies(id: 'cs-1', speciesId: 'vulpes_vulpes'));
-      await db.insertCollectedSpecies(
-          makeCollectedSpecies(id: 'cs-2', speciesId: 'panthera_leo'));
-      await db.insertCollectedSpecies(
-          makeCollectedSpecies(id: 'cs-3', speciesId: 'ursus_arctos'));
+    test('getItemInstancesByUser returns all for user', () async {
+      await db.insertItemInstance(
+          makeItemInstance(id: 'item-1', definitionId: 'fauna_vulpes_vulpes'));
+      await db.insertItemInstance(
+          makeItemInstance(id: 'item-2', definitionId: 'fauna_panthera_leo'));
+      await db.insertItemInstance(
+          makeItemInstance(id: 'item-3', definitionId: 'fauna_ursus_arctos'));
 
-      final records = await db.getCollectedSpeciesByUser('user-1');
+      final records = await db.getItemInstancesByUser('user-1');
       expect(records.length, equals(3));
     });
 
-    test('getCollectedSpeciesByCell returns only records for that cell', () async {
-      await db.insertCollectedSpecies(
-          makeCollectedSpecies(id: 'cs-1', cellId: 'cell-1'));
-      await db.insertCollectedSpecies(
-          makeCollectedSpecies(id: 'cs-2', cellId: 'cell-2', speciesId: 's2'));
+    test('getItemInstancesByCell returns only records for that cell', () async {
+      await db.insertItemInstance(
+          makeItemInstance(id: 'item-1', cellId: 'cell-1'));
+      await db.insertItemInstance(
+          makeItemInstance(id: 'item-2', cellId: 'cell-2', definitionId: 'fauna_s2'));
 
-      final records =
-          await db.getCollectedSpeciesByCell('user-1', 'cell-1');
+      final records = await db.getItemInstancesByCell('user-1', 'cell-1');
       expect(records.length, equals(1));
-      expect(records.first.cellId, equals('cell-1'));
+      expect(records.first.acquiredInCellId, equals('cell-1'));
     });
 
-    test('isSpeciesCollected returns true after insert', () async {
-      await db.insertCollectedSpecies(makeCollectedSpecies());
-      final collected =
-          await db.isSpeciesCollected('user-1', 'vulpes_vulpes', 'cell-42');
-      expect(collected, isTrue);
+    test('getItemInstance returns the record by id', () async {
+      final item = makeItemInstance(id: 'item-unique');
+      await db.insertItemInstance(item);
+
+      final result = await db.getItemInstance('item-unique');
+      expect(result, isNotNull);
+      expect(result!.id, equals('item-unique'));
+      expect(result.definitionId, equals('fauna_vulpes_vulpes'));
     });
 
-    test('isSpeciesCollected returns false when not inserted', () async {
-      final collected =
-          await db.isSpeciesCollected('user-1', 'vulpes_vulpes', 'cell-42');
-      expect(collected, isFalse);
+    test('getItemInstance returns null for non-existent id', () async {
+      final result = await db.getItemInstance('ghost-id');
+      expect(result, isNull);
     });
 
-    test('deleteCollectedSpecies removes the record', () async {
-      await db.insertCollectedSpecies(makeCollectedSpecies());
-      await db.deleteCollectedSpecies('user-1', 'vulpes_vulpes', 'cell-42');
+    test('updateItemInstance updates the record', () async {
+      final item = makeItemInstance();
+      await db.insertItemInstance(item);
 
-      final collected =
-          await db.isSpeciesCollected('user-1', 'vulpes_vulpes', 'cell-42');
-      expect(collected, isFalse);
+      final updated = LocalItemInstance(
+        id: item.id,
+        userId: item.userId,
+        definitionId: item.definitionId,
+        affixes: '[]',
+        acquiredAt: item.acquiredAt,
+        acquiredInCellId: item.acquiredInCellId,
+        status: 'donated',
+      );
+      await db.updateItemInstance(updated);
+
+      final result = await db.getItemInstance(item.id);
+      expect(result, isNotNull);
+      expect(result!.status, equals('donated'));
+    });
+
+    test('deleteItemInstance removes the record', () async {
+      final item = makeItemInstance();
+      await db.insertItemInstance(item);
+      await db.deleteItemInstance(item.id);
+
+      final result = await db.getItemInstance(item.id);
+      expect(result, isNull);
     });
   });
 
@@ -267,17 +289,17 @@ void main() {
         ));
       }
 
-      // 3. Collect species in two of those cells.
-      await db.insertCollectedSpecies(makeCollectedSpecies(
-        id: 'cs-1',
+      // 3. Collect items in two of those cells.
+      await db.insertItemInstance(makeItemInstance(
+        id: 'item-1',
         userId: 'player-1',
-        speciesId: 'vulpes_vulpes',
+        definitionId: 'fauna_vulpes_vulpes',
         cellId: 'cell-0',
       ));
-      await db.insertCollectedSpecies(makeCollectedSpecies(
-        id: 'cs-2',
+      await db.insertItemInstance(makeItemInstance(
+        id: 'item-2',
         userId: 'player-1',
-        speciesId: 'panthera_leo',
+        definitionId: 'fauna_panthera_leo',
         cellId: 'cell-1',
       ));
 
@@ -294,12 +316,12 @@ void main() {
       final allProgress = await db.getCellProgressByUser('player-1');
       expect(allProgress.length, equals(3));
 
-      final allSpecies = await db.getCollectedSpeciesByUser('player-1');
-      expect(allSpecies.length, equals(2));
+      final allItems = await db.getItemInstancesByUser('player-1');
+      expect(allItems.length, equals(2));
 
-      final collected =
-          await db.isSpeciesCollected('player-1', 'vulpes_vulpes', 'cell-0');
-      expect(collected, isTrue);
+      final foxItems = allItems.where((i) => i.definitionId == 'fauna_vulpes_vulpes').toList();
+      expect(foxItems.length, equals(1));
+      expect(foxItems.first.acquiredInCellId, equals('cell-0'));
     });
 
     test('data survives conceptual database reopen (two in-memory instances)',

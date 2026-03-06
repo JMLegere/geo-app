@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
@@ -14,19 +14,20 @@ import 'package:fog_of_world/features/discovery/widgets/discovery_notification.d
 // ---------------------------------------------------------------------------
 
 DiscoveryEvent _makeEvent({
-  String commonName = 'Red Fox',
+  String displayName = 'Red Fox',
   String scientificName = 'Vulpes vulpes',
-  IucnStatus iucnStatus = IucnStatus.leastConcern,
+  IucnStatus rarity = IucnStatus.leastConcern,
   bool isNew = true,
 }) {
   return DiscoveryEvent(
-    species: SpeciesRecord(
-      commonName: commonName,
+    species: FaunaDefinition(
+      id: 'fauna_${scientificName.toLowerCase().replaceAll(' ', '_')}',
+      displayName: displayName,
       scientificName: scientificName,
       taxonomicClass: 'Mammalia',
       continents: [Continent.northAmerica],
       habitats: [Habitat.forest],
-      iucnStatus: iucnStatus,
+      rarity: rarity,
     ),
     cellId: 'cell_1',
     isNew: isNew,
@@ -72,7 +73,7 @@ void main() {
 
       container
           .read(discoveryProvider.notifier)
-          .showDiscovery(_makeEvent(commonName: 'Red Fox'));
+          .showDiscovery(_makeEvent(displayName: 'Red Fox'));
       await tester.pump();
 
       expect(find.text('Red Fox'), findsOneWidget);
@@ -116,7 +117,7 @@ void main() {
       final container = await _pumpOverlay(tester);
 
       container.read(discoveryProvider.notifier).showDiscovery(
-            _makeEvent(iucnStatus: IucnStatus.leastConcern),
+            _makeEvent(rarity: IucnStatus.leastConcern),
           );
       await tester.pump();
 
@@ -127,7 +128,7 @@ void main() {
       final container = await _pumpOverlay(tester);
 
       container.read(discoveryProvider.notifier).showDiscovery(
-            _makeEvent(iucnStatus: IucnStatus.criticallyEndangered),
+            _makeEvent(rarity: IucnStatus.criticallyEndangered),
           );
       await tester.pump();
 
@@ -138,7 +139,7 @@ void main() {
       final container = await _pumpOverlay(tester);
 
       container.read(discoveryProvider.notifier).showDiscovery(
-            _makeEvent(iucnStatus: IucnStatus.endangered),
+            _makeEvent(rarity: IucnStatus.endangered),
           );
       await tester.pump();
 
@@ -150,7 +151,7 @@ void main() {
       final container = await _pumpOverlay(tester);
 
       container.read(discoveryProvider.notifier).showDiscovery(
-            _makeEvent(iucnStatus: IucnStatus.leastConcern),
+            _makeEvent(rarity: IucnStatus.leastConcern),
           );
       await tester.pump();
 
@@ -174,7 +175,7 @@ void main() {
       final container = await _pumpOverlay(tester);
 
       container.read(discoveryProvider.notifier).showDiscovery(
-            _makeEvent(iucnStatus: IucnStatus.extinct),
+            _makeEvent(rarity: IucnStatus.extinct),
           );
       await tester.pump();
 
@@ -217,7 +218,7 @@ void main() {
 
       container
           .read(discoveryProvider.notifier)
-          .showDiscovery(_makeEvent(commonName: 'Red Fox'));
+          .showDiscovery(_makeEvent(displayName: 'Red Fox'));
       await tester.pump();
       expect(find.text('Red Fox'), findsOneWidget);
 

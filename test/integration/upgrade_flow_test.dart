@@ -17,9 +17,10 @@ import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/models/user_profile.dart';
@@ -34,21 +35,36 @@ import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
 // Hand-written mocks
 // ---------------------------------------------------------------------------
 
-/// Mock collection notifier with mutable count for reactive testing.
-class _MockCollectionNotifier extends CollectionNotifier {
-  _MockCollectionNotifier(this._initialCount);
+/// Mock inventory notifier with mutable count for reactive testing.
+class _MockInventoryNotifier extends InventoryNotifier {
+  _MockInventoryNotifier(this._initialCount);
 
   final int _initialCount;
 
   @override
-  CollectionState build() => CollectionState(
-        collectedSpeciesIds:
-            List.generate(_initialCount, (i) => 'species_$i'),
+  InventoryState build() => InventoryState(
+        items: List.generate(
+          _initialCount,
+          (i) => ItemInstance(
+            id: 'mock_item_$i',
+            definitionId: 'species_$i',
+            acquiredAt: DateTime(2024),
+            acquiredInCellId: 'cell_1',
+          ),
+        ),
       );
 
   void setCount(int count) {
-    state = CollectionState(
-      collectedSpeciesIds: List.generate(count, (i) => 'species_$i'),
+    state = InventoryState(
+      items: List.generate(
+        count,
+        (i) => ItemInstance(
+          id: 'mock_item_$i',
+          definitionId: 'species_$i',
+          acquiredAt: DateTime(2024),
+          acquiredInCellId: 'cell_1',
+        ),
+      ),
     );
   }
 }
@@ -93,8 +109,8 @@ ProviderContainer _makeContainer({
 }) {
   final container = ProviderContainer(
     overrides: [
-      collectionProvider.overrideWith(
-        () => _MockCollectionNotifier(collectionCount),
+      inventoryProvider.overrideWith(
+        () => _MockInventoryNotifier(collectionCount),
       ),
       authProvider.overrideWith(
         () => _MockAuthNotifier(isAnonymous: isAnonymous),
@@ -109,13 +125,14 @@ ProviderContainer _makeContainer({
 
 /// Minimal species fixture for widget tests.
 final _testSpecies = [
-  SpeciesRecord(
-    commonName: 'Red Fox',
+  FaunaDefinition(
+    id: 'fauna_vulpes_vulpes',
+    displayName: 'Red Fox',
     scientificName: 'Vulpes vulpes',
     taxonomicClass: 'Mammalia',
     continents: [Continent.europe],
     habitats: [Habitat.forest],
-    iucnStatus: IucnStatus.leastConcern,
+    rarity: IucnStatus.leastConcern,
   ),
 ];
 
@@ -128,8 +145,8 @@ Future<ProviderContainer> _pumpSanctuaryScreen(
 }) async {
   final container = ProviderContainer(
     overrides: [
-      collectionProvider.overrideWith(
-        () => _MockCollectionNotifier(collectionCount),
+      inventoryProvider.overrideWith(
+        () => _MockInventoryNotifier(collectionCount),
       ),
       authProvider.overrideWith(
         () => _MockAuthNotifier(isAnonymous: isAnonymous),
@@ -163,8 +180,8 @@ Future<ProviderContainer> _pumpPackScreen(
 }) async {
   final container = ProviderContainer(
     overrides: [
-      collectionProvider.overrideWith(
-        () => _MockCollectionNotifier(collectionCount),
+      inventoryProvider.overrideWith(
+        () => _MockInventoryNotifier(collectionCount),
       ),
       authProvider.overrideWith(
         () => _MockAuthNotifier(isAnonymous: isAnonymous),
@@ -283,7 +300,7 @@ void main() {
       expect(container.read(upgradePromptProvider).hasBeenShown, isTrue);
 
       // Simulate more species collected — triggers reactive rebuild.
-      (container.read(collectionProvider.notifier) as _MockCollectionNotifier)
+      (container.read(inventoryProvider.notifier) as _MockInventoryNotifier)
           .setCount(10);
 
       final state = container.read(upgradePromptProvider);

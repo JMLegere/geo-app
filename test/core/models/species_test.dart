@@ -2,51 +2,53 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 
 void main() {
-  group('SpeciesRecord', () {
-    SpeciesRecord makeRedFox() => const SpeciesRecord(
-          commonName: 'Red Fox',
+  group('FaunaDefinition', () {
+    FaunaDefinition makeRedFox() => const FaunaDefinition(
+          id: 'fauna_vulpes_vulpes',
+          displayName: 'Red Fox',
           scientificName: 'Vulpes vulpes',
           taxonomicClass: 'Mammalia',
           continents: [Continent.europe, Continent.asia],
           habitats: [Habitat.forest, Habitat.plains],
-          iucnStatus: IucnStatus.leastConcern,
+          rarity: IucnStatus.leastConcern,
         );
 
     test('construction with all fields', () {
       final species = makeRedFox();
 
-      expect(species.commonName, equals('Red Fox'));
+      expect(species.displayName, equals('Red Fox'));
       expect(species.scientificName, equals('Vulpes vulpes'));
       expect(species.taxonomicClass, equals('Mammalia'));
       expect(species.continents, contains(Continent.europe));
       expect(species.habitats, contains(Habitat.forest));
-      expect(species.iucnStatus, equals(IucnStatus.leastConcern));
+      expect(species.rarity, equals(IucnStatus.leastConcern));
     });
 
-    test('id is derived from scientific name (lowercase, spaces→underscores)', () {
+    test('id is stored as provided (fauna_ prefix + lowercase scientific name)', () {
       final species = makeRedFox();
-      expect(species.id, equals('vulpes_vulpes'));
+      expect(species.id, equals('fauna_vulpes_vulpes'));
     });
 
     test('id derivation handles multi-word scientific names', () {
-      const species = SpeciesRecord(
-        commonName: 'Snow Leopard',
+      const species = FaunaDefinition(
+        id: 'fauna_panthera_uncia',
+        displayName: 'Snow Leopard',
         scientificName: 'Panthera uncia',
         taxonomicClass: 'Mammalia',
         continents: [Continent.asia],
         habitats: [Habitat.mountain],
-        iucnStatus: IucnStatus.vulnerable,
+        rarity: IucnStatus.vulnerable,
       );
-      expect(species.id, equals('panthera_uncia'));
+      expect(species.id, equals('fauna_panthera_uncia'));
     });
 
     test('fromJson / toJson round-trip preserves all data', () {
       final original = makeRedFox();
       final json = original.toJson();
-      final restored = SpeciesRecord.fromJson({
+      final restored = FaunaDefinition.fromJson({
         'commonName': json['commonName'],
         'scientificName': json['scientificName'],
         'taxonomicClass': json['taxonomicClass'],
@@ -55,16 +57,16 @@ void main() {
         'iucnStatus': json['iucnStatus'],
       });
 
-      expect(restored.commonName, equals(original.commonName));
+      expect(restored.displayName, equals(original.displayName));
       expect(restored.scientificName, equals(original.scientificName));
       expect(restored.taxonomicClass, equals(original.taxonomicClass));
       expect(restored.continents, equals(original.continents));
       expect(restored.habitats, equals(original.habitats));
-      expect(restored.iucnStatus, equals(original.iucnStatus));
+      expect(restored.rarity, equals(original.rarity));
     });
 
     test('fromJson parses JSON with capitalized habitat values', () {
-      final record = SpeciesRecord.fromJson({
+      final record = FaunaDefinition.fromJson({
         'commonName': 'Wolf',
         'scientificName': 'Canis lupus',
         'taxonomicClass': 'Mammalia',
@@ -89,7 +91,7 @@ void main() {
       };
 
       for (final entry in statuses.entries) {
-        final record = SpeciesRecord.fromJson({
+        final record = FaunaDefinition.fromJson({
           'commonName': 'Test',
           'scientificName': 'Test species',
           'taxonomicClass': 'Mammalia',
@@ -97,21 +99,22 @@ void main() {
           'habitats': ['Forest'],
           'iucnStatus': entry.key,
         });
-        expect(record.iucnStatus, equals(entry.value),
+        expect(record.rarity, equals(entry.value),
             reason: '${entry.key} should map to ${entry.value}');
       }
     });
 
-    test('equality is based on scientific name', () {
+    test('equality is based on id', () {
       final species1 = makeRedFox();
       final species2 = makeRedFox();
-      const species3 = SpeciesRecord(
-        commonName: 'Wolf',
+      const species3 = FaunaDefinition(
+        id: 'fauna_canis_lupus',
+        displayName: 'Wolf',
         scientificName: 'Canis lupus',
         taxonomicClass: 'Mammalia',
         continents: [Continent.europe],
         habitats: [Habitat.forest],
-        iucnStatus: IucnStatus.leastConcern,
+        rarity: IucnStatus.leastConcern,
       );
 
       expect(species1, equals(species2));
@@ -150,20 +153,6 @@ void main() {
             reason:
                 '${tiers[i].name}.weight should be 10x ${tiers[i + 1].name}.weight');
       }
-    });
-  });
-
-  group('CollectedSpecies', () {
-    test('construction with all fields', () {
-      final collected = CollectedSpecies(
-        speciesId: 'vulpes_vulpes',
-        collectedAt: DateTime(2024, 6, 15),
-        cellId: 'cell_001',
-      );
-
-      expect(collected.speciesId, equals('vulpes_vulpes'));
-      expect(collected.cellId, equals('cell_001'));
-      expect(collected.collectedAt, equals(DateTime(2024, 6, 15)));
     });
   });
 }

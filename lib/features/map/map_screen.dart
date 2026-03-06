@@ -7,8 +7,10 @@ import 'package:maplibre/maplibre.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
+import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
@@ -150,6 +152,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final discoveryService = ref.read(discoveryServiceProvider);
     _discoverySubscription = discoveryService.onDiscovery.listen((event) {
       ref.read(discoveryProvider.notifier).showDiscovery(event);
+      final instance = ItemInstance(
+        id: '${event.cellId}_${event.species.id}_${DateTime.now().microsecondsSinceEpoch}',
+        definitionId: event.species.id,
+        acquiredAt: event.timestamp,
+        acquiredInCellId: event.cellId,
+      );
+      ref.read(inventoryProvider.notifier).addItem(instance);
     });
 
     // Wire fog resolver → player stats: increment cells observed on each new visit.

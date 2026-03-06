@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
@@ -14,40 +15,44 @@ import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dar
 // Fixtures
 // ---------------------------------------------------------------------------
 
-final _forestFox = SpeciesRecord(
-  commonName: 'Red Fox',
+final _forestFox = FaunaDefinition(
+  id: 'fauna_vulpes_vulpes',
+  displayName: 'Red Fox',
   scientificName: 'Vulpes vulpes',
   taxonomicClass: 'Mammalia',
   continents: [Continent.europe],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _forestBear = SpeciesRecord(
-  commonName: 'Grizzly Bear',
+final _forestBear = FaunaDefinition(
+  id: 'fauna_ursus_arctos_horribilis',
+  displayName: 'Grizzly Bear',
   scientificName: 'Ursus arctos horribilis',
   taxonomicClass: 'Mammalia',
   continents: [Continent.northAmerica],
   habitats: [Habitat.forest],
-  iucnStatus: IucnStatus.leastConcern,
+  rarity: IucnStatus.leastConcern,
 );
 
-final _plainsElephant = SpeciesRecord(
-  commonName: 'African Elephant',
+final _plainsElephant = FaunaDefinition(
+  id: 'fauna_loxodonta_africana',
+  displayName: 'African Elephant',
   scientificName: 'Loxodonta africana',
   taxonomicClass: 'Mammalia',
   continents: [Continent.africa],
   habitats: [Habitat.plains],
-  iucnStatus: IucnStatus.endangered,
+  rarity: IucnStatus.endangered,
 );
 
-final _mountainLeopard = SpeciesRecord(
-  commonName: 'Snow Leopard',
+final _mountainLeopard = FaunaDefinition(
+  id: 'fauna_panthera_uncia',
+  displayName: 'Snow Leopard',
   scientificName: 'Panthera uncia',
   taxonomicClass: 'Mammalia',
   continents: [Continent.asia],
   habitats: [Habitat.mountain],
-  iucnStatus: IucnStatus.vulnerable,
+  rarity: IucnStatus.vulnerable,
 );
 
 final _testSpecies = [
@@ -58,10 +63,24 @@ final _testSpecies = [
 ];
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Add a species to inventory by definition ID.
+void _addSpecies(ProviderContainer container, FaunaDefinition species) {
+  container.read(inventoryProvider.notifier).addItem(ItemInstance(
+        id: 'test_${species.id}',
+        definitionId: species.id,
+        acquiredAt: DateTime.now(),
+        acquiredInCellId: 'cell_1',
+      ));
+}
+
+// ---------------------------------------------------------------------------
 // Container factory
 // ---------------------------------------------------------------------------
 
-ProviderContainer _makeContainer({List<SpeciesRecord>? species}) {
+ProviderContainer _makeContainer({List<FaunaDefinition>? species}) {
   final records = species ?? _testSpecies;
   final container = ProviderContainer(
     overrides: [
@@ -117,8 +136,8 @@ void main() {
   group('SanctuaryState — grouping by habitat', () {
     test('collected forest species appear under Habitat.forest', () {
       final container = _makeContainer();
-      container.read(collectionProvider.notifier).addSpecies(_forestFox.id);
-      container.read(collectionProvider.notifier).addSpecies(_forestBear.id);
+      _addSpecies(container, _forestFox);
+      _addSpecies(container, _forestBear);
 
       final state = container.read(sanctuaryProvider);
 
@@ -128,9 +147,7 @@ void main() {
 
     test('collected plains species appear under Habitat.plains', () {
       final container = _makeContainer();
-      container
-          .read(collectionProvider.notifier)
-          .addSpecies(_plainsElephant.id);
+      _addSpecies(container, _plainsElephant);
 
       final state = container.read(sanctuaryProvider);
 
@@ -141,7 +158,7 @@ void main() {
 
     test('uncollected habitats are absent from speciesByHabitat', () {
       final container = _makeContainer();
-      container.read(collectionProvider.notifier).addSpecies(_forestFox.id);
+      _addSpecies(container, _forestFox);
 
       final state = container.read(sanctuaryProvider);
 
@@ -151,13 +168,9 @@ void main() {
 
     test('species grouped correctly across different habitats', () {
       final container = _makeContainer();
-      container.read(collectionProvider.notifier).addSpecies(_forestFox.id);
-      container
-          .read(collectionProvider.notifier)
-          .addSpecies(_plainsElephant.id);
-      container
-          .read(collectionProvider.notifier)
-          .addSpecies(_mountainLeopard.id);
+      _addSpecies(container, _forestFox);
+      _addSpecies(container, _plainsElephant);
+      _addSpecies(container, _mountainLeopard);
 
       final state = container.read(sanctuaryProvider);
 
@@ -172,10 +185,8 @@ void main() {
   group('SanctuaryState — health percentage', () {
     test('2 out of 4 collected → healthPercentage = 0.5', () {
       final container = _makeContainer();
-      container.read(collectionProvider.notifier).addSpecies(_forestFox.id);
-      container
-          .read(collectionProvider.notifier)
-          .addSpecies(_plainsElephant.id);
+      _addSpecies(container, _forestFox);
+      _addSpecies(container, _plainsElephant);
 
       final state = container.read(sanctuaryProvider);
 
@@ -186,17 +197,18 @@ void main() {
       // Use a 5-species pool
       final fiveSpecies = [
         ..._testSpecies,
-        SpeciesRecord(
-          commonName: 'Jaguar',
+        FaunaDefinition(
+          id: 'fauna_panthera_onca',
+          displayName: 'Jaguar',
           scientificName: 'Panthera onca',
           taxonomicClass: 'Mammalia',
           continents: [Continent.southAmerica],
           habitats: [Habitat.forest],
-          iucnStatus: IucnStatus.nearThreatened,
+          rarity: IucnStatus.nearThreatened,
         ),
       ];
       final container = _makeContainer(species: fiveSpecies);
-      container.read(collectionProvider.notifier).addSpecies(_forestFox.id);
+      _addSpecies(container, _forestFox);
 
       final state = container.read(sanctuaryProvider);
 
@@ -213,7 +225,7 @@ void main() {
     test('all species collected → healthPercentage = 1.0', () {
       final container = _makeContainer();
       for (final s in _testSpecies) {
-        container.read(collectionProvider.notifier).addSpecies(s.id);
+        _addSpecies(container, s);
       }
 
       final state = container.read(sanctuaryProvider);

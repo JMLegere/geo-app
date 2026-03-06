@@ -32,23 +32,44 @@ class LocalCellProgressTable extends Table {
   ];
 }
 
-/// Local representation of collected species
-/// Mirrors Supabase `collected_species` table
-@DataClassName('LocalCollectedSpecies')
-class LocalCollectedSpeciesTable extends Table {
+/// Local cache of item instances (unique discovered items).
+/// Replaces the old LocalCollectedSpeciesTable. Each row is a unique
+/// ItemInstance with randomly-rolled affixes.
+/// Mirrors Supabase `item_instances` table.
+@DataClassName('LocalItemInstance')
+class LocalItemInstanceTable extends Table {
+  /// UUID v4 — globally unique item ID.
   TextColumn get id => text()();
+
+  /// Owner's user ID.
   TextColumn get userId => text()();
-  TextColumn get speciesId => text()();
-  TextColumn get cellId => text()();
-  DateTimeColumn get collectedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// References ItemDefinition.id (e.g. "fauna_vulpes_vulpes").
+  TextColumn get definitionId => text()();
+
+  /// JSON-encoded list of Affix objects.
+  TextColumn get affixes => text().withDefault(const Constant('[]'))();
+
+  /// Null for wild-caught. Set for bred offspring.
+  TextColumn get parentAId => text().nullable()();
+
+  /// Null for wild-caught. Set for bred offspring.
+  TextColumn get parentBId => text().nullable()();
+
+  /// When the player acquired this item.
+  DateTimeColumn get acquiredAt => dateTime()();
+
+  /// Cell where this item was found. Null for bred items.
+  TextColumn get acquiredInCellId => text().nullable()();
+
+  /// Daily seed used for this roll (server re-derivation).
+  TextColumn get dailySeed => text().nullable()();
+
+  /// Lifecycle status: active, donated, placed, released, traded.
+  TextColumn get status => text().withDefault(const Constant('active'))();
 
   @override
   Set<Column> get primaryKey => {id};
-  
-  @override
-  List<Set<Column>> get uniqueKeys => [
-    {userId, speciesId, cellId}, // Unique: one collection per user per species per cell
-  ];
 }
 
 /// Local representation of player profile
@@ -74,7 +95,7 @@ class LocalPlayerProfileTable extends Table {
 
 @DriftDatabase(tables: [
   LocalCellProgressTable,
-  LocalCollectedSpeciesTable,
+  LocalItemInstanceTable,
   LocalPlayerProfileTable,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -82,7 +103,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -91,7 +112,10 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Future migrations will be added here
+        if (from < 2) {
+          await m.createTable(localItemInstanceTable);
+          await m.deleteTable('local_collected_species_table');
+        }
       },
     );
   }
@@ -130,58 +154,56 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // ========================================================================
-  // COLLECTED SPECIES QUERIES
+  // ITEM INSTANCE QUERIES
   // ========================================================================
 
-  /// Get all collected species for a user
-  Future<List<LocalCollectedSpecies>> getCollectedSpeciesByUser(String userId) {
-    return (select(localCollectedSpeciesTable)
+  /// Get all item instances for a user.
+  Future<List<LocalItemInstance>> getItemInstancesByUser(String userId) {
+    return (select(localItemInstanceTable)
           ..where((tbl) => tbl.userId.equals(userId)))
         .get();
   }
 
-  /// Get collected species for a specific cell
-  Future<List<LocalCollectedSpecies>> getCollectedSpeciesByCell(
+  /// Get item instances for a specific cell.
+  Future<List<LocalItemInstance>> getItemInstancesByCell(
     String userId,
     String cellId,
   ) {
-    return (select(localCollectedSpeciesTable)
+    return (select(localItemInstanceTable)
           ..where((tbl) =>
-              tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
+              tbl.userId.equals(userId) &
+              tbl.acquiredInCellId.equals(cellId)))
         .get();
   }
 
-  /// Check if a species is collected in a cell
-  Future<bool> isSpeciesCollected(
-    String userId,
-    String speciesId,
-    String cellId,
-  ) async {
-    final result = await (select(localCollectedSpeciesTable)
-          ..where((tbl) =>
-              tbl.userId.equals(userId) &
-              tbl.speciesId.equals(speciesId) &
-              tbl.cellId.equals(cellId)))
+  /// Get a single item instance by ID.
+  Future<LocalItemInstance?> getItemInstance(String id) {
+    return (select(localItemInstanceTable)
+          ..where((tbl) => tbl.id.equals(id)))
         .getSingleOrNull();
-    return result != null;
   }
 
-  /// Insert collected species
-  Future<void> insertCollectedSpecies(LocalCollectedSpecies species) async {
-    await into(localCollectedSpeciesTable).insert(species);
+  /// Insert a new item instance.
+  Future<void> insertItemInstance(LocalItemInstance instance) async {
+    await into(localItemInstanceTable).insert(instance);
   }
 
-  /// Delete collected species
-  Future<int> deleteCollectedSpecies(
-    String userId,
-    String speciesId,
-    String cellId,
-  ) {
-    return (delete(localCollectedSpeciesTable)
-          ..where((tbl) =>
-              tbl.userId.equals(userId) &
-              tbl.speciesId.equals(speciesId) &
-              tbl.cellId.equals(cellId)))
+  /// Update an existing item instance (e.g. status change).
+  Future<bool> updateItemInstance(LocalItemInstance instance) {
+    return update(localItemInstanceTable).replace(instance);
+  }
+
+  /// Delete an item instance by ID.
+  Future<int> deleteItemInstance(String id) {
+    return (delete(localItemInstanceTable)
+          ..where((tbl) => tbl.id.equals(id)))
+        .go();
+  }
+
+  /// Delete all item instances for a user.
+  Future<int> clearUserItemInstances(String userId) {
+    return (delete(localItemInstanceTable)
+          ..where((tbl) => tbl.userId.equals(userId)))
         .go();
   }
 

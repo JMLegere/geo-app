@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 
 /// Represents a species discovery triggered when a player enters a new cell.
 ///
@@ -6,7 +6,7 @@ import 'package:fog_of_world/core/models/species.dart';
 /// first time, and false when the player has already collected it in a
 /// previous cell.
 class DiscoveryEvent {
-  final SpeciesRecord species;
+  final FaunaDefinition species;
   final String cellId;
   final bool isNew;
   final DateTime timestamp;
@@ -20,7 +20,7 @@ class DiscoveryEvent {
 
   @override
   String toString() =>
-      'DiscoveryEvent(species: ${species.commonName}, cellId: $cellId, '
+      'DiscoveryEvent(species: ${species.displayName}, cellId: $cellId, '
       'isNew: $isNew, timestamp: ${timestamp.toIso8601String()})';
 
   @override

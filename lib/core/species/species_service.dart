@@ -1,6 +1,6 @@
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/loot_table.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
@@ -9,12 +9,12 @@ import 'package:fog_of_world/core/species/loot_table.dart';
 /// deterministically select which species a player can encounter in a given
 /// cell. Species are filtered by habitat(s) and continent before rolling.
 class SpeciesService {
-  final List<SpeciesRecord> _allRecords;
+  final List<FaunaDefinition> _allRecords;
 
   /// Pre-built indices for fast lookup.
-  late final Map<Habitat, List<SpeciesRecord>> _byHabitat;
-  late final Map<Continent, List<SpeciesRecord>> _byContinent;
-  late final Map<(Habitat, Continent), List<SpeciesRecord>>
+  late final Map<Habitat, List<FaunaDefinition>> _byHabitat;
+  late final Map<Continent, List<FaunaDefinition>> _byContinent;
+  late final Map<(Habitat, Continent), List<FaunaDefinition>>
       _byHabitatAndContinent;
 
   SpeciesService(this._allRecords) {
@@ -22,7 +22,7 @@ class SpeciesService {
   }
 
   /// All loaded species records.
-  List<SpeciesRecord> get all => _allRecords;
+  List<FaunaDefinition> get all => _allRecords;
 
   /// Total number of species in the dataset.
   int get totalSpecies => _allRecords.length;
@@ -40,20 +40,20 @@ class SpeciesService {
   ///
   /// Accepts a [Set<Habitat>] so that multi-biome cells (e.g. a coastal
   /// forest) draw from the union of all relevant species pools.
-  List<SpeciesRecord> getSpeciesForCell({
+  List<FaunaDefinition> getSpeciesForCell({
     required String cellId,
     required Set<Habitat> habitats,
     required Continent continent,
     int encounterSlots = 3,
   }) {
-    final pool = <SpeciesRecord>{};
+    final pool = <FaunaDefinition>{};
     for (final habitat in habitats) {
       pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
     }
     if (pool.isEmpty) return [];
 
-    final table = LootTable<SpeciesRecord>(
-      pool.map((s) => (s, s.iucnStatus.weight)).toList(),
+    final table = LootTable<FaunaDefinition>(
+      pool.map((s) => (s, s.rarity!.weight)).toList(),
     );
 
     return table.rollMultiple(cellId, encounterSlots);
@@ -63,11 +63,11 @@ class SpeciesService {
   ///
   /// Returns the union of species pools across all provided [habitats].
   /// Useful for UI (showing "species possible in this area").
-  List<SpeciesRecord> getPoolForArea({
+  List<FaunaDefinition> getPoolForArea({
     required Set<Habitat> habitats,
     required Continent continent,
   }) {
-    final pool = <SpeciesRecord>{};
+    final pool = <FaunaDefinition>{};
     for (final habitat in habitats) {
       pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
     }
@@ -75,11 +75,11 @@ class SpeciesService {
   }
 
   /// Filter by habitat only.
-  List<SpeciesRecord> forHabitat(Habitat habitat) =>
+  List<FaunaDefinition> forHabitat(Habitat habitat) =>
       _byHabitat[habitat] ?? [];
 
   /// Filter by continent only.
-  List<SpeciesRecord> forContinent(Continent continent) =>
+  List<FaunaDefinition> forContinent(Continent continent) =>
       _byContinent[continent] ?? [];
 
   void _buildIndices() {

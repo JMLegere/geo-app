@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
@@ -37,21 +37,23 @@ class _StubAuthNotifier extends AuthNotifier {
 // ---------------------------------------------------------------------------
 
 final _testSpecies = [
-  SpeciesRecord(
-    commonName: 'Red Fox',
+  FaunaDefinition(
+    id: 'fauna_vulpes_vulpes',
+    displayName: 'Red Fox',
     scientificName: 'Vulpes vulpes',
     taxonomicClass: 'Mammalia',
     continents: [Continent.europe],
     habitats: [Habitat.forest],
-    iucnStatus: IucnStatus.leastConcern,
+    rarity: IucnStatus.leastConcern,
   ),
-  SpeciesRecord(
-    commonName: 'African Elephant',
+  FaunaDefinition(
+    id: 'fauna_loxodonta_africana',
+    displayName: 'African Elephant',
     scientificName: 'Loxodonta africana',
     taxonomicClass: 'Mammalia',
     continents: [Continent.africa],
     habitats: [Habitat.plains],
-    iucnStatus: IucnStatus.endangered,
+    rarity: IucnStatus.endangered,
   ),
 ];
 

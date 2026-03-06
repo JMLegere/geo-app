@@ -129,7 +129,7 @@ void main() {
     test('parsed records cover all 6 IUCN statuses', () {
       final allStatuses = <IucnStatus>{};
       for (final r in records) {
-        allStatuses.add(r.iucnStatus as IucnStatus);
+        allStatuses.add(r.rarity as IucnStatus);
       }
       expect(allStatuses.length, equals(6),
           reason: 'Fixture should cover all 6 IUCN statuses');
@@ -306,7 +306,7 @@ void main() {
           habitats: habitats,
           continent: continent,
         );
-        if (found.isNotEmpty) results.add(found.first.scientificName);
+        if (found.isNotEmpty) results.add(found.first.scientificName!);
       }
       // With 30 different cells, we expect at least some variety.
       expect(results.length, greaterThan(1),
@@ -520,12 +520,12 @@ void main() {
       // Over many single rolls, LC should dominate EN by >100x.
 
       final lcSpecies = {
-        'vulpes_vulpes',
-        'meles_meles',
-        'lynx_lynx',
-        'canis_lupus',
+        'fauna_vulpes_vulpes',
+        'fauna_meles_meles',
+        'fauna_lynx_lynx',
+        'fauna_canis_lupus',
       };
-      final enSpecies = {'lynx_pardinus'};
+      final enSpecies = {'fauna_lynx_pardinus'};
 
       var lcCount = 0;
       var enCount = 0;
