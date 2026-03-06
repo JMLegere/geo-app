@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
+import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// Account settings screen.
@@ -78,22 +79,11 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // Upgrade placeholder
+  // Upgrade
   // ---------------------------------------------------------------------------
 
-  void _showUpgradePlaceholder(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => const SafeArea(
-        child: Padding(
-          padding: EdgeInsets.all(Spacing.xxl),
-          child: Text(
-            'Upgrade coming soon',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
+  void _showUpgrade(BuildContext context) {
+    UpgradeBottomSheet.show(context);
   }
 
   // ---------------------------------------------------------------------------
@@ -200,7 +190,7 @@ class SettingsScreen extends ConsumerWidget {
                     height: ComponentSizes.buttonHeight,
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () => _showUpgradePlaceholder(context),
+                      onPressed: () => _showUpgrade(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colors.primary,
                         foregroundColor: colors.onPrimary,

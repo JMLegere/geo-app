@@ -2,7 +2,10 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
+import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
+import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
+import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/features/caretaking/providers/caretaking_provider.dart';
 import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
@@ -33,6 +36,15 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
     // provider state during build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(caretakingProvider.notifier).recordVisit();
+      // One-time upgrade bottom sheet trigger.
+      // listenManual works outside build(); the subscription auto-disposes
+      // when the ConsumerState is disposed.
+      ref.listenManual<UpgradePromptState>(upgradePromptProvider, (prev, next) {
+        if (next.shouldShow) {
+          ref.read(upgradePromptProvider.notifier).markShown();
+          UpgradeBottomSheet.show(context);
+        }
+      });
     });
   }
 
@@ -155,6 +167,17 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+
+          // Save progress banner — shown when user is anonymous and has
+          // crossed the upgrade threshold.
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: SaveProgressBanner(
+                onUpgradeTap: () => UpgradeBottomSheet.show(context),
               ),
             ),
           ),

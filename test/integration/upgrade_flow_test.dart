@@ -1,0 +1,489 @@
+/// Integration test: upgrade flow wired across SanctuaryScreen, PackScreen,
+/// and SettingsScreen.
+///
+/// Tests the full end-to-end upgrade prompt lifecycle:
+/// 1. UpgradePromptProvider state transitions (0→5 species, markShown, etc.)
+/// 2. Supabase gate (prompt suppressed when SDK not initialized)
+/// 3. SaveProgressBanner visibility in SanctuaryScreen and PackScreen
+///
+/// All mocks are hand-written — no mockito / mocktail.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:fog_of_world/core/models/continent.dart';
+import 'package:fog_of_world/core/models/habitat.dart';
+import 'package:fog_of_world/core/models/iucn_status.dart';
+import 'package:fog_of_world/core/models/species.dart';
+import 'package:fog_of_world/core/species/species_service.dart';
+import 'package:fog_of_world/core/state/collection_provider.dart';
+import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
+import 'package:fog_of_world/features/auth/models/auth_state.dart';
+import 'package:fog_of_world/features/auth/models/user_profile.dart';
+import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
+import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
+import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
+import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
+import 'package:fog_of_world/features/pack/screens/pack_screen.dart';
+import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
+
+// ---------------------------------------------------------------------------
+// Hand-written mocks
+// ---------------------------------------------------------------------------
+
+/// Mock collection notifier with mutable count for reactive testing.
+class _MockCollectionNotifier extends CollectionNotifier {
+  _MockCollectionNotifier(this._initialCount);
+
+  final int _initialCount;
+
+  @override
+  CollectionState build() => CollectionState(
+        collectedSpeciesIds:
+            List.generate(_initialCount, (i) => 'species_$i'),
+      );
+
+  void setCount(int count) {
+    state = CollectionState(
+      collectedSpeciesIds: List.generate(count, (i) => 'species_$i'),
+    );
+  }
+}
+
+/// Mock auth notifier that returns a fixed state, bypassing async init.
+class _MockAuthNotifier extends AuthNotifier {
+  _MockAuthNotifier({required bool isAnonymous}) : _isAnonymous = isAnonymous;
+
+  final bool _isAnonymous;
+
+  @override
+  AuthState build() {
+    final user = UserProfile(
+      id: 'mock-user',
+      email: 'mock@example.com',
+      createdAt: DateTime(2024),
+      isAnonymous: _isAnonymous,
+    );
+    return AuthState.authenticated(user);
+  }
+}
+
+/// SupabaseBootstrap subclass with controllable initialized flag.
+class _FakeBootstrap extends SupabaseBootstrap {
+  _FakeBootstrap({required bool initialized}) : _testInitialized = initialized;
+
+  final bool _testInitialized;
+
+  @override
+  bool get initialized => _testInitialized;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Creates a [ProviderContainer] wired with mock implementations.
+ProviderContainer _makeContainer({
+  required int collectionCount,
+  required bool isAnonymous,
+  required bool supabaseInitialized,
+}) {
+  final container = ProviderContainer(
+    overrides: [
+      collectionProvider.overrideWith(
+        () => _MockCollectionNotifier(collectionCount),
+      ),
+      authProvider.overrideWith(
+        () => _MockAuthNotifier(isAnonymous: isAnonymous),
+      ),
+      supabaseBootstrapProvider.overrideWithValue(
+        _FakeBootstrap(initialized: supabaseInitialized),
+      ),
+    ],
+  );
+  return container;
+}
+
+/// Minimal species fixture for widget tests.
+final _testSpecies = [
+  SpeciesRecord(
+    commonName: 'Red Fox',
+    scientificName: 'Vulpes vulpes',
+    taxonomicClass: 'Mammalia',
+    continents: [Continent.europe],
+    habitats: [Habitat.forest],
+    iucnStatus: IucnStatus.leastConcern,
+  ),
+];
+
+/// Pumps [SanctuaryScreen] with mocked providers.
+Future<ProviderContainer> _pumpSanctuaryScreen(
+  WidgetTester tester, {
+  required int collectionCount,
+  required bool isAnonymous,
+  required bool supabaseInitialized,
+}) async {
+  final container = ProviderContainer(
+    overrides: [
+      collectionProvider.overrideWith(
+        () => _MockCollectionNotifier(collectionCount),
+      ),
+      authProvider.overrideWith(
+        () => _MockAuthNotifier(isAnonymous: isAnonymous),
+      ),
+      supabaseBootstrapProvider.overrideWithValue(
+        _FakeBootstrap(initialized: supabaseInitialized),
+      ),
+      speciesServiceProvider.overrideWith(
+        (_) => SpeciesService(_testSpecies),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: SanctuaryScreen()),
+    ),
+  );
+  await tester.pump();
+  return container;
+}
+
+/// Pumps [PackScreen] with mocked providers.
+Future<ProviderContainer> _pumpPackScreen(
+  WidgetTester tester, {
+  required int collectionCount,
+  required bool isAnonymous,
+  required bool supabaseInitialized,
+}) async {
+  final container = ProviderContainer(
+    overrides: [
+      collectionProvider.overrideWith(
+        () => _MockCollectionNotifier(collectionCount),
+      ),
+      authProvider.overrideWith(
+        () => _MockAuthNotifier(isAnonymous: isAnonymous),
+      ),
+      supabaseBootstrapProvider.overrideWithValue(
+        _FakeBootstrap(initialized: supabaseInitialized),
+      ),
+      speciesServiceProvider.overrideWith(
+        (_) => SpeciesService(_testSpecies),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: PackScreen()),
+    ),
+  );
+  await tester.pump();
+  return container;
+}
+
+/// Top-level helper for standalone SaveProgressBanner widget tests.
+Widget _wrapBanner({required bool showBanner}) {
+  return ProviderScope(
+    overrides: [
+      upgradePromptProvider.overrideWith(
+        () => _StubUpgradePromptNotifier(showBanner: showBanner),
+      ),
+    ],
+    child: const MaterialApp(
+      home: Scaffold(
+        body: SaveProgressBanner(onUpgradeTap: _noOp),
+      ),
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+void main() {
+  // ── Provider-level: full upgrade flow ─────────────────────────────────────
+
+  group('UpgradePromptProvider full flow', () {
+    test('collection 0→4: shouldShow and showBanner both false', () {
+      final container = _makeContainer(
+        collectionCount: 4,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.shouldShow, isFalse);
+      expect(state.showBanner, isFalse);
+      expect(state.totalCollected, 4);
+    });
+
+    test('collection reaches 5: shouldShow becomes true, showBanner true', () {
+      final container = _makeContainer(
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.shouldShow, isTrue);
+      expect(state.showBanner, isTrue);
+    });
+
+    test('markShown() sets shouldShow=false, showBanner stays true', () {
+      final container = _makeContainer(
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(upgradePromptProvider).shouldShow, isTrue);
+
+      container.read(upgradePromptProvider.notifier).markShown();
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.shouldShow, isFalse);
+      expect(state.showBanner, isTrue);
+      expect(state.hasBeenShown, isTrue);
+    });
+
+    test('after upgrade (isAnonymous→false) showBanner becomes false', () {
+      final container = _makeContainer(
+        collectionCount: 10,
+        isAnonymous: false,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.showBanner, isFalse);
+      expect(state.shouldShow, isFalse);
+    });
+
+    test('hasBeenShown preserved across reactive rebuilds', () {
+      final container = _makeContainer(
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      container.read(upgradePromptProvider.notifier).markShown();
+      expect(container.read(upgradePromptProvider).hasBeenShown, isTrue);
+
+      // Simulate more species collected — triggers reactive rebuild.
+      (container.read(collectionProvider.notifier) as _MockCollectionNotifier)
+          .setCount(10);
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.totalCollected, 10);
+      expect(state.hasBeenShown, isTrue);
+      expect(state.shouldShow, isFalse);
+      expect(state.showBanner, isTrue);
+    });
+  });
+
+  // ── Supabase gate ─────────────────────────────────────────────────────────
+
+  group('Supabase gate', () {
+    test('shouldShow is false when supabaseInitialized=false regardless of count',
+        () {
+      final container = _makeContainer(
+        collectionCount: 10,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
+      addTearDown(container.dispose);
+
+      final state = container.read(upgradePromptProvider);
+      expect(state.shouldShow, isFalse);
+      expect(state.showBanner, isFalse);
+    });
+
+    test('showBanner is false when supabaseInitialized=false', () {
+      final container = _makeContainer(
+        collectionCount: 20,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(upgradePromptProvider).showBanner, isFalse);
+    });
+
+    test('prompt appears when supabaseInitialized=true and count>=5', () {
+      final container = _makeContainer(
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(upgradePromptProvider).shouldShow, isTrue);
+    });
+  });
+
+  // ── SanctuaryScreen widget tests ─────────────────────────────────────────
+
+  group('SanctuaryScreen includes SaveProgressBanner', () {
+    // Note: SanctuaryScreen uses a CustomScrollView with lazy sliver rendering.
+    // SaveProgressBanner (as SizedBox.shrink) may not appear in the rendered
+    // viewport when showBanner=false and the header card fills the screen.
+    // Functional visibility tests below are the authoritative coverage.
+
+    testWidgets('banner is visible when threshold met and user is anonymous',
+        (tester) async {
+      await _pumpSanctuaryScreen(
+        tester,
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsOneWidget);
+    });
+
+    testWidgets('banner is hidden when collection is below threshold',
+        (tester) async {
+      await _pumpSanctuaryScreen(
+        tester,
+        collectionCount: 2,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+
+    testWidgets('banner is hidden when user has upgraded (not anonymous)',
+        (tester) async {
+      await _pumpSanctuaryScreen(
+        tester,
+        collectionCount: 10,
+        isAnonymous: false,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+
+    testWidgets('banner is hidden when supabase not initialized', (tester) async {
+      await _pumpSanctuaryScreen(
+        tester,
+        collectionCount: 10,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+  });
+
+  // ── PackScreen widget tests ────────────────────────────────────────────────
+
+  group('PackScreen includes SaveProgressBanner', () {
+    testWidgets('banner widget is present in tree (may be hidden)', (tester) async {
+      await _pumpPackScreen(
+        tester,
+        collectionCount: 0,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+
+      expect(find.byType(SaveProgressBanner), findsOneWidget);
+    });
+
+    testWidgets('banner is visible when threshold met and user is anonymous',
+        (tester) async {
+      await _pumpPackScreen(
+        tester,
+        collectionCount: 5,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsOneWidget);
+    });
+
+    testWidgets('banner is hidden when collection is below threshold',
+        (tester) async {
+      await _pumpPackScreen(
+        tester,
+        collectionCount: 3,
+        isAnonymous: true,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+
+    testWidgets('banner is hidden when user has upgraded (not anonymous)',
+        (tester) async {
+      await _pumpPackScreen(
+        tester,
+        collectionCount: 10,
+        isAnonymous: false,
+        supabaseInitialized: true,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+
+    testWidgets('banner is hidden when supabase not initialized', (tester) async {
+      await _pumpPackScreen(
+        tester,
+        collectionCount: 10,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
+
+      expect(find.text('Save your progress'), findsNothing);
+    });
+  });
+
+  // ── SaveProgressBanner standalone widget tests ────────────────────────────
+
+  group('SaveProgressBanner widget', () {
+    testWidgets('renders "Save your progress" when showBanner=true',
+        (tester) async {
+      await tester.pumpWidget(_wrapBanner(showBanner: true));
+      expect(find.text('Save your progress'), findsOneWidget);
+    });
+
+    testWidgets('renders nothing when showBanner=false', (tester) async {
+      await tester.pumpWidget(_wrapBanner(showBanner: false));
+      expect(find.text('Save your progress'), findsNothing);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Supporting stubs for SaveProgressBanner standalone tests
+// ---------------------------------------------------------------------------
+
+void _noOp() {}
+
+class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
+  _StubUpgradePromptNotifier({required bool showBanner})
+      : _showBanner = showBanner;
+
+  final bool _showBanner;
+
+  @override
+  UpgradePromptState build() => UpgradePromptState(
+        totalCollected: _showBanner ? 10 : 0,
+        isAnonymous: _showBanner,
+        supabaseInitialized: _showBanner,
+      );
+}

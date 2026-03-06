@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
+import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
+import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
 import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
 import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
@@ -17,8 +20,26 @@ import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 ///
 /// This is a standalone screen — it does not depend on MapScreen or any
 /// map-specific providers.
-class PackScreen extends ConsumerWidget {
+class PackScreen extends ConsumerStatefulWidget {
   const PackScreen({super.key});
+
+  @override
+  ConsumerState<PackScreen> createState() => _PackScreenState();
+}
+
+class _PackScreenState extends ConsumerState<PackScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.listenManual<UpgradePromptState>(upgradePromptProvider, (prev, next) {
+        if (next.shouldShow) {
+          ref.read(upgradePromptProvider.notifier).markShown();
+          UpgradeBottomSheet.show(context);
+        }
+      });
+    });
+  }
 
   Widget _buildEmptyState(PackState state) {
     // Nothing collected yet — show exploration prompt.
@@ -51,7 +72,7 @@ class PackScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final state = ref.watch(packProvider);
     final notifier = ref.read(packProvider.notifier);
     final filtered = state.filteredSpecies;
@@ -92,6 +113,12 @@ class PackScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          // Save progress banner — shown when user is anonymous and has
+          // crossed the upgrade threshold.
+          SaveProgressBanner(
+            onUpgradeTap: () => UpgradeBottomSheet.show(context),
+          ),
+
            // Progress bar
            PackProgressBar(
              collected: state.collectedCount,
@@ -143,5 +170,3 @@ class PackScreen extends ConsumerWidget {
     );
   }
 }
-
-

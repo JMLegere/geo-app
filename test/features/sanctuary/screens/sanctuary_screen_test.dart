@@ -7,11 +7,30 @@ import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
+import 'package:fog_of_world/features/auth/models/auth_state.dart';
+import 'package:fog_of_world/features/auth/models/user_profile.dart';
+import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+
+// ---------------------------------------------------------------------------
+// Stub auth notifier — returns fixed state without async work (no pending timers)
+// ---------------------------------------------------------------------------
+
+final _anonUser = UserProfile(
+  id: 'anon-test',
+  email: '',
+  createdAt: DateTime(2024),
+  isAnonymous: true,
+);
+
+class _StubAuthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState.authenticated(_anonUser);
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -42,6 +61,7 @@ Future<void> _pumpScreen(WidgetTester tester) async {
       speciesServiceProvider.overrideWith(
         (_) => SpeciesService(_testSpecies),
       ),
+      authProvider.overrideWith(_StubAuthNotifier.new),
     ],
   );
   addTearDown(container.dispose);
