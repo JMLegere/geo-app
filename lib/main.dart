@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/auth/screens/login_screen.dart';
-import 'package:fog_of_world/features/map/map_screen.dart';
+import 'package:fog_of_world/features/navigation/screens/tab_shell.dart';
 import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
 import 'package:fog_of_world/features/onboarding/screens/onboarding_screen.dart';
 import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
@@ -26,13 +26,13 @@ void main() {
 }
 
 /// Root widget — routes through onboarding on first launch, then to
-/// [MapScreen] when the user is authenticated or in guest mode, and to
+/// [TabShell] when the user is authenticated or in guest mode, and to
 /// [LoginScreen] when there is no session.
 ///
 /// Routing order:
 /// 1. `onboardingProvider == null` → neutral splash (no flash on cold start)
 /// 2. `onboardingProvider == false` → [OnboardingScreen] (first launch only)
-/// 3. auth loading / authenticated / guest → [MapScreen]
+/// 3. auth loading / authenticated / guest → [TabShell]
 /// 4. unauthenticated → [LoginScreen]
 class FogOfWorldApp extends ConsumerWidget {
   const FogOfWorldApp({super.key});
@@ -66,7 +66,7 @@ class FogOfWorldApp extends ConsumerWidget {
 
     // Onboarding complete — use existing auth routing.
     return switch (authState.status) {
-      AuthStatus.authenticated || AuthStatus.guest => const MapScreen(),
+      AuthStatus.authenticated || AuthStatus.guest => const TabShell(),
       AuthStatus.loading => const _LoadingSplash(),
       _ => const LoginScreen(),
     };
@@ -75,8 +75,8 @@ class FogOfWorldApp extends ConsumerWidget {
 
 /// Lightweight splash shown while Supabase initializes and auth resolves.
 ///
-/// Replaces the previous behavior of routing [AuthStatus.loading] to
-/// [MapScreen], which triggered expensive Voronoi cell computation and
+/// Replaces the previous behavior of routing [AuthStatus.loading] directly to
+/// the main screen, which triggered expensive Voronoi cell computation and
 /// location service startup before auth was ready — freezing the UI on web.
 class _LoadingSplash extends StatelessWidget {
   const _LoadingSplash();
