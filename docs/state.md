@@ -11,7 +11,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `fogProvider` | `NotifierProvider<FogNotifier, Map<String, FogState>>` | `{cellId: FogState}` | none |
 | `locationProvider` | `NotifierProvider<LocationNotifier, LocationState>` | `{currentPosition?, accuracy?, isTracking, locationError}` | none |
 | `playerProvider` | `NotifierProvider<PlayerNotifier, PlayerState>` | `{currentStreak, longestStreak, totalDistanceKm, cellsObserved}` | none |
-| `collectionProvider` | `NotifierProvider<CollectionNotifier, CollectionState>` | `{collectedSpeciesIds: List<String>}` | none |
+| `inventoryProvider` | `NotifierProvider<InventoryNotifier, InventoryState>` | `{items: List<ItemInstance>, itemsByStatus: Map<ItemInstanceStatus, List<ItemInstance>>}` | none |
 | `seasonProvider` | `NotifierProvider<SeasonNotifier, Season>` | `Season.summer \| Season.winter` | none |
 | `cellServiceProvider` | `Provider<CellService>` | CellCache(LazyVoronoiCellService) | none |
 | `fogResolverProvider` | `Provider<FogStateResolver>` | singleton | watches: cellServiceProvider |
@@ -22,17 +22,17 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | Provider | Feature | Type | Dependencies |
 |----------|---------|------|-------------|
 | `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | reads: supabaseBootstrapProvider. States: unauthenticated, loading, authenticated |
-| `upgradePromptProvider` | auth | `NotifierProvider<UpgradePromptNotifier, UpgradePromptState>` | watches: authProvider, collectionProvider. Triggers save-progress banner at 5 collected species for anonymous users |
+| `upgradePromptProvider` | auth | `NotifierProvider<UpgradePromptNotifier, UpgradePromptState>` | watches: authProvider, inventoryProvider. Triggers save-progress banner at 5 collected species for anonymous users |
 | `onboardingProvider` | onboarding | `NotifierProvider<OnboardingNotifier, bool?>` | none (SharedPreferences) |
 | `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, restoration, speciesService |
 | `achievementNotificationProvider` | achievements | `NotifierProvider` | none (toast queue) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
 | `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | none (dev fixture) |
-| `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: collection |
+| `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
-| `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: collection, player |
+| `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: inventory, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence |
 
@@ -56,7 +56,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 supabaseBootstrapProvider ──→ authProvider ──→ upgradePromptProvider
                           ──→ supabasePersistenceProvider ──→ syncProvider
 
-collectionProvider ──→ upgradePromptProvider (watch)
+inventoryProvider ──→ upgradePromptProvider (watch)
 
 cellServiceProvider ──→ fogResolverProvider ──→ discoveryServiceProvider
                                            ──→ fogOverlayControllerProvider
@@ -66,9 +66,9 @@ speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ sanctuaryProvider
                        ──→ achievementProvider
 
-collectionProvider ──→ packProvider (listen)
-                   ──→ sanctuaryProvider (listen)
-                   ──→ achievementProvider (read)
+inventoryProvider ──→ packProvider (listen)
+                  ──→ sanctuaryProvider (listen)
+                  ──→ achievementProvider (read)
 
 tabIndexProvider ──→ (persists to SharedPreferences)
 
@@ -82,7 +82,7 @@ playerProvider ──→ sanctuaryProvider (listen)
 | Pattern | When | Example |
 |---------|------|---------|
 | `ref.watch()` in `build()` | Reactive dependency — provider rebuilds when dep changes | fogResolverProvider watches cellServiceProvider |
-| `ref.listen()` in `build()` | React to changes without resetting own state | packProvider listens to collectionProvider (preserves filters) |
+| `ref.listen()` in `build()` | React to changes without resetting own state | packProvider listens to inventoryProvider (preserves filters) |
 | `ref.read()` in methods | One-shot mutation from event handler | caretakingProvider reads playerProvider.notifier |
 | Stream subscription | External event source (GPS, fog events) | LocationNotifier.connectToStream(), map_screen subscriptions |
 

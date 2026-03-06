@@ -42,23 +42,23 @@ New tab showing discovered NPCs.
 
 **KEY SHIFT**: Everything is an item. Each instance is unique with randomly-rolled affixes (PoE/CryptoKitty model). 5 categories: Fauna, Flora, Mineral, Fossil, Artifact. Breeding produces offspring with trait inheritance. See [item-system-design.md](item-system-design.md).
 
-### Project 2.1: Item Model Foundation — Planned
-- [ ] Create `ItemDefinition` sealed class hierarchy (Fauna, Flora, Mineral, Fossil, Artifact)
-- [ ] Create `ItemInstance` model with affix list + parentage fields
-- [ ] Create `Affix` model (prefix/suffix with flexible key-value stats)
-- [ ] Convert existing `SpeciesRecord` → `FaunaDefinition` (adapter, not replace yet)
+### Project 2.1: Item Model Foundation — Done
+- [x] Create `ItemDefinition` sealed class hierarchy (Fauna, Flora, Mineral, Fossil, Artifact)
+- [x] Create `ItemInstance` model with affix list + parentage fields
+- [x] Create `Affix` model (prefix/suffix with flexible key-value stats)
+- [x] Convert existing `SpeciesRecord` → `FaunaDefinition`
 
-### Project 2.2: Database Schema Migration — Planned
-- [ ] Add `LocalItemInstanceTable` to Drift schema (parallel to existing, not replacing yet)
-- [ ] Add `item_instances` table to Supabase with RLS
-- [ ] Create `ItemInstanceRepository` for local cache CRUD
-- [ ] Data migration: existing collected species → ItemInstance with 0 affixes
+### Project 2.2: Database Schema Migration — Done
+- [x] Add `LocalItemInstanceTable` to Drift schema (9 columns, schema v2)
+- [x] Create `ItemInstanceRepository` for local cache CRUD
+- [ ] Add `item_instances` table to Supabase with RLS (deferred to Phase 3)
+- [ ] Data migration: existing collected species → ItemInstance with 0 affixes (deferred)
 
-### Project 2.3: Inventory State Management — Planned
-- [ ] Create `InventoryNotifier` (parallel to existing `CollectionNotifier`)
-- [ ] Wire to `ItemInstanceRepository` for persistence
-- [ ] Support lifecycle transitions: active → donated / placed / released / traded
-- [ ] Migrate downstream consumers (pack, sanctuary, achievements) from collection → inventory
+### Project 2.3: Inventory State Management — Done
+- [x] Create `InventoryNotifier` (replaced `CollectionNotifier`)
+- [x] Wire to `ItemInstanceRepository` for persistence
+- [x] Support lifecycle transitions: active → donated / placed / released / traded
+- [x] Migrate downstream consumers (pack, sanctuary, achievements) from collection → inventory
 
 ### Project 2.4: Affix Rolling System — Planned
 - [ ] Create `AffixRoller` service (deterministic: seed + cellId + definitionId → affixes)
@@ -402,12 +402,14 @@ Community features for sharing and interaction.
 
 Architecture evolution required to support the product roadmap. See [current-architecture.md](current-architecture.md) and [ideal-architecture.md](ideal-architecture.md) for detailed analysis.
 
-### TR-1: Inventory Model Migration (blocks: Museum, Pack redesign, NPC bundles)
-Current: binary `CollectedSpecies` (collected or not). Target: quantity-tracked inventory items.
-- Schema migration (add quantity tracking or instance-based model)
-- Repository API changes (add/remove/count instead of toggle)
-- Provider rewiring (collectionProvider consumers → inventoryProvider)
-- Data migration for existing users (each collected species → quantity=1)
+### TR-1: Inventory Model Migration — COMPLETE (Phase 1)
+Status: ItemInstance model with affixes, status lifecycle, and breeding lineage fields is live.
+- [x] Schema migration (LocalItemInstanceTable with 9 columns)
+- [x] Repository API changes (ItemInstanceRepository with full CRUD)
+- [x] Provider rewiring (inventoryProvider replaced collectionProvider)
+- [ ] Affix rolling system (Phase 2.4)
+- [ ] Breeding system (Phase 2.5)
+- [ ] Data migration for existing users (deferred)
 
 ### TR-2: Write Queue & Server-Authoritative Persistence (blocks: reliable sync, offline resilience)
 Current: in-memory Riverpod notifiers with write-through Supabase. No queue, no conflict handling.

@@ -123,8 +123,8 @@ OFFLINE FLOW:
 
 ### 2. Item Model — Unique Instances with Random Affixes
 
-**Current:** Binary collection — `CollectedSpecies` is a flag per species x cell.
-**Ideal:** Every item is a unique instance with randomly-rolled affixes, like PoE or CryptoKitty.
+**Status:** Phase 1 COMPLETE. `ItemDefinition` (sealed), `ItemInstance`, `Affix`, and `inventoryProvider` are live.
+**Remaining:** Affix rolling system, breeding, bundles, museum donations.
 
 **5 item categories:**
 

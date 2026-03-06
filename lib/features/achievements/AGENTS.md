@@ -5,7 +5,7 @@ Achievement tracking with toast notifications. Full feature: models/, providers/
 ## Architecture
 
 - `AchievementService` — Pure Dart class, no Riverpod. `evaluate(AchievementContext)` returns list of newly unlocked achievements.
-- `AchievementNotifier` — reads playerProvider, collectionProvider, restorationProvider, speciesServiceProvider. Calls `checkAchievements()` after state changes.
+- `AchievementNotifier` — reads playerProvider, inventoryProvider, restorationProvider, speciesServiceProvider. Calls `checkAchievements()` after state changes.
 - `AchievementNotificationNotifier` — manages toast queue (separate from main state).
 
 ## Dual Notifier Pattern
@@ -54,7 +54,7 @@ AchievementService is a pure function container:
 |---------|-----------|-----|
 | discovery/ | DiscoveryEvent model | Achievement context includes recent discoveries |
 | restoration/ | Restoration progress | Tracks restoration-based achievements |
-| collection/ | Species collection state | Tracks collection milestones |
+| inventory/ | Item instance state | Tracks collection milestones |
 | player/ | Player profile | Tracks exploration/streak achievements |
 
 ## File Structure

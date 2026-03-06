@@ -21,7 +21,7 @@ Generic weighted random selection:
 
 ## SpeciesDataLoader
 
-`fromJsonString(json)` → `List<SpeciesRecord>`. Silently skips records with unknown habitats/continents/IUCN statuses (logs warning). This is intentional — allows partial dataset updates without breaking the app.
+`fromJsonString(json)` → `List<FaunaDefinition>`. Silently skips records with unknown habitats/continents/IUCN statuses (logs warning). This is intentional — allows partial dataset updates without breaking the app.
 
 ## ContinentResolver
 
@@ -49,5 +49,5 @@ Generic weighted random selection:
 - Changing SHA-256 algorithm or seed format breaks ALL existing cell→species mappings
 - `rollMultiple()` can return fewer than n items if pool is too small (even after n*10 attempts)
 - Species pool union means a cell at a biome boundary may yield species from multiple habitats
-- SpeciesRecord equality is by `scientificName` only — two records with same name but different metadata are "equal"
+- FaunaDefinition equality is by `scientificName` only — two records with same name but different metadata are "equal"
 - Dataset has 32,752 records but not all are rollable — some have unknown habitats/continents and are silently filtered
