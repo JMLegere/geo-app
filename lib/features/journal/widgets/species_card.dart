@@ -35,7 +35,7 @@ class SpeciesCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: Radii.borderXxl,
           boxShadow: Shadows.medium,
         ),

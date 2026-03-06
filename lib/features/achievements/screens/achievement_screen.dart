@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/features/achievements/models/achievement.dart';
 import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
 import 'package:fog_of_world/features/achievements/providers/achievement_provider.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Full-screen achievement browser.
 ///
@@ -18,19 +20,20 @@ class AchievementScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final achievementsState = ref.watch(achievementProvider);
     final sortedItems = _sortedAchievements(achievementsState);
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAF8),
+      backgroundColor: cs.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFAFAF8),
+        backgroundColor: cs.surface,
         elevation: 0,
         scrolledUnderElevation: 1,
-        title: const Text(
+        title: Text(
           'Achievements',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A2E1B),
+            color: cs.onSurface,
             letterSpacing: -0.3,
           ),
         ),
@@ -49,9 +52,9 @@ class AchievementScreen extends ConsumerWidget {
           // Achievement list
           SliverList.separated(
             itemCount: sortedItems.length,
-            separatorBuilder: (_, __) => const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(color: Color(0xFFE5E7EB), height: 1),
+            separatorBuilder: (ctx, __) => Padding(
+              padding: Spacing.paddingScreenH,
+              child: Divider(color: Theme.of(ctx).colorScheme.outlineVariant, height: 1),
             ),
             itemBuilder: (_, index) {
               final progress = sortedItems[index];
@@ -61,7 +64,7 @@ class AchievementScreen extends ConsumerWidget {
           ),
 
           // Bottom padding
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          const SliverToBoxAdapter(child: SizedBox(height: Spacing.xxxl)),
         ],
       ),
     );
@@ -111,20 +114,16 @@ class _UnlockedHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = totalCount == 0 ? 0.0 : unlockedCount / totalCount;
+    final cs = Theme.of(context).colorScheme;
+    final nova = context.earthNova;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      padding: const EdgeInsets.all(20),
+      margin: EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, Spacing.xxl),
+      padding: EdgeInsets.all(Spacing.xl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: cs.surfaceContainer,
+        borderRadius: Radii.borderXxxl,
+        boxShadow: Shadows.medium,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,16 +134,16 @@ class _UnlockedHeader extends StatelessWidget {
                 '🏆',
                 style: TextStyle(fontSize: 28),
               ),
-              const SizedBox(width: 12),
+              Spacing.gapHMd,
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '$unlockedCount / $totalCount Unlocked',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A2E1B),
+                      color: cs.onSurface,
                       letterSpacing: -0.3,
                     ),
                   ),
@@ -153,25 +152,25 @@ class _UnlockedHeader extends StatelessWidget {
                     unlockedCount == totalCount
                         ? 'All achievements complete!'
                         : '${totalCount - unlockedCount} remaining',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF6B7280),
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          Spacing.gapLg,
           // Overall progress bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: Radii.borderXs,
             child: LinearProgressIndicator(
               value: fraction,
               minHeight: 8,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF10B981),
+              backgroundColor: cs.outlineVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                nova.successColor,
               ),
             ),
           ),
@@ -197,24 +196,26 @@ class _AchievementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnlocked = progress.isUnlocked;
+    final cs = Theme.of(context).colorScheme;
+    final nova = context.earthNova;
 
     return Opacity(
       opacity: isUnlocked ? 1.0 : 0.6,
       child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        color: cs.surfaceContainer,
+        padding: EdgeInsets.symmetric(horizontal: Spacing.lg, vertical: Spacing.md + 2),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Emoji icon
             Container(
-              width: 48,
-              height: 48,
+              width: Spacing.massive,
+              height: Spacing.massive,
               decoration: BoxDecoration(
                 color: isUnlocked
-                    ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                    : const Color(0xFF9CA3AF).withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(12),
+                    ? nova.successColor.withValues(alpha: Opacities.badgeBackgroundSubtle)
+                    : cs.outline.withValues(alpha: 0.10),
+                borderRadius: Radii.borderXl,
               ),
               child: Center(
                 child: Text(
@@ -223,7 +224,7 @@ class _AchievementTile extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 14),
+            SizedBox(width: Spacing.md + 2),
 
             // Title + description + progress
             Expanded(
@@ -237,30 +238,30 @@ class _AchievementTile extends StatelessWidget {
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: isUnlocked
-                          ? const Color(0xFF1A2E1B)
-                          : const Color(0xFF4B5563),
+                          ? cs.onSurface
+                          : cs.onSurfaceVariant,
                       letterSpacing: -0.1,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     definition.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF6B7280),
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                   if (!isUnlocked) ...[
-                    const SizedBox(height: 8),
+                    Spacing.gapSm,
                     _ProgressBar(progress: progress),
                   ],
                   if (isUnlocked && progress.unlockedAt != null) ...[
-                    const SizedBox(height: 4),
+                    Spacing.gapXs,
                     Text(
                       _formatDate(progress.unlockedAt!),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: Color(0xFF10B981),
+                        color: nova.successColor,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -269,19 +270,19 @@ class _AchievementTile extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(width: 8),
+            Spacing.gapHSm,
 
             // Right indicator
             if (isUnlocked)
-              const Icon(
+              Icon(
                 Icons.check_circle_rounded,
-                color: Color(0xFF10B981),
+                color: nova.successColor,
                 size: 24,
               )
             else
-              const Icon(
+              Icon(
                 Icons.lock_outline_rounded,
-                color: Color(0xFF9CA3AF),
+                color: cs.outline,
                 size: 20,
               ),
           ],
@@ -312,27 +313,28 @@ class _ProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final fraction = progress.progressFraction;
     final label = '${progress.currentValue}/${progress.targetValue}';
+    final cs = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(Radii.xs),
           child: LinearProgressIndicator(
             value: fraction,
             minHeight: 5,
-            backgroundColor: const Color(0xFFE5E7EB),
-            valueColor: const AlwaysStoppedAnimation<Color>(
-              Color(0xFF6B7280),
+            backgroundColor: cs.outlineVariant,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              cs.onSurfaceVariant,
             ),
           ),
         ),
         const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 10,
-            color: Color(0xFF9CA3AF),
+            color: cs.outline,
             fontWeight: FontWeight.w500,
           ),
         ),

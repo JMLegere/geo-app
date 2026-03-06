@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/species.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_species_tile.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:fog_of_world/shared/habitat_colors.dart';
 
 /// One collapsible section in the Sanctuary screen for a single habitat.
 ///
@@ -36,44 +39,44 @@ class HabitatSection extends StatelessWidget {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: _habitatColor(habitat).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: HabitatColors.primaryFor(habitat).withValues(alpha: 0.12),
+                  borderRadius: Radii.borderLg,
                 ),
                 child: Center(
                   child: Text(
-                    _habitatEmoji(habitat),
+                    EarthNovaTheme.habitatEmojis[habitat.name] ?? '🌍',
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: Spacing.md),
 
               // Name
               Text(
                 habitat.displayName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A2E1B),
+                  color: Theme.of(context).colorScheme.onSurface,
                   letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(width: 8),
+              Spacing.gapHSm,
 
               // Count chip
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(8),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: Radii.borderMd,
                 ),
                 child: Text(
                   '${species.length} species',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF6B7280),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     letterSpacing: 0.1,
                   ),
                 ),
@@ -88,10 +91,10 @@ class HabitatSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Text(
               'Explore ${habitat.displayName.toLowerCase()} areas to discover species',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontStyle: FontStyle.italic,
-                color: Color(0xFF9CA3AF),
+                color: Theme.of(context).colorScheme.outline,
                 height: 1.4,
               ),
             ),
@@ -118,26 +121,4 @@ class HabitatSection extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
-Color _habitatColor(Habitat habitat) => switch (habitat) {
-      Habitat.forest => const Color(0xFF4CAF50),
-      Habitat.plains => const Color(0xFFFFC107),
-      Habitat.freshwater => const Color(0xFF03A9F4),
-      Habitat.saltwater => const Color(0xFF0277BD),
-      Habitat.swamp => const Color(0xFF795548),
-      Habitat.mountain => const Color(0xFF9E9E9E),
-      Habitat.desert => const Color(0xFFFF9800),
-    };
-
-String _habitatEmoji(Habitat habitat) => switch (habitat) {
-      Habitat.forest => '🌲',
-      Habitat.plains => '🌾',
-      Habitat.freshwater => '🐟',
-      Habitat.saltwater => '🌊',
-      Habitat.swamp => '🌿',
-      Habitat.mountain => '⛰️',
-      Habitat.desert => '🏜️',
-    };

@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Compact progress indicator showing how many species the player has collected.
 ///
@@ -19,12 +21,12 @@ class JournalProgressBar extends StatelessWidget {
     final fraction = total > 0 ? collected / total : 0.0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: Spacing.paddingCard,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
             width: 0.5,
           ),
         ),
@@ -38,10 +40,10 @@ class JournalProgressBar extends StatelessWidget {
             children: [
               Text(
                 '$collected / $total collected',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A2E),
+                  color: Theme.of(context).colorScheme.onSurface,
                   letterSpacing: -0.1,
                 ),
               ),
@@ -49,23 +51,23 @@ class JournalProgressBar extends StatelessWidget {
                 total > 0
                     ? '${(fraction * 100).round()}%'
                     : '0%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFF6B7280),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          Spacing.gapSm,
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: Radii.borderXs,
             child: LinearProgressIndicator(
               value: fraction,
               minHeight: 6,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF16A34A),
+              backgroundColor: Theme.of(context).colorScheme.outlineVariant,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                context.earthNova.successColor,
               ),
             ),
           ),

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Circular progress ring showing overall sanctuary collection completeness.
 ///
@@ -32,29 +34,34 @@ class SanctuaryHealthIndicator extends StatelessWidget {
           width: 100,
           height: 100,
           child: CustomPaint(
-            painter: _HealthRingPainter(percentage: clampedPct),
+            painter: _HealthRingPainter(
+              percentage: clampedPct,
+              trackColor: Theme.of(context).colorScheme.outlineVariant,
+              arcStartColor: Theme.of(context).colorScheme.outlineVariant,
+              arcEndColor: context.earthNova.successColor,
+            ),
             child: Center(
               child: Text(
                 pctLabel,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF2D3A2E),
+                  color: Theme.of(context).colorScheme.onSurface,
                   letterSpacing: -0.5,
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        Spacing.gapSm,
         Text(
           message,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
             color: isThriving
-                ? const Color(0xFF16A34A)
-                : const Color(0xFF6B7280),
+                ? context.earthNova.successColor
+                : Theme.of(context).colorScheme.onSurfaceVariant,
             letterSpacing: 0.1,
           ),
           textAlign: TextAlign.center,
@@ -70,8 +77,16 @@ class SanctuaryHealthIndicator extends StatelessWidget {
 
 class _HealthRingPainter extends CustomPainter {
   final double percentage;
+  final Color trackColor;
+  final Color arcStartColor;
+  final Color arcEndColor;
 
-  _HealthRingPainter({required this.percentage});
+  _HealthRingPainter({
+    required this.percentage,
+    required this.trackColor,
+    required this.arcStartColor,
+    required this.arcEndColor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -79,12 +94,12 @@ class _HealthRingPainter extends CustomPainter {
     final radius = (size.width - 16) / 2; // 8px stroke → 8px inset each side
     const strokeWidth = 8.0;
 
-    // Background track — light warm gray.
+    // Background track.
     final trackPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
-      ..color = const Color(0xFFE5E7EB);
+      ..color = trackColor;
 
     canvas.drawCircle(center, radius, trackPaint);
 
@@ -93,12 +108,8 @@ class _HealthRingPainter extends CustomPainter {
     // Progress arc — sweep from -90° (top) clockwise.
     final sweepAngle = 2 * math.pi * percentage;
 
-    // Interpolated color: gray → green.
-    final arcColor = Color.lerp(
-      const Color(0xFFD1D5DB), // light gray
-      const Color(0xFF22C55E), // vibrant green
-      percentage,
-    )!;
+    // Interpolated color: arcStartColor → arcEndColor.
+    final arcColor = Color.lerp(arcStartColor, arcEndColor, percentage)!;
 
     final arcPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -116,5 +127,9 @@ class _HealthRingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_HealthRingPainter old) => old.percentage != percentage;
+  bool shouldRepaint(_HealthRingPainter old) =>
+      old.percentage != percentage ||
+      old.trackColor != trackColor ||
+      old.arcStartColor != arcStartColor ||
+      old.arcEndColor != arcEndColor;
 }

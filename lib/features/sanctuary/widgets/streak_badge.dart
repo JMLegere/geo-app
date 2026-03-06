@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
+import 'package:fog_of_world/shared/design_tokens.dart';
 
 /// Small pill badge showing the player's daily visit streak.
 ///
@@ -13,28 +14,28 @@ class StreakBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (streak == 0) {
-      return const Text(
+      return Text(
         'Start your streak!',
         style: TextStyle(
           fontSize: 13,
           fontStyle: FontStyle.italic,
-          color: Color(0xFF9CA3AF),
+          color: Theme.of(context).colorScheme.outline,
           letterSpacing: 0.1,
         ),
       );
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
       decoration: BoxDecoration(
         color: const Color(0xFFFF9800).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: Radii.borderPill,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text('🔥', style: TextStyle(fontSize: 14)),
-          const SizedBox(width: 5),
+          SizedBox(width: Spacing.xs),
           Text(
             'Day $streak',
             style: const TextStyle(

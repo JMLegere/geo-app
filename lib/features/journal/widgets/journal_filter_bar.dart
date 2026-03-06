@@ -1,5 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
+import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/features/journal/providers/journal_provider.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Horizontal scrolling filter bar for the collection journal.
 ///
@@ -33,10 +36,10 @@ class JournalFilterBar extends StatelessWidget {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
             width: 0.5,
           ),
         ),
@@ -81,16 +84,16 @@ class JournalFilterBar extends StatelessWidget {
     );
   }
 
-  /// Returns a muted chip color for rarity filters (matching badge palette).
+  /// Returns a rarity chip color from [EarthNovaTheme] (matches badge palette).
   Color? _rarityChipColor(RarityFilter filter) => switch (filter) {
-        RarityFilter.all => null,
-        RarityFilter.leastConcern => const Color(0xFF4CAF50),
-        RarityFilter.nearThreatened => const Color(0xFFFFEB3B),
-        RarityFilter.vulnerable => const Color(0xFFFF9800),
-        RarityFilter.endangered => const Color(0xFFF44336),
-        RarityFilter.criticallyEndangered => const Color(0xFFB71C1C),
-        RarityFilter.extinct => const Color(0xFF424242),
-      };
+    RarityFilter.all => null,
+    RarityFilter.leastConcern => EarthNovaTheme.rarityColor(IucnStatus.leastConcern),
+    RarityFilter.nearThreatened => EarthNovaTheme.rarityColor(IucnStatus.nearThreatened),
+    RarityFilter.vulnerable => EarthNovaTheme.rarityColor(IucnStatus.vulnerable),
+    RarityFilter.endangered => EarthNovaTheme.rarityColor(IucnStatus.endangered),
+    RarityFilter.criticallyEndangered => EarthNovaTheme.rarityColor(IucnStatus.criticallyEndangered),
+    RarityFilter.extinct => EarthNovaTheme.rarityColor(IucnStatus.extinct),
+  };
 }
 
 class _FilterChip extends StatelessWidget {
@@ -108,7 +111,7 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = selectedColor ?? const Color(0xFF1A1A2E);
+    final activeColor = selectedColor ?? Theme.of(context).colorScheme.onSurface;
 
     return Padding(
       padding: const EdgeInsets.only(right: 6),
@@ -119,17 +122,17 @@ class _FilterChip extends StatelessWidget {
             fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected
-                ? (selectedColor == const Color(0xFFFFEB3B)
-                    ? const Color(0xFF1A1A2E)
+                ? (selectedColor == EarthNovaTheme.rarityColor(IucnStatus.nearThreatened)
+                    ? Theme.of(context).colorScheme.onSurface
                     : Colors.white)
-                : const Color(0xFF374151),
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
         selected: selected,
         onSelected: onSelected,
         showCheckmark: false,
         selectedColor: activeColor,
-        backgroundColor: const Color(0xFFF3F4F6),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
         side: BorderSide.none,
         padding: const EdgeInsets.symmetric(horizontal: 4),
         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -147,7 +150,7 @@ class _Separator extends StatelessWidget {
       child: VerticalDivider(
         width: 1,
         thickness: 1,
-        color: Colors.black.withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.outlineVariant,
         indent: 4,
         endIndent: 4,
       ),
