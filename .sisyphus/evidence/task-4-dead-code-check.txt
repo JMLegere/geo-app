@@ -1,0 +1,9 @@
+=== Task 4: AchievementScreen is no longer dead code ===
+--- grep -r 'AchievementScreen' lib/ --include='*.dart' ---
+lib/features/achievements/screens/achievement_screen.dart:class AchievementScreen extends ConsumerWidget {
+lib/features/achievements/screens/achievement_screen.dart:  const AchievementScreen({super.key});
+lib/features/sanctuary/screens/sanctuary_screen.dart:                  builder: (_) => const AchievementScreen(),
+
+Matches: 3 (need >= 2)
+
+RESULT: PASS

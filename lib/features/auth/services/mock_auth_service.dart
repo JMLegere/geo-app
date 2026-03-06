@@ -84,10 +84,66 @@ class MockAuthService implements AuthService {
       email: '',
       displayName: 'Explorer',
       createdAt: DateTime.now(),
+      isAnonymous: true,
     );
     _currentUser = profile;
     _authStateController.add(profile);
     return profile;
+  }
+
+  @override
+  Future<UserProfile> upgradeWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    await Future<void>.delayed(_delay);
+
+    if (_currentUser == null) {
+      throw const AuthException('No user signed in');
+    }
+    if (!_currentUser!.isAnonymous) {
+      throw const AuthException('User is already upgraded');
+    }
+    if (!_emailRegex.hasMatch(email)) {
+      throw const AuthException('Invalid email format');
+    }
+    if (_passwords.containsKey(email)) {
+      throw const AuthException('Email already registered');
+    }
+
+    final upgraded = _currentUser!.copyWith(
+      email: email,
+      displayName: displayName ?? _currentUser!.displayName,
+      isAnonymous: false,
+    );
+
+    _passwords[email] = password;
+    _profiles[email] = upgraded;
+    _currentUser = upgraded;
+    _authStateController.add(upgraded);
+    return upgraded;
+  }
+
+  @override
+  Future<UserProfile> linkOAuthIdentity({required String provider}) async {
+    await Future<void>.delayed(_delay);
+
+    if (_currentUser == null) {
+      throw const AuthException('No user signed in');
+    }
+    if (!_currentUser!.isAnonymous) {
+      throw const AuthException('User is already upgraded');
+    }
+
+    final upgraded = _currentUser!.copyWith(
+      email: '$provider@oauth.mock',
+      isAnonymous: false,
+    );
+
+    _currentUser = upgraded;
+    _authStateController.add(upgraded);
+    return upgraded;
   }
 
   @override

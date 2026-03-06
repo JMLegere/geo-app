@@ -36,7 +36,7 @@ flutter analyze
 
 ```
 lib/
-├── main.dart                   # ProviderScope → FogOfWorldApp (ConsumerWidget)
+├── main.dart                   # ProviderScope → FogOfWorldApp → TabShell
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
 │   ├── cells/                  # Spatial indexing (CellService interface + impls)
 │   ├── config/                 # SupabaseConfig (env vars)
@@ -52,11 +52,12 @@ lib/
 │   ├── biome/                  # 🌿 ESA land cover → habitat mapping
 │   ├── caretaking/             # 🌱 Daily visit streaks
 │   ├── discovery/              # 🔬 Species encounter events
-│   ├── journal/                # 📖 Collection viewer with filters
 │   ├── location/               # 📍 GPS, simulation, filtering (services only)
 │   ├── map/                    # 🗺️ Map rendering, fog overlay, camera (14 files)
+│   ├── navigation/             # 🧭 4-tab shell (Map | Home | Town | Pack)
+│   ├── pack/                   # 🎒 Collection viewer with filters (renamed from journal)
 │   ├── restoration/            # 🏗️ Cell restoration progress
-│   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
+│   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat (Home tab)
 │   ├── seasonal/               # ❄️ Summer/winter species availability
 │   └── sync/                   # ☁️ Offline-first sync to Supabase
 ├── shared/
@@ -139,7 +140,7 @@ features/X/
 | `NotifierProvider<T, S>` | Mutable state | `achievementProvider`, `authProvider`, `fogProvider` |
 | `Provider<T>` | Stateless service / infrastructure | `seasonServiceProvider`, `syncServiceProvider` |
 | Dual notifiers | State + notification queue | achievements, discovery |
-| `ref.listen()` | React to other provider changes | journal → collectionProvider, sanctuary → playerProvider |
+| `ref.listen()` | React to other provider changes | pack → collectionProvider, sanctuary → playerProvider |
 | `ref.read()` in methods | One-shot mutations from event handlers | caretaking → playerProvider (bidirectional sync) |
 
 ### Service injection
@@ -192,7 +193,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 
 | Pattern | Use case | Example |
 |---------|----------|---------|
-| `ref.listen()` in `build()` | React to changes without resetting state | Journal filters persist when collection changes |
+| `ref.listen()` in `build()` | React to changes without resetting state | Pack filters persist when collection changes |
 | `ref.read(...notifier)` in method | Bidirectional sync between providers | Caretaking syncs streak with PlayerProvider |
 | Stream subscription + `ref.onDispose()` | External event source | LocationNotifier subscribes to GPS stream |
 
@@ -380,12 +381,13 @@ docs/
 Per-directory files providing module-specific patterns, gotchas, and anti-patterns. These are **not** duplicates of `docs/` — they cover local concerns only.
 
 ```
-AGENTS.md files (10 total):
+AGENTS.md files (11 total):
 ├── ./AGENTS.md                              # Root — quick ref, design decisions, forbidden patterns
 ├── lib/core/AGENTS.md                       # Domain models, providers, persistence internals
 ├── lib/core/cells/AGENTS.md                 # Voronoi/H3 cell system, CellCache
 ├── lib/core/species/AGENTS.md               # LootTable, IUCN weights, ContinentResolver
 ├── lib/features/map/AGENTS.md               # Fog overlay, camera, GeoJSON layers
+├── lib/features/navigation/AGENTS.md        # TabShell, tab index provider, web MapVisibility
 ├── lib/features/location/AGENTS.md          # GPS stream, simulation, filtering
 ├── lib/features/discovery/AGENTS.md         # Encounter flow, dual notifier pattern
 ├── lib/features/achievements/AGENTS.md      # Achievement evaluation, toast notifications
@@ -417,7 +419,7 @@ AGENTS.md files (10 total):
 
 ## Future Work (Not Started)
 
-- 4-tab navigation (Map | Home | Town | Pack) — currently Map only
+- ~~4-tab navigation (Map | Home | Town | Pack) — currently Map only~~ **Done** (TabShell with IndexedStack)
 - Museum (7 habitat wings, permanent donations, unlockable progression)
 - Town tab (NPC hub, discoverable NPCs on map)
 - Pack tab (inventory-first management, species as stacked items)

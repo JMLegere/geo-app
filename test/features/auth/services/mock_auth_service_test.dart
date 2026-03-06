@@ -192,5 +192,167 @@ void main() {
       expect(events.last, isNotNull);
       expect(events.last!.email, 'u@example.com');
     });
+
+    // ── upgradeWithEmail ─────────────────────────────────────────────────────
+
+    test('upgradeWithEmail preserves id and sets isAnonymous to false', () async {
+      final anon = await service.signInAnonymously();
+      expect(anon.isAnonymous, isTrue);
+
+      final upgraded = await service.upgradeWithEmail(
+        email: 'user@example.com',
+        password: 'pass123',
+      );
+
+      expect(upgraded.id, anon.id);
+      expect(upgraded.email, 'user@example.com');
+      expect(upgraded.isAnonymous, isFalse);
+    });
+
+    test('upgradeWithEmail updates displayName when provided', () async {
+      await service.signInAnonymously();
+
+      final upgraded = await service.upgradeWithEmail(
+        email: 'user@example.com',
+        password: 'pass123',
+        displayName: 'Named User',
+      );
+
+      expect(upgraded.displayName, 'Named User');
+    });
+
+    test('upgradeWithEmail preserves displayName when not provided', () async {
+      final anon = await service.signInAnonymously();
+
+      final upgraded = await service.upgradeWithEmail(
+        email: 'user@example.com',
+        password: 'pass123',
+      );
+
+      expect(upgraded.displayName, anon.displayName);
+    });
+
+    test('upgradeWithEmail throws when not anonymous', () async {
+      await service.signUp(email: 'user@example.com', password: 'pass');
+
+      await expectLater(
+        service.upgradeWithEmail(email: 'other@example.com', password: 'pass'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('already upgraded'),
+          ),
+        ),
+      );
+    });
+
+    test('upgradeWithEmail throws for invalid email', () async {
+      await service.signInAnonymously();
+
+      await expectLater(
+        service.upgradeWithEmail(email: 'not-valid', password: 'pass'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('Invalid email'),
+          ),
+        ),
+      );
+    });
+
+    test('upgradeWithEmail throws for duplicate email', () async {
+      await service.signUp(email: 'taken@example.com', password: 'pass');
+      await service.signOut();
+
+      // Sign in as a new anonymous user
+      await service.signInAnonymously();
+
+      await expectLater(
+        service.upgradeWithEmail(email: 'taken@example.com', password: 'pass'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('already registered'),
+          ),
+        ),
+      );
+    });
+
+    test('upgradeWithEmail throws when no user signed in', () async {
+      await expectLater(
+        service.upgradeWithEmail(email: 'user@example.com', password: 'pass'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('upgradeWithEmail emits updated profile on authStateChanges', () async {
+      await service.signInAnonymously();
+
+      final events = <UserProfile?>[];
+      final sub = service.authStateChanges.listen(events.add);
+
+      await service.upgradeWithEmail(
+        email: 'user@example.com',
+        password: 'pass',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await sub.cancel();
+
+      expect(events, isNotEmpty);
+      expect(events.last, isNotNull);
+      expect(events.last!.isAnonymous, isFalse);
+      expect(events.last!.email, 'user@example.com');
+    });
+
+    // ── linkOAuthIdentity ────────────────────────────────────────────────────
+
+    test('linkOAuthIdentity preserves id and sets isAnonymous to false', () async {
+      final anon = await service.signInAnonymously();
+
+      final upgraded = await service.linkOAuthIdentity(provider: 'google');
+
+      expect(upgraded.id, anon.id);
+      expect(upgraded.isAnonymous, isFalse);
+    });
+
+    test('linkOAuthIdentity throws when not anonymous', () async {
+      await service.signUp(email: 'user@example.com', password: 'pass');
+
+      await expectLater(
+        service.linkOAuthIdentity(provider: 'google'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('already upgraded'),
+          ),
+        ),
+      );
+    });
+
+    test('linkOAuthIdentity throws when no user signed in', () async {
+      await expectLater(
+        service.linkOAuthIdentity(provider: 'google'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('linkOAuthIdentity emits updated profile on authStateChanges', () async {
+      await service.signInAnonymously();
+
+      final events = <UserProfile?>[];
+      final sub = service.authStateChanges.listen(events.add);
+
+      await service.linkOAuthIdentity(provider: 'apple');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await sub.cancel();
+
+      expect(events, isNotEmpty);
+      expect(events.last, isNotNull);
+      expect(events.last!.isAnonymous, isFalse);
+    });
   });
 }

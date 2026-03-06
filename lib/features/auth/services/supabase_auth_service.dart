@@ -24,6 +24,18 @@ class SupabaseAuthService implements AuthService {
   }
 
   // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Safely extracts `display_name` from Supabase user metadata.
+  ///
+  /// Returns `null` if the value is missing or not a [String].
+  static String? _displayNameFrom(supa.User user) {
+    final raw = user.userMetadata?['display_name'];
+    return raw is String ? raw : null;
+  }
+
+  // ---------------------------------------------------------------------------
   // AuthService implementation
   // ---------------------------------------------------------------------------
 
@@ -44,7 +56,7 @@ class SupabaseAuthService implements AuthService {
         id: user.id,
         email: user.email ?? email,
         displayName: displayName,
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(user.createdAt),
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -72,7 +84,8 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? email,
-        createdAt: DateTime.now(),
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -95,12 +108,77 @@ class SupabaseAuthService implements AuthService {
         id: user.id,
         email: '',
         displayName: 'Explorer',
-        createdAt: DateTime.now(),
+        createdAt: DateTime.parse(user.createdAt),
+        isAnonymous: true,
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     } catch (e) {
       throw AuthException('Anonymous sign-in failed: $e');
+    }
+  }
+
+  @override
+  Future<UserProfile> upgradeWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    try {
+      final response = await _auth.updateUser(
+        supa.UserAttributes(
+          email: email,
+          password: password,
+          data: displayName != null ? {'display_name': displayName} : null,
+        ),
+      );
+      final user = response.user;
+      if (user == null) {
+        throw const AuthException('Upgrade failed: no user returned');
+      }
+      return UserProfile(
+        id: user.id,
+        email: user.email ?? email,
+        displayName: displayName ?? _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
+        isAnonymous: false,
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('Upgrade failed: $e');
+    }
+  }
+
+  @override
+  Future<UserProfile> linkOAuthIdentity({required String provider}) async {
+    try {
+      // linkIdentity opens an OAuth popup/redirect. The auth state change
+      // listener (_listenToAuthChanges in AuthNotifier) handles the result.
+      await _auth.linkIdentity(supa.OAuthProvider.values.firstWhere(
+        (p) => p.name == provider,
+        orElse: () => throw AuthException('Unknown OAuth provider: $provider'),
+      ));
+      // After linkIdentity, the session is updated. Read the current user.
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw const AuthException('OAuth link failed: no user after linking');
+      }
+      return UserProfile(
+        id: user.id,
+        email: user.email ?? '',
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
+        isAnonymous: false,
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('OAuth link failed: $e');
     }
   }
 
@@ -123,7 +201,9 @@ class SupabaseAuthService implements AuthService {
       return UserProfile(
         id: user.id,
         email: user.email ?? '',
-        createdAt: DateTime.now(),
+        displayName: _displayNameFrom(user),
+        createdAt: DateTime.parse(user.createdAt),
+        isAnonymous: user.isAnonymous == true,
       );
     } on AuthException {
       rethrow;
@@ -151,7 +231,9 @@ class SupabaseAuthService implements AuthService {
         return UserProfile(
           id: user.id,
           email: user.email ?? '',
-          createdAt: DateTime.now(),
+          displayName: _displayNameFrom(user),
+          createdAt: DateTime.parse(user.createdAt),
+          isAnonymous: user.isAnonymous == true,
         );
       });
     } catch (e) {

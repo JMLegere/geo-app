@@ -65,6 +65,9 @@ class AuthState {
   /// True when the user is in guest mode.
   bool get isGuest => status == AuthStatus.guest;
 
+  /// True when the current user is an anonymous (not upgraded) user.
+  bool get isAnonymous => user?.isAnonymous ?? false;
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

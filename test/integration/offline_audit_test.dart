@@ -5,7 +5,7 @@
 ///   - `lib/features/sync/`
 ///   - `lib/features/auth/services/supabase_auth_service.dart`
 ///
-/// Everything else — core logic, fog, discovery, journal, sanctuary, location,
+/// Everything else — core logic, fog, discovery, pack, sanctuary, location,
 /// restoration, caretaking — must be network-free.
 library;
 
@@ -81,7 +81,7 @@ void main() {
     final offlineFeatureDirs = [
       'lib/features/map',
       'lib/features/discovery',
-      'lib/features/journal',
+      'lib/features/pack',
       'lib/features/sanctuary',
       'lib/features/seasonal',
       'lib/features/restoration',

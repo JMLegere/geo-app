@@ -6,33 +6,33 @@ Nested hierarchy of all planned work for EarthNova. Derived from `game-design.md
 
 ---
 
-## Initiative 1: Core Navigation & App Shell
+## Initiative 1: Core Navigation & App Shell — Done
 
-Transition from single-screen map app to 4-tab experience.
+4-tab app shell shipped. Map | Home | Town | Pack with IndexedStack keep-alive, tab persistence, web MapVisibility.
 
-### Project 1.1: Tab Navigation System — Planned
-- [ ] Implement 4-tab bottom bar scaffold (Map | Home | Town | Pack)
-- [ ] Route between tabs with state preservation
-- [ ] Add gear icon → profile/settings screen
-- [ ] Persist selected tab across app restarts
+### Project 1.1: Tab Navigation System — Done
+- [x] Implement 4-tab bottom bar scaffold (Map | Home | Town | Pack)
+- [x] Route between tabs with state preservation (IndexedStack keep-alive)
+- [ ] Add gear icon → profile/settings screen (deferred to v2)
+- [x] Persist selected tab across app restarts (SharedPreferences)
 
-### Project 1.2: Pack Tab (Field Pack) — Planned
+### Project 1.2: Pack Tab (Field Pack) — In Progress
 Reconceptualize Journal from filtered catalog → inventory-first management hub.
-- [ ] Rename Journal → Pack throughout codebase
+- [x] Rename Journal → Pack throughout codebase
 - [ ] Redesign Pack as inventory grid (stacked items: "Mallard ×3")
 - [ ] Add "Donate to Museum" action per species
 - [ ] Add "Place in Sanctuary" action per species
 - [ ] Add "Release" action (return to wild, feel-good animation)
 - [ ] Bidirectional placement: Pack → Museum/Sanctuary AND Museum/Sanctuary → "Fill from inventory"
 
-### Project 1.3: Home Tab (Sanctuary Hub) — Planned
+### Project 1.3: Home Tab (Sanctuary Hub) — Done
 Current sanctuary screen becomes Home tab entry point.
-- [ ] Wire current sanctuary screen into Home tab
-- [ ] Redesign grouped species list into sanctuary overview
+- [x] Wire current sanctuary screen into Home tab
+- [x] Achievement access via trophy icon in SanctuaryScreen AppBar
 
-### Project 1.4: Town Tab (NPC Hub) — Planned
+### Project 1.4: Town Tab (NPC Hub) — In Progress
 New tab showing discovered NPCs.
-- [ ] Create empty Town tab scaffold
+- [x] Create empty Town tab scaffold (themed "Coming Soon" placeholder)
 - [ ] Show list of discovered NPCs with portraits/names
 - [ ] Tap NPC → conversation/interaction screen
 
@@ -304,7 +304,7 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [x] Fix concealed cell visual layer (pre-rendered mid-fog)
 - [x] 3-layer fog architecture (base, mid, cell borders)
 - [x] Rubber-band smooth marker movement
-- [x] CSS injection for web platform map visibility
+- [x] CSS injection for web platform map visibility (TabShell ↔ MapVisibility integration)
 - [ ] Real tile provider (MBTiles or Mapbox API)
 - [ ] Fog reveal animations (dissolve/fade, not instant)
 
@@ -326,6 +326,23 @@ Backend, sync, platform, DevOps work that enables all other initiatives.
 - [ ] iOS build verification and TestFlight
 - [ ] Android build verification and Play Store
 - [ ] Push notifications
+
+### Project 13.6: Authentication & Account Upgrade — In Progress
+- [x] Anonymous auto-login on app launch (Supabase anonymous auth)
+- [x] Session persistence across reloads (JWT in local storage)
+- [x] isAnonymous field on UserProfile model
+- [x] upgradeWithEmail() and linkOAuthIdentity() on AuthService
+- [x] 5-species upgrade prompt trigger
+- [x] Save-progress banner on Home/Pack tabs
+- [x] Upgrade bottom sheet (email + Google + Apple options)
+- [x] Settings screen with profile and sign-out
+- [x] Destructive sign-out warning for anonymous users
+- [x] Supabase/OAuth prerequisites documented
+- [x] End-to-end upgrade flow wiring + integration tests
+- [ ] Google OAuth external setup (manual, documented)
+- [ ] Apple OAuth external setup (manual, documented)
+- [ ] Email verification flow (v2)
+- [ ] Account deletion (v2)
 
 ---
 
@@ -369,9 +386,9 @@ Based on design jam emphasis and dependency analysis:
 
 | Priority | Initiatives | Rationale |
 |----------|------------|-----------|
-| **P0 — Unblocks everything** | 1 (Navigation), 2 (Inventory) | Tab shell + inventory model are prerequisites for Museum, Pack, NPC, and quest systems |
+| **P0 — Unblocks everything** | ~~1 (Navigation)~~, 2 (Inventory) | ~~Tab shell~~ **shipped**. Inventory model is the remaining prerequisite for Museum, Pack, NPC, and quest systems |
 | **P1 — Core game loop** | 3 (Discovery), 4 (Museum), 7 (Quests) | These define the collect→manage→place loop that IS the game |
 | **P2 — Depth & retention** | 5 (Sanctuary), 6 (NPCs), 9 (Sets) | Add progression depth, social layer, completionist goals |
 | **P3 — Engagement breadth** | 8 (Activities), 10 (World), 11 (Visual) | Polish, variety, immersion — make the world feel alive |
-| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Map polish is in progress; CI/CD unblocks all future work; sync/analytics support retention |
+| **P1 — Infra (ongoing)** | 13 (Infrastructure) | Auth upgrade shipped (P13.6); map polish in progress; CI/CD unblocks all future work; sync/analytics support retention |
 | **P4 — Expansion** | 12 (Collectibles), 14 (Social), 15 (Monetization) | New content types, community, business model |

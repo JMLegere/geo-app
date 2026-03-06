@@ -202,5 +202,176 @@ void main() {
       expect(state.user, isNotNull);
       expect(state.user!.displayName, 'Explorer');
     });
+
+    // ── upgradeWithEmail ─────────────────────────────────────────────────────
+
+    test(
+        'upgradeWithEmail transitions anonymous → authenticated with '
+        'isAnonymous: false', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      // makeContainer() auto-signs-in anonymously via MockAuthService.
+      expect(container.read(authProvider).isAnonymous, isTrue);
+
+      final states = <AuthState>[];
+      container.listen(authProvider, (_, next) => states.add(next));
+
+      await container.read(authProvider.notifier).upgradeWithEmail(
+            email: 'upgraded@example.com',
+            password: 'newpass123',
+            displayName: 'Upgraded User',
+          );
+
+      expect(states, contains(predicate<AuthState>((s) => s.status == AuthStatus.loading)));
+      final finalState = container.read(authProvider);
+      expect(finalState.status, AuthStatus.authenticated);
+      expect(finalState.user, isNotNull);
+      expect(finalState.user!.isAnonymous, isFalse);
+      expect(finalState.user!.email, 'upgraded@example.com');
+    });
+
+    test('upgradeWithEmail on non-anonymous user is a no-op', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authProvider.notifier);
+
+      // Sign up first (non-anonymous) — makeContainer() leaves us anonymous,
+      // so upgrade to a real account first.
+      await notifier.upgradeWithEmail(
+        email: 'real@example.com',
+        password: 'pass123',
+      );
+      final upgradedState = container.read(authProvider);
+      expect(upgradedState.user!.isAnonymous, isFalse);
+
+      // Capture state before second call.
+      final stateBeforeSecondCall = container.read(authProvider);
+
+      final states = <AuthState>[];
+      container.listen(authProvider, (_, next) => states.add(next));
+
+      // Try to upgrade again — should be a no-op.
+      await notifier.upgradeWithEmail(
+        email: 'another@example.com',
+        password: 'pass456',
+      );
+
+      // No state transitions should have occurred.
+      expect(states, isEmpty);
+      expect(container.read(authProvider), equals(stateBeforeSecondCall));
+    });
+
+    test('upgradeWithEmail with bad email restores anonymous session for retry',
+        () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      // User starts anonymous — capture pre-upgrade state.
+      final preUpgrade = container.read(authProvider);
+      expect(preUpgrade.isAnonymous, isTrue);
+
+      await container.read(authProvider.notifier).upgradeWithEmail(
+            email: 'not-an-email',
+            password: 'pass123',
+          );
+
+      // On failure, the anonymous session is restored so the user can retry.
+      final state = container.read(authProvider);
+      expect(state.status, AuthStatus.authenticated);
+      expect(state.isAnonymous, isTrue);
+    });
+
+    // ── linkOAuth ────────────────────────────────────────────────────────────
+
+    test('linkOAuth on anonymous user calls service and emits auth change',
+        () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      // makeContainer() auto-signs-in anonymously.
+      expect(container.read(authProvider).isAnonymous, isTrue);
+
+      await container
+          .read(authProvider.notifier)
+          .linkOAuth(provider: 'google');
+
+      // _listenToAuthChanges handles the state transition on success.
+      // Allow the stream event to propagate.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      final state = container.read(authProvider);
+      expect(state.status, AuthStatus.authenticated);
+      expect(state.user, isNotNull);
+      expect(state.user!.isAnonymous, isFalse);
+    });
+
+    test('linkOAuth on non-anonymous user is a no-op', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authProvider.notifier);
+
+      // Upgrade to non-anonymous first.
+      await notifier.upgradeWithEmail(
+        email: 'upgraded@example.com',
+        password: 'pass123',
+      );
+      expect(container.read(authProvider).user!.isAnonymous, isFalse);
+
+      final stateBeforeCall = container.read(authProvider);
+      final states = <AuthState>[];
+      container.listen(authProvider, (_, next) => states.add(next));
+
+      await notifier.linkOAuth(provider: 'apple');
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // No state transitions — already upgraded.
+      expect(states, isEmpty);
+      expect(container.read(authProvider), equals(stateBeforeCall));
+    });
+
+    // ── signOutWithWarning ───────────────────────────────────────────────────
+
+    test('signOutWithWarning sets error state for anonymous users', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      // makeContainer() auto-signs-in anonymously.
+      expect(container.read(authProvider).isAnonymous, isTrue);
+
+      await container.read(authProvider.notifier).signOutWithWarning();
+
+      final state = container.read(authProvider);
+      expect(state.status, AuthStatus.unauthenticated);
+      expect(state.errorMessage, isNotNull);
+      expect(state.errorMessage,
+          contains('Cannot sign out anonymous user'));
+    });
+
+    test('signOutWithWarning signs out non-anonymous users', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authProvider.notifier);
+
+      // Upgrade to non-anonymous first.
+      await notifier.upgradeWithEmail(
+        email: 'upgraded@example.com',
+        password: 'pass123',
+      );
+      expect(container.read(authProvider).user!.isAnonymous, isFalse);
+
+      final states = <AuthStatus>[];
+      container.listen(authProvider, (_, next) => states.add(next.status));
+
+      await notifier.signOutWithWarning();
+
+      expect(states, contains(AuthStatus.unauthenticated));
+      // No error message — clean sign out.
+      expect(container.read(authProvider).errorMessage, isNull);
+    });
   });
 }

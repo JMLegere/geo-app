@@ -1,7 +1,22 @@
 {
-  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/fog-bugs-round2.md",
-  "started_at": "2026-03-05T17:46:26.986Z",
-  "session_ids": ["ses_34152b0deffekguiisOl6pGpho"],
-  "plan_name": "fog-bugs-round2",
-  "worktree_path": "/home/jeremy/workspace/geo-app"
+  "active_plan": {
+    "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/auto-auth.md",
+    "branch": "feat/auto-auth",
+    "started_at": "2026-03-06T20:00:00.000Z",
+    "current_wave": 3,
+    "completed_tasks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+    "session_ids": {}
+  },
+  "completed_plans": [
+    {
+      "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/app-shell.md",
+      "completed_at": "2026-03-06T13:30:00.000Z",
+      "commits": [
+        "43fe4eb - ♻️ refactor(pack): rename Journal→Pack throughout codebase",
+        "9165e42 - ✨ feat(navigation): add 4-tab app shell with tab persistence",
+        "65e4ea0 - ✨ feat(navigation): wire TabShell into app entry point",
+        "1857d5a - 📝 docs: update roadmap and docs for app shell navigation"
+      ]
+    }
+  ]
 }
