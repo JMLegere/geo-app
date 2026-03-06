@@ -141,4 +141,8 @@ const bool kDebugLogFogState = false;
 /// Enable debug logging for persistence operations.
 const bool kDebugLogPersistence = false;
 
+// Auth & Upgrade
+/// Number of collected species that triggers the "save your progress" upgrade prompt.
+const int kUpgradePromptThreshold = 5;
+
 
