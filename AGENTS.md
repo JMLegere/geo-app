@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1004 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1154 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 0 issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
@@ -305,7 +305,6 @@ Additional directories:
 
 | Item | Location | Impact |
 |------|----------|--------|
-| CI config is stale (Unity, not Flutter) | `.github/workflows/ci.yml` | CI won't run Flutter tests |
 | MapLogger has mutable static variables | `lib/features/map/utils/map_logger.dart` | Violates "no global state" constraint |
 
 ---
