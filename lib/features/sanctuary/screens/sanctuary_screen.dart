@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
+import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
 import 'package:fog_of_world/features/caretaking/providers/caretaking_provider.dart';
 import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/streak_badge.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
 
 /// Ambient gallery of collected species grouped by habitat.
@@ -66,6 +66,22 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.emoji_events,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            tooltip: 'Achievements',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AchievementScreen(),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: CustomScrollView(
         slivers: [
