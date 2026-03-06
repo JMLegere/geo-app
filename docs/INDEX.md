@@ -13,6 +13,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **State/provider work** | `state.md` | `architecture.md` (dependency rules) |
 | **Database/model change** | `data-model.md` | `state.md` (what providers consume it) |
 | **Build/deploy/infra** | `tech-stack.md` | — |
+| **Auth/login work** | `auth-prerequisites.md` + `state.md` | Feature AGENTS.md |
 | **Planning / what to build next** | `roadmap.md` + `game-design.md` | `architecture.md` (dependency graph) |
 | **UI/widget work** | `architecture.md` (layer rules) | Feature AGENTS.md |
 | **Test writing** | `test/AGENTS.md` | `data-model.md` (for fixtures) |
@@ -28,6 +29,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | `state.md` | ~100 | All Riverpod providers, types, dependencies, cross-feature wiring | Provider added/renamed/re-wired |
 | `data-model.md` | ~140 | Models, DB schema, persistence contracts, species JSON, ESA mapping | Model/table/field added or changed |
 | `tech-stack.md` | ~115 | Framework versions, packages, build/deploy commands | Dependency upgraded or config changed |
+| `auth-prerequisites.md` | ~60 | Supabase dashboard, Google/Apple OAuth, dart-define setup | OAuth provider added/changed |
 
 ## Maintenance Rules
 
