@@ -152,7 +152,7 @@ class DiscoveryService {
       final isNew = !_collectedSpeciesIds.contains(s.id);
       _discoveryController.add(
         DiscoveryEvent(
-          species: s,
+          item: s,
           cellId: event.cellId,
           isNew: isNew,
           timestamp: event.timestamp,

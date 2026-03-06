@@ -17,7 +17,7 @@ DiscoveryEvent _makeEvent({
   DateTime? timestamp,
 }) {
   return DiscoveryEvent(
-    species: FaunaDefinition(
+    item: FaunaDefinition(
       id: 'fauna_vulpes_vulpes',
       displayName: 'Red Fox',
       scientificName: 'Vulpes vulpes',

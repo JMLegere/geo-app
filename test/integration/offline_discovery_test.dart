@@ -214,7 +214,7 @@ void main() {
       // We can't guarantee species exist for every cell, but we can verify
       // no errors occurred and any discovered species are valid.
       for (final event in capturedEvents) {
-        expect(event.species, isNotNull);
+        expect(event.item, isNotNull);
         expect(event.cellId, isNotEmpty);
         expect(event.timestamp, isNotNull);
       }
@@ -223,7 +223,7 @@ void main() {
     test('discovered species have valid IUCN status', () {
       fogResolver.onLocationUpdate(kCentLat, kCentLon);
       for (final event in capturedEvents) {
-        expect(IucnStatus.values, contains(event.species.rarity));
+        expect(IucnStatus.values, contains(event.item.rarity));
       }
     });
 
@@ -233,7 +233,7 @@ void main() {
         // All species are new on a fresh service.
         expect(event.isNew, isTrue,
             reason:
-                '${event.species.displayName} should be new on first discovery');
+                '${event.item.displayName} should be new on first discovery');
       }
     });
 
@@ -245,7 +245,7 @@ void main() {
       expect(firstEvent.isNew, isTrue);
 
       // Mark it collected.
-      discoveryService.markCollected(firstEvent.species.id);
+      discoveryService.markCollected(firstEvent.item.id);
 
       // Move to a new cell that might yield the same species.
       // We test by re-entering with a different fog resolver that re-emits the
@@ -258,17 +258,17 @@ void main() {
       final ds2 = DiscoveryService(
         fogResolver: fogResolver2,
         speciesService: speciesService,
-        initialCollectedIds: {firstEvent.species.id},
+        initialCollectedIds: {firstEvent.item.id},
       );
       ds2.onDiscovery.listen(capturedEvents2.add);
 
       fogResolver2.onLocationUpdate(kCentLat, kCentLon);
 
       for (final event in capturedEvents2) {
-        if (event.species.id == firstEvent.species.id) {
+        if (event.item.id == firstEvent.item.id) {
           expect(event.isNew, isFalse,
               reason:
-                  '${event.species.displayName} was already collected — isNew must be false');
+                  '${event.item.displayName} was already collected — isNew must be false');
         }
       }
 
@@ -308,8 +308,8 @@ void main() {
     test('discovered species have non-empty commonName and scientificName', () {
       fogResolver.onLocationUpdate(kCentLat, kCentLon);
       for (final event in capturedEvents) {
-        expect(event.species.displayName, isNotEmpty);
-        expect(event.species.scientificName, isNotEmpty);
+        expect(event.item.displayName, isNotEmpty);
+        expect(event.item.scientificName, isNotEmpty);
       }
     });
 

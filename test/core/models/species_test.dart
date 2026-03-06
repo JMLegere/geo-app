@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fog_of_world/core/models/animal_class.dart';
+import 'package:fog_of_world/core/models/animal_type.dart';
 import 'package:fog_of_world/core/models/continent.dart';
+import 'package:fog_of_world/core/models/food_type.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 
 void main() {
   group('FaunaDefinition', () {
-    FaunaDefinition makeRedFox() => const FaunaDefinition(
+    FaunaDefinition makeRedFox() => FaunaDefinition(
           id: 'fauna_vulpes_vulpes',
           displayName: 'Red Fox',
           scientificName: 'Vulpes vulpes',
@@ -33,7 +36,7 @@ void main() {
     });
 
     test('id derivation handles multi-word scientific names', () {
-      const species = FaunaDefinition(
+      final species = FaunaDefinition(
         id: 'fauna_panthera_uncia',
         displayName: 'Snow Leopard',
         scientificName: 'Panthera uncia',
@@ -107,7 +110,7 @@ void main() {
     test('equality is based on id', () {
       final species1 = makeRedFox();
       final species2 = makeRedFox();
-      const species3 = FaunaDefinition(
+      final species3 = FaunaDefinition(
         id: 'fauna_canis_lupus',
         displayName: 'Wolf',
         scientificName: 'Canis lupus',
@@ -153,6 +156,98 @@ void main() {
             reason:
                 '${tiers[i].name}.weight should be 10x ${tiers[i + 1].name}.weight');
       }
+    });
+
+    test('FaunaDefinition auto-computes animalType from taxonomicClass', () {
+      final mammal = FaunaDefinition(
+        id: 'fauna_vulpes_vulpes',
+        displayName: 'Red Fox',
+        scientificName: 'Vulpes vulpes',
+        taxonomicClass: 'Mammalia',
+        continents: [Continent.europe],
+        habitats: [Habitat.forest],
+        rarity: IucnStatus.leastConcern,
+      );
+      expect(mammal.animalType, equals(AnimalType.mammal));
+
+      final bird = FaunaDefinition(
+        id: 'fauna_test_bird',
+        displayName: 'Test Bird',
+        scientificName: 'Testus birdus',
+        taxonomicClass: 'Aves',
+        continents: [Continent.europe],
+        habitats: [Habitat.forest],
+        rarity: IucnStatus.leastConcern,
+      );
+      expect(bird.animalType, equals(AnimalType.bird));
+
+      final reptile = FaunaDefinition(
+        id: 'fauna_test_reptile',
+        displayName: 'Test Reptile',
+        scientificName: 'Testus reptilis',
+        taxonomicClass: 'Reptilia',
+        continents: [Continent.africa],
+        habitats: [Habitat.desert],
+        rarity: IucnStatus.leastConcern,
+      );
+      expect(reptile.animalType, equals(AnimalType.reptile));
+    });
+
+    test('animalType is null for unrecognized taxonomicClass', () {
+      final unknown = FaunaDefinition(
+        id: 'fauna_test_unknown',
+        displayName: 'Unknown',
+        scientificName: 'Testus unknownus',
+        taxonomicClass: 'UNKNOWN_CLASS',
+        continents: [Continent.europe],
+        habitats: [Habitat.forest],
+        rarity: IucnStatus.leastConcern,
+      );
+      expect(unknown.animalType, isNull);
+    });
+
+    test('animalClass, foodPreference, climate default to null', () {
+      final species = FaunaDefinition(
+        id: 'fauna_vulpes_vulpes',
+        displayName: 'Red Fox',
+        scientificName: 'Vulpes vulpes',
+        taxonomicClass: 'Mammalia',
+        continents: [Continent.europe],
+        habitats: [Habitat.forest],
+        rarity: IucnStatus.leastConcern,
+      );
+      expect(species.animalClass, isNull);
+      expect(species.foodPreference, isNull);
+      expect(species.climate, isNull);
+    });
+
+    test('FaunaDefinition.fromJson computes animalType', () {
+      final record = FaunaDefinition.fromJson({
+        'commonName': 'Wolf',
+        'scientificName': 'Canis lupus',
+        'taxonomicClass': 'Mammalia',
+        'continents': ['Europe'],
+        'habitats': ['Forest'],
+        'iucnStatus': 'Least Concern',
+      });
+      expect(record.animalType, equals(AnimalType.mammal));
+    });
+
+    test('FaunaDefinition.fromJson parses optional enrichment fields', () {
+      final record = FaunaDefinition.fromJson({
+        'commonName': 'Red Fox',
+        'scientificName': 'Vulpes vulpes',
+        'taxonomicClass': 'Mammalia',
+        'continents': ['Europe'],
+        'habitats': ['Forest'],
+        'iucnStatus': 'Least Concern',
+        'animalClass': 'carnivore',
+        'foodPreference': 'critter',
+        'climate': 'temperate',
+      });
+      expect(record.animalClass, equals(AnimalClass.carnivore));
+      expect(record.foodPreference, equals(FoodType.critter));
+      expect(record.climate?.name, equals('temperate'));
     });
   });
 }

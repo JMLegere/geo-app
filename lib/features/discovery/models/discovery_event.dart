@@ -1,18 +1,18 @@
 import 'package:fog_of_world/core/models/item_definition.dart';
 
-/// Represents a species discovery triggered when a player enters a new cell.
+/// Represents an item discovery triggered when a player enters a new cell.
 ///
-/// [isNew] is true when the species is being added to the collection for the
+/// [isNew] is true when the item is being added to the collection for the
 /// first time, and false when the player has already collected it in a
 /// previous cell.
 class DiscoveryEvent {
-  final FaunaDefinition species;
+  final ItemDefinition item;
   final String cellId;
   final bool isNew;
   final DateTime timestamp;
 
   const DiscoveryEvent({
-    required this.species,
+    required this.item,
     required this.cellId,
     required this.isNew,
     required this.timestamp,
@@ -20,20 +20,19 @@ class DiscoveryEvent {
 
   @override
   String toString() =>
-      'DiscoveryEvent(species: ${species.displayName}, cellId: $cellId, '
+      'DiscoveryEvent(item: ${item.displayName}, cellId: $cellId, '
       'isNew: $isNew, timestamp: ${timestamp.toIso8601String()})';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is DiscoveryEvent &&
-        other.species == species &&
+        other.item == item &&
         other.cellId == cellId &&
         other.isNew == isNew &&
         other.timestamp == timestamp;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(species, cellId, isNew, timestamp);
+  int get hashCode => Object.hash(item, cellId, isNew, timestamp);
 }

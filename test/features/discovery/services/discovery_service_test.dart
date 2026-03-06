@@ -165,7 +165,7 @@ void main() {
       expect(events, isNotEmpty);
       for (final e in events) {
         expect(e.isNew, isTrue,
-            reason: '${e.species.displayName} should be new');
+            reason: '${e.item.displayName} should be new');
       }
     });
 
@@ -195,7 +195,7 @@ void main() {
       expect(events, isNotEmpty);
       for (final e in events) {
         expect(e.isNew, isFalse,
-            reason: '${e.species.displayName} was pre-collected');
+            reason: '${e.item.displayName} was pre-collected');
       }
     });
 
@@ -218,7 +218,7 @@ void main() {
 
       // Mark everything from first cell as collected.
       for (final e in firstEvents) {
-        service.markCollected(e.species.id);
+        service.markCollected(e.item.id);
       }
 
       // Second cell — same loot pool → all already collected.
@@ -227,11 +227,11 @@ void main() {
       });
 
       // The species from the second cell may overlap — those should be not new.
-      final collectedIds = firstEvents.map((e) => e.species.id).toSet();
+      final collectedIds = firstEvents.map((e) => e.item.id).toSet();
       for (final e in secondEvents) {
-        if (collectedIds.contains(e.species.id)) {
+        if (collectedIds.contains(e.item.id)) {
           expect(e.isNew, isFalse,
-              reason: '${e.species.displayName} was already collected');
+              reason: '${e.item.displayName} was already collected');
         }
       }
     });
@@ -337,9 +337,9 @@ void main() {
       // Verify that the same species appear in both seasons
       // (because our fixture species are all year-round).
       final summerSpeciesIds =
-          summerEvents.map((e) => e.species.id).toSet();
+          summerEvents.map((e) => e.item.id).toSet();
       final winterSpeciesIds =
-          winterEvents.map((e) => e.species.id).toSet();
+          winterEvents.map((e) => e.item.id).toSet();
 
       // All fixture species should appear in both seasons.
       expect(summerSpeciesIds, equals(winterSpeciesIds),

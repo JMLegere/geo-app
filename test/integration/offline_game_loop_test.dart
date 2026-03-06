@@ -219,9 +219,9 @@ void main() {
       final allSpeciesIds =
           session.speciesService.all.map((s) => s.id).toSet();
       for (final event in session.discoveryEvents) {
-        expect(allSpeciesIds, contains(event.species.id),
+        expect(allSpeciesIds, contains(event.item.id),
             reason:
-                'Discovered species ${event.species.id} must be in the '
+                'Discovered species ${event.item.id} must be in the '
                 'species service catalogue');
       }
     });
@@ -243,7 +243,7 @@ void main() {
       await session.db.insertItemInstance(LocalItemInstance(
         id: 'item-golden',
         userId: 'player-1',
-        definitionId: firstEvent.species.id,
+        definitionId: firstEvent.item.id,
         affixes: '[]',
         acquiredAt: DateTime.now(),
         acquiredInCellId: firstEvent.cellId,
@@ -251,12 +251,12 @@ void main() {
       ));
 
       // Mark collected in discovery service.
-      session.discoveryService.markCollected(firstEvent.species.id);
+      session.discoveryService.markCollected(firstEvent.item.id);
 
       // Verify persistence.
       final items = await session.db.getItemInstancesByUser('player-1');
       final collected = items.any((i) =>
-          i.definitionId == firstEvent.species.id &&
+          i.definitionId == firstEvent.item.id &&
           i.acquiredInCellId == firstEvent.cellId);
       expect(collected, isTrue);
     });
@@ -456,7 +456,7 @@ void main() {
       // 3. Species discovered (may or may not have results for the fixture).
       // No assertion on count — just verify no errors.
       for (final event in session.discoveryEvents) {
-        expect(event.species.displayName, isNotEmpty);
+        expect(event.item.displayName, isNotEmpty);
       }
 
       // 4. Restoration: collect 3 species in a test cell.

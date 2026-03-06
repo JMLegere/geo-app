@@ -155,7 +155,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **Fauna enrichment:** animalClass, foodPreference, stats (brawn+wit+speed=90), watercolor art.
 - **All categories enriched:** Flora, Mineral, Fossil, Artifact also get category-specific AI enrichment + watercolor art. Food and Orbs are predefined — no enrichment needed.
 - **AI is canonical for facts.** Stats, classification, food preference — AI sets, locked forever. No crowdsourcing for factual attributes.
-- **Art is crowd-canonical.** AI watercolor is the default. First 50 owners can upload art. Art locks when 51% of instances select same art at daily reset.
+- **Art is crowd-canonical.** AI watercolor is the default. First 50 owners can upload art. Art locks when 51% of instances select same art at daily reset. **Moderation: free AI screening only — automatically reject inappropriate uploads. No community reports.**
 - **Architecture:** Supabase enrichment_queue → Edge Function → LLM API (classification) + image gen API (art) → results stored in species_enrichment table → cached locally.
 - **Non-blocking:** Enrichment runs in background. Gameplay continues with just IUCN data. Enrichment adds richness over time.
 - **Full spec:** `docs/design-jam-2-item-expansion.md`
@@ -165,7 +165,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **Stats:** AI-canonical. Brawn + Wit + Speed = 90. Based on real-world characteristics (cheetah=fast, elephant=strong, octopus=smart).
 - **Color:** RGB derived from stats. R=brawn/90×255, G=speed/90×255, B=wit/90×255.
 - **Instance variance:** All instances get canonical base ±30% SHA-256 variance. No special first-50 handling.
-- **Art:** Crowd-canonical. AI default + player uploads. 51% lock at daily reset.
+- **Art:** Crowd-canonical. AI default + player uploads. 51% lock at daily reset. Moderation via free AI screening only (no community reports).
 - **Badges:** First Discovery (★), Pioneer (#2–50), Artist (winning art), Beta (beta period). Instance-level, stack.
 - **Species Card UI:** Frame (rarity+badges) → Art → Badge icons → Stats (RGB bars) → Color identity → Name plate.
 - **Replaces:** `docs/species-community-system.md` stats sections. Art/badges/card UI unchanged.

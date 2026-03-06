@@ -13,16 +13,28 @@ All domain models, database schema, and persistence contracts.
 | `Habitat` | forest, plains, freshwater, saltwater, swamp, mountain, desert | `displayName`, `colorHex` |
 | `Season` | summer (May-Oct), winter (Nov-Apr) | `fromDate(DateTime)`, `opposite` |
 | `Continent` | asia, northAmerica, southAmerica, africa, oceania, europe | `fromDataString()` handles IUCN format |
+| `AnimalType` | mammal, bird, fish, reptile, bug | Auto-computed from IUCN `taxonomicClass` |
+| `AnimalClass` | 35 values (carnivore, songbird, rodent, crocodile, etc.) | AI-enriched on first discovery |
+| `Climate` | tropic, temperate, boreal, frigid | Derived from latitude (0°-23.5°, 23.5°-55°, 55°-66.5°, 66.5°-90°) |
+| `FoodType` | critter, fish, fruit, grub, nectar, veg | Food category for sanctuary feeding |
+| `OrbDimension` | habitat, class, climate | Orb type dimension (3 dimensions, ~46 total types) |
+| `ActivityType` | photograph, forage, lure, survey | Cell activity types (future) |
 
 ### Value Objects
 
 | Class | Fields | Equality | Notes |
 |-------|--------|----------|-------|
-| `ItemDefinition` (sealed) | Base class for all item types | — | Subclasses: FaunaDefinition, Flora/Mineral/Fossil/Artifact (planned) |
-| `FaunaDefinition` | scientificName, commonName, taxonomicClass, continents: `List<Continent>`, habitats: `List<Habitat>`, iucnStatus | `scientificName` only | Loaded from JSON (32,752 records) |
+| `ItemDefinition` (sealed) | Base class for all item types | — | 7 subclasses: FaunaDefinition, FloraDefinition, MineralDefinition, FossilDefinition, ArtifactDefinition, FoodDefinition, OrbDefinition |
+| `FaunaDefinition` | scientificName, commonName, taxonomicClass, continents, habitats, iucnStatus, animalType, animalClass, foodPreference, climate | `scientificName` only | 32,752 IUCN records + AI enrichment fields |
+| `FloraDefinition` | plantType | — | Stub (no dataset yet) |
+| `MineralDefinition` | crystalSystem, hardness | — | Stub (no dataset yet) |
+| `FossilDefinition` | era, fossilType | — | Stub (no dataset yet) |
+| `ArtifactDefinition` | period, origin | — | Stub (no dataset yet) |
+| `FoodDefinition` | foodType: `FoodType` | — | Predefined (6 types: critter, fish, fruit, grub, nectar, veg) |
+| `OrbDefinition` | dimension: `OrbDimension`, variant: String | — | Predefined (3 dimensions: habitat, class, climate; ~46 total types) |
 | `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
 | `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |
-| `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact | — | Item type classification |
+| `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact, food, orb | — | Item type classification (7 categories) |
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |

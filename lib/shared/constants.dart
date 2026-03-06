@@ -2,7 +2,7 @@
 // Centralizes all game-balance constants to ensure consistency
 // across the codebase and simplify tuning.
 
-// Species / Habitat / IUCN
+// Species / Habitat / IUCN / Item Categories
 /// Number of habitat types in the game (from IUCN dataset).
 const int kHabitatCount = 7;
 
@@ -11,6 +11,36 @@ const int kIucnStatusTiers = 6;
 
 /// Number of continents supported.
 const int kContinentCount = 6;
+
+/// Number of item categories (fauna, flora, mineral, fossil, artifact, food, orb).
+const int kItemCategoryCount = 7;
+
+// Animal Types & Classes
+/// Number of animal types (Mammal, Bird, Fish, Reptile, Bug).
+const int kAnimalTypeCount = 5;
+
+/// Number of game-designed animal classes across all types.
+const int kAnimalClassCount = 35;
+
+// Climate
+/// Number of climate zones.
+const int kClimateZoneCount = 4;
+
+/// Maximum absolute latitude for the Tropic climate zone.
+const double kTropicMaxLatitude = 23.5;
+
+/// Maximum absolute latitude for the Temperate climate zone.
+const double kTemperateMaxLatitude = 55.0;
+
+/// Maximum absolute latitude for the Boreal climate zone.
+const double kBorealMaxLatitude = 66.5;
+
+// Food & Orbs
+/// Number of food subtypes (critter, fish, fruit, grub, nectar, veg).
+const int kFoodTypeCount = 6;
+
+/// Number of orb dimensions (habitat, animalClass, climate).
+const int kOrbDimensionCount = 3;
 
 // Fog of War
 /// Number of discrete fog states.
