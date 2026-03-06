@@ -43,6 +43,23 @@ abstract class AuthService {
   /// Signs in anonymously (Supabase anonymous auth).
   Future<UserProfile> signInAnonymously();
 
+  /// Upgrades an anonymous user to a permanent email+password account.
+  ///
+  /// Uses Supabase `updateUser()` to preserve the existing UUID.
+  /// Throws [AuthException] if not currently anonymous, email is invalid,
+  /// or the operation fails.
+  Future<UserProfile> upgradeWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  });
+
+  /// Links an OAuth provider (Google/Apple) to the current anonymous account.
+  ///
+  /// Uses Supabase `linkIdentity()` to preserve the existing UUID.
+  /// Throws [AuthException] if not currently anonymous or linking fails.
+  Future<UserProfile> linkOAuthIdentity({required String provider});
+
   /// Returns true when a valid session is present.
   Future<bool> isSessionValid();
 

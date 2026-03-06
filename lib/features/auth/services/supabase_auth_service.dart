@@ -106,6 +106,70 @@ class SupabaseAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> upgradeWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
+    try {
+      final response = await _auth.updateUser(
+        supa.UserAttributes(
+          email: email,
+          password: password,
+          data: displayName != null ? {'display_name': displayName} : null,
+        ),
+      );
+      final user = response.user;
+      if (user == null) {
+        throw const AuthException('Upgrade failed: no user returned');
+      }
+      return UserProfile(
+        id: user.id,
+        email: user.email ?? email,
+        displayName: displayName ?? user.userMetadata?['display_name'] as String?,
+        createdAt: DateTime.now(),
+        isAnonymous: false,
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('Upgrade failed: $e');
+    }
+  }
+
+  @override
+  Future<UserProfile> linkOAuthIdentity({required String provider}) async {
+    try {
+      // linkIdentity opens an OAuth popup/redirect. The auth state change
+      // listener (_listenToAuthChanges in AuthNotifier) handles the result.
+      await _auth.linkIdentity(supa.OAuthProvider.values.firstWhere(
+        (p) => p.name == provider,
+        orElse: () => throw AuthException('Unknown OAuth provider: $provider'),
+      ));
+      // After linkIdentity, the session is updated. Read the current user.
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw const AuthException('OAuth link failed: no user after linking');
+      }
+      return UserProfile(
+        id: user.id,
+        email: user.email ?? '',
+        displayName: user.userMetadata?['display_name'] as String?,
+        createdAt: DateTime.now(),
+        isAnonymous: false,
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException('OAuth link failed: $e');
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     try {
       await _auth.signOut();
