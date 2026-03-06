@@ -72,6 +72,29 @@ New tab showing discovered NPCs.
 - [ ] Trait inheritance rules TBD (dominant/recessive, mutation rate)
 - [ ] Parent lineage tracking (parentAId, parentBId on offspring)
 
+### Project 2.6: Species Stats System — Planned
+3 stats per species: **speed**, **brawn**, **wit**. Base stats hash-derived from scientific name, rolled per-instance with ±30% variance.
+
+**Design decisions (confirmed):**
+- Base stats derived via SHA-256 of `scientificName` → 3 values on 1-100 scale. Deterministic, no data file changes.
+- Rolled stats stored as an **intrinsic affix** (`AffixType.intrinsic`). No DB migration — serializes as JSON like other affixes.
+- Rarity affects **affix count only** (prefix/suffix slots), not base stats or variance range.
+- Intrinsic affix is always 1 per instance, separate from rarity-gated prefix/suffix budget.
+- Breeding (Phase 5): offspring base = avg(parentA rolled, parentB rolled), tighter ±15% variance. Selective breeding converges upward.
+
+**Implementation:**
+- [ ] Add `AffixType.intrinsic` to enum (1 line change)
+- [ ] Create `StatsService` with `deriveBaseStats(scientificName)` and `rollIntrinsicStats(def, seed)`
+- [ ] Wire into discovery pipeline: roll intrinsic affix before creating `ItemInstance`
+- [ ] Server-validatable: `deriveBaseStats` is pure + deterministic, `rollIntrinsicStats` uses daily seed
+- [ ] UI: display stats on species detail sheet (speed/brawn/wit bars)
+
+**Stat roll formula:**
+```
+base = sha256(scientificName).bytes[0..2] % 100 + 1   // 1-100 per stat
+rolled = clamp(base × random(0.70, 1.30), 1, 100)     // ±30% variance
+```
+
 ---
 
 ## Initiative 3: Discovery System Upgrade
