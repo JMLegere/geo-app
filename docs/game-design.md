@@ -14,7 +14,8 @@ Comprehensive design reference for EarthNova (working title). Synthesized from g
 | Museum | Does not exist | 7 habitat wings, permanent donations |
 | Sanctuary | Grouped species list | Grid-based zoo with appeal system |
 | NPCs | Do not exist | Full characters, discoverable on map |
-| Navigation | Map only (dead end) | 4-tab: Map \| Home \| Town \| Pack |
+| Navigation | **Done** — 4-tab shell (Map \| Home \| Town \| Pack) | ✓ Shipped |
+| Auth | **Done** — Anonymous auto-login, upgrade prompt, email/OAuth upgrade flow | ✓ Shipped |
 | Quests | Do not exist | Treasure maps + NPC bundles |
 | Daily rotation | Does not exist | Midnight GMT world seed |
 | Restoration | 3 species = restored | Under review, may be reworked |

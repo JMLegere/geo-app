@@ -23,6 +23,14 @@ All domain models, database schema, and persistence contracts.
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |
 
+### Auth Models (lib/features/auth/models/)
+
+| Class | Fields | Notes |
+|-------|--------|-------|
+| `UserProfile` | id, email, displayName?, createdAt, isAnonymous | Immutable. `copyWith()`, `toJson()`/`fromJson()`. Anonymous users have `isAnonymous: true` |
+| `AuthState` | status: `AuthStatus`, user: `UserProfile?`, errorMessage? | Status enum: `{unauthenticated, loading, authenticated}` |
+| `UpgradePromptState` | shouldShow, hasBeenShown, showBanner | Computed from auth status (anonymous) + collection count (≥5 species) |
+
 All models are immutable with manual `toJson()`/`fromJson()`. No code generation (no freezed).
 
 ### Species JSON Format (assets/species_data.json)

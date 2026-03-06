@@ -16,7 +16,8 @@
 │  │   map   │ │  pack   │ │   achievements    │  │
 │  │  (hub)  │ │sanctuary│ │   discovery       │  │
 │  │         │ │  sync   │ │   caretaking      │  │
-│  │         │ │navigate │ │                   │  │
+│  │         │ │navigate │ │   auth            │  │
+│  │         │ │onboard  │ │   restoration     │  │
 │  └────┬────┘ └────┬────┘ └────────┬──────────┘  │
 │       │           │               │              │
 └───────┼───────────┼───────────────┼──────────────┘
@@ -83,10 +84,12 @@ main()
       → route:
           onboarded == null  → splash (loading)
           onboarded == false → OnboardingScreen
+          auth loading       → _LoadingSplash
           authenticated      → TabShell (4-tab: Map | Home | Town | Pack)
-          loading            → _LoadingSplash
-           unauthenticated    → LoginScreen
+          unauthenticated    → LoginScreen
 ```
+
+Auth states are `{unauthenticated, loading, authenticated}`. Anonymous sign-in happens automatically — users start exploring immediately. `upgradePromptProvider` triggers a save-progress banner after 5 collected species for anonymous users.
 
 ## Glossary
 
