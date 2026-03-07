@@ -40,10 +40,10 @@ class OnboardingPage extends StatelessWidget {
           Text(
             data.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1C1C1E),
+              color: Theme.of(context).colorScheme.onSurface,
               letterSpacing: -0.5,
               height: 1.2,
             ),
@@ -54,9 +54,9 @@ class OnboardingPage extends StatelessWidget {
           Text(
             data.subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
-              color: Color(0xFF6D6D72),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               height: 1.55,
             ),
           ),

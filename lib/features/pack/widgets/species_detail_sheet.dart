@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
 
 /// Shows a modal bottom sheet with full or partial species details.
 ///
@@ -107,20 +108,20 @@ class _CollectedContent extends StatelessWidget {
                 children: [
                   Text(
                     species.displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A2E),
+                      color: Theme.of(context).colorScheme.onSurface,
                       letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     species.scientificName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontStyle: FontStyle.italic,
-                      color: Color(0xFF6B7280),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       letterSpacing: 0.1,
                     ),
                   ),
@@ -133,7 +134,7 @@ class _CollectedContent extends StatelessWidget {
         ),
 
         const SizedBox(height: 16),
-        const Divider(height: 1, color: Color(0xFFE5E7EB)),
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
         const SizedBox(height: 16),
 
         // Taxonomic class
@@ -164,14 +165,14 @@ class _CollectedContent extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 80,
               child: Text(
                 'Status',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF6B7280),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -185,28 +186,28 @@ class _CollectedContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF0FDF4),
+            color: context.earthNova.successColor.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: const Color(0xFFBBF7D0),
+              color: context.earthNova.successColor.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 Icons.check_circle_rounded,
                 size: 16,
-                color: Color(0xFF16A34A),
+                color: context.earthNova.successColor,
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 'Added to your collection',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF16A34A),
+                  color: context.earthNova.successColor,
                 ),
               ),
             ],
@@ -242,22 +243,22 @@ class _UncollectedContent extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Center(
-            child: Text('?', style: TextStyle(fontSize: 28, color: Color(0xFF9CA3AF))),
+          child: Center(
+            child: Text('?', style: TextStyle(fontSize: 28, color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ),
         ),
 
         const SizedBox(height: 12),
 
-        const Text(
+        Text(
           'Unknown Species',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A2E),
+            color: Theme.of(context).colorScheme.onSurface,
             letterSpacing: -0.3,
           ),
         ),
@@ -266,9 +267,9 @@ class _UncollectedContent extends StatelessWidget {
 
         Text(
           habitatHint,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF6B7280),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
 
@@ -277,23 +278,23 @@ class _UncollectedContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFFE5E7EB),
+              color: Theme.of(context).colorScheme.outlineVariant,
               width: 1,
             ),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.explore_outlined, size: 18, color: Color(0xFF6B7280)),
-              SizedBox(width: 10),
+              Icon(Icons.explore_outlined, size: 18, color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Explore more to discover this species',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF6B7280),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     height: 1.4,
                   ),
                 ),
@@ -325,20 +326,20 @@ class _DetailRow extends StatelessWidget {
           width: 80,
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF6B7280),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF1A1A2E),
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
         ),
@@ -372,7 +373,7 @@ class _RarityBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w800,
-              color: isLight ? const Color(0xFF1A1A2E) : Colors.white,
+              color: isLight ? Theme.of(context).colorScheme.onSurface : Colors.white,
               letterSpacing: 0.5,
             ),
           ),
@@ -381,7 +382,7 @@ class _RarityBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: (isLight ? const Color(0xFF1A1A2E) : Colors.white)
+              color: (isLight ? Theme.of(context).colorScheme.onSurface : Colors.white)
                   .withValues(alpha: 0.8),
               letterSpacing: 0.2,
             ),
@@ -414,7 +415,7 @@ class _StatusPill extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: isLight ? const Color(0xFF92700A) : color,
+          color: isLight ? Theme.of(context).colorScheme.onSurface : color,
         ),
       ),
     );

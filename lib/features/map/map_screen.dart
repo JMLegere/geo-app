@@ -622,7 +622,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final fogResolver = ref.read(fogResolverProvider);
 
     return ErrorBoundary(
-      onError: (_) => const _MapErrorFallback(),
+      onError: (_) => _MapErrorFallback(),
       child: Scaffold(
         body: Stack(
           children: [
@@ -809,31 +809,31 @@ class _MapErrorFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF1A1A2E),
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 40),
+          padding: const EdgeInsets.symmetric(horizontal: 40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('🗺️', style: TextStyle(fontSize: 52)),
-              SizedBox(height: 20),
+              const Text('🗺️', style: TextStyle(fontSize: 52)),
+              const SizedBox(height: 20),
               Text(
                 'Map unavailable',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 "Something went wrong loading the map.\nYour progress is safe.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Color(0xFF9CA3AF),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,
                 ),
               ),
