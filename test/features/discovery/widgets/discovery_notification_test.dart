@@ -5,7 +5,7 @@ import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
+import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
 
