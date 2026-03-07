@@ -121,7 +121,8 @@ class GameCoordinator {
   void Function(GpsError error)? onGpsErrorChanged;
 
   /// Called when a new cell is visited (fog resolver emits).
-  void Function()? onCellVisited;
+  /// Receives the cell ID for persistence.
+  void Function(String cellId)? onCellVisited;
 
   /// Called when an item is discovered. Receives the event and the newly
   /// created ItemInstance (with rolled intrinsic affix).
@@ -174,8 +175,8 @@ class GameCoordinator {
 
     _discoverySubscription = discoveryStream.listen(_onDiscovery);
 
-    _fogCellSubscription = _fogResolver.onVisitedCellAdded.listen((_) {
-      onCellVisited?.call();
+    _fogCellSubscription = _fogResolver.onVisitedCellAdded.listen((event) {
+      onCellVisited?.call(event.cellId);
     });
 
     _checkGpsPermission();

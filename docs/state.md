@@ -19,7 +19,10 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `appDatabaseProvider` | `Provider<AppDatabase>` | singleton | none. Disposes on shutdown via `ref.onDispose` |
 | `itemInstanceRepositoryProvider` | `Provider<ItemInstanceRepository>` | singleton | watches: appDatabaseProvider |
 | `enrichmentRepositoryProvider` | `Provider<EnrichmentRepository>` | singleton | watches: appDatabaseProvider |
-| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider. reads: authProvider. Wiring exception: imports features/ |
+| `writeQueueRepositoryProvider` | `Provider<WriteQueueRepository>` | singleton | watches: appDatabaseProvider |
+| `cellProgressRepositoryProvider` | `Provider<CellProgressRepository>` | singleton | watches: appDatabaseProvider |
+| `profileRepositoryProvider` | `Provider<ProfileRepository>` | singleton | watches: appDatabaseProvider |
+| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider, writeQueueRepositoryProvider, cellProgressRepositoryProvider, profileRepositoryProvider. reads: authProvider. listens: playerProvider. Wiring exception: imports features/ |
 
 ### Feature Providers
 
@@ -40,7 +43,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
 | `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: inventory, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
-| `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence |
+| `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence, queueProcessorProvider. reads: writeQueueRepositoryProvider, inventoryProvider, itemInstanceRepositoryProvider |
+| `queueProcessorProvider` | sync | `Provider<QueueProcessor>` | watches: writeQueueRepositoryProvider, supabasePersistenceProvider |
 | `supabaseClientProvider` | sync | `Provider<SupabaseClient?>` | reads: supabaseBootstrapProvider. Returns null when Supabase not configured |
 | `enrichmentServiceProvider` | enrichment | `Provider<EnrichmentService>` | watches: enrichmentRepositoryProvider, supabaseClientProvider. Non-nullable — handles null supabaseClient internally |
 | `enrichmentMapProvider` | enrichment | `FutureProvider<Map<String, SpeciesEnrichment>>` | watches: enrichmentServiceProvider. All cached enrichments keyed by definitionId |
@@ -75,11 +79,25 @@ fogResolverProvider ──→ gameCoordinatorProvider ──→ locationProvider
 locationServiceProvider ──→ gameCoordinatorProvider    ──→ playerProvider (callback)
 discoveryServiceProvider ──→ gameCoordinatorProvider   ──→ inventoryProvider (callback)
 itemInstanceRepositoryProvider ──→ gameCoordinatorProvider ──→ discoveryProvider (callback)
+writeQueueRepositoryProvider ──→ gameCoordinatorProvider (persist to write queue)
+cellProgressRepositoryProvider ──→ gameCoordinatorProvider (persist cell visits)
+profileRepositoryProvider ──→ gameCoordinatorProvider (persist profile)
 authProvider ──→ gameCoordinatorProvider (read + listen for hydration)
 enrichmentServiceProvider ──→ gameCoordinatorProvider (fire-and-forget enrichment on discovery)
+playerProvider ──→ gameCoordinatorProvider (listen for profile write-through)
 
 appDatabaseProvider ──→ itemInstanceRepositoryProvider
 appDatabaseProvider ──→ enrichmentRepositoryProvider
+appDatabaseProvider ──→ writeQueueRepositoryProvider
+appDatabaseProvider ──→ cellProgressRepositoryProvider
+appDatabaseProvider ──→ profileRepositoryProvider
+
+writeQueueRepositoryProvider ──→ queueProcessorProvider
+supabasePersistenceProvider ──→ queueProcessorProvider
+queueProcessorProvider ──→ syncProvider
+writeQueueRepositoryProvider ──→ syncProvider (read, for rollback)
+inventoryProvider ──→ syncProvider (read, for rollback)
+itemInstanceRepositoryProvider ──→ syncProvider (read, for rollback)
 
 enrichmentRepositoryProvider ──→ enrichmentServiceProvider
 enrichmentRepositoryProvider ──→ enrichmentMapProvider
@@ -115,12 +133,18 @@ playerProvider ──→ sanctuaryProvider (listen)
 
 ## Startup Hydration
 
-`gameCoordinatorProvider` handles inventory hydration on startup:
+`gameCoordinatorProvider` handles full state hydration on startup:
 
 1. Read `authProvider` — if userId available, hydrate immediately
 2. If auth still loading, `ref.listen<AuthState>` waits for it to settle
-3. `hydrateAndStart(userId)`: loads items from SQLite via `itemInstanceRepositoryProvider`, seeds `inventoryProvider` and `discoveryService.markCollected()`, then starts game loop
+3. `_hydrateAndStart(userId)`:
+   - Load items from SQLite via `ItemInstanceRepository` → seed `InventoryNotifier` + `DiscoveryService.markCollected()`
+   - Load cell progress from SQLite via `CellProgressRepository` → count observed/hidden cells → seed `PlayerNotifier.cellsObserved`
+   - Load player profile from SQLite via `ProfileRepository` → seed `PlayerNotifier` (streaks, distance)
+   - Start game loop
 4. On hydration failure: starts game loop without data (graceful degradation)
+
+**Profile write-through**: `ref.listen(playerProvider)` in `gameCoordinatorProvider` detects state changes and persists to `ProfileRepository` + enqueues to `WriteQueueRepository` (fire-and-forget).
 
 **Race condition prevention**: `loadItems()` replaces inventory state entirely. The game loop must NOT start until hydration completes — otherwise a discovery during the race window would be wiped. A `started` flag prevents double-start if auth settles during hydration.
 

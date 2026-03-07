@@ -89,6 +89,8 @@ Loaded at startup by `SpeciesDataLoader`. Parsed into `List<FaunaDefinition>`.
 
 ## Database Schema (Drift SQLite)
 
+Schema version: **4** (v3→v4 migration creates `LocalWriteQueueTable`).
+
 ### LocalCellProgressTable
 
 | Column | Type | Default | Notes |
@@ -148,14 +150,31 @@ Unique constraint: `{userId, cellId}`
 | `artUrl` | text | nullable | AI-generated watercolor URL (deferred) |
 | `enrichedAt` | datetime | now() | When enrichment was performed |
 
+### LocalWriteQueueTable
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| `id` | int PK | autoIncrement | Auto-incrementing PK — do NOT override `primaryKey` getter |
+| `entityType` | text | — | `'itemInstance'`, `'cellProgress'`, `'profile'` |
+| `entityId` | text | — | Entity's primary key |
+| `operation` | text | — | `'upsert'`, `'delete'` |
+| `payload` | text | — | JSON snapshot of entity state |
+| `userId` | text | — | Owner's auth ID |
+| `status` | text | `'pending'` | `'pending'`, `'rejected'` |
+| `attempts` | int | 0 | Retry count |
+| `lastError` | text | nullable | Last sync error message |
+| `createdAt` | datetime | — | When enqueued |
+| `updatedAt` | datetime | — | Last status change |
+
 ## Repositories (lib/core/persistence/)
 
 | Repository | Table | Key Operations |
 |------------|-------|---------------|
 | `ProfileRepository` | LocalPlayerProfile | `create`, `read(userId)`, `update`, `updateCurrentStreak`, `addDistance`, `getAllProfiles` |
-| `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState` |
-| `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `delete(id)`, `readByStatus(userId, status)` |
+| `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState`, `incrementVisitCount` |
+| `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `deleteItem(id)`, `readByStatus(userId, status)` |
 | `EnrichmentRepository` | LocalSpeciesEnrichment | `getEnrichment(definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List)`, `getEnrichmentsSince(DateTime)` |
+| `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 
@@ -171,9 +190,9 @@ Feature code → Repository method → AppDatabase → SQLite
 
 `appDatabaseProvider` (core/state/) provides the singleton `AppDatabase`. `itemInstanceRepositoryProvider` watches it and provides `ItemInstanceRepository` to consumers.
 
-When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-only. No sync queue — writes go directly.
+When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-only. The write queue still accumulates entries in SQLite, but they are not flushed until Supabase is configured.
 
-### Supabase Enrichment Tables
+### Supabase Tables
 
 **species_enrichment** (global, shared):
 - `scientific_name` (text PK), `animal_class`, `food_preference`, `climate`, `brawn`, `wit`, `speed`, `enriched_at`
@@ -182,6 +201,34 @@ When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-on
 **item_instances** (per-user):
 - `id` (UUID PK), `user_id`, `definition_id`, `category_name`, `affixes_json`, `parent_a_id`, `parent_b_id`, `daily_seed`, `status`, `created_at`
 - RLS: Users can only CRUD their own rows.
+
+**daily_seeds** (server-managed):
+- `seed_date` (date PK), `seed_value` (text), `created_at` (timestamptz)
+- Auto-populated by `ensure_daily_seed()` PostgreSQL function (called by validate-encounter Edge Function).
+- RLS: All authenticated users can read. Only service_role can write.
+
+### Write Queue Flow
+
+```
+Game event (discovery, cell visit, profile update)
+  → SQLite write (immediate)
+  → WriteQueueRepository.enqueue(entry)
+  → QueueProcessor.flush() (triggered by SyncNotifier)
+    → For each pending entry:
+      → SupabasePersistence.upsert*() (sync to Supabase)
+      → validateEncounter() (Edge Function, item instances only)
+      → On success: deleteEntry() (removes confirmed entry)
+      → On SyncRejectedException: markRejected() (permanent)
+      → On SyncException: incrementAttempts() (retry with backoff)
+    → SyncNotifier._processRejections() (rollback rejected items)
+```
+
+**Exception hierarchy:**
+- `SyncException` — transient error (network, timeout) → retry with exponential backoff
+- `SyncValidationRejectedException` — thrown by `validateEncounter()` → permanent rejection
+- `SyncRejectedException` — caught by QueueProcessor → marks entry rejected → triggers rollback
+
+**Rollback:** Rejected item instances are removed from in-memory `InventoryNotifier` and deleted from SQLite. Cell progress and profile rejections are logged only (server reconciliation on next full sync).
 
 ### Startup Hydration
 
@@ -197,9 +244,19 @@ Auth settles (userId available)
 
 **Race condition prevention**: `loadItems()` replaces inventory state entirely. The game loop must NOT start until hydration completes — a discovery during the race window would be wiped by the subsequent `loadItems()` call.
 
+**Full hydration** (Phase 3):
+1. Load items from SQLite via `ItemInstanceRepository` → seed `InventoryNotifier`
+2. Load cell progress from SQLite via `CellProgressRepository` → count observed cells → seed `PlayerNotifier.cellsObserved`
+3. Load player profile from SQLite via `ProfileRepository` → seed `PlayerNotifier` (streaks, distance)
+4. Mark collected items in `DiscoveryService`
+5. Start game loop
+
 **Auth timing**: Auth initializes asynchronously (awaits Supabase bootstrap, then auto-signs-in). `gameCoordinatorProvider` reads `authProvider` — if userId is available immediately, it hydrates then starts. If auth is still loading, it uses `ref.listen<AuthState>` with a `started` guard to wait for auth to settle.
 
-**Discovery persistence**: New discoveries are persisted fire-and-forget (`itemRepo.addItem().catchError(...)`) — the game loop is not blocked. TODO(T-writequeue) for Phase 3 write queue with retry.
+**Persistence paths** (Phase 3 write queue):
+- **Item discovery**: `ItemInstanceRepository.create()` + `WriteQueueRepository.enqueue()` (fire-and-forget, async/await with try/catch)
+- **Cell visit**: `CellProgressRepository.upsertCellProgress()` + `WriteQueueRepository.enqueue()` (fire-and-forget)
+- **Profile updates**: `ref.listen(playerProvider)` in `gameCoordinatorProvider` → `ProfileRepository.update()` + `WriteQueueRepository.enqueue()` (fire-and-forget)
 
 ### Design Target: Inventory Model
 > Phase 1 COMPLETE. ItemInstance model is now live. Remaining: breeding, bundles, museum, daily seed.
@@ -235,3 +292,7 @@ Museum structure:
 | `kMaxCellsPerTile` | 100 | Rendering budget |
 | `kRubberBandMinSpeedMps` | 1.389 | Marker min speed (5 km/h) |
 | `kRubberBandSnapThresholdMeters` | 0.5 | Snap distance |
+| `kWriteQueueMaxRetries` | 5 | Max retry attempts before stale |
+| `kWriteQueueStaleAgeHours` | 72 | Hours before stale entries deleted |
+| `kWriteQueueRetryBaseSeconds` | 2 | Base delay for exponential backoff |
+| `kWriteQueueFlushBatchSize` | 50 | Max entries per flush batch |

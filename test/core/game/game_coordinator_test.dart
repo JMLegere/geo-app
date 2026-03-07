@@ -387,7 +387,7 @@ void main() {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = () => visitCount++;
+        c.onCellVisited = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         // updatePlayerPosition → _processGameLogic → fogResolver.onLocationUpdate
@@ -404,7 +404,7 @@ void main() {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = () => visitCount++;
+        c.onCellVisited = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         c.updatePlayerPosition(1.0, 1.0); // first visit → fires
@@ -426,7 +426,7 @@ void main() {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = () => visitCount++;
+        c.onCellVisited = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         c.updatePlayerPosition(1.0, 1.0); // cell '1_1' → fires

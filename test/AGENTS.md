@@ -1,6 +1,6 @@
 # Test Suite
 
-1321 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1373 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -12,11 +12,11 @@ LD_LIBRARY_PATH=. flutter test test/core/  # Subsystem only
 
 ## Structure
 
-Mirrors lib/ exactly. 89 test files, 16,398 lines.
+Mirrors lib/ exactly. 92 test files.
 
 Additional directories:
 - `fixtures/` — `species_fixture.dart` with `kSpeciesFixtureJson` (50 species, all habitats/continents/IUCN statuses)
-- `integration/` — 6 offline workflow suites (game loop, persistence, fog, discovery, audit, hydration)
+- `integration/` — 7 offline workflow suites (game loop, persistence, fog, discovery, audit, hydration, write queue)
 - `performance/` — benchmarks for 33k species parse, Voronoi grid, fog computation
 
 ## Key Fixtures
@@ -37,7 +37,7 @@ class MockCellService implements CellService {
 }
 ```
 
-Only 2 mock classes exist (MockCellService variants). Other services are used directly or stubbed inline.
+Mock classes: MockCellService variants, MockWriteQueueRepository, MockSupabasePersistence. Other services are used directly or stubbed inline.
 
 ## Factory Pattern
 
@@ -59,6 +59,7 @@ Defined per-file (not shared). Each test file has its own factories.
 | `offline_audit_test.dart` | Data consistency: no orphaned records, all FK valid |
 | `offline_hydration_test.dart` | Inventory hydration: SQLite → repo → InventoryNotifier, race safety, restart persistence |
 | `enrichment_merge_test.dart` | Enrichment merge into species service, graceful degradation without enrichments |
+| `write_queue_integration_test.dart` | Write queue: enqueue → read → confirm → reject → increment → stale cleanup |
 
 ## Performance Budgets
 
@@ -80,4 +81,4 @@ Defined per-file (not shared). Each test file has its own factories.
 
 ## Coverage Gaps
 
-No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`.
+No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback).

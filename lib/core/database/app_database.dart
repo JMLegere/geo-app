@@ -90,6 +90,47 @@ class LocalSpeciesEnrichmentTable extends Table {
   Set<Column> get primaryKey => {definitionId};
 }
 
+/// Local write queue for offline-first sync to Supabase.
+/// Each row is a pending write operation (item discovery, cell visit, profile
+/// update) that will be flushed to the server by [QueueProcessor].
+@DataClassName('LocalWriteQueueEntry')
+class LocalWriteQueueTable extends Table {
+  /// Auto-incremented local ID. Entries are deleted after server confirmation.
+  IntColumn get id => integer().autoIncrement()();
+
+  /// Entity type: 'itemInstance', 'cellProgress', 'profile'.
+  TextColumn get entityType => text()();
+
+  /// Primary key of the entity being synced.
+  TextColumn get entityId => text()();
+
+  /// Operation: 'upsert' or 'delete'.
+  TextColumn get operation => text()();
+
+  /// JSON-encoded snapshot of the entity at time of queuing.
+  TextColumn get payload => text()();
+
+  /// Owner's user ID.
+  TextColumn get userId => text()();
+
+  /// Processing status: 'pending' or 'rejected'.
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+
+  /// Number of sync attempts so far.
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+
+  /// Last error message from a failed sync attempt.
+  TextColumn get lastError => text().nullable()();
+
+  /// When this entry was created.
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// When this entry was last updated.
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  // Note: autoIncrement() implies primary key — do NOT override primaryKey.
+}
+
 /// Local representation of player profile
 /// Mirrors Supabase `profiles` table
 @DataClassName('LocalPlayerProfile')
@@ -116,13 +157,14 @@ class LocalPlayerProfileTable extends Table {
   LocalItemInstanceTable,
   LocalPlayerProfileTable,
   LocalSpeciesEnrichmentTable,
+  LocalWriteQueueTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -137,6 +179,9 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 3) {
           await m.createTable(localSpeciesEnrichmentTable);
+        }
+        if (from < 4) {
+          await m.createTable(localWriteQueueTable);
         }
       },
     );
@@ -295,4 +340,73 @@ class AppDatabase extends _$AppDatabase {
         .go();
   }
 
+  // ========================================================================
+  // WRITE QUEUE QUERIES
+  // ========================================================================
+
+  /// Insert a new write queue entry.
+  Future<int> insertWriteQueueEntry(LocalWriteQueueTableCompanion entry) {
+    return into(localWriteQueueTable).insert(entry);
+  }
+
+  /// Get all pending queue entries, oldest first.
+  Future<List<LocalWriteQueueEntry>> getPendingQueueEntries({int? limit}) {
+    final query = select(localWriteQueueTable)
+      ..where((tbl) => tbl.status.equals('pending'))
+      ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
+    if (limit != null) {
+      query.limit(limit);
+    }
+    return query.get();
+  }
+
+  /// Get queue entries by status.
+  Future<List<LocalWriteQueueEntry>> getQueueEntriesByStatus(String status) {
+    return (select(localWriteQueueTable)
+          ..where((tbl) => tbl.status.equals(status)))
+        .get();
+  }
+
+  /// Update a queue entry's status and error info.
+  Future<bool> updateQueueEntry(LocalWriteQueueEntry entry) {
+    return update(localWriteQueueTable).replace(entry);
+  }
+
+  /// Delete a queue entry by ID (after server confirmation).
+  Future<int> deleteQueueEntry(int id) {
+    return (delete(localWriteQueueTable)
+          ..where((tbl) => tbl.id.equals(id)))
+        .go();
+  }
+
+  /// Get a single queue entry by ID.
+  Future<LocalWriteQueueEntry?> getQueueEntryById(int id) {
+    return (select(localWriteQueueTable)
+          ..where((tbl) => tbl.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// Count pending queue entries using efficient SELECT COUNT(*).
+  Future<int> countPendingQueueEntries() {
+    final countExp = localWriteQueueTable.id.count();
+    final query = selectOnly(localWriteQueueTable)
+      ..addColumns([countExp])
+      ..where(localWriteQueueTable.status.equals('pending'));
+    return query.map((row) => row.read(countExp)!).getSingle();
+  }
+
+  /// Delete stale entries older than [cutoff].
+  Future<int> deleteStaleQueueEntries(DateTime cutoff) {
+    return (delete(localWriteQueueTable)
+          ..where(
+              (tbl) => tbl.createdAt.isSmallerThanValue(cutoff)))
+        .go();
+  }
+
+  /// Delete all queue entries for a user.
+  Future<int> clearUserQueueEntries(String userId) {
+    return (delete(localWriteQueueTable)
+          ..where((tbl) => tbl.userId.equals(userId)))
+        .go();
+  }
 }

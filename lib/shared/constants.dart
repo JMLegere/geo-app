@@ -187,6 +187,20 @@ const double kStatVariance = 0.30;
 /// Affix ID for the intrinsic base-stats affix.
 const String kIntrinsicAffixId = 'base_stats';
 
+// Write Queue (Phase 3: Server-Authoritative Persistence)
+/// Maximum retry attempts before marking a queue entry as stale.
+const int kWriteQueueMaxRetries = 5;
+
+/// Age in hours after which unsynced queue entries are considered stale.
+const int kWriteQueueStaleAgeHours = 72;
+
+/// Base delay in seconds for exponential backoff between retries.
+/// Actual delay = kWriteQueueRetryBaseSeconds * 2^attempts.
+const int kWriteQueueRetryBaseSeconds = 2;
+
+/// Maximum batch size when flushing the write queue.
+const int kWriteQueueFlushBatchSize = 50;
+
 // Auth & Upgrade
 /// Number of collected species that triggers the "save your progress" upgrade prompt.
 const int kUpgradePromptThreshold = 5;

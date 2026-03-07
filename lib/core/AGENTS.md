@@ -44,19 +44,21 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Drift ORM schema and database connection.
 
 **Public API**:
-- `AppDatabase`: Drift database with 4 tables
+- `AppDatabase`: Drift database with 5 tables
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
   - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `artUrl` (nullable), `enrichedAt`
+  - `LocalWriteQueueTable`: `id` (int, autoIncrement PK), `entityType`, `entityId`, `operation`, `payload`, `userId`, `status` (default 'pending'), `attempts` (default 0), `lastError` (nullable), `createdAt`, `updatedAt`
+- Write queue query methods: `enqueueEntry`, `getPendingEntries`, `getRejectedEntries`, `countPendingEntries`, `confirmEntry`, `rejectEntry`, `incrementEntryAttempts`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
-- `schemaVersion = 3`. Migration from v2→v3 creates LocalSpeciesEnrichmentTable.
+- `schemaVersion = 4`. Migration v2→v3: LocalSpeciesEnrichmentTable. Migration v3→v4: LocalWriteQueueTable.
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
 - Uses `part 'app_database.g.dart'` — run `dart run build_runner build` after schema changes
 - Upsert semantics: `onConflict: DoUpdate((old) => ...)`
-- All tables use explicit text PKs (no auto-increment)
+- All tables use explicit text PKs except `LocalWriteQueueTable` (auto-increment int PK)
 - Platform-aware: `connection_native.dart` (file-backed) vs `connection_web.dart` (in-memory)
 - Nullable fields in updates use `Value.absent()`, not null
 
@@ -153,10 +155,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Repository pattern wrapping `AppDatabase`. CRUD abstractions for features/.
 
 **Public API**:
-- `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`
-- `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `delete(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
+- `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`, `incrementVisitCount(String)`
+- `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `deleteItem(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
 - `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
+- `WriteQueueRepository`: `enqueue(WriteQueueEntry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)`. Offline write queue CRUD.
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor
@@ -190,7 +193,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (12 providers):
+**Public API** (15 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -202,7 +205,10 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `appDatabaseProvider`: `Provider<AppDatabase>` — singleton database with lifecycle management. Disposes on shutdown.
 - `itemInstanceRepositoryProvider`: `Provider<ItemInstanceRepository>` — watches appDatabaseProvider. Used by gameCoordinatorProvider for persistence and hydration.
 - `enrichmentRepositoryProvider`: `Provider<EnrichmentRepository>` — watches appDatabaseProvider. Local cache CRUD for species enrichments.
-- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory from SQLite on startup, persists discoveries fire-and-forget.
+- `writeQueueRepositoryProvider`: `Provider<WriteQueueRepository>` — watches appDatabaseProvider. Offline write queue CRUD.
+- `cellProgressRepositoryProvider`: `Provider<CellProgressRepository>` — watches appDatabaseProvider. Cell visit persistence.
+- `profileRepositoryProvider`: `Provider<ProfileRepository>` — watches appDatabaseProvider. Player profile persistence.
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through.
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -254,7 +260,7 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 
 ### Drift Auto-Increment
 - Tables with `autoIncrement()` must NOT override `primaryKey` getter
-- Only `SyncQueue.id` uses auto-increment — all other tables use explicit PKs
+- Only `LocalWriteQueueTable.id` uses auto-increment — all other tables use explicit text PKs
 
 ### FogState is Computed
 - **Never persist per-cell fog state.** Only store `visitedCellIds` in `CellProgress`.
@@ -287,8 +293,10 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - `updatePlayerPosition()` throttles game logic to ~10Hz via frame counter.
 
 ### Startup Hydration Order
-- `gameCoordinatorProvider` must hydrate inventory from SQLite BEFORE starting the game loop.
+- `gameCoordinatorProvider` must hydrate inventory + cell progress + profile from SQLite BEFORE starting the game loop.
 - `loadItems()` replaces inventory state entirely — a discovery during the race window would be wiped.
+- `cellsObserved` is hydrated from cell progress count (observed + hidden fog states), NOT from profile.currentStreak.
 - Auth may not be settled when the provider initializes. Use `ref.listen(authProvider)` with a `started` guard to wait.
 - On hydration failure, the loop starts without persisted data (graceful degradation).
-- Persistence of new discoveries is fire-and-forget with `catchError` — TODO(T-writequeue) for Phase 3 write queue.
+- Persistence uses async/await with try/catch (fire-and-forget). All writes go to SQLite + write queue simultaneously.
+- `ref.listen(playerProvider)` detects profile state changes and persists to `ProfileRepository` + `WriteQueueRepository`.
