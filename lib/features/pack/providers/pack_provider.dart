@@ -1,91 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
+import 'package:fog_of_world/core/models/item_category.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/core/state/inventory_provider.dart';
+import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 
 // ---------------------------------------------------------------------------
-// Filter enums
+// Pack Tab enum
 // ---------------------------------------------------------------------------
 
-/// Filter by habitat type; [all] means no habitat restriction.
-enum HabitatFilter {
-  all,
-  forest,
-  plains,
-  freshwater,
-  saltwater,
-  swamp,
-  mountain,
-  desert;
+/// Tabs in the Pack screen. Order matches the scrollable TabBar.
+enum PackTab {
+  character,
+  fauna,
+  flora,
+  minerals,
+  fossils,
+  artifacts,
+  food,
+  orbs;
 
   String get displayName => switch (this) {
-        HabitatFilter.all => 'All',
-        HabitatFilter.forest => 'Forest',
-        HabitatFilter.plains => 'Plains',
-        HabitatFilter.freshwater => 'Freshwater',
-        HabitatFilter.saltwater => 'Saltwater',
-        HabitatFilter.swamp => 'Swamp',
-        HabitatFilter.mountain => 'Mountain',
-        HabitatFilter.desert => 'Desert',
+        PackTab.character => 'Character',
+        PackTab.fauna => 'Fauna',
+        PackTab.flora => 'Flora',
+        PackTab.minerals => 'Minerals',
+        PackTab.fossils => 'Fossils',
+        PackTab.artifacts => 'Artifacts',
+        PackTab.food => 'Food',
+        PackTab.orbs => 'Orbs',
       };
 
-  /// Corresponding [Habitat] value, or null when [all].
-  Habitat? get habitat => switch (this) {
-        HabitatFilter.all => null,
-        HabitatFilter.forest => Habitat.forest,
-        HabitatFilter.plains => Habitat.plains,
-        HabitatFilter.freshwater => Habitat.freshwater,
-        HabitatFilter.saltwater => Habitat.saltwater,
-        HabitatFilter.swamp => Habitat.swamp,
-        HabitatFilter.mountain => Habitat.mountain,
-        HabitatFilter.desert => Habitat.desert,
-      };
-}
-
-/// Filter by IUCN rarity tier; [all] means no rarity restriction.
-enum RarityFilter {
-  all,
-  leastConcern,
-  nearThreatened,
-  vulnerable,
-  endangered,
-  criticallyEndangered,
-  extinct;
-
-  String get displayName => switch (this) {
-        RarityFilter.all => 'All',
-        RarityFilter.leastConcern => 'LC',
-        RarityFilter.nearThreatened => 'NT',
-        RarityFilter.vulnerable => 'VU',
-        RarityFilter.endangered => 'EN',
-        RarityFilter.criticallyEndangered => 'CR',
-        RarityFilter.extinct => 'EX',
+  String get emoji => switch (this) {
+        PackTab.character => '🧑',
+        PackTab.fauna => '🐾',
+        PackTab.flora => '🌿',
+        PackTab.minerals => '💎',
+        PackTab.fossils => '🦴',
+        PackTab.artifacts => '🏺',
+        PackTab.food => '🍎',
+        PackTab.orbs => '🔮',
       };
 
-  /// Corresponding [IucnStatus] value, or null when [all].
-  IucnStatus? get status => switch (this) {
-        RarityFilter.all => null,
-        RarityFilter.leastConcern => IucnStatus.leastConcern,
-        RarityFilter.nearThreatened => IucnStatus.nearThreatened,
-        RarityFilter.vulnerable => IucnStatus.vulnerable,
-        RarityFilter.endangered => IucnStatus.endangered,
-        RarityFilter.criticallyEndangered => IucnStatus.criticallyEndangered,
-        RarityFilter.extinct => IucnStatus.extinct,
-      };
-}
-
-/// Filter by collection status.
-enum CollectionFilter {
-  all,
-  collected,
-  undiscovered;
-
-  String get displayName => switch (this) {
-        CollectionFilter.all => 'All',
-        CollectionFilter.collected => 'Collected',
-        CollectionFilter.undiscovered => 'Undiscovered',
+  /// Maps tab to the corresponding ItemCategory (null for character tab).
+  ItemCategory? get itemCategory => switch (this) {
+        PackTab.character => null,
+        PackTab.fauna => ItemCategory.fauna,
+        PackTab.flora => ItemCategory.flora,
+        PackTab.minerals => ItemCategory.mineral,
+        PackTab.fossils => ItemCategory.fossil,
+        PackTab.artifacts => ItemCategory.artifact,
+        PackTab.food => ItemCategory.food,
+        PackTab.orbs => ItemCategory.orb,
       };
 }
 
@@ -93,78 +61,61 @@ enum CollectionFilter {
 // State
 // ---------------------------------------------------------------------------
 
-/// Immutable snapshot of the pack subsystem state.
+/// Immutable snapshot of the Pack tab state.
+///
+/// Pack = inventory. Shows items the player HAS (ItemInstance objects),
+/// NOT a species encyclopedia. The old 32k FaunaDefinition list is removed.
 class PackState {
-  /// Full pool of species available to the player.
-  final List<FaunaDefinition> allSpecies;
+  /// All active item instances, grouped by category.
+  final Map<ItemCategory, List<ItemInstance>> itemsByCategory;
 
-  /// IDs of species the player has collected (from [inventoryProvider]).
-  final Set<String> collectedIds;
+  /// Currently selected tab.
+  final PackTab activeTab;
 
-  /// Active habitat filter (default: [HabitatFilter.all]).
-  final HabitatFilter habitatFilter;
+  /// Player stats for the Character tab.
+  final PlayerState playerStats;
 
-  /// Active rarity filter (default: [RarityFilter.all]).
-  final RarityFilter rarityFilter;
+  PackState({
+    this.itemsByCategory = const {},
+    this.activeTab = PackTab.character,
+    PlayerState? playerStats,
+  }) : playerStats = playerStats ?? PlayerState();
 
-  /// Active collection filter (default: [CollectionFilter.all]).
-  final CollectionFilter collectionFilter;
-
-  const PackState({
-    this.allSpecies = const <FaunaDefinition>[],
-    this.collectedIds = const {},
-    this.habitatFilter = HabitatFilter.all,
-    this.rarityFilter = RarityFilter.all,
-    this.collectionFilter = CollectionFilter.all,
-  });
-
-  /// Applies all active filters (AND logic) and returns the matching subset.
-  List<FaunaDefinition> get filteredSpecies {
-    return allSpecies.where((s) {
-      // Collection filter
-      final isCollected = collectedIds.contains(s.id);
-      if (collectionFilter == CollectionFilter.collected && !isCollected) {
-        return false;
-      }
-      if (collectionFilter == CollectionFilter.undiscovered && isCollected) {
-        return false;
-      }
-
-      // Habitat filter
-      final targetHabitat = habitatFilter.habitat;
-      if (targetHabitat != null && !s.habitats.contains(targetHabitat)) {
-        return false;
-      }
-
-      // Rarity filter
-      final targetStatus = rarityFilter.status;
-      if (targetStatus != null && s.rarity != targetStatus) {
-        return false;
-      }
-
-      return true;
-    }).toList();
+  /// Items for the currently selected category tab.
+  List<ItemInstance> get activeItems {
+    final category = activeTab.itemCategory;
+    if (category == null) return const []; // character tab
+    return itemsByCategory[category] ?? const [];
   }
 
-  /// Total number of species in the player's pool.
-  int get totalCount => allSpecies.length;
+  /// Total item count across all categories.
+  int get totalItems {
+    int count = 0;
+    for (final items in itemsByCategory.values) {
+      count += items.length;
+    }
+    return count;
+  }
 
-  /// Number of species the player has collected.
-  int get collectedCount => collectedIds.length;
+  /// Count for a specific category.
+  int countForCategory(ItemCategory category) =>
+      itemsByCategory[category]?.length ?? 0;
+
+  /// Unique species count (fauna only, for progress display).
+  int get uniqueFaunaCount {
+    final faunaItems = itemsByCategory[ItemCategory.fauna] ?? const [];
+    return faunaItems.map((i) => i.definitionId).toSet().length;
+  }
 
   PackState copyWith({
-    List<FaunaDefinition>? allSpecies,
-    Set<String>? collectedIds,
-    HabitatFilter? habitatFilter,
-    RarityFilter? rarityFilter,
-    CollectionFilter? collectionFilter,
+    Map<ItemCategory, List<ItemInstance>>? itemsByCategory,
+    PackTab? activeTab,
+    PlayerState? playerStats,
   }) {
     return PackState(
-      allSpecies: allSpecies ?? this.allSpecies,
-      collectedIds: collectedIds ?? this.collectedIds,
-      habitatFilter: habitatFilter ?? this.habitatFilter,
-      rarityFilter: rarityFilter ?? this.rarityFilter,
-      collectionFilter: collectionFilter ?? this.collectionFilter,
+      itemsByCategory: itemsByCategory ?? this.itemsByCategory,
+      activeTab: activeTab ?? this.activeTab,
+      playerStats: playerStats ?? this.playerStats,
     );
   }
 }
@@ -176,44 +127,73 @@ class PackState {
 class PackNotifier extends Notifier<PackState> {
   @override
   PackState build() {
-    // Watch species service — rebuilds if the species pool ever changes.
-    final speciesService = ref.watch(speciesServiceProvider);
-
-    // Listen to inventory changes and update collectedIds only,
-    // preserving active filter selections.
+    // Listen to inventory changes — regroup items by category.
     ref.listen(inventoryProvider, (_, next) {
-      updateCollectedIds(next.uniqueDefinitionIds);
+      _updateFromInventory(next);
     });
 
-    // Read inventory for initial state (listen handles ongoing changes).
-    final collectedIds = ref.read(inventoryProvider).uniqueDefinitionIds;
+    // Listen to player stats changes.
+    ref.listen(playerProvider, (_, next) {
+      state = state.copyWith(playerStats: next);
+    });
+
+    // Initial state from current inventory.
+    final inventory = ref.read(inventoryProvider);
+    final playerStats = ref.read(playerProvider);
 
     return PackState(
-      allSpecies: speciesService.all,
-      collectedIds: collectedIds,
+      itemsByCategory: _groupByCategory(inventory.items),
+      playerStats: playerStats,
     );
   }
 
-  void setHabitatFilter(HabitatFilter filter) {
-    state = state.copyWith(habitatFilter: filter);
+  void _updateFromInventory(InventoryState inventory) {
+    state = state.copyWith(
+      itemsByCategory: _groupByCategory(inventory.items),
+    );
   }
 
-  void setRarityFilter(RarityFilter filter) {
-    state = state.copyWith(rarityFilter: filter);
+  /// Set the active tab.
+  void setActiveTab(PackTab tab) {
+    state = state.copyWith(activeTab: tab);
   }
 
-  void setCollectionFilter(CollectionFilter filter) {
-    state = state.copyWith(collectionFilter: filter);
+  /// Resolve a FaunaDefinition from a definitionId.
+  ///
+  /// Reads [speciesServiceProvider] on-demand for definition lookup.
+  FaunaDefinition? resolveFauna(String definitionId) {
+    final service = ref.read(speciesServiceProvider);
+    try {
+      return service.all.firstWhere((s) => s.id == definitionId);
+    } catch (_) {
+      return null;
+    }
   }
 
-  /// Replaces the full species list (used when species pool changes).
-  void updateSpecies(List<FaunaDefinition> species) {
-    state = state.copyWith(allSpecies: species);
+  /// Groups items by their category, filtering to active items only.
+  static Map<ItemCategory, List<ItemInstance>> _groupByCategory(
+    List<ItemInstance> items,
+  ) {
+    final map = <ItemCategory, List<ItemInstance>>{};
+    for (final item in items) {
+      if (item.status != ItemInstanceStatus.active) continue;
+      // Infer category from definitionId prefix.
+      final category = _categoryFromDefinitionId(item.definitionId);
+      (map[category] ??= []).add(item);
+    }
+    return map;
   }
 
-  /// Syncs collected IDs from the collection provider.
-  void updateCollectedIds(Set<String> ids) {
-    state = state.copyWith(collectedIds: ids);
+  /// Infers ItemCategory from the definition ID prefix convention.
+  /// E.g. "fauna_vulpes_vulpes" → ItemCategory.fauna
+  static ItemCategory _categoryFromDefinitionId(String definitionId) {
+    for (final cat in ItemCategory.values) {
+      if (definitionId.startsWith('${cat.name}_')) {
+        return cat;
+      }
+    }
+    // Default to fauna if no prefix match (legacy IDs).
+    return ItemCategory.fauna;
   }
 }
 

@@ -99,7 +99,12 @@ Return only valid JSON, no markdown.`;
 
   if (!response.ok) {
     const errBody = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${errBody}`);
+    const err = new Error(`Gemini API error ${response.status}: ${errBody}`);
+    (err as any).statusCode = response.status;
+    if (response.status === 429) {
+      (err as any).retryAfter = response.headers.get("retry-after") ?? "60";
+    }
+    throw err;
   }
 
   const body = await response.json();
@@ -140,7 +145,14 @@ serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const geminiKey = Deno.env.get("GEMINI_API_KEY")!;
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+
+    if (!geminiKey) {
+      return new Response(
+        JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+        { status: 503, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+      );
+    }
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
@@ -194,9 +206,22 @@ serve(async (req: Request) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    const statusCode = (err as any).statusCode ?? 500;
+    const headers: Record<string, string> = {
+      ...CORS_HEADERS,
+      "Content-Type": "application/json",
+    };
+    // Forward Retry-After header from Gemini 429 responses so clients can
+    // back off appropriately instead of hammering the free-tier quota.
+    if (statusCode === 429) {
+      const retryAfter = (err as any).retryAfter;
+      if (retryAfter) {
+        headers["Retry-After"] = String(retryAfter);
+      }
+    }
     return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+      JSON.stringify({ error: message, statusCode }),
+      { status: statusCode, headers },
     );
   }
 });
