@@ -7,7 +7,7 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 - `DiscoveryService` (in map/providers/) — watches fogResolver, speciesService, habitatService, cellService, seasonService. Subscribes to fog state changes, emits discovery events.
 - `DiscoveryNotifier` — manages notification queue and recent history
 - `speciesDataProvider` — `FutureProvider<List<FaunaDefinition>>`, loads 32,752 IUCN records from `assets/species_data.json` via `rootBundle`
-- `speciesServiceProvider` — `Provider<SpeciesService>`, watches `speciesDataProvider`. Returns empty `SpeciesService([])` during loading/error, full dataset when ready. Pattern matches `habitatServiceProvider` in biome/.
+- `speciesServiceProvider` — `Provider<SpeciesService>`, watches speciesDataProvider and enrichmentMapProvider. Merges AI enrichments (animalClass, foodPreference, climate) into FaunaDefinition at load time. Returns empty SpeciesService([]) during loading/error, full dataset with enrichments when ready.
 
 ## Encounter Flow
 
@@ -16,7 +16,15 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 3. Species rolled deterministically (SHA-256 seeded by cellId)
 4. GameCoordinator rolls intrinsic affix via StatsService, creates ItemInstance with UUID
 5. gameCoordinatorProvider wires callbacks → discoveryProvider.notifier.showDiscovery() + inventoryProvider.notifier.addItem() + discoveryService.markCollected() + SQLite persistence
+5b. gameCoordinatorProvider fires enrichmentService.requestEnrichment() (fire-and-forget) if species not yet enriched
 6. DiscoveryNotificationOverlay displays toast
+
+## Enrichment Integration
+
+- `speciesServiceProvider` merges `enrichmentMapProvider` data into `FaunaDefinition` at load time
+- Pattern: `enrichmentMapAsync.asData?.value ?? {}` — gracefully handles loading/error states
+- When enrichment exists for a species, `FaunaDefinition.copyWith()` applies animalClass, foodPreference, climate
+- Non-blocking: species service works with or without enrichments
 
 ## Dual Notifier Pattern
 
@@ -27,10 +35,11 @@ Same as achievements:
 
 ## Species Service Provider
 
-Two providers in `discovery_provider.dart`:
+Three providers in `discovery_provider.dart`:
 
 - `speciesDataProvider` (`FutureProvider`): Loads full IUCN dataset asynchronously from bundled JSON asset. Parsed by `SpeciesDataLoader.fromJsonString()`.
-- `speciesServiceProvider` (`Provider`): Watches `speciesDataProvider`, provides `SpeciesService` with the full dataset. Empty fallback during loading/error — no encounters fire until asset is ready.
+- `enrichmentMapProvider` (`FutureProvider`): Loads all cached enrichments from SQLite via `enrichmentRepositoryProvider`. Returns `Map<String, SpeciesEnrichment>` keyed by scientificName.
+- `speciesServiceProvider` (`Provider`): Watches `speciesDataProvider` and `enrichmentMapProvider`, provides `SpeciesService` with the full dataset merged with AI enrichments. Empty fallback during loading/error — no encounters fire until asset is ready.
 
 ## Gotchas
 

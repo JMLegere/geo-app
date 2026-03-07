@@ -18,6 +18,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `supabaseBootstrapProvider` | `Provider<SupabaseBootstrap>` | singleton | pre-initialized in main() |
 | `appDatabaseProvider` | `Provider<AppDatabase>` | singleton | none. Disposes on shutdown via `ref.onDispose` |
 | `itemInstanceRepositoryProvider` | `Provider<ItemInstanceRepository>` | singleton | watches: appDatabaseProvider |
+| `enrichmentRepositoryProvider` | `Provider<EnrichmentRepository>` | singleton | watches: appDatabaseProvider |
 | `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider. reads: authProvider. Wiring exception: imports features/ |
 
 ### Feature Providers
@@ -33,13 +34,16 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
 | `speciesDataProvider` | discovery | `FutureProvider<List<FaunaDefinition>>` | async asset load (rootBundle) |
-| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesDataProvider. Empty fallback during loading/error |
+| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesDataProvider, enrichmentMapProvider. Merges AI enrichments into FaunaDefinition. Empty fallback during loading/error |
 | `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
 | `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: inventory, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence |
+| `supabaseClientProvider` | sync | `Provider<SupabaseClient?>` | reads: supabaseBootstrapProvider. Returns null when Supabase not configured |
+| `enrichmentServiceProvider` | enrichment | `Provider<EnrichmentService?>` | reads: supabaseClientProvider, enrichmentRepositoryProvider. Returns null when no Supabase |
+| `enrichmentMapProvider` | enrichment | `FutureProvider<Map<String, SpeciesEnrichment>>` | watches: enrichmentRepositoryProvider. All cached enrichments keyed by scientificName |
 | `habitatServiceProvider` | biome | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
 | `biomeFeatureIndexProvider` | biome | `FutureProvider<BiomeFeatureIndex>` | async asset load |
 | `seasonServiceProvider` | seasonal | `Provider<SeasonService>` | none |
@@ -60,6 +64,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 ```
 supabaseBootstrapProvider ──→ authProvider ──→ upgradePromptProvider
                           ──→ supabasePersistenceProvider ──→ syncProvider
+                          ──→ supabaseClientProvider ──→ enrichmentServiceProvider
 
 inventoryProvider ──→ upgradePromptProvider (watch)
 
@@ -71,10 +76,16 @@ locationServiceProvider ──→ gameCoordinatorProvider    ──→ playerPro
 discoveryServiceProvider ──→ gameCoordinatorProvider   ──→ inventoryProvider (callback)
 itemInstanceRepositoryProvider ──→ gameCoordinatorProvider ──→ discoveryProvider (callback)
 authProvider ──→ gameCoordinatorProvider (read + listen for hydration)
+enrichmentServiceProvider ──→ gameCoordinatorProvider (fire-and-forget enrichment on discovery)
 
 appDatabaseProvider ──→ itemInstanceRepositoryProvider
+appDatabaseProvider ──→ enrichmentRepositoryProvider
+
+enrichmentRepositoryProvider ──→ enrichmentServiceProvider
+enrichmentRepositoryProvider ──→ enrichmentMapProvider
 
 speciesDataProvider ──→ speciesServiceProvider
+enrichmentMapProvider ──→ speciesServiceProvider (merge)
 speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ packProvider
                        ──→ sanctuaryProvider

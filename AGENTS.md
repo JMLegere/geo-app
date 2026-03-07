@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1292 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1321 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 37 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
@@ -40,11 +40,11 @@ lib/
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
 │   ├── cells/                  # Spatial indexing (CellService interface + impls)
 │   ├── config/                 # SupabaseConfig (env vars)
-│   ├── database/               # Drift ORM (3 tables)
+│   ├── database/               # Drift ORM (4 tables)
 │   ├── fog/                    # FogStateResolver (computed visibility)
 │   ├── game/                   # GameCoordinator (pure Dart game loop)
-│   ├── models/                 # 18 immutable value objects
-│   ├── persistence/            # Repository pattern (3 repos)
+│   ├── models/                 # 19 immutable value objects
+│   ├── persistence/            # Repository pattern (4 repos)
 │   ├── species/                # Loot table, species loader, continent resolver
 │   └── state/                  # Riverpod providers (fog, location, player, inventory, season)
 ├── features/                   # Feature modules (UI + feature-specific logic)
@@ -53,6 +53,7 @@ lib/
 │   ├── biome/                  # 🌿 ESA land cover → habitat mapping
 │   ├── caretaking/             # 🌱 Daily visit streaks
 │   ├── discovery/              # 🔬 Species encounter events (model in core/models/)
+│   ├── enrichment/             # 🧬 AI enrichment providers (classification pipeline)
 │   ├── location/               # 📍 GPS, simulation, filtering (services only)
 │   ├── map/                    # 🗺️ Map rendering, fog overlay, camera (pure renderer)
 │   ├── navigation/             # 🧭 4-tab shell (Map | Home | Town | Pack)
@@ -65,7 +66,7 @@ lib/
 │   └── constants.dart          # All game-balance constants (kDetectionRadiusMeters, etc.)
 ```
 
-**See also:** `lib/core/AGENTS.md`, `lib/core/game/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
+**See also:** `lib/core/AGENTS.md`, `lib/core/game/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/enrichment/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
@@ -106,7 +107,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 ## Product Architecture (Design Jam Decisions — 2026-03-06, updated 2026-03-06 Jam 2)
 
-These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: Lazy AI enrichment (Phase 1c), GameCoordinator wiring improvements (Phase 2b), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
+These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: GameCoordinator wiring improvements (Phase 2b), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
 
 **This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
 
@@ -153,11 +154,12 @@ These are the target architecture decisions from two design jams. They describe 
 ### Wall 1e: Lazy AI Enrichment
 
 - **Trigger:** First global discovery of any item. Background AI job fires automatically.
+- **Phase 1c IMPLEMENTED:** Classification pipeline (animalClass, foodPreference, climate) via Gemini Flash. Art and stats enrichment deferred to later phase.
 - **Fauna enrichment:** animalClass, foodPreference, stats (brawn+wit+speed=90), watercolor art.
 - **All categories enriched:** Flora, Mineral, Fossil, Artifact also get category-specific AI enrichment + watercolor art. Food and Orbs are predefined — no enrichment needed.
 - **AI is canonical for facts.** Stats, classification, food preference — AI sets, locked forever. No crowdsourcing for factual attributes.
 - **Art is crowd-canonical.** AI watercolor is the default. First 50 owners can upload art. Art locks when 51% of instances select same art at daily reset. **Moderation: free AI screening only — automatically reject inappropriate uploads. No community reports.**
-- **Architecture:** Supabase enrichment_queue → Edge Function → LLM API (classification) + image gen API (art) → results stored in species_enrichment table → cached locally.
+- **Architecture:** Supabase species_enrichment table → Edge Function (enrich-species) → Gemini Flash API (classification) → results cached in local SQLite (LocalSpeciesEnrichmentTable) → merged into FaunaDefinition at load time.
 - **Non-blocking:** Enrichment runs in background. Gameplay continues with just IUCN data. Enrichment adds richness over time.
 - **Full spec:** `docs/design-jam-2-item-expansion.md`
 
@@ -198,7 +200,7 @@ These are the target architecture decisions from two design jams. They describe 
 |-------|--------|--------|---------|
 | 1 | **COMPLETE** | Item model (sealed classes, instances, affixes) | Everything downstream |
 | 1b | **COMPLETE** | Item expansion (7 categories, taxonomy, food, orbs, climate) | Economy, sanctuary loop |
-| 1c | Not started | Lazy AI enrichment pipeline (Supabase Edge Functions) | Species identity, art, stats |
+| 1c | **COMPLETE** | Lazy AI enrichment pipeline (classification only — art deferred) | Species identity (partial) |
 | 2 | **COMPLETE** | GameCoordinator (extract from map_screen) | Tab-independent game loop |
 | 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
 | 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
@@ -466,8 +468,8 @@ docs/
 ├── INDEX.md           # Reading guide — what to read for which task
 ├── architecture.md    # Layer diagram, dependency rules, feature boundaries
 ├── game-loop.md       # GPS→render pipeline, fog state machine, tick rates
-├── state.md           # All 26 Riverpod providers, dependency graph, mutation patterns
-├── data-model.md      # Models, DB schema (3 tables), repositories, game constants
+├── state.md           # All 30 Riverpod providers, dependency graph, mutation patterns
+├── data-model.md      # Models, DB schema (4 tables), repositories, game constants
 └── tech-stack.md      # Versions, packages, build/run/deploy commands
 ```
 

@@ -34,6 +34,7 @@ All domain models, database schema, and persistence contracts.
 | `OrbDefinition` | dimension: `OrbDimension`, variant: String | — | Predefined (3 dimensions: habitat, class, climate; ~46 total types) |
 | `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
 | `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |
+| `SpeciesEnrichment` | scientificName (PK), animalClass, foodPreference, climate, brawn, wit, speed, enrichedAt | scientificName | AI-enriched species data from Gemini Flash. Nullable fields except scientificName. |
 | `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact, food, orb | — | Item type classification (7 categories) |
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
@@ -133,6 +134,19 @@ Unique constraint: `{userId, cellId}`
 | `createdAt` | datetime | — | |
 | `updatedAt` | datetime | — | |
 
+### LocalSpeciesEnrichmentTable
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| `scientificName` | text PK | — | Matches FaunaDefinition.scientificName |
+| `animalClassName` | text | nullable | AnimalClass enum name |
+| `foodPreferenceName` | text | nullable | FoodType enum name |
+| `climateName` | text | nullable | Climate enum name |
+| `brawn` | int | nullable | Brawn stat (part of brawn+wit+speed=90) |
+| `wit` | int | nullable | Wit stat |
+| `speed` | int | nullable | Speed stat |
+| `enrichedAt` | datetime | — | When enrichment was performed |
+
 ## Repositories (lib/core/persistence/)
 
 | Repository | Table | Key Operations |
@@ -140,6 +154,7 @@ Unique constraint: `{userId, cellId}`
 | `ProfileRepository` | LocalPlayerProfile | `create`, `read(userId)`, `update`, `updateCurrentStreak`, `addDistance`, `getAllProfiles` |
 | `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState` |
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `delete(id)`, `readByStatus(userId, status)` |
+| `EnrichmentRepository` | LocalSpeciesEnrichment | `getAll()`, `upsert(SpeciesEnrichment)`, `getByName(scientificName)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 
@@ -156,6 +171,16 @@ Feature code → Repository method → AppDatabase → SQLite
 `appDatabaseProvider` (core/state/) provides the singleton `AppDatabase`. `itemInstanceRepositoryProvider` watches it and provides `ItemInstanceRepository` to consumers.
 
 When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-only. No sync queue — writes go directly.
+
+### Supabase Enrichment Tables
+
+**species_enrichment** (global, shared):
+- `scientific_name` (text PK), `animal_class`, `food_preference`, `climate`, `brawn`, `wit`, `speed`, `enriched_at`
+- RLS: All authenticated users can read. Only service_role can write (via Edge Function).
+
+**item_instances** (per-user):
+- `id` (UUID PK), `user_id`, `definition_id`, `category_name`, `affixes_json`, `parent_a_id`, `parent_b_id`, `daily_seed`, `status`, `created_at`
+- RLS: Users can only CRUD their own rows.
 
 ### Startup Hydration
 

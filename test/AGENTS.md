@@ -1,6 +1,6 @@
 # Test Suite
 
-1292 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1321 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -12,7 +12,7 @@ LD_LIBRARY_PATH=. flutter test test/core/  # Subsystem only
 
 ## Structure
 
-Mirrors lib/ exactly. 85 test files, 16,398 lines.
+Mirrors lib/ exactly. 89 test files, 16,398 lines.
 
 Additional directories:
 - `fixtures/` — `species_fixture.dart` with `kSpeciesFixtureJson` (50 species, all habitats/continents/IUCN statuses)
@@ -58,6 +58,7 @@ Defined per-file (not shared). Each test file has its own factories.
 | `offline_discovery_test.dart` | Species encounter events: roll → emit → collect |
 | `offline_audit_test.dart` | Data consistency: no orphaned records, all FK valid |
 | `offline_hydration_test.dart` | Inventory hydration: SQLite → repo → InventoryNotifier, race safety, restart persistence |
+| `enrichment_merge_test.dart` | Enrichment merge into species service, graceful degradation without enrichments |
 
 ## Performance Budgets
 
