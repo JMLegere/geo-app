@@ -45,7 +45,18 @@ supabase/.temp/
 # Node modules (playwright E2E tooling)
 node_modules/
 
-# E2E screenshots (ephemeral)
+# E2E screenshots and logs (ephemeral)
 e2e-screenshot.png
+e2e-proof-*.png
+e2e-proof-*.log
+e2e-console-*.log
+prod-e2e-*.png
+prod-e2e-*.log
 web-app-initial.png
 web-app-loaded.png
+
+# SQLite database (local dev)
+*.db
+
+# Agent working memory
+.claude/

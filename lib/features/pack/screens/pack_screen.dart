@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart' hide Durations;
-import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:fog_of_world/core/models/item_category.dart';
 import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
 import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
 import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
-import 'package:fog_of_world/features/pack/widgets/pack_filter_bar.dart';
-import 'package:fog_of_world/features/pack/widgets/pack_progress_bar.dart';
-import 'package:fog_of_world/features/pack/widgets/species_card.dart';
-import 'package:fog_of_world/features/pack/widgets/species_detail_sheet.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:fog_of_world/features/pack/widgets/category_stub_tab.dart';
+import 'package:fog_of_world/features/pack/widgets/character_tab.dart';
+import 'package:fog_of_world/features/pack/widgets/fauna_grid_tab.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
 
-/// Main collection pack screen.
+/// Main Pack screen — a scrollable 8-tab inventory viewer.
 ///
-/// Assembles [PackProgressBar], [PackFilterBar], and a 2-column
-/// [GridView] of [SpeciesCard] widgets. Tapping a card opens
-/// [SpeciesDetailSheet] as a modal bottom sheet.
+/// Tabs mirror [PackTab] enum order:
+///   0 Character | 1 Fauna | 2–7 category stubs (flora, minerals, …, orbs)
 ///
-/// This is a standalone screen — it does not depend on MapScreen or any
-/// map-specific providers.
+/// Tab content is lazy-loaded via [TabBarView]. The [packProvider] is synced
+/// on every tab change so other features can observe the active tab.
 class PackScreen extends ConsumerStatefulWidget {
   const PackScreen({super.key});
 
@@ -27,12 +26,22 @@ class PackScreen extends ConsumerStatefulWidget {
   ConsumerState<PackScreen> createState() => _PackScreenState();
 }
 
-class _PackScreenState extends ConsumerState<PackScreen> {
+class _PackScreenState extends ConsumerState<PackScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(
+      length: PackTab.values.length,
+      vsync: this,
+    );
+    _tabController.addListener(_onTabChanged);
+
+    // Show upgrade bottom sheet once when the threshold is crossed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listenManual<UpgradePromptState>(upgradePromptProvider, (prev, next) {
+      ref.listenManual<UpgradePromptState>(upgradePromptProvider, (_, next) {
         if (next.shouldShow) {
           ref.read(upgradePromptProvider.notifier).markShown();
           UpgradeBottomSheet.show(context);
@@ -41,65 +50,44 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     });
   }
 
-  Widget _buildEmptyState(PackState state) {
-    // Nothing collected yet — show exploration prompt.
-    final hasActiveCollectionFilter =
-        state.collectionFilter == CollectionFilter.collected;
-    final nothingCollected = state.collectedCount == 0;
+  void _onTabChanged() {
+    // Sync packProvider so other providers know which tab is active.
+    ref
+        .read(packProvider.notifier)
+        .setActiveTab(PackTab.values[_tabController.index]);
+  }
 
-    if (nothingCollected && !hasActiveCollectionFilter) {
-      return const EmptyStateWidget(
-        icon: '🔬',
-        title: 'No species discovered yet',
-        subtitle: 'Start exploring to find wildlife!',
-      );
-    }
-
-    if (nothingCollected && hasActiveCollectionFilter) {
-      return const EmptyStateWidget(
-        icon: '🎒',
-        title: 'Nothing collected yet',
-        subtitle: 'Explore cells on the map to discover and collect species.',
-      );
-    }
-
-    // Has collections but active filters yield no results.
-    return const EmptyStateWidget(
-      icon: '🔍',
-      title: 'No species match filters',
-      subtitle: 'Try adjusting your filters to see more species.',
-    );
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(packProvider);
-    final notifier = ref.read(packProvider.notifier);
-    final filtered = state.filteredSpecies;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: cs.surface,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        backgroundColor: cs.surfaceContainer,
         elevation: 0,
         scrolledUnderElevation: 0.5,
-        shadowColor: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
+        shadowColor: cs.shadow.withValues(alpha: 0.08),
         title: Text(
-           'Pack',
-           style: TextStyle(
+          'Pack',
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
-            color: Theme.of(context).colorScheme.onSurface,
+            color: cs.onSurface,
             letterSpacing: -0.2,
           ),
         ),
         centerTitle: false,
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.settings,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            icon: Icon(Icons.settings, color: cs.onSurface),
             tooltip: 'Settings',
             onPressed: () {
               Navigator.of(context).push(
@@ -110,60 +98,56 @@ class _PackScreenState extends ConsumerState<PackScreen> {
             },
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          indicatorColor: cs.primary,
+          labelColor: cs.primary,
+          unselectedLabelColor: cs.onSurfaceVariant,
+          labelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+          indicatorWeight: 2.5,
+          padding: EdgeInsets.zero,
+          tabs: PackTab.values
+              .map(
+                (tab) => Tab(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
+                    child: Text('${tab.emoji} ${tab.displayName}'),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
       ),
       body: Column(
         children: [
-          // Save progress banner — shown when user is anonymous and has
-          // crossed the upgrade threshold.
+          // Persistent upgrade banner — shown once threshold is crossed.
           SaveProgressBanner(
             onUpgradeTap: () => UpgradeBottomSheet.show(context),
           ),
 
-           // Progress bar
-           PackProgressBar(
-             collected: state.collectedCount,
-             total: state.totalCount,
-           ),
-
-           // Filter bar
-           PackFilterBar(
-            collectionFilter: state.collectionFilter,
-            habitatFilter: state.habitatFilter,
-            rarityFilter: state.rarityFilter,
-            onCollectionFilterChanged: notifier.setCollectionFilter,
-            onHabitatFilterChanged: notifier.setHabitatFilter,
-            onRarityFilterChanged: notifier.setRarityFilter,
-          ),
-
-          // Grid
           Expanded(
-            child: filtered.isEmpty
-                ? _buildEmptyState(state)
-                : GridView.builder(
-                    padding: const EdgeInsets.all(Spacing.lg),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      childAspectRatio: 0.82,
-                    ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final species = filtered[index];
-                      final isCollected = state.collectedIds.contains(species.id);
-
-                      return SpeciesCard(
-                        species: species,
-                        isCollected: isCollected,
-                        onTap: () => showSpeciesDetailSheet(
-                          context,
-                          species: species,
-                          isCollected: isCollected,
-                        ),
-                      );
-                    },
-                  ),
+            child: TabBarView(
+              controller: _tabController,
+              children: const [
+                CharacterTab(), // 0 — character stats & inventory summary
+                FaunaGridTab(), // 1 — fauna PC-box grid
+                CategoryStubTab(category: ItemCategory.flora), // 2
+                CategoryStubTab(category: ItemCategory.mineral), // 3
+                CategoryStubTab(category: ItemCategory.fossil), // 4
+                CategoryStubTab(category: ItemCategory.artifact), // 5
+                CategoryStubTab(category: ItemCategory.food), // 6
+                CategoryStubTab(category: ItemCategory.orb), // 7
+              ],
+            ),
           ),
         ],
       ),

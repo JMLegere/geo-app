@@ -1,0 +1,417 @@
+import 'package:flutter/material.dart' hide Durations;
+
+import 'package:fog_of_world/core/models/affix.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:fog_of_world/shared/game_icons.dart';
+import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
+
+/// Shows a modal bottom sheet with full item instance details.
+///
+/// Displays species identity (name, scientific name, rarity), properties
+/// (type, class, habitat, region, climate, diet, season), stat bars
+/// (brawn/wit/speed from intrinsic affix), and instance provenance
+/// (wild/bred, date acquired, cell ID).
+///
+/// Usage:
+/// ```dart
+/// showItemDetailSheet(context, item: instance, definition: def);
+/// ```
+void showItemDetailSheet(
+  BuildContext context, {
+  required ItemInstance item,
+  FaunaDefinition? definition,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => ItemDetailSheet(item: item, definition: definition),
+  );
+}
+
+/// The bottom sheet widget itself. Exported for testability.
+class ItemDetailSheet extends StatelessWidget {
+  const ItemDetailSheet({
+    super.key,
+    required this.item,
+    this.definition,
+  });
+
+  final ItemInstance item;
+  final FaunaDefinition? definition;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: cs.surfaceContainer,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xxxl)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Padding(
+                padding: EdgeInsets.only(top: Spacing.md, bottom: Spacing.xs),
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  Spacing.lg,
+                  Spacing.sm,
+                  Spacing.lg,
+                  Spacing.xxl,
+                ),
+                child: _ItemDetailContent(item: item, definition: definition),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main content
+// ---------------------------------------------------------------------------
+
+class _ItemDetailContent extends StatelessWidget {
+  const _ItemDetailContent({required this.item, required this.definition});
+
+  final ItemInstance item;
+  final FaunaDefinition? definition;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final def = definition;
+
+    // Find intrinsic affix for stat bars
+    final intrinsic = item.affixes
+        .where((a) => a.type == AffixType.intrinsic)
+        .firstOrNull;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Header: name + rarity badge ──────────────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    def?.displayName ?? 'Unknown Species',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  if (def != null) ...[
+                    SizedBox(height: Spacing.xxs),
+                    Text(
+                      def.scientificName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (def?.rarity != null) ...[
+              SizedBox(width: Spacing.md),
+              RarityBadge(
+                status: def!.rarity!,
+                size: RarityBadgeSize.medium,
+              ),
+            ],
+          ],
+        ),
+
+        SizedBox(height: Spacing.lg),
+        Divider(height: 1, color: cs.outlineVariant),
+        SizedBox(height: Spacing.lg),
+
+        // ── Properties ───────────────────────────────────────────────────
+        if (def != null) ...[
+          if (def.animalType != null)
+            _PropertyRow(
+              label: 'Type',
+              value:
+                  '${GameIcons.animalType(def.animalType!)} ${def.animalType!.name[0].toUpperCase()}${def.animalType!.name.substring(1)}',
+            ),
+          if (def.animalClass != null) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Class',
+              value:
+                  '${GameIcons.animalClass(def.animalClass!)} ${def.animalClass!.displayName}',
+            ),
+          ],
+          if (def.habitats.isNotEmpty) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Habitat',
+              value: def.habitats
+                  .map((h) => '${GameIcons.habitat(h)} ${h.displayName}')
+                  .join('  '),
+            ),
+          ],
+          if (def.continents.isNotEmpty) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Region',
+              value: def.continents.map((c) => c.displayName).join(', '),
+            ),
+          ],
+          if (def.climate != null) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Climate',
+              value:
+                  '${GameIcons.climate(def.climate!)} ${def.climate!.displayName}',
+            ),
+          ],
+          if (def.rarity != null) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Rarity',
+              value:
+                  '${GameIcons.rarity(def.rarity!)} ${EarthNovaTheme.rarityLabel(def.rarity!)}',
+            ),
+          ],
+          if (def.foodPreference != null) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Diet',
+              value:
+                  '${GameIcons.foodType(def.foodPreference!)} ${def.foodPreference!.displayName}',
+            ),
+          ],
+          if (def.seasonRestriction != null) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Season',
+              value:
+                  '${GameIcons.season(def.seasonRestriction!)} ${def.seasonRestriction!.displayName}',
+            ),
+          ],
+          SizedBox(height: Spacing.lg),
+          Divider(height: 1, color: cs.outlineVariant),
+          SizedBox(height: Spacing.lg),
+        ],
+
+        // ── Stat bars ────────────────────────────────────────────────────
+        if (intrinsic != null) ...[
+          Text(
+            'Stats',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurfaceVariant,
+              letterSpacing: 0.5,
+            ),
+          ),
+          SizedBox(height: Spacing.sm),
+          _StatBar(
+            icon: GameIcons.brawn,
+            label: 'Brawn',
+            value: (intrinsic.values['brawn'] as num?)?.round() ?? 0,
+            color: const Color(0xFFE57373), // muted red
+          ),
+          SizedBox(height: Spacing.xs),
+          _StatBar(
+            icon: GameIcons.wit,
+            label: 'Wit',
+            value: (intrinsic.values['wit'] as num?)?.round() ?? 0,
+            color: const Color(0xFF64B5F6), // muted blue
+          ),
+          SizedBox(height: Spacing.xs),
+          _StatBar(
+            icon: GameIcons.speed,
+            label: 'Speed',
+            value: (intrinsic.values['speed'] as num?)?.round() ?? 0,
+            color: const Color(0xFF81C784), // muted green
+          ),
+          SizedBox(height: Spacing.lg),
+          Divider(height: 1, color: cs.outlineVariant),
+          SizedBox(height: Spacing.lg),
+        ],
+
+        // ── Instance provenance ──────────────────────────────────────────
+        Text(
+          'Instance',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: cs.onSurfaceVariant,
+            letterSpacing: 0.5,
+          ),
+        ),
+        SizedBox(height: Spacing.sm),
+        _PropertyRow(
+          label: 'Origin',
+          value: item.isWildCaught
+              ? '${GameIcons.wildCaught} Wild caught'
+              : '${GameIcons.bred} Bred',
+        ),
+        SizedBox(height: Spacing.xs),
+        _PropertyRow(
+          label: 'Found',
+          value: _formatDate(item.acquiredAt),
+        ),
+        if (item.acquiredInCellId != null) ...[
+          SizedBox(height: Spacing.xs),
+          _PropertyRow(
+            label: 'Cell',
+            value: _truncateCellId(item.acquiredInCellId!),
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _formatDate(DateTime dt) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
+  static String _truncateCellId(String cellId) {
+    if (cellId.length <= 16) return cellId;
+    return '${cellId.substring(0, 8)}…${cellId.substring(cellId.length - 6)}';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sub-widgets
+// ---------------------------------------------------------------------------
+
+class _PropertyRow extends StatelessWidget {
+  const _PropertyRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 72,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: cs.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatBar extends StatelessWidget {
+  const _StatBar({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String icon;
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fraction = (value / 30.0).clamp(0.0, 1.0);
+
+    return Row(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 14)),
+        SizedBox(width: Spacing.xs),
+        SizedBox(
+          width: 48,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: Radii.borderSm,
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 8,
+              backgroundColor: cs.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+        SizedBox(width: Spacing.xs),
+        SizedBox(
+          width: 24,
+          child: Text(
+            '$value',
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: cs.onSurface,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
