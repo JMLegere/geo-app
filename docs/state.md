@@ -29,6 +29,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `onboardingProvider` | onboarding | `NotifierProvider<OnboardingNotifier, bool?>` | none (SharedPreferences) |
 | `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, restoration, speciesService |
 | `achievementNotificationProvider` | achievements | `NotifierProvider` | none (toast queue) |
+| `achievementServiceProvider` | achievements | `Provider<AchievementService>` | none (pure service) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
 | `speciesDataProvider` | discovery | `FutureProvider<List<FaunaDefinition>>` | async asset load (rootBundle) |
@@ -39,6 +40,9 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: inventory, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence |
+| `habitatServiceProvider` | biome | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
+| `biomeFeatureIndexProvider` | biome | `FutureProvider<BiomeFeatureIndex>` | async asset load |
+| `seasonServiceProvider` | seasonal | `Provider<SeasonService>` | none |
 
 ### Map Providers (lib/features/map/providers/)
 
@@ -50,9 +54,6 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `locationServiceProvider` | `Provider<LocationService>` | none |
 | `discoveryServiceProvider` | `Provider<DiscoveryService>` | watches: fogResolver, speciesService, habitatService, cellService, seasonService |
 | `fogOverlayControllerProvider` | `Provider<FogOverlayController>` | watches: cellService, fogResolver |
-| `habitatServiceProvider` | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
-| `biomeFeatureIndexProvider` | `FutureProvider<BiomeFeatureIndex>` | async asset load |
-| `seasonServiceProvider` | `Provider<SeasonService>` | none |
 
 ## Cross-Feature Dependency Graph
 
