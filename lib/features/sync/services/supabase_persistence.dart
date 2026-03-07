@@ -1,22 +1,32 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Exception thrown when a Supabase sync operation fails.
-///
-/// Contains a user-friendly [message] (safe to display) and the underlying
-/// [cause] for diagnostic logging. Raw Supabase errors are never exposed
-/// directly to the caller.
 class SyncException implements Exception {
   const SyncException(this.message, {this.cause});
 
-  /// User-friendly error message. Safe to display in the UI.
   final String message;
-
-  /// Underlying exception for diagnostic logging. Never shown to users.
   final Object? cause;
 
   @override
   String toString() => 'SyncException: $message (cause: $cause)';
+}
+
+class SyncValidationRejectedException implements Exception {
+  const SyncValidationRejectedException(this.reason);
+
+  final String reason;
+
+  @override
+  String toString() => 'SyncValidationRejectedException: $reason';
+}
+
+class SyncRejectedException implements Exception {
+  const SyncRejectedException(this.reason);
+
+  final String reason;
+
+  @override
+  String toString() => 'SyncRejectedException: $reason';
 }
 
 class SupabasePersistence {
@@ -170,6 +180,49 @@ class SupabasePersistence {
     } catch (e) {
       debugPrint('[SupabasePersistence] deleteItemInstance failed: $e');
       throw SyncException('Failed to delete item instance.', cause: e);
+    }
+  }
+
+  // -- Encounter Validation ----------------------------------------------------
+
+  Future<void> validateEncounter({
+    required String itemId,
+    required String userId,
+    required String definitionId,
+    required String cellId,
+    String? dailySeed,
+    required String acquiredAt,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'validate-encounter',
+        body: {
+          'item_id': itemId,
+          'user_id': userId,
+          'definition_id': definitionId,
+          'cell_id': cellId,
+          'daily_seed': dailySeed,
+          'acquired_at': acquiredAt,
+        },
+      );
+
+      if (response.status == 409) {
+        final data = response.data as Map<String, dynamic>?;
+        final reason = data?['reason'] as String? ?? 'server_rejected';
+        throw SyncValidationRejectedException(reason);
+      }
+
+      if (response.status != 200) {
+        throw SyncException(
+          'Validation failed with status ${response.status}',
+        );
+      }
+    } on SyncValidationRejectedException {
+      rethrow;
+    } catch (e) {
+      if (e is SyncException) rethrow;
+      debugPrint('[SupabasePersistence] validateEncounter failed: $e');
+      throw SyncException('Failed to validate encounter.', cause: e);
     }
   }
 
