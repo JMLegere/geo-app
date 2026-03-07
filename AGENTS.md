@@ -175,9 +175,10 @@ These are the target architecture decisions from two design jams. They describe 
 
 - **The map is a renderer, not an orchestrator.** Game logic lives in `GameCoordinator`, a pure Dart service above the UI.
 - **Runs forever** — created at ProviderScope level, never stops on tab switch. Map screen reads its state and renders.
-- **Owns:** GPS subscription, game loop tick (~10 Hz), fog computation, discovery processing, write queue, daily seed cache, streaks, restoration.
+- **Currently owns:** GPS subscription, game loop tick (~10 Hz), fog computation, discovery processing.
+- **Will own (Phase 3+):** write queue, daily seed cache, streaks, restoration.
 - **Does NOT own:** map rendering, camera, widget state, toast UI, RubberBand interpolation.
-- **Emits:** `Stream<GameState>` — Riverpod notifiers project from this. Discovery events → UI subscribes for toasts.
+- **Output:** Individual callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) wired by gameCoordinatorProvider. Discovery events → UI subscribes for toasts.
 - **Target directory:** `lib/core/game/`
 - **IMPLEMENTED** — `GameCoordinator` class at `lib/core/game/game_coordinator.dart` with dual-position model and `gameCoordinatorProvider` at `lib/core/state/game_coordinator_provider.dart`.
 

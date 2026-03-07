@@ -189,6 +189,7 @@ class GameCoordinator {
     _discoverySubscription = null;
     _fogCellSubscription?.cancel();
     _fogCellSubscription = null;
+    _gameLogicFrame = 0;
     _started = false;
   }
 
@@ -290,6 +291,7 @@ class GameCoordinator {
 
     final result = await check();
     if (result == null) return;
+    if (!_started) return;
 
     final error = switch (result) {
       GpsPermissionResult.denied => GpsError.permissionDenied,

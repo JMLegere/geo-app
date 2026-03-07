@@ -687,6 +687,66 @@ void main() {
         c.dispose();
       });
 
+      test('game logic fires immediately after stop+restart', () {
+        int callCount = 0;
+        final c = _makeCoordinator();
+        c.onPlayerLocationUpdate = (_, __) => callCount++;
+
+        // First start — run 12 frames (3 game ticks).
+        final gps1 = StreamController<_GpsUpdate>.broadcast(sync: true);
+        final disc1 = StreamController<DiscoveryEvent>.broadcast(sync: true);
+        c.start(gpsStream: gps1.stream, discoveryStream: disc1.stream);
+        for (int i = 0; i < 12; i++) {
+          c.updatePlayerPosition(1.0, 1.0);
+        }
+        expect(callCount, 3);
+
+        // Stop resets frame counter.
+        c.stop();
+
+        // Restart with fresh streams.
+        callCount = 0;
+        final gps2 = StreamController<_GpsUpdate>.broadcast(sync: true);
+        final disc2 = StreamController<DiscoveryEvent>.broadcast(sync: true);
+        c.start(gpsStream: gps2.stream, discoveryStream: disc2.stream);
+
+        // Very first updatePlayerPosition after restart must process
+        // game logic immediately (frame counter was reset to 0).
+        c.updatePlayerPosition(2.0, 2.0);
+        expect(callCount, 1);
+
+        gps1.close();
+        gps2.close();
+        disc1.close();
+        disc2.close();
+        c.dispose();
+      });
+
+      test('permission check after stop does not fire callback', () async {
+        GpsError? lastError;
+        final c = _makeCoordinator();
+        c.onGpsErrorChanged = (error) => lastError = error;
+
+        // Permission check will resolve after we stop.
+        final completer = Completer<GpsPermissionResult?>();
+        c.checkPermission = () => completer.future;
+
+        final s = _startCoordinator(c);
+
+        // Stop before permission resolves.
+        c.stop();
+
+        // Now resolve — the callback should NOT fire because _started is false.
+        completer.complete(GpsPermissionResult.denied);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(lastError, isNull);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
       test('can restart after stop()', () {
         final c = _makeCoordinator();
 
