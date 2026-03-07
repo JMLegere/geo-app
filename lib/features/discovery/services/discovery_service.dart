@@ -7,7 +7,7 @@ import 'package:fog_of_world/core/models/fog_state.dart';
 import 'package:fog_of_world/core/species/continent_resolver.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
-import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
+import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/seasonal/services/season_service.dart';
 
 /// Listens to fog events and emits [DiscoveryEvent]s when a player enters a
