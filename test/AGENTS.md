@@ -1,6 +1,6 @@
 # Test Suite
 
-1156 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1292 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -16,7 +16,7 @@ Mirrors lib/ exactly. 85 test files, 16,398 lines.
 
 Additional directories:
 - `fixtures/` — `species_fixture.dart` with `kSpeciesFixtureJson` (50 species, all habitats/continents/IUCN statuses)
-- `integration/` — 5 offline workflow suites (game loop, persistence, fog, discovery, audit)
+- `integration/` — 6 offline workflow suites (game loop, persistence, fog, discovery, audit, hydration)
 - `performance/` — benchmarks for 33k species parse, Voronoi grid, fog computation
 
 ## Key Fixtures
@@ -57,6 +57,7 @@ Defined per-file (not shared). Each test file has its own factories.
 | `offline_fog_test.dart` | Fog state transitions through all 5 states |
 | `offline_discovery_test.dart` | Species encounter events: roll → emit → collect |
 | `offline_audit_test.dart` | Data consistency: no orphaned records, all FK valid |
+| `offline_hydration_test.dart` | Inventory hydration: SQLite → repo → InventoryNotifier, race safety, restart persistence |
 
 ## Performance Budgets
 
