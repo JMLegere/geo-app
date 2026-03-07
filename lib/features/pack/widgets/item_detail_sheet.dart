@@ -5,7 +5,9 @@ import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:fog_of_world/shared/constants.dart';
 import 'package:fog_of_world/shared/game_icons.dart';
+import 'package:fog_of_world/shared/widgets/prismatic_border.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 
 /// Shows a modal bottom sheet with full item instance details.
@@ -105,9 +107,8 @@ class _ItemDetailContent extends StatelessWidget {
     final def = definition;
 
     // Find intrinsic affix for stat bars
-    final intrinsic = item.affixes
-        .where((a) => a.type == AffixType.intrinsic)
-        .firstOrNull;
+    final intrinsic =
+        item.affixes.where((a) => a.type == AffixType.intrinsic).firstOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,14 +122,29 @@ class _ItemDetailContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    def?.displayName ?? 'Unknown Species',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                      letterSpacing: -0.3,
-                    ),
+                  // Species name with optional ★ first-discovery pill badge.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          def?.displayName ?? 'Unknown Species',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: cs.onSurface,
+                            letterSpacing: -0.3,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (item.isFirstDiscovery) ...[
+                        SizedBox(width: Spacing.xs),
+                        const FirstDiscoveryBadge(
+                          size: FirstDiscoveryBadgeSize.pill,
+                        ),
+                      ],
+                    ],
                   ),
                   if (def != null) ...[
                     SizedBox(height: Spacing.xxs),
@@ -167,14 +183,13 @@ class _ItemDetailContent extends StatelessWidget {
               value:
                   '${GameIcons.animalType(def.animalType!)} ${def.animalType!.name[0].toUpperCase()}${def.animalType!.name.substring(1)}',
             ),
-          if (def.animalClass != null) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Class',
-              value:
-                  '${GameIcons.animalClass(def.animalClass!)} ${def.animalClass!.displayName}',
-            ),
-          ],
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Class',
+            value: def.animalClass != null
+                ? '${GameIcons.animalClass(def.animalClass!)} ${def.animalClass!.displayName}'
+                : 'Awaiting enrichment. Check back soon.',
+          ),
           if (def.habitats.isNotEmpty) ...[
             SizedBox(height: Spacing.sm),
             _PropertyRow(
@@ -188,17 +203,18 @@ class _ItemDetailContent extends StatelessWidget {
             SizedBox(height: Spacing.sm),
             _PropertyRow(
               label: 'Region',
-              value: def.continents.map((c) => c.displayName).join(', '),
+              value: def.continents
+                  .map((c) => '${GameIcons.continent(c)} ${c.displayName}')
+                  .join('  '),
             ),
           ],
-          if (def.climate != null) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Climate',
-              value:
-                  '${GameIcons.climate(def.climate!)} ${def.climate!.displayName}',
-            ),
-          ],
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Climate',
+            value: def.climate != null
+                ? '${GameIcons.climate(def.climate!)} ${def.climate!.displayName}'
+                : 'Awaiting enrichment. Check back soon.',
+          ),
           if (def.rarity != null) ...[
             SizedBox(height: Spacing.sm),
             _PropertyRow(
@@ -207,14 +223,13 @@ class _ItemDetailContent extends StatelessWidget {
                   '${GameIcons.rarity(def.rarity!)} ${EarthNovaTheme.rarityLabel(def.rarity!)}',
             ),
           ],
-          if (def.foodPreference != null) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Diet',
-              value:
-                  '${GameIcons.foodType(def.foodPreference!)} ${def.foodPreference!.displayName}',
-            ),
-          ],
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Diet',
+            value: def.foodPreference != null
+                ? '${GameIcons.foodType(def.foodPreference!)} ${def.foodPreference!.displayName}'
+                : 'Awaiting enrichment. Check back soon.',
+          ),
           if (def.seasonRestriction != null) ...[
             SizedBox(height: Spacing.sm),
             _PropertyRow(
@@ -300,8 +315,18 @@ class _ItemDetailContent extends StatelessWidget {
 
   static String _formatDate(DateTime dt) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
@@ -370,7 +395,7 @@ class _StatBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fraction = (value / 30.0).clamp(0.0, 1.0);
+    final fraction = (value / kStatMax.toDouble()).clamp(0.0, 1.0);
 
     return Row(
       children: [
