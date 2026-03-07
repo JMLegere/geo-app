@@ -9,6 +9,7 @@ import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
+import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/location/services/location_service.dart';
@@ -69,6 +70,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     discoveryService.markCollected(instance.definitionId);
 
     // Persist to SQLite (fire-and-forget — don't block the game loop).
+    // TODO(T-writequeue): Retry failed writes via write queue (Phase 3).
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       itemRepo.addItem(instance, userId).catchError((Object e) {
@@ -96,10 +98,22 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     (SimulatedLocation loc) => (position: loc.position, accuracy: loc.accuracy),
   );
 
-  // --- Hydrate inventory from SQLite (fire-and-forget) ---
+  // --- Hydrate inventory then start game loop ---
+  //
+  // CRITICAL: loadItems() replaces inventory state, so the game loop must NOT
+  // start until hydration completes. Otherwise a discovery that fires during
+  // the race window would be wiped by loadItems(). We start the loop inside
+  // the hydration callback (or immediately when no auth / on error).
 
-  final userId = ref.read(authProvider).user?.id;
-  if (userId != null) {
+  void startLoop() {
+    locationService.start();
+    coordinator.start(
+      gpsStream: gpsStream,
+      discoveryStream: discoveryService.onDiscovery,
+    );
+  }
+
+  void hydrateAndStart(String userId) {
     itemRepo.getItemsByUser(userId).then((items) {
       if (items.isNotEmpty) {
         ref.read(inventoryProvider.notifier).loadItems(items);
@@ -109,18 +123,37 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           discoveryService.markCollected(item.definitionId);
         }
       }
+      startLoop();
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] failed to hydrate inventory: $e');
+      startLoop(); // Degrade gracefully — start without hydrated data.
     });
   }
 
-  // --- Start the game loop ---
+  // Auth initializes asynchronously (awaits Supabase bootstrap, then
+  // auto-signs-in). userId may be null here if auth hasn't settled yet.
+  final authState = ref.read(authProvider);
+  final userId = authState.user?.id;
 
-  locationService.start();
-  coordinator.start(
-    gpsStream: gpsStream,
-    discoveryStream: discoveryService.onDiscovery,
-  );
+  if (userId != null) {
+    // Auth already settled — hydrate then start.
+    hydrateAndStart(userId);
+  } else {
+    // Auth still loading — listen for it to settle, then hydrate + start.
+    var started = false;
+    ref.listen<AuthState>(authProvider, (_, next) {
+      if (started) return;
+      final id = next.user?.id;
+      if (id != null) {
+        started = true;
+        hydrateAndStart(id);
+      } else if (next.status == AuthStatus.unauthenticated) {
+        // Auth settled but no user — start without hydration.
+        started = true;
+        startLoop();
+      }
+    });
+  }
 
   // --- Cleanup ---
 
