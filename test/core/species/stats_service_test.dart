@@ -166,7 +166,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('StatsService.rollIntrinsicAffix variance', () {
-    test('rolled stats are within ±30% of base stats', () {
+    test('rolled stats are within ±kStatVariance (absolute) of base stats', () {
       const name = 'Panthera leo';
       final base = service.deriveBaseStats(name);
 
@@ -182,15 +182,15 @@ void main() {
         final wit = affix.values['wit'] as int;
 
         // After clamping to 1–100, the rolled value should be within the
-        // variance window OR at a clamp boundary.
-        final speedLow = (base.speed * 0.70).round().clamp(kStatMin, kStatMax);
+        // ±kStatVariance (30) absolute window OR at a clamp boundary.
+        final speedLow = (base.speed - kStatVariance).clamp(kStatMin, kStatMax);
         final speedHigh =
-            (base.speed * 1.30).round().clamp(kStatMin, kStatMax);
-        final brawnLow = (base.brawn * 0.70).round().clamp(kStatMin, kStatMax);
+            (base.speed + kStatVariance).clamp(kStatMin, kStatMax);
+        final brawnLow = (base.brawn - kStatVariance).clamp(kStatMin, kStatMax);
         final brawnHigh =
-            (base.brawn * 1.30).round().clamp(kStatMin, kStatMax);
-        final witLow = (base.wit * 0.70).round().clamp(kStatMin, kStatMax);
-        final witHigh = (base.wit * 1.30).round().clamp(kStatMin, kStatMax);
+            (base.brawn + kStatVariance).clamp(kStatMin, kStatMax);
+        final witLow = (base.wit - kStatVariance).clamp(kStatMin, kStatMax);
+        final witHigh = (base.wit + kStatVariance).clamp(kStatMin, kStatMax);
 
         expect(speed, inInclusiveRange(speedLow, speedHigh),
             reason: 'Seed $i: speed $speed outside [$speedLow, $speedHigh]');
@@ -271,18 +271,21 @@ void main() {
       // If this test breaks, the hash algorithm or byte offsets changed.
       // That is a breaking change — all existing item stats in the wild
       // would become inconsistent with server re-derivation.
+      //
+      // Base stats sum to exactly kStatBaseSum (90) via largest-remainder
+      // rounding. Rolled stats use ±kStatVariance (30) absolute variance.
       final base = service.deriveBaseStats('Panthera leo');
-      expect(base.speed, equals(78));
-      expect(base.brawn, equals(27));
-      expect(base.wit, equals(85));
+      expect(base.speed, equals(43));
+      expect(base.brawn, equals(16));
+      expect(base.wit, equals(31));
 
       final affix = service.rollIntrinsicAffix(
         scientificName: 'Panthera leo',
         instanceSeed: 'test-uuid-001',
       );
-      expect(affix.values['speed'], equals(74));
-      expect(affix.values['brawn'], equals(25));
-      expect(affix.values['wit'], equals(61));
+      expect(affix.values['speed'], equals(37));
+      expect(affix.values['brawn'], equals(10));
+      expect(affix.values['wit'], equals(3));
     });
 
     test('empty instanceSeed produces valid stats', () {
