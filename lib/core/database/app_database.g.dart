@@ -589,6 +589,14 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('active'));
+  static const VerificationMeta _badgesJsonMeta =
+      const VerificationMeta('badgesJson');
+  @override
+  late final GeneratedColumn<String> badgesJson = GeneratedColumn<String>(
+      'badges_json', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -600,7 +608,8 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
         acquiredAt,
         acquiredInCellId,
         dailySeed,
-        status
+        status,
+        badgesJson
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -669,6 +678,12 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
       context.handle(_statusMeta,
           status.isAcceptableOrUnknown(data['status']!, _statusMeta));
     }
+    if (data.containsKey('badges_json')) {
+      context.handle(
+          _badgesJsonMeta,
+          badgesJson.isAcceptableOrUnknown(
+              data['badges_json']!, _badgesJsonMeta));
+    }
     return context;
   }
 
@@ -698,6 +713,8 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           .read(DriftSqlType.string, data['${effectivePrefix}daily_seed']),
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      badgesJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}badges_json'])!,
     );
   }
 
@@ -738,6 +755,9 @@ class LocalItemInstance extends DataClass
 
   /// Lifecycle status: active, donated, placed, released, traded.
   final String status;
+
+  /// JSON-encoded list of badge strings (e.g. '["first_discovery","beta"]').
+  final String badgesJson;
   const LocalItemInstance(
       {required this.id,
       required this.userId,
@@ -748,7 +768,8 @@ class LocalItemInstance extends DataClass
       required this.acquiredAt,
       this.acquiredInCellId,
       this.dailySeed,
-      required this.status});
+      required this.status,
+      required this.badgesJson});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -770,6 +791,7 @@ class LocalItemInstance extends DataClass
       map['daily_seed'] = Variable<String>(dailySeed);
     }
     map['status'] = Variable<String>(status);
+    map['badges_json'] = Variable<String>(badgesJson);
     return map;
   }
 
@@ -793,6 +815,7 @@ class LocalItemInstance extends DataClass
           ? const Value.absent()
           : Value(dailySeed),
       status: Value(status),
+      badgesJson: Value(badgesJson),
     );
   }
 
@@ -810,6 +833,7 @@ class LocalItemInstance extends DataClass
       acquiredInCellId: serializer.fromJson<String?>(json['acquiredInCellId']),
       dailySeed: serializer.fromJson<String?>(json['dailySeed']),
       status: serializer.fromJson<String>(json['status']),
+      badgesJson: serializer.fromJson<String>(json['badgesJson']),
     );
   }
   @override
@@ -826,6 +850,7 @@ class LocalItemInstance extends DataClass
       'acquiredInCellId': serializer.toJson<String?>(acquiredInCellId),
       'dailySeed': serializer.toJson<String?>(dailySeed),
       'status': serializer.toJson<String>(status),
+      'badgesJson': serializer.toJson<String>(badgesJson),
     };
   }
 
@@ -839,7 +864,8 @@ class LocalItemInstance extends DataClass
           DateTime? acquiredAt,
           Value<String?> acquiredInCellId = const Value.absent(),
           Value<String?> dailySeed = const Value.absent(),
-          String? status}) =>
+          String? status,
+          String? badgesJson}) =>
       LocalItemInstance(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -853,6 +879,7 @@ class LocalItemInstance extends DataClass
             : this.acquiredInCellId,
         dailySeed: dailySeed.present ? dailySeed.value : this.dailySeed,
         status: status ?? this.status,
+        badgesJson: badgesJson ?? this.badgesJson,
       );
   LocalItemInstance copyWithCompanion(LocalItemInstanceTableCompanion data) {
     return LocalItemInstance(
@@ -871,6 +898,8 @@ class LocalItemInstance extends DataClass
           : this.acquiredInCellId,
       dailySeed: data.dailySeed.present ? data.dailySeed.value : this.dailySeed,
       status: data.status.present ? data.status.value : this.status,
+      badgesJson:
+          data.badgesJson.present ? data.badgesJson.value : this.badgesJson,
     );
   }
 
@@ -886,14 +915,15 @@ class LocalItemInstance extends DataClass
           ..write('acquiredAt: $acquiredAt, ')
           ..write('acquiredInCellId: $acquiredInCellId, ')
           ..write('dailySeed: $dailySeed, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('badgesJson: $badgesJson')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, userId, definitionId, affixes, parentAId,
-      parentBId, acquiredAt, acquiredInCellId, dailySeed, status);
+      parentBId, acquiredAt, acquiredInCellId, dailySeed, status, badgesJson);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -907,7 +937,8 @@ class LocalItemInstance extends DataClass
           other.acquiredAt == this.acquiredAt &&
           other.acquiredInCellId == this.acquiredInCellId &&
           other.dailySeed == this.dailySeed &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.badgesJson == this.badgesJson);
 }
 
 class LocalItemInstanceTableCompanion
@@ -922,6 +953,7 @@ class LocalItemInstanceTableCompanion
   final Value<String?> acquiredInCellId;
   final Value<String?> dailySeed;
   final Value<String> status;
+  final Value<String> badgesJson;
   final Value<int> rowid;
   const LocalItemInstanceTableCompanion({
     this.id = const Value.absent(),
@@ -934,6 +966,7 @@ class LocalItemInstanceTableCompanion
     this.acquiredInCellId = const Value.absent(),
     this.dailySeed = const Value.absent(),
     this.status = const Value.absent(),
+    this.badgesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalItemInstanceTableCompanion.insert({
@@ -947,6 +980,7 @@ class LocalItemInstanceTableCompanion
     this.acquiredInCellId = const Value.absent(),
     this.dailySeed = const Value.absent(),
     this.status = const Value.absent(),
+    this.badgesJson = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
@@ -963,6 +997,7 @@ class LocalItemInstanceTableCompanion
     Expression<String>? acquiredInCellId,
     Expression<String>? dailySeed,
     Expression<String>? status,
+    Expression<String>? badgesJson,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -976,6 +1011,7 @@ class LocalItemInstanceTableCompanion
       if (acquiredInCellId != null) 'acquired_in_cell_id': acquiredInCellId,
       if (dailySeed != null) 'daily_seed': dailySeed,
       if (status != null) 'status': status,
+      if (badgesJson != null) 'badges_json': badgesJson,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -991,6 +1027,7 @@ class LocalItemInstanceTableCompanion
       Value<String?>? acquiredInCellId,
       Value<String?>? dailySeed,
       Value<String>? status,
+      Value<String>? badgesJson,
       Value<int>? rowid}) {
     return LocalItemInstanceTableCompanion(
       id: id ?? this.id,
@@ -1003,6 +1040,7 @@ class LocalItemInstanceTableCompanion
       acquiredInCellId: acquiredInCellId ?? this.acquiredInCellId,
       dailySeed: dailySeed ?? this.dailySeed,
       status: status ?? this.status,
+      badgesJson: badgesJson ?? this.badgesJson,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1040,6 +1078,9 @@ class LocalItemInstanceTableCompanion
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (badgesJson.present) {
+      map['badges_json'] = Variable<String>(badgesJson.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1059,6 +1100,7 @@ class LocalItemInstanceTableCompanion
           ..write('acquiredInCellId: $acquiredInCellId, ')
           ..write('dailySeed: $dailySeed, ')
           ..write('status: $status, ')
+          ..write('badgesJson: $badgesJson, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2843,6 +2885,7 @@ typedef $$LocalItemInstanceTableTableCreateCompanionBuilder
   Value<String?> acquiredInCellId,
   Value<String?> dailySeed,
   Value<String> status,
+  Value<String> badgesJson,
   Value<int> rowid,
 });
 typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
@@ -2857,6 +2900,7 @@ typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
   Value<String?> acquiredInCellId,
   Value<String?> dailySeed,
   Value<String> status,
+  Value<String> badgesJson,
   Value<int> rowid,
 });
 
@@ -2899,6 +2943,9 @@ class $$LocalItemInstanceTableTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get badgesJson => $composableBuilder(
+      column: $table.badgesJson, builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalItemInstanceTableTableOrderingComposer
@@ -2941,6 +2988,9 @@ class $$LocalItemInstanceTableTableOrderingComposer
 
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get badgesJson => $composableBuilder(
+      column: $table.badgesJson, builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalItemInstanceTableTableAnnotationComposer
@@ -2981,6 +3031,9 @@ class $$LocalItemInstanceTableTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get badgesJson => $composableBuilder(
+      column: $table.badgesJson, builder: (column) => column);
 }
 
 class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
@@ -3024,6 +3077,7 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> acquiredInCellId = const Value.absent(),
             Value<String?> dailySeed = const Value.absent(),
             Value<String> status = const Value.absent(),
+            Value<String> badgesJson = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion(
@@ -3037,6 +3091,7 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             acquiredInCellId: acquiredInCellId,
             dailySeed: dailySeed,
             status: status,
+            badgesJson: badgesJson,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -3050,6 +3105,7 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> acquiredInCellId = const Value.absent(),
             Value<String?> dailySeed = const Value.absent(),
             Value<String> status = const Value.absent(),
+            Value<String> badgesJson = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion.insert(
@@ -3063,6 +3119,7 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             acquiredInCellId: acquiredInCellId,
             dailySeed: dailySeed,
             status: status,
+            badgesJson: badgesJson,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
