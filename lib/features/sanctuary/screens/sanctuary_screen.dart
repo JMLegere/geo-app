@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
-import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
 import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
 import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
@@ -36,15 +35,8 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
     // provider state during build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(caretakingProvider.notifier).recordVisit();
-      // One-time upgrade bottom sheet trigger.
-      // listenManual works outside build(); the subscription auto-disposes
-      // when the ConsumerState is disposed.
-      ref.listenManual<UpgradePromptState>(upgradePromptProvider, (prev, next) {
-        if (next.shouldShow) {
-          ref.read(upgradePromptProvider.notifier).markShown();
-          UpgradeBottomSheet.show(context);
-        }
-      });
+      // Upgrade prompt listener lives in PackScreen only (both screens are
+      // in an IndexedStack, so duplicate listeners caused double-triggering).
     });
   }
 
@@ -115,7 +107,8 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
           // Summary header: health indicator + streak badge
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.fromLTRB(Spacing.lg, Spacing.xs, Spacing.lg, Spacing.xxl),
+              margin: const EdgeInsets.fromLTRB(
+                  Spacing.lg, Spacing.xs, Spacing.lg, Spacing.xxl),
               padding: const EdgeInsets.all(Spacing.xl),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainer,
@@ -160,7 +153,8 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -196,28 +190,30 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
 
           // Habitat sections — only shown once at least one species is collected.
           if (state.totalCollected > 0)
-          SliverList.separated(
-            itemCount: orderedHabitats.length,
-            separatorBuilder: (_, __) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(color: Theme.of(context).colorScheme.outlineVariant, height: 32),
+            SliverList.separated(
+              itemCount: orderedHabitats.length,
+              separatorBuilder: (_, __) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Divider(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    height: 32),
+              ),
+              itemBuilder: (_, index) {
+                final habitat = orderedHabitats[index];
+                final habitatSpecies =
+                    state.speciesByHabitat[habitat] ?? const [];
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: index == 0 ? 0 : 4,
+                    bottom: index == orderedHabitats.length - 1 ? 32 : 4,
+                  ),
+                  child: HabitatSection(
+                    habitat: habitat,
+                    species: habitatSpecies,
+                  ),
+                );
+              },
             ),
-            itemBuilder: (_, index) {
-              final habitat = orderedHabitats[index];
-              final habitatSpecies =
-                  state.speciesByHabitat[habitat] ?? const [];
-              return Padding(
-                padding: EdgeInsets.only(
-                  top: index == 0 ? 0 : 4,
-                  bottom: index == orderedHabitats.length - 1 ? 32 : 4,
-                ),
-                child: HabitatSection(
-                  habitat: habitat,
-                  species: habitatSpecies,
-                ),
-              );
-            },
-          ),
         ],
       ),
     );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/core/state/inventory_provider.dart';
@@ -24,6 +26,7 @@ class UpgradePromptState {
     required this.isAnonymous,
     required this.supabaseInitialized,
     this.hasBeenShown = false,
+    this.sessionTimeElapsed = false,
   });
 
   /// Total species collected by the player this session.
@@ -42,15 +45,23 @@ class UpgradePromptState {
   /// still anonymous after restarting.
   final bool hasBeenShown;
 
+  /// Whether the minimum session time has elapsed (cooldown after app open).
+  ///
+  /// Becomes true after [kUpgradePromptDelaySeconds] since the notifier was
+  /// first built (i.e. app open). Prevents interrupting early exploration.
+  final bool sessionTimeElapsed;
+
   /// Whether to show the one-time upgrade bottom sheet.
   ///
   /// True only when all conditions are met AND the sheet has not yet been shown
-  /// this session. Becomes false after [UpgradePromptNotifier.markShown] is
-  /// called.
+  /// this session. Requires both [kUpgradePromptThreshold] species collected
+  /// AND [kUpgradePromptDelaySeconds] elapsed since app open to prevent
+  /// interrupting early exploration.
   bool get shouldShow =>
       totalCollected >= kUpgradePromptThreshold &&
       isAnonymous &&
       supabaseInitialized &&
+      sessionTimeElapsed &&
       !hasBeenShown;
 
   /// Whether to show the persistent upgrade banner.
@@ -68,12 +79,14 @@ class UpgradePromptState {
     bool? isAnonymous,
     bool? supabaseInitialized,
     bool? hasBeenShown,
+    bool? sessionTimeElapsed,
   }) {
     return UpgradePromptState(
       totalCollected: totalCollected ?? this.totalCollected,
       isAnonymous: isAnonymous ?? this.isAnonymous,
       supabaseInitialized: supabaseInitialized ?? this.supabaseInitialized,
       hasBeenShown: hasBeenShown ?? this.hasBeenShown,
+      sessionTimeElapsed: sessionTimeElapsed ?? this.sessionTimeElapsed,
     );
   }
 
@@ -84,12 +97,13 @@ class UpgradePromptState {
         other.totalCollected == totalCollected &&
         other.isAnonymous == isAnonymous &&
         other.supabaseInitialized == supabaseInitialized &&
-        other.hasBeenShown == hasBeenShown;
+        other.hasBeenShown == hasBeenShown &&
+        other.sessionTimeElapsed == sessionTimeElapsed;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(totalCollected, isAnonymous, supabaseInitialized, hasBeenShown);
+  int get hashCode => Object.hash(totalCollected, isAnonymous,
+      supabaseInitialized, hasBeenShown, sessionTimeElapsed);
 
   @override
   String toString() => 'UpgradePromptState('
@@ -97,6 +111,7 @@ class UpgradePromptState {
       'isAnonymous: $isAnonymous, '
       'supabaseInitialized: $supabaseInitialized, '
       'hasBeenShown: $hasBeenShown, '
+      'sessionTimeElapsed: $sessionTimeElapsed, '
       'shouldShow: $shouldShow, '
       'showBanner: $showBanner)';
 }
@@ -129,14 +144,19 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
     final isAnonymous = ref.watch(authProvider).isAnonymous;
     // supabaseBootstrapProvider is a plain Provider (not Notifier) — its value
     // is stable after app startup, so read() is sufficient here.
-    final supabaseInitialized =
-        ref.read(supabaseBootstrapProvider).initialized;
+    final supabaseInitialized = ref.read(supabaseBootstrapProvider).initialized;
+
+    // Start session timer on first build. The timer fires once after
+    // kUpgradePromptDelaySeconds and sets the flag so subsequent reactive
+    // rebuilds (from inventory/auth changes) see it as true.
+    _startSessionTimer();
 
     return UpgradePromptState(
       totalCollected: totalCollected,
       isAnonymous: isAnonymous,
       supabaseInitialized: supabaseInitialized,
       hasBeenShown: _hasBeenShown,
+      sessionTimeElapsed: _sessionTimeElapsed,
     );
   }
 
@@ -144,6 +164,30 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   /// triggered by [inventoryProvider] or [authProvider] do not reset it —
   /// [build] reads [_hasBeenShown] directly rather than inspecting [state].
   bool _hasBeenShown = false;
+
+  /// Whether [kUpgradePromptDelaySeconds] have elapsed since first build.
+  bool _sessionTimeElapsed = false;
+
+  /// Guard to ensure only one timer is started.
+  Timer? _sessionTimer;
+
+  /// Starts a one-shot timer that enables the prompt after the delay.
+  void _startSessionTimer() {
+    if (_sessionTimer != null) return;
+    _sessionTimer = Timer(
+      const Duration(seconds: kUpgradePromptDelaySeconds),
+      () {
+        _sessionTimeElapsed = true;
+        if (ref.mounted) {
+          state = state.copyWith(sessionTimeElapsed: true);
+        }
+      },
+    );
+    ref.onDispose(() {
+      _sessionTimer?.cancel();
+      _sessionTimer = null;
+    });
+  }
 
   /// Marks the upgrade bottom sheet as shown this session.
   ///
