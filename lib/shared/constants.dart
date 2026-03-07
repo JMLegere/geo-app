@@ -181,11 +181,28 @@ const int kStatMax = 100;
 /// Range used in `hash[i] % kStatRange + kStatMin` to produce 1–100.
 const int kStatRange = 100;
 
-/// Per-instance stat variance (±30%). Applied as multiplier: `base × (1 ± 0.3)`.
-const double kStatVariance = 0.30;
+/// Sum that a species' base stats (speed + brawn + wit) must total.
+const int kStatBaseSum = 90;
+
+/// Per-instance stat variance (±30 absolute). Instance stat = base ± 30,
+/// clamped to [kStatMin, kStatMax].
+const int kStatVariance = 30;
 
 /// Affix ID for the intrinsic base-stats affix.
 const String kIntrinsicAffixId = 'base_stats';
+
+// Instance Badges
+/// Badge: first global instance of this species ever caught (shiny foil).
+const String kBadgeFirstDiscovery = 'first_discovery';
+
+/// Badge: caught during beta period.
+const String kBadgeBeta = 'beta';
+
+/// Badge: among the first 50 catchers of this species (#2–50).
+const String kBadgePioneer = 'pioneer';
+
+/// Badge: winning community art selected for this species.
+const String kBadgeArtWinner = 'art_winner';
 
 // Write Queue (Phase 3: Server-Authoritative Persistence)
 /// Maximum retry attempts before marking a queue entry as stale.
@@ -214,7 +231,9 @@ const String kDailySeedOfflineFallback = 'offline_no_rotation';
 /// Number of collected species that triggers the "save your progress" upgrade prompt.
 const int kUpgradePromptThreshold = 5;
 
+/// Minimum seconds after app open before the upgrade prompt can appear.
+/// Prevents interrupting early exploration.
+const int kUpgradePromptDelaySeconds = 120;
+
 /// Application version string displayed in Settings.
 const String kAppVersion = '0.1.0';
-
-
