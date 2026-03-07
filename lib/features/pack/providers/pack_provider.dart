@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/item_category.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/player_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
