@@ -55,6 +55,7 @@ LocalItemInstance makeItemInstance({
       acquiredAt: DateTime(2026, 3, 1),
       acquiredInCellId: cellId,
       status: 'active',
+      badgesJson: '[]',
     );
 
 /// Build a minimal [LocalPlayerProfile] record.
@@ -98,26 +99,26 @@ void main() {
       final progress = makeCellProgress();
       await db.upsertCellProgress(progress);
 
-      final result =
-          await db.getCellProgress(progress.userId, progress.cellId);
+      final result = await db.getCellProgress(progress.userId, progress.cellId);
       expect(result, isNotNull);
       expect(result!.id, equals(progress.id));
       expect(result.fogState, equals('hidden'));
     });
 
     test('getCellProgressByUser returns all records for user', () async {
-      await db.upsertCellProgress(
-          makeCellProgress(id: 'cp-1', cellId: 'cell-1'));
-      await db.upsertCellProgress(
-          makeCellProgress(id: 'cp-2', cellId: 'cell-2'));
-      await db.upsertCellProgress(
-          makeCellProgress(id: 'cp-3', cellId: 'cell-3'));
+      await db
+          .upsertCellProgress(makeCellProgress(id: 'cp-1', cellId: 'cell-1'));
+      await db
+          .upsertCellProgress(makeCellProgress(id: 'cp-2', cellId: 'cell-2'));
+      await db
+          .upsertCellProgress(makeCellProgress(id: 'cp-3', cellId: 'cell-3'));
 
       final records = await db.getCellProgressByUser('user-1');
       expect(records.length, equals(3));
     });
 
-    test('upsertCellProgress updates existing record (upsert semantics)', () async {
+    test('upsertCellProgress updates existing record (upsert semantics)',
+        () async {
       final initial = makeCellProgress(fogState: 'hidden', visitCount: 1);
       await db.upsertCellProgress(initial);
 
@@ -172,10 +173,10 @@ void main() {
     });
 
     test('getItemInstancesByCell returns only records for that cell', () async {
-      await db.insertItemInstance(
-          makeItemInstance(id: 'item-1', cellId: 'cell-1'));
-      await db.insertItemInstance(
-          makeItemInstance(id: 'item-2', cellId: 'cell-2', definitionId: 'fauna_s2'));
+      await db
+          .insertItemInstance(makeItemInstance(id: 'item-1', cellId: 'cell-1'));
+      await db.insertItemInstance(makeItemInstance(
+          id: 'item-2', cellId: 'cell-2', definitionId: 'fauna_s2'));
 
       final records = await db.getItemInstancesByCell('user-1', 'cell-1');
       expect(records.length, equals(1));
@@ -209,6 +210,7 @@ void main() {
         acquiredAt: item.acquiredAt,
         acquiredInCellId: item.acquiredInCellId,
         status: 'donated',
+        badgesJson: '[]',
       );
       await db.updateItemInstance(updated);
 
@@ -319,7 +321,9 @@ void main() {
       final allItems = await db.getItemInstancesByUser('player-1');
       expect(allItems.length, equals(2));
 
-      final foxItems = allItems.where((i) => i.definitionId == 'fauna_vulpes_vulpes').toList();
+      final foxItems = allItems
+          .where((i) => i.definitionId == 'fauna_vulpes_vulpes')
+          .toList();
       expect(foxItems.length, equals(1));
       expect(foxItems.first.acquiredInCellId, equals('cell-0'));
     });

@@ -52,6 +52,7 @@ Future<ItemInstance> seedItem(
     acquiredAt: DateTime(2026, 3, 1),
     acquiredInCellId: cellId,
     status: status,
+    badgesJson: '[]',
   );
   await db.insertItemInstance(row);
 
@@ -110,9 +111,7 @@ void main() {
       await seedItem(db,
           id: 'item-2', userId: 'user-1', definitionId: 'fauna_panthera_leo');
       await seedItem(db,
-          id: 'item-3',
-          userId: 'user-2',
-          definitionId: 'fauna_ursus_arctos');
+          id: 'item-3', userId: 'user-2', definitionId: 'fauna_ursus_arctos');
 
       final user1Items = await repo.getItemsByUser('user-1');
       expect(user1Items.length, equals(2));
@@ -213,13 +212,9 @@ void main() {
 
       // Seed different items in DB.
       await seedItem(db,
-          id: 'fresh-1',
-          userId: 'user-1',
-          definitionId: 'fauna_vulpes_vulpes');
+          id: 'fresh-1', userId: 'user-1', definitionId: 'fauna_vulpes_vulpes');
       await seedItem(db,
-          id: 'fresh-2',
-          userId: 'user-1',
-          definitionId: 'fauna_panthera_leo');
+          id: 'fresh-2', userId: 'user-1', definitionId: 'fauna_panthera_leo');
 
       // Hydrate — should REPLACE, not append.
       final repo = container.read(itemInstanceRepositoryProvider);
@@ -305,9 +300,7 @@ void main() {
 
       // Then hydration fires with DB items.
       await seedItem(db,
-          id: 'db-item',
-          userId: 'user-1',
-          definitionId: 'fauna_vulpes_vulpes');
+          id: 'db-item', userId: 'user-1', definitionId: 'fauna_vulpes_vulpes');
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
       container.read(inventoryProvider.notifier).loadItems(items);
@@ -323,9 +316,7 @@ void main() {
     test('addItem after hydration correctly appends', () async {
       // Seed DB.
       await seedItem(db,
-          id: 'db-item',
-          userId: 'user-1',
-          definitionId: 'fauna_vulpes_vulpes');
+          id: 'db-item', userId: 'user-1', definitionId: 'fauna_vulpes_vulpes');
 
       // Hydrate.
       final repo = container.read(itemInstanceRepositoryProvider);

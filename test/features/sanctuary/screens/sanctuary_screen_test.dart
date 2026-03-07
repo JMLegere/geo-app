@@ -10,6 +10,7 @@ import 'package:fog_of_world/features/achievements/screens/achievement_screen.da
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/models/user_profile.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
+import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
@@ -30,6 +31,19 @@ final _anonUser = UserProfile(
 class _StubAuthNotifier extends AuthNotifier {
   @override
   AuthState build() => AuthState.authenticated(_anonUser);
+}
+
+// ---------------------------------------------------------------------------
+// Stub upgrade-prompt notifier — returns inert state, never starts a Timer
+// ---------------------------------------------------------------------------
+
+class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
+  @override
+  UpgradePromptState build() => const UpgradePromptState(
+        totalCollected: 0,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +78,7 @@ Future<void> _pumpScreen(WidgetTester tester) async {
         (_) => SpeciesService(_testSpecies),
       ),
       authProvider.overrideWith(_StubAuthNotifier.new),
+      upgradePromptProvider.overrideWith(_StubUpgradePromptNotifier.new),
     ],
   );
   addTearDown(container.dispose);

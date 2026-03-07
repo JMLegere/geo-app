@@ -34,8 +34,9 @@ import '../fixtures/species_fixture.dart';
 
 SpeciesService buildSpeciesService() {
   final raw = jsonDecode(kSpeciesFixtureJson) as List<dynamic>;
-  final records =
-      raw.map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>)).toList();
+  final records = raw
+      .map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>))
+      .toList();
   return SpeciesService(records);
 }
 
@@ -167,8 +168,8 @@ void main() {
         session.fogResolver.onLocationUpdate(center.lat, center.lon);
       }
 
-      expect(session.fogResolver.visitedCellIds.length,
-          greaterThanOrEqualTo(2));
+      expect(
+          session.fogResolver.visitedCellIds.length, greaterThanOrEqualTo(2));
     });
 
     test('2. visited cell is no longer observed after player leaves', () {
@@ -178,7 +179,8 @@ void main() {
       final neighbors = session.cellService.getNeighborIds(firstId);
       expect(neighbors, isNotEmpty);
       final neighborCenter = session.cellService.getCellCenter(neighbors.first);
-      session.fogResolver.onLocationUpdate(neighborCenter.lat, neighborCenter.lon);
+      session.fogResolver
+          .onLocationUpdate(neighborCenter.lat, neighborCenter.lon);
 
       // First cell is visited but no longer current — it resolves as either
       // concealed (if still adjacent to new current) or hidden (if not).
@@ -216,12 +218,10 @@ void main() {
         prevId = session.fogResolver.currentCellId!;
       }
 
-      final allSpeciesIds =
-          session.speciesService.all.map((s) => s.id).toSet();
+      final allSpeciesIds = session.speciesService.all.map((s) => s.id).toSet();
       for (final event in session.discoveryEvents) {
         expect(allSpeciesIds, contains(event.item.id),
-            reason:
-                'Discovered species ${event.item.id} must be in the '
+            reason: 'Discovered species ${event.item.id} must be in the '
                 'species service catalogue');
       }
     });
@@ -245,6 +245,7 @@ void main() {
         userId: 'player-1',
         definitionId: firstEvent.item.id,
         affixes: '[]',
+        badgesJson: '[]',
         acquiredAt: DateTime.now(),
         acquiredInCellId: firstEvent.cellId,
         status: 'active',
@@ -266,8 +267,8 @@ void main() {
     test('5. recording 3 species fully restores a cell', () {
       const cellId = 'test-cell';
 
-      expect(session.restorationService.getRestorationLevel(cellId),
-          equals(0.0));
+      expect(
+          session.restorationService.getRestorationLevel(cellId), equals(0.0));
 
       session.restorationService.recordCollection(cellId, 'species-a');
       expect(session.restorationService.getRestorationLevel(cellId),
@@ -278,12 +279,13 @@ void main() {
           closeTo(2 / 3.0, 0.001));
 
       session.restorationService.recordCollection(cellId, 'species-c');
-      expect(session.restorationService.getRestorationLevel(cellId),
-          equals(1.0));
+      expect(
+          session.restorationService.getRestorationLevel(cellId), equals(1.0));
       expect(session.restorationService.isFullyRestored(cellId), isTrue);
     });
 
-    test('5. duplicate species in same cell does not double-count restoration', () {
+    test('5. duplicate species in same cell does not double-count restoration',
+        () {
       const cellId = 'test-cell-dup';
 
       session.restorationService.recordCollection(cellId, 'species-a');
@@ -302,8 +304,8 @@ void main() {
         session.restorationService.recordCollection(cellId, 'species-$i');
       }
 
-      expect(session.restorationService.getRestorationLevel(cellId),
-          equals(1.0));
+      expect(
+          session.restorationService.getRestorationLevel(cellId), equals(1.0));
     });
 
     // ── Step 6: Sanctuary visit / streak ─────────────────────────────────
@@ -353,7 +355,7 @@ void main() {
 
     test('6. same-day revisit is a no-op', () {
       const initial = CaretakingState();
-      final day1 = DateTime(2026, 3, 1, 9, 0);  // morning
+      final day1 = DateTime(2026, 3, 1, 9, 0); // morning
       final day1b = DateTime(2026, 3, 1, 18, 0); // evening same day
 
       var state = session.caretakingService.recordVisit(initial, day1);
@@ -411,6 +413,7 @@ void main() {
         userId: 'player-1',
         definitionId: 'vulpes_vulpes',
         affixes: '[]',
+        badgesJson: '[]',
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: cellId,
         status: 'active',
@@ -433,7 +436,8 @@ void main() {
 
     // ── Complete golden path as a single scenario ─────────────────────────
 
-    test('complete golden path: start → move → discover → restore → streak → persist',
+    test(
+        'complete golden path: start → move → discover → restore → streak → persist',
         () async {
       // 1. Start.
       session.fogResolver.onLocationUpdate(kStartLat, kStartLon);
@@ -464,16 +468,17 @@ void main() {
       session.restorationService.recordCollection(restorationCellId, 'sp-a');
       session.restorationService.recordCollection(restorationCellId, 'sp-b');
       session.restorationService.recordCollection(restorationCellId, 'sp-c');
-      expect(session.restorationService.isFullyRestored(restorationCellId), isTrue);
+      expect(session.restorationService.isFullyRestored(restorationCellId),
+          isTrue);
 
       // 5. Streak: 3 consecutive days.
       var caretaking = const CaretakingState();
-      caretaking = session.caretakingService.recordVisit(
-          caretaking, DateTime(2026, 3, 1));
-      caretaking = session.caretakingService.recordVisit(
-          caretaking, DateTime(2026, 3, 2));
-      caretaking = session.caretakingService.recordVisit(
-          caretaking, DateTime(2026, 3, 3));
+      caretaking = session.caretakingService
+          .recordVisit(caretaking, DateTime(2026, 3, 1));
+      caretaking = session.caretakingService
+          .recordVisit(caretaking, DateTime(2026, 3, 2));
+      caretaking = session.caretakingService
+          .recordVisit(caretaking, DateTime(2026, 3, 3));
       expect(caretaking.currentStreak, equals(3));
 
       // 6. Persist profile with streak.
@@ -492,8 +497,8 @@ void main() {
       final savedProfile = await session.db.getPlayerProfile('golden-player');
       expect(savedProfile, isNotNull);
       expect(savedProfile!.currentStreak, equals(3));
-      expect(session.fogResolver.visitedCellIds.length,
-          greaterThanOrEqualTo(1));
+      expect(
+          session.fogResolver.visitedCellIds.length, greaterThanOrEqualTo(1));
       expect(session.restorationService.getAllRestorationLevels(),
           contains(restorationCellId));
     });
