@@ -48,32 +48,58 @@ serve(async (req: Request) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    const OFFLINE_SEED = "offline_no_rotation";
+
     const acquiredDate = new Date(acquired_at);
     const seedDate = acquiredDate.toISOString().split("T")[0];
+    const todayStr = new Date().toISOString().split("T")[0];
 
-    const { data: seedRow } = await supabase
-      .from("daily_seeds")
-      .select("seed_value")
-      .eq("seed_date", seedDate)
-      .maybeSingle();
+    // Offline fallback seed — skip seed validation entirely.
+    // Encounters using the static fallback are best-effort (no daily rotation).
+    if (!daily_seed || daily_seed === OFFLINE_SEED) {
+      // Accept without seed validation.
+    } else {
+      // Client sent a real seed — validate against server records.
+      const { data: seedRow } = await supabase
+        .from("daily_seeds")
+        .select("seed_value")
+        .eq("seed_date", seedDate)
+        .maybeSingle();
 
-    if (!seedRow && daily_seed) {
-      // No seed on server for that date — generate it now (idempotent).
-      const { data: generatedSeed, error: rpcError } = await supabase
-        .rpc("ensure_daily_seed");
-      if (rpcError || !generatedSeed) {
+      if (!seedRow && seedDate === todayStr) {
+        // No seed on server for today — generate it now (idempotent).
+        const { data: generatedSeed, error: rpcError } = await supabase
+          .rpc("ensure_daily_seed");
+        if (rpcError || !generatedSeed) {
+          return new Response(
+            JSON.stringify({ status: "rejected", reason: "seed_generation_failed" }),
+            {
+              status: 500,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+            },
+          );
+        }
+        // Re-validate: the generated seed must match what the client sent.
+        if (generatedSeed !== daily_seed) {
+          return new Response(
+            JSON.stringify({ status: "rejected", reason: "daily_seed_mismatch" }),
+            {
+              status: 409,
+              headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+            },
+          );
+        }
+      } else if (!seedRow && seedDate !== todayStr) {
+        // Encounter from a past date, server has no seed for that day.
+        // Can't retroactively validate — accept as-is.
+        // ensure_daily_seed() only generates TODAY's seed, so we can't
+        // create the old date's seed. Accept the encounter.
+      } else if (seedRow && seedRow.seed_value !== daily_seed) {
         return new Response(
-          JSON.stringify({ status: "rejected", reason: "seed_generation_failed" }),
-          {
-            status: 500,
-            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-          },
-        );
-      }
-      // Re-validate: the generated seed must match what the client sent.
-      if (generatedSeed !== daily_seed) {
-        return new Response(
-          JSON.stringify({ status: "rejected", reason: "daily_seed_mismatch" }),
+          JSON.stringify({
+            status: "rejected",
+            reason: "daily_seed_mismatch",
+          }),
           {
             status: 409,
             headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
@@ -82,27 +108,9 @@ serve(async (req: Request) => {
       }
     }
 
-    if (!seedRow && !daily_seed) {
-      // No seed on server and client didn't send one — offline fallback mode.
-      // Accept without seed validation (encounters used static fallback seed).
-    }
-
-    if (seedRow && daily_seed && seedRow.seed_value !== daily_seed) {
-      return new Response(
-        JSON.stringify({
-          status: "rejected",
-          reason: "daily_seed_mismatch",
-        }),
-        {
-          status: 409,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const serverSeed = seedRow?.seed_value ?? "";
+    const serverSeed = daily_seed ?? "";
     const hashInput = `${serverSeed}_${cell_id}_${definition_id}`;
-    const expectedHash = await sha256Hex(hashInput);
+    const serverHash = await sha256Hex(hashInput);
 
     // Structural validation: seed match (checked above), well-formed IDs,
     // acquired_at within seed date range. Full species re-derivation requires
@@ -157,7 +165,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         status: "accepted",
-        validation_hash: expectedHash,
+        validation_hash: serverHash,
       }),
       {
         status: 200,
