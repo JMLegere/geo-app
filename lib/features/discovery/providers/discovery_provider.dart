@@ -1,72 +1,39 @@
-import 'dart:convert';
-
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/species/species_data_loader.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
 
 // ---------------------------------------------------------------------------
-// SpeciesService provider (dev fixture — T21 will wire real async load)
+// SpeciesService provider (real IUCN dataset — 32,752 species)
 // ---------------------------------------------------------------------------
 
-/// Small inline dataset covering Forest + North America encounters for the
-/// SF Bay Area simulation. This avoids async loading of the full 6 MB JSON.
+/// Asynchronously loads [FaunaDefinition] records from the bundled IUCN JSON.
 ///
-/// T21 will replace this with a FutureProvider that reads the real asset.
-const _kDevSpeciesJson = r'''
-[
-  {
-    "commonName": "Red Fox",
-    "scientificName": "Vulpes vulpes",
-    "taxonomicClass": "Mammalia",
-    "continents": ["North America"],
-    "habitats": ["Forest"],
-    "iucnStatus": "Least Concern"
-  },
-  {
-    "commonName": "Grizzly Bear",
-    "scientificName": "Ursus arctos horribilis",
-    "taxonomicClass": "Mammalia",
-    "continents": ["North America"],
-    "habitats": ["Forest"],
-    "iucnStatus": "Least Concern"
-  },
-  {
-    "commonName": "Gray Wolf",
-    "scientificName": "Canis lupus",
-    "taxonomicClass": "Mammalia",
-    "continents": ["North America"],
-    "habitats": ["Forest"],
-    "iucnStatus": "Least Concern"
-  },
-  {
-    "commonName": "Jaguar",
-    "scientificName": "Panthera onca",
-    "taxonomicClass": "Mammalia",
-    "continents": ["North America"],
-    "habitats": ["Forest"],
-    "iucnStatus": "Near Threatened"
-  },
-  {
-    "commonName": "Passenger Pigeon",
-    "scientificName": "Ectopistes migratorius",
-    "taxonomicClass": "Aves",
-    "continents": ["North America"],
-    "habitats": ["Forest"],
-    "iucnStatus": "Extinct"
-  }
-]
-''';
+/// Uses [rootBundle] so it works in the full app and in widget tests (when the
+/// test framework sets up the asset bundle). Records with unknown habitats,
+/// continents, or IUCN statuses are silently skipped.
+final speciesDataProvider = FutureProvider<List<FaunaDefinition>>((ref) async {
+  final jsonString = await rootBundle.loadString('assets/species_data.json');
+  return SpeciesDataLoader.fromJsonString(jsonString);
+});
 
-/// Provides a [SpeciesService] seeded with the dev fixture dataset.
+/// Provides a [SpeciesService] backed by the full IUCN species dataset.
 ///
-/// Synchronous (no asset loading) for use during the SF Bay Area simulation
-/// phase. T21 will upgrade to a FutureProvider backed by the full IUCN JSON.
+/// - **Loading** — falls back to an empty [SpeciesService] until the asset is
+///   ready. No encounters will fire during this brief window.
+/// - **Error** — same empty fallback if the asset fails to load.
+/// - **Ready** — uses the full 32,752-species dataset.
+///
+/// Pattern matches [habitatServiceProvider] in biome/.
 final speciesServiceProvider = Provider<SpeciesService>((ref) {
-  final records = (jsonDecode(_kDevSpeciesJson) as List)
-      .map((j) => FaunaDefinition.fromJson(j as Map<String, dynamic>))
-      .toList();
-  return SpeciesService(records);
+  final dataAsync = ref.watch(speciesDataProvider);
+  return dataAsync.when(
+    data: (records) => SpeciesService(records),
+    loading: () => SpeciesService(const []),
+    error: (_, __) => SpeciesService(const []),
+  );
 });
 
 // ---------------------------------------------------------------------------
