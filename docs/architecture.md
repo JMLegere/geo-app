@@ -91,6 +91,25 @@ main()
 
 Auth states are `{unauthenticated, loading, authenticated}`. Anonymous sign-in happens automatically — users start exploring immediately. `upgradePromptProvider` triggers a save-progress banner after 5 collected species for anonymous users.
 
+### Game Loop Startup (Hydration)
+
+When `gameCoordinatorProvider` initializes (first access from MapScreen):
+
+```
+gameCoordinatorProvider.build()
+  → read(authProvider)
+    ├─ userId available → hydrateAndStart(userId)
+    │   → itemRepo.getItemsByUser(userId)
+    │     → inventoryProvider.loadItems(items)
+    │     → discoveryService.markCollected() per item
+    │     → startLoop() [locationService.start() + coordinator.start()]
+    └─ auth still loading → ref.listen(authProvider)
+        ├─ userId settles → hydrateAndStart(userId)
+        └─ unauthenticated → startLoop() without hydration
+```
+
+**Critical**: `loadItems()` replaces inventory state entirely. Game loop must start AFTER hydration to prevent race condition where discoveries are wiped.
+
 ## Glossary
 
 | Term | Definition |

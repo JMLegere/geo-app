@@ -153,7 +153,27 @@ Feature code → Repository method → AppDatabase → SQLite
                                    Supabase table
 ```
 
+`appDatabaseProvider` (core/state/) provides the singleton `AppDatabase`. `itemInstanceRepositoryProvider` watches it and provides `ItemInstanceRepository` to consumers.
+
 When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-only. No sync queue — writes go directly.
+
+### Startup Hydration
+
+On app start, `gameCoordinatorProvider` hydrates inventory from SQLite before starting the game loop:
+
+```
+Auth settles (userId available)
+  → itemInstanceRepositoryProvider.getItemsByUser(userId)
+    → inventoryProvider.notifier.loadItems(items)
+    → discoveryService.markCollected() for each item
+      → startLoop()
+```
+
+**Race condition prevention**: `loadItems()` replaces inventory state entirely. The game loop must NOT start until hydration completes — a discovery during the race window would be wiped by the subsequent `loadItems()` call.
+
+**Auth timing**: Auth initializes asynchronously (awaits Supabase bootstrap, then auto-signs-in). `gameCoordinatorProvider` reads `authProvider` — if userId is available immediately, it hydrates then starts. If auth is still loading, it uses `ref.listen<AuthState>` with a `started` guard to wait for auth to settle.
+
+**Discovery persistence**: New discoveries are persisted fire-and-forget (`itemRepo.addItem().catchError(...)`) — the game loop is not blocked. TODO(T-writequeue) for Phase 3 write queue with retry.
 
 ### Design Target: Inventory Model
 > Phase 1 COMPLETE. ItemInstance model is now live. Remaining: breeding, bundles, museum, daily seed.

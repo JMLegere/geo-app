@@ -16,7 +16,9 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `cellServiceProvider` | `Provider<CellService>` | CellCache(LazyVoronoiCellService) | none |
 | `fogResolverProvider` | `Provider<FogStateResolver>` | singleton | watches: cellServiceProvider |
 | `supabaseBootstrapProvider` | `Provider<SupabaseBootstrap>` | singleton | pre-initialized in main() |
-| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider. Wiring exception: imports features/ |
+| `appDatabaseProvider` | `Provider<AppDatabase>` | singleton | none. Disposes on shutdown via `ref.onDispose` |
+| `itemInstanceRepositoryProvider` | `Provider<ItemInstanceRepository>` | singleton | watches: appDatabaseProvider |
+| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider. reads: authProvider. Wiring exception: imports features/ |
 
 ### Feature Providers
 
@@ -29,7 +31,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `achievementNotificationProvider` | achievements | `NotifierProvider` | none (toast queue) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
-| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | none (dev fixture) |
+| `speciesDataProvider` | discovery | `FutureProvider<List<FaunaDefinition>>` | async asset load (rootBundle) |
+| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesDataProvider. Empty fallback during loading/error |
 | `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
@@ -65,8 +68,12 @@ cellServiceProvider ──→ fogResolverProvider ──→ discoveryServiceProv
 fogResolverProvider ──→ gameCoordinatorProvider ──→ locationProvider (callback)
 locationServiceProvider ──→ gameCoordinatorProvider    ──→ playerProvider (callback)
 discoveryServiceProvider ──→ gameCoordinatorProvider   ──→ inventoryProvider (callback)
-                                                       ──→ discoveryProvider (callback)
+itemInstanceRepositoryProvider ──→ gameCoordinatorProvider ──→ discoveryProvider (callback)
+authProvider ──→ gameCoordinatorProvider (read + listen for hydration)
 
+appDatabaseProvider ──→ itemInstanceRepositoryProvider
+
+speciesDataProvider ──→ speciesServiceProvider
 speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ packProvider
                        ──→ sanctuaryProvider
@@ -91,6 +98,19 @@ playerProvider ──→ sanctuaryProvider (listen)
 | `ref.listen()` in `build()` | React to changes without resetting own state | packProvider listens to inventoryProvider (preserves filters) |
 | `ref.read()` in methods | One-shot mutation from event handler | caretakingProvider reads playerProvider.notifier |
 | Stream subscription | External event source (GPS, fog events) | LocationNotifier.connectToStream(), map_screen subscriptions |
+| Hydrate-then-start | Load persisted state before starting game loop | gameCoordinatorProvider: loadItems() → then startLoop() |
+| Auth timing listen | Wait for async auth to settle before hydrating | gameCoordinatorProvider: ref.listen(authProvider) with `started` guard |
+
+## Startup Hydration
+
+`gameCoordinatorProvider` handles inventory hydration on startup:
+
+1. Read `authProvider` — if userId available, hydrate immediately
+2. If auth still loading, `ref.listen<AuthState>` waits for it to settle
+3. `hydrateAndStart(userId)`: loads items from SQLite via `itemInstanceRepositoryProvider`, seeds `inventoryProvider` and `discoveryService.markCollected()`, then starts game loop
+4. On hydration failure: starts game loop without data (graceful degradation)
+
+**Race condition prevention**: `loadItems()` replaces inventory state entirely. The game loop must NOT start until hydration completes — otherwise a discovery during the race window would be wiped. A `started` flag prevents double-start if auth settles during hydration.
 
 ## Auto-Initialized vs Lazy
 

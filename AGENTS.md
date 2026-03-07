@@ -14,8 +14,8 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1278 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 33 info-level issues |
+| Tests | 1280 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | 37 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
 **Run commands:**
