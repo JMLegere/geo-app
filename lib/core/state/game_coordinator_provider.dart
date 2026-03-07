@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
 
 import 'package:fog_of_world/core/game/game_coordinator.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/stats_service.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/inventory_provider.dart';
@@ -15,6 +16,7 @@ import 'package:fog_of_world/features/discovery/providers/discovery_provider.dar
 import 'package:fog_of_world/features/location/services/location_service.dart';
 import 'package:fog_of_world/features/location/services/location_simulator.dart';
 import 'package:fog_of_world/features/location/services/real_gps_service.dart';
+import 'package:fog_of_world/features/enrichment/providers/enrichment_provider.dart';
 import 'package:fog_of_world/features/map/providers/discovery_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
 
@@ -75,6 +77,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     if (userId != null) {
       itemRepo.addItem(instance, userId).catchError((Object e) {
         debugPrint('[GameCoordinator] failed to persist item: $e');
+      });
+    }
+
+    // Fire enrichment request for fauna items (fire-and-forget).
+    // Triggers AI classification on first global discovery.
+    if (event.item is FaunaDefinition) {
+      final fauna = event.item as FaunaDefinition;
+      ref.read(enrichmentServiceProvider).requestEnrichment(
+        definitionId: fauna.id,
+        scientificName: fauna.scientificName,
+        commonName: fauna.displayName,
+        taxonomicClass: fauna.taxonomicClass,
+      ).catchError((Object e) {
+        debugPrint('[GameCoordinator] enrichment request failed: $e');
       });
     }
   };

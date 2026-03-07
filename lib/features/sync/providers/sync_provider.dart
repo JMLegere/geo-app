@@ -8,11 +8,24 @@ import 'package:fog_of_world/features/sync/models/sync_status.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
 
+/// Returns the [SupabaseClient] when Supabase is initialised, or null when
+/// credentials are missing or init failed.
+///
+/// This is the single allowed entry point for Supabase client access outside
+/// of [supabase_auth_service.dart]. Features that need the client (e.g.
+/// enrichment) must import this provider rather than importing
+/// `supabase_flutter` directly.
+final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
+  if (!ref.read(supabaseBootstrapProvider).initialized) return null;
+  return Supabase.instance.client;
+});
+
 /// Returns a [SupabasePersistence] instance when Supabase actually initialised,
 /// or null when credentials are missing or init failed (e.g. web locale crash).
 final supabasePersistenceProvider = Provider<SupabasePersistence?>((ref) {
-  if (!ref.read(supabaseBootstrapProvider).initialized) return null;
-  return SupabasePersistence(Supabase.instance.client);
+  final client = ref.watch(supabaseClientProvider);
+  if (client == null) return null;
+  return SupabasePersistence(client);
 });
 
 // ── SyncNotifier ─────────────────────────────────────────────────────────────

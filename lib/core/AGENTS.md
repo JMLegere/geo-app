@@ -44,11 +44,13 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Drift ORM schema and database connection.
 
 **Public API**:
-- `AppDatabase`: Drift database with 3 tables
+- `AppDatabase`: Drift database with 4 tables
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
+  - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `artUrl` (nullable), `enrichedAt`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
+- `schemaVersion = 3`. Migration from v2→v3 creates LocalSpeciesEnrichmentTable.
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
@@ -107,7 +109,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Immutable value objects for domain entities.
 
-**Public API** (18 models):
+**Public API** (19 models):
 - `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 10^x progression (PoE loot table style): LC=100000, NT=10000, VU=1000, EN=100, CR=10, EX=1.
 - `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
@@ -130,6 +132,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
 - `Continent`: enum (asia, northAmerica, southAmerica, africa, oceania, europe). `fromDataString(String)` handles IUCN format strings.
 - `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
+- `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
 
 **Conventions**:
 - All models are immutable with `@immutable` annotation
@@ -153,6 +156,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`
 - `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `delete(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
+- `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor
@@ -186,7 +190,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (11 providers):
+**Public API** (12 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -197,6 +201,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
 - `appDatabaseProvider`: `Provider<AppDatabase>` — singleton database with lifecycle management. Disposes on shutdown.
 - `itemInstanceRepositoryProvider`: `Provider<ItemInstanceRepository>` — watches appDatabaseProvider. Used by gameCoordinatorProvider for persistence and hydration.
+- `enrichmentRepositoryProvider`: `Provider<EnrichmentRepository>` — watches appDatabaseProvider. Local cache CRUD for species enrichments.
 - `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory from SQLite on startup, persists discoveries fire-and-forget.
 
 **Conventions**:

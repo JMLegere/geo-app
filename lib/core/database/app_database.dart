@@ -72,6 +72,24 @@ class LocalItemInstanceTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Local cache of species enrichment data (AI-enriched classification).
+/// Global — one row per definition_id, shared across all users.
+@DataClassName('LocalSpeciesEnrichment')
+class LocalSpeciesEnrichmentTable extends Table {
+  TextColumn get definitionId => text()();
+  TextColumn get animalClass => text()();
+  TextColumn get foodPreference => text()();
+  TextColumn get climate => text()();
+  IntColumn get brawn => integer()();
+  IntColumn get wit => integer()();
+  IntColumn get speed => integer()();
+  TextColumn get artUrl => text().nullable()();
+  DateTimeColumn get enrichedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {definitionId};
+}
+
 /// Local representation of player profile
 /// Mirrors Supabase `profiles` table
 @DataClassName('LocalPlayerProfile')
@@ -97,13 +115,14 @@ class LocalPlayerProfileTable extends Table {
   LocalCellProgressTable,
   LocalItemInstanceTable,
   LocalPlayerProfileTable,
+  LocalSpeciesEnrichmentTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -115,6 +134,9 @@ class AppDatabase extends _$AppDatabase {
         if (from < 2) {
           await m.createTable(localItemInstanceTable);
           await m.deleteTable('local_collected_species_table');
+        }
+        if (from < 3) {
+          await m.createTable(localSpeciesEnrichmentTable);
         }
       },
     );
@@ -205,6 +227,46 @@ class AppDatabase extends _$AppDatabase {
     return (delete(localItemInstanceTable)
           ..where((tbl) => tbl.userId.equals(userId)))
         .go();
+  }
+
+  // ========================================================================
+  // SPECIES ENRICHMENT QUERIES
+  // ========================================================================
+
+  Future<LocalSpeciesEnrichment?> getEnrichment(String definitionId) {
+    return (select(localSpeciesEnrichmentTable)
+          ..where((tbl) => tbl.definitionId.equals(definitionId)))
+        .getSingleOrNull();
+  }
+
+  Future<List<LocalSpeciesEnrichment>> getAllEnrichments() {
+    return select(localSpeciesEnrichmentTable).get();
+  }
+
+  Future<void> upsertEnrichment(LocalSpeciesEnrichment enrichment) async {
+    // Use a companion for the DoUpdate clause so nullable columns (e.g. artUrl)
+    // are explicitly set to NULL rather than skipped when the value is null.
+    final companion = LocalSpeciesEnrichmentTableCompanion(
+      definitionId: Value(enrichment.definitionId),
+      animalClass: Value(enrichment.animalClass),
+      foodPreference: Value(enrichment.foodPreference),
+      climate: Value(enrichment.climate),
+      brawn: Value(enrichment.brawn),
+      wit: Value(enrichment.wit),
+      speed: Value(enrichment.speed),
+      artUrl: Value(enrichment.artUrl),
+      enrichedAt: Value(enrichment.enrichedAt),
+    );
+    await into(localSpeciesEnrichmentTable).insert(
+      enrichment,
+      onConflict: DoUpdate((_) => companion),
+    );
+  }
+
+  Future<List<LocalSpeciesEnrichment>> getEnrichmentsSince(DateTime since) {
+    return (select(localSpeciesEnrichmentTable)
+          ..where((tbl) => tbl.enrichedAt.isBiggerOrEqualValue(since)))
+        .get();
   }
 
   // ========================================================================

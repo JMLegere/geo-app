@@ -4,6 +4,7 @@ import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_data_loader.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
+import 'package:fog_of_world/features/enrichment/providers/enrichment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // SpeciesService provider (real IUCN dataset — 32,752 species)
@@ -29,8 +30,32 @@ final speciesDataProvider = FutureProvider<List<FaunaDefinition>>((ref) async {
 /// Pattern matches [habitatServiceProvider] in biome/.
 final speciesServiceProvider = Provider<SpeciesService>((ref) {
   final dataAsync = ref.watch(speciesDataProvider);
+  final enrichmentMapAsync = ref.watch(enrichmentMapProvider);
   return dataAsync.when(
-    data: (records) => SpeciesService(records),
+    data: (records) {
+      final enrichmentMap = enrichmentMapAsync.asData?.value ?? {};
+      final enrichedRecords = records.map((def) {
+        final enrichment = enrichmentMap[def.id];
+        if (enrichment != null) {
+          return FaunaDefinition(
+            id: def.id,
+            displayName: def.displayName,
+            scientificName: def.scientificName,
+            taxonomicClass: def.taxonomicClass,
+            rarity: def.rarity!,
+            habitats: def.habitats,
+            continents: def.continents,
+            seasonRestriction: def.seasonRestriction,
+            contextTags: def.contextTags,
+            animalClass: enrichment.animalClass,
+            foodPreference: enrichment.foodPreference,
+            climate: enrichment.climate,
+          );
+        }
+        return def;
+      }).toList();
+      return SpeciesService(enrichedRecords);
+    },
     loading: () => SpeciesService(const []),
     error: (_, __) => SpeciesService(const []),
   );
