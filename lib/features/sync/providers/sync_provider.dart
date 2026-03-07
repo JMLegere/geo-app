@@ -2,7 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:fog_of_world/core/models/write_queue_entry.dart';
+import 'package:fog_of_world/core/state/inventory_provider.dart';
+import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
 import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
+import 'package:fog_of_world/core/state/write_queue_repository_provider.dart';
+import 'package:fog_of_world/features/sync/providers/queue_processor_provider.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 import 'package:fog_of_world/features/sync/models/sync_status.dart';
 
@@ -34,18 +39,23 @@ class SyncNotifier extends Notifier<SyncStatus> {
   @override
   SyncStatus build() {
     final isConnected = ref.watch(supabasePersistenceProvider) != null;
+
+    // Initialize pending count from write queue.
+    _refreshPendingCount();
+
     return SyncStatus(
       type: isConnected ? SyncStatusType.idle : SyncStatusType.error,
       errorMessage: isConnected ? null : 'Supabase not configured',
     );
   }
 
-  /// Triggers a manual sync. Updates state to reflect progress and surfaces
-  /// user-friendly error messages on failure without exposing raw exceptions.
+  /// Triggers a manual sync: flushes the write queue to Supabase.
+  ///
+  /// Updates state to reflect progress and surfaces user-friendly error
+  /// messages on failure without exposing raw exceptions.
   Future<void> syncNow() async {
-    final persistence = ref.read(supabasePersistenceProvider);
-    if (persistence == null) {
-      // No credentials — surface a non-blocking message.
+    final processor = ref.read(queueProcessorProvider);
+    if (!processor.canSync) {
       state = state.copyWith(
         type: SyncStatusType.error,
         errorMessage: 'Sync unavailable: Supabase not configured.',
@@ -56,27 +66,104 @@ class SyncNotifier extends Notifier<SyncStatus> {
     state = state.copyWith(type: SyncStatusType.syncing, errorMessage: null);
 
     try {
-      // Sync operations go here as features are wired up.
-      // Placeholder: any SyncException from SupabasePersistence propagates here.
-      state = state.copyWith(
-        type: SyncStatusType.success,
-        lastSyncedAt: DateTime.now(),
-        errorMessage: null,
-      );
+      final summary = await processor.flush();
+      final pending = await ref.read(writeQueueRepositoryProvider).countPending();
+
+      // Process rollbacks for rejected entries.
+      if (summary.hasRejections) {
+        await _processRejections();
+      }
+
+      if (summary.hasRejections) {
+        state = SyncStatus(
+          type: SyncStatusType.success,
+          lastSyncedAt: DateTime.now(),
+          pendingChanges: pending,
+          errorMessage:
+              '${summary.rejected} item(s) rejected by server.',
+        );
+      } else {
+        state = SyncStatus(
+          type: SyncStatusType.success,
+          lastSyncedAt: DateTime.now(),
+          pendingChanges: pending,
+        );
+      }
     } on SyncException catch (e) {
-      // SyncException always has a user-friendly message.
       debugPrint('[SyncNotifier] sync failed: $e');
       state = state.copyWith(
         type: SyncStatusType.error,
         errorMessage: e.message,
       );
     } catch (e) {
-      // Unexpected error — log but never expose raw message to user.
       debugPrint('[SyncNotifier] unexpected sync error: $e');
       state = state.copyWith(
         type: SyncStatusType.error,
         errorMessage: 'Sync failed. Please check your connection and try again.',
       );
+    }
+  }
+
+  /// Process rejected queue entries: rollback local state.
+  ///
+  /// For item instances: remove from in-memory inventory + delete from SQLite.
+  /// For cell progress / profile: log only (no local rollback — server is
+  /// source of truth, next full sync will reconcile).
+  ///
+  /// After processing, rejected entries are deleted from the queue.
+  Future<void> _processRejections() async {
+    final writeQueueRepo = ref.read(writeQueueRepositoryProvider);
+    final rejected = await writeQueueRepo.getRejected();
+
+    for (final entry in rejected) {
+      switch (entry.entityType) {
+        case WriteQueueEntityType.itemInstance:
+          // Remove from in-memory inventory.
+          ref.read(inventoryProvider.notifier).removeItem(entry.entityId);
+
+          // Remove from SQLite.
+          try {
+            final itemRepo = ref.read(itemInstanceRepositoryProvider);
+            await itemRepo.deleteItem(entry.entityId);
+          } catch (e) {
+            debugPrint(
+              '[SyncNotifier] failed to delete rejected item '
+              '${entry.entityId}: $e',
+            );
+          }
+
+        case WriteQueueEntityType.cellProgress:
+        case WriteQueueEntityType.profile:
+          // No local rollback for cell progress or profile — server
+          // reconciliation on next full sync will handle these.
+          debugPrint(
+            '[SyncNotifier] rejected ${entry.entityType.name}: '
+            '${entry.entityId} — ${entry.lastError}',
+          );
+      }
+
+      // Remove the rejected entry from the queue.
+      try {
+        await writeQueueRepo.markConfirmed(entry.id!);
+      } catch (e) {
+        debugPrint(
+          '[SyncNotifier] failed to cleanup rejected entry '
+          '${entry.id}: $e',
+        );
+      }
+    }
+  }
+
+  /// Refresh the pending changes count from the write queue.
+  Future<void> _refreshPendingCount() async {
+    try {
+      final count = await ref.read(writeQueueRepositoryProvider).countPending();
+      if (state.pendingChanges != count) {
+        state = state.copyWith(pendingChanges: count);
+      }
+    } catch (e) {
+      // Non-critical — don't crash the UI.
+      debugPrint('[SyncNotifier] failed to refresh pending count: $e');
     }
   }
 }

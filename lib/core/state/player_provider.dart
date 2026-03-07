@@ -69,6 +69,23 @@ class PlayerNotifier extends Notifier<PlayerState> {
       cellsObserved: state.cellsObserved + 1,
     );
   }
+
+  /// Replaces the entire player state from persisted data.
+  ///
+  /// Called during startup hydration to restore profile from SQLite.
+  void loadProfile({
+    required int cellsObserved,
+    required double totalDistanceKm,
+    required int currentStreak,
+    required int longestStreak,
+  }) {
+    state = PlayerState(
+      cellsObserved: cellsObserved,
+      totalDistanceKm: totalDistanceKm,
+      currentStreak: currentStreak,
+      longestStreak: longestStreak,
+    );
+  }
 }
 
 final playerProvider =
