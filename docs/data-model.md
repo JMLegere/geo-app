@@ -34,7 +34,7 @@ All domain models, database schema, and persistence contracts.
 | `OrbDefinition` | dimension: `OrbDimension`, variant: String | — | Predefined (3 dimensions: habitat, class, climate; ~46 total types) |
 | `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
 | `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |
-| `SpeciesEnrichment` | scientificName (PK), animalClass, foodPreference, climate, brawn, wit, speed, enrichedAt | scientificName | AI-enriched species data from Gemini Flash. Nullable fields except scientificName. |
+| `SpeciesEnrichment` | definitionId (PK), animalClass: AnimalClass, foodPreference: FoodType, climate: Climate, brawn: int, wit: int, speed: int, artUrl: String?, enrichedAt: DateTime | definitionId | AI-enriched species data from Gemini Flash. All fields required except artUrl. Validates brawn+wit+speed=90 at runtime. |
 | `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact, food, orb | — | Item type classification (7 categories) |
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
@@ -138,14 +138,15 @@ Unique constraint: `{userId, cellId}`
 
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
-| `scientificName` | text PK | — | Matches FaunaDefinition.scientificName |
-| `animalClassName` | text | nullable | AnimalClass enum name |
-| `foodPreferenceName` | text | nullable | FoodType enum name |
-| `climateName` | text | nullable | Climate enum name |
-| `brawn` | int | nullable | Brawn stat (part of brawn+wit+speed=90) |
-| `wit` | int | nullable | Wit stat |
-| `speed` | int | nullable | Speed stat |
-| `enrichedAt` | datetime | — | When enrichment was performed |
+| `definitionId` | text PK | — | Matches ItemDefinition.id (e.g., "fauna_vulpes_vulpes") |
+| `animalClass` | text | — | AnimalClass enum name (required) |
+| `foodPreference` | text | — | FoodType enum name (required) |
+| `climate` | text | — | Climate enum name (required) |
+| `brawn` | int | — | Brawn stat (required, brawn+wit+speed=90) |
+| `wit` | int | — | Wit stat (required) |
+| `speed` | int | — | Speed stat (required) |
+| `artUrl` | text | nullable | AI-generated watercolor URL (deferred) |
+| `enrichedAt` | datetime | now() | When enrichment was performed |
 
 ## Repositories (lib/core/persistence/)
 
@@ -154,7 +155,7 @@ Unique constraint: `{userId, cellId}`
 | `ProfileRepository` | LocalPlayerProfile | `create`, `read(userId)`, `update`, `updateCurrentStreak`, `addDistance`, `getAllProfiles` |
 | `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState` |
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `delete(id)`, `readByStatus(userId, status)` |
-| `EnrichmentRepository` | LocalSpeciesEnrichment | `getAll()`, `upsert(SpeciesEnrichment)`, `getByName(scientificName)` |
+| `EnrichmentRepository` | LocalSpeciesEnrichment | `getEnrichment(definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List)`, `getEnrichmentsSince(DateTime)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 

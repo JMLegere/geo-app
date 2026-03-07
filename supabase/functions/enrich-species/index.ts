@@ -129,6 +129,15 @@ serve(async (req: Request) => {
       );
     }
 
+    // Input length validation — prevent prompt injection and token abuse
+    if (definition_id.length > 200 || scientific_name.length > 200 ||
+        common_name.length > 200 || taxonomic_class.length > 100) {
+      return new Response(
+        JSON.stringify({ error: "Field too long" }),
+        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const geminiKey = Deno.env.get("GEMINI_API_KEY")!;

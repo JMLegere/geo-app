@@ -8,7 +8,7 @@ import 'package:fog_of_world/core/models/food_type.dart';
 
 @immutable
 class SpeciesEnrichment {
-  const SpeciesEnrichment({
+  SpeciesEnrichment({
     required this.definitionId,
     required this.animalClass,
     required this.foodPreference,
@@ -18,7 +18,13 @@ class SpeciesEnrichment {
     required this.speed,
     this.artUrl,
     required this.enrichedAt,
-  }) : assert(brawn + wit + speed == 90, 'brawn + wit + speed must equal 90');
+  }) {
+    if (brawn + wit + speed != 90) {
+      throw ArgumentError(
+        'brawn + wit + speed must equal 90, got ${brawn + wit + speed}',
+      );
+    }
+  }
 
   final String definitionId;
   final AnimalClass animalClass;

@@ -42,8 +42,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence |
 | `supabaseClientProvider` | sync | `Provider<SupabaseClient?>` | reads: supabaseBootstrapProvider. Returns null when Supabase not configured |
-| `enrichmentServiceProvider` | enrichment | `Provider<EnrichmentService?>` | reads: supabaseClientProvider, enrichmentRepositoryProvider. Returns null when no Supabase |
-| `enrichmentMapProvider` | enrichment | `FutureProvider<Map<String, SpeciesEnrichment>>` | watches: enrichmentRepositoryProvider. All cached enrichments keyed by scientificName |
+| `enrichmentServiceProvider` | enrichment | `Provider<EnrichmentService>` | watches: enrichmentRepositoryProvider, supabaseClientProvider. Non-nullable — handles null supabaseClient internally |
+| `enrichmentMapProvider` | enrichment | `FutureProvider<Map<String, SpeciesEnrichment>>` | watches: enrichmentServiceProvider. All cached enrichments keyed by definitionId |
 | `habitatServiceProvider` | biome | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
 | `biomeFeatureIndexProvider` | biome | `FutureProvider<BiomeFeatureIndex>` | async asset load |
 | `seasonServiceProvider` | seasonal | `Provider<SeasonService>` | none |

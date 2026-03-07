@@ -17,7 +17,7 @@ CREATE TABLE species_enrichment (
   wit           INT  NOT NULL,
   speed         INT  NOT NULL,
   art_url       TEXT,                      -- null until art generation is implemented
-  enriched_at   TIMESTAMPTZ DEFAULT now(),
+  enriched_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   CHECK (brawn + wit + speed = 90),
   CHECK (brawn >= 0 AND wit >= 0 AND speed >= 0)
 );

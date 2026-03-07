@@ -48,7 +48,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
-  - `LocalSpeciesEnrichmentTable`: `scientificName` (text PK), `animalClassName`, `foodPreferenceName`, `climateName`, `brawn`, `wit`, `speed`, `enrichedAt`
+  - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `artUrl` (nullable), `enrichedAt`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
 - `schemaVersion = 3`. Migration from v2→v3 creates LocalSpeciesEnrichmentTable.
 
@@ -132,7 +132,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
 - `Continent`: enum (asia, northAmerica, southAmerica, africa, oceania, europe). `fromDataString(String)` handles IUCN format strings.
 - `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
-- `SpeciesEnrichment`: `scientificName`, `animalClass?`, `foodPreference?`, `climate?`, `brawn?`, `wit?`, `speed?`, `enrichedAt`. Immutable value object for cached AI enrichment data. All fields nullable except scientificName and enrichedAt.
+- `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
 
 **Conventions**:
 - All models are immutable with `@immutable` annotation
@@ -156,7 +156,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`
 - `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `delete(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
-- `EnrichmentRepository`: `getAll()`, `upsert(SpeciesEnrichment)`, `getByName(String scientificName)`. Simple local cache CRUD for AI enrichment data.
+- `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor
