@@ -5,7 +5,11 @@ import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
+import 'package:fog_of_world/core/species/species_data_loader.dart';
+import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
+
+import '../../../fixtures/species_fixture.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -211,8 +215,18 @@ void main() {
   });
 
   group('speciesServiceProvider', () {
+    ProviderContainer makeSpeciesContainer() {
+      return ProviderContainer(
+        overrides: [
+          speciesServiceProvider.overrideWithValue(
+            SpeciesService(SpeciesDataLoader.fromJsonString(kSpeciesFixtureJson)),
+          ),
+        ],
+      );
+    }
+
     test('provides a SpeciesService with non-empty records', () {
-      final container = _makeContainer();
+      final container = makeSpeciesContainer();
       addTearDown(container.dispose);
 
       final service = container.read(speciesServiceProvider);
@@ -220,7 +234,7 @@ void main() {
     });
 
     test('can find species for Forest + NorthAmerica', () {
-      final container = _makeContainer();
+      final container = makeSpeciesContainer();
       addTearDown(container.dispose);
 
       final service = container.read(speciesServiceProvider);
