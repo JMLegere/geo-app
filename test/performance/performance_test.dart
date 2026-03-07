@@ -87,6 +87,7 @@ void main() {
       // Warm up — first call may lazy-init internal structures.
       service.getSpeciesForCell(
         cellId: 'warmup',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
@@ -96,6 +97,7 @@ void main() {
       for (var i = 0; i < iterations; i++) {
         service.getSpeciesForCell(
           cellId: 'perf_cell_$i',
+          dailySeed: 'test_seed',
           habitats: {Habitat.forest},
           continent: Continent.northAmerica,
         );
@@ -114,6 +116,7 @@ void main() {
       for (var i = 0; i < iterations; i++) {
         service.getSpeciesForCell(
           cellId: 'multi_cell_$i',
+          dailySeed: 'test_seed',
           habitats: {Habitat.forest, Habitat.freshwater, Habitat.mountain},
           continent: Continent.europe,
         );
@@ -482,6 +485,7 @@ void main() {
         // 4. Roll species encounters.
         speciesService.getSpeciesForCell(
           cellId: cellId,
+          dailySeed: 'test_seed',
           habitats: habitats,
           continent: Continent.northAmerica,
         );

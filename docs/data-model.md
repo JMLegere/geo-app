@@ -259,17 +259,16 @@ Auth settles (userId available)
 - **Profile updates**: `ref.listen(playerProvider)` in `gameCoordinatorProvider` → `ProfileRepository.update()` + `WriteQueueRepository.enqueue()` (fire-and-forget)
 
 ### Design Target: Inventory Model
-> Phase 1 COMPLETE. ItemInstance model is now live. Remaining: breeding, bundles, museum, daily seed.
+> Phase 1 + Phase 4 COMPLETE. ItemInstance model with daily seed rotation is now live. Remaining: breeding, bundles, museum.
 
-Current model: `ItemInstance` with affixes, status lifecycle, breeding lineage fields.
-Target model: Full breeding system, bundles, museum donations, daily seed rotation.
+Current model: `ItemInstance` with affixes, status lifecycle, breeding lineage fields, daily seed.
+Target model: Full breeding system, bundles, museum donations.
 
 Key changes planned:
 - Species stacked in Pack (inventory): "Mallard ×3" not just "Mallard: collected"
 - Museum donations consume from inventory (permanent — cannot retrieve)
 - Sanctuary placements consume from inventory (flexible — can rearrange)
 - Release mechanic: return unwanted species to the wild
-- Daily world seed: cells offer different species each day (midnight GMT rotation)
 - Multiple collectible categories planned: Fauna (now), Plants, Minerals, Fossils (future)
 
 Museum structure:
@@ -296,3 +295,5 @@ Museum structure:
 | `kWriteQueueStaleAgeHours` | 72 | Hours before stale entries deleted |
 | `kWriteQueueRetryBaseSeconds` | 2 | Base delay for exponential backoff |
 | `kWriteQueueFlushBatchSize` | 50 | Max entries per flush batch |
+| `kDailySeedGraceHours` | 24 | Hours before cached daily seed is considered stale |
+| `kDailySeedOfflineFallback` | `'offline_no_rotation'` | Static seed used when Supabase is unavailable |

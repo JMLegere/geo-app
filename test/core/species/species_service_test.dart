@@ -279,12 +279,14 @@ void main() {
 
       final first = service.getSpeciesForCell(
         cellId: cellId,
+        dailySeed: 'test_seed',
         habitats: habitats,
         continent: continent,
       );
       for (var i = 0; i < 20; i++) {
         final repeated = service.getSpeciesForCell(
           cellId: cellId,
+          dailySeed: 'test_seed',
           habitats: habitats,
           continent: continent,
         );
@@ -303,6 +305,7 @@ void main() {
       for (var i = 0; i < 30; i++) {
         final found = service.getSpeciesForCell(
           cellId: 'cell_$i',
+          dailySeed: 'test_seed',
           habitats: habitats,
           continent: continent,
         );
@@ -316,6 +319,7 @@ void main() {
     test('returns at most encounterSlots species', () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_test',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.forest},
         continent: Continent.europe,
         encounterSlots: 2,
@@ -327,6 +331,7 @@ void main() {
       // Desert/Oceania — no desert species in Oceania in the fixture.
       final found = service.getSpeciesForCell(
         cellId: 'cell_999',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.desert},
         continent: Continent.oceania,
       );
@@ -337,6 +342,7 @@ void main() {
         () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_validate',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.forest},
         continent: Continent.asia,
         encounterSlots: 5,
@@ -353,6 +359,7 @@ void main() {
     test('returned species are unique (no duplicates)', () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_dedup',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.forest},
         continent: Continent.europe,
         encounterSlots: 10,
@@ -367,6 +374,7 @@ void main() {
       // forest + freshwater union for Asia
       final found = service.getSpeciesForCell(
         cellId: 'cell_multi_habitat',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.forest, Habitat.freshwater},
         continent: Continent.asia,
         encounterSlots: 10,
@@ -374,6 +382,7 @@ void main() {
       // Pool is at least as large as forest-only for Asia.
       final forestOnly = service.getSpeciesForCell(
         cellId: 'cell_multi_habitat',
+        dailySeed: 'test_seed',
         habitats: const {Habitat.forest},
         continent: Continent.asia,
         encounterSlots: 10,
@@ -428,6 +437,7 @@ void main() {
           habitats: habitats, continent: continent);
       final found = service.getSpeciesForCell(
         cellId: 'cell_pool_check',
+        dailySeed: 'test_seed',
         habitats: habitats,
         continent: continent,
         encounterSlots: 10,
@@ -535,6 +545,7 @@ void main() {
         // Roll one slot per cell to get clean individual rolls.
         final found = service.getSpeciesForCell(
           cellId: 'rarity_test_$i',
+          dailySeed: 'test_seed',
           habitats: const {Habitat.forest},
           continent: Continent.europe,
           encounterSlots: 1,

@@ -114,6 +114,7 @@ void main() {
     test('getSpeciesForCell returns at most encounterSlots unique species', () {
       final result = speciesService.getSpeciesForCell(
         cellId: 'cell_0',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
         encounterSlots: 3,
@@ -127,11 +128,13 @@ void main() {
     test('getSpeciesForCell is deterministic for the same cellId', () {
       final r1 = speciesService.getSpeciesForCell(
         cellId: 'cell_42',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       final r2 = speciesService.getSpeciesForCell(
         cellId: 'cell_42',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
@@ -145,11 +148,13 @@ void main() {
       // extremely unlikely to fail with the fixture data.
       final r1 = speciesService.getSpeciesForCell(
         cellId: 'cell_1',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
       final r2 = speciesService.getSpeciesForCell(
         cellId: 'cell_99',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
@@ -175,6 +180,7 @@ void main() {
       // Desert + South America has no matches in our 50-species fixture.
       final result = speciesService.getSpeciesForCell(
         cellId: 'cell_0',
+        dailySeed: 'test_seed',
         habitats: {Habitat.desert},
         continent: Continent.southAmerica,
       );

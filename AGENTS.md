@@ -85,7 +85,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 1. **Computed fog state** — FogState is derived on-demand from player position + visit history, like Civilization fog-of-war. Only `visitedCellIds` are persisted. Never store per-cell fog state.
 
-2. **Deterministic species encounters** — Species for a cell are seeded by cell ID via SHA-256 hash. Same cell always yields the same species. This is intentional for reproducibility.
+2. **Deterministic species encounters** — Species for a cell are seeded by `SHA-256(dailySeed + "_" + cellId)`. Same cell + same day = same species. Different day = different species. The daily seed rotates at midnight GMT via server RPC (`ensure_daily_seed()`). Offline fallback: static seed (`offline_no_rotation`) — species don't rotate but encounters still work. Stale seed (>24h server seed) pauses discoveries until refreshed.
 
 3. **Voronoi cells** — The cell system uses Voronoi tessellation (not H3). `CellService` is an abstract interface; H3 exists as a fallback.
 
@@ -107,7 +107,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 ## Product Architecture (Design Jam Decisions — 2026-03-06, updated 2026-03-06 Jam 2)
 
-These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: GameCoordinator wiring improvements (Phase 2b), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
+These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phases 1–4 are COMPLETE** — item model, GameCoordinator, server-authoritative persistence, and daily seed are all live. Remaining work: breeding/bundles (Phase 5+).
 
 **This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
 
@@ -203,7 +203,7 @@ These are the target architecture decisions from two design jams. They describe 
 | 1c | **COMPLETE** | Lazy AI enrichment pipeline (classification only — art deferred) | Species identity (partial) |
 | 2 | **COMPLETE** | GameCoordinator (extract from map_screen) | Tab-independent game loop |
 | 3 | **COMPLETE** | Server-authoritative persistence (write queue, rollback, Edge Function validation) | Online validation, anti-cheat |
-| 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
+| 4 | **COMPLETE** | Daily seed system (DailySeedService, stale guard, validate-encounter) | Deterministic daily encounters, social sharing |
 | 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
 
 **Note:** Lazy AI enrichment (Phase 1c) requires Supabase Edge Functions but doesn't depend on GameCoordinator or write queue.

@@ -6,6 +6,7 @@ import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/services/daily_seed_service.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
@@ -408,5 +409,64 @@ void main() {
       // Should have events (all species available when no seasonal filter).
       expect(events, isNotEmpty);
     });
+
+    test('discoveries work with an offline DailySeedService wired in', () {
+      final resolver = _makeResolver();
+      final speciesService = _makeSpeciesService();
+      final offlineSeedService = DailySeedService();
+
+      final service = DiscoveryService(
+        fogResolver: resolver,
+        speciesService: speciesService,
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
+        dailySeedService: offlineSeedService,
+      );
+      addTearDown(service.dispose);
+
+      // Offline seed never pauses — events should still fire.
+      final events = collectDiscoveries(service, () {
+        resolver.onLocationUpdate(1.0, 1.0);
+      });
+
+      // Should have events (offline seed does not pause discoveries).
+      expect(events, isNotEmpty,
+          reason: 'Offline seed service must not pause discoveries');
+    });
+
+    test('no discovery events fire when daily seed is paused', () {
+      final resolver = _makeResolver();
+      final speciesService = _makeSpeciesService();
+
+      // A seed service subclass that always reports paused.
+      final pausedSeedService = _PausedDailySeedService();
+
+      final service = DiscoveryService(
+        fogResolver: resolver,
+        speciesService: speciesService,
+        habitatService: _MockHabitatService(),
+        cellService: _MockCellService(),
+        dailySeedService: pausedSeedService,
+      );
+      addTearDown(service.dispose);
+
+      final events = collectDiscoveries(service, () {
+        resolver.onLocationUpdate(1.0, 1.0);
+      });
+
+      expect(events, isEmpty,
+          reason:
+              'When isDiscoveryPaused is true, no discovery events should fire');
+    });
   });
+}
+
+// ---------------------------------------------------------------------------
+// A DailySeedService subclass that always reports paused (stale server seed).
+// ---------------------------------------------------------------------------
+class _PausedDailySeedService extends DailySeedService {
+  _PausedDailySeedService() : super();
+
+  @override
+  bool get isDiscoveryPaused => true;
 }

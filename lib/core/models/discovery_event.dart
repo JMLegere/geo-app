@@ -11,11 +11,15 @@ class DiscoveryEvent {
   final bool isNew;
   final DateTime timestamp;
 
+  /// Daily seed used for this encounter roll (for server re-derivation).
+  final String? dailySeed;
+
   const DiscoveryEvent({
     required this.item,
     required this.cellId,
     required this.isNew,
     required this.timestamp,
+    this.dailySeed,
   });
 
   @override
@@ -30,9 +34,10 @@ class DiscoveryEvent {
         other.item == item &&
         other.cellId == cellId &&
         other.isNew == isNew &&
-        other.timestamp == timestamp;
+        other.timestamp == timestamp &&
+        other.dailySeed == dailySeed;
   }
 
   @override
-  int get hashCode => Object.hash(item, cellId, isNew, timestamp);
+  int get hashCode => Object.hash(item, cellId, isNew, timestamp, dailySeed);
 }

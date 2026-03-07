@@ -64,6 +64,23 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 ---
 
+### services/
+
+**Purpose**: Pure Dart services that don't fit a specific subdomain. No Flutter, no Riverpod dependency.
+
+**Public API**:
+- `DailySeedService`: `fetchSeed()`, `refreshSeed()`, `currentSeed`, `isDiscoveryPaused`, `state` (DailySeedState). Pure Dart — accepts a `SeedFetcher` callback (`Future<String> Function()`) instead of importing Supabase directly.
+- `DailySeedState`: Immutable state with `seedValue`, `fetchedAt`, `isStale` (checks `kDailySeedGraceHours`).
+- `SeedFetcher`: typedef `Future<String> Function()` — wired to Supabase RPC by `dailySeedServiceProvider`.
+
+**Conventions**:
+- `DailySeedService` is network-free in `core/` — the offline audit test enforces no Supabase imports in `lib/core/` (with allowlist exception for `daily_seed_provider.dart`).
+- Seed is cached in-memory only (24h TTL). No Drift table needed — seed is ephemeral.
+- `fetchSeed()` catches exceptions and falls back to `kDailySeedOfflineFallback` (`'offline_no_rotation'`).
+- `isDiscoveryPaused` returns true only when seed is stale AND no fallback available (currently always false since fallback always works).
+
+---
+
 ### fog/
 
 **Purpose**: Fog-of-war state resolution. Computes per-cell fog state from player position and visit history.
@@ -174,13 +191,13 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Deterministic species encounter generation and data loading.
 
 **Public API**:
-- `SpeciesService`: `getEncountersForCell(String cellId, Season, List<FaunaDefinition>)`, `rollMultiple(LootTable, int n, String seed)`
+- `SpeciesService`: `getSpeciesForCell(cellId, habitats, continent, {required dailySeed, encounterSlots})`, `rollMultiple(LootTable, int n, String seed)`
 - `LootTable<T>`: Generic weighted random selection. `add(T item, int weight)`, `roll(String seed)`.
 - `SpeciesDataLoader`: `loadSpeciesData()` returns `Future<List<FaunaDefinition>>` from `assets/species_data.json`.
 - `ContinentResolver`: `getContinent(Geographic)` uses bounding boxes. Africa split at 20°E.
 
 **Conventions**:
-- **Species encounters are deterministic by cell ID.** Same cell always yields same species (seeded by SHA-256 hash of cell ID).
+- **Species encounters are deterministic by daily seed + cell ID.** Same cell + same day = same species. Different day = different species. Seed format: `"${dailySeed}_${cellId}"`.
 - `rollMultiple(table, n, seed)` uses `"${baseSeed}_$attempt"` for uniqueness across rolls
 - `maxAttempts = n * 10` to avoid infinite loops on small tables
 - `SpeciesDataLoader` silently skips records with unknown habitats or continents (logs warning, continues)
@@ -193,7 +210,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (15 providers):
+**Public API** (16 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -208,7 +225,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `writeQueueRepositoryProvider`: `Provider<WriteQueueRepository>` — watches appDatabaseProvider. Offline write queue CRUD.
 - `cellProgressRepositoryProvider`: `Provider<CellProgressRepository>` — watches appDatabaseProvider. Cell visit persistence.
 - `profileRepositoryProvider`: `Provider<ProfileRepository>` — watches appDatabaseProvider. Player profile persistence.
-- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through.
+- `dailySeedServiceProvider`: `Provider<DailySeedService>` — reads `supabaseClientProvider`. Wires Supabase RPC `ensure_daily_seed()` as `SeedFetcher` callback. Works without Supabase (offline fallback).
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through.
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -238,9 +256,11 @@ fog/  (depends on: models/, cells/)
   ↓
 species/  (depends on: models/, cells/)
   ↓
+services/  (depends on: models/, shared/)
+  ↓
 game/  (depends on: fog/, models/, species/)
   ↓
-state/  (depends on: models/, persistence/, fog/, game/, riverpod)
+state/  (depends on: models/, persistence/, fog/, game/, services/, riverpod)
 ```
 
 External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells), `drift` (ORM), `riverpod` (state).
@@ -268,9 +288,12 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - Storing computed state causes desync between database and runtime
 
 ### Deterministic Species Encounters
-- Same cell ID always yields same species (seeded by SHA-256)
-- Changing the seed algorithm breaks reproducibility
+- Same cell + same daily seed yields same species (seeded by SHA-256 of `"${dailySeed}_${cellId}"`)
+- Different day = different daily seed = different species for same cell
+- Changing the seed format breaks reproducibility of ALL existing encounters
 - `rollMultiple()` appends `_$attempt` to seed for uniqueness
+- Offline fallback seed (`offline_no_rotation`) means species don't rotate but encounters still work
+- Stale seed (>24h without refresh) pauses discoveries via `DailySeedService.isDiscoveryPaused`
 
 ### onLocationUpdate Stream
 - `FogStateResolver.onLocationUpdate()` stream controller uses `sync: true`

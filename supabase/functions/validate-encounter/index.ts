@@ -58,15 +58,33 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (!seedRow && daily_seed) {
-      // No seed on server for that date and client claims one.
-      // The daily seed system isn't live yet (Phase 4). Accept for now.
-      return new Response(
-        JSON.stringify({ status: "accepted", reason: "daily_seed_not_enforced" }),
-        {
-          status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        },
-      );
+      // No seed on server for that date — generate it now (idempotent).
+      const { data: generatedSeed, error: rpcError } = await supabase
+        .rpc("ensure_daily_seed");
+      if (rpcError || !generatedSeed) {
+        return new Response(
+          JSON.stringify({ status: "rejected", reason: "seed_generation_failed" }),
+          {
+            status: 500,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          },
+        );
+      }
+      // Re-validate: the generated seed must match what the client sent.
+      if (generatedSeed !== daily_seed) {
+        return new Response(
+          JSON.stringify({ status: "rejected", reason: "daily_seed_mismatch" }),
+          {
+            status: 409,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
+    if (!seedRow && !daily_seed) {
+      // No seed on server and client didn't send one — offline fallback mode.
+      // Accept without seed validation (encounters used static fallback seed).
     }
 
     if (seedRow && daily_seed && seedRow.seed_value !== daily_seed) {
@@ -86,17 +104,9 @@ serve(async (req: Request) => {
     const hashInput = `${serverSeed}_${cell_id}_${definition_id}`;
     const expectedHash = await sha256Hex(hashInput);
 
-    // Validate that this definition_id is plausible for this cell.
-    // The full deterministic re-derivation (matching client-side loot table
-    // rolls) requires the species dataset, which isn't loaded server-side.
-    // For Phase 3, we do structural validation only:
-    // 1. daily_seed matches ✓ (checked above)
-    // 2. definition_id is non-empty and well-formed
-    // 3. cell_id is non-empty
-    // 4. acquired_at is within seed_date range
-    //
-    // Full re-derivation (Phase 4) will use the hash to verify the exact
-    // species rolled for this cell + seed combination.
+    // Structural validation: seed match (checked above), well-formed IDs,
+    // acquired_at within seed date range. Full species re-derivation requires
+    // the IUCN dataset server-side (future work — would verify exact rolls).
 
     if (
       definition_id.length === 0 ||

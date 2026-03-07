@@ -240,6 +240,7 @@ void main() {
       final service = container.read(speciesServiceProvider);
       final species = service.getSpeciesForCell(
         cellId: 'test_cell',
+        dailySeed: 'test_seed',
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
