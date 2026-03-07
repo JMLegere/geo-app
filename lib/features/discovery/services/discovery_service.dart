@@ -41,6 +41,17 @@ class DiscoveryService {
   final HabitatService _habitatService;
   final CellService? _cellService;
 
+  /// Optional lazy getter for [SpeciesService].
+  ///
+  /// When provided, the service reads the current [SpeciesService] at event
+  /// time instead of using the instance captured at construction. This breaks
+  /// the Riverpod rebuild chain: `discoveryServiceProvider` doesn't need to
+  /// `ref.watch(speciesServiceProvider)`, so the entire GameCoordinator
+  /// doesn't get torn down when species data finishes loading.
+  ///
+  /// When null, falls back to the constructor-injected [_speciesService].
+  final SpeciesService Function()? _speciesServiceGetter;
+
   /// Optional [SeasonService] for filtering out-of-season species.
   ///
   /// When non-null, species returned by [SpeciesService.getSpeciesForCell] are
@@ -81,6 +92,11 @@ class DiscoveryService {
   /// [seasonService] enables seasonal filtering. When provided, only species
   /// available in the current season are emitted. When null (default), all
   /// species from [SpeciesService.getSpeciesForCell] are emitted unchanged.
+  ///
+  /// [speciesServiceGetter] enables lazy species service resolution. When
+  /// provided, the getter is called at event time to obtain the current
+  /// [SpeciesService]. This decouples the service from the Riverpod rebuild
+  /// chain. When null, uses the [speciesService] passed at construction.
   DiscoveryService({
     required FogStateResolver fogResolver,
     required SpeciesService speciesService,
@@ -89,12 +105,14 @@ class DiscoveryService {
     Set<String>? initialCollectedIds,
     SeasonService? seasonService,
     DailySeedService? dailySeedService,
+    SpeciesService Function()? speciesServiceGetter,
   })  : _fogResolver = fogResolver,
         _speciesService = speciesService,
         _habitatService = habitatService ?? HabitatService(),
         _cellService = cellService,
         _seasonService = seasonService,
         _dailySeedService = dailySeedService,
+        _speciesServiceGetter = speciesServiceGetter,
         _collectedSpeciesIds =
             Set.from(initialCollectedIds ?? const <String>{}) {
     _fogSubscription =
@@ -153,7 +171,11 @@ class DiscoveryService {
     final habitats = _habitatService.classifyLocation(lat, lon);
     final continent = ContinentResolver.resolve(lat, lon);
 
-    var species = _speciesService.getSpeciesForCell(
+    // Use lazy getter when available (breaks Riverpod rebuild chain),
+    // fall back to constructor-injected instance.
+    final speciesService = _speciesServiceGetter?.call() ?? _speciesService;
+
+    var species = speciesService.getSpeciesForCell(
       cellId: event.cellId,
       dailySeed: dailySeed,
       habitats: habitats,
