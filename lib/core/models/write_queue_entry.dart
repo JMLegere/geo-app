@@ -149,11 +149,34 @@ class WriteQueueEntry {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is WriteQueueEntry && other.id == id;
+    return other is WriteQueueEntry &&
+        other.id == id &&
+        other.entityType == entityType &&
+        other.entityId == entityId &&
+        other.operation == operation &&
+        other.payload == payload &&
+        other.userId == userId &&
+        other.status == status &&
+        other.attempts == attempts &&
+        other.lastError == lastError &&
+        other.createdAt == createdAt &&
+        other.updatedAt == updatedAt;
   }
 
   @override
-  int get hashCode => id.hashCode;
+  int get hashCode => Object.hash(
+        id,
+        entityType,
+        entityId,
+        operation,
+        payload,
+        userId,
+        status,
+        attempts,
+        lastError,
+        createdAt,
+        updatedAt,
+      );
 
   @override
   String toString() =>

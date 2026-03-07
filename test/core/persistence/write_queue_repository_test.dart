@@ -200,25 +200,25 @@ void main() {
       expect(await repo.countPending(), equals(1));
     });
 
-    // ── markConfirmed ──────────────────────────────────────────────────────
+    // ── deleteEntry ───────────────────────────────────────────────────────
 
-    test('markConfirmed deletes the entry from the queue', () async {
+    test('deleteEntry removes the entry from the queue', () async {
       final id = await enqueueEntry(repo, entityId: 'to-confirm');
       expect(await repo.countPending(), equals(1));
 
-      await repo.markConfirmed(id);
+      await repo.deleteEntry(id);
 
       expect(await repo.countPending(), equals(0));
       final pending = await repo.getPending();
       expect(pending, isEmpty);
     });
 
-    test('markConfirmed only removes the targeted entry', () async {
+    test('deleteEntry only removes the targeted entry', () async {
       final id1 = await enqueueEntry(repo, entityId: 'e-1');
       await enqueueEntry(repo, entityId: 'e-2');
       await enqueueEntry(repo, entityId: 'e-3');
 
-      await repo.markConfirmed(id1);
+      await repo.deleteEntry(id1);
 
       expect(await repo.countPending(), equals(2));
       final pending = await repo.getPending();
@@ -226,9 +226,9 @@ void main() {
           containsAll(['e-2', 'e-3']));
     });
 
-    test('markConfirmed on non-existent id is a no-op', () async {
+    test('deleteEntry on non-existent id is a no-op', () async {
       await enqueueEntry(repo, entityId: 'normal');
-      await repo.markConfirmed(99999); // Non-existent ID.
+      await repo.deleteEntry(99999); // Non-existent ID.
       expect(await repo.countPending(), equals(1));
     });
 

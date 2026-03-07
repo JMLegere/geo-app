@@ -159,7 +159,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `deleteItem(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
 - `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
-- `WriteQueueRepository`: `enqueue(WriteQueueEntry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `markConfirmed(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)`. Offline write queue CRUD.
+- `WriteQueueRepository`: `enqueue(WriteQueueEntry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)`. Offline write queue CRUD.
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor

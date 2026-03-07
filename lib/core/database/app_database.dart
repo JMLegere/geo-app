@@ -379,12 +379,20 @@ class AppDatabase extends _$AppDatabase {
         .go();
   }
 
-  /// Count pending queue entries.
-  Future<int> countPendingQueueEntries() async {
-    final rows = await (select(localWriteQueueTable)
-          ..where((tbl) => tbl.status.equals('pending')))
-        .get();
-    return rows.length;
+  /// Get a single queue entry by ID.
+  Future<LocalWriteQueueEntry?> getQueueEntryById(int id) {
+    return (select(localWriteQueueTable)
+          ..where((tbl) => tbl.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// Count pending queue entries using efficient SELECT COUNT(*).
+  Future<int> countPendingQueueEntries() {
+    final countExp = localWriteQueueTable.id.count();
+    final query = selectOnly(localWriteQueueTable)
+      ..addColumns([countExp])
+      ..where(localWriteQueueTable.status.equals('pending'));
+    return query.map((row) => row.read(countExp)!).getSingle();
   }
 
   /// Delete stale entries older than [cutoff].

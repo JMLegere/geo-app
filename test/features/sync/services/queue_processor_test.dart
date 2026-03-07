@@ -89,7 +89,7 @@ class _MockWriteQueueRepository extends WriteQueueRepository {
       _entries.where((e) => e.status == WriteQueueStatus.pending).length;
 
   @override
-  Future<void> markConfirmed(int id) async {
+  Future<void> deleteEntry(int id) async {
     _entries.removeWhere((e) => e.id == id);
   }
 

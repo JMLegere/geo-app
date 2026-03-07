@@ -174,7 +174,7 @@ Unique constraint: `{userId, cellId}`
 | `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState`, `incrementVisitCount` |
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `deleteItem(id)`, `readByStatus(userId, status)` |
 | `EnrichmentRepository` | LocalSpeciesEnrichment | `getEnrichment(definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List)`, `getEnrichmentsSince(DateTime)` |
-| `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `markConfirmed(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
+| `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 
@@ -217,7 +217,7 @@ Game event (discovery, cell visit, profile update)
     → For each pending entry:
       → SupabasePersistence.upsert*() (sync to Supabase)
       → validateEncounter() (Edge Function, item instances only)
-      → On success: markConfirmed() (deletes entry)
+      → On success: deleteEntry() (removes confirmed entry)
       → On SyncRejectedException: markRejected() (permanent)
       → On SyncException: incrementAttempts() (retry with backoff)
     → SyncNotifier._processRejections() (rollback rejected items)

@@ -69,6 +69,9 @@ class QueueProcessor {
   final WriteQueueRepository _queueRepo;
   final SupabasePersistence? _persistence;
 
+  /// Guards against concurrent flush() calls.
+  bool _flushing = false;
+
   QueueProcessor({
     required WriteQueueRepository queueRepo,
     required SupabasePersistence? persistence,
@@ -78,15 +81,31 @@ class QueueProcessor {
   /// Whether Supabase is available for syncing.
   bool get canSync => _persistence != null;
 
+  /// Whether a flush is currently in progress.
+  bool get isFlushing => _flushing;
+
   /// Flush pending queue entries to Supabase.
   ///
   /// Returns a summary of what happened. Safe to call when offline —
-  /// returns immediately if Supabase is not configured.
+  /// returns immediately if Supabase is not configured. Returns empty
+  /// summary if a flush is already in progress (no-op).
   Future<FlushSummary> flush() async {
+    if (_flushing) return const FlushSummary();
+
     final persistence = _persistence;
     if (persistence == null) {
       return const FlushSummary();
     }
+
+    _flushing = true;
+    try {
+      return await _flushInternal(persistence);
+    } finally {
+      _flushing = false;
+    }
+  }
+
+  Future<FlushSummary> _flushInternal(SupabasePersistence persistence) async {
 
     // Clean up stale entries first.
     final cutoff = DateTime.now().subtract(
@@ -112,7 +131,7 @@ class QueueProcessor {
 
       switch (result) {
         case FlushConfirmed():
-          await _queueRepo.markConfirmed(entry.id!);
+          await _queueRepo.deleteEntry(entry.id!);
           confirmed++;
 
         case FlushRejected(:final error):

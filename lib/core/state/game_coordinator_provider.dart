@@ -165,6 +165,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     );
   }
 
+  // Track last persisted profile to avoid re-persisting hydrated state.
+  // Declared before hydrateAndStart so the closure can capture it.
+  PlayerState? lastPersistedProfile;
+
   void hydrateAndStart(String userId) {
     Future.wait<Object?>([
       itemRepo.getItemsByUser(userId),
@@ -224,6 +228,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         }
       }
 
+      // Capture hydrated profile state so the write-through listener
+      // doesn't redundantly persist the data we just loaded from SQLite.
+      lastPersistedProfile = ref.read(playerProvider);
+
       startLoop();
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');
@@ -261,8 +269,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // When PlayerNotifier state changes (cells observed, distance, streaks),
   // persist to SQLite and enqueue for Supabase sync. Uses a debounced
   // listener to avoid hammering the DB on rapid increments.
-
-  PlayerState? lastPersistedProfile;
 
   ref.listen<PlayerState>(playerProvider, (previous, next) {
     if (previous == null) return; // Skip initial build.
@@ -344,17 +350,23 @@ Future<void> _persistCellVisit({
   required CellProgressRepository cellProgressRepo,
   required WriteQueueRepository writeQueueRepo,
 }) async {
-  final progressId = _uuid.v4();
   final now = DateTime.now();
+  int visitCount = 1;
+  double distanceWalked = 0.0;
+  double restorationLevel = 0.0;
 
   // 1. Upsert cell progress in SQLite (create if first visit, update if returning).
   try {
     final existing = await cellProgressRepo.read(userId, cellId);
     if (existing != null) {
-      // Returning visit — increment visit count.
+      // Returning visit — increment visit count. Use current DB values for payload.
       await cellProgressRepo.incrementVisitCount(userId, cellId);
+      visitCount = existing.visitCount + 1;
+      distanceWalked = existing.distanceWalked;
+      restorationLevel = existing.restorationLevel;
     } else {
       // First visit — create new record.
+      final progressId = _uuid.v4();
       await cellProgressRepo.create(
         id: progressId,
         userId: userId,
@@ -368,14 +380,14 @@ Future<void> _persistCellVisit({
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
   }
 
-  // 2. Enqueue for Supabase sync.
+  // 2. Enqueue for Supabase sync with current DB state.
   try {
     final payload = jsonEncode({
       'cell_id': cellId,
       'fog_state': FogState.observed.name,
-      'visit_count': 1,
-      'distance_walked': 0.0,
-      'restoration_level': 0.0,
+      'visit_count': visitCount,
+      'distance_walked': distanceWalked,
+      'restoration_level': restorationLevel,
       'last_visited': now.toIso8601String(),
     });
 

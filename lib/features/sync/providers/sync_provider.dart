@@ -144,7 +144,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
 
       // Remove the rejected entry from the queue.
       try {
-        await writeQueueRepo.markConfirmed(entry.id!);
+        await writeQueueRepo.deleteEntry(entry.id!);
       } catch (e) {
         debugPrint(
           '[SyncNotifier] failed to cleanup rejected entry '

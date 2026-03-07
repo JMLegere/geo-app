@@ -79,18 +79,15 @@ class WriteQueueRepository {
 
   // ── Update ───────────────────────────────────────────────────────────────
 
-  /// Mark an entry as confirmed (server accepted) and delete it.
-  Future<void> markConfirmed(int id) async {
+  /// Delete a processed entry from the queue (after server confirmation or
+  /// after processing a rejection rollback).
+  Future<void> deleteEntry(int id) async {
     await _db.deleteQueueEntry(id);
   }
 
   /// Mark an entry as rejected (server validation failed).
   Future<void> markRejected(int id, String error) async {
-    final rows = await _db.getQueueEntriesByStatus('pending');
-    final entry = rows.cast<LocalWriteQueueEntry?>().firstWhere(
-          (e) => e!.id == id,
-          orElse: () => null,
-        );
+    final entry = await _db.getQueueEntryById(id);
     if (entry == null) return;
 
     final updated = entry.copyWith(
@@ -103,12 +100,7 @@ class WriteQueueRepository {
 
   /// Increment the attempt count and record the error.
   Future<void> incrementAttempts(int id, String error) async {
-    // Read by fetching all pending and filtering — avoids adding a new DB method
-    final rows = await _db.getPendingQueueEntries();
-    final entry = rows.cast<LocalWriteQueueEntry?>().firstWhere(
-          (e) => e!.id == id,
-          orElse: () => null,
-        );
+    final entry = await _db.getQueueEntryById(id);
     if (entry == null) return;
 
     final updated = entry.copyWith(

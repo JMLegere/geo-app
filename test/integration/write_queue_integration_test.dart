@@ -1,7 +1,7 @@
 /// Integration test: write queue full round-trip.
 ///
 /// Exercises the full lifecycle of write queue entries through SQLite:
-///   enqueue → getPending → markConfirmed / markRejected / incrementAttempts → deleteStale
+///   enqueue → getPending → deleteEntry / markRejected / incrementAttempts → deleteStale
 ///
 /// Uses an in-memory Drift database (no file I/O) for isolation and speed.
 library;
@@ -130,9 +130,9 @@ void main() {
       expect(byId[itemId]!.operation, equals(WriteQueueOperation.upsert));
       expect(byId[cellId]!.operation, equals(WriteQueueOperation.upsert));
 
-      // ── Step 3: Mark first (item) confirmed — verify only 2 pending remain ─
+      // ── Step 3: Delete confirmed entry — verify only 2 pending remain ───
 
-      await repo.markConfirmed(itemId);
+      await repo.deleteEntry(itemId);
 
       final afterConfirm = await repo.getPending();
       expect(afterConfirm.length, equals(2));
