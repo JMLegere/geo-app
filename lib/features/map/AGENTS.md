@@ -1,6 +1,6 @@
 # Map Feature
 
-The centerpiece of the app. Beautiful, like Apple Maps or Fog of World. Renders a MapLibre GL base map with a fog-of-war overlay composited via Canvas. Player movement drives fog state transitions.
+Pure renderer for the map. All game logic lives in `GameCoordinator` (`lib/core/game/`). MapScreen reads coordinator state, feeds rubber-band position updates back, and renders fog/camera/markers.
 
 ---
 
@@ -126,21 +126,24 @@ Smooth 60fps interpolation decouples display position from raw GPS:
 
 ---
 
-## Coordination Flow
+## Coordination Flow (Post-GameCoordinator)
 
 ```
-GPS/Simulator (1 Hz)
-  → _onLocationUpdate() → _rubberBand.setTarget()
-  → _rubberBand._onTick() (60 fps)
-    → _onDisplayPositionUpdate(lat, lon)
-      ├─ _markerPosition.value = (lat, lon)  [ValueNotifier → PlayerMarkerLayer]
-      ├─ cameraController.onLocationUpdate()  [MapLibre moveCamera]
-      └─ _gameLogicFrame % 6 == 0?
-          └─ _processGameLogic(lat, lon)
-              ├─ fogResolver.onLocationUpdate()
-              ├─ locationProvider.notifier.updateLocation()
-              ├─ fogOverlayController.update()  [viewport sampling + GeoJSON build]
-              └─ _updateFogSources()  [MapLibre updateGeoJsonSource × 3 layers]
+GameCoordinator (core/game/)
+  ├─ Subscribes to GPS stream (1 Hz) via gameCoordinatorProvider
+  ├─ Processes discovery events, rolls affixes
+  ├─ Runs fog computation at ~10 Hz on playerPosition
+  └─ Pushes state to Riverpod notifiers via callbacks
+
+MapScreen (features/map/)
+  ├─ Reads gameCoordinatorProvider (already started)
+  ├─ Subscribes to onRawGpsUpdate stream
+  │    → feeds rubber-band controller
+  ├─ RubberBand interpolates (60 fps)
+  │    → updates marker position (ValueNotifier)
+  │    → moves camera (MapLibre moveCamera)
+  │    → calls gameCoordinator.updatePlayerPosition(lat, lon)
+  └─ Throttled fog GeoJSON rebuilds (~10 Hz via _renderFrame)
 ```
 
 ---
@@ -169,15 +172,22 @@ MapController.animateCamera(center: Position(lng, lat), nativeDuration: Duration
 
 ## map_screen.dart
 
-At feature root (NOT in `screens/`). ConsumerStatefulWidget.
+At feature root (NOT in `screens/`). ConsumerStatefulWidget. **Pure renderer** — no game logic.
 
 All services injected via Riverpod providers. The widget manages:
 - `_mapController` (MapLibre controller, set in `onMapCreated`)
-- `_locationService` (saved field for safe `dispose()` — `ref.read()` is unsafe after unmount)
-- Stream subscriptions for location updates and discovery events
+- `_gameCoordinator` (read from gameCoordinatorProvider, already started)
+- `_rawGpsSubscription` (subscribes to coordinator.onRawGpsUpdate for rubber-band)
 - `_showDebugHud` toggle state
+- Fog GeoJSON rendering (throttled ~10 Hz via `_renderFrame`)
 
-The location → fog → camera → overlay pipeline is orchestrated in `_onLocationUpdate()`.
+**Removed from map_screen (now in GameCoordinator):**
+- GPS subscription and error handling
+- Discovery event processing and affix rolling
+- Fog state computation (fogResolver.onLocationUpdate)
+- Location provider updates
+- Cell visited tracking
+- GPS permission checks
 
 ---
 

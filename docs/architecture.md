@@ -24,7 +24,7 @@
         │           │               │
 ┌───────▼───────────▼───────────────▼──────────────┐
 │  core/                                            │
-│  state/ → fog/ → cells/ → species/ → models/     │
+│  state/ → game/ → fog/ → cells/ → species/ → models/    │
 │           persistence/ → database/                │
 └──────────────────────────────────────────────────┘
         │
@@ -39,7 +39,7 @@
 | From | May Import | Must NOT Import |
 |------|-----------|-----------------|
 | `features/X` | `core/*`, `shared/*`, other features (if hub) | — |
-| `core/*` | `core/*` (sibling), `package:*` | `features/*`, `shared/*` |
+| `core/*` | `core/*` (sibling), `package:*` | `features/*`, `shared/*` (exception: `gameCoordinatorProvider` imports features/ as wiring layer) |
 | `shared/*` | `core/models/` (enums only) | `features/*`, `core/state/`, `core/persistence/` |
 | `main.dart` | Everything | — |
 
@@ -47,7 +47,7 @@
 
 | Feature | Type | Cross-Feature Imports |
 |---------|------|----------------------|
-| **map** | Hub | location, discovery, biome, seasonal (orchestrates everything) |
+| **map** | Leaf (renderer) | Reads gameCoordinatorProvider only (no longer orchestrates) |
 | **achievements** | Hub | discovery, restoration, player, collection, species |
 | **pack** | Composite | discovery, collection, species |
 | **navigation** | Hub | map, sanctuary, pack (TabShell orchestrates all tabs) |

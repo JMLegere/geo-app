@@ -16,6 +16,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `cellServiceProvider` | `Provider<CellService>` | CellCache(LazyVoronoiCellService) | none |
 | `fogResolverProvider` | `Provider<FogStateResolver>` | singleton | watches: cellServiceProvider |
 | `supabaseBootstrapProvider` | `Provider<SupabaseBootstrap>` | singleton | pre-initialized in main() |
+| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider. Wiring exception: imports features/ |
 
 ### Feature Providers
 
@@ -61,6 +62,11 @@ inventoryProvider ──→ upgradePromptProvider (watch)
 cellServiceProvider ──→ fogResolverProvider ──→ discoveryServiceProvider
                                            ──→ fogOverlayControllerProvider
 
+fogResolverProvider ──→ gameCoordinatorProvider ──→ locationProvider (callback)
+locationServiceProvider ──→ gameCoordinatorProvider    ──→ playerProvider (callback)
+discoveryServiceProvider ──→ gameCoordinatorProvider   ──→ inventoryProvider (callback)
+                                                       ──→ discoveryProvider (callback)
+
 speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ packProvider
                        ──→ sanctuaryProvider
@@ -103,3 +109,5 @@ playerProvider ──→ sanctuaryProvider (listen)
 - All NotifierProviders are global singletons — no `.family`, no `.autoDispose`.
 - State updates are synchronous. Guard async gaps with `if (!ref.mounted) return;`.
 - Core providers have zero feature dependencies. Core never imports features/.
+- GameCoordinator runs at ProviderScope level — never stops on tab switch. Map screen is a pure renderer.
+- gameCoordinatorProvider is the ONE justified exception to "core/ never imports features/".

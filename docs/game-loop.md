@@ -2,39 +2,39 @@
 
 No traditional frame-based game loop. Event-driven pipeline triggered by GPS updates.
 
-## Primary Pipeline: GPS → Render
+## Primary Pipeline: GPS → GameCoordinator → Render
 
 ```
 GPS/Simulator (1 Hz)
   │
   ▼
-_onLocationUpdate()
-  → _rubberBand.setTarget(lat, lon)    ← stores target only
+gameCoordinatorProvider
+  → maps LocationService.filteredLocationStream → core stream type
+  → GameCoordinator._onRawGpsUpdate()
+    ├─ stores rawGpsPosition + accuracy
+    ├─ broadcasts to onRawGpsUpdate stream (sync)
+    └─ checks GPS accuracy (real GPS only)
+  │
+  ▼
+MapScreen subscribes to onRawGpsUpdate
+  → _rubberBand.setTarget(lat, lon)
   │
   ▼
 RubberBandController._onTick()          ← Ticker, 60 fps
   → interpolates display position toward target
   → speed = max(minSpeedMps, multiplier × distance)
-  → snap when < 5m (prevents sub-pixel oscillation)
+  → snap when < 5m
   │
   ▼
 _onDisplayPositionUpdate(lat, lon)      ← 60 fps
-  ├─ markerPosition.value = (lat, lon)  ← ValueNotifier → PlayerMarkerLayer rebuild
-  ├─ cameraController.onLocationUpdate  ← MapLibre moveCamera (instant, not animate)
-  └─ gameLogicFrame % 6 == 0?          ← throttle to ~10 Hz
+  ├─ markerPosition.value = (lat, lon)  ← ValueNotifier → PlayerMarkerLayer
+  ├─ cameraController.onLocationUpdate  ← MapLibre moveCamera (instant)
+  └─ gameCoordinator.updatePlayerPosition(lat, lon)
       │
       ▼
-  _processGameLogic(lat, lon)           ← ~10 Hz
+  GameCoordinator._processGameLogic()   ← ~10 Hz (every 6th frame)
       ├─ fogResolver.onLocationUpdate()
-      │    ├─ resolve current cell → Observed
-      │    ├─ if new cell: add to visitedCellIds, emit FogStateChangedEvent
-      │    └─ update frontier (unvisited neighbors)
-      ├─ locationProvider.notifier.updateLocation()
-      ├─ fogOverlayController.update()
-      │    ├─ viewport sampling (25px grid + 20% padding)
-      │    ├─ cell discovery → persistent discoveredCellIds set
-      │    └─ build 3 GeoJSON strings (base, mid, border)
-      └─ updateFogSources()             ← MapLibre updateGeoJsonSource × 3
+      └─ onPlayerLocationUpdate callback → LocationNotifier
 ```
 
 ## Secondary Pipelines
@@ -46,9 +46,13 @@ fogResolver.onVisitedCellAdded (sync stream)
     → speciesService.getSpeciesForCell(cellId, habitats, continent)
     → deterministic roll (SHA-256 seeded by cellId)
     → emit DiscoveryEvent on onDiscovery stream
-  → map_screen subscribes
-    → discoveryProvider.notifier.showDiscovery()
-    → DiscoveryNotificationOverlay toast
+  → GameCoordinator._onDiscovery()
+    → StatsService.rollIntrinsicAffix()
+    → creates ItemInstance with UUID
+    → onItemDiscovered callback
+      → discoveryProvider.notifier.showDiscovery()
+      → inventoryProvider.notifier.addItem()
+      → DiscoveryNotificationOverlay toast
 ```
 
 ### Design Target: Discovery System
@@ -91,7 +95,7 @@ Cell visited → caretakingProvider.notifier.recordVisit()
 | GPS input | 1 Hz | Battery drain, accuracy filtering |
 | Rubber-band interpolation | 60 fps | Smooth marker movement |
 | Game logic (fog, state) | ~10 Hz | Throttled via frame % 6 |
-| GeoJSON source updates | ~10 Hz | Tied to game logic |
+| GeoJSON source updates | ~10 Hz | Tied to MapScreen _renderFrame (~10 Hz) |
 | MapLibre camera moves | 60 fps | Tied to rubber-band |
 | Achievement checks | On-demand | Pull-based, not periodic |
 | Sync to Supabase | Manual | User-triggered from sync screen |

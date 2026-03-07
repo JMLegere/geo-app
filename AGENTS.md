@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1156 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1278 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 33 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
@@ -42,7 +42,8 @@ lib/
 │   ├── config/                 # SupabaseConfig (env vars)
 │   ├── database/               # Drift ORM (3 tables)
 │   ├── fog/                    # FogStateResolver (computed visibility)
-│   ├── models/                 # 12 immutable value objects
+│   ├── game/                   # GameCoordinator (pure Dart game loop)
+│   ├── models/                 # 18 immutable value objects
 │   ├── persistence/            # Repository pattern (3 repos)
 │   ├── species/                # Loot table, species loader, continent resolver
 │   └── state/                  # Riverpod providers (fog, location, player, inventory, season)
@@ -51,9 +52,9 @@ lib/
 │   ├── auth/                   # 🔐 Mock auth (swappable to Supabase)
 │   ├── biome/                  # 🌿 ESA land cover → habitat mapping
 │   ├── caretaking/             # 🌱 Daily visit streaks
-│   ├── discovery/              # 🔬 Species encounter events
+│   ├── discovery/              # 🔬 Species encounter events (model in core/models/)
 │   ├── location/               # 📍 GPS, simulation, filtering (services only)
-│   ├── map/                    # 🗺️ Map rendering, fog overlay, camera (14 files)
+│   ├── map/                    # 🗺️ Map rendering, fog overlay, camera (pure renderer)
 │   ├── navigation/             # 🧭 4-tab shell (Map | Home | Town | Pack)
 │   ├── pack/                   # 🎒 Collection viewer with filters (renamed from journal)
 │   ├── restoration/            # 🏗️ Cell restoration progress
@@ -64,7 +65,7 @@ lib/
 │   └── constants.dart          # All game-balance constants (kDetectionRadiusMeters, etc.)
 ```
 
-**See also:** `lib/core/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
+**See also:** `lib/core/AGENTS.md`, `lib/core/game/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
@@ -105,7 +106,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 ## Product Architecture (Design Jam Decisions — 2026-03-06, updated 2026-03-06 Jam 2)
 
-These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: Item expansion (Phase 1b), GameCoordinator (Phase 2), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
+These are the target architecture decisions from two design jams. They describe WHERE the product is going. **Phase 1 (item model) is COMPLETE** — `ItemDefinition`, `ItemInstance`, `Affix`, and `inventoryProvider` are now live. Remaining work: Lazy AI enrichment (Phase 1c), GameCoordinator wiring improvements (Phase 2b), server-authoritative persistence (Phase 3), daily seed (Phase 4), breeding/bundles (Phase 5+).
 
 **This is the canonical mental model. If something contradicts this section, ALWAYS flag it to the user for resolution. Never silently update — the user decides what's true.**
 
@@ -178,6 +179,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **Does NOT own:** map rendering, camera, widget state, toast UI, RubberBand interpolation.
 - **Emits:** `Stream<GameState>` — Riverpod notifiers project from this. Discovery events → UI subscribes for toasts.
 - **Target directory:** `lib/core/game/`
+- **IMPLEMENTED** — `GameCoordinator` class at `lib/core/game/game_coordinator.dart` with dual-position model and `gameCoordinatorProvider` at `lib/core/state/game_coordinator_provider.dart`.
 
 ### Wall 3: Server-Authoritative with Offline Resilience
 
@@ -194,9 +196,9 @@ These are the target architecture decisions from two design jams. They describe 
 | Phase | Status | Change | Enables |
 |-------|--------|--------|---------|
 | 1 | **COMPLETE** | Item model (sealed classes, instances, affixes) | Everything downstream |
-| 1b | Not started | Item expansion (7 categories, taxonomy, food, orbs, climate) | Economy, sanctuary loop |
+| 1b | **COMPLETE** | Item expansion (7 categories, taxonomy, food, orbs, climate) | Economy, sanctuary loop |
 | 1c | Not started | Lazy AI enrichment pipeline (Supabase Edge Functions) | Species identity, art, stats |
-| 2 | Not started | GameCoordinator (extract from map_screen) | Tab-independent game loop |
+| 2 | **COMPLETE** | GameCoordinator (extract from map_screen) | Tab-independent game loop |
 | 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
 | 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
 | 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
@@ -262,6 +264,8 @@ class AchievementService {
 ```
 
 **Exception:** `SyncService` reads `authProvider` because it needs auth state for cloud sync.
+
+**Exception:** `gameCoordinatorProvider` imports from features/ because it is the central orchestrator wiring layer that bridges core GameCoordinator with feature-layer services (LocationService, DiscoveryService).
 
 ---
 
@@ -482,10 +486,11 @@ docs/
 Per-directory files providing module-specific patterns, gotchas, and anti-patterns. These are **not** duplicates of `docs/` — they cover local concerns only.
 
 ```
-AGENTS.md files (11 total):
+AGENTS.md files (12 total):
 ├── ./AGENTS.md                              # Root — quick ref, design decisions, forbidden patterns
 ├── lib/core/AGENTS.md                       # Domain models, providers, persistence internals
 ├── lib/core/cells/AGENTS.md                 # Voronoi/H3 cell system, CellCache
+├── lib/core/game/AGENTS.md                  # GameCoordinator, dual-position model, game tick
 ├── lib/core/species/AGENTS.md               # LootTable, IUCN weights, ContinentResolver
 ├── lib/features/map/AGENTS.md               # Fog overlay, camera, GeoJSON layers
 ├── lib/features/navigation/AGENTS.md        # TabShell, tab index provider, web MapVisibility
