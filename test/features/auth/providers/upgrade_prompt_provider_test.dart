@@ -135,6 +135,7 @@ void main() {
         totalCollected: 5,
         isAnonymous: true,
         supabaseInitialized: true,
+        sessionTimeElapsed: true,
       );
       expect(state.shouldShow, isTrue);
     });
@@ -195,7 +196,7 @@ void main() {
       expect(state.totalCollected, 4);
     });
 
-    test('shouldShow fires at exactly threshold (5 species)', () {
+    test('shouldShow is false before session delay elapses', () {
       final container = _makeContainer(
         collectionCount: 5,
         isAnonymous: true,
@@ -203,20 +204,12 @@ void main() {
       );
       addTearDown(container.dispose);
 
+      // Timer hasn't fired yet — sessionTimeElapsed is false.
       final state = container.read(upgradePromptProvider);
-      expect(state.shouldShow, isTrue);
+      expect(state.sessionTimeElapsed, isFalse);
+      expect(state.shouldShow, isFalse);
+      // Banner doesn't depend on sessionTimeElapsed.
       expect(state.showBanner, isTrue);
-    });
-
-    test('shouldShow fires above threshold (10 species)', () {
-      final container = _makeContainer(
-        collectionCount: 10,
-        isAnonymous: true,
-        supabaseInitialized: true,
-      );
-      addTearDown(container.dispose);
-
-      expect(container.read(upgradePromptProvider).shouldShow, isTrue);
     });
 
     // ── Condition gates ────────────────────────────────────────────────────
@@ -261,28 +254,29 @@ void main() {
 
     // ── Boundary test ──────────────────────────────────────────────────────
 
-    test('4 species = no prompt, 5 species = prompt (boundary)', () {
-      final container4 = _makeContainer(
-        collectionCount: 4,
+    test('4 species = no prompt, 5 species = prompt (boundary via state)', () {
+      // Test the boundary via pure state (sessionTimeElapsed: true simulates
+      // post-delay). Notifier-level tests verify timer sets this flag.
+      const state4 = UpgradePromptState(
+        totalCollected: 4,
         isAnonymous: true,
         supabaseInitialized: true,
+        sessionTimeElapsed: true,
       );
-      addTearDown(container4.dispose);
-
-      final container5 = _makeContainer(
-        collectionCount: 5,
+      const state5 = UpgradePromptState(
+        totalCollected: 5,
         isAnonymous: true,
         supabaseInitialized: true,
+        sessionTimeElapsed: true,
       );
-      addTearDown(container5.dispose);
 
-      expect(container4.read(upgradePromptProvider).shouldShow, isFalse);
-      expect(container5.read(upgradePromptProvider).shouldShow, isTrue);
+      expect(state4.shouldShow, isFalse);
+      expect(state5.shouldShow, isTrue);
     });
 
     // ── markShown ──────────────────────────────────────────────────────────
 
-    test('markShown() sets shouldShow to false while showBanner stays true',
+    test('markShown() sets hasBeenShown to true while showBanner stays true',
         () {
       final container = _makeContainer(
         collectionCount: 5,
@@ -291,16 +285,13 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Verify prompt is initially eligible.
-      expect(container.read(upgradePromptProvider).shouldShow, isTrue);
-
       // Mark as shown.
       container.read(upgradePromptProvider.notifier).markShown();
 
       final state = container.read(upgradePromptProvider);
+      expect(state.hasBeenShown, isTrue);
       expect(state.shouldShow, isFalse);
       expect(state.showBanner, isTrue); // banner persists
-      expect(state.hasBeenShown, isTrue);
     });
 
     test('markShown() is idempotent — calling twice has same result', () {

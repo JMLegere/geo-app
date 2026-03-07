@@ -15,7 +15,8 @@ class LocalCellProgressTable extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
   TextColumn get cellId => text()();
-  TextColumn get fogState => text()(); // Stored as string: 'undetected', 'unexplored', etc.
+  TextColumn get fogState =>
+      text()(); // Stored as string: 'undetected', 'unexplored', etc.
   RealColumn get distanceWalked => real().withDefault(const Constant(0.0))();
   IntColumn get visitCount => integer().withDefault(const Constant(0))();
   RealColumn get restorationLevel => real().withDefault(const Constant(0.0))();
@@ -25,11 +26,14 @@ class LocalCellProgressTable extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  
+
   @override
   List<Set<Column>> get uniqueKeys => [
-    {userId, cellId}, // Unique constraint: one progress record per user per cell
-  ];
+        {
+          userId,
+          cellId
+        }, // Unique constraint: one progress record per user per cell
+      ];
 }
 
 /// Local cache of item instances (unique discovered items).
@@ -67,6 +71,9 @@ class LocalItemInstanceTable extends Table {
 
   /// Lifecycle status: active, donated, placed, released, traded.
   TextColumn get status => text().withDefault(const Constant('active'))();
+
+  /// JSON-encoded list of badge strings (e.g. '["first_discovery","beta"]').
+  TextColumn get badgesJson => text().withDefault(const Constant('[]'))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -140,7 +147,8 @@ class LocalPlayerProfileTable extends Table {
   IntColumn get currentStreak => integer().withDefault(const Constant(0))();
   IntColumn get longestStreak => integer().withDefault(const Constant(0))();
   RealColumn get totalDistanceKm => real().withDefault(const Constant(0.0))();
-  TextColumn get currentSeason => text().withDefault(const Constant('summer'))();
+  TextColumn get currentSeason =>
+      text().withDefault(const Constant('summer'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -164,7 +172,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -182,6 +190,10 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 4) {
           await m.createTable(localWriteQueueTable);
+        }
+        if (from < 5) {
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.badgesJson);
         }
       },
     );
@@ -201,7 +213,8 @@ class AppDatabase extends _$AppDatabase {
   /// Get a specific cell progress record
   Future<LocalCellProgress?> getCellProgress(String userId, String cellId) {
     return (select(localCellProgressTable)
-          ..where((tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
+          ..where(
+              (tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
         .getSingleOrNull();
   }
 
@@ -216,7 +229,8 @@ class AppDatabase extends _$AppDatabase {
   /// Delete cell progress
   Future<int> deleteCellProgress(String userId, String cellId) {
     return (delete(localCellProgressTable)
-          ..where((tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
+          ..where(
+              (tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
         .go();
   }
 
@@ -238,15 +252,13 @@ class AppDatabase extends _$AppDatabase {
   ) {
     return (select(localItemInstanceTable)
           ..where((tbl) =>
-              tbl.userId.equals(userId) &
-              tbl.acquiredInCellId.equals(cellId)))
+              tbl.userId.equals(userId) & tbl.acquiredInCellId.equals(cellId)))
         .get();
   }
 
   /// Get a single item instance by ID.
   Future<LocalItemInstance?> getItemInstance(String id) {
-    return (select(localItemInstanceTable)
-          ..where((tbl) => tbl.id.equals(id)))
+    return (select(localItemInstanceTable)..where((tbl) => tbl.id.equals(id)))
         .getSingleOrNull();
   }
 
@@ -262,8 +274,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Delete an item instance by ID.
   Future<int> deleteItemInstance(String id) {
-    return (delete(localItemInstanceTable)
-          ..where((tbl) => tbl.id.equals(id)))
+    return (delete(localItemInstanceTable)..where((tbl) => tbl.id.equals(id)))
         .go();
   }
 
@@ -374,15 +385,13 @@ class AppDatabase extends _$AppDatabase {
 
   /// Delete a queue entry by ID (after server confirmation).
   Future<int> deleteQueueEntry(int id) {
-    return (delete(localWriteQueueTable)
-          ..where((tbl) => tbl.id.equals(id)))
+    return (delete(localWriteQueueTable)..where((tbl) => tbl.id.equals(id)))
         .go();
   }
 
   /// Get a single queue entry by ID.
   Future<LocalWriteQueueEntry?> getQueueEntryById(int id) {
-    return (select(localWriteQueueTable)
-          ..where((tbl) => tbl.id.equals(id)))
+    return (select(localWriteQueueTable)..where((tbl) => tbl.id.equals(id)))
         .getSingleOrNull();
   }
 
@@ -398,8 +407,7 @@ class AppDatabase extends _$AppDatabase {
   /// Delete stale entries older than [cutoff].
   Future<int> deleteStaleQueueEntries(DateTime cutoff) {
     return (delete(localWriteQueueTable)
-          ..where(
-              (tbl) => tbl.createdAt.isSmallerThanValue(cutoff)))
+          ..where((tbl) => tbl.createdAt.isSmallerThanValue(cutoff)))
         .go();
   }
 

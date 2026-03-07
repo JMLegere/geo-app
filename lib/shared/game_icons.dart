@@ -1,5 +1,6 @@
 import 'package:fog_of_world/core/models/animal_class.dart';
 import 'package:fog_of_world/core/models/animal_type.dart';
+import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/climate.dart';
 import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/food_type.dart';
@@ -94,6 +95,14 @@ abstract final class GameIcons {
         AnimalClass.turtle => '🐢',
       };
 
+  /// Best emoji for a fauna item: class → type → habitat → unknown.
+  static String fauna(FaunaDefinition def) {
+    if (def.animalClass != null) return animalClass(def.animalClass!);
+    if (def.animalType != null) return animalType(def.animalType!);
+    if (def.habitats.isNotEmpty) return habitat(def.habitats.first);
+    return unknown;
+  }
+
   // ── Habitats (7) ─────────────────────────────────────────────────────────
 
   static String habitat(Habitat h) => switch (h) {
@@ -174,6 +183,7 @@ abstract final class GameIcons {
   static const String placed = '🏡';
   static const String released = '🕊️';
   static const String traded = '🤝';
+  static const String steps = '🚶';
   static const String unknown = '❓';
   static const String empty = '◻️';
 }

@@ -17,6 +17,7 @@ import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
 import 'package:fog_of_world/core/persistence/profile_repository.dart';
 import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
 import 'package:fog_of_world/core/species/stats_service.dart';
+import 'package:fog_of_world/shared/constants.dart';
 import 'package:fog_of_world/core/state/cell_progress_repository_provider.dart';
 import 'package:fog_of_world/core/state/daily_seed_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
@@ -99,15 +100,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onItemDiscovered = (event, instance) {
+    // Check if this is the first instance of this species in the player's
+    // inventory. If so, award the first-discovery badge (shiny foil).
+    final inventory = ref.read(inventoryProvider);
+    final isFirst = !inventory.hasDefinition(instance.definitionId);
+    final badgedInstance = isFirst
+        ? instance.copyWith(badges: {...instance.badges, kBadgeFirstDiscovery})
+        : instance;
+
     ref.read(discoveryProvider.notifier).showDiscovery(event);
-    ref.read(inventoryProvider.notifier).addItem(instance);
-    discoveryService.markCollected(instance.definitionId);
+    ref.read(inventoryProvider.notifier).addItem(badgedInstance);
+    discoveryService.markCollected(badgedInstance.definitionId);
 
     // Persist to SQLite + enqueue for Supabase sync.
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       _persistItemDiscovery(
-        instance: instance,
+        instance: badgedInstance,
         userId: userId,
         itemRepo: itemRepo,
         writeQueueRepo: writeQueueRepo,

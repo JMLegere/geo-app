@@ -6,6 +6,7 @@ import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/models/user_profile.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
+import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
@@ -33,6 +34,16 @@ final _upgradedUser = UserProfile(
 class _AnonAuthNotifier extends AuthNotifier {
   @override
   AuthState build() => AuthState.authenticated(_anonymousUser);
+}
+
+/// Inert upgrade-prompt notifier — returns fixed state, never starts a Timer.
+class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
+  @override
+  UpgradePromptState build() => const UpgradePromptState(
+        totalCollected: 0,
+        isAnonymous: true,
+        supabaseInitialized: false,
+      );
 }
 
 class _UpgradedAuthNotifier extends AuthNotifier {
@@ -86,7 +97,8 @@ void main() {
       expect(find.byIcon(Icons.person), findsOneWidget);
     });
 
-    testWidgets('shows first letter of display name in avatar for upgraded user',
+    testWidgets(
+        'shows first letter of display name in avatar for upgraded user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
@@ -124,8 +136,7 @@ void main() {
 
     // ── Sign-out dialogs ─────────────────────────────────────────────────────
 
-    testWidgets(
-        'sign-out shows destructive warning dialog for anonymous user',
+    testWidgets('sign-out shows destructive warning dialog for anonymous user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
@@ -144,8 +155,7 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
     });
 
-    testWidgets(
-        'sign-out shows simple confirmation dialog for upgraded user',
+    testWidgets('sign-out shows simple confirmation dialog for upgraded user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
@@ -213,6 +223,7 @@ void main() {
         overrides: [
           authProvider.overrideWith(_AnonAuthNotifier.new),
           speciesServiceProvider.overrideWith((_) => SpeciesService(const [])),
+          upgradePromptProvider.overrideWith(_StubUpgradePromptNotifier.new),
         ],
       );
       addTearDown(container.dispose);
@@ -234,6 +245,7 @@ void main() {
         overrides: [
           authProvider.overrideWith(_AnonAuthNotifier.new),
           speciesServiceProvider.overrideWith((_) => SpeciesService(const [])),
+          upgradePromptProvider.overrideWith(_StubUpgradePromptNotifier.new),
         ],
       );
       addTearDown(container.dispose);

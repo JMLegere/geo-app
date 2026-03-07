@@ -6,6 +6,7 @@ import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/game_icons.dart';
 import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
+import 'package:fog_of_world/shared/widgets/prismatic_border.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 
 /// Compact Pokémon-PC-box-style grid cell for a single [ItemInstance].
@@ -13,6 +14,10 @@ import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 /// Renders a habitat gradient background, the creature emoji (or habitat/
 /// fallback), a tiny [RarityBadge] in the top-right corner, and the
 /// display name truncated to one line at the bottom.
+///
+/// First-discovery items ([ItemInstance.isFirstDiscovery]) receive an animated
+/// [PrismaticBorder] (rotating rainbow stroke) and a [FirstDiscoveryBadge]
+/// star chip in the top-left corner.
 ///
 /// Pass [onTap] to handle selection (opens [ItemDetailSheet]).
 /// [definition] may be null if the species isn't resolved yet — the slot
@@ -47,25 +52,35 @@ class ItemSlotWidget extends StatelessWidget {
         ? HabitatGradient.tile(primaryHabitat)
         : BoxDecoration(color: cs.surfaceContainerHigh);
 
-    final borderColor = (def?.rarity != null)
-        ? EarthNovaTheme.rarityColor(def!.rarity!)
-            .withValues(alpha: Opacities.borderSubtle)
-        : cs.outline.withValues(alpha: Opacities.borderSubtle);
+    // First-discovery items swap the static rarity border for PrismaticBorder,
+    // so we omit the Border from their BoxDecoration entirely.
+    final BoxDecoration effectiveDecoration;
+    if (item.isFirstDiscovery) {
+      effectiveDecoration = baseDecoration.copyWith(
+        borderRadius: Radii.borderLg,
+        boxShadow: Shadows.soft,
+        // No border — PrismaticBorder paints the animated edge.
+      );
+    } else {
+      final borderColor = (def?.rarity != null)
+          ? EarthNovaTheme.rarityColor(def!.rarity!)
+              .withValues(alpha: Opacities.borderSubtle)
+          : cs.outline.withValues(alpha: Opacities.borderSubtle);
+      effectiveDecoration = baseDecoration.copyWith(
+        borderRadius: Radii.borderLg,
+        border: Border.all(
+          color: borderColor,
+          width: def?.rarity != null ? 1.5 : 1.0,
+        ),
+        boxShadow: Shadows.soft,
+      );
+    }
 
-    final decoration = baseDecoration.copyWith(
-      borderRadius: Radii.borderLg,
-      border: Border.all(
-        color: borderColor,
-        width: def?.rarity != null ? 1.5 : 1.0,
-      ),
-      boxShadow: Shadows.soft,
-    );
-
-    return GestureDetector(
+    final slot = GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        decoration: decoration,
+        decoration: effectiveDecoration,
         padding: const EdgeInsets.fromLTRB(
           Spacing.xs,
           Spacing.xs,
@@ -75,7 +90,7 @@ class ItemSlotWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Main area: emoji + rarity badge ─────────────────────────
+            // ── Main area: emoji + badges ────────────────────────────────
             Expanded(
               child: Stack(
                 clipBehavior: Clip.none,
@@ -97,6 +112,13 @@ class ItemSlotWidget extends StatelessWidget {
                         status: def!.rarity!,
                         size: RarityBadgeSize.small,
                       ),
+                    ),
+                  // ★ First discovery badge top-left (opposite rarity badge)
+                  if (item.isFirstDiscovery)
+                    const Positioned(
+                      top: 0,
+                      left: 0,
+                      child: FirstDiscoveryBadge(),
                     ),
                 ],
               ),
@@ -121,15 +143,23 @@ class ItemSlotWidget extends StatelessWidget {
         ),
       ),
     );
+
+    // Wrap first-discovery slots in the animated prismatic border.
+    if (item.isFirstDiscovery) {
+      return PrismaticBorder(
+        borderRadius: Radii.lg,
+        borderWidth: 2.5,
+        child: slot,
+      );
+    }
+    return slot;
   }
 
   /// Returns the best emoji to display for this item.
   ///
-  /// Priority: animalType emoji → primary habitat emoji → unknown.
+  /// Priority: animalClass emoji → animalType emoji → habitat emoji → unknown.
   static String _resolveEmoji(FaunaDefinition? def) {
     if (def == null) return GameIcons.unknown;
-    if (def.animalType != null) return GameIcons.animalType(def.animalType!);
-    if (def.habitats.isNotEmpty) return GameIcons.habitat(def.habitats.first);
-    return GameIcons.unknown;
+    return GameIcons.fauna(def);
   }
 }

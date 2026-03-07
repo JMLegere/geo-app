@@ -26,6 +26,15 @@ class ItemInstance {
   /// Rarity gates prefix/suffix pool depth: LC=0-1, NT=1-2, VU=2-3, EN=3-4, CR=4-5, EX=5+.
   final List<Affix> affixes;
 
+  /// Instance-level badges / flags assigned at creation time.
+  ///
+  /// Badges are simple string identifiers (e.g. 'first_discovery', 'beta',
+  /// 'pioneer', 'art_winner'). They grant visual treatment (borders, icons)
+  /// but carry no stat values — that's what [affixes] are for.
+  ///
+  /// Stored as a JSON array in the database.
+  final Set<String> badges;
+
   /// Null for wild-caught. Set for bred offspring.
   final String? parentAId;
 
@@ -48,6 +57,7 @@ class ItemInstance {
     required this.id,
     required this.definitionId,
     this.affixes = const [],
+    this.badges = const {},
     this.parentAId,
     this.parentBId,
     required this.acquiredAt,
@@ -62,6 +72,9 @@ class ItemInstance {
   /// Whether this item was bred from two parents.
   bool get isBred => parentAId != null && parentBId != null;
 
+  /// Whether this instance has the first-discovery badge (shiny foil).
+  bool get isFirstDiscovery => badges.contains('first_discovery');
+
   // TODO(phase5): copyWith cannot null out optional fields (parentAId,
   // parentBId, acquiredInCellId, dailySeed). When breeding needs to clear
   // parentage, adopt a sentinel pattern (e.g. Value<T> wrappers or
@@ -70,6 +83,7 @@ class ItemInstance {
     String? id,
     String? definitionId,
     List<Affix>? affixes,
+    Set<String>? badges,
     String? parentAId,
     String? parentBId,
     DateTime? acquiredAt,
@@ -81,6 +95,7 @@ class ItemInstance {
       id: id ?? this.id,
       definitionId: definitionId ?? this.definitionId,
       affixes: affixes ?? this.affixes,
+      badges: badges ?? this.badges,
       parentAId: parentAId ?? this.parentAId,
       parentBId: parentBId ?? this.parentBId,
       acquiredAt: acquiredAt ?? this.acquiredAt,
@@ -96,9 +111,16 @@ class ItemInstance {
   /// Deserialize affixes list from JSON string (database storage).
   static List<Affix> affixesFromJson(String json) {
     final list = jsonDecode(json) as List;
-    return list
-        .map((a) => Affix.fromJson(a as Map<String, dynamic>))
-        .toList();
+    return list.map((a) => Affix.fromJson(a as Map<String, dynamic>)).toList();
+  }
+
+  /// Serialize badges set to JSON string for database storage.
+  String badgesToJson() => jsonEncode(badges.toList());
+
+  /// Deserialize badges set from JSON string (database storage).
+  static Set<String> badgesFromJson(String json) {
+    final list = jsonDecode(json) as List;
+    return list.cast<String>().toSet();
   }
 
   @override
@@ -111,8 +133,7 @@ class ItemInstance {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() =>
-      'ItemInstance(id: $id, definitionId: $definitionId, '
+  String toString() => 'ItemInstance(id: $id, definitionId: $definitionId, '
       'affixes: ${affixes.length}, status: $status)';
 }
 

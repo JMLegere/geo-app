@@ -38,8 +38,7 @@ abstract final class Spacing {
       EdgeInsets.symmetric(horizontal: lg, vertical: md);
 
   /// Screen-level horizontal padding.
-  static const EdgeInsets paddingScreenH =
-      EdgeInsets.symmetric(horizontal: lg);
+  static const EdgeInsets paddingScreenH = EdgeInsets.symmetric(horizontal: lg);
 
   /// Notification/toast padding.
   static const EdgeInsets paddingToast =
@@ -164,6 +163,12 @@ abstract final class Durations {
 
   /// Player marker pulse cycle.
   static const Duration markerPulse = Duration(seconds: 2);
+
+  /// Full cycle for the prismatic/rainbow border on first-discovery item cards.
+  ///
+  /// One complete revolution of the HSV spectrum around the card edge.
+  /// Slow and hypnotic — 3.5 s keeps it magical without being distracting.
+  static const Duration prismaticCycle = Duration(milliseconds: 3500);
 }
 
 /// Standard animation curves.
