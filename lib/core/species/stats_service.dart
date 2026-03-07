@@ -13,18 +13,18 @@ import 'package:fog_of_world/shared/constants.dart';
 /// language.
 ///
 /// ## Base Stats
-/// SHA-256 of [scientificName] → 2-byte pairs → `% 100 + 1` → deterministic
-/// 1–100 per stat (speed, brawn, wit). Using 16-bit values reduces modulo
-/// bias to <0.2% (vs 50% with single bytes).
+/// SHA-256 of [scientificName] → 2-byte pairs → proportional scaling to
+/// sum exactly [kStatBaseSum] (90). Each stat ≥ [kStatMin] (1).
 ///
 /// ## Rolled Stats (per-instance)
-/// SHA-256 of `"$scientificName:$instanceSeed"` → bytes mapped to multipliers
-/// in \[0.70, 1.30\] → `clamp(base × multiplier, 1, 100)`.
+/// SHA-256 of `"$scientificName:$instanceSeed"` → bytes mapped to delta
+/// in \[-kStatVariance, +kStatVariance\] (±30) → `clamp(base + delta, 1, 100)`.
+/// The ±30 absolute variance is what allows instance stats to reach 100.
 ///
 /// ## Variance at extremes
-/// Species with base stats near 1 or 100 have compressed instance variance
-/// due to clamping. This is intentional — base stats reflect the species'
-/// nature (e.g. a tortoise's speed stays low regardless of the individual).
+/// Species with base stats near 1 or near [kStatBaseSum] have compressed
+/// instance variance due to clamping. This is intentional — base stats
+/// reflect the species' nature (e.g. a tortoise's speed stays low).
 ///
 /// ## Intrinsic Affix
 /// Stored as `Affix(id: 'base_stats', type: AffixType.intrinsic, values: {...})`.
@@ -33,20 +33,62 @@ import 'package:fog_of_world/shared/constants.dart';
 class StatsService {
   const StatsService();
 
-  /// Derive deterministic base stats (1–100) from a species' scientific name.
+  /// Derive deterministic base stats from a species' scientific name.
   ///
-  /// Same scientific name always produces the same stats. No randomness.
-  /// Uses 2-byte pairs from SHA-256 for near-uniform distribution.
+  /// The three stats (speed, brawn, wit) always sum to exactly [kStatBaseSum]
+  /// (90), with each stat ≥ [kStatMin] (1). Same scientific name always
+  /// produces the same stats. No randomness.
+  ///
+  /// Algorithm: 3 raw 16-bit hash values → reserve 1 per stat → distribute
+  /// remaining budget proportionally → round via largest-remainder method
+  /// to guarantee exact sum.
   ({int speed, int brawn, int wit}) deriveBaseStats(String scientificName) {
     final hash = sha256.convert(utf8.encode(scientificName)).bytes;
+
+    // Raw 16-bit values (1–65536 range, never zero).
+    final rawSpeed = _raw16(hash[0], hash[1]);
+    final rawBrawn = _raw16(hash[2], hash[3]);
+    final rawWit = _raw16(hash[4], hash[5]);
+    final rawSum = rawSpeed + rawBrawn + rawWit;
+
+    // Reserve kStatMin (1) per stat, distribute the rest proportionally.
+    const reserve = kStatMin * 3; // 3
+    const budget = kStatBaseSum - reserve; // 87
+
+    // Exact fractional shares.
+    final shareSpeed = rawSpeed / rawSum * budget;
+    final shareBrawn = rawBrawn / rawSum * budget;
+    final shareWit = rawWit / rawSum * budget;
+
+    // Floor each, then distribute remainder to largest fractional parts.
+    var floorSpeed = shareSpeed.floor();
+    var floorBrawn = shareBrawn.floor();
+    var floorWit = shareWit.floor();
+    var remainder = budget - (floorSpeed + floorBrawn + floorWit);
+
+    // Sort by descending fractional part to allocate remainder fairly.
+    final fractions = [
+      (0, shareSpeed - floorSpeed),
+      (1, shareBrawn - floorBrawn),
+      (2, shareWit - floorWit),
+    ]..sort((a, b) => b.$2.compareTo(a.$2));
+
+    final floors = [floorSpeed, floorBrawn, floorWit];
+    for (final (index, _) in fractions) {
+      if (remainder <= 0) break;
+      floors[index]++;
+      remainder--;
+    }
+
     return (
-      speed: _stat16(hash[0], hash[1]),
-      brawn: _stat16(hash[2], hash[3]),
-      wit: _stat16(hash[4], hash[5]),
+      speed: floors[0] + kStatMin,
+      brawn: floors[1] + kStatMin,
+      wit: floors[2] + kStatMin,
     );
   }
 
-  /// Roll per-instance stats with ±30% variance from base, clamped to 1–100.
+  /// Roll per-instance stats with ±[kStatVariance] (30) absolute variance
+  /// from base, clamped to [kStatMin]–[kStatMax] (1–100).
   ///
   /// [scientificName] determines the base stats.
   /// [instanceSeed] provides per-instance randomness (e.g. UUID or cell+timestamp).
@@ -60,8 +102,6 @@ class StatsService {
   }) {
     final base = deriveBaseStats(scientificName);
 
-    // Portable variance: SHA-256 bytes → multiplier in [0.70, 1.30].
-    // byte / 255.0 → [0.0, 1.0] → * 0.60 + 0.70 → [0.70, 1.30]
     final seedHash =
         sha256.convert(utf8.encode('$scientificName:$instanceSeed')).bytes;
 
@@ -76,19 +116,16 @@ class StatsService {
     );
   }
 
-  /// Convert 2 hash bytes to a stat value in [kStatMin, kStatMax].
-  ///
-  /// 16-bit value mod 100 has <0.2% bias (65536 % 100 = 36).
-  static int _stat16(int byte0, int byte1) =>
-      ((byte0 << 8) | byte1) % kStatRange + kStatMin;
+  /// Convert 2 hash bytes to a raw positive value (1–65536, never zero).
+  static int _raw16(int byte0, int byte1) => ((byte0 << 8) | byte1) + 1;
 
-  /// Apply ±[kStatVariance] variance to [baseStat] using a single hash byte.
+  /// Apply ±[kStatVariance] absolute variance to [baseStat] using a hash byte.
   ///
-  /// Maps byte ∈ [0, 255] to multiplier ∈ [0.70, 1.30], then clamps result
-  /// to [kStatMin, kStatMax].
+  /// Maps byte ∈ [0, 255] to delta ∈ [-kStatVariance, +kStatVariance],
+  /// then clamps result to [kStatMin, kStatMax].
   static int _rollStat(int baseStat, int varianceByte) {
-    final multiplier =
-        (1.0 - kStatVariance) + (varianceByte / 255.0) * 2.0 * kStatVariance;
-    return (baseStat * multiplier).round().clamp(kStatMin, kStatMax);
+    final delta =
+        (varianceByte / 255.0 * 2.0 * kStatVariance - kStatVariance).round();
+    return (baseStat + delta).clamp(kStatMin, kStatMax);
   }
 }
