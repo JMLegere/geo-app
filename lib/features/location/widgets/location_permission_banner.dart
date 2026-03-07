@@ -52,9 +52,9 @@ class _LocationPermissionBannerState
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -73,7 +73,7 @@ class _LocationPermissionBannerState
                 padding: const EdgeInsets.only(top: 1),
                 child: Icon(
                   Icons.location_off_rounded,
-                  color: const Color(0xFFEF4444),
+                  color: Theme.of(context).colorScheme.error,
                   size: 18,
                 ),
               ),
@@ -87,19 +87,19 @@ class _LocationPermissionBannerState
                   children: [
                     Text(
                       config.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1F2937),
+                        color: Theme.of(context).colorScheme.onSurface,
                         height: 1.3,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       config.subtitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF6B7280),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         height: 1.4,
                       ),
                     ),
@@ -108,10 +108,10 @@ class _LocationPermissionBannerState
                       onTap: config.onAction,
                       child: Text(
                         config.actionLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF3B82F6),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -132,7 +132,7 @@ class _LocationPermissionBannerState
                   child: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: const Color(0xFF9CA3AF),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),

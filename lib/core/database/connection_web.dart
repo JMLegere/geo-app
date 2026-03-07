@@ -1,11 +1,22 @@
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
+import 'package:drift/wasm.dart';
+import 'package:sqlite3/wasm.dart';
 
-/// Creates an in-memory SQLite database for web.
+/// Creates an in-memory SQLite database for web via WebAssembly.
 ///
-/// Data does not persist across page refreshes — suitable for development
-/// and testing. For production web persistence, replace with `WasmDatabase`
-/// from `package:drift/wasm.dart` and serve `sqlite3.wasm` + `drift_worker.js`.
+/// Loads sqlite3.wasm from the web/ directory, registers an in-memory
+/// virtual filesystem, and returns a WasmDatabase. Data does not persist
+/// across page refreshes — Supabase is the source of truth.
 QueryExecutor createDatabaseConnection() {
-  return NativeDatabase.memory();
+  return DatabaseConnection.delayed(Future(() async {
+    final sqlite3 = await WasmSqlite3.loadFromUrl(
+      Uri.parse('sqlite3.wasm'),
+    );
+    sqlite3.registerVirtualFileSystem(
+      InMemoryFileSystem(),
+      makeDefault: true,
+    );
+    final db = WasmDatabase.inMemory(sqlite3);
+    return DatabaseConnection(db);
+  }));
 }

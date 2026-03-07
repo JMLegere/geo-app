@@ -38,10 +38,10 @@ class StreakBadge extends StatelessWidget {
           SizedBox(width: Spacing.xs),
           Text(
             'Day $streak',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF7C3A00),
+              color: Theme.of(context).colorScheme.onSurface,
               letterSpacing: 0.2,
             ),
           ),
