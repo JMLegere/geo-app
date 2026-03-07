@@ -14,7 +14,7 @@ import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
+import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 

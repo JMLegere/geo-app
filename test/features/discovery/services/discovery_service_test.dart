@@ -8,7 +8,7 @@ import 'package:fog_of_world/core/models/iucn_status.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
-import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
+import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
 import 'package:fog_of_world/features/seasonal/services/season_service.dart';
 

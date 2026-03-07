@@ -4,29 +4,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/species/stats_service.dart';
+import 'package:fog_of_world/core/game/game_coordinator.dart';
 import 'package:fog_of_world/core/state/cell_service_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
+import 'package:fog_of_world/core/state/game_coordinator_provider.dart';
 import 'package:fog_of_world/core/state/location_provider.dart';
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
-import 'package:fog_of_world/features/location/services/location_service.dart';
-import 'package:fog_of_world/features/location/services/location_simulator.dart';
-import 'package:fog_of_world/features/location/services/real_gps_service.dart';
 import 'package:fog_of_world/features/location/widgets/location_permission_banner.dart';
 import 'package:fog_of_world/features/map/controllers/rubber_band_controller.dart';
 import 'package:fog_of_world/features/map/providers/camera_controller_provider.dart';
 import 'package:fog_of_world/features/map/providers/camera_mode_provider.dart';
-import 'package:fog_of_world/features/map/providers/discovery_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/fog_overlay_controller_provider.dart';
-import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
 import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
 import 'package:fog_of_world/features/map/utils/map_logger.dart';
@@ -36,6 +27,7 @@ import 'package:fog_of_world/features/map/widgets/player_marker_layer.dart';
 import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
 import 'package:fog_of_world/features/map/widgets/map_controls.dart';
 import 'package:fog_of_world/features/map/widgets/status_bar.dart';
+import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
 import 'package:fog_of_world/shared/constants.dart';
 import 'package:fog_of_world/shared/widgets/error_boundary.dart';
 
@@ -48,22 +40,29 @@ enum ZoomLevel {
   world,
 }
 
-/// Main map screen — the primary game view.
+/// Main map screen — a pure renderer.
 ///
-/// Composes all map-phase layers in a [Stack]:
-/// 1. MapLibre base map (tiles) + native fog fill layers
-/// 2. [PlayerMarkerWidget] geo-anchored via [WidgetLayer]
-/// 3. [StatusBar] translucent top panel
-/// 4. [DebugHud] toggle-able diagnostics overlay
-/// 5. [MapControls] recenter + debug FABs (bottom-right)
+/// All game logic (GPS subscription, discovery processing, fog cell tracking,
+/// permission checks, game tick) lives in [GameCoordinator]. This widget
+/// only handles:
+/// - Rubber-band interpolation (60 fps visual)
+/// - Camera movement
+/// - Fog GeoJSON layer management (MapLibre rendering)
+/// - Widget tree + UI overlays
 ///
-/// Fog is rendered as 2 MapLibre native GeoJSON fill layers that are
-/// geo-pinned to the map at 60 fps GPU-accelerated. This eliminates the
-/// Canvas overlay drift problem entirely.
+/// ## Coordination Flow
 ///
-/// ## MapLibre API notes
-/// - `Position(lng, lat)` — longitude FIRST, latitude second.
-/// - `MapCamera.center.lng` — longitude; `.lat` — latitude.
+/// ```
+/// GameCoordinator.onRawGpsUpdate (1 Hz)
+///   → _rubberBand.setTarget()
+///   → _rubberBand._onTick() (60 fps)
+///     → _onDisplayPositionUpdate(lat, lon)
+///       ├─ _markerPosition.value = (lat, lon)  [PlayerMarkerLayer]
+///       ├─ cameraController.onLocationUpdate()  [MapLibre moveCamera]
+///       ├─ gameCoordinator.updatePlayerPosition()  [throttled to ~10 Hz]
+///       └─ _renderFrame % 6 == 0?
+///           └─ _updateFogRendering()  [fog overlay + GeoJSON sources]
+/// ```
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -75,8 +74,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin {
   MapController? _mapController;
 
-  // Saved in initState so dispose() can stop without ref.read() (unsafe after unmount).
-  late final LocationService _locationService;
+  /// The central game logic coordinator. Saved in initState for safe access.
+  late final GameCoordinator _gameCoordinator;
 
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
@@ -89,9 +88,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// 60fps frame — the rest of [MapScreen] stays stable.
   late final ValueNotifier<({double lat, double lon})?> _markerPosition;
 
-  StreamSubscription<SimulatedLocation>? _locationSubscription;
-  StreamSubscription<dynamic>? _discoverySubscription;
-  StreamSubscription<dynamic>? _fogCellSubscription;
+  /// Subscription to raw GPS updates from GameCoordinator.
+  StreamSubscription<({Geographic position, double accuracy})>?
+      _rawGpsSubscription;
 
   bool _showDebugHud = false;
 
@@ -104,24 +103,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// null as "reset to default" instead of "preserve current").
   double _currentZoom = kDefaultZoom;
 
-  /// Last raw accuracy from GPS/simulator. Passed through to the location
-  /// provider when we update it from the rubber-band display position.
-  double _lastRawAccuracy = 0.0;
+  /// Frame counter for throttling fog rendering in [_onDisplayPositionUpdate].
+  /// Fog rendering runs at ~10 Hz, not 60 fps.
+  int _renderFrame = 0;
 
-  /// Frame counter for throttling game logic in [_onDisplayPositionUpdate].
-  /// Game logic (fog, stats) runs at ~10 Hz, not 60 fps.
-  int _gameLogicFrame = 0;
-
-  /// Game logic runs every Nth display-update frame (~10 Hz at 60 fps).
-  static const _kGameLogicInterval = 6;
+  /// Render logic runs every Nth display-update frame (~10 Hz at 60 fps).
+  static const _kRenderInterval = 6;
 
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
   /// Controls MapLibre container visibility via DOM on web, no-op on native.
   late final MapVisibility _mapVisibility;
-
-  // (Throttle fields removed — fog updates no longer run from _onMapEvent.)
 
   // -- MapLibre source/layer IDs for the fog system --
   static const _fogBaseSrcId = 'fog-base-src';
@@ -144,53 +137,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
       onDisplayUpdate: _onDisplayPositionUpdate,
     );
 
-    _locationService = ref.read(locationServiceProvider);
-    _locationSubscription =
-        _locationService.filteredLocationStream.listen(_onLocationUpdate);
-    _locationService.start();
+    // Read GameCoordinator — it's already started by the provider.
+    _gameCoordinator = ref.read(gameCoordinatorProvider);
 
-    _checkLocationPermission();
-
-    const statsService = StatsService();
-    final discoveryService = ref.read(discoveryServiceProvider);
-    _discoverySubscription = discoveryService.onDiscovery.listen((event) {
-      ref.read(discoveryProvider.notifier).showDiscovery(event);
-      final instanceId = const Uuid().v4();
-      final intrinsicAffix = statsService.rollIntrinsicAffix(
-        scientificName: event.item.scientificName ?? '',
-        instanceSeed: instanceId,
-      );
-      final instance = ItemInstance(
-        id: instanceId,
-        definitionId: event.item.id,
-        acquiredAt: event.timestamp,
-        acquiredInCellId: event.cellId,
-        affixes: [intrinsicAffix],
-      );
-      ref.read(inventoryProvider.notifier).addItem(instance);
-    });
-
-    // Wire fog resolver → player stats: increment cells observed on each new visit.
-    final fogResolver = ref.read(fogResolverProvider);
-    _fogCellSubscription = fogResolver.onVisitedCellAdded.listen((_) {
-      ref.read(playerProvider.notifier).incrementCellsObserved();
-    });
-  }
-
-  Future<void> _checkLocationPermission() async {
-    final status = await _locationService.checkPermission();
-    if (!mounted) return;
-
-    final locationError = switch (status) {
-      GpsPermissionStatus.denied => LocationError.permissionDenied,
-      GpsPermissionStatus.deniedForever => LocationError.permissionDeniedForever,
-      GpsPermissionStatus.serviceDisabled => LocationError.serviceDisabled,
-      _ => LocationError.none,
-    };
-
-    if (locationError != LocationError.none) {
-      ref.read(locationProvider.notifier).setError(locationError);
-    }
+    // Subscribe to raw GPS updates to feed the rubber-band.
+    _rawGpsSubscription =
+        _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
   }
 
   @override
@@ -198,10 +150,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _mapVisibility.dispose();
     _rubberBand.dispose();
     _markerPosition.dispose();
-    _locationSubscription?.cancel();
-    _discoverySubscription?.cancel();
-    _fogCellSubscription?.cancel();
-    _locationService.stop();
+    _rawGpsSubscription?.cancel();
     super.dispose();
   }
 
@@ -441,52 +390,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   // ---------------------------------------------------------------------------
-  // Location handling
+  // Location handling — pure rendering, no game logic
   // ---------------------------------------------------------------------------
 
-  /// Handles raw GPS / simulator location updates (1–10 Hz).
+  /// Handles raw GPS updates from GameCoordinator.
   ///
-  /// This method ONLY feeds the rubber-band controller. All game logic
-  /// (fog, discovery, stats, location state) runs from the rubber-band's
-  /// interpolated display position in [_onDisplayPositionUpdate]. This
-  /// makes the player marker the single source of truth for the game —
-  /// not the raw geolocation.
-  void _onLocationUpdate(SimulatedLocation loc) {
+  /// ONLY feeds the rubber-band controller. All game logic (fog, discovery,
+  /// stats) runs inside GameCoordinator, triggered by `updatePlayerPosition`.
+  void _onRawGpsUpdate(({Geographic position, double accuracy}) update) {
     MapLogger.locationUpdate(
-      loc.position.lat,
-      loc.position.lon,
-      source: _locationService.mode.name,
+      update.position.lat,
+      update.position.lon,
+      source: _gameCoordinator.isRealGps ? 'realGps' : 'simulated',
     );
 
-    // Store raw accuracy for location provider updates.
-    _lastRawAccuracy = loc.accuracy;
-
-    // Feed target to rubber band. The interpolated display position
-    // becomes the source of truth for all game logic.
-    _rubberBand.setTarget(loc.position.lat, loc.position.lon);
-
-    // GPS accuracy UI (only for real GPS — keyboard/sim always accurate).
-    if (_locationService.mode == LocationMode.realGps) {
-      final locationNotifier = ref.read(locationProvider.notifier);
-      final currentError = ref.read(locationProvider).locationError;
-      final isLowAccuracy = loc.accuracy > kGpsAccuracyThreshold;
-      if (isLowAccuracy && currentError != LocationError.lowAccuracy) {
-        locationNotifier.setError(LocationError.lowAccuracy);
-      } else if (!isLowAccuracy && currentError == LocationError.lowAccuracy) {
-        locationNotifier.setError(LocationError.none);
-      }
-    }
+    _rubberBand.setTarget(update.position.lat, update.position.lon);
   }
 
   /// Called at ~60 fps by the rubber-band controller with the interpolated
-  /// display position. This is the single source of truth for the game:
+  /// display position.
   ///
   /// 1. Marker widget position (60 fps)
   /// 2. Camera position (60 fps)
-  /// 3. Fog / stats / location state (~10 Hz, throttled)
-  ///
-  /// Raw GPS/keyboard position is ONLY used to feed the rubber-band target.
-  /// Everything the game "sees" comes through here.
+  /// 3. Game logic via GameCoordinator (throttled to ~10 Hz internally)
+  /// 4. Fog rendering (~10 Hz, throttled locally)
   void _onDisplayPositionUpdate(double lat, double lon) {
     if (!mounted) return;
 
@@ -499,30 +426,23 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final cameraController = ref.read(cameraControllerProvider);
     cameraController.onLocationUpdate(lat, lon);
 
-    // 3. Game logic: fog, stats, location state (throttled to ~10 Hz).
-    _gameLogicFrame++;
-    if (_gameLogicFrame == 1 || _gameLogicFrame % _kGameLogicInterval == 0) {
-      _processGameLogic(lat, lon);
+    // 3. Feed player position to GameCoordinator (60 fps — coordinator
+    //    throttles internally to ~10 Hz for game logic).
+    _gameCoordinator.updatePlayerPosition(lat, lon);
+
+    // 4. Fog rendering (~10 Hz, throttled locally).
+    _renderFrame++;
+    if (_renderFrame == 1 || _renderFrame % _kRenderInterval == 0) {
+      _updateFogRendering(lat, lon);
     }
   }
 
-  /// Processes fog state, location provider, and fog overlay using the
-  /// rubber-band display position (the game's source of truth).
+  /// Recomputes fog overlay and updates MapLibre GeoJSON sources.
   ///
-  /// Called at ~10 Hz from [_onDisplayPositionUpdate] (not every 60 fps
-  /// frame) to avoid redundant fog overlay rebuilds.
-  void _processGameLogic(double lat, double lon) {
-    // 1. Update fog-of-war state using marker position.
-    final fogResolver = ref.read(fogResolverProvider);
-    fogResolver.onLocationUpdate(lat, lon);
-
-    // 2. Push marker position as the official player location.
-    ref.read(locationProvider.notifier).updateLocation(
-          Geographic(lat: lat, lon: lon),
-          _lastRawAccuracy,
-        );
-
-    // 3. Recompute fog overlay if the map is ready.
+  /// Called at ~10 Hz from `_onDisplayPositionUpdate`. Separated from game
+  /// logic (which runs in GameCoordinator) because fog rendering needs
+  /// MapLibre controller access which is widget-layer only.
+  void _updateFogRendering(double lat, double lon) {
     if (!mounted) return;
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
@@ -579,7 +499,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _removeTextLabels();
     // NOTE: markReady() is deliberately NOT called here.
     // It moves to _after_ fog initialization below, so that
-    // _processGameLogic() doesn't try to update fog sources
+    // _updateFogRendering() doesn't try to update fog sources
     // before the layers exist.
 
     _initFogAndReveal();
@@ -618,7 +538,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
     MapLogger.fogInitSourcesApplied();
 
-    // NOW mark the map ready (gates _processGameLogic fog updates)
+    // NOW mark the map ready (gates _updateFogRendering fog updates)
     // and reveal the map via DOM opacity (CSS transition handles animation).
     ref.read(mapStateProvider.notifier).markReady();
     _mapVisibility.revealMapContainer();
@@ -678,7 +598,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onMapEvent(MapEvent event) {
     // Fog GeoJSON layers are geo-pinned — they render correctly at any
     // camera position without being recomputed. Only location changes
-    // (in _onLocationUpdate) need to rebuild fog state. Updating fog
+    // (in _onDisplayPositionUpdate) need to rebuild fog state. Updating fog
     // sources here on every MapEventMoveCamera caused a feedback loop:
     //   animateCamera → MapEventMoveCamera → updateFogSources → MapLibre
     //   layout → new MapEventMoveCamera → repeat (zoom jitter).

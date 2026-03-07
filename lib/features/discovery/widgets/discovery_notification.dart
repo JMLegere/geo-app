@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/discovery/models/discovery_event.dart';
+import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 import 'package:fog_of_world/shared/earth_nova_theme.dart';

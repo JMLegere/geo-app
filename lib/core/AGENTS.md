@@ -81,6 +81,28 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 ---
 
+### game/
+
+**Purpose**: Central game logic coordinator. Pure Dart — no Flutter, no Riverpod dependency.
+
+**Public API**:
+- `GameCoordinator`: `start(gpsStream, discoveryStream)`, `stop()`, `dispose()`, `updatePlayerPosition(lat, lon)`, `onRawGpsUpdate` stream
+- `GpsError`: enum (none, permissionDenied, permissionDeniedForever, serviceDisabled, lowAccuracy)
+- `GpsPermissionResult`: enum (granted, denied, deniedForever, serviceDisabled)
+
+**Dual-Position Model**:
+- `rawGpsPosition` — from GPS stream (1Hz). Used for rubber-band target + GPS accuracy UI.
+- `playerPosition` — from rubber-band feedback (60fps). Used for ALL game logic (fog, discovery, cell transitions).
+
+**Conventions**:
+- Game logic throttled to ~10Hz (every 6th frame at 60fps). First call always processes immediately.
+- Output via callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) — wired by `gameCoordinatorProvider`.
+- `onRawGpsUpdate` uses broadcast StreamController with `sync: true`.
+- `GpsError` and `GpsPermissionResult` mirror feature-layer enums to avoid core→features dependency.
+- Discovery processing: rolls intrinsic affix via StatsService, creates ItemInstance with UUID.
+
+---
+
 ### models/
 
 **Purpose**: Immutable value objects for domain entities.
@@ -164,7 +186,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (8 providers):
+**Public API** (9 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -173,6 +195,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `fogResolverProvider`: `Provider<FogStateResolver>` — singleton fog computation (watches cellServiceProvider)
 - `cellServiceProvider`: `Provider<CellService>` — singleton CellCache(LazyVoronoiCellService)
 - `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule)
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -202,7 +225,9 @@ fog/  (depends on: models/, cells/)
   ↓
 species/  (depends on: models/, cells/)
   ↓
-state/  (depends on: models/, persistence/, fog/, riverpod)
+game/  (depends on: fog/, models/, species/)
+  ↓
+state/  (depends on: models/, persistence/, fog/, game/, riverpod)
 ```
 
 External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells), `drift` (ORM), `riverpod` (state).
@@ -248,3 +273,8 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - Africa split at 20°E: west of 20°E = Africa, east of 20°E = Africa (both map to same enum)
 - Europe/Asia split at 60°E
 - Bounding boxes are approximate — edge cases near borders may misclassify
+
+### GameCoordinator Dual-Position Model
+- `rawGpsPosition` = GPS hardware (1Hz). `playerPosition` = rubber-band interpolated (60fps).
+- ALL game logic (fog, discovery, stats) uses `playerPosition`, NOT `rawGpsPosition`.
+- `updatePlayerPosition()` throttles game logic to ~10Hz via frame counter.
