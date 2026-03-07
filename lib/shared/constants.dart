@@ -201,6 +201,15 @@ const int kWriteQueueRetryBaseSeconds = 2;
 /// Maximum batch size when flushing the write queue.
 const int kWriteQueueFlushBatchSize = 50;
 
+// Daily Seed (Phase 4: Deterministic Daily Encounters)
+/// Grace period in hours for a cached daily seed before discoveries pause.
+/// After this duration, the client must refresh the seed from the server.
+const int kDailySeedGraceHours = 24;
+
+/// Fallback seed used when Supabase is not configured (offline-only mode).
+/// Provides deterministic but non-rotating encounters.
+const String kDailySeedOfflineFallback = 'offline_no_rotation';
+
 // Auth & Upgrade
 /// Number of collected species that triggers the "save your progress" upgrade prompt.
 const int kUpgradePromptThreshold = 5;

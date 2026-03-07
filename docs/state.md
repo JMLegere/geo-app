@@ -22,7 +22,8 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `writeQueueRepositoryProvider` | `Provider<WriteQueueRepository>` | singleton | watches: appDatabaseProvider |
 | `cellProgressRepositoryProvider` | `Provider<CellProgressRepository>` | singleton | watches: appDatabaseProvider |
 | `profileRepositoryProvider` | `Provider<ProfileRepository>` | singleton | watches: appDatabaseProvider |
-| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider, writeQueueRepositoryProvider, cellProgressRepositoryProvider, profileRepositoryProvider. reads: authProvider. listens: playerProvider. Wiring exception: imports features/ |
+| `dailySeedServiceProvider` | `Provider<DailySeedService>` | singleton | reads: supabaseClientProvider. Wires Supabase RPC `ensure_daily_seed()` as `SeedFetcher` callback. Returns null-safe service (works without Supabase). |
+| `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider, writeQueueRepositoryProvider, cellProgressRepositoryProvider, profileRepositoryProvider. reads: authProvider, dailySeedServiceProvider. listens: playerProvider. Wiring exception: imports features/ |
 
 ### Feature Providers
 
@@ -60,7 +61,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `cameraModeProvider` | `NotifierProvider<CameraModeNotifier, CameraMode>` | none |
 | `cameraControllerProvider` | `Provider<CameraController>` | none |
 | `locationServiceProvider` | `Provider<LocationService>` | none |
-| `discoveryServiceProvider` | `Provider<DiscoveryService>` | watches: fogResolver, speciesService, habitatService, cellService, seasonService |
+| `discoveryServiceProvider` | `Provider<DiscoveryService>` | watches: fogResolver, speciesService, habitatService, cellService, seasonService, dailySeedServiceProvider |
 | `fogOverlayControllerProvider` | `Provider<FogOverlayController>` | watches: cellService, fogResolver |
 
 ## Cross-Feature Dependency Graph
@@ -84,6 +85,9 @@ cellProgressRepositoryProvider ──→ gameCoordinatorProvider (persist cell v
 profileRepositoryProvider ──→ gameCoordinatorProvider (persist profile)
 authProvider ──→ gameCoordinatorProvider (read + listen for hydration)
 enrichmentServiceProvider ──→ gameCoordinatorProvider (fire-and-forget enrichment on discovery)
+dailySeedServiceProvider ──→ gameCoordinatorProvider (read, fetches seed on startup)
+dailySeedServiceProvider ──→ discoveryServiceProvider (stale seed guard)
+supabaseClientProvider ──→ dailySeedServiceProvider (Supabase RPC callback)
 playerProvider ──→ gameCoordinatorProvider (listen for profile write-through)
 
 appDatabaseProvider ──→ itemInstanceRepositoryProvider

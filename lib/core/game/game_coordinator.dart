@@ -262,6 +262,7 @@ class GameCoordinator {
       definitionId: event.item.id,
       acquiredAt: event.timestamp,
       acquiredInCellId: event.cellId,
+      dailySeed: event.dailySeed,
       affixes: [intrinsicAffix],
     );
     onItemDiscovered?.call(event, instance);

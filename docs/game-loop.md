@@ -43,25 +43,40 @@ _onDisplayPositionUpdate(lat, lon)      ← 60 fps
 ```
 fogResolver.onVisitedCellAdded (sync stream)
   → DiscoveryService
-    → speciesService.getSpeciesForCell(cellId, habitats, continent)
-    → deterministic roll (SHA-256 seeded by cellId)
-    → emit DiscoveryEvent on onDiscovery stream
+    → dailySeedService.currentSeed (stale guard: pauses if >24h)
+    → speciesService.getSpeciesForCell(cellId, habitats, continent, dailySeed)
+    → deterministic roll (SHA-256 seeded by "${dailySeed}_${cellId}")
+    → emit DiscoveryEvent (includes dailySeed) on onDiscovery stream
   → GameCoordinator._onDiscovery()
     → StatsService.rollIntrinsicAffix()
-    → creates ItemInstance with UUID
+    → creates ItemInstance with UUID + dailySeed
     → onItemDiscovered callback
       → discoveryProvider.notifier.showDiscovery()
       → inventoryProvider.notifier.addItem()
       → DiscoveryNotificationOverlay toast
 ```
 
+### Daily Seed System (Phase 4 — IMPLEMENTED)
+
+```
+App startup
+  → gameCoordinatorProvider._hydrateAndStart()
+    → dailySeedService.fetchSeed()
+      → SeedFetcher callback (Supabase RPC: ensure_daily_seed())
+      → Returns today's seed string
+      → Cached in-memory with 24h TTL (kDailySeedGraceHours)
+    → On failure: falls back to 'offline_no_rotation' static seed
+```
+
+**Stale seed guard**: If `dailySeedService.isDiscoveryPaused` (seed older than 24h + no fallback), `DiscoveryService` skips encounter generation. Discoveries resume when seed refreshes.
+
+**Offline behavior**: Without Supabase, seed is `kDailySeedOfflineFallback` = `'offline_no_rotation'`. Species don't rotate daily but encounters still work. When Supabase is configured, seeds rotate at midnight GMT.
+
 ### Design Target: Discovery System
 > These describe the INTENDED design, not current implementation. See `game-design.md`.
 
 - Rarity-scaled discovery reveals (LC = small toast → EX = full-screen ceremony)
 - Auto-collect for common species (LC, NT), tap-to-photograph for rare (VU+)
-- Daily world seed (midnight GMT): cells rotate species daily, deterministic per day
-- First visit: permanent species seeded by cell ID. Repeat visits: daily rotation pool
 - Inventory model: species go to Pack as stacked items, not binary collected flags
 - Cell activities (forage, lure, survey, habitat care) for active players = more drops
 

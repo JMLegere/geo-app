@@ -5,9 +5,10 @@ import 'package:fog_of_world/core/species/loot_table.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
 ///
-/// Uses a Path of Exile-style weighted loot table seeded by cell ID to
-/// deterministically select which species a player can encounter in a given
-/// cell. Species are filtered by habitat(s) and continent before rolling.
+/// Uses a Path of Exile-style weighted loot table seeded by daily seed + cell ID
+/// to deterministically select which species a player can encounter in a given
+/// cell on a given day. Species are filtered by habitat(s) and continent before
+/// rolling. Same cell + same day = same species. Different day = different species.
 class SpeciesService {
   final List<FaunaDefinition> _allRecords;
 
@@ -32,16 +33,20 @@ class SpeciesService {
   /// This is the core encounter mechanic:
   /// 1. Union species pools for all [habitats] × [continent] combinations
   /// 2. Build a single weighted loot table (weights from IucnStatus)
-  /// 3. Roll [encounterSlots] times deterministically (seeded by cellId)
+  /// 3. Roll [encounterSlots] times deterministically (seeded by dailySeed + cellId)
   /// 4. Return the selected species (unique, no duplicates)
   ///
-  /// [cellId] determines which species appear — same cell always gives same
-  /// species. [encounterSlots] is how many rolls to attempt (default 3).
+  /// [cellId] determines spatial location. [dailySeed] rotates species daily.
+  /// Combined seed: `"${dailySeed}_${cellId}"` → same cell + same day =
+  /// same species. Different day = different species.
+  ///
+  /// [encounterSlots] is how many rolls to attempt (default 3).
   ///
   /// Accepts a [Set<Habitat>] so that multi-biome cells (e.g. a coastal
   /// forest) draw from the union of all relevant species pools.
   List<FaunaDefinition> getSpeciesForCell({
     required String cellId,
+    required String dailySeed,
     required Set<Habitat> habitats,
     required Continent continent,
     int encounterSlots = 3,
@@ -56,7 +61,9 @@ class SpeciesService {
       pool.map((s) => (s, s.rarity!.weight)).toList(),
     );
 
-    return table.rollMultiple(cellId, encounterSlots);
+    // Daily seed + cell ID → species rotate daily per cell.
+    final combinedSeed = '${dailySeed}_$cellId';
+    return table.rollMultiple(combinedSeed, encounterSlots);
   }
 
   /// Get ALL species that COULD appear in a set of habitats + continent.

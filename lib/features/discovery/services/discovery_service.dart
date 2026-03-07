@@ -4,11 +4,13 @@ import 'package:fog_of_world/core/cells/cell_service.dart';
 import 'package:fog_of_world/core/fog/fog_event.dart';
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:fog_of_world/core/services/daily_seed_service.dart';
 import 'package:fog_of_world/core/species/continent_resolver.dart';
 import 'package:fog_of_world/core/species/species_service.dart';
 import 'package:fog_of_world/features/biome/services/biome_service.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/features/seasonal/services/season_service.dart';
+import 'package:fog_of_world/shared/constants.dart';
 
 /// Listens to fog events and emits [DiscoveryEvent]s when a player enters a
 /// new cell (FogState.observed).
@@ -46,6 +48,12 @@ class DiscoveryService {
   /// When null, all species are available (backward-compatible default).
   final SeasonService? _seasonService;
 
+  /// Optional [DailySeedService] for daily seed rotation.
+  ///
+  /// When non-null, encounters use the daily seed for rotation.
+  /// When null, falls back to a static offline seed.
+  final DailySeedService? _dailySeedService;
+
   /// Internal set of species IDs the player has already collected.
   ///
   /// Updated via [markCollected] as new species are added to the collection.
@@ -80,11 +88,13 @@ class DiscoveryService {
     CellService? cellService,
     Set<String>? initialCollectedIds,
     SeasonService? seasonService,
+    DailySeedService? dailySeedService,
   })  : _fogResolver = fogResolver,
         _speciesService = speciesService,
         _habitatService = habitatService ?? HabitatService(),
         _cellService = cellService,
         _seasonService = seasonService,
+        _dailySeedService = dailySeedService,
         _collectedSpeciesIds =
             Set.from(initialCollectedIds ?? const <String>{}) {
     _fogSubscription =
@@ -118,6 +128,16 @@ class DiscoveryService {
     // Only react to a player entering a new cell for the first time.
     if (event.newState != FogState.observed) return;
 
+    // Stale seed guard — pause discoveries when seed is expired and came
+    // from the server (offline fallback seeds never expire).
+    final seedService = _dailySeedService;
+    if (seedService != null && seedService.isDiscoveryPaused) {
+      return; // Seed >24h stale — skip discoveries until refreshed.
+    }
+
+    // Get the daily seed for encounter determinism.
+    final dailySeed = seedService?.currentSeed?.seed ?? kDailySeedOfflineFallback;
+
     // Resolve the cell centre and look up biomes.
     final cellService = _cellService;
     final double lat;
@@ -135,6 +155,7 @@ class DiscoveryService {
 
     var species = _speciesService.getSpeciesForCell(
       cellId: event.cellId,
+      dailySeed: dailySeed,
       habitats: habitats,
       continent: continent,
     );
@@ -156,6 +177,7 @@ class DiscoveryService {
           cellId: event.cellId,
           isNew: isNew,
           timestamp: event.timestamp,
+          dailySeed: dailySeed,
         ),
       );
     }

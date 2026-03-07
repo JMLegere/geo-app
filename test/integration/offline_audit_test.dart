@@ -63,6 +63,9 @@ void main() {
         // it is the single entry point for Supabase SDK initialisation and
         // must live here to break the auth↔sync circular dependency.
         if (file.path.endsWith('supabase_bootstrap.dart')) continue;
+        // daily_seed_provider.dart wires Supabase RPC into the pure-Dart
+        // DailySeedService via a callback — same entry-point pattern.
+        if (file.path.endsWith('daily_seed_provider.dart')) continue;
 
         final content = file.readAsStringSync();
         final found = findNetworkImports(content);
@@ -133,9 +136,11 @@ void main() {
         // Allowed: anything under lib/features/sync/
         // Allowed: lib/features/auth/services/supabase_auth_service.dart
         // Allowed: lib/core/config/supabase_bootstrap.dart (SDK init entry point)
+        // Allowed: lib/core/state/daily_seed_provider.dart (wires Supabase RPC callback)
         final isAllowed = path.contains('lib/features/sync/') ||
             path.endsWith('supabase_auth_service.dart') ||
-            path.endsWith('supabase_bootstrap.dart');
+            path.endsWith('supabase_bootstrap.dart') ||
+            path.endsWith('daily_seed_provider.dart');
 
         if (!isAllowed) {
           violations.add(path);

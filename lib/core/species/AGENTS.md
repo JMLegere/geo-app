@@ -4,11 +4,13 @@ Deterministic encounter generation, weighted loot tables, and geographic filteri
 
 ## SpeciesService
 
-Core encounter mechanic. `getSpeciesForCell(cellId, habitats, continent, encounterSlots)`:
+Core encounter mechanic. `getSpeciesForCell(cellId, habitats, continent, {dailySeed, encounterSlots})`:
 1. Union species pools for all (habitat, continent) combinations
 2. Build weighted LootTable (weights from IucnStatus enum)
-3. Roll `encounterSlots` (default 3) times deterministically (seeded by cellId)
+3. Roll `encounterSlots` (default 3) times deterministically (seeded by `"${dailySeed}_${cellId}"`)
 4. Return unique species (no duplicates per cell)
+
+**Daily seed**: Required `dailySeed` parameter. Combined seed format: `"${dailySeed}_${cellId}"` passed to `rollMultiple()`. Same cell + same day = same species. Different day = different species.
 
 Also provides: `getPoolForArea()`, `forHabitat()`, `forContinent()`, `all`, `totalSpecies`.
 
@@ -47,7 +49,9 @@ Generic weighted random selection:
 ## Gotchas
 
 - Changing SHA-256 algorithm or seed format breaks ALL existing cell→species mappings
+- **Daily seed format**: `"${dailySeed}_${cellId}"` → `rollMultiple()` appends `"_$attempt"` per roll. Changing this format invalidates all existing encounters.
 - `rollMultiple()` can return fewer than n items if pool is too small (even after n*10 attempts)
 - Species pool union means a cell at a biome boundary may yield species from multiple habitats
 - FaunaDefinition equality is by `scientificName` only — two records with same name but different metadata are "equal"
 - Dataset has 32,752 records but not all are rollable — some have unknown habitats/continents and are silently filtered
+- Offline fallback seed (`offline_no_rotation`) means species don't rotate daily but encounters still work

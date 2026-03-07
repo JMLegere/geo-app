@@ -18,6 +18,7 @@ import 'package:fog_of_world/core/persistence/profile_repository.dart';
 import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
 import 'package:fog_of_world/core/species/stats_service.dart';
 import 'package:fog_of_world/core/state/cell_progress_repository_provider.dart';
+import 'package:fog_of_world/core/state/daily_seed_provider.dart';
 import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
 import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
@@ -157,12 +158,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // the race window would be wiped by loadItems(). We start the loop inside
   // the hydration callback (or immediately when no auth / on error).
 
+  final dailySeedService = ref.read(dailySeedServiceProvider);
+
   void startLoop() {
-    locationService.start();
-    coordinator.start(
-      gpsStream: gpsStream,
-      discoveryStream: discoveryService.onDiscovery,
-    );
+    // Fetch daily seed before starting the game loop so encounters
+    // have the seed available from the first cell visit.
+    dailySeedService.fetchSeed().then((_) {
+      debugPrint('[GameCoordinator] daily seed ready: '
+          '${dailySeedService.currentSeed}');
+    }).catchError((Object e) {
+      debugPrint('[GameCoordinator] daily seed fetch failed: $e');
+    }).whenComplete(() {
+      locationService.start();
+      coordinator.start(
+        gpsStream: gpsStream,
+        discoveryStream: discoveryService.onDiscovery,
+      );
+    });
   }
 
   // Track last persisted profile to avoid re-persisting hydrated state.

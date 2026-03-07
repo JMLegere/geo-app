@@ -127,4 +127,4 @@ gameCoordinatorProvider.build()
 | **Pack** | Field Pack — inventory tab for managing collected species (target design) |
 | **Town** | NPC hub showing discovered NPCs (target design) |
 | **Treasure map** | Quest item marking real-world area where specific rare species can be found (target design) |
-| **Daily seed** | Midnight GMT world rotation — deterministic per-day species spawns (target design) |
+| **Daily seed** | Server-generated random seed per calendar day (midnight GMT). Deterministic: `hash(dailySeed + "_" + cellId)` → same cell + same day = same species. Stale seed (>24h offline) pauses discoveries. Offline fallback: static seed (`offline_no_rotation`). |
