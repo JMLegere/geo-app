@@ -97,6 +97,37 @@ class _FakeBootstrap extends SupabaseBootstrap {
   bool get initialized => _testInitialized;
 }
 
+/// Stub notifier that watches real providers but skips the session timer.
+///
+/// The real [UpgradePromptNotifier] starts a 120-second [Timer] on build,
+/// which causes "Pending timers" failures in widget tests. This stub
+/// preserves reactive integration (watches inventory/auth/supabase) while
+/// bypassing the timer by setting [sessionTimeElapsed] = true immediately.
+class _IntegrationUpgradePromptNotifier extends UpgradePromptNotifier {
+  bool _hasBeenShown = false;
+
+  @override
+  UpgradePromptState build() {
+    final totalCollected = ref.watch(inventoryProvider).totalItems;
+    final isAnonymous = ref.watch(authProvider).isAnonymous;
+    final supabaseInitialized = ref.read(supabaseBootstrapProvider).initialized;
+
+    return UpgradePromptState(
+      totalCollected: totalCollected,
+      isAnonymous: isAnonymous,
+      supabaseInitialized: supabaseInitialized,
+      hasBeenShown: _hasBeenShown,
+      sessionTimeElapsed: true, // Timer bypassed in tests
+    );
+  }
+
+  @override
+  void markShown() {
+    _hasBeenShown = true;
+    state = state.copyWith(hasBeenShown: true);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -117,6 +148,9 @@ ProviderContainer _makeContainer({
       ),
       supabaseBootstrapProvider.overrideWithValue(
         _FakeBootstrap(initialized: supabaseInitialized),
+      ),
+      upgradePromptProvider.overrideWith(
+        () => _IntegrationUpgradePromptNotifier(),
       ),
     ],
   );
@@ -157,6 +191,9 @@ Future<ProviderContainer> _pumpSanctuaryScreen(
       speciesServiceProvider.overrideWith(
         (_) => SpeciesService(_testSpecies),
       ),
+      upgradePromptProvider.overrideWith(
+        () => _IntegrationUpgradePromptNotifier(),
+      ),
     ],
   );
   addTearDown(container.dispose);
@@ -191,6 +228,9 @@ Future<ProviderContainer> _pumpPackScreen(
       ),
       speciesServiceProvider.overrideWith(
         (_) => SpeciesService(_testSpecies),
+      ),
+      upgradePromptProvider.overrideWith(
+        () => _IntegrationUpgradePromptNotifier(),
       ),
     ],
   );
@@ -314,7 +354,8 @@ void main() {
   // ── Supabase gate ─────────────────────────────────────────────────────────
 
   group('Supabase gate', () {
-    test('shouldShow is false when supabaseInitialized=false regardless of count',
+    test(
+        'shouldShow is false when supabaseInitialized=false regardless of count',
         () {
       final container = _makeContainer(
         collectionCount: 10,
@@ -395,7 +436,8 @@ void main() {
       expect(find.text('Save your progress'), findsNothing);
     });
 
-    testWidgets('banner is hidden when supabase not initialized', (tester) async {
+    testWidgets('banner is hidden when supabase not initialized',
+        (tester) async {
       await _pumpSanctuaryScreen(
         tester,
         collectionCount: 10,
@@ -410,7 +452,8 @@ void main() {
   // ── PackScreen widget tests ────────────────────────────────────────────────
 
   group('PackScreen includes SaveProgressBanner', () {
-    testWidgets('banner widget is present in tree (may be hidden)', (tester) async {
+    testWidgets('banner widget is present in tree (may be hidden)',
+        (tester) async {
       await _pumpPackScreen(
         tester,
         collectionCount: 0,
@@ -457,7 +500,8 @@ void main() {
       expect(find.text('Save your progress'), findsNothing);
     });
 
-    testWidgets('banner is hidden when supabase not initialized', (tester) async {
+    testWidgets('banner is hidden when supabase not initialized',
+        (tester) async {
       await _pumpPackScreen(
         tester,
         collectionCount: 10,
@@ -502,5 +546,6 @@ class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
         totalCollected: _showBanner ? 10 : 0,
         isAnonymous: _showBanner,
         supabaseInitialized: _showBanner,
+        sessionTimeElapsed: _showBanner,
       );
 }
