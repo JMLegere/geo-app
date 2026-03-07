@@ -186,7 +186,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (9 providers):
+**Public API** (11 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -195,7 +195,9 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `fogResolverProvider`: `Provider<FogStateResolver>` — singleton fog computation (watches cellServiceProvider)
 - `cellServiceProvider`: `Provider<CellService>` — singleton CellCache(LazyVoronoiCellService)
 - `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
-- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule)
+- `appDatabaseProvider`: `Provider<AppDatabase>` — singleton database with lifecycle management. Disposes on shutdown.
+- `itemInstanceRepositoryProvider`: `Provider<ItemInstanceRepository>` — watches appDatabaseProvider. Used by gameCoordinatorProvider for persistence and hydration.
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory from SQLite on startup, persists discoveries fire-and-forget.
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -278,3 +280,10 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - `rawGpsPosition` = GPS hardware (1Hz). `playerPosition` = rubber-band interpolated (60fps).
 - ALL game logic (fog, discovery, stats) uses `playerPosition`, NOT `rawGpsPosition`.
 - `updatePlayerPosition()` throttles game logic to ~10Hz via frame counter.
+
+### Startup Hydration Order
+- `gameCoordinatorProvider` must hydrate inventory from SQLite BEFORE starting the game loop.
+- `loadItems()` replaces inventory state entirely — a discovery during the race window would be wiped.
+- Auth may not be settled when the provider initializes. Use `ref.listen(authProvider)` with a `started` guard to wait.
+- On hydration failure, the loop starts without persisted data (graceful degradation).
+- Persistence of new discoveries is fire-and-forget with `catchError` — TODO(T-writequeue) for Phase 3 write queue.
