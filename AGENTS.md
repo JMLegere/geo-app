@@ -14,8 +14,8 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1321 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 37 info-level issues |
+| Tests | 1373 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | 46 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 
 **Run commands:**
@@ -72,7 +72,7 @@ lib/
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | ~130 (lib/) + 85 (test/) |
+| Dart source files | ~167 (lib/) + 111 (test/) |
 | Total lines | ~34,000 |
 | Largest file | `app_database.g.dart` (1,989 lines — generated) |
 | Largest feature | `map/` (25 files) |
@@ -202,7 +202,7 @@ These are the target architecture decisions from two design jams. They describe 
 | 1b | **COMPLETE** | Item expansion (7 categories, taxonomy, food, orbs, climate) | Economy, sanctuary loop |
 | 1c | **COMPLETE** | Lazy AI enrichment pipeline (classification only — art deferred) | Species identity (partial) |
 | 2 | **COMPLETE** | GameCoordinator (extract from map_screen) | Tab-independent game loop |
-| 3 | Not started | Server-authoritative persistence (write queue) | Online validation, anti-cheat |
+| 3 | **COMPLETE** | Server-authoritative persistence (write queue, rollback, Edge Function validation) | Online validation, anti-cheat |
 | 4 | Not started | Daily seed system | Deterministic encounters, social sharing |
 | 5+ | Not started | Breeding, bundles, museum, social | Endgame features |
 
