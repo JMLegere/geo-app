@@ -13,15 +13,33 @@ import 'package:fog_of_world/features/sync/models/sync_status.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
 
-/// Returns the [SupabaseClient] when Supabase is initialised, or null when
-/// credentials are missing or init failed.
+/// Resolves to `true` once Supabase bootstrap is complete (success or failure).
 ///
+/// Downstream providers that `ref.watch` this will automatically rebuild once
+/// the bootstrap future settles, solving the timing race where providers are
+/// first read before `Supabase.initialize()` finishes.
+final _supabaseReadyProvider = FutureProvider<bool>((ref) async {
+  final bootstrap = ref.watch(supabaseBootstrapProvider);
+  await bootstrap.ready;
+  return bootstrap.initialized;
+});
+
+/// Returns the [SupabaseClient] when Supabase is initialised, or null when
+/// credentials are missing, init failed, or bootstrap hasn't completed yet.
+///
+/// Watches [_supabaseReadyProvider] so it rebuilds after bootstrap settles.
 /// This is the single allowed entry point for Supabase client access outside
 /// of [supabase_auth_service.dart]. Features that need the client (e.g.
 /// enrichment) must import this provider rather than importing
 /// `supabase_flutter` directly.
 final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
-  if (!ref.read(supabaseBootstrapProvider).initialized) return null;
+  final ready = ref.watch(_supabaseReadyProvider);
+  final initialized = ready.when(
+    data: (v) => v,
+    loading: () => false,
+    error: (_, __) => false,
+  );
+  if (!initialized) return null;
   return Supabase.instance.client;
 });
 
@@ -67,7 +85,8 @@ class SyncNotifier extends Notifier<SyncStatus> {
 
     try {
       final summary = await processor.flush();
-      final pending = await ref.read(writeQueueRepositoryProvider).countPending();
+      final pending =
+          await ref.read(writeQueueRepositoryProvider).countPending();
 
       // Process rollbacks for rejected entries.
       if (summary.hasRejections) {
@@ -79,8 +98,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
           type: SyncStatusType.success,
           lastSyncedAt: DateTime.now(),
           pendingChanges: pending,
-          errorMessage:
-              '${summary.rejected} item(s) rejected by server.',
+          errorMessage: '${summary.rejected} item(s) rejected by server.',
         );
       } else {
         state = SyncStatus(
@@ -99,7 +117,8 @@ class SyncNotifier extends Notifier<SyncStatus> {
       debugPrint('[SyncNotifier] unexpected sync error: $e');
       state = state.copyWith(
         type: SyncStatusType.error,
-        errorMessage: 'Sync failed. Please check your connection and try again.',
+        errorMessage:
+            'Sync failed. Please check your connection and try again.',
       );
     }
   }
