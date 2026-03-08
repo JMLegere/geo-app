@@ -422,6 +422,7 @@ Future<void> _persistItemDiscovery({
       'id': instance.id,
       'definition_id': instance.definitionId,
       'affixes': instance.affixesToJson(),
+      'badges_json': instance.badgesToJson(),
       'parent_a_id': instance.parentAId,
       'parent_b_id': instance.parentBId,
       'acquired_at': instance.acquiredAt.toIso8601String(),
@@ -654,6 +655,8 @@ Future<void> hydrateFromSupabase({
         definitionId: row['definition_id'] as String,
         affixes:
             ItemInstance.affixesFromJson(row['affixes'] as String? ?? '[]'),
+        badges:
+            ItemInstance.badgesFromJson(row['badges_json'] as String? ?? '[]'),
         acquiredAt: acquiredAt,
         acquiredInCellId: row['acquired_in_cell_id'] as String?,
         dailySeed: row['daily_seed'] as String?,

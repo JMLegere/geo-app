@@ -195,6 +195,7 @@ class _MockSupabasePersistence extends SupabasePersistence {
     required String userId,
     required String definitionId,
     required String affixes,
+    String? badgesJson,
     String? parentAId,
     String? parentBId,
     required DateTime acquiredAt,
