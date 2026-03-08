@@ -36,8 +36,8 @@ const double kTemperateMaxLatitude = 55.0;
 const double kBorealMaxLatitude = 66.5;
 
 // Food & Orbs
-/// Number of food subtypes (critter, fish, fruit, grub, nectar, veg).
-const int kFoodTypeCount = 6;
+/// Number of food subtypes (critter, fish, fruit, grub, nectar, seed, veg).
+const int kFoodTypeCount = 7;
 
 /// Number of orb dimensions (habitat, animalClass, climate).
 const int kOrbDimensionCount = 3;

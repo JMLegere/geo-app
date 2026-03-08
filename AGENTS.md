@@ -134,8 +134,8 @@ These are the target architecture decisions from two design jams. They describe 
 
 ### Wall 1c: Food & Orb Economy
 
-- **Food (6 subtypes):** food-critter, food-fish, food-fruit, food-grub, food-nectar, food-veg. Found during exploration. Fed to sanctuary animals.
-- **Food preference per species:** AI-determined on first discovery. Maps species to one of 6 food types based on real diet.
+- **Food (7 subtypes):** food-critter, food-fish, food-fruit, food-grub, food-nectar, food-seed, food-veg. Found during exploration. Fed to sanctuary animals.
+- **Food preference per species:** AI-determined on first discovery. Maps species to one of 7 food types based on real diet.
 - **Orbs = primary game currency.** 3 dimensions, ~46 types:
   - **Habitat orbs (7):** orb-forest, orb-plains, orb-freshwater, orb-saltwater, orb-swamp, orb-mountain, orb-desert
   - **Class orbs (~35):** orb-carnivore, orb-songbird, orb-rodent, orb-crocodile, etc. (one per animal class)

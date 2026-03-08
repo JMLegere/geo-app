@@ -16,7 +16,7 @@ All domain models, database schema, and persistence contracts.
 | `AnimalType` | mammal, bird, fish, reptile, bug | Auto-computed from IUCN `taxonomicClass` |
 | `AnimalClass` | 35 values (carnivore, songbird, rodent, crocodile, etc.) | AI-enriched on first discovery |
 | `Climate` | tropic, temperate, boreal, frigid | Derived from latitude (0°-23.5°, 23.5°-55°, 55°-66.5°, 66.5°-90°) |
-| `FoodType` | critter, fish, fruit, grub, nectar, veg | Food category for sanctuary feeding |
+| `FoodType` | critter, fish, fruit, grub, nectar, seed, veg | Food category for sanctuary feeding |
 | `OrbDimension` | habitat, class, climate | Orb type dimension (3 dimensions, ~46 total types) |
 | `ActivityType` | photograph, forage, lure, survey | Cell activity types (future) |
 
@@ -30,7 +30,7 @@ All domain models, database schema, and persistence contracts.
 | `MineralDefinition` | crystalSystem, hardness | — | Stub (no dataset yet) |
 | `FossilDefinition` | era, fossilType | — | Stub (no dataset yet) |
 | `ArtifactDefinition` | period, origin | — | Stub (no dataset yet) |
-| `FoodDefinition` | foodType: `FoodType` | — | Predefined (6 types: critter, fish, fruit, grub, nectar, veg) |
+| `FoodDefinition` | foodType: `FoodType` | — | Predefined (7 types: critter, fish, fruit, grub, nectar, seed, veg) |
 | `OrbDefinition` | dimension: `OrbDimension`, variant: String | — | Predefined (3 dimensions: habitat, class, climate; ~46 total types) |
 | `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
 | `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |

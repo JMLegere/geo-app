@@ -143,7 +143,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `AnimalType`: enum (mammal, bird, fish, reptile, bug). Deterministic from IUCN `taxonomicClass` via `fromTaxonomicClass()`.
 - `AnimalClass`: enum with 35 values (7 bird, 9 bug, 6 fish, 8 mammal, 5 reptile). `parentType` maps to `AnimalType`. AI-determined on first discovery.
 - `Climate`: enum (tropic, temperate, boreal, frigid). `fromLatitude(double)` derives from `abs(lat)` with boundaries 23.5°/55°/66.5°.
-- `FoodType`: enum (critter, fish, fruit, grub, nectar, veg). `id` getter: `'food-$name'`.
+- `FoodType`: enum (critter, fish, fruit, grub, nectar, seed, veg). `id` getter: `'food-$name'`.
 - `OrbDimension`: enum (habitat, animalClass, climate). The 3 dimensions of orb types.
 - `ActivityType`: enum (explore, forage, dig, survey). Determines eligible loot categories.
 - `CellData`: `id`, `center: Geographic`, `fogState`, `speciesIds`, `restorationLevel`, `distanceWalked`, `visitCount`, `lastVisited`.

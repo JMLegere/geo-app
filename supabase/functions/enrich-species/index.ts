@@ -14,7 +14,7 @@ const ANIMAL_CLASSES = [
   "amphibian", "crocodile", "lizard", "snake", "turtle",
 ];
 
-const FOOD_TYPES = ["critter", "fish", "fruit", "grub", "nectar", "veg"];
+const FOOD_TYPES = ["critter", "fish", "fruit", "grub", "nectar", "seed", "veg"];
 const CLIMATES = ["tropic", "temperate", "boreal", "frigid"];
 
 interface EnrichRequest {
@@ -69,7 +69,14 @@ async function callLLM(
 ): Promise<EnrichmentResponse> {
   const prompt = `You are a wildlife classification expert. Given this species, return a JSON object with EXACTLY these fields:
 - animal_class: one of [${ANIMAL_CLASSES.join(", ")}]
-- food_preference: one of [${FOOD_TYPES.join(", ")}] (what this animal eats)
+- food_preference: one of [${FOOD_TYPES.join(", ")}] — pick based on the species' PRIMARY real-world diet:
+    critter = small animals (mice, lizards, frogs, small birds — for predators)
+    fish = fish, aquatic prey (for piscivores)
+    fruit = fruit, berries (for frugivores)
+    grub = insects, larvae, worms, invertebrates (for insectivores)
+    nectar = nectar, pollen (for nectarivores like hummingbirds, bees)
+    seed = seeds, grains, nuts, kernels (for granivores like sparrows, finches, rodents)
+    veg = leaves, roots, grass, plant matter that is NOT fruit/seed/nectar (for herbivores/folivores)
 - climate: one of [${CLIMATES.join(", ")}] (primary habitat climate zone)
 - brawn: integer (physical strength/size, 0-90)
 - wit: integer (intelligence/cunning, 0-90)  
