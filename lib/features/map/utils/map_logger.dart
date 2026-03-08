@@ -68,10 +68,12 @@ class MapLogger {
   }
 
   static void zoomChanged(double oldZoom, double newZoom, String reason) {
-    _log('CAMERA', '🔍 ZOOM $reason: ${oldZoom.toStringAsFixed(2)} → ${newZoom.toStringAsFixed(2)}');
+    _log('CAMERA',
+        '🔍 ZOOM $reason: ${oldZoom.toStringAsFixed(2)} → ${newZoom.toStringAsFixed(2)}');
   }
 
-  static void cameraMoveError(double lat, double lon, Object error, StackTrace stack) {
+  static void cameraMoveError(
+      double lat, double lon, Object error, StackTrace stack) {
     _errorCount++;
     _log(
       'CAMERA',
@@ -167,28 +169,33 @@ class MapLogger {
 
   /// Call after _initFogLayers() completes.
   static void fogInitLayersReady() {
-    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — _initFogLayers() done (sources+layers added to map)');
+    _log('FOG-INIT',
+        'T+${_initStopwatch.elapsedMilliseconds}ms — _initFogLayers() done (sources+layers added to map)');
   }
 
   /// Call after fogOverlayController.updateAsync() completes.
   static void fogInitDataComputed() {
-    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — updateAsync() done (fog GeoJSON computed)');
+    _log('FOG-INIT',
+        'T+${_initStopwatch.elapsedMilliseconds}ms — updateAsync() done (fog GeoJSON computed)');
   }
 
   /// Call after _updateFogSources() completes.
   static void fogInitSourcesApplied() {
-    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — _updateFogSources() done (GeoJSON pushed to MapLibre)');
+    _log('FOG-INIT',
+        'T+${_initStopwatch.elapsedMilliseconds}ms — _updateFogSources() done (GeoJSON pushed to MapLibre)');
   }
 
   /// Call when markReady + _fogReady = true.
   static void fogInitComplete() {
     _initStopwatch.stop();
-    _log('FOG-INIT', 'T+${_initStopwatch.elapsedMilliseconds}ms — COMPLETE: markReady() + _fogReady=true → cover fading out');
+    _log('FOG-INIT',
+        'T+${_initStopwatch.elapsedMilliseconds}ms — COMPLETE: markReady() + _fogReady=true → cover fading out');
   }
 
   /// Call when the cover widget rebuilds (to track when AnimatedOpacity kicks in).
   static void fogCoverBuild({required bool fogReady}) {
-    _log('FOG-INIT', 'Cover widget build: _fogReady=$fogReady (opacity=${fogReady ? '0.0→fading' : '1.0→opaque'})');
+    _log('FOG-INIT',
+        'Cover widget build: _fogReady=$fogReady (opacity=${fogReady ? '0.0→fading' : '1.0→opaque'})');
   }
 
   // -- Map lifecycle --
@@ -201,11 +208,60 @@ class MapLogger {
     _log('MAP', 'onStyleLoaded — will call _initFogAndReveal()');
   }
 
+  // -- Crash prevention --
+
+  static void fogInitTimeout(int timeoutMs) {
+    _errorCount++;
+    _log(
+      'FOG-INIT',
+      '⚠️ TIMEOUT #$_errorCount — _initFogAndReveal() did not complete within ${timeoutMs}ms. '
+          'Forcing markReady() + revealMapContainer() to show base map without fog.',
+      isError: true,
+    );
+  }
+
+  static void fogInitFailed(Object error, StackTrace stack) {
+    _errorCount++;
+    _log(
+      'FOG-INIT',
+      '⚠️ ERROR #$_errorCount — _initFogAndReveal() failed: $error. '
+          'Forcing markReady() + revealMapContainer() to show base map without fog.',
+      isError: true,
+    );
+    _log('FOG-INIT', 'Stack: $stack', isError: true);
+  }
+
+  static void getCameraError(String callsite, Object error) {
+    _errorCount++;
+    _log(
+      'CAMERA',
+      '⚠️ getCamera() failed at $callsite: $error — skipping update',
+      isError: true,
+    );
+  }
+
+  static void revealRetry(int attempt) {
+    _log('MAP',
+        '⚠️ revealMapContainer: querySelector returned null, retry #$attempt');
+  }
+
+  static void revealFailed(int attempts) {
+    _errorCount++;
+    _log(
+      'MAP',
+      '❌ revealMapContainer: failed after $attempts retries — '
+          'removing hide stylesheet as fallback',
+      isError: true,
+    );
+  }
+
   // -- Summary --
 
   static void printSummary() {
-    _log('SUMMARY', 'ticks=$_tickCount  camera=$_cameraCount  '
-        'fog=$_fogUpdateCount  loc=$_locationCount  errors=$_errorCount');
+    _log(
+        'SUMMARY',
+        'ticks=$_tickCount  camera=$_cameraCount  '
+            'fog=$_fogUpdateCount  loc=$_locationCount  errors=$_errorCount');
   }
 
   // -- Internal --

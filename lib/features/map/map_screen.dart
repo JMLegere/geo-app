@@ -113,6 +113,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
+  /// Safety timeout for [_initFogAndReveal]. If the init pipeline stalls
+  /// (e.g. CDN outage, silent exception), force-reveal the map after this
+  /// duration so the user isn't stuck on a dark screen.
+  static const _kInitTimeout = Duration(seconds: 10);
+
+  /// Whether [_forceReveal] has already been called (prevents double-fire
+  /// from both timeout and normal completion).
+  bool _forceRevealed = false;
+
+  /// Timer that force-reveals the map if [_initFogAndReveal] doesn't
+  /// complete within [_kInitTimeout].
+  Timer? _initTimeoutTimer;
+
   /// Controls MapLibre container visibility via DOM on web, no-op on native.
   late final MapVisibility _mapVisibility;
 
@@ -147,6 +160,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
+    _initTimeoutTimer?.cancel();
     _mapVisibility.dispose();
     _rubberBand.dispose();
     _markerPosition.dispose();
@@ -184,8 +198,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Mid fog: semi-transparent polygons for hidden/concealed cells.
       await controller.addSource(
         GeoJsonSource(
-            id: _fogMidSrcId,
-            data: FogGeoJsonBuilder.emptyFeatureCollection),
+            id: _fogMidSrcId, data: FogGeoJsonBuilder.emptyFeatureCollection),
       );
       await controller.addLayer(FillLayer(
         id: _fogMidLayerId,
@@ -322,7 +335,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
       nativeDuration: Duration.zero,
     );
     // Capture the resulting zoom so subsequent moveCamera calls preserve it.
-    _currentZoom = controller.getCamera().zoom;
+    try {
+      _currentZoom = controller.getCamera().zoom;
+    } catch (e) {
+      MapLogger.getCameraError('_zoomToFitPlayer', e);
+    }
     MapLogger.zoomChanged(oldZoom, _currentZoom, 'fitExplored');
   }
 
@@ -339,9 +356,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final cellService = ref.read(cellServiceProvider);
 
     // Only include cells that resolve as hidden (visited but not current).
-    final hiddenCells = fogResolver.visitedCellIds
-        .where((id) => id != currentCellId)
-        .toList();
+    final hiddenCells =
+        fogResolver.visitedCellIds.where((id) => id != currentCellId).toList();
 
     // If there are no hidden cells yet, fall back to player view.
     if (hiddenCells.isEmpty) {
@@ -446,8 +462,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
+      final MapCamera camera;
+      try {
+        camera = _mapController!.getCamera();
+      } catch (e) {
+        MapLogger.getCameraError('_updateFogRendering', e);
+        return;
+      }
+
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
-      final camera = _mapController!.getCamera();
       fogOverlayController.update(
         cameraLat: camera.center.lat.toDouble(),
         cameraLon: camera.center.lng.toDouble(),
@@ -509,37 +532,89 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// then marks the map ready and reveals it by fading out the cover.
   ///
   /// Extracted from [_onStyleLoaded] so the async flow is explicit.
+  ///
+  /// **Crash prevention**: A safety timeout ([_kInitTimeout]) ensures the map
+  /// is always revealed even if this pipeline stalls (CDN outage, silent
+  /// exception, mounted-check abandonment). The entire body is wrapped in
+  /// try/catch so any unhandled error also triggers [_forceReveal].
   Future<void> _initFogAndReveal() async {
     MapLogger.fogInitStart();
 
-    // Capture viewport size synchronously before any async gap.
-    final viewportSize = MediaQuery.of(context).size;
+    // Start the safety timeout. If _initFogAndReveal completes normally,
+    // the timer is cancelled. If it stalls, _forceReveal shows the base map.
+    _initTimeoutTimer = Timer(_kInitTimeout, () {
+      MapLogger.fogInitTimeout(_kInitTimeout.inMilliseconds);
+      _forceReveal();
+    });
 
-    await _initFogLayers();
-    if (!mounted || _mapController == null) return;
-    MapLogger.fogInitLayersReady();
+    try {
+      // Capture viewport size synchronously before any async gap.
+      final viewportSize = MediaQuery.of(context).size;
 
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
-    final camera = _mapController!.getCamera();
+      await _initFogLayers();
+      if (!mounted || _mapController == null) {
+        _forceReveal();
+        return;
+      }
+      MapLogger.fogInitLayersReady();
 
-    // Compute initial fog state. Skip onBatchReady callback — we call
-    // _updateFogSources() once after updateAsync completes, avoiding the
-    // previous double-fire that could flash partial fog data.
-    await fogOverlayController.updateAsync(
-      cameraLat: camera.center.lat.toDouble(),
-      cameraLon: camera.center.lng.toDouble(),
-      zoom: camera.zoom,
-      viewportSize: viewportSize,
-    );
+      final fogOverlayController = ref.read(fogOverlayControllerProvider);
+
+      // getCamera() can throw if the map controller is in a bad state.
+      final MapCamera camera;
+      try {
+        camera = _mapController!.getCamera();
+      } catch (e) {
+        MapLogger.getCameraError('_initFogAndReveal', e);
+        _forceReveal();
+        return;
+      }
+
+      // Compute initial fog state. Skip onBatchReady callback — we call
+      // _updateFogSources() once after updateAsync completes, avoiding the
+      // previous double-fire that could flash partial fog data.
+      await fogOverlayController.updateAsync(
+        cameraLat: camera.center.lat.toDouble(),
+        cameraLon: camera.center.lng.toDouble(),
+        zoom: camera.zoom,
+        viewportSize: viewportSize,
+      );
+      if (!mounted) {
+        _forceReveal();
+        return;
+      }
+      MapLogger.fogInitDataComputed();
+
+      await _updateFogSources();
+      if (!mounted) {
+        _forceReveal();
+        return;
+      }
+      MapLogger.fogInitSourcesApplied();
+
+      // Cancel the safety timeout — we completed normally.
+      _initTimeoutTimer?.cancel();
+      _initTimeoutTimer = null;
+
+      // NOW mark the map ready (gates _updateFogRendering fog updates)
+      // and reveal the map via DOM opacity (CSS transition handles animation).
+      _revealMap();
+
+      MapLogger.fogInitComplete();
+    } catch (e, stack) {
+      MapLogger.fogInitFailed(e, stack);
+      _forceReveal();
+    }
+  }
+
+  /// Marks the map ready, reveals the MapLibre container, and forces a
+  /// player marker repaint. Called on successful init completion.
+  void _revealMap() {
+    if (_forceRevealed) return; // Already force-revealed by timeout.
+    _forceRevealed = true;
+
     if (!mounted) return;
-    MapLogger.fogInitDataComputed();
 
-    await _updateFogSources();
-    if (!mounted) return;
-    MapLogger.fogInitSourcesApplied();
-
-    // NOW mark the map ready (gates _updateFogRendering fog updates)
-    // and reveal the map via DOM opacity (CSS transition handles animation).
     ref.read(mapStateProvider.notifier).markReady();
     _mapVisibility.revealMapContainer();
 
@@ -555,8 +630,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _markerPosition.value = currentPos;
       }
     });
+  }
 
-    MapLogger.fogInitComplete();
+  /// Emergency reveal — called by the safety timeout or on init failure.
+  /// Shows the base map (possibly without fog layers) so the user isn't
+  /// stuck on a dark screen.
+  void _forceReveal() {
+    _initTimeoutTimer?.cancel();
+    _initTimeoutTimer = null;
+
+    if (_forceRevealed) return;
+    _forceRevealed = true;
+
+    if (!mounted) return;
+
+    ref.read(mapStateProvider.notifier).markReady();
+    _mapVisibility.revealMapContainer();
   }
 
   /// Strips all symbol (text/icon) layers from the map style.
@@ -626,177 +715,176 @@ class _MapScreenState extends ConsumerState<MapScreen>
       child: Scaffold(
         body: Stack(
           children: [
-          // ── Layer 0: Fog-colored backdrop ─────────────────────────────────
-          // Visible while the MapLibre container is hidden (CSS opacity 0).
-          // On Flutter web the map's HtmlElementView renders in a separate
-          // HTML layer above the Flutter canvas, so a Flutter widget cannot
-          // cover it — MapVisibility injects a CSS rule to hide the container
-          // until fog is initialised, and this backdrop fills the gap.
-          Container(color: const Color(0xFF161620)),
+            // ── Layer 0: Fog-colored backdrop ─────────────────────────────────
+            // Visible while the MapLibre container is hidden (CSS opacity 0).
+            // On Flutter web the map's HtmlElementView renders in a separate
+            // HTML layer above the Flutter canvas, so a Flutter widget cannot
+            // cover it — MapVisibility injects a CSS rule to hide the container
+            // until fog is initialised, and this backdrop fills the gap.
+            Container(color: const Color(0xFF161620)),
 
-          // ── Layer 1: MapLibre base map + native fog fill layers ────────────
-          // On web, the container starts hidden via a CSS rule injected by
-          // MapVisibility.hideMapContainer() in initState(). Once fog layers
-          // are initialised and first data applied, revealMapContainer() sets
-          // inline opacity: 1, which overrides the stylesheet rule while the
-          // CSS transition (defined in the same rule) animates the fade-in.
-          MapLibreMap(
-            options: MapOptions(
-              initStyle: 'https://tiles.openfreemap.org/styles/positron',
-              initZoom: kDefaultZoom,
-              initCenter: Position(kDefaultMapLon, kDefaultMapLat),
-              minZoom: kMinZoom,
-              maxZoom: kMaxZoom,
-              // Disable pitch (tilt) — we never use it, and it's a 2D game.
-              // This also disables MapLibre's built-in KeyboardHandler (which
-              // requires allEnabled=true). Without this, arrow keys are
-              // processed by BOTH our KeyboardLocationService AND MapLibre's
-              // native pan handler, causing rapid oscillation when opposing
-              // keys are held or jitter during normal movement.
-              gestures: const MapGestures.all(pitch: false),
-            ),
-            onMapCreated: _onMapCreated,
-            onStyleLoaded: _onStyleLoaded,
-            onEvent: _onMapEvent,
-            children: [
-              // ── Layer 2: Player marker (geo-anchored to display position) ─
-              // PlayerMarkerLayer uses ValueListenableBuilder internally so
-              // only it rebuilds on each 60fps rubber-band update — the rest
-              // of MapScreen stays stable.
-              PlayerMarkerLayer(position: _markerPosition),
-            ],
-          ),
-
-          // ── Layer 3: Status bar ────────────────────────────────────────────
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: StatusBar(),
-          ),
-
-          // ── Layer 3.5: Discovery notification overlay ─────────────────────
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 64,
-            left: 16,
-            right: 16,
-            child: const DiscoveryNotificationOverlay(),
-          ),
-
-          // ── Layer 3.6: Location permission banner ─────────────────────────
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 56,
-            left: 0,
-            right: 0,
-            child: const LocationPermissionBanner(),
-          ),
-
-          // ── Layer 3.7: Low accuracy indicator ─────────────────────────────
-          // Scoped Consumer so locationProvider rebuilds only this indicator,
-          // not the full MapScreen tree.
-          Positioned(
-            bottom: 72,
-            left: 0,
-            right: 0,
-            child: Consumer(
-              builder: (context, ref, child) {
-                final locationError = ref.watch(
-                  locationProvider.select((s) => s.locationError),
-                );
-                if (locationError != LocationError.lowAccuracy) {
-                  return const SizedBox.shrink();
-                }
-                return Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFF59E0B)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.gps_not_fixed_rounded,
-                          size: 14,
-                          color: Color(0xFFB45309),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'GPS accuracy is poor (>${kGpsAccuracyThreshold.toInt()} m)',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF92400E),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // ── Layer 4: Debug HUD (toggle-able) ──────────────────────────────
-          if (_showDebugHud)
-            Positioned(
-              left: 8,
-              bottom: 80,
-              child: DebugHud(
-                mapState: mapState,
-                visibleCells: fogOverlayController.renderData.length,
-                visitedCells: fogResolver.visitedCellIds.length,
-                cameraMode: cameraMode,
+            // ── Layer 1: MapLibre base map + native fog fill layers ────────────
+            // On web, the container starts hidden via a CSS rule injected by
+            // MapVisibility.hideMapContainer() in initState(). Once fog layers
+            // are initialised and first data applied, revealMapContainer() sets
+            // inline opacity: 1, which overrides the stylesheet rule while the
+            // CSS transition (defined in the same rule) animates the fade-in.
+            MapLibreMap(
+              options: MapOptions(
+                initStyle: 'https://tiles.openfreemap.org/styles/positron',
+                initZoom: kDefaultZoom,
+                initCenter: Position(kDefaultMapLon, kDefaultMapLat),
+                minZoom: kMinZoom,
+                maxZoom: kMaxZoom,
+                // Disable pitch (tilt) — we never use it, and it's a 2D game.
+                // This also disables MapLibre's built-in KeyboardHandler (which
+                // requires allEnabled=true). Without this, arrow keys are
+                // processed by BOTH our KeyboardLocationService AND MapLibre's
+                // native pan handler, causing rapid oscillation when opposing
+                // keys are held or jitter during normal movement.
+                gestures: const MapGestures.all(pitch: false),
               ),
+              onMapCreated: _onMapCreated,
+              onStyleLoaded: _onStyleLoaded,
+              onEvent: _onMapEvent,
+              children: [
+                // ── Layer 2: Player marker (geo-anchored to display position) ─
+                // PlayerMarkerLayer uses ValueListenableBuilder internally so
+                // only it rebuilds on each 60fps rubber-band update — the rest
+                // of MapScreen stays stable.
+                PlayerMarkerLayer(position: _markerPosition),
+              ],
             ),
 
-          // ── Layer 4.5: DPad controls (web only) ──────────────────────────
-          if (kIsWeb)
+            // ── Layer 3: Status bar ────────────────────────────────────────────
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: StatusBar(),
+            ),
+
+            // ── Layer 3.5: Discovery notification overlay ─────────────────────
             Positioned(
+              top: MediaQuery.of(context).padding.top + 64,
               left: 16,
-              bottom: 16,
-              child: DPadControls(
-                keyboardService:
-                    ref.read(locationServiceProvider).keyboardService!,
+              right: 16,
+              child: const DiscoveryNotificationOverlay(),
+            ),
+
+            // ── Layer 3.6: Location permission banner ─────────────────────────
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 56,
+              left: 0,
+              right: 0,
+              child: const LocationPermissionBanner(),
+            ),
+
+            // ── Layer 3.7: Low accuracy indicator ─────────────────────────────
+            // Scoped Consumer so locationProvider rebuilds only this indicator,
+            // not the full MapScreen tree.
+            Positioned(
+              bottom: 72,
+              left: 0,
+              right: 0,
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final locationError = ref.watch(
+                    locationProvider.select((s) => s.locationError),
+                  );
+                  if (locationError != LocationError.lowAccuracy) {
+                    return const SizedBox.shrink();
+                  }
+                  return Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF3C7),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFF59E0B)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.gps_not_fixed_rounded,
+                            size: 14,
+                            color: Color(0xFFB45309),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'GPS accuracy is poor (>${kGpsAccuracyThreshold.toInt()} m)',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
 
-          // ── Layer 5: Map controls (recenter + debug) ──────────────────────
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: MapControls(
-              isWorldZoom: _zoomLevel == ZoomLevel.world,
-              onRecenter: () {
-                final loc = ref.read(locationProvider);
-                final cameraController = ref.read(cameraControllerProvider);
-                if (loc.currentPosition != null) {
-                  cameraController.recenter(
-                    loc.currentPosition!.lat,
-                    loc.currentPosition!.lon,
-                  );
-                }
-                ref.read(cameraModeProvider.notifier).setFollowing();
-              },
-              onToggleZoom: () {
-                setState(() {
-                  _zoomLevel = _zoomLevel == ZoomLevel.player
-                      ? ZoomLevel.world
-                      : ZoomLevel.player;
-                });
-                _applyZoomLevel();
-              },
-              onToggleDebug: () =>
-                  setState(() => _showDebugHud = !_showDebugHud),
-            ),
-          ),
+            // ── Layer 4: Debug HUD (toggle-able) ──────────────────────────────
+            if (_showDebugHud)
+              Positioned(
+                left: 8,
+                bottom: 80,
+                child: DebugHud(
+                  mapState: mapState,
+                  visibleCells: fogOverlayController.renderData.length,
+                  visitedCells: fogResolver.visitedCellIds.length,
+                  cameraMode: cameraMode,
+                ),
+              ),
 
-        ],
+            // ── Layer 4.5: DPad controls (web only) ──────────────────────────
+            if (kIsWeb)
+              Positioned(
+                left: 16,
+                bottom: 16,
+                child: DPadControls(
+                  keyboardService:
+                      ref.read(locationServiceProvider).keyboardService!,
+                ),
+              ),
+
+            // ── Layer 5: Map controls (recenter + debug) ──────────────────────
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: MapControls(
+                isWorldZoom: _zoomLevel == ZoomLevel.world,
+                onRecenter: () {
+                  final loc = ref.read(locationProvider);
+                  final cameraController = ref.read(cameraControllerProvider);
+                  if (loc.currentPosition != null) {
+                    cameraController.recenter(
+                      loc.currentPosition!.lat,
+                      loc.currentPosition!.lon,
+                    );
+                  }
+                  ref.read(cameraModeProvider.notifier).setFollowing();
+                },
+                onToggleZoom: () {
+                  setState(() {
+                    _zoomLevel = _zoomLevel == ZoomLevel.player
+                        ? ZoomLevel.world
+                        : ZoomLevel.player;
+                  });
+                  _applyZoomLevel();
+                },
+                onToggleDebug: () =>
+                    setState(() => _showDebugHud = !_showDebugHud),
+              ),
+            ),
+          ],
         ),
       ),
     );
