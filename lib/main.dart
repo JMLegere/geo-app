@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/screens/login_screen.dart';
-import 'package:fog_of_world/features/navigation/screens/tab_shell.dart';
-import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
-import 'package:fog_of_world/features/onboarding/screens/onboarding_screen.dart';
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
-import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
-import 'package:fog_of_world/shared/app_theme.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/screens/login_screen.dart';
+import 'package:earth_nova/features/navigation/screens/tab_shell.dart';
+import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
+import 'package:earth_nova/features/onboarding/screens/onboarding_screen.dart';
+import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/shared/app_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +22,7 @@ void main() {
     overrides: [
       supabaseBootstrapProvider.overrideWithValue(bootstrap),
     ],
-    child: const FogOfWorldApp(),
+    child: const EarthNovaApp(),
   ));
 }
 
@@ -34,16 +35,21 @@ void main() {
 /// 2. `onboardingProvider == false` → [OnboardingScreen] (first launch only)
 /// 3. auth loading / authenticated → [TabShell]
 /// 4. unauthenticated → [LoginScreen]
-class FogOfWorldApp extends ConsumerWidget {
-  const FogOfWorldApp({super.key});
+class EarthNovaApp extends ConsumerWidget {
+  const EarthNovaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Eagerly trigger GameCoordinator creation — it owns auth initialization.
+    // Without this, auth stays in loading state forever because GC was only
+    // read by MapScreen (which doesn't appear until auth resolves).
+    ref.watch(gameCoordinatorProvider);
+
     final onboarded = ref.watch(onboardingProvider);
     final authState = ref.watch(authProvider);
 
     return MaterialApp(
-      title: 'Fog of World',
+      title: 'EarthNova',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,

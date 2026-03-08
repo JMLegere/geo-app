@@ -1,9 +1,17 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/map/map_screen.dart';
-import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
-import 'package:fog_of_world/main.dart';
+import 'package:geobase/geobase.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/map/map_screen.dart';
+import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
+import 'package:earth_nova/main.dart';
 
 /// Stub notifier that reports onboarding as complete without touching
 /// SharedPreferences — safe to use in the headless test environment.
@@ -12,38 +20,68 @@ class _CompletedOnboardingNotifier extends OnboardingNotifier {
   bool? build() => true;
 }
 
+/// Stub notifier that starts in authenticated state immediately,
+/// bypassing gameCoordinatorProvider's async auth initialization.
+class _AuthenticatedNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState.authenticated(
+        UserProfile(
+          id: 'test-user',
+          email: '',
+          displayName: 'Explorer',
+          createdAt: DateTime.now(),
+          isAnonymous: true,
+        ),
+      );
+}
+
+/// Minimal CellService for creating a no-op GameCoordinator in tests.
+class _StubCellService implements CellService {
+  @override
+  String getCellId(double lat, double lon) => 'cell_0_0';
+  @override
+  Geographic getCellCenter(String cellId) => Geographic(lat: 0, lon: 0);
+  @override
+  List<Geographic> getCellBoundary(String cellId) => [];
+  @override
+  List<String> getNeighborIds(String cellId) => [];
+  @override
+  List<String> getCellsInRing(String cellId, int k) => [cellId];
+  @override
+  List<String> getCellsAroundLocation(double lat, double lon, int k) =>
+      ['cell_0_0'];
+  @override
+  double get cellEdgeLengthMeters => 180;
+  @override
+  String get systemName => 'Stub';
+}
+
 void main() {
   testWidgets('App renders without crashing', (WidgetTester tester) async {
-    // FogOfWorldApp uses ConsumerWidgets (Riverpod) so it needs a ProviderScope.
-    // Override onboardingProvider so the test skips onboarding and exercises
-    // the existing auth → loading splash → MapScreen routing path.
+    // Create a minimal no-op GameCoordinator for the test. EarthNovaApp
+    // watches gameCoordinatorProvider to eagerly trigger auth init, but in
+    // tests we override authProvider directly so GC doesn't need to run.
+    final noOpCoordinator = GameCoordinator(
+      fogResolver: FogStateResolver(_StubCellService()),
+      statsService: StatsService(),
+    );
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          onboardingProvider
-              .overrideWith(_CompletedOnboardingNotifier.new),
+          onboardingProvider.overrideWith(_CompletedOnboardingNotifier.new),
+          authProvider.overrideWith(_AuthenticatedNotifier.new),
+          gameCoordinatorProvider.overrideWithValue(noOpCoordinator),
         ],
-        child: const FogOfWorldApp(),
+        child: const EarthNovaApp(),
       ),
     );
 
-    // Auth starts in loading state, which now shows _LoadingSplash
-    // (not MapScreen) to avoid expensive map/fog initialization before
-    // auth resolves. Verify the splash is visible initially.
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    // Let _initializeAuth() complete: supabaseReady resolves immediately
-    // in tests, then MockAuthService.signInAnonymously() has a 100ms delay.
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // MapLibreMap is a platform view (native map renderer). It throws
-    // UnimplementedError in the headless Flutter test environment because
-    // there is no real iOS/Android platform to host it. This is expected
-    // behaviour — the error is caught by the Widgets library, not a sign of
-    // a bug in our code.
-    //
-    // We clear the exception so the test can still verify the screen
-    // scaffolding is correct.
+    // Auth starts authenticated via override — should go straight to TabShell.
+    // MapLibreMap is a platform view that throws UnimplementedError in the
+    // headless test environment. Clear it so the test can verify the screen
+    // scaffolding.
+    await tester.pump(const Duration(milliseconds: 100));
     tester.takeException();
 
     // After auth resolves, the MapScreen widget is present in the widget tree.

@@ -29,7 +29,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 
 | Provider | Feature | Type | Dependencies |
 |----------|---------|------|-------------|
-| `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | reads: supabaseBootstrapProvider. States: unauthenticated, loading, authenticated |
+| `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | Thin state holder. `build()` returns `AuthState.initial()`. State pushed by `gameCoordinatorProvider` via `setState()`. Action wrappers delegate to `authServiceProvider`. |
 | `upgradePromptProvider` | auth | `NotifierProvider<UpgradePromptNotifier, UpgradePromptState>` | watches: authProvider, inventoryProvider. Triggers save-progress banner at 5 collected species for anonymous users |
 | `onboardingProvider` | onboarding | `NotifierProvider<OnboardingNotifier, bool?>` | none (SharedPreferences) |
 | `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, restoration, speciesService |
@@ -156,8 +156,8 @@ playerProvider ──→ sanctuaryProvider (listen)
 
 **Eager** (initialized at app startup):
 1. `supabaseBootstrapProvider` — pre-initialized in main()
-2. `authProvider` — FogOfWorldApp watches it
-3. `onboardingProvider` — FogOfWorldApp watches it
+2. `authProvider` — EarthNovaApp watches it
+3. `onboardingProvider` — EarthNovaApp watches it
 4. `seasonProvider` — auto-init in build()
 
 **Lazy** (initialized on first access):

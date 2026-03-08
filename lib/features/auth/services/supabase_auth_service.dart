@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
-import 'package:fog_of_world/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 /// Production [AuthService] backed by Supabase.
 ///
@@ -9,9 +9,9 @@ import 'package:fog_of_world/features/auth/services/auth_service.dart';
 /// Supabase credentials are configured. `MockAuthService` is used instead
 /// during development and testing.
 ///
-/// Swap in via `AuthNotifier` once `SUPABASE_URL` / `SUPABASE_ANON_KEY` are
-/// supplied as `--dart-define` values and `Supabase.initialize()` is called
-/// from `main.dart`.
+/// Wired by `gameCoordinatorProvider` when `SupabaseBootstrap.initialized`
+/// is true (i.e. `SUPABASE_URL` / `SUPABASE_ANON_KEY` supplied as
+/// `--dart-define` values and `Supabase.initialize()` succeeded).
 class SupabaseAuthService implements AuthService {
   /// Convenience accessor — throws [AuthException] if Supabase is not
   /// initialised (credentials missing or `Supabase.initialize()` not called).
@@ -207,7 +207,7 @@ class SupabaseAuthService implements AuthService {
   Future<UserProfile> linkOAuthIdentity({required String provider}) async {
     try {
       // linkIdentity opens an OAuth popup/redirect. The auth state change
-      // listener (_listenToAuthChanges in AuthNotifier) handles the result.
+      // listener (in gameCoordinatorProvider) handles the result.
       await _auth.linkIdentity(supa.OAuthProvider.values.firstWhere(
         (p) => p.name == provider,
         orElse: () => throw AuthException('Unknown OAuth provider: $provider'),

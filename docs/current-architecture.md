@@ -100,10 +100,14 @@ FogResolver.onVisitedCellAdded (sync stream, fired when player enters new cell)
 
 ```
 App start → SupabaseBootstrap.initialize() (3s timeout)
-  → AuthNotifier.build() → check Supabase session
-    → Has session? → authenticated (with UserProfile)
-    → No session? → auto anonymous sign-in → authenticated (isAnonymous: true)
-    → No Supabase? → MockAuthService → authenticated (mock user)
+  → gameCoordinatorProvider → initializeAuth()
+    → await bootstrap.ready
+    → Has Supabase? → SupabaseAuthService : MockAuthService
+    → Restore session (3s timeout) or signInAnonymously fallback
+    → Push AuthState to authProvider via setState()
+    → Set coordinator.currentUserId
+    → hydrateAndStart(userId) or startLoop()
+    → Subscribe to authStateChanges stream for future events
   → upgradePromptProvider watches auth + collection
     → Anonymous + ≥5 species → show save-progress banner
     → User taps → UpgradeBottomSheet (email / Google / Apple)

@@ -1,11 +1,12 @@
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
 
 enum AuthStatus { unauthenticated, loading, authenticated }
 
-/// Immutable auth state managed by `AuthNotifier`.
+/// Immutable auth state pushed by `gameCoordinatorProvider` via
+/// `AuthNotifier.setState()`.
 ///
 /// Factory constructors cover every transition:
-/// - [AuthState.initial] — checking for a saved session (loading).
+/// - [AuthState.initial] — app starting, auth not yet resolved (loading).
 /// - [AuthState.loading] — an auth operation is in progress.
 /// - [AuthState.authenticated] — user is signed in (includes anonymous).
 /// - [AuthState.unauthenticated] — confirmed no session.
@@ -36,7 +37,8 @@ class AuthState {
       : this._(status: AuthStatus.authenticated, user: user);
 
   /// No session found after checking, or user signed out.
-  const AuthState.unauthenticated() : this._(status: AuthStatus.unauthenticated);
+  const AuthState.unauthenticated()
+      : this._(status: AuthStatus.unauthenticated);
 
   /// An auth operation failed; [errorMessage] describes the failure.
   AuthState.error(String message)
