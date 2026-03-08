@@ -42,6 +42,10 @@ const int kFoodTypeCount = 6;
 /// Number of orb dimensions (habitat, animalClass, climate).
 const int kOrbDimensionCount = 3;
 
+// Encounters
+/// Number of species rolled per cell visit.
+const int kEncounterSlotsPerCell = 1;
+
 // Fog of War
 /// Number of discrete fog states.
 const int kFogLevels = 5;
