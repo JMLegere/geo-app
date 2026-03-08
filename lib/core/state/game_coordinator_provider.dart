@@ -8,12 +8,16 @@ import 'package:uuid/uuid.dart';
 import 'package:fog_of_world/core/database/app_database.dart';
 import 'package:fog_of_world/core/game/game_coordinator.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:fog_of_world/core/models/animal_class.dart';
+import 'package:fog_of_world/core/models/climate.dart';
+import 'package:fog_of_world/core/models/food_type.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/models/species_enrichment.dart';
 import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/models/season.dart';
 import 'package:fog_of_world/core/models/write_queue_entry.dart';
 import 'package:fog_of_world/core/persistence/cell_progress_repository.dart';
+import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
 import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
 import 'package:fog_of_world/core/persistence/profile_repository.dart';
 import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
@@ -37,6 +41,8 @@ import 'package:fog_of_world/features/location/services/location_simulator.dart'
 import 'package:fog_of_world/features/location/services/real_gps_service.dart';
 import 'package:fog_of_world/features/map/providers/discovery_service_provider.dart';
 import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
+import 'package:fog_of_world/features/sync/providers/sync_provider.dart';
+import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 
 /// Bridges [GameCoordinator] (core, pure Dart) with feature-layer services.
 ///
@@ -290,7 +296,17 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   }
 
   void hydrateAndStart(String userId) {
-    rehydrateData(userId).then((_) {
+    // CRITICAL: On web, IndexedDB-backed SQLite may lose data between
+    // sessions. Fetch from Supabase first to populate the local cache,
+    // then run the existing SQLite hydration path.
+    hydrateFromSupabase(
+      userId: userId,
+      persistence: ref.read(supabasePersistenceProvider),
+      profileRepo: profileRepo,
+      cellProgressRepo: cellProgressRepo,
+      itemRepo: itemRepo,
+      enrichmentRepo: enrichmentRepo,
+    ).then((_) => rehydrateData(userId)).then((_) {
       startLoop();
 
       // Re-queue enrichment for any fauna in inventory that lacks it.
@@ -542,6 +558,163 @@ Future<void> _persistProfileState({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
+  }
+}
+
+/// Fetch player data from Supabase and populate local SQLite cache.
+///
+/// On web, IndexedDB-backed SQLite may lose data between sessions. This
+/// step pulls the authoritative server state into the local cache so the
+/// existing [rehydrateData] path (which reads from SQLite) has fresh data.
+///
+/// Gracefully handles:
+/// - Supabase not configured ([persistence] is null) → no-op
+/// - Network errors → logs and continues (SQLite-only fallback)
+/// - Empty server data → no-op (fresh account)
+@visibleForTesting
+Future<void> hydrateFromSupabase({
+  required String userId,
+  required SupabasePersistence? persistence,
+  required ProfileRepository profileRepo,
+  required CellProgressRepository cellProgressRepo,
+  required ItemInstanceRepository itemRepo,
+  required EnrichmentRepository enrichmentRepo,
+}) async {
+  if (persistence == null) {
+    debugPrint('[GameCoordinator] Supabase not configured — skipping '
+        'server hydration');
+    return;
+  }
+
+  try {
+    debugPrint('[GameCoordinator] hydrating from Supabase for $userId...');
+
+    // Fetch all data in parallel.
+    final results = await Future.wait<Object?>([
+      persistence.fetchProfile(userId),
+      persistence.fetchCellProgress(userId),
+      persistence.fetchItemInstances(userId),
+      persistence.fetchEnrichments(),
+    ]);
+
+    final profileMap = results[0] as Map<String, dynamic>?;
+    final cellRows = results[1]! as List<Map<String, dynamic>>;
+    final itemRows = results[2]! as List<Map<String, dynamic>>;
+    final enrichmentRows = results[3]! as List<Map<String, dynamic>>;
+
+    // 1. Profile → SQLite
+    if (profileMap != null) {
+      await profileRepo.create(
+        userId: userId,
+        displayName: profileMap['display_name'] as String? ?? 'Explorer',
+        currentStreak: profileMap['current_streak'] as int? ?? 0,
+        longestStreak: profileMap['longest_streak'] as int? ?? 0,
+        totalDistanceKm:
+            (profileMap['total_distance_km'] as num?)?.toDouble() ?? 0.0,
+        currentSeason: profileMap['current_season'] as String? ?? 'summer',
+      );
+    }
+
+    // 2. Cell progress → SQLite (upsert each row)
+    for (final row in cellRows) {
+      final cellId = row['cell_id'] as String;
+      final id = row['id'] as String? ?? '${userId}_$cellId';
+      final fogState =
+          FogState.fromString(row['fog_state'] as String? ?? 'observed');
+      final visitCount = row['visit_count'] as int? ?? 1;
+      final distanceWalked =
+          (row['distance_walked'] as num?)?.toDouble() ?? 0.0;
+      final restorationLevel =
+          (row['restoration_level'] as num?)?.toDouble() ?? 0.0;
+      final lastVisitedStr = row['last_visited'] as String?;
+      final lastVisited =
+          lastVisitedStr != null ? DateTime.tryParse(lastVisitedStr) : null;
+
+      await cellProgressRepo.create(
+        id: id,
+        userId: userId,
+        cellId: cellId,
+        fogState: fogState,
+        distanceWalked: distanceWalked,
+        visitCount: visitCount,
+        restorationLevel: restorationLevel,
+        lastVisited: lastVisited,
+      );
+    }
+
+    // 3. Item instances → SQLite (upsert each row)
+    for (final row in itemRows) {
+      final acquiredAtStr = row['acquired_at'] as String?;
+      final acquiredAt = acquiredAtStr != null
+          ? DateTime.parse(acquiredAtStr)
+          : DateTime.now();
+
+      final instance = ItemInstance(
+        id: row['id'] as String,
+        definitionId: row['definition_id'] as String,
+        affixes:
+            ItemInstance.affixesFromJson(row['affixes'] as String? ?? '[]'),
+        acquiredAt: acquiredAt,
+        acquiredInCellId: row['acquired_in_cell_id'] as String?,
+        dailySeed: row['daily_seed'] as String?,
+        parentAId: row['parent_a_id'] as String?,
+        parentBId: row['parent_b_id'] as String?,
+        status:
+            ItemInstanceStatus.fromString(row['status'] as String? ?? 'active'),
+      );
+
+      try {
+        await itemRepo.addItem(instance, userId);
+      } catch (_) {
+        // Item may already exist locally — that's OK (duplicate PK).
+        // The server data is authoritative but we don't want to crash
+        // on a duplicate insert.
+      }
+    }
+
+    // 4. Enrichments → SQLite
+    for (final row in enrichmentRows) {
+      try {
+        final enrichedAtStr = row['enriched_at'] as String?;
+        final enrichedAt = enrichedAtStr != null
+            ? DateTime.parse(enrichedAtStr)
+            : DateTime.now();
+
+        final enrichment = SpeciesEnrichment(
+          definitionId: row['definition_id'] as String,
+          animalClass: AnimalClass.values.firstWhere(
+            (c) => c.name == row['animal_class'],
+            orElse: () => AnimalClass.carnivore,
+          ),
+          foodPreference: FoodType.values.firstWhere(
+            (f) => f.name == row['food_preference'],
+            orElse: () => FoodType.critter,
+          ),
+          climate: Climate.values.firstWhere(
+            (c) => c.name == row['climate'],
+            orElse: () => Climate.temperate,
+          ),
+          brawn: row['brawn'] as int? ?? 30,
+          wit: row['wit'] as int? ?? 30,
+          speed: row['speed'] as int? ?? 30,
+          artUrl: row['art_url'] as String?,
+          enrichedAt: enrichedAt,
+        );
+        await enrichmentRepo.upsertEnrichment(enrichment);
+      } catch (e) {
+        debugPrint('[GameCoordinator] failed to hydrate enrichment: $e');
+      }
+    }
+
+    debugPrint('[GameCoordinator] Supabase hydration complete: '
+        'profile=${profileMap != null}, '
+        'cells=${cellRows.length}, '
+        'items=${itemRows.length}, '
+        'enrichments=${enrichmentRows.length}');
+  } catch (e) {
+    // Network error, Supabase down, etc. — continue with SQLite-only.
+    debugPrint('[GameCoordinator] Supabase hydration failed (continuing '
+        'with local data): $e');
   }
 }
 
