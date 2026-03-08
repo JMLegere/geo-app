@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 
 /// Represents an item discovery triggered when a player enters a new cell.
 ///

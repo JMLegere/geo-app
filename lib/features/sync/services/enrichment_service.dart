@@ -5,8 +5,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/models/species_enrichment.dart';
-import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
+import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 
 class _EnrichmentRequest {
   final String definitionId;

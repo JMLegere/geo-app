@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
-import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/rarity_badge.dart';
+import 'package:earth_nova/shared/widgets/habitat_gradient.dart';
 
 /// Compact card displaying a collected species inside a habitat section.
 ///

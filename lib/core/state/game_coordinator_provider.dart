@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -5,44 +6,48 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/game/game_coordinator.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/climate.dart';
-import 'package:fog_of_world/core/models/food_type.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/species_enrichment.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/core/models/write_queue_entry.dart';
-import 'package:fog_of_world/core/persistence/cell_progress_repository.dart';
-import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/persistence/profile_repository.dart';
-import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
-import 'package:fog_of_world/core/species/stats_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
-import 'package:fog_of_world/core/state/cell_progress_repository_provider.dart';
-import 'package:fog_of_world/core/state/daily_seed_provider.dart';
-import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
-import 'package:fog_of_world/core/state/location_provider.dart';
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/core/state/profile_repository_provider.dart';
-import 'package:fog_of_world/core/state/write_queue_repository_provider.dart';
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/enrichment/providers/enrichment_provider.dart';
-import 'package:fog_of_world/features/location/services/location_service.dart';
-import 'package:fog_of_world/features/location/services/location_simulator.dart';
-import 'package:fog_of_world/features/location/services/real_gps_service.dart';
-import 'package:fog_of_world/features/map/providers/discovery_service_provider.dart';
-import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
-import 'package:fog_of_world/features/sync/providers/sync_provider.dart';
-import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
+import 'package:earth_nova/core/persistence/enrichment_repository.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/persistence/profile_repository.dart';
+import 'package:earth_nova/core/persistence/write_queue_repository.dart';
+import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
+import 'package:earth_nova/core/state/daily_seed_provider.dart';
+import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
+import 'package:earth_nova/core/state/location_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/core/state/profile_repository_provider.dart';
+import 'package:earth_nova/core/state/write_queue_repository_provider.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/enrichment/providers/enrichment_provider.dart';
+import 'package:earth_nova/features/location/services/location_service.dart';
+import 'package:earth_nova/features/location/services/location_simulator.dart';
+import 'package:earth_nova/features/location/services/real_gps_service.dart';
+import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
+import 'package:earth_nova/features/map/providers/location_service_provider.dart';
+import 'package:earth_nova/features/sync/providers/sync_provider.dart';
+import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 
 /// Bridges [GameCoordinator] (core, pure Dart) with feature-layer services.
 ///
@@ -321,30 +326,95 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     });
   }
 
-  // Auth initializes asynchronously (awaits Supabase bootstrap, then
-  // auto-signs-in). userId may be null here if auth hasn't settled yet.
-  final authState = ref.read(authProvider);
-  final userId = authState.user?.id;
+  // --- Auth lifecycle: create service, restore session, start game ---
+  //
+  // Declared in the synchronous provider body so ref.onDispose() can clean
+  // up. The async _initializeAuth closure populates them.
+  AuthService? authService;
+  StreamSubscription<UserProfile?>? authStreamSub;
 
-  if (userId != null) {
-    // Auth already settled — hydrate then start.
-    hydrateAndStart(userId);
-  } else {
-    // Auth still loading — listen for it to settle, then hydrate + start.
-    var started = false;
-    ref.listen<AuthState>(authProvider, (_, next) {
-      if (started) return;
-      final id = next.user?.id;
-      if (id != null) {
-        started = true;
-        hydrateAndStart(id);
-      } else if (next.status == AuthStatus.unauthenticated) {
-        // Auth settled but no user — start without hydration.
-        started = true;
-        startLoop();
+  Future<void> initializeAuth() async {
+    final bootstrap = ref.read(supabaseBootstrapProvider);
+    await bootstrap.ready;
+
+    // 1. Create the appropriate AuthService.
+    if (bootstrap.initialized) {
+      authService = SupabaseAuthService();
+    } else {
+      authService = MockAuthService();
+    }
+    ref.read(authServiceProvider.notifier).set(authService!);
+
+    // 2. Try to restore an existing session.
+    //
+    // authStateChanges emits the current session on subscription (both
+    // MockAuthService and SupabaseAuthService do this). Wait up to 3s for
+    // it. Belt-and-suspenders: also try getCurrentUser() in case the
+    // stream doesn't fire.
+    UserProfile? restoredUser;
+    try {
+      restoredUser = await authService!.authStateChanges.first
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Timeout or stream error — try getCurrentUser() as fallback.
+    }
+
+    restoredUser ??= await authService!.getCurrentUser();
+
+    // 3. If no session exists, sign in anonymously.
+    if (restoredUser == null) {
+      try {
+        restoredUser = await authService!.signInAnonymously();
+      } on AuthException catch (e) {
+        debugPrint('[GameCoordinator] anonymous sign-in failed: $e');
+        // Last resort: if Supabase auth failed, fall back to MockAuthService.
+        if (authService is! MockAuthService) {
+          debugPrint('[GameCoordinator] falling back to MockAuthService');
+          authService!.dispose();
+          authService = MockAuthService();
+          ref.read(authServiceProvider.notifier).set(authService!);
+          try {
+            restoredUser = await authService!.signInAnonymously();
+          } catch (e2) {
+            debugPrint('[GameCoordinator] mock anonymous sign-in failed: $e2');
+          }
+        }
+      }
+    }
+
+    // 4. Push auth state to authProvider + coordinator.
+    if (restoredUser != null) {
+      ref.read(authProvider.notifier).setState(
+            AuthState.authenticated(restoredUser),
+          );
+      coordinator.setCurrentUserId(restoredUser.id);
+      hydrateAndStart(restoredUser.id);
+    } else {
+      ref
+          .read(authProvider.notifier)
+          .setState(const AuthState.unauthenticated());
+      startLoop();
+    }
+
+    // 5. Start ongoing auth stream listener for future auth events
+    //    (sign-in, sign-out, token refresh, identity changes from UI actions).
+    authStreamSub = authService!.authStateChanges.listen((user) {
+      if (user != null) {
+        ref.read(authProvider.notifier).setState(
+              AuthState.authenticated(user),
+            );
+        coordinator.setCurrentUserId(user.id);
+      } else {
+        ref
+            .read(authProvider.notifier)
+            .setState(const AuthState.unauthenticated());
+        coordinator.setCurrentUserId(null);
       }
     });
   }
+
+  // Fire auth initialization (async, non-blocking).
+  initializeAuth();
 
   // --- Re-hydrate when auth identity changes post-startup ---
   //
@@ -391,6 +461,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   ref.onDispose(() {
     coordinator.dispose();
     locationService.stop();
+    authStreamSub?.cancel();
+    authService?.dispose();
   });
 
   return coordinator;

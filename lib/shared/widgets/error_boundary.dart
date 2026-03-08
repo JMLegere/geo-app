@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 /// An error boundary that catches Flutter framework errors in its subtree
 /// and displays fallback UI instead of a red crash screen.

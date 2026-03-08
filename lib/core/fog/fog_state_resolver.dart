@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_event.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_event.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Computes fog-of-war visibility from player position and visit history.
 ///

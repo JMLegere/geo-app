@@ -2,7 +2,7 @@ import 'dart:math' show pi;
 
 import 'package:flutter/material.dart' hide Durations;
 
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PrismaticBorder + FirstDiscoveryBadge

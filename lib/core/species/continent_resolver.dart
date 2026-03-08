@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/continent.dart';
+import 'package:earth_nova/core/models/continent.dart';
 
 /// Resolves GPS coordinates to a continent using bounding-box regions.
 ///

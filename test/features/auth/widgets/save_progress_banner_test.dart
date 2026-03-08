@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
-import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
+import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
+import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
 
 // ---------------------------------------------------------------------------
 // Stub notifier — hand-written, no mockito/mocktail

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 
 /// Top status bar showing key exploration stats (Apple Maps style).
 ///

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/map/controllers/camera_controller.dart';
+import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 
 /// Notifier that holds and mutates the camera's follow/free mode.
 ///

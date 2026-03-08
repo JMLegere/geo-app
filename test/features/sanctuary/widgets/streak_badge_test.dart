@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/streak_badge.dart';
+import 'package:earth_nova/features/sanctuary/widgets/streak_badge.dart';
 
 Future<void> _pump(WidgetTester tester, int streak) async {
   await tester.pumpWidget(

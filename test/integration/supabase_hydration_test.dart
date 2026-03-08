@@ -16,17 +16,17 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/climate.dart';
-import 'package:fog_of_world/core/models/food_type.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/persistence/cell_progress_repository.dart';
-import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/persistence/profile_repository.dart';
-import 'package:fog_of_world/core/state/game_coordinator_provider.dart';
-import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
+import 'package:earth_nova/core/persistence/enrichment_repository.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/persistence/profile_repository.dart';
+import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 
 // ---------------------------------------------------------------------------
 // Constants

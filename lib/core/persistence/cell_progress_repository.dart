@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 class CellProgressRepository {
   final AppDatabase _db;

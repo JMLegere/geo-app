@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/restoration/services/restoration_service.dart';
+import 'package:earth_nova/features/restoration/services/restoration_service.dart';
 
 void main() {
   group('RestorationService', () {

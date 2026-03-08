@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/affix.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/species/stats_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Describes GPS-related error states.
 ///
@@ -137,6 +137,26 @@ class GameCoordinator {
   /// Called when an item is discovered. Receives the event and the newly
   /// created ItemInstance (with rolled intrinsic affix).
   void Function(DiscoveryEvent event, ItemInstance instance)? onItemDiscovered;
+
+  /// Called when the auth-resolved user ID changes (initial auth, identity
+  /// switch, sign-out). The provider layer uses this to update authProvider
+  /// state and trigger re-hydration.
+  void Function(String? userId, bool isAnonymous)? onAuthStateChanged;
+
+  // ---------------------------------------------------------------------------
+  // Auth state (tracked for persistence — userId needed by onCellVisited etc.)
+  // ---------------------------------------------------------------------------
+
+  String? _currentUserId;
+
+  /// The authenticated user's ID, or null if not yet authenticated.
+  String? get currentUserId => _currentUserId;
+
+  /// Update the current user ID. Called by the provider layer after auth
+  /// resolves or when identity changes during gameplay.
+  void setCurrentUserId(String? userId) {
+    _currentUserId = userId;
+  }
 
   // ---------------------------------------------------------------------------
   // Stream subscriptions

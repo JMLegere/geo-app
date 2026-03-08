@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 String _todayUtcString() {
   final now = DateTime.now().toUtc();

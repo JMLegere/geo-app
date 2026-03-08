@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
+import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 
 void main() {
   group('MapState', () {

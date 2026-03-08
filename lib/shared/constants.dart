@@ -1,4 +1,4 @@
-// Game constants for Fog of World.
+// Game constants for EarthNova.
 // Centralizes all game-balance constants to ensure consistency
 // across the codebase and simplify tuning.
 

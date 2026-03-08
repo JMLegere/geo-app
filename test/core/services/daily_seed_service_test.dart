@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/services/daily_seed_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/services/daily_seed_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 void main() {
   // ---------------------------------------------------------------------------

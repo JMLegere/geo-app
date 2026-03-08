@@ -2,8 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
 
 /// A translucent frosted-glass container with backdrop blur.
 ///

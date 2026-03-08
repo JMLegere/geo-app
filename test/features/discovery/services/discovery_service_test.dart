@@ -1,17 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/services/daily_seed_service.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/features/biome/services/biome_service.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
-import 'package:fog_of_world/features/seasonal/services/season_service.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/services/daily_seed_service.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/features/biome/services/biome_service.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/features/discovery/services/discovery_service.dart';
+import 'package:earth_nova/features/seasonal/services/season_service.dart';
 
 // ---------------------------------------------------------------------------
 // MockHabitatService — always returns a fixed set of habitats.

@@ -1,12 +1,12 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/cell_cache.dart';
-import 'package:fog_of_world/core/cells/lazy_voronoi_cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/features/map/controllers/fog_overlay_controller.dart';
-import 'package:fog_of_world/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/core/cells/cell_cache.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/features/map/controllers/fog_overlay_controller.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 
 /// Full-pipeline diagnostic: CellService → FogResolver → FogOverlayController
 ///

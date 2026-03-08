@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
+import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 
 Future<void> _pump(WidgetTester tester, double percentage) async {
   await tester.pumpWidget(

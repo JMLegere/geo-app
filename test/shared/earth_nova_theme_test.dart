@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/shared/app_theme.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/shared/app_theme.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
 
 void main() {
   // ── ThemeExtension registration ────────────────────────────────────────────

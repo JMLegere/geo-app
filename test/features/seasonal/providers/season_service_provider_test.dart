@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/seasonal/providers/season_service_provider.dart';
-import 'package:fog_of_world/features/seasonal/services/season_service.dart';
+import 'package:earth_nova/features/seasonal/providers/season_service_provider.dart';
+import 'package:earth_nova/features/seasonal/services/season_service.dart';
 
 void main() {
   group('seasonServiceProvider', () {

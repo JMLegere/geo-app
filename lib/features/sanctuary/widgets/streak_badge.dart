@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart' hide Durations;
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Small pill badge showing the player's daily visit streak.
 ///

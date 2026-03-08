@@ -1,10 +1,10 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/climate.dart';
-import 'package:fog_of_world/core/models/food_type.dart';
-import 'package:fog_of_world/core/models/species_enrichment.dart';
-import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
+import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 
 import 'test_helpers.dart';
 

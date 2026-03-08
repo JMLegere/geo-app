@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
 
 void main() {
   group('AnimalClass', () {

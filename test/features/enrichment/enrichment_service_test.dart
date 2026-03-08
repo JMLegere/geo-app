@@ -1,13 +1,13 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/climate.dart';
-import 'package:fog_of_world/core/models/food_type.dart';
-import 'package:fog_of_world/core/models/species_enrichment.dart';
-import 'package:fog_of_world/core/persistence/enrichment_repository.dart';
-import 'package:fog_of_world/features/sync/services/enrichment_service.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
+import 'package:earth_nova/core/persistence/enrichment_repository.dart';
+import 'package:earth_nova/features/sync/services/enrichment_service.dart';
 
 AppDatabase makeInMemoryDb() => AppDatabase(NativeDatabase.memory());
 

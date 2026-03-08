@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/map/layers/player_marker_widget.dart';
+import 'package:earth_nova/features/map/layers/player_marker_widget.dart';
 
 void main() {
   group('PlayerMarkerWidget', () {

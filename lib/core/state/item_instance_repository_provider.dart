@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/state/app_database_provider.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
 
 /// Provides [ItemInstanceRepository] backed by the singleton [AppDatabase].
 ///

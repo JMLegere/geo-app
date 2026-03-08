@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
+import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
 
 void main() {
   group('CaretakingState', () {

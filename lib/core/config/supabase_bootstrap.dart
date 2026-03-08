@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/config/supabase_config.dart';
+import 'package:earth_nova/core/config/supabase_config.dart';
 
 /// Maximum time to spend waiting for Supabase to initialize before falling
 /// back to offline mode. Prevents slow networks from blocking app startup.
@@ -11,9 +11,9 @@ const _kSupabaseInitTimeout = Duration(seconds: 3);
 
 /// Encapsulates Supabase SDK initialization state.
 ///
-/// Consumers (e.g. `AuthNotifier`) `await bootstrap.ready` before deciding
-/// whether to use `SupabaseAuthService` or `MockAuthService`. This allows
-/// `main()` to call [initialize] without awaiting it — the UI renders
+/// Consumers (e.g. `gameCoordinatorProvider`) `await bootstrap.ready` before
+/// deciding whether to use `SupabaseAuthService` or `MockAuthService`. This
+/// allows `main()` to call [initialize] without awaiting it — the UI renders
 /// immediately while the SDK initializes in the background.
 ///
 /// Default state (`initialized = false`, `ready` already resolved) means

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/persistence/cell_progress_repository.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'test_helpers.dart';
 
 void main() {

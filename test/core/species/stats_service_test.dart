@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/affix.dart';
-import 'package:fog_of_world/core/species/stats_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 void main() {
   const service = StatsService();

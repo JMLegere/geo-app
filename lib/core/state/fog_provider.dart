@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 class FogNotifier extends Notifier<Map<String, FogState>> {
   @override

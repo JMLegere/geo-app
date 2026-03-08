@@ -1,36 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
-import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
 
 void main() {
   group('AuthNotifier initialization', () {
-    // Each test creates a fresh ProviderContainer with a fresh SupabaseBootstrap
-    // instance (initialized = false, ready = resolved future) via override.
-    // This replaces the old approach of mutating global variables.
-
-    ProviderContainer makeContainer() {
-      final bootstrap = SupabaseBootstrap();
-      // Do NOT call bootstrap.initialize() — no credentials in tests, so this
-      // matches the pre-refactor setUp() behavior of:
-      //   supabaseInitialized = false; supabaseReady = Future.value();
-      return ProviderContainer(
-        overrides: [
-          supabaseBootstrapProvider.overrideWithValue(bootstrap),
-        ],
-      );
-    }
+    // In the new architecture, AuthNotifier is a thin state holder.
+    // Auth orchestration (session restore, anonymous fallback) lives in
+    // gameCoordinatorProvider. These tests verify the notifier's behavior
+    // when seeded by the coordinator.
 
     // ── Initial state ────────────────────────────────────────────────────────
 
     test('build() returns AuthState.initial() (loading) immediately', () {
-      final container = makeContainer();
+      final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      // Read synchronously before any async work completes.
+      // Read synchronously before any external code calls setState().
       final state = container.read(authProvider);
 
       // AuthState.initial() returns loading status.
@@ -39,21 +27,28 @@ void main() {
       expect(state.errorMessage, isNull);
     });
 
-    // ── Fallback to MockAuthService ──────────────────────────────────────────
+    // ── Simulated GC initialization flow ─────────────────────────────────────
 
-    test('falls back to MockAuthService when Supabase not configured', () async {
-      final container = makeContainer();
+    test('becomes authenticated when GC pushes state via setState()', () async {
+      final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      // Read the provider to trigger initialization.
+      // Read the provider to create the notifier.
       container.read(authProvider);
 
-      // Wait for _initializeAuth() to complete (includes MockAuthService
-      // anonymous sign-in, which has a 100ms simulated delay).
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      // Simulate what gameCoordinatorProvider.initializeAuth() does:
+      // 1. Create and seed the auth service.
+      final mockService = MockAuthService();
+      container.read(authServiceProvider.notifier).set(mockService);
 
-      // Without Supabase credentials, AuthNotifier should auto-sign-in
-      // anonymously via MockAuthService.
+      // 2. Sign in anonymously.
+      final user = await mockService.signInAnonymously();
+
+      // 3. Push authenticated state.
+      container.read(authProvider.notifier).setState(
+            AuthState.authenticated(user),
+          );
+
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.authenticated);
       expect(state.user, isNotNull);
@@ -62,34 +57,42 @@ void main() {
 
     // ── State transitions ────────────────────────────────────────────────────
 
-    test('transitions from loading to authenticated after init', () async {
-      final container = makeContainer();
+    test('transitions from loading to authenticated when GC pushes state',
+        () async {
+      final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      // Set up listener BEFORE reading the provider to capture initial state.
+      // Set up listener BEFORE reading the provider to capture all changes.
       final states = <AuthStatus>[];
       container.listen(authProvider, (_, next) => states.add(next.status));
 
-      // Now read the provider to trigger initialization.
+      // Read to trigger build() — initial state is loading.
       container.read(authProvider);
 
-      // Wait for initialization to complete.
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      // Simulate GC pushing auth state.
+      final mockService = MockAuthService();
+      container.read(authServiceProvider.notifier).set(mockService);
+      final user = await mockService.signInAnonymously();
+      container.read(authProvider.notifier).setState(
+            AuthState.authenticated(user),
+          );
 
-      // Should have transitioned: loading → authenticated.
-      // Note: listener captures state changes, so we should see authenticated
-      // (the initial read returns loading, but listener only fires on changes).
       expect(states, contains(AuthStatus.authenticated));
     });
 
-    test('provides a valid user after initialization', () async {
-      final container = makeContainer();
+    test('provides a valid user after GC initialization', () async {
+      final container = ProviderContainer();
       addTearDown(container.dispose);
 
       container.read(authProvider);
 
-      // Wait for initialization.
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      // Simulate GC init.
+      final mockService = MockAuthService();
+      container.read(authServiceProvider.notifier).set(mockService);
+      final user = await mockService.signInAnonymously();
+      container.read(authProvider.notifier).setState(
+            AuthState.authenticated(user),
+          );
 
       final state = container.read(authProvider);
       expect(state.isLoggedIn, isTrue);

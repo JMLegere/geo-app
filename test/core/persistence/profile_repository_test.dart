@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/persistence/profile_repository.dart';
+import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'test_helpers.dart';
 
 void main() {

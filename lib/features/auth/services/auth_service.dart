@@ -1,4 +1,4 @@
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
 
 /// Thrown by [AuthService] implementations when an auth operation fails.
 class AuthException implements Exception {

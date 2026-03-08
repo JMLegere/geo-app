@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 
 void main() {
   group('MercatorProjection', () {

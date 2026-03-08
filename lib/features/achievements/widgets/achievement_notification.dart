@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
-import 'package:fog_of_world/features/achievements/providers/achievement_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
-import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/providers/achievement_provider.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 
 /// Animated overlay toast that slides in from above when an achievement unlocks.
 ///

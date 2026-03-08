@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/state/fog_provider.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/state/fog_provider.dart';
 
 void main() {
   group('FogNotifier', () {

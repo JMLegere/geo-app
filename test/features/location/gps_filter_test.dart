@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/location/services/gps_filter.dart';
-import 'package:fog_of_world/features/location/services/location_simulator.dart';
+import 'package:earth_nova/features/location/services/gps_filter.dart';
+import 'package:earth_nova/features/location/services/location_simulator.dart';
 import 'package:geobase/geobase.dart';
 
 SimulatedLocation _loc(double lat, double lon, {double accuracy = 5.0}) {

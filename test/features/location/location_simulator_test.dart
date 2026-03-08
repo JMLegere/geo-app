@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/location/services/location_simulator.dart';
+import 'package:earth_nova/features/location/services/location_simulator.dart';
 import 'package:geobase/geobase.dart';
 
 double _haversineMeters(Geographic a, Geographic b) {

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/restoration/models/restoration_state.dart';
+import 'package:earth_nova/features/restoration/models/restoration_state.dart';
 
 /// Riverpod notifier managing per-cell habitat restoration levels.
 ///

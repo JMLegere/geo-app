@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/steps/services/step_service.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/steps/services/step_service.dart';
 
 // ---------------------------------------------------------------------------
 // State

@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:geobase/geobase.dart';
 
-import 'package:fog_of_world/core/cells/cell_service.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
 
 /// Production Voronoi tessellation implementation of [CellService].
 ///

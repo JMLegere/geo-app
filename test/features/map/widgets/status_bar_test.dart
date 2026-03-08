@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/map/widgets/status_bar.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/map/widgets/status_bar.dart';
 
 void main() {
   group('StatusBar', () {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:fog_of_world/features/map/controllers/camera_controller.dart';
-import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
+import 'package:earth_nova/features/map/controllers/camera_controller.dart';
+import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 
 /// Toggle-able debug overlay for the map screen.
 ///

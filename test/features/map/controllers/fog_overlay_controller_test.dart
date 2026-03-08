@@ -3,10 +3,10 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/features/map/controllers/fog_overlay_controller.dart';
-import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/features/map/controllers/fog_overlay_controller.dart';
+import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — simple 1°×1° degree grid.

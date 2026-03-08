@@ -13,23 +13,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
-import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/pack/screens/pack_screen.dart';
-import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
+import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
+import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/pack/screens/pack_screen.dart';
+import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Hand-written mocks

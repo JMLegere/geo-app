@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/write_queue_entry.dart';
 
 /// Repository for the local write queue (offline-first sync outbox).
 ///

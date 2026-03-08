@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/core/models/season.dart';
+import 'package:earth_nova/core/models/season.dart';
 
 /// A compact pill badge showing the current [Season].
 ///

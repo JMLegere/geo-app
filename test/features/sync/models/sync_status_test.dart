@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/sync/models/sync_status.dart';
+import 'package:earth_nova/features/sync/models/sync_status.dart';
 
 void main() {
   group('SyncStatus', () {

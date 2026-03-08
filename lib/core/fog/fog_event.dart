@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 /// Event emitted when a new cell is added to the visited set.
 ///

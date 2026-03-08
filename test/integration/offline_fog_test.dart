@@ -4,11 +4,11 @@
 /// to prove the fog system is completely network-independent.
 library;
 
-import 'package:fog_of_world/core/cells/voronoi_cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_event.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/fog/fog_event.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/shared/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // ---------------------------------------------------------------------------

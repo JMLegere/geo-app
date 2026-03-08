@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/cells/lazy_voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 
 /// Tests the [CellService] contract via the [LazyVoronoiCellService]
 /// implementation.

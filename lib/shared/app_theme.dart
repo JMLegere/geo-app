@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
 
-/// Visual identity for *Fog of World*.
+/// Visual identity for *EarthNova*.
 ///
 /// Dark theme is primary — exploration games live in darkness, the map is
 /// the centrepiece, and fog-of-war demands contrast.  Light theme is kept

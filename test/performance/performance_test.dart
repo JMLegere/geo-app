@@ -11,15 +11,15 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/voronoi_cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/species/species_data_loader.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/features/biome/services/biome_feature_index.dart';
-import 'package:fog_of_world/features/biome/services/biome_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
+import 'package:earth_nova/features/biome/services/biome_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Helper: times a synchronous [fn] and returns the elapsed Duration.
 Duration timeSync(void Function() fn) {

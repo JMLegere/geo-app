@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Durations;
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
 
 /// Circular progress ring showing overall sanctuary collection completeness.
 ///

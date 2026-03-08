@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/models/item_category.dart';
-import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/game_icons.dart';
+import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/features/pack/providers/pack_provider.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 /// Character overview tab — shows player stats and per-category inventory
 /// counts.

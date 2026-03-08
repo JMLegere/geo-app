@@ -1,8 +1,8 @@
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/species/loot_table.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/species/loot_table.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
 ///

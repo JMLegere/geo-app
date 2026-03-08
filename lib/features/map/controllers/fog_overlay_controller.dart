@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'dart:ui';
 
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/features/map/models/cell_render_data.dart';
-import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
-import 'package:fog_of_world/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/features/map/models/cell_render_data.dart';
+import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 
 /// Computes fog GeoJSON for MapLibre native fill layers.
 ///

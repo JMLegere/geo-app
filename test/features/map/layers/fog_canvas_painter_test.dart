@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/features/map/layers/fog_canvas_painter.dart';
-import 'package:fog_of_world/features/map/models/cell_render_data.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/features/map/layers/fog_canvas_painter.dart';
+import 'package:earth_nova/features/map/models/cell_render_data.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

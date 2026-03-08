@@ -3,13 +3,13 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/map/map_screen.dart';
-import 'package:fog_of_world/features/map/utils/map_visibility.dart';
-import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
-import 'package:fog_of_world/features/navigation/screens/town_placeholder_screen.dart';
-import 'package:fog_of_world/features/pack/screens/pack_screen.dart';
-import 'package:fog_of_world/features/navigation/providers/tab_index_provider.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/features/map/map_screen.dart';
+import 'package:earth_nova/features/map/utils/map_visibility.dart';
+import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
+import 'package:earth_nova/features/navigation/screens/town_placeholder_screen.dart';
+import 'package:earth_nova/features/pack/screens/pack_screen.dart';
+import 'package:earth_nova/features/navigation/providers/tab_index_provider.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
 ///

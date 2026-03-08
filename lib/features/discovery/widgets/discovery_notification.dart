@@ -3,12 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
-import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
-import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
+import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
 /// Maximum number of stacked cards rendered simultaneously.
 const _kMaxVisibleCards = 3;

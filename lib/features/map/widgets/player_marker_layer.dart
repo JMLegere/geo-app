@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:maplibre/maplibre.dart';
 
-import 'package:fog_of_world/features/map/layers/player_marker_widget.dart';
+import 'package:earth_nova/features/map/layers/player_marker_widget.dart';
 
 /// Renders the player marker via a [WidgetLayer] without triggering a full
 /// [MapScreen] rebuild on every 60fps frame.

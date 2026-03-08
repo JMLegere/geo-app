@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
-import 'package:fog_of_world/features/caretaking/services/caretaking_service.dart';
+import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
+import 'package:earth_nova/features/caretaking/services/caretaking_service.dart';
 
 void main() {
   group('CaretakingService', () {

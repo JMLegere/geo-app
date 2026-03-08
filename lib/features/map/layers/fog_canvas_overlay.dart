@@ -2,8 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
-import 'package:fog_of_world/features/map/layers/fog_canvas_painter.dart';
-import 'package:fog_of_world/features/map/models/cell_render_data.dart';
+import 'package:earth_nova/features/map/layers/fog_canvas_painter.dart';
+import 'package:earth_nova/features/map/models/cell_render_data.dart';
 
 /// Widget that renders the fog-of-war overlay using [FogCanvasPainter].
 ///

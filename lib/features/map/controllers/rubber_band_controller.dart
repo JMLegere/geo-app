@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/scheduler.dart';
 
-import 'package:fog_of_world/features/map/utils/map_logger.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/features/map/utils/map_logger.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Smoothly interpolates a display position toward a target GPS position.
 ///

@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
-import 'package:fog_of_world/features/auth/screens/settings_screen.dart';
-import 'package:fog_of_world/features/auth/widgets/save_progress_banner.dart';
-import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
-import 'package:fog_of_world/features/caretaking/providers/caretaking_provider.dart';
-import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/streak_badge.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/features/achievements/screens/achievement_screen.dart';
+import 'package:earth_nova/features/auth/screens/settings_screen.dart';
+import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
+import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
+import 'package:earth_nova/features/caretaking/providers/caretaking_provider.dart';
+import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
+import 'package:earth_nova/features/sanctuary/widgets/habitat_section.dart';
+import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator.dart';
+import 'package:earth_nova/features/sanctuary/widgets/streak_badge.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// Ambient gallery of collected species grouped by habitat.
 ///

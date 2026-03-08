@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/habitat.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 
 /// ESA WorldCover v2 land cover classification.
 /// See: https://worldcover2021.esa.int/

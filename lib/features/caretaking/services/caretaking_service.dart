@@ -1,4 +1,4 @@
-import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
+import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
 
 /// Pure logic service for daily visit streak calculations.
 ///

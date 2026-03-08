@@ -7,7 +7,7 @@
 ```
 ┌─────────────────────────────────────────────────┐
 │  main.dart                                       │
-│  ProviderScope → FogOfWorldApp → route logic     │
+│  ProviderScope → EarthNovaApp → route logic       │
 └──────────────────────┬──────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────┐
@@ -78,7 +78,7 @@ Used by: biome, location, caretaking, restoration, seasonal
 main()
   → SupabaseBootstrap.initialize() [non-blocking, 3s timeout]
   → ProviderScope(overrides: [supabaseBootstrapProvider])
-    → FogOfWorldApp
+    → EarthNovaApp
       → watch(onboardingProvider)  [SharedPreferences]
       → watch(authProvider)        [awaits supabase ready]
       → route:

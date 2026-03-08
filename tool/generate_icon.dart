@@ -1,5 +1,5 @@
 // ignore_for_file: avoid_print
-/// Generates the Fog of World app icon (1024×1024 PNG).
+/// Generates the EarthNova app icon (1024×1024 PNG).
 ///
 /// Design: dark-navy background, teal annular ring (revealed-fog aesthetic),
 /// compass crosshair in light-teal, bright-cyan center dot.

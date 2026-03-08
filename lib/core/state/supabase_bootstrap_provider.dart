@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 
 /// Provides the global [SupabaseBootstrap] instance.
 ///

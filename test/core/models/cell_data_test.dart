@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
-import 'package:fog_of_world/core/models/cell_data.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/cell_data.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 void main() {
   group('CellData', () {

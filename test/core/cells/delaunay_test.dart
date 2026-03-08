@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/delaunay.dart';
+import 'package:earth_nova/core/cells/delaunay.dart';
 
 void main() {
   group('delaunayTriangulate', () {

@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/cell_service_provider.dart';
-import 'package:fog_of_world/core/state/daily_seed_provider.dart';
-import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
-import 'package:fog_of_world/features/biome/providers/habitat_service_provider.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/discovery/services/discovery_service.dart';
-import 'package:fog_of_world/features/seasonal/providers/season_service_provider.dart';
+import 'package:earth_nova/core/state/cell_service_provider.dart';
+import 'package:earth_nova/core/state/daily_seed_provider.dart';
+import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/features/biome/providers/habitat_service_provider.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/discovery/services/discovery_service.dart';
+import 'package:earth_nova/features/seasonal/providers/season_service_provider.dart';
 
 /// Provides the [DiscoveryService] that emits species encounters.
 ///

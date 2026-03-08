@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/delaunay.dart';
-import 'package:fog_of_world/core/cells/lazy_voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/delaunay.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 
 /// Diagnostic test to reproduce the "sparse disconnected triangles" bug.
 ///

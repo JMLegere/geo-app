@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/cells/cell_cache.dart';
-import 'package:fog_of_world/core/cells/h3_cell_service.dart';
+import 'package:earth_nova/core/cells/cell_cache.dart';
+import 'package:earth_nova/core/cells/h3_cell_service.dart';
 
 void main() {
   // San Francisco (Dolores Park area)

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/navigation/screens/town_placeholder_screen.dart';
+import 'package:earth_nova/features/navigation/screens/town_placeholder_screen.dart';
 
 void main() {
   group('TownPlaceholderScreen', () {

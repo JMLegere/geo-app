@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

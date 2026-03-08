@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart' hide Durations;
 
-import 'package:fog_of_world/core/models/item_category.dart';
-import 'package:fog_of_world/shared/game_icons.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/shared/game_icons.dart';
+import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// Placeholder tab for item categories not yet implemented.
 ///
