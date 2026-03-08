@@ -70,6 +70,16 @@ class InventoryNotifier extends Notifier<InventoryState> {
     );
   }
 
+  /// Replace an item instance in-memory (e.g. after server awards a badge).
+  void updateItem(ItemInstance updated) {
+    state = state.copyWith(
+      items: state.items.map((i) {
+        if (i.id == updated.id) return updated;
+        return i;
+      }).toList(),
+    );
+  }
+
   /// Load inventory from persistence (called on app startup).
   void loadItems(List<ItemInstance> items) {
     state = InventoryState(items: items);
@@ -81,6 +91,5 @@ class InventoryNotifier extends Notifier<InventoryState> {
   }
 }
 
-final inventoryProvider =
-    NotifierProvider<InventoryNotifier, InventoryState>(
-        () => InventoryNotifier());
+final inventoryProvider = NotifierProvider<InventoryNotifier, InventoryState>(
+    () => InventoryNotifier());

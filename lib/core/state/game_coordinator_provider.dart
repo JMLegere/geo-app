@@ -112,23 +112,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onItemDiscovered = (event, instance) {
-    // Check if this is the first instance of this species in the player's
-    // inventory. If so, award the first-discovery badge (shiny foil).
-    final inventory = ref.read(inventoryProvider);
-    final isFirst = !inventory.hasDefinition(instance.definitionId);
-    final badgedInstance = isFirst
-        ? instance.copyWith(badges: {...instance.badges, kBadgeFirstDiscovery})
-        : instance;
+    // First-discovery badge (★) is server-validated — awarded after the
+    // write queue flushes and validate-encounter confirms this is the
+    // first global discovery. No local badge assignment here.
 
     ref.read(discoveryProvider.notifier).showDiscovery(event);
-    ref.read(inventoryProvider.notifier).addItem(badgedInstance);
-    discoveryService.markCollected(badgedInstance.definitionId);
+    ref.read(inventoryProvider.notifier).addItem(instance);
+    discoveryService.markCollected(instance.definitionId);
 
     // Persist to SQLite + enqueue for Supabase sync.
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       _persistItemDiscovery(
-        instance: badgedInstance,
+        instance: instance,
         userId: userId,
         itemRepo: itemRepo,
         writeQueueRepo: writeQueueRepo,

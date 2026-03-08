@@ -93,6 +93,11 @@ class SyncNotifier extends Notifier<SyncStatus> {
         await _processRejections();
       }
 
+      // Propagate server-awarded first-discovery badges to in-memory inventory.
+      if (summary.hasFirstBadges) {
+        await _applyFirstBadges(summary.firstBadgeItemIds);
+      }
+
       if (summary.hasRejections) {
         state = SyncStatus(
           type: SyncStatusType.success,
@@ -169,6 +174,23 @@ class SyncNotifier extends Notifier<SyncStatus> {
           '[SyncNotifier] failed to cleanup rejected entry '
           '${entry.id}: $e',
         );
+      }
+    }
+  }
+
+  /// Apply server-awarded first-discovery badges to in-memory inventory.
+  Future<void> _applyFirstBadges(List<String> itemIds) async {
+    final itemRepo = ref.read(itemInstanceRepositoryProvider);
+    final inventory = ref.read(inventoryProvider.notifier);
+
+    for (final itemId in itemIds) {
+      try {
+        final item = await itemRepo.getItem(itemId);
+        if (item != null) {
+          inventory.updateItem(item);
+        }
+      } catch (e) {
+        debugPrint('[SyncNotifier] failed to apply badge for $itemId: $e');
       }
     }
   }
