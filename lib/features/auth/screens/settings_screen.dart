@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:fog_of_world/features/auth/models/user_profile.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:fog_of_world/shared/constants.dart';
@@ -17,12 +18,29 @@ class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Resolves the subtitle text under the display name.
+  ///
+  /// Priority: phone number → email → anonymous fallback.
+  String _resolveSubtitle(UserProfile? user, bool isAnonymous) {
+    if (user == null || isAnonymous) return 'Guest account';
+    if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+      return user.phoneNumber!;
+    }
+    if (user.email.isNotEmpty) return user.email;
+    return 'Guest account';
+  }
+
+  // ---------------------------------------------------------------------------
   // Sign-out
   // ---------------------------------------------------------------------------
 
   Future<void> _handleSignOut(BuildContext context, WidgetRef ref,
       {required bool isAnonymous}) async {
-    final confirmed = await _showSignOutDialog(context, isAnonymous: isAnonymous);
+    final confirmed =
+        await _showSignOutDialog(context, isAnonymous: isAnonymous);
     if (confirmed != true) return;
     // Guard against widget disposal during async gap.
     if (!context.mounted) return;
@@ -104,11 +122,14 @@ class SettingsScreen extends ConsumerWidget {
     final user = authState.user;
     final isAnonymous = authState.isAnonymous || user == null;
 
-    final displayName =
-        (user?.displayName?.isNotEmpty == true) ? user!.displayName! : 'Explorer';
-    final email = (user != null && !isAnonymous) ? user.email : 'Anonymous account';
-    final avatarLetter =
-        (user?.displayName?.isNotEmpty == true) ? user!.displayName![0].toUpperCase() : null;
+    final displayName = (user?.displayName?.isNotEmpty == true)
+        ? user!.displayName!
+        : 'Explorer';
+    // Show phone number for phone-auth users, email for email users, fallback for anonymous.
+    final subtitle = _resolveSubtitle(user, isAnonymous);
+    final avatarLetter = (user?.displayName?.isNotEmpty == true)
+        ? user!.displayName![0].toUpperCase()
+        : null;
 
     return Scaffold(
       backgroundColor: colors.surface,
@@ -174,7 +195,7 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                           Spacing.gapXs,
                           Text(
-                            email,
+                            subtitle,
                             style: TextStyle(
                               fontSize: 13,
                               color: colors.onSurfaceVariant,
@@ -185,7 +206,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-
                 if (isAnonymous) ...[
                   Spacing.gapLg,
                   Divider(color: colors.outlineVariant),
@@ -203,7 +223,7 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                       child: const Text(
-                        'Upgrade your account',
+                        'Add Phone Number',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

@@ -23,42 +23,39 @@ class _ErrorNotifier extends AuthNotifier {
 
 // ---------------------------------------------------------------------------
 // Tests
-// Note: We avoid annotating helpers with `List<Override>` because `Override`
-// may not be re-exported from flutter_riverpod in all 3.x minor versions.
-// Instead, each test builds its own ProviderScope inline.
 // ---------------------------------------------------------------------------
 
 void main() {
   group('LoginScreen', () {
-    testWidgets('renders email and password fields', (tester) async {
+    testWidgets('renders phone number field', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      // Two TextFormFields: email + password.
-      expect(find.byType(TextFormField), findsNWidgets(2));
+      // One TextFormField: phone number.
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(find.text('+1'), findsOneWidget);
     });
 
-    testWidgets('renders sign in button', (tester) async {
-      // Use stub notifier so auth state is unauthenticated (not loading),
-      // which ensures the button shows its label instead of a spinner.
+    testWidgets('renders continue button', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
       expect(find.byType(AuthButton), findsOneWidget);
-      expect(find.text('Sign In'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     });
 
-    testWidgets('renders Create Account link', (tester) async {
+    testWidgets('does not render Create Account link', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      expect(find.text('Create Account'), findsOneWidget);
+      // Unified phone flow — no separate signup.
+      expect(find.text('Create Account'), findsNothing);
     });
 
     testWidgets('renders Continue as Guest link', (tester) async {
@@ -70,7 +67,7 @@ void main() {
       expect(find.text('Continue as Guest'), findsOneWidget);
     });
 
-    testWidgets('sign in button is disabled when fields are empty',
+    testWidgets('continue button is disabled when phone field is empty',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
@@ -81,20 +78,32 @@ void main() {
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('sign in button is enabled when both fields have text',
+    testWidgets('continue button is enabled when phone has 10 digits',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'a@b.com');
-      await tester.pump();
-      await tester.enterText(find.byType(TextFormField).at(1), 'pass');
+      await tester.enterText(find.byType(TextFormField).first, '5551234567');
       await tester.pump();
 
       final button = tester.widget<AuthButton>(find.byType(AuthButton));
       expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('continue button stays disabled with fewer than 10 digits',
+        (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
+        child: const MaterialApp(home: LoginScreen()),
+      ));
+
+      await tester.enterText(find.byType(TextFormField).first, '55512');
+      await tester.pump();
+
+      final button = tester.widget<AuthButton>(find.byType(AuthButton));
+      expect(button.onPressed, isNull);
     });
 
     testWidgets('shows error message when auth state has an error',
@@ -103,20 +112,6 @@ void main() {
         overrides: [authProvider.overrideWith(_ErrorNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
-
-      expect(find.text('User not found'), findsOneWidget);
-    });
-
-    testWidgets('shows error message when auth state has error via override',
-        (tester) async {
-      // Use _ErrorNotifier to verify LoginScreen renders the error message.
-      // Previous version used live MockAuthService but that auto-signs-in
-      // when Supabase is not configured, leaving pending timers.
-      await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_ErrorNotifier.new)],
-        child: const MaterialApp(home: LoginScreen()),
-      ));
-      await tester.pump();
 
       expect(find.text('User not found'), findsOneWidget);
     });

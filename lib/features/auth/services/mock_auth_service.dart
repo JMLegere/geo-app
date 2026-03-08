@@ -13,12 +13,16 @@ class MockAuthService implements AuthService {
 
   final Map<String, String> _passwords = {}; // email → password
   final Map<String, UserProfile> _profiles = {}; // email → profile
+  final Map<String, UserProfile> _phoneProfiles = {}; // phone → profile
 
   UserProfile? _currentUser;
 
   final _authStateController = StreamController<UserProfile?>.broadcast();
 
   static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  /// E.164 phone format: '+' followed by 7-15 digits.
+  static final _phoneRegex = RegExp(r'^\+[1-9]\d{6,14}$');
 
   static const _delay = Duration(milliseconds: 100);
 
@@ -71,6 +75,39 @@ class MockAuthService implements AuthService {
     }
 
     final profile = _profiles[email]!;
+    _currentUser = profile;
+    _authStateController.add(profile);
+    return profile;
+  }
+
+  @override
+  Future<UserProfile> signInWithPhone({required String phoneNumber}) async {
+    await Future<void>.delayed(_delay);
+
+    if (!_phoneRegex.hasMatch(phoneNumber)) {
+      throw const AuthException('Invalid phone number format (E.164 required)');
+    }
+
+    // Unified flow: return existing user or create new one.
+    final existing = _phoneProfiles[phoneNumber];
+    if (existing != null) {
+      _currentUser = existing;
+      _authStateController.add(existing);
+      return existing;
+    }
+
+    // New user — create account keyed by phone.
+    // TODO(auth): When OTP verification is enabled, this will require
+    // SMS code verification before creating the account.
+    final profile = UserProfile(
+      id: 'phone-${DateTime.now().millisecondsSinceEpoch}',
+      email: '',
+      phoneNumber: phoneNumber,
+      displayName: null,
+      createdAt: DateTime.now(),
+    );
+
+    _phoneProfiles[phoneNumber] = profile;
     _currentUser = profile;
     _authStateController.add(profile);
     return profile;

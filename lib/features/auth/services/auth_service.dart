@@ -34,6 +34,24 @@ abstract class AuthService {
     required String password,
   });
 
+  /// Signs in (or creates an account) with a phone number.
+  ///
+  /// Unified flow: if [phoneNumber] is new, creates an account; if it already
+  /// exists, signs in the existing user. Phone must be E.164 format
+  /// (e.g. '+13334445555').
+  ///
+  /// **Current behavior (pre-OTP):** Authenticates immediately without SMS
+  /// verification. Accounts created this way will be wiped when OTP
+  /// verification is enabled.
+  ///
+  /// **Future behavior (post-OTP):** Will call `signInWithOtp(phone:)` to
+  /// send an SMS code, then require `verifyOtp()` before granting a session.
+  ///
+  /// Throws [AuthException] on invalid phone format or network failure.
+  // TODO(auth): Add OTP verification step when Twilio SMS is configured.
+  // Flow will become: signInWithPhone → requestOtp → verifyOtp → session.
+  Future<UserProfile> signInWithPhone({required String phoneNumber});
+
   /// Signs out the current user.
   Future<void> signOut();
 

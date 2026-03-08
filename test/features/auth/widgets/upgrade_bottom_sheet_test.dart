@@ -36,7 +36,43 @@ class _ErrorNotifier extends AuthNotifier {
 
 void main() {
   group('UpgradeBottomSheet', () {
-    testWidgets('renders email, password, and display name fields',
+    testWidgets('renders "Add Phone Number" header', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_AnonNotifier.new)],
+        child: const MaterialApp(
+          home: Scaffold(body: UpgradeBottomSheet()),
+        ),
+      ));
+
+      expect(find.text('Add Phone Number'), findsOneWidget);
+    });
+
+    testWidgets('renders phone number field with +1 prefix', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_AnonNotifier.new)],
+        child: const MaterialApp(
+          home: Scaffold(body: UpgradeBottomSheet()),
+        ),
+      ));
+
+      // Single phone number TextField.
+      expect(find.byType(TextField), findsOneWidget);
+      // +1 prefix visible.
+      expect(find.text('+1'), findsOneWidget);
+    });
+
+    testWidgets('renders Continue button', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_AnonNotifier.new)],
+        child: const MaterialApp(
+          home: Scaffold(body: UpgradeBottomSheet()),
+        ),
+      ));
+
+      expect(find.text('Continue'), findsOneWidget);
+    });
+
+    testWidgets('Continue button is disabled when phone field is empty',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_AnonNotifier.new)],
@@ -45,11 +81,12 @@ void main() {
         ),
       ));
 
-      // Three TextFields: email, password, display name.
-      expect(find.byType(TextField), findsNWidgets(3));
+      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      expect(button.onPressed, isNull);
     });
 
-    testWidgets('renders Create Account button', (tester) async {
+    testWidgets('Continue button enables when 10 digits entered',
+        (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_AnonNotifier.new)],
         child: const MaterialApp(
@@ -57,19 +94,11 @@ void main() {
         ),
       ));
 
-      expect(find.text('Create Account'), findsOneWidget);
-    });
+      await tester.enterText(find.byType(TextField), '5551234567');
+      await tester.pump();
 
-    testWidgets('renders Google and Apple OAuth buttons', (tester) async {
-      await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonNotifier.new)],
-        child: const MaterialApp(
-          home: Scaffold(body: UpgradeBottomSheet()),
-        ),
-      ));
-
-      expect(find.text('Continue with Google'), findsOneWidget);
-      expect(find.text('Continue with Apple'), findsOneWidget);
+      final button = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      expect(button.onPressed, isNotNull);
     });
 
     testWidgets('Not now button is present', (tester) async {
@@ -81,6 +110,20 @@ void main() {
       ));
 
       expect(find.text('Not now'), findsOneWidget);
+    });
+
+    testWidgets('does not render email, password, or OAuth buttons',
+        (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_AnonNotifier.new)],
+        child: const MaterialApp(
+          home: Scaffold(body: UpgradeBottomSheet()),
+        ),
+      ));
+
+      expect(find.text('Create Account'), findsNothing);
+      expect(find.text('Continue with Google'), findsNothing);
+      expect(find.text('Continue with Apple'), findsNothing);
     });
 
     testWidgets('shows error message when auth state has error',

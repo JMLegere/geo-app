@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/screens/signup_screen.dart';
 import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
 
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
-/// Navigation:
-/// - Sign in success / anonymous: handled by the auth-state switch in
-///   `FogOfWorldApp` which replaces this screen with the map screen.
-/// - "Create Account": pushes [SignupScreen] via [Navigator.push].
+/// Provides a unified phone-number flow: new numbers create an account,
+/// existing numbers sign in. No separate signup screen.
+///
+/// Also offers "Continue as Guest" for anonymous play.
+///
+/// Navigation: sign-in success is handled by the auth-state switch in
+/// `FogOfWorldApp` which replaces this screen with the map.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,36 +23,36 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  /// Country code prefix — hardcoded to +1 for now.
+  static const _countryCode = '+1';
 
   @override
   void initState() {
     super.initState();
-    _emailController.addListener(_onFieldChanged);
-    _passwordController.addListener(_onFieldChanged);
+    _phoneController.addListener(_onFieldChanged);
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   void _onFieldChanged() => setState(() {});
 
   bool _canSubmit(bool isLoading) =>
-      !isLoading &&
-      _emailController.text.isNotEmpty &&
-      _passwordController.text.isNotEmpty;
+      !isLoading && _phoneController.text.length >= 10;
+
+  String get _fullPhoneNumber => '$_countryCode${_phoneController.text.trim()}';
 
   Future<void> _signIn() async {
-    await ref.read(authProvider.notifier).signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-        );
+    if (!_canSubmit(false)) return;
+    await ref
+        .read(authProvider.notifier)
+        .signInWithPhone(phoneNumber: _fullPhoneNumber);
   }
 
   // ---------------------------------------------------------------------------
@@ -96,26 +99,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 56),
 
-                _buildTextField(
-                  controller: _emailController,
-                  label: 'Email',
-                  hint: 'your@email.com',
-                  keyboardType: TextInputType.emailAddress,
-                  enabled: !isLoading,
-                ),
-                const SizedBox(height: 16),
-
-                _buildTextField(
-                  controller: _passwordController,
-                  label: 'Password',
-                  hint: '••••••••',
-                  obscureText: true,
+                // ── Phone number field ──────────────────────────────────────
+                _buildPhoneField(
+                  controller: _phoneController,
                   enabled: !isLoading,
                 ),
                 const SizedBox(height: 28),
 
                 AuthButton(
-                  label: 'Sign In',
+                  label: 'Continue',
                   isLoading: isLoading,
                   onPressed: _canSubmit(isLoading) ? _signIn : null,
                 ),
@@ -135,27 +127,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 32),
                 Divider(color: colors.outlineVariant),
                 const SizedBox(height: 24),
-
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const SignupScreen(),
-                            ),
-                          );
-                        },
-                  child: Text(
-                    'Create Account',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: colors.primary,
-                    ),
-                  ),
-                ),
 
                 TextButton(
                   onPressed: isLoading
@@ -181,24 +152,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildTextField({
+  /// Phone number input with fixed +1 prefix.
+  Widget _buildPhoneField({
     required TextEditingController controller,
-    required String label,
-    required String hint,
-    bool obscureText = false,
-    TextInputType? keyboardType,
     bool enabled = true,
   }) {
     final colors = Theme.of(context).colorScheme;
     return TextFormField(
       controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
+      keyboardType: TextInputType.phone,
       enabled: enabled,
-      style: TextStyle(color: colors.onSurface),
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(10),
+      ],
+      style: TextStyle(color: colors.onSurface, fontSize: 16),
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
+        labelText: 'Phone Number',
+        hintText: '5551234567',
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 16, right: 8),
+          child: Text(
+            _countryCode,
+            style: TextStyle(
+              fontSize: 16,
+              color: colors.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
         fillColor: colors.surfaceContainerHigh,
         border: OutlineInputBorder(
@@ -216,6 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
+      onFieldSubmitted: (_) => _signIn(),
     );
   }
 }

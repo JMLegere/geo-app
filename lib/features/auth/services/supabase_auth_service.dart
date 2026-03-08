@@ -46,8 +46,7 @@ class SupabaseAuthService implements AuthService {
     String? displayName,
   }) async {
     try {
-      final response =
-          await _auth.signUp(email: email, password: password);
+      final response = await _auth.signUp(email: email, password: password);
       final user = response.user;
       if (user == null) {
         throw const AuthException('Sign-up failed: no user returned');
@@ -93,6 +92,46 @@ class SupabaseAuthService implements AuthService {
       rethrow;
     } catch (e) {
       throw AuthException('Sign-in failed: $e');
+    }
+  }
+
+  @override
+  Future<UserProfile> signInWithPhone({required String phoneNumber}) async {
+    // TODO(auth): When Twilio SMS is configured in Supabase dashboard, replace
+    // this with the real OTP flow:
+    //   1. await _auth.signInWithOtp(phone: phoneNumber);
+    //   2. User enters 6-digit code
+    //   3. await _auth.verifyOTP(phone: phoneNumber, token: code, type: OtpType.sms);
+    //
+    // For now: create an anonymous session and store the phone number in
+    // user metadata. Accounts created this way will be wiped when real
+    // phone verification is enabled.
+    try {
+      final response = await _auth.signInAnonymously();
+      final user = response.user;
+      if (user == null) {
+        throw const AuthException(
+            'Phone sign-in failed: no user returned from anonymous auth');
+      }
+
+      // Attach phone number to the anonymous user's metadata.
+      await _auth.updateUser(
+        supa.UserAttributes(
+          data: {'phone_number': phoneNumber},
+        ),
+      );
+
+      return UserProfile(
+        id: user.id,
+        email: '',
+        phoneNumber: phoneNumber,
+        displayName: null,
+        createdAt: DateTime.parse(user.createdAt),
+      );
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    } catch (e) {
+      throw AuthException('Phone sign-in failed: $e');
     }
   }
 
