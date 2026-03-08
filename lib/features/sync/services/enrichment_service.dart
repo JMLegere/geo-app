@@ -38,7 +38,10 @@ class EnrichmentService {
     this.supabaseClient,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 4000,
-  });
+  }) {
+    debugPrint('[EnrichmentService] created — '
+        'client ${supabaseClient != null ? "available" : "NULL"}');
+  }
 
   final EnrichmentRepository repository;
   final SupabaseClient? supabaseClient;
@@ -61,7 +64,11 @@ class EnrichmentService {
     required String commonName,
     required String taxonomicClass,
   }) async {
-    if (supabaseClient == null) return;
+    if (supabaseClient == null) {
+      debugPrint('[EnrichmentService] skipping $definitionId — '
+          'Supabase client not available');
+      return;
+    }
     if (_inFlight.contains(definitionId)) return;
 
     _queue.add(_EnrichmentRequest(
@@ -86,7 +93,9 @@ class EnrichmentService {
   }
 
   Future<void> _drain() async {
-    while (_queue.isNotEmpty && _activeRequests < _maxConcurrent && !_rateLimited) {
+    while (_queue.isNotEmpty &&
+        _activeRequests < _maxConcurrent &&
+        !_rateLimited) {
       final request = _queue.removeFirst();
       _activeRequests++;
       _lastRequestTime = DateTime.now();
@@ -97,15 +106,22 @@ class EnrichmentService {
       });
 
       if (_queue.isNotEmpty && _activeRequests < _maxConcurrent) {
-        await Future<void>.delayed(const Duration(milliseconds: _minIntervalMs));
+        await Future<void>.delayed(
+            const Duration(milliseconds: _minIntervalMs));
       }
     }
   }
 
   Future<void> _executeRequest(_EnrichmentRequest request) async {
     final client = supabaseClient;
-    if (client == null) return;
+    if (client == null) {
+      debugPrint('[EnrichmentService] _executeRequest: client null, '
+          'skipping ${request.definitionId}');
+      return;
+    }
 
+    debugPrint('[EnrichmentService] invoking enrich-species for '
+        '${request.definitionId} (${request.commonName})');
     try {
       final response = await client.functions.invoke(
         'enrich-species',
@@ -130,6 +146,10 @@ class EnrichmentService {
         } else {
           final enrichment = SpeciesEnrichment.fromJson(data);
           await repository.upsertEnrichment(enrichment);
+          debugPrint('[EnrichmentService] enriched ${request.definitionId}: '
+              '${enrichment.animalClass.name}, '
+              '${enrichment.foodPreference.name}, '
+              '${enrichment.climate.name}');
         }
       }
     } on FunctionException catch (e) {
