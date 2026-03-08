@@ -90,17 +90,22 @@ class StatsService {
   /// Roll per-instance stats with ±[kStatVariance] (30) absolute variance
   /// from base, clamped to [kStatMin]–[kStatMax] (1–100).
   ///
-  /// [scientificName] determines the base stats.
+  /// [scientificName] determines the fallback base stats (hash-derived).
   /// [instanceSeed] provides per-instance randomness (e.g. UUID or cell+timestamp).
   /// Both values are required for server-side re-derivation.
+  ///
+  /// When [enrichedBaseStats] is provided (from AI enrichment), those values
+  /// are used as the base instead of the hash-derived stats. This produces
+  /// biologically accurate results (e.g. cheetah = fast, elephant = strong).
   ///
   /// Uses only SHA-256 bytes (no `dart:math Random`) for cross-platform
   /// determinism.
   Affix rollIntrinsicAffix({
     required String scientificName,
     required String instanceSeed,
+    ({int speed, int brawn, int wit})? enrichedBaseStats,
   }) {
-    final base = deriveBaseStats(scientificName);
+    final base = enrichedBaseStats ?? deriveBaseStats(scientificName);
 
     final seedHash =
         sha256.convert(utf8.encode('$scientificName:$instanceSeed')).bytes;

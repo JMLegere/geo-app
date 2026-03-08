@@ -9,6 +9,7 @@ import 'package:fog_of_world/core/database/app_database.dart';
 import 'package:fog_of_world/core/game/game_coordinator.dart';
 import 'package:fog_of_world/core/models/fog_state.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:fog_of_world/core/models/species_enrichment.dart';
 import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/models/season.dart';
 import 'package:fog_of_world/core/models/write_queue_entry.dart';
@@ -61,11 +62,22 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final profileRepo = ref.watch(profileRepositoryProvider);
   final writeQueueRepo = ref.watch(writeQueueRepositoryProvider);
 
+  final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
+
+  // In-memory enrichment cache for synchronous stat lookups during discovery.
+  // Populated during hydration, updated when new enrichments arrive.
+  final enrichmentCache = <String, ({int speed, int brawn, int wit})>{};
+
   final coordinator = GameCoordinator(
     fogResolver: fogResolver,
     statsService: const StatsService(),
     isRealGps: locationService.mode == LocationMode.realGps,
   );
+
+  // Wire synchronous enrichment lookup for stat rolling.
+  coordinator.enrichedStatsLookup = (definitionId) {
+    return enrichmentCache[definitionId];
+  };
 
   // --- Wire output callbacks → Riverpod notifiers ---
 
@@ -124,6 +136,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     }
 
     // Fire enrichment request for fauna items (fire-and-forget).
+    // On success, update the in-memory cache so future discoveries of the
+    // same species get biologically accurate stats immediately.
     if (event.item is FaunaDefinition) {
       final fauna = event.item as FaunaDefinition;
       ref
@@ -134,7 +148,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             commonName: fauna.displayName,
             taxonomicClass: fauna.taxonomicClass,
           )
-          .catchError((Object e) {
+          .then((_) async {
+        final enrichment = await enrichmentRepo.getEnrichment(fauna.id);
+        if (enrichment != null) {
+          enrichmentCache[fauna.id] = (
+            speed: enrichment.speed,
+            brawn: enrichment.brawn,
+            wit: enrichment.wit,
+          );
+        }
+      }).catchError((Object e) {
         debugPrint('[GameCoordinator] enrichment request failed: $e');
       });
     }
@@ -195,10 +218,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       itemRepo.getItemsByUser(userId),
       cellProgressRepo.readByUser(userId),
       profileRepo.read(userId),
+      enrichmentRepo.getAllEnrichments(),
     ]).then((results) {
       final items = results[0]! as List<ItemInstance>;
       final cellRows = results[1]! as List<LocalCellProgress>;
       final profile = results[2] as LocalPlayerProfile?;
+      final enrichments = results[3]! as List<SpeciesEnrichment>;
+
+      // 0. Populate enrichment cache for synchronous stat lookups.
+      for (final e in enrichments) {
+        enrichmentCache[e.definitionId] =
+            (speed: e.speed, brawn: e.brawn, wit: e.wit);
+      }
 
       // 1. Hydrate inventory
       if (items.isNotEmpty) {

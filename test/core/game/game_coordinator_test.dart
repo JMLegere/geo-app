@@ -21,8 +21,7 @@ import 'package:fog_of_world/shared/constants.dart';
 // ---------------------------------------------------------------------------
 class _MockCellService implements CellService {
   @override
-  String getCellId(double lat, double lon) =>
-      '${lat.round()}_${lon.round()}';
+  String getCellId(double lat, double lon) => '${lat.round()}_${lon.round()}';
 
   @override
   Geographic getCellCenter(String cellId) {
@@ -256,8 +255,7 @@ void main() {
     // GPS accuracy errors
     // -----------------------------------------------------------------------
     group('GPS accuracy errors', () {
-      test(
-          'real GPS with accuracy > threshold emits GpsError.lowAccuracy', () {
+      test('real GPS with accuracy > threshold emits GpsError.lowAccuracy', () {
         GpsError? lastError;
         final c = _makeCoordinator(isRealGps: true);
         c.onGpsErrorChanged = (error) => lastError = error;
@@ -338,7 +336,8 @@ void main() {
         c.dispose();
       });
 
-      test('created ItemInstance has correct structure and affix', () {
+      test('created ItemInstance without enrichment has no intrinsic affix',
+          () {
         ItemInstance? instance;
         final c = _makeCoordinator();
         c.onItemDiscovered = (_, inst) => instance = inst;
@@ -357,14 +356,50 @@ void main() {
         expect(instance, isNotNull);
 
         // UUID v4 format: 8-4-4-4-12 hex chars
-        expect(instance!.id, matches(RegExp(
-            r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
+        expect(
+            instance!.id,
+            matches(RegExp(
+                r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')));
 
         expect(instance!.definitionId, 'fauna_vulpes_vulpes');
         expect(instance!.acquiredInCellId, 'test_cell_42');
         expect(instance!.acquiredAt, event.timestamp);
 
-        // Exactly one intrinsic affix with base_stats
+        // Without enrichment, no intrinsic affix — stats show as N/A.
+        expect(instance!.affixes, isEmpty);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('created ItemInstance with enrichment has rolled intrinsic affix',
+          () {
+        ItemInstance? instance;
+        final c = _makeCoordinator();
+        // Wire enrichment lookup with known base stats.
+        c.enrichedStatsLookup = (definitionId) {
+          if (definitionId == 'fauna_vulpes_vulpes') {
+            return (speed: 50, brawn: 20, wit: 20);
+          }
+          return null;
+        };
+        c.onItemDiscovered = (_, inst) => instance = inst;
+        final s = _startCoordinator(c);
+
+        final fauna = _testFauna(
+          id: 'fauna_vulpes_vulpes',
+          scientificName: 'Vulpes vulpes',
+        );
+        final event = _testDiscoveryEvent(
+          item: fauna,
+          cellId: 'test_cell_42',
+        );
+        s.discovery.add(event);
+
+        expect(instance, isNotNull);
+
+        // With enrichment, exactly one intrinsic affix with rolled stats.
         expect(instance!.affixes, hasLength(1));
         final affix = instance!.affixes.first;
         expect(affix.id, kIntrinsicAffixId);
@@ -372,6 +407,14 @@ void main() {
         expect(affix.values, containsPair('speed', isA<int>()));
         expect(affix.values, containsPair('brawn', isA<int>()));
         expect(affix.values, containsPair('wit', isA<int>()));
+
+        // Rolled stats should be within ±30 of enriched base, clamped 1–100.
+        expect(
+            affix.values['speed'] as int, inInclusiveRange(20, 80)); // 50 ± 30
+        expect(affix.values['brawn'] as int,
+            inInclusiveRange(1, 50)); // 20 ± 30, clamped at 1
+        expect(affix.values['wit'] as int,
+            inInclusiveRange(1, 50)); // 20 ± 30, clamped at 1
 
         s.gps.close();
         s.discovery.close();

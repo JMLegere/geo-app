@@ -4,6 +4,7 @@ import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
+import 'package:fog_of_world/core/models/affix.dart';
 import 'package:fog_of_world/core/models/discovery_event.dart';
 import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/species/stats_service.dart';
@@ -67,6 +68,14 @@ class GameCoordinator {
   /// Whether the GPS source is real hardware (vs keyboard/simulation).
   final bool isRealGps;
 
+  /// Optional synchronous lookup for AI-enriched base stats.
+  ///
+  /// When set, [_onDiscovery] passes enriched stats to [StatsService] so
+  /// rolled instance stats reflect real-world biology instead of hash values.
+  /// Returns null when no enrichment is cached for the given definition ID.
+  ({int speed, int brawn, int wit})? Function(String definitionId)?
+      enrichedStatsLookup;
+
   // ---------------------------------------------------------------------------
   // Dual-position state
   // ---------------------------------------------------------------------------
@@ -101,8 +110,9 @@ class GameCoordinator {
   // ---------------------------------------------------------------------------
 
   final StreamController<({Geographic position, double accuracy})>
-      _rawGpsController = StreamController<
-          ({Geographic position, double accuracy})>.broadcast(sync: true);
+      _rawGpsController =
+      StreamController<({Geographic position, double accuracy})>.broadcast(
+          sync: true);
 
   /// Stream of raw GPS position updates. MapScreen subscribes to feed
   /// the rubber-band controller.
@@ -253,17 +263,28 @@ class GameCoordinator {
 
   void _onDiscovery(DiscoveryEvent event) {
     final instanceId = _uuid.v4();
-    final intrinsicAffix = _statsService.rollIntrinsicAffix(
-      scientificName: event.item.scientificName ?? '',
-      instanceSeed: instanceId,
-    );
+
+    // Only roll stats when AI-enriched base stats are available.
+    // Without enrichment, the instance has no intrinsic affix — the UI
+    // shows "awaiting enrichment" for stats. Hash-derived stats are not
+    // used because they produce biologically meaningless values.
+    final enriched = enrichedStatsLookup?.call(event.item.id);
+    final affixes = <Affix>[];
+    if (enriched != null) {
+      affixes.add(_statsService.rollIntrinsicAffix(
+        scientificName: event.item.scientificName ?? '',
+        instanceSeed: instanceId,
+        enrichedBaseStats: enriched,
+      ));
+    }
+
     final instance = ItemInstance(
       id: instanceId,
       definitionId: event.item.id,
       acquiredAt: event.timestamp,
       acquiredInCellId: event.cellId,
       dailySeed: event.dailySeed,
-      affixes: [intrinsicAffix],
+      affixes: affixes,
     );
     onItemDiscovered?.call(event, instance);
   }
