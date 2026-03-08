@@ -2,6 +2,7 @@ import 'package:fog_of_world/core/models/continent.dart';
 import 'package:fog_of_world/core/models/habitat.dart';
 import 'package:fog_of_world/core/models/item_definition.dart';
 import 'package:fog_of_world/core/species/loot_table.dart';
+import 'package:fog_of_world/shared/constants.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
 ///
@@ -49,7 +50,7 @@ class SpeciesService {
     required String dailySeed,
     required Set<Habitat> habitats,
     required Continent continent,
-    int encounterSlots = 3,
+    int encounterSlots = kEncounterSlotsPerCell,
   }) {
     final pool = <FaunaDefinition>{};
     for (final habitat in habitats) {

@@ -285,6 +285,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       lastPersistedProfile = ref.read(playerProvider);
 
       startLoop();
+
+      // 4. Re-queue enrichment for any fauna in inventory that lacks it.
+      // Runs async after game loop starts — non-blocking. Covers:
+      //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
+      //   - Enrichment requests lost to app restart (in-memory queue)
+      //   - New enrichment pipeline deployed after species were discovered
+      _requeueUnenrichedSpecies(
+        ref: ref,
+        enrichmentCache: enrichmentCache,
+      );
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');
       startLoop(); // Degrade gracefully — start without hydrated data.
@@ -511,5 +521,56 @@ Future<void> _persistProfileState({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
+  }
+}
+
+/// Re-queue enrichment requests for fauna in inventory that lack enrichment.
+///
+/// Covers species that were dropped due to rate limits, app restarts (in-memory
+/// queue lost), or pipeline changes. Waits for species data to load, then
+/// compares inventory fauna against the enrichment cache.
+Future<void> _requeueUnenrichedSpecies({
+  required Ref ref,
+  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+}) async {
+  try {
+    final speciesData = await ref.read(speciesDataProvider.future);
+    final inventory = ref.read(inventoryProvider);
+    final enrichmentService = ref.read(enrichmentServiceProvider);
+
+    // Build lookup map for fauna definitions by ID.
+    final faunaById = <String, FaunaDefinition>{};
+    for (final fauna in speciesData) {
+      faunaById[fauna.id] = fauna;
+    }
+
+    // Find unique fauna definition IDs in inventory that lack enrichment.
+    // Uses faunaById to naturally filter to fauna items only (ItemInstance
+    // has no category field — the species data map is the filter).
+    final unenrichedIds = <String>{};
+    for (final item in inventory.items) {
+      if (!enrichmentCache.containsKey(item.definitionId) &&
+          faunaById.containsKey(item.definitionId)) {
+        unenrichedIds.add(item.definitionId);
+      }
+    }
+
+    // Queue enrichment requests for the gap set.
+    for (final defId in unenrichedIds) {
+      final fauna = faunaById[defId]!;
+      enrichmentService.requestEnrichment(
+        definitionId: fauna.id,
+        scientificName: fauna.scientificName,
+        commonName: fauna.displayName,
+        taxonomicClass: fauna.taxonomicClass,
+      );
+    }
+
+    if (unenrichedIds.isNotEmpty) {
+      debugPrint('[GameCoordinator] re-queued ${unenrichedIds.length} '
+          'unenriched species for enrichment');
+    }
+  } catch (e) {
+    debugPrint('[GameCoordinator] failed to re-queue unenriched species: $e');
   }
 }

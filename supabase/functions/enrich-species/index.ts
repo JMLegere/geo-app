@@ -36,7 +36,7 @@ interface EnrichmentRow {
   enriched_at: string;
 }
 
-interface GeminiResponse {
+interface EnrichmentResponse {
   animal_class: string;
   food_preference: string;
   climate: string;
@@ -45,7 +45,7 @@ interface GeminiResponse {
   speed: number;
 }
 
-function isValidEnrichment(data: unknown): data is GeminiResponse {
+function isValidEnrichment(data: unknown): data is EnrichmentResponse {
   if (typeof data !== "object" || data === null) return false;
   const d = data as Record<string, unknown>;
   if (!ANIMAL_CLASSES.includes(d.animal_class as string)) return false;
@@ -61,12 +61,12 @@ function isValidEnrichment(data: unknown): data is GeminiResponse {
   return true;
 }
 
-async function callGemini(
+async function callLLM(
   apiKey: string,
   scientificName: string,
   commonName: string,
   taxonomicClass: string,
-): Promise<GeminiResponse> {
+): Promise<EnrichmentResponse> {
   const prompt = `You are a wildlife classification expert. Given this species, return a JSON object with EXACTLY these fields:
 - animal_class: one of [${ANIMAL_CLASSES.join(", ")}]
 - food_preference: one of [${FOOD_TYPES.join(", ")}] (what this animal eats)
@@ -75,7 +75,7 @@ async function callGemini(
 - wit: integer (intelligence/cunning, 0-90)  
 - speed: integer (speed/agility, 0-90)
 
-CRITICAL: brawn + wit + speed MUST equal exactly 90. Distribute 90 points across the three stats.
+CRITICAL: brawn + wit + speed MUST equal exactly 90. Distribute 90 points across the three stats based on real-world characteristics.
 
 Species: ${commonName} (${scientificName})
 Taxonomic class: ${taxonomicClass}
@@ -83,23 +83,31 @@ Taxonomic class: ${taxonomicClass}
 Return only valid JSON, no markdown.`;
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    "https://api.groq.com/openai/v1/chat/completions",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          response_mime_type: "application/json",
-          temperature: 0.3,
-        },
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: "You are a wildlife classification expert. Always respond with valid JSON only, no markdown fences.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" },
       }),
     },
   );
 
   if (!response.ok) {
     const errBody = await response.text();
-    const err = new Error(`Gemini API error ${response.status}: ${errBody}`);
+    const err = new Error(`Groq API error ${response.status}: ${errBody}`);
     (err as any).statusCode = response.status;
     if (response.status === 429) {
       (err as any).retryAfter = response.headers.get("retry-after") ?? "60";
@@ -108,12 +116,12 @@ Return only valid JSON, no markdown.`;
   }
 
   const body = await response.json();
-  const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Empty Gemini response");
+  const text = body?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Empty Groq response");
 
   const parsed = JSON.parse(text);
   if (!isValidEnrichment(parsed)) {
-    throw new Error(`Invalid enrichment from Gemini: ${JSON.stringify(parsed)}`);
+    throw new Error(`Invalid enrichment from Groq: ${JSON.stringify(parsed)}`);
   }
   return parsed;
 }
@@ -145,11 +153,11 @@ serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    const groqKey = Deno.env.get("GROQ_API_KEY");
 
-    if (!geminiKey) {
+    if (!groqKey) {
       return new Response(
-        JSON.stringify({ error: "GEMINI_API_KEY not configured" }),
+        JSON.stringify({ error: "GROQ_API_KEY not configured" }),
         { status: 503, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
@@ -168,7 +176,7 @@ serve(async (req: Request) => {
       });
     }
 
-    const enrichment = await callGemini(geminiKey, scientific_name, common_name, taxonomic_class);
+    const enrichment = await callLLM(groqKey, scientific_name, common_name, taxonomic_class);
 
     const row: Omit<EnrichmentRow, "enriched_at"> = {
       definition_id,
@@ -211,8 +219,6 @@ serve(async (req: Request) => {
       ...CORS_HEADERS,
       "Content-Type": "application/json",
     };
-    // Forward Retry-After header from Gemini 429 responses so clients can
-    // back off appropriately instead of hammering the free-tier quota.
     if (statusCode === 429) {
       const retryAfter = (err as any).retryAfter;
       if (retryAfter) {

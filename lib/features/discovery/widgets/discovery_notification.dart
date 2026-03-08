@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,25 @@ import 'package:fog_of_world/shared/earth_nova_theme.dart';
 import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
 import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 
-/// Animated overlay card that slides in from above when a species is discovered.
+/// Maximum number of stacked cards rendered simultaneously.
+const _kMaxVisibleCards = 3;
+
+/// Vertical offset between stacked cards (in logical pixels).
+const _kStackOffsetY = 8.0;
+
+/// Horizontal padding increase per stack level (each side).
+const _kStackPaddingX = 4.0;
+
+/// Opacity reduction per stack level.
+const _kStackOpacityStep = 0.15;
+
+/// Animated overlay that slides in from above when species are discovered.
+///
+/// ## Queue-based stacking
+///
+/// Multiple discoveries queue up and render as a visual stack (up to
+/// [_kMaxVisibleCards] cards). The top card auto-dismisses after
+/// [Durations.discoveryToast], then the next card promotes to the top.
 ///
 /// ## Usage
 ///
@@ -23,15 +42,6 @@ import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
 ///   child: const DiscoveryNotificationOverlay(),
 /// )
 /// ```
-///
-/// ## Behaviour
-/// - Watches [discoveryProvider] for [DiscoveryState.hasActiveNotification].
-/// - Slides in (from above) when a notification becomes active.
-/// - Auto-dismisses after [Durations.discoveryToast] by calling
-///   [DiscoveryNotifier.dismissNotification].
-/// - Frosted-glass aesthetic adapts to the active theme — dark surface tint
-///   in dark mode, white tint in light mode.
-/// - Rarity badge colours come from [EarthNovaTheme.rarityColor] for consistency.
 class DiscoveryNotificationOverlay extends ConsumerStatefulWidget {
   const DiscoveryNotificationOverlay({super.key});
 
@@ -58,7 +68,6 @@ class _DiscoveryNotificationOverlayState
       duration: Durations.slow,
     );
 
-    // Slides in from above: starts translated -100% (its own height) upward.
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, -1),
       end: Offset.zero,
@@ -77,9 +86,8 @@ class _DiscoveryNotificationOverlayState
     super.dispose();
   }
 
-  void _showNotification() {
+  void _startDismissTimer() {
     _dismissTimer?.cancel();
-    _controller.forward(from: 0);
     _dismissTimer = Timer(Durations.discoveryToast, () {
       if (mounted) {
         ref.read(discoveryProvider.notifier).dismissNotification();
@@ -87,7 +95,12 @@ class _DiscoveryNotificationOverlayState
     });
   }
 
-  void _hideNotification() {
+  void _showStack() {
+    _controller.forward(from: 0);
+    _startDismissTimer();
+  }
+
+  void _hideStack() {
     _dismissTimer?.cancel();
     _controller.reverse();
   }
@@ -99,23 +112,92 @@ class _DiscoveryNotificationOverlayState
       final isActive = next.hasActiveNotification;
 
       if (isActive && !wasActive) {
-        _showNotification();
+        // Queue went from empty → non-empty: slide in.
+        _showStack();
       } else if (!isActive && wasActive) {
-        _hideNotification();
+        // Queue went from non-empty → empty: slide out.
+        _hideStack();
+      } else if (isActive && wasActive) {
+        // Queue still non-empty but top card may have changed (dismiss or new
+        // item added). Reset the auto-dismiss timer for the new top card.
+        final prevTop = previous?.currentNotification;
+        final nextTop = next.currentNotification;
+        if (prevTop != nextTop) {
+          _startDismissTimer();
+        }
       }
     });
 
     final state = ref.watch(discoveryProvider);
-    final notification = state.currentNotification;
+    final queue = state.notificationQueue;
 
-    if (notification == null) return const SizedBox.shrink();
+    if (queue.isEmpty) return const SizedBox.shrink();
+
+    final visibleCount = math.min(queue.length, _kMaxVisibleCards);
 
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(
         opacity: _opacityAnimation,
-        child: _DiscoveryCard(event: notification),
+        child: _NotificationStack(
+          queue: queue,
+          visibleCount: visibleCount,
+        ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stack layout
+// ---------------------------------------------------------------------------
+
+/// Renders up to [visibleCount] cards from [queue] as a visual stack.
+///
+/// Cards are painted bottom-to-top (deepest card first) so the top card
+/// renders on top. Each deeper card gets:
+/// - A downward Y offset ([_kStackOffsetY] per level)
+/// - Increased horizontal padding ([_kStackPaddingX] per level each side)
+/// - Reduced opacity ([_kStackOpacityStep] per level)
+class _NotificationStack extends StatelessWidget {
+  final List<DiscoveryEvent> queue;
+  final int visibleCount;
+
+  const _NotificationStack({
+    required this.queue,
+    required this.visibleCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Build cards bottom-to-top so the deepest card paints first.
+    final children = <Widget>[];
+    for (var i = visibleCount - 1; i >= 0; i--) {
+      final event = queue[i];
+      final opacity = (1.0 - i * _kStackOpacityStep).clamp(0.0, 1.0);
+      final yOffset = i * _kStackOffsetY;
+      final hPadding = i * _kStackPaddingX;
+
+      children.add(
+        Transform.translate(
+          offset: Offset(0, yOffset),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPadding),
+            child: Opacity(
+              opacity: opacity,
+              child: _DiscoveryCard(
+                key: ValueKey(event.hashCode),
+                event: event,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: children,
     );
   }
 }
@@ -127,7 +209,7 @@ class _DiscoveryNotificationOverlayState
 class _DiscoveryCard extends StatelessWidget {
   final DiscoveryEvent event;
 
-  const _DiscoveryCard({required this.event});
+  const _DiscoveryCard({super.key, required this.event});
 
   @override
   Widget build(BuildContext context) {

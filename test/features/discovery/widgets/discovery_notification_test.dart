@@ -196,9 +196,7 @@ void main() {
     testWidgets('auto-dismisses after 3 seconds', (tester) async {
       final container = await _pumpOverlay(tester);
 
-      container
-          .read(discoveryProvider.notifier)
-          .showDiscovery(_makeEvent());
+      container.read(discoveryProvider.notifier).showDiscovery(_makeEvent());
       // Pump once to process the state change and trigger the timer.
       await tester.pump();
 
@@ -227,6 +225,71 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Red Fox'), findsNothing);
+    });
+
+    testWidgets('stacks multiple notifications visually', (tester) async {
+      final container = await _pumpOverlay(tester);
+
+      final notifier = container.read(discoveryProvider.notifier);
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Red Fox', scientificName: 'Vulpes vulpes'));
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Gray Wolf', scientificName: 'Canis lupus'));
+      notifier.showDiscovery(_makeEvent(
+          displayName: 'Brown Bear', scientificName: 'Ursus arctos'));
+      await tester.pump();
+
+      // All three species names should be rendered in the stack.
+      expect(find.text('Red Fox'), findsOneWidget);
+      expect(find.text('Gray Wolf'), findsOneWidget);
+      expect(find.text('Brown Bear'), findsOneWidget);
+    });
+
+    testWidgets('dismissing top card shows next card', (tester) async {
+      final container = await _pumpOverlay(tester);
+
+      final notifier = container.read(discoveryProvider.notifier);
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Red Fox', scientificName: 'Vulpes vulpes'));
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Gray Wolf', scientificName: 'Canis lupus'));
+      await tester.pump();
+
+      expect(find.text('Red Fox'), findsOneWidget);
+      expect(find.text('Gray Wolf'), findsOneWidget);
+
+      // Dismiss the top card (Red Fox).
+      notifier.dismissNotification();
+      await tester.pump();
+
+      expect(find.text('Red Fox'), findsNothing);
+      expect(find.text('Gray Wolf'), findsOneWidget);
+    });
+
+    testWidgets('auto-dismiss cycles through queued notifications',
+        (tester) async {
+      final container = await _pumpOverlay(tester);
+
+      final notifier = container.read(discoveryProvider.notifier);
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Red Fox', scientificName: 'Vulpes vulpes'));
+      notifier.showDiscovery(
+          _makeEvent(displayName: 'Gray Wolf', scientificName: 'Canis lupus'));
+      await tester.pump();
+
+      // First auto-dismiss after 3s removes Red Fox.
+      await tester.pump(const Duration(seconds: 3, milliseconds: 100));
+      expect(
+        container.read(discoveryProvider).currentNotification?.item.displayName,
+        equals('Gray Wolf'),
+      );
+
+      // Second auto-dismiss after another 3s removes Gray Wolf.
+      await tester.pump(const Duration(seconds: 3, milliseconds: 100));
+      expect(
+        container.read(discoveryProvider).hasActiveNotification,
+        isFalse,
+      );
     });
   });
 }
