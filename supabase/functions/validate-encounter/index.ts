@@ -162,10 +162,32 @@ serve(async (req: Request) => {
       // Non-fatal — item was already upserted by the write queue.
     }
 
+    // ── Global First Discovery Check ─────────────────────────────────────
+    // Query the earliest item_instance with this definition_id across ALL
+    // users. If this item_id is the earliest, award the ★ First badge.
+    // Uses acquired_at as tiebreaker — whoever actually encountered it
+    // earliest wins, regardless of when their queue flushed.
+    let isFirstGlobal = false;
+    try {
+      const { data: firstInstance } = await supabase
+        .from("item_instances")
+        .select("id")
+        .eq("definition_id", definition_id)
+        .order("acquired_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      isFirstGlobal = firstInstance?.id === item_id;
+    } catch (err) {
+      console.error("First discovery check failed:", err);
+      // Non-fatal — default to false. Player can re-sync later.
+    }
+
     return new Response(
       JSON.stringify({
         status: "accepted",
         validation_hash: serverHash,
+        is_first_global: isFirstGlobal,
       }),
       {
         status: 200,

@@ -29,6 +29,11 @@ class SyncRejectedException implements Exception {
   String toString() => 'SyncRejectedException: $reason';
 }
 
+class EncounterValidationResult {
+  final bool isFirstGlobal;
+  const EncounterValidationResult({required this.isFirstGlobal});
+}
+
 class SupabasePersistence {
   SupabasePersistence(this._client);
 
@@ -80,10 +85,8 @@ class SupabasePersistence {
 
   Future<List<Map<String, dynamic>>> fetchCellProgress(String userId) async {
     try {
-      final response = await _client
-          .from('cell_progress')
-          .select()
-          .eq('user_id', userId);
+      final response =
+          await _client.from('cell_progress').select().eq('user_id', userId);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('[SupabasePersistence] fetchCellProgress failed: $e');
@@ -124,10 +127,8 @@ class SupabasePersistence {
 
   Future<List<Map<String, dynamic>>> fetchItemInstances(String userId) async {
     try {
-      final response = await _client
-          .from('item_instances')
-          .select()
-          .eq('user_id', userId);
+      final response =
+          await _client.from('item_instances').select().eq('user_id', userId);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('[SupabasePersistence] fetchItemInstances failed: $e');
@@ -173,10 +174,7 @@ class SupabasePersistence {
     required String id,
   }) async {
     try {
-      await _client
-          .from('item_instances')
-          .delete()
-          .eq('id', id);
+      await _client.from('item_instances').delete().eq('id', id);
     } catch (e) {
       debugPrint('[SupabasePersistence] deleteItemInstance failed: $e');
       throw SyncException('Failed to delete item instance.', cause: e);
@@ -185,7 +183,11 @@ class SupabasePersistence {
 
   // -- Encounter Validation ----------------------------------------------------
 
-  Future<void> validateEncounter({
+  /// Validates an encounter with the server and returns the result.
+  ///
+  /// The server checks seed validity, structural integrity, and whether
+  /// this is the first global discovery of the species.
+  Future<EncounterValidationResult> validateEncounter({
     required String itemId,
     required String userId,
     required String definitionId,
@@ -217,6 +219,11 @@ class SupabasePersistence {
           'Validation failed with status ${response.status}',
         );
       }
+
+      final data = response.data as Map<String, dynamic>?;
+      return EncounterValidationResult(
+        isFirstGlobal: data?['is_first_global'] as bool? ?? false,
+      );
     } on SyncValidationRejectedException {
       rethrow;
     } catch (e) {

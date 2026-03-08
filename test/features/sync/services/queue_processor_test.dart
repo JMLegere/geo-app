@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fog_of_world/core/database/app_database.dart';
+import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/models/write_queue_entry.dart';
+import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
 import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
 import 'package:fog_of_world/features/sync/services/queue_processor.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
@@ -165,6 +167,7 @@ class _MockSupabasePersistence extends SupabasePersistence {
   void reset() {
     shouldThrowSyncException = false;
     shouldRejectValidation = false;
+    shouldReturnFirstGlobal = false;
     errorMessage = 'test sync error';
     upsertItemInstanceCalls = 0;
     validateEncounterCalls = 0;
@@ -193,8 +196,11 @@ class _MockSupabasePersistence extends SupabasePersistence {
     // Note: SyncRejectedException comes from validateEncounter, not here.
   }
 
+  /// When true, validateEncounter reports is_first_global = true.
+  bool shouldReturnFirstGlobal = false;
+
   @override
-  Future<void> validateEncounter({
+  Future<EncounterValidationResult> validateEncounter({
     required String itemId,
     required String userId,
     required String definitionId,
@@ -207,6 +213,7 @@ class _MockSupabasePersistence extends SupabasePersistence {
       throw SyncValidationRejectedException(errorMessage);
     }
     if (shouldThrowSyncException) throw SyncException(errorMessage);
+    return EncounterValidationResult(isFirstGlobal: shouldReturnFirstGlobal);
   }
 
   @override
@@ -243,6 +250,40 @@ class _MockSupabasePersistence extends SupabasePersistence {
     deleteItemInstanceCalls++;
     if (shouldThrowSyncException) throw SyncException(errorMessage);
     if (shouldRejectValidation) throw SyncRejectedException(errorMessage);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mock: ItemInstanceRepository (in-memory, no DB I/O)
+// ---------------------------------------------------------------------------
+
+class _MockItemInstanceRepository extends ItemInstanceRepository {
+  final Map<String, ItemInstance> _items = {};
+
+  _MockItemInstanceRepository(AppDatabase db) : super(db);
+
+  /// Seed an item for getItem() lookups.
+  void seedItem(ItemInstance item) {
+    _items[item.id] = item;
+  }
+
+  /// Read back the current state of a stored item (for assertions).
+  ItemInstance? itemById(String id) => _items[id];
+
+  int getItemCalls = 0;
+  int updateItemCalls = 0;
+
+  @override
+  Future<ItemInstance?> getItem(String id) async {
+    getItemCalls++;
+    return _items[id];
+  }
+
+  @override
+  Future<bool> updateItem(ItemInstance instance, String userId) async {
+    updateItemCalls++;
+    _items[instance.id] = instance;
+    return true;
   }
 }
 
@@ -328,10 +369,12 @@ void main() {
 
   late _MockWriteQueueRepository mockRepo;
   late _MockSupabasePersistence mockPersistence;
+  late _MockItemInstanceRepository mockItemRepo;
 
   setUp(() {
     mockRepo = _MockWriteQueueRepository(sharedDb);
     mockPersistence = _MockSupabasePersistence();
+    mockItemRepo = _MockItemInstanceRepository(sharedDb);
   });
 
   group('QueueProcessor', () {
@@ -341,6 +384,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: null,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(id: 1));
 
@@ -359,6 +403,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: null,
+        itemRepo: mockItemRepo,
       );
       expect(processor.canSync, isFalse);
     });
@@ -367,6 +412,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       expect(processor.canSync, isTrue);
     });
@@ -377,6 +423,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
 
       final summary = await processor.flush();
@@ -393,6 +440,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
@@ -413,6 +461,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.profile,
@@ -432,6 +481,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.itemInstance,
@@ -448,10 +498,12 @@ void main() {
       expect(mockPersistence.validateEncounterCalls, equals(1));
     });
 
-    test('flush confirms multiple entries and reports correct counts', () async {
+    test('flush confirms multiple entries and reports correct counts',
+        () async {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo
         ..addEntry(makeEntry(
@@ -484,6 +536,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
@@ -510,6 +563,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       // Entry with attempts = kWriteQueueMaxRetries - 2 (still has room to retry).
       mockRepo.addEntry(makeEntry(
@@ -535,6 +589,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       // Entry already at max retries - 1 attempts; next failure triggers rejection.
       mockRepo.addEntry(makeEntry(
@@ -565,6 +620,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.itemInstance,
@@ -592,6 +648,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
@@ -618,6 +675,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
 
       // Seed a stale entry (older than kWriteQueueStaleAgeHours).
@@ -653,6 +711,7 @@ void main() {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,
+        itemRepo: mockItemRepo,
       );
 
       // Only stale entries — nothing fresh to process.
@@ -669,6 +728,124 @@ void main() {
       expect(summary.staleDeleted, equals(1));
       expect(summary.confirmed, equals(0));
       expect(summary.total, equals(0));
+    });
+
+    // ── first discovery badge ────────────────────────────────────────────
+
+    test('flush awards first badge when server returns isFirstGlobal',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      // Seed an item in the mock repo (no badge yet).
+      final item = ItemInstance(
+        id: 'item-uuid-1',
+        definitionId: 'fauna_vulpes_vulpes',
+        affixes: [],
+        badges: {},
+        acquiredAt: DateTime(2026, 3, 7, 12),
+        acquiredInCellId: 'cell-1',
+        status: ItemInstanceStatus.active,
+      );
+      mockItemRepo.seedItem(item);
+
+      // Tell mock persistence to report first global.
+      mockPersistence.shouldReturnFirstGlobal = true;
+
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.itemInstance,
+        entityId: 'item-uuid-1',
+        payload: _itemInstancePayload('item-uuid-1'),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(1));
+      expect(summary.hasFirstBadges, isTrue);
+      expect(summary.firstBadgeItemIds, contains('item-uuid-1'));
+
+      // Item should now have the first discovery badge.
+      final updated = mockItemRepo.itemById('item-uuid-1')!;
+      expect(updated.isFirstDiscovery, isTrue);
+      expect(updated.badges, contains(kBadgeFirstDiscovery));
+      expect(mockItemRepo.updateItemCalls, equals(1));
+    });
+
+    test('flush does not award badge when server returns isFirstGlobal=false',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      final item = ItemInstance(
+        id: 'item-uuid-2',
+        definitionId: 'fauna_vulpes_vulpes',
+        affixes: [],
+        badges: {},
+        acquiredAt: DateTime(2026, 3, 7, 12),
+        acquiredInCellId: 'cell-1',
+        status: ItemInstanceStatus.active,
+      );
+      mockItemRepo.seedItem(item);
+
+      // Default: shouldReturnFirstGlobal = false.
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.itemInstance,
+        entityId: 'item-uuid-2',
+        payload: _itemInstancePayload('item-uuid-2'),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(1));
+      expect(summary.hasFirstBadges, isFalse);
+      expect(summary.firstBadgeItemIds, isEmpty);
+
+      // Item should NOT have the badge.
+      final unchanged = mockItemRepo.itemById('item-uuid-2')!;
+      expect(unchanged.isFirstDiscovery, isFalse);
+      expect(mockItemRepo.updateItemCalls, equals(0));
+    });
+
+    test('flush skips badge if item already has first discovery badge',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      // Item already has the badge.
+      final item = ItemInstance(
+        id: 'item-uuid-3',
+        definitionId: 'fauna_vulpes_vulpes',
+        affixes: [],
+        badges: {kBadgeFirstDiscovery},
+        acquiredAt: DateTime(2026, 3, 7, 12),
+        acquiredInCellId: 'cell-1',
+        status: ItemInstanceStatus.active,
+      );
+      mockItemRepo.seedItem(item);
+      mockPersistence.shouldReturnFirstGlobal = true;
+
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.itemInstance,
+        entityId: 'item-uuid-3',
+        payload: _itemInstancePayload('item-uuid-3'),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(1));
+      // Badge was "awarded" in the sense that server said first,
+      // but _awardFirstBadge early-returns without updating.
+      expect(mockItemRepo.getItemCalls, equals(1));
+      expect(mockItemRepo.updateItemCalls, equals(0));
     });
 
     // ── backoffDelay ───────────────────────────────────────────────────────

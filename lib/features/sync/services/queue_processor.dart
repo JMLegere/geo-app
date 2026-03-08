@@ -3,7 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:fog_of_world/core/models/item_instance.dart';
 import 'package:fog_of_world/core/models/write_queue_entry.dart';
+import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
 import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 import 'package:fog_of_world/shared/constants.dart';
@@ -14,7 +16,8 @@ sealed class FlushResult {
 }
 
 class FlushConfirmed extends FlushResult {
-  const FlushConfirmed();
+  final String? awardedFirstBadgeItemId;
+  const FlushConfirmed({this.awardedFirstBadgeItemId});
 }
 
 class FlushRetryable extends FlushResult {
@@ -33,21 +36,24 @@ class FlushSummary {
   final int retried;
   final int rejected;
   final int staleDeleted;
+  final List<String> firstBadgeItemIds;
 
   const FlushSummary({
     this.confirmed = 0,
     this.retried = 0,
     this.rejected = 0,
     this.staleDeleted = 0,
+    this.firstBadgeItemIds = const [],
   });
 
   int get total => confirmed + retried + rejected;
   bool get hasRejections => rejected > 0;
+  bool get hasFirstBadges => firstBadgeItemIds.isNotEmpty;
 
   @override
-  String toString() =>
-      'FlushSummary(confirmed: $confirmed, retried: $retried, '
-      'rejected: $rejected, staleDeleted: $staleDeleted)';
+  String toString() => 'FlushSummary(confirmed: $confirmed, retried: $retried, '
+      'rejected: $rejected, staleDeleted: $staleDeleted, '
+      'firstBadges: ${firstBadgeItemIds.length})';
 }
 
 /// Processes the local write queue by flushing pending entries to Supabase.
@@ -68,6 +74,7 @@ class FlushSummary {
 class QueueProcessor {
   final WriteQueueRepository _queueRepo;
   final SupabasePersistence? _persistence;
+  final ItemInstanceRepository _itemRepo;
 
   /// Guards against concurrent flush() calls.
   bool _flushing = false;
@@ -75,8 +82,10 @@ class QueueProcessor {
   QueueProcessor({
     required WriteQueueRepository queueRepo,
     required SupabasePersistence? persistence,
+    required ItemInstanceRepository itemRepo,
   })  : _queueRepo = queueRepo,
-        _persistence = persistence;
+        _persistence = persistence,
+        _itemRepo = itemRepo;
 
   /// Whether Supabase is available for syncing.
   bool get canSync => _persistence != null;
@@ -106,7 +115,6 @@ class QueueProcessor {
   }
 
   Future<FlushSummary> _flushInternal(SupabasePersistence persistence) async {
-
     // Clean up stale entries first.
     final cutoff = DateTime.now().subtract(
       const Duration(hours: kWriteQueueStaleAgeHours),
@@ -125,14 +133,18 @@ class QueueProcessor {
     var confirmed = 0;
     var retried = 0;
     var rejected = 0;
+    final firstBadgeItemIds = <String>[];
 
     for (final entry in pending) {
       final result = await _processEntry(entry, persistence);
 
       switch (result) {
-        case FlushConfirmed():
+        case FlushConfirmed(:final awardedFirstBadgeItemId):
           await _queueRepo.deleteEntry(entry.id!);
           confirmed++;
+          if (awardedFirstBadgeItemId != null) {
+            firstBadgeItemIds.add(awardedFirstBadgeItemId);
+          }
 
         case FlushRejected(:final error):
           await _queueRepo.markRejected(entry.id!, error);
@@ -140,7 +152,6 @@ class QueueProcessor {
 
         case FlushRetryable(:final error):
           if (entry.attempts + 1 >= kWriteQueueMaxRetries) {
-            // Max retries exceeded — reject.
             await _queueRepo.markRejected(
               entry.id!,
               'Max retries ($kWriteQueueMaxRetries) exceeded. Last: $error',
@@ -158,24 +169,25 @@ class QueueProcessor {
       retried: retried,
       rejected: rejected,
       staleDeleted: staleDeleted,
+      firstBadgeItemIds: firstBadgeItemIds,
     );
   }
 
-  /// Process a single queue entry.
   Future<FlushResult> _processEntry(
     WriteQueueEntry entry,
     SupabasePersistence persistence,
   ) async {
     try {
+      String? awardedItemId;
       switch (entry.entityType) {
         case WriteQueueEntityType.itemInstance:
-          await _processItemInstance(entry, persistence);
+          awardedItemId = await _processItemInstance(entry, persistence);
         case WriteQueueEntityType.cellProgress:
           await _processCellProgress(entry, persistence);
         case WriteQueueEntityType.profile:
           await _processProfile(entry, persistence);
       }
-      return const FlushConfirmed();
+      return FlushConfirmed(awardedFirstBadgeItemId: awardedItemId);
     } on SyncRejectedException catch (e) {
       debugPrint('[QueueProcessor] rejected ${entry.id}: ${e.reason}');
       return FlushRejected(e.reason);
@@ -190,7 +202,8 @@ class QueueProcessor {
 
   // ── Entity-specific dispatch ───────────────────────────────────────────────
 
-  Future<void> _processItemInstance(
+  /// Returns the item ID if a first-discovery badge was awarded, null otherwise.
+  Future<String?> _processItemInstance(
     WriteQueueEntry entry,
     SupabasePersistence persistence,
   ) async {
@@ -211,20 +224,29 @@ class QueueProcessor {
           status: data['status'] as String,
         );
 
-        await _validateEncounter(entry, data, persistence);
+        final result = await _validateEncounter(entry, data, persistence);
+
+        if (result.isFirstGlobal) {
+          final itemId = data['id'] as String;
+          await _awardFirstBadge(itemId, entry.userId);
+          return itemId;
+        }
+
+        return null;
 
       case WriteQueueOperation.delete:
         await persistence.deleteItemInstance(id: entry.entityId);
+        return null;
     }
   }
 
-  Future<void> _validateEncounter(
+  Future<EncounterValidationResult> _validateEncounter(
     WriteQueueEntry entry,
     Map<String, dynamic> data,
     SupabasePersistence persistence,
   ) async {
     try {
-      await persistence.validateEncounter(
+      return await persistence.validateEncounter(
         itemId: data['id'] as String,
         userId: entry.userId,
         definitionId: data['definition_id'] as String,
@@ -234,6 +256,22 @@ class QueueProcessor {
       );
     } on SyncValidationRejectedException catch (e) {
       throw SyncRejectedException(e.reason);
+    }
+  }
+
+  Future<void> _awardFirstBadge(String itemId, String userId) async {
+    try {
+      final item = await _itemRepo.getItem(itemId);
+      if (item == null) return;
+      if (item.isFirstDiscovery) return;
+
+      final updated = item.copyWith(
+        badges: {...item.badges, kBadgeFirstDiscovery},
+      );
+      await _itemRepo.updateItem(updated, userId);
+    } catch (e) {
+      debugPrint(
+          '[QueueProcessor] failed to award first badge for $itemId: $e');
     }
   }
 
@@ -277,8 +315,7 @@ class QueueProcessor {
           displayName: data['display_name'] as String?,
           currentStreak: (data['current_streak'] as num?)?.toInt(),
           longestStreak: (data['longest_streak'] as num?)?.toInt(),
-          totalDistanceKm:
-              (data['total_distance_km'] as num?)?.toDouble(),
+          totalDistanceKm: (data['total_distance_km'] as num?)?.toDouble(),
           currentSeason: data['current_season'] as String?,
         );
       case WriteQueueOperation.delete:

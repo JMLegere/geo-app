@@ -22,6 +22,7 @@ interface EnrichRequest {
   scientific_name: string;
   common_name: string;
   taxonomic_class: string;
+  force?: boolean;
 }
 
 interface EnrichmentRow {
@@ -140,7 +141,7 @@ serve(async (req: Request) => {
 
   try {
     const body: EnrichRequest = await req.json();
-    const { definition_id, scientific_name, common_name, taxonomic_class } = body;
+    const { definition_id, scientific_name, common_name, taxonomic_class, force } = body;
 
     if (!definition_id || !scientific_name || !common_name || !taxonomic_class) {
       return new Response(
@@ -170,6 +171,14 @@ serve(async (req: Request) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Force re-enrichment: delete existing row so the LLM re-classifies.
+    if (force) {
+      await supabase
+        .from("species_enrichment")
+        .delete()
+        .eq("definition_id", definition_id);
+    }
 
     const { data: existing } = await supabase
       .from("species_enrichment")
