@@ -31,7 +31,7 @@ class FaunaGridTab extends ConsumerWidget {
     return GridView.builder(
       padding: EdgeInsets.all(Spacing.sm),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+        crossAxisCount: 6,
         childAspectRatio: 0.85,
         crossAxisSpacing: 6,
         mainAxisSpacing: 6,
