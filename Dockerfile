@@ -6,7 +6,7 @@ COPY . .
 RUN BUILD_TS=$(date -u +%Y-%m-%d-%H%M) && \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
-    --dart-define=SUPABASE_ANON_KEY=sb_publishable__YSJ0cAnZ91SpxX1nlRjtQ_VaTxp2yf \
+    --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmYWN6Y3NycGZjYmlqb2FlY2tiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzE3ODYsImV4cCI6MjA4ODE0Nzc4Nn0.hyjp1NRiteavWfBnch1LpRARtiN5lvpP0PztbRwqPJ8 \
     --dart-define=BUILD_TIMESTAMP=$BUILD_TS
 
 FROM nginx:alpine

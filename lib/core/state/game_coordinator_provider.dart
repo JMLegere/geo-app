@@ -213,13 +213,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Declared before hydrateAndStart so the closure can capture it.
   PlayerState? lastPersistedProfile;
 
-  void hydrateAndStart(String userId) {
-    Future.wait<Object?>([
-      itemRepo.getItemsByUser(userId),
-      cellProgressRepo.readByUser(userId),
-      profileRepo.read(userId),
-      enrichmentRepo.getAllEnrichments(),
-    ]).then((results) {
+  /// Load player data from SQLite into providers (inventory, cells, profile,
+  /// enrichment cache). Does NOT start the game loop — call [startLoop]
+  /// separately after this completes.
+  Future<void> rehydrateData(String userId) async {
+    try {
+      final results = await Future.wait<Object?>([
+        itemRepo.getItemsByUser(userId),
+        cellProgressRepo.readByUser(userId),
+        profileRepo.read(userId),
+        enrichmentRepo.getAllEnrichments(),
+      ]);
+
       final items = results[0]! as List<ItemInstance>;
       final cellRows = results[1]! as List<LocalCellProgress>;
       final profile = results[2] as LocalPlayerProfile?;
@@ -283,10 +288,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // Capture hydrated profile state so the write-through listener
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
+    } catch (e) {
+      debugPrint('[GameCoordinator] failed to hydrate: $e');
+    }
+  }
 
+  void hydrateAndStart(String userId) {
+    rehydrateData(userId).then((_) {
       startLoop();
 
-      // 4. Re-queue enrichment for any fauna in inventory that lacks it.
+      // Re-queue enrichment for any fauna in inventory that lacks it.
       // Runs async after game loop starts — non-blocking. Covers:
       //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
       //   - Enrichment requests lost to app restart (in-memory queue)
@@ -295,9 +306,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         ref: ref,
         enrichmentCache: enrichmentCache,
       );
-    }).catchError((Object e) {
-      debugPrint('[GameCoordinator] failed to hydrate: $e');
-      startLoop(); // Degrade gracefully — start without hydrated data.
     });
   }
 
@@ -325,6 +333,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     });
   }
+
+  // --- Re-hydrate when auth identity changes post-startup ---
+  //
+  // After the initial hydrate-and-start completes, the player may upgrade
+  // their identity (e.g., signInWithPhone adds a phone number). If the
+  // userId changes (anonymous → identified account), reload their data
+  // from SQLite. If the userId stays the same (phone added to same anon
+  // account), this is a no-op since the data is already loaded.
+  ref.listen<AuthState>(authProvider, (previous, next) {
+    final prevId = previous?.user?.id;
+    final nextId = next.user?.id;
+    if (nextId == null || prevId == null) return;
+    if (nextId == prevId) return; // Same user — no reload needed.
+    debugPrint('[GameCoordinator] auth identity changed: $prevId → $nextId, '
+        're-hydrating player data');
+    rehydrateData(nextId);
+  });
 
   // --- Wire profile write-through: persist on PlayerState changes ---
   //

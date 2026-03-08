@@ -178,11 +178,16 @@ class AuthNotifier extends Notifier<AuthState> {
   ///
   /// Unified flow: new numbers create an account, existing numbers sign in.
   /// No OTP verification yet — see [AuthService.signInWithPhone].
+  ///
+  /// Does NOT transition through [AuthState.loading] — the user is already
+  /// authenticated anonymously and we're upgrading in-place. A loading
+  /// transition would null the user ID, causing downstream providers
+  /// (GameCoordinator, inventory, fog) to see a null user and potentially
+  /// reset game state.
   // TODO(auth): Add OTP verification step when Twilio SMS is configured.
   Future<void> signInWithPhone({required String phoneNumber}) async {
     final service = _authService;
     if (service == null) return;
-    state = const AuthState.loading();
     try {
       final user = await service.signInWithPhone(phoneNumber: phoneNumber);
       if (!ref.mounted) return;

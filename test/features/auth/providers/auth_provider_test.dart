@@ -156,22 +156,25 @@ void main() {
 
     // ── signInWithPhone ─────────────────────────────────────────────────────
 
-    test('signInWithPhone transitions through loading to authenticated',
-        () async {
+    test(
+        'signInWithPhone upgrades in-place without loading transition '
+        '(preserves game state)', () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
 
-      final notifier = container.read(authProvider.notifier);
-
-      // Sign out first to start from a clean unauthenticated state.
-      await notifier.signOut();
+      // Start authenticated anonymously (makeContainer auto-signs-in).
+      expect(container.read(authProvider).status, AuthStatus.authenticated);
 
       final states = <AuthStatus>[];
       container.listen(authProvider, (_, next) => states.add(next.status));
 
-      await notifier.signInWithPhone(phoneNumber: '+15551234567');
+      await container
+          .read(authProvider.notifier)
+          .signInWithPhone(phoneNumber: '+15551234567');
 
-      expect(states, contains(AuthStatus.loading));
+      // Must NOT go through loading — a loading transition would null the
+      // user ID and cause downstream providers to reset game state.
+      expect(states, isNot(contains(AuthStatus.loading)));
       expect(states.last, AuthStatus.authenticated);
     });
 
