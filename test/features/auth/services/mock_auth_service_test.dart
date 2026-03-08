@@ -195,7 +195,8 @@ void main() {
 
     // ── upgradeWithEmail ─────────────────────────────────────────────────────
 
-    test('upgradeWithEmail preserves id and sets isAnonymous to false', () async {
+    test('upgradeWithEmail preserves id and sets isAnonymous to false',
+        () async {
       final anon = await service.signInAnonymously();
       expect(anon.isAnonymous, isTrue);
 
@@ -288,7 +289,8 @@ void main() {
       );
     });
 
-    test('upgradeWithEmail emits updated profile on authStateChanges', () async {
+    test('upgradeWithEmail emits updated profile on authStateChanges',
+        () async {
       await service.signInAnonymously();
 
       final events = <UserProfile?>[];
@@ -307,9 +309,72 @@ void main() {
       expect(events.last!.email, 'user@example.com');
     });
 
+    // ── signInWithPhone ─────────────────────────────────────────────────────
+
+    test('signInWithPhone creates new user for unknown number', () async {
+      final profile =
+          await service.signInWithPhone(phoneNumber: '+15551234567');
+
+      expect(profile.phoneNumber, '+15551234567');
+      expect(profile.email, '');
+      expect(profile.id, isNotEmpty);
+    });
+
+    test('signInWithPhone returns same profile for existing number', () async {
+      final first = await service.signInWithPhone(phoneNumber: '+15551234567');
+      await service.signOut();
+
+      final second = await service.signInWithPhone(phoneNumber: '+15551234567');
+
+      expect(second.id, first.id);
+      expect(second.phoneNumber, first.phoneNumber);
+    });
+
+    test('signInWithPhone throws for invalid E.164 format', () async {
+      await expectLater(
+        service.signInWithPhone(phoneNumber: '5551234567'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('E.164'),
+          ),
+        ),
+      );
+    });
+
+    test('signInWithPhone throws for short phone number', () async {
+      await expectLater(
+        service.signInWithPhone(phoneNumber: '+123'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('signInWithPhone emits profile on authStateChanges', () async {
+      final events = <UserProfile?>[];
+      final sub = service.authStateChanges.listen(events.add);
+
+      await service.signInWithPhone(phoneNumber: '+15551234567');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await sub.cancel();
+
+      expect(events, isNotEmpty);
+      expect(events.last, isNotNull);
+      expect(events.last!.phoneNumber, '+15551234567');
+    });
+
+    test('signInWithPhone sets current user', () async {
+      await service.signInWithPhone(phoneNumber: '+15551234567');
+
+      final user = await service.getCurrentUser();
+      expect(user, isNotNull);
+      expect(user!.phoneNumber, '+15551234567');
+    });
+
     // ── linkOAuthIdentity ────────────────────────────────────────────────────
 
-    test('linkOAuthIdentity preserves id and sets isAnonymous to false', () async {
+    test('linkOAuthIdentity preserves id and sets isAnonymous to false',
+        () async {
       final anon = await service.signInAnonymously();
 
       final upgraded = await service.linkOAuthIdentity(provider: 'google');
@@ -340,7 +405,8 @@ void main() {
       );
     });
 
-    test('linkOAuthIdentity emits updated profile on authStateChanges', () async {
+    test('linkOAuthIdentity emits updated profile on authStateChanges',
+        () async {
       await service.signInAnonymously();
 
       final events = <UserProfile?>[];

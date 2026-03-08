@@ -37,8 +37,7 @@ void main() {
 
     test(
         'Auto-signs in anonymously when Supabase is not configured '
-        '(offline / dev mode)',
-        () async {
+        '(offline / dev mode)', () async {
       final container = await makeContainer();
       addTearDown(container.dispose);
 
@@ -112,16 +111,14 @@ void main() {
       final notifier = container.read(authProvider.notifier);
 
       // Create account first.
-      await notifier.signUp(
-          email: 'test@example.com', password: 'password123');
+      await notifier.signUp(email: 'test@example.com', password: 'password123');
       // Sign out to reset to unauthenticated.
       await notifier.signOut();
 
       final states = <AuthStatus>[];
       container.listen(authProvider, (_, next) => states.add(next.status));
 
-      await notifier.signIn(
-          email: 'test@example.com', password: 'password123');
+      await notifier.signIn(email: 'test@example.com', password: 'password123');
 
       expect(states, contains(AuthStatus.loading));
       expect(states.last, AuthStatus.authenticated);
@@ -132,12 +129,10 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(authProvider.notifier);
-      await notifier.signUp(
-          email: 'test@example.com', password: 'correctpass');
+      await notifier.signUp(email: 'test@example.com', password: 'correctpass');
       await notifier.signOut();
 
-      await notifier.signIn(
-          email: 'test@example.com', password: 'wrongpass');
+      await notifier.signIn(email: 'test@example.com', password: 'wrongpass');
 
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.unauthenticated);
@@ -159,6 +154,55 @@ void main() {
       expect(state.errorMessage, contains('User not found'));
     });
 
+    // ── signInWithPhone ─────────────────────────────────────────────────────
+
+    test('signInWithPhone transitions through loading to authenticated',
+        () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authProvider.notifier);
+
+      // Sign out first to start from a clean unauthenticated state.
+      await notifier.signOut();
+
+      final states = <AuthStatus>[];
+      container.listen(authProvider, (_, next) => states.add(next.status));
+
+      await notifier.signInWithPhone(phoneNumber: '+15551234567');
+
+      expect(states, contains(AuthStatus.loading));
+      expect(states.last, AuthStatus.authenticated);
+    });
+
+    test('signInWithPhone sets user with phone number', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      await container
+          .read(authProvider.notifier)
+          .signInWithPhone(phoneNumber: '+15551234567');
+
+      final state = container.read(authProvider);
+      expect(state.status, AuthStatus.authenticated);
+      expect(state.user, isNotNull);
+      expect(state.user!.phoneNumber, '+15551234567');
+    });
+
+    test('signInWithPhone with invalid number sets error state', () async {
+      final container = await makeContainer();
+      addTearDown(container.dispose);
+
+      await container
+          .read(authProvider.notifier)
+          .signInWithPhone(phoneNumber: 'not-a-phone');
+
+      final state = container.read(authProvider);
+      expect(state.status, AuthStatus.unauthenticated);
+      expect(state.errorMessage, isNotNull);
+      expect(state.errorMessage, contains('E.164'));
+    });
+
     // ── signOut ──────────────────────────────────────────────────────────────
 
     test('signOut transitions authenticated → unauthenticated', () async {
@@ -166,8 +210,7 @@ void main() {
       addTearDown(container.dispose);
 
       final notifier = container.read(authProvider.notifier);
-      await notifier.signUp(
-          email: 'test@example.com', password: 'password123');
+      await notifier.signUp(email: 'test@example.com', password: 'password123');
       expect(container.read(authProvider).status, AuthStatus.authenticated);
 
       final states = <AuthStatus>[];
@@ -187,8 +230,7 @@ void main() {
 
       await container.read(authProvider.notifier).continueAsGuest();
 
-      expect(
-          container.read(authProvider).status, AuthStatus.authenticated);
+      expect(container.read(authProvider).status, AuthStatus.authenticated);
     });
 
     test('continueAsGuest sets isLoggedIn and provides a user', () async {
@@ -223,7 +265,10 @@ void main() {
             displayName: 'Upgraded User',
           );
 
-      expect(states, contains(predicate<AuthState>((s) => s.status == AuthStatus.loading)));
+      expect(
+          states,
+          contains(
+              predicate<AuthState>((s) => s.status == AuthStatus.loading)));
       final finalState = container.read(authProvider);
       expect(finalState.status, AuthStatus.authenticated);
       expect(finalState.user, isNotNull);
@@ -293,9 +338,7 @@ void main() {
       // makeContainer() auto-signs-in anonymously.
       expect(container.read(authProvider).isAnonymous, isTrue);
 
-      await container
-          .read(authProvider.notifier)
-          .linkOAuth(provider: 'google');
+      await container.read(authProvider.notifier).linkOAuth(provider: 'google');
 
       // _listenToAuthChanges handles the state transition on success.
       // Allow the stream event to propagate.
@@ -347,8 +390,7 @@ void main() {
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.unauthenticated);
       expect(state.errorMessage, isNotNull);
-      expect(state.errorMessage,
-          contains('Cannot sign out anonymous user'));
+      expect(state.errorMessage, contains('Cannot sign out anonymous user'));
     });
 
     test('signOutWithWarning signs out non-anonymous users', () async {

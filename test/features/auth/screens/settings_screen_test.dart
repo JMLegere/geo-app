@@ -31,6 +31,15 @@ final _upgradedUser = UserProfile(
   isAnonymous: false,
 );
 
+final _phoneUser = UserProfile(
+  id: 'phone-789',
+  email: '',
+  phoneNumber: '+15551234567',
+  displayName: 'Phone User',
+  createdAt: DateTime(2024),
+  isAnonymous: false,
+);
+
 class _AnonAuthNotifier extends AuthNotifier {
   @override
   AuthState build() => AuthState.authenticated(_anonymousUser);
@@ -51,6 +60,11 @@ class _UpgradedAuthNotifier extends AuthNotifier {
   AuthState build() => AuthState.authenticated(_upgradedUser);
 }
 
+class _PhoneAuthNotifier extends AuthNotifier {
+  @override
+  AuthState build() => AuthState.authenticated(_phoneUser);
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // Note: We avoid annotating helpers with `List<Override>` because `Override`
@@ -62,7 +76,7 @@ void main() {
   group('SettingsScreen', () {
     // ── Profile display ──────────────────────────────────────────────────────
 
-    testWidgets('shows "Explorer" and "Anonymous account" for anonymous user',
+    testWidgets('shows "Explorer" and "Guest account" for anonymous user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
@@ -71,7 +85,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Explorer'), findsOneWidget);
-      expect(find.text('Anonymous account'), findsOneWidget);
+      expect(find.text('Guest account'), findsOneWidget);
     });
 
     testWidgets('shows display name and email for upgraded user',
@@ -84,6 +98,17 @@ void main() {
 
       expect(find.text('Alex Explorer'), findsOneWidget);
       expect(find.text('explorer@example.com'), findsOneWidget);
+    });
+
+    testWidgets('shows phone number for phone-auth user', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [authProvider.overrideWith(_PhoneAuthNotifier.new)],
+        child: const MaterialApp(home: SettingsScreen()),
+      ));
+      await tester.pump();
+
+      expect(find.text('Phone User'), findsOneWidget);
+      expect(find.text('+15551234567'), findsOneWidget);
     });
 
     testWidgets('shows person icon avatar for anonymous user (no displayName)',
@@ -112,7 +137,7 @@ void main() {
 
     // ── Upgrade button ───────────────────────────────────────────────────────
 
-    testWidgets('"Upgrade your account" button visible for anonymous user',
+    testWidgets('"Add Phone Number" button visible for anonymous user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
@@ -120,10 +145,10 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text('Upgrade your account'), findsOneWidget);
+      expect(find.text('Add Phone Number'), findsOneWidget);
     });
 
-    testWidgets('"Upgrade your account" button hidden for upgraded user',
+    testWidgets('"Add Phone Number" button hidden for upgraded user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
@@ -131,7 +156,7 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text('Upgrade your account'), findsNothing);
+      expect(find.text('Add Phone Number'), findsNothing);
     });
 
     // ── Sign-out dialogs ─────────────────────────────────────────────────────

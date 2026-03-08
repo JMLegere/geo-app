@@ -6,6 +6,7 @@ class UserProfile {
   const UserProfile({
     required this.id,
     required this.email,
+    this.phoneNumber,
     this.displayName,
     required this.createdAt,
     this.isAnonymous = false,
@@ -13,6 +14,13 @@ class UserProfile {
 
   final String id;
   final String email;
+
+  /// Phone number in E.164 format (e.g. '+13334445555').
+  ///
+  /// Primary login identifier. Email is retained for backward compatibility
+  /// and future upgrade flows.
+  final String? phoneNumber;
+
   final String? displayName;
   final DateTime createdAt;
   final bool isAnonymous;
@@ -20,6 +28,7 @@ class UserProfile {
   UserProfile copyWith({
     String? id,
     String? email,
+    String? phoneNumber,
     String? displayName,
     DateTime? createdAt,
     bool? isAnonymous,
@@ -27,6 +36,7 @@ class UserProfile {
     return UserProfile(
       id: id ?? this.id,
       email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       isAnonymous: isAnonymous ?? this.isAnonymous,
@@ -37,6 +47,7 @@ class UserProfile {
     return {
       'id': id,
       'email': email,
+      'phoneNumber': phoneNumber,
       'displayName': displayName,
       'createdAt': createdAt.toIso8601String(),
       'isAnonymous': isAnonymous,
@@ -47,6 +58,7 @@ class UserProfile {
     return UserProfile(
       id: json['id'] as String,
       email: json['email'] as String,
+      phoneNumber: json['phoneNumber'] as String?,
       displayName: json['displayName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       isAnonymous: json['isAnonymous'] as bool? ?? false,
@@ -59,15 +71,18 @@ class UserProfile {
     return other is UserProfile &&
         other.id == id &&
         other.email == email &&
+        other.phoneNumber == phoneNumber &&
         other.displayName == displayName &&
         other.createdAt == createdAt &&
         other.isAnonymous == isAnonymous;
   }
 
   @override
-  int get hashCode => Object.hash(id, email, displayName, createdAt, isAnonymous);
+  int get hashCode =>
+      Object.hash(id, email, phoneNumber, displayName, createdAt, isAnonymous);
 
   @override
   String toString() =>
-      'UserProfile(id: $id, email: $email, displayName: $displayName, isAnonymous: $isAnonymous)';
+      'UserProfile(id: $id, email: $email, phone: $phoneNumber, '
+      'displayName: $displayName, isAnonymous: $isAnonymous)';
 }

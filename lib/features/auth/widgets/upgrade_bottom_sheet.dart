@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fog_of_world/features/auth/models/auth_state.dart';
 import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/shared/design_tokens.dart';
 
-/// Modal bottom sheet for upgrading an anonymous account to a permanent account.
+/// Modal bottom sheet for linking a phone number to an anonymous account.
 ///
-/// Presents email/password form and OAuth options (Google, Apple).
-/// Auto-closes when the user successfully upgrades (transitions to
-/// authenticated with `isAnonymous: false`).
+/// The phone number becomes the cross-platform account identifier, tying
+/// together Game Center, Google Play, and web sessions.
+///
+/// Auto-closes when the user successfully links a phone number (transitions
+/// to authenticated with `isAnonymous: false`).
 ///
 /// ## Usage
 /// ```dart
@@ -29,30 +32,38 @@ class UpgradeBottomSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<UpgradeBottomSheet> createState() =>
-      _UpgradeBottomSheetState();
+  ConsumerState<UpgradeBottomSheet> createState() => _UpgradeBottomSheetState();
 }
 
 class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _displayNameController = TextEditingController();
+  final _phoneController = TextEditingController();
+
+  /// Country code prefix — hardcoded to +1 for now.
+  static const _countryCode = '+1';
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(_onFieldChanged);
+  }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _displayNameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  Future<void> _upgradeWithEmail() async {
-    final displayName = _displayNameController.text.trim();
-    await ref.read(authProvider.notifier).upgradeWithEmail(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          displayName: displayName.isEmpty ? null : displayName,
-        );
+  void _onFieldChanged() => setState(() {});
+
+  bool get _canSubmit => _phoneController.text.length >= 10;
+
+  String get _fullPhoneNumber => '$_countryCode${_phoneController.text.trim()}';
+
+  Future<void> _linkPhoneNumber() async {
+    if (!_canSubmit) return;
+    await ref
+        .read(authProvider.notifier)
+        .signInWithPhone(phoneNumber: _fullPhoneNumber);
   }
 
   // ---------------------------------------------------------------------------
@@ -61,7 +72,7 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Auto-close when upgrade succeeds (anonymous → permanent account).
+    // Auto-close when upgrade succeeds (anonymous → phone account).
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated && !next.isAnonymous) {
         if (mounted) Navigator.pop(context);
@@ -110,7 +121,7 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
               // ── Header ──────────────────────────────────────────────────────
               Text(
-                'Save Your Progress',
+                'Add Phone Number',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -119,7 +130,7 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
               ),
               Spacing.gapSm,
               Text(
-                'Keep your discoveries safe',
+                'Keep your progress across all devices',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: colors.onSurfaceVariant,
@@ -128,61 +139,87 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
               Spacing.gapXxl,
 
-              // ── Email field ─────────────────────────────────────────────────
-              _buildTextField(
-                controller: _emailController,
-                label: 'Email',
-                hint: 'your@email.com',
-                prefixIcon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
+              // ── Phone number field ──────────────────────────────────────────
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
                 enabled: !isLoading,
-                colors: colors,
-              ),
-              Spacing.gapMd,
-
-              // ── Password field ──────────────────────────────────────────────
-              _buildTextField(
-                controller: _passwordController,
-                label: 'Password',
-                hint: '••••••••',
-                prefixIcon: Icons.lock_outlined,
-                obscureText: true,
-                enabled: !isLoading,
-                colors: colors,
-              ),
-              Spacing.gapMd,
-
-              // ── Display name field (optional) ───────────────────────────────
-              _buildTextField(
-                controller: _displayNameController,
-                label: 'Display Name (optional)',
-                hint: 'Your name',
-                prefixIcon: Icons.person_outlined,
-                enabled: !isLoading,
-                colors: colors,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                style: TextStyle(color: colors.onSurface, fontSize: 16),
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: '5551234567',
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 8),
+                    child: Text(
+                      _countryCode,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: colors.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  filled: true,
+                  fillColor: colors.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: Radii.borderXl,
+                    borderSide: BorderSide(color: colors.outline),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: Radii.borderXl,
+                    borderSide: BorderSide(color: colors.outline),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: Radii.borderXl,
+                    borderSide: BorderSide(color: colors.primary, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: Spacing.lg,
+                    vertical: Spacing.lg,
+                  ),
+                ),
+                onSubmitted: (_) => _linkPhoneNumber(),
               ),
 
               Spacing.gapXl,
 
-              // ── Create Account button ───────────────────────────────────────
+              // ── Continue button ─────────────────────────────────────────────
               SizedBox(
                 height: ComponentSizes.buttonHeight,
                 child: ElevatedButton(
-                  onPressed: isLoading ? null : _upgradeWithEmail,
+                  onPressed: isLoading || !_canSubmit ? null : _linkPhoneNumber,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.primary,
                     foregroundColor: colors.onPrimary,
+                    disabledBackgroundColor:
+                        colors.primary.withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: Radii.borderXl,
                     ),
                   ),
-                  child: const Text(
-                    'Create Account',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: isLoading
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(colors.onPrimary),
+                          ),
+                        )
+                      : const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
 
@@ -201,80 +238,6 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
               Spacing.gapXl,
 
-              // ── Divider with "or" ───────────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(child: Divider(color: colors.outlineVariant)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Spacing.md,
-                    ),
-                    child: Text(
-                      'or',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: colors.outlineVariant)),
-                ],
-              ),
-
-              Spacing.gapXl,
-
-              // ── Google button ───────────────────────────────────────────────
-              SizedBox(
-                height: ComponentSizes.buttonHeight,
-                child: OutlinedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => ref
-                          .read(authProvider.notifier)
-                          .linkOAuth(provider: 'google'),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: colors.outline),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: Radii.borderXl,
-                    ),
-                  ),
-                  child: const Text(
-                    'Continue with Google',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-              Spacing.gapMd,
-
-              // ── Apple button ────────────────────────────────────────────────
-              SizedBox(
-                height: ComponentSizes.buttonHeight,
-                child: OutlinedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => ref
-                          .read(authProvider.notifier)
-                          .linkOAuth(provider: 'apple'),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: colors.outline),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: Radii.borderXl,
-                    ),
-                  ),
-                  child: const Text(
-                    'Continue with Apple',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-
-              Spacing.gapSm,
-
               // ── Not now ─────────────────────────────────────────────────────
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -290,48 +253,6 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
               Spacing.gapSm,
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData prefixIcon,
-    required ColorScheme colors,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-    bool enabled = true,
-  }) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      enabled: enabled,
-      style: TextStyle(color: colors.onSurface),
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(prefixIcon, color: colors.onSurfaceVariant),
-        filled: true,
-        fillColor: colors.surfaceContainerHigh,
-        border: OutlineInputBorder(
-          borderRadius: Radii.borderXl,
-          borderSide: BorderSide(color: colors.outline),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: Radii.borderXl,
-          borderSide: BorderSide(color: colors.outline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: Radii.borderXl,
-          borderSide: BorderSide(color: colors.primary, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: Spacing.lg,
-          vertical: Spacing.lg,
         ),
       ),
     );

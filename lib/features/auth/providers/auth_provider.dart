@@ -41,22 +41,22 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Awaits `bootstrap.ready`, creates the auth service, and checks for an
   /// existing session — all without blocking the first frame.
   ///
-  /// When Supabase anonymous sign-in fails (e.g. anonymous auth disabled,
-  /// 422 response), automatically falls back to [MockAuthService] so the
-  /// user always reaches the map.
+  /// When an existing session is found (phone user or anonymous), transitions
+  /// directly to [AuthStatus.authenticated].
+  /// When no session exists, signs in anonymously so the user reaches the map
+  /// immediately. Users can upgrade to phone auth from settings.
   Future<void> _initializeAuth() async {
     try {
       final bootstrap = ref.read(supabaseBootstrapProvider);
       await bootstrap.ready;
       if (!ref.mounted) return;
 
-      _authService = bootstrap.initialized
-          ? SupabaseAuthService()
-          : MockAuthService();
+      _authService =
+          bootstrap.initialized ? SupabaseAuthService() : MockAuthService();
 
       _listenToAuthChanges();
 
-      // Check for a persisted session.
+      // Check for a persisted session (phone user or previous anonymous).
       final user = await _authService!.getCurrentUser();
       if (!ref.mounted) return;
       if (user != null) {
@@ -64,8 +64,7 @@ class AuthNotifier extends Notifier<AuthState> {
         return;
       }
 
-      // No existing session — auto-create anonymous session so the user
-      // goes straight to the map.
+      // No existing session — sign in anonymously so the user reaches the map.
       await _signInAnonymouslyWithFallback();
     } catch (e) {
       debugPrint('[AuthNotifier] init failed, falling back to mock: $e');
@@ -167,6 +166,25 @@ class AuthNotifier extends Notifier<AuthState> {
         email: email,
         password: password,
       );
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(user);
+    } on AuthException catch (e) {
+      if (!ref.mounted) return;
+      state = AuthState.error(e.message);
+    }
+  }
+
+  /// Signs in (or creates an account) with a phone number.
+  ///
+  /// Unified flow: new numbers create an account, existing numbers sign in.
+  /// No OTP verification yet — see [AuthService.signInWithPhone].
+  // TODO(auth): Add OTP verification step when Twilio SMS is configured.
+  Future<void> signInWithPhone({required String phoneNumber}) async {
+    final service = _authService;
+    if (service == null) return;
+    state = const AuthState.loading();
+    try {
+      final user = await service.signInWithPhone(phoneNumber: phoneNumber);
       if (!ref.mounted) return;
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
