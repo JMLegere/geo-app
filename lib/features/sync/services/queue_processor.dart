@@ -224,6 +224,7 @@ class QueueProcessor {
           userId: entry.userId,
           definitionId: data['definition_id'] as String,
           affixes: data['affixes'] as String,
+          badgesJson: data['badges_json'] as String?,
           parentAId: data['parent_a_id'] as String?,
           parentBId: data['parent_b_id'] as String?,
           acquiredAt: DateTime.parse(data['acquired_at'] as String),
@@ -236,7 +237,7 @@ class QueueProcessor {
 
         if (result.isFirstGlobal) {
           final itemId = data['id'] as String;
-          await _awardFirstBadge(itemId, entry.userId);
+          await _awardFirstBadge(itemId, entry.userId, persistence);
           return itemId;
         }
 
@@ -267,7 +268,11 @@ class QueueProcessor {
     }
   }
 
-  Future<void> _awardFirstBadge(String itemId, String userId) async {
+  Future<void> _awardFirstBadge(
+    String itemId,
+    String userId,
+    SupabasePersistence persistence,
+  ) async {
     try {
       final item = await _itemRepo.getItem(itemId);
       if (item == null) return;
@@ -277,6 +282,21 @@ class QueueProcessor {
         badges: {...item.badges, kBadgeFirstDiscovery},
       );
       await _itemRepo.updateItem(updated, userId);
+
+      // Sync updated badges back to Supabase.
+      await persistence.upsertItemInstance(
+        id: updated.id,
+        userId: userId,
+        definitionId: updated.definitionId,
+        affixes: updated.affixesToJson(),
+        badgesJson: updated.badgesToJson(),
+        parentAId: updated.parentAId,
+        parentBId: updated.parentBId,
+        acquiredAt: updated.acquiredAt,
+        acquiredInCellId: updated.acquiredInCellId,
+        dailySeed: updated.dailySeed,
+        status: updated.status.name,
+      );
     } catch (e) {
       debugPrint(
           '[QueueProcessor] failed to award first badge for $itemId: $e');

@@ -141,6 +141,7 @@ class SupabasePersistence {
     required String userId,
     required String definitionId,
     required String affixes,
+    String? badgesJson,
     String? parentAId,
     String? parentBId,
     required DateTime acquiredAt,
@@ -149,21 +150,25 @@ class SupabasePersistence {
     required String status,
   }) async {
     try {
+      final data = <String, dynamic>{
+        'id': id,
+        'user_id': userId,
+        'definition_id': definitionId,
+        'affixes': affixes,
+        'parent_a_id': parentAId,
+        'parent_b_id': parentBId,
+        'acquired_at': acquiredAt.toIso8601String(),
+        'acquired_in_cell_id': acquiredInCellId,
+        'daily_seed': dailySeed,
+        'status': status,
+      };
+      if (badgesJson != null) {
+        data['badges_json'] = badgesJson;
+      }
       await _client.from('item_instances').upsert(
-        {
-          'id': id,
-          'user_id': userId,
-          'definition_id': definitionId,
-          'affixes': affixes,
-          'parent_a_id': parentAId,
-          'parent_b_id': parentBId,
-          'acquired_at': acquiredAt.toIso8601String(),
-          'acquired_in_cell_id': acquiredInCellId,
-          'daily_seed': dailySeed,
-          'status': status,
-        },
-        onConflict: 'id',
-      );
+            data,
+            onConflict: 'id',
+          );
     } catch (e) {
       debugPrint('[SupabasePersistence] upsertItemInstance failed: $e');
       throw SyncException('Failed to save item instance.', cause: e);
