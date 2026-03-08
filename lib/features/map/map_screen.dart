@@ -736,6 +736,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 initCenter: Position(kDefaultMapLon, kDefaultMapLat),
                 minZoom: kMinZoom,
                 maxZoom: kMaxZoom,
+                attribution: false,
+                nativeLogo: false,
                 // Disable pitch (tilt) — we never use it, and it's a 2D game.
                 // This also disables MapLibre's built-in KeyboardHandler (which
                 // requires allEnabled=true). Without this, arrow keys are
