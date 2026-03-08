@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,7 @@ import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:fog_of_world/features/navigation/screens/town_placeholder_screen.dart';
 import 'package:fog_of_world/features/pack/screens/pack_screen.dart';
 import 'package:fog_of_world/features/navigation/providers/tab_index_provider.dart';
+import 'package:fog_of_world/shared/constants.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
 ///
@@ -55,13 +58,35 @@ class _TabShellState extends ConsumerState<TabShell> {
     });
 
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: const [
-          MapScreen(),
-          SanctuaryScreen(),
-          TownPlaceholderScreen(),
-          PackScreen(),
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: currentIndex,
+            children: const [
+              MapScreen(),
+              SanctuaryScreen(),
+              TownPlaceholderScreen(),
+              PackScreen(),
+            ],
+          ),
+          // Build version stamp — bottom right, above nav bar.
+          Positioned(
+            right: 8,
+            bottom: 4,
+            child: IgnorePointer(
+              child: Text(
+                'v$kBuildTimestamp',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.35),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(

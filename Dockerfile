@@ -3,9 +3,11 @@ WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-RUN flutter build web \
+RUN BUILD_TS=$(date -u +%Y-%m-%d-%H%M) && \
+    flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
-    --dart-define=SUPABASE_ANON_KEY=sb_publishable__YSJ0cAnZ91SpxX1nlRjtQ_VaTxp2yf
+    --dart-define=SUPABASE_ANON_KEY=sb_publishable__YSJ0cAnZ91SpxX1nlRjtQ_VaTxp2yf \
+    --dart-define=BUILD_TIMESTAMP=$BUILD_TS
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html

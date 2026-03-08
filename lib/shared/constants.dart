@@ -241,3 +241,10 @@ const int kUpgradePromptDelaySeconds = 120;
 
 /// Application version string displayed in Settings.
 const String kAppVersion = '0.1.0';
+
+/// Build timestamp injected via `--dart-define=BUILD_TIMESTAMP=...` at build
+/// time. Falls back to 'dev' for local development runs.
+const String kBuildTimestamp = String.fromEnvironment(
+  'BUILD_TIMESTAMP',
+  defaultValue: 'dev',
+);
