@@ -1,11 +1,11 @@
-
-/// 6 food subtypes. Found during exploration, fed to sanctuary animals.
+/// 7 food subtypes. Found during exploration, fed to sanctuary animals.
 enum FoodType {
   critter,
   fish,
   fruit,
   grub,
   nectar,
+  seed,
   veg;
 
   String get displayName => switch (this) {
@@ -14,6 +14,7 @@ enum FoodType {
         FoodType.fruit => 'Fruit',
         FoodType.grub => 'Grub',
         FoodType.nectar => 'Nectar',
+        FoodType.seed => 'Seed',
         FoodType.veg => 'Veg',
       };
 

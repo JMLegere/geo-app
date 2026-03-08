@@ -124,7 +124,7 @@ abstract final class GameIcons {
         Climate.frigid => '❄️',
       };
 
-  // ── Food Types (6) ───────────────────────────────────────────────────────
+  // ── Food Types (7) ───────────────────────────────────────────────────────
 
   static String foodType(FoodType f) => switch (f) {
         FoodType.critter => '🦗',
@@ -132,6 +132,7 @@ abstract final class GameIcons {
         FoodType.fruit => '🍇',
         FoodType.grub => '🪱',
         FoodType.nectar => '🍯',
+        FoodType.seed => '🌰',
         FoodType.veg => '🥬',
       };
 
