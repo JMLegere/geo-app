@@ -68,36 +68,35 @@ final speciesServiceProvider = Provider<SpeciesService>((ref) {
 /// Maximum number of discovery events kept in [DiscoveryState.recentDiscoveries].
 const _kMaxRecentDiscoveries = 20;
 
+/// Maximum number of notifications queued for display.
+const kMaxNotificationQueue = 10;
+
 /// Immutable snapshot of the discovery subsystem state.
 class DiscoveryState {
   /// Last [_kMaxRecentDiscoveries] discovery events, newest first.
   final List<DiscoveryEvent> recentDiscoveries;
 
-  /// Whether a discovery notification is currently being shown in the UI.
-  final bool hasActiveNotification;
+  /// FIFO queue of notifications awaiting display. First item = top card.
+  final List<DiscoveryEvent> notificationQueue;
 
-  /// The discovery being displayed. Non-null when [hasActiveNotification].
-  final DiscoveryEvent? currentNotification;
+  /// Whether a discovery notification is currently being shown in the UI.
+  bool get hasActiveNotification => notificationQueue.isNotEmpty;
+
+  /// The discovery being displayed (top of queue). Null when queue is empty.
+  DiscoveryEvent? get currentNotification => notificationQueue.firstOrNull;
 
   const DiscoveryState({
     this.recentDiscoveries = const [],
-    this.hasActiveNotification = false,
-    this.currentNotification,
+    this.notificationQueue = const [],
   });
 
   DiscoveryState copyWith({
     List<DiscoveryEvent>? recentDiscoveries,
-    bool? hasActiveNotification,
-    bool clearCurrentNotification = false,
-    DiscoveryEvent? currentNotification,
+    List<DiscoveryEvent>? notificationQueue,
   }) {
     return DiscoveryState(
       recentDiscoveries: recentDiscoveries ?? this.recentDiscoveries,
-      hasActiveNotification:
-          hasActiveNotification ?? this.hasActiveNotification,
-      currentNotification: clearCurrentNotification
-          ? null
-          : (currentNotification ?? this.currentNotification),
+      notificationQueue: notificationQueue ?? this.notificationQueue,
     );
   }
 }
@@ -116,26 +115,35 @@ class DiscoveryNotifier extends Notifier<DiscoveryState> {
   @override
   DiscoveryState build() => const DiscoveryState();
 
-  /// Queues [event] as the active notification and adds it to history.
+  /// Appends [event] to the notification queue and adds it to history.
   ///
-  /// Replaces any currently-shown notification immediately (new discovery
-  /// wins). History is capped at [_kMaxRecentDiscoveries].
+  /// Queue is capped at [kMaxNotificationQueue] — oldest queued items are
+  /// dropped when the cap is exceeded. History is capped at
+  /// [_kMaxRecentDiscoveries].
   void showDiscovery(DiscoveryEvent event) {
-    final updated = [event, ...state.recentDiscoveries]
+    final updatedHistory = [event, ...state.recentDiscoveries]
         .take(_kMaxRecentDiscoveries)
         .toList();
+    var updatedQueue = [...state.notificationQueue, event];
+    if (updatedQueue.length > kMaxNotificationQueue) {
+      updatedQueue = updatedQueue.sublist(
+        updatedQueue.length - kMaxNotificationQueue,
+      );
+    }
     state = state.copyWith(
-      recentDiscoveries: updated,
-      hasActiveNotification: true,
-      currentNotification: event,
+      recentDiscoveries: updatedHistory,
+      notificationQueue: updatedQueue,
     );
   }
 
-  /// Clears the active notification (called by the overlay after auto-dismiss).
+  /// Dismisses the top notification (first in queue).
+  ///
+  /// If the queue still has items after removal, the next one becomes the
+  /// active notification automatically.
   void dismissNotification() {
+    if (state.notificationQueue.isEmpty) return;
     state = state.copyWith(
-      hasActiveNotification: false,
-      clearCurrentNotification: true,
+      notificationQueue: state.notificationQueue.sublist(1),
     );
   }
 
@@ -147,5 +155,4 @@ class DiscoveryNotifier extends Notifier<DiscoveryState> {
 
 /// Global provider for [DiscoveryNotifier].
 final discoveryProvider =
-    NotifierProvider<DiscoveryNotifier, DiscoveryState>(
-        DiscoveryNotifier.new);
+    NotifierProvider<DiscoveryNotifier, DiscoveryState>(DiscoveryNotifier.new);

@@ -101,8 +101,7 @@ void main() {
       notifier.showDiscovery(first);
       notifier.showDiscovery(second);
 
-      final discoveries =
-          container.read(discoveryProvider).recentDiscoveries;
+      final discoveries = container.read(discoveryProvider).recentDiscoveries;
       expect(discoveries.first, equals(second));
       expect(discoveries[1], equals(first));
     });
@@ -123,7 +122,7 @@ void main() {
       );
     });
 
-    test('dismissNotification clears currentNotification', () {
+    test('dismissNotification clears currentNotification when single item', () {
       final container = _makeContainer();
       addTearDown(container.dispose);
 
@@ -137,7 +136,9 @@ void main() {
       );
     });
 
-    test('dismissNotification sets hasActiveNotification to false', () {
+    test(
+        'dismissNotification sets hasActiveNotification to false when single item',
+        () {
       final container = _makeContainer();
       addTearDown(container.dispose);
 
@@ -166,6 +167,61 @@ void main() {
       );
     });
 
+    test('dismissNotification promotes next item to top', () {
+      final container = _makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(discoveryProvider.notifier);
+      final first = _makeEvent(cellId: 'cell_1');
+      final second = _makeEvent(cellId: 'cell_2');
+      final third = _makeEvent(cellId: 'cell_3');
+
+      notifier.showDiscovery(first);
+      notifier.showDiscovery(second);
+      notifier.showDiscovery(third);
+
+      // Top of queue should be the first one added (FIFO).
+      expect(container.read(discoveryProvider).currentNotification, first);
+
+      notifier.dismissNotification();
+      expect(container.read(discoveryProvider).currentNotification, second);
+      expect(container.read(discoveryProvider).hasActiveNotification, isTrue);
+
+      notifier.dismissNotification();
+      expect(container.read(discoveryProvider).currentNotification, third);
+
+      notifier.dismissNotification();
+      expect(container.read(discoveryProvider).currentNotification, isNull);
+      expect(container.read(discoveryProvider).hasActiveNotification, isFalse);
+    });
+
+    test('notificationQueue is capped at kMaxNotificationQueue', () {
+      final container = _makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(discoveryProvider.notifier);
+
+      for (var i = 0; i < kMaxNotificationQueue + 5; i++) {
+        notifier.showDiscovery(_makeEvent(cellId: 'cell_$i'));
+      }
+
+      expect(
+        container.read(discoveryProvider).notificationQueue.length,
+        equals(kMaxNotificationQueue),
+      );
+    });
+
+    test('dismissNotification is no-op when queue is empty', () {
+      final container = _makeContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(discoveryProvider.notifier);
+      // Should not throw.
+      notifier.dismissNotification();
+
+      expect(container.read(discoveryProvider).hasActiveNotification, isFalse);
+    });
+
     test('clearHistory resets state to initial', () {
       final container = _makeContainer();
       addTearDown(container.dispose);
@@ -183,34 +239,48 @@ void main() {
   });
 
   group('DiscoveryState.copyWith', () {
-    test('clearCurrentNotification sets currentNotification to null', () {
+    test('empty notificationQueue yields null currentNotification', () {
+      const state = DiscoveryState();
+
+      expect(state.currentNotification, isNull);
+      expect(state.hasActiveNotification, isFalse);
+    });
+
+    test('notificationQueue yields first item as currentNotification', () {
+      final event = _makeEvent();
       final state = DiscoveryState(
-        currentNotification: _makeEvent(),
-        hasActiveNotification: true,
+        notificationQueue: [event],
       );
 
-      final updated = state.copyWith(
-        hasActiveNotification: false,
-        clearCurrentNotification: true,
-      );
-
-      expect(updated.currentNotification, isNull);
-      expect(updated.hasActiveNotification, isFalse);
+      expect(state.currentNotification, equals(event));
+      expect(state.hasActiveNotification, isTrue);
     });
 
     test('preserves unchanged fields', () {
       final event = _makeEvent();
       final state = DiscoveryState(
         recentDiscoveries: [event],
-        hasActiveNotification: true,
-        currentNotification: event,
+        notificationQueue: [event],
       );
 
       final updated = state.copyWith();
 
       expect(updated.recentDiscoveries, equals([event]));
+      expect(updated.notificationQueue, equals([event]));
       expect(updated.hasActiveNotification, isTrue);
       expect(updated.currentNotification, equals(event));
+    });
+
+    test('replacing notificationQueue updates derived getters', () {
+      final event = _makeEvent();
+      final state = DiscoveryState(
+        notificationQueue: [event],
+      );
+
+      final updated = state.copyWith(notificationQueue: []);
+
+      expect(updated.hasActiveNotification, isFalse);
+      expect(updated.currentNotification, isNull);
     });
   });
 
@@ -219,7 +289,8 @@ void main() {
       return ProviderContainer(
         overrides: [
           speciesServiceProvider.overrideWithValue(
-            SpeciesService(SpeciesDataLoader.fromJsonString(kSpeciesFixtureJson)),
+            SpeciesService(
+                SpeciesDataLoader.fromJsonString(kSpeciesFixtureJson)),
           ),
         ],
       );
