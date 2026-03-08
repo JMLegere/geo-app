@@ -361,9 +361,20 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Get all pending queue entries, oldest first.
-  Future<List<LocalWriteQueueEntry>> getPendingQueueEntries({int? limit}) {
+  ///
+  /// When [userId] is provided, only entries belonging to that user are
+  /// returned — prevents leaking another user's queued writes after an
+  /// account switch on the same device.
+  Future<List<LocalWriteQueueEntry>> getPendingQueueEntries({
+    int? limit,
+    String? userId,
+  }) {
     final query = select(localWriteQueueTable)
-      ..where((tbl) => tbl.status.equals('pending'))
+      ..where((tbl) {
+        final cond = tbl.status.equals('pending');
+        if (userId != null) return cond & tbl.userId.equals(userId);
+        return cond;
+      })
       ..orderBy([(tbl) => OrderingTerm.asc(tbl.createdAt)]);
     if (limit != null) {
       query.limit(limit);
@@ -372,9 +383,19 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Get queue entries by status.
-  Future<List<LocalWriteQueueEntry>> getQueueEntriesByStatus(String status) {
+  ///
+  /// When [userId] is provided, only entries belonging to that user are
+  /// returned.
+  Future<List<LocalWriteQueueEntry>> getQueueEntriesByStatus(
+    String status, {
+    String? userId,
+  }) {
     return (select(localWriteQueueTable)
-          ..where((tbl) => tbl.status.equals(status)))
+          ..where((tbl) {
+            final cond = tbl.status.equals(status);
+            if (userId != null) return cond & tbl.userId.equals(userId);
+            return cond;
+          }))
         .get();
   }
 
@@ -396,11 +417,16 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Count pending queue entries using efficient SELECT COUNT(*).
-  Future<int> countPendingQueueEntries() {
+  ///
+  /// When [userId] is provided, only counts entries belonging to that user.
+  Future<int> countPendingQueueEntries({String? userId}) {
     final countExp = localWriteQueueTable.id.count();
     final query = selectOnly(localWriteQueueTable)
       ..addColumns([countExp])
       ..where(localWriteQueueTable.status.equals('pending'));
+    if (userId != null) {
+      query.where(localWriteQueueTable.userId.equals(userId));
+    }
     return query.map((row) => row.read(countExp)!).getSingle();
   }
 

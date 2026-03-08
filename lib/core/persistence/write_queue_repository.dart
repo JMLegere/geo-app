@@ -63,19 +63,34 @@ class WriteQueueRepository {
   // ── Read ─────────────────────────────────────────────────────────────────
 
   /// Get all pending entries, oldest first, up to [limit].
-  Future<List<WriteQueueEntry>> getPending({int? limit}) async {
-    final rows = await _db.getPendingQueueEntries(limit: limit);
+  ///
+  /// When [userId] is provided, only entries belonging to that user are
+  /// returned — prevents flushing another user's queue after account switch.
+  Future<List<WriteQueueEntry>> getPending({int? limit, String? userId}) async {
+    final rows = await _db.getPendingQueueEntries(
+      limit: limit,
+      userId: userId,
+    );
     return rows.map(_fromLocal).toList();
   }
 
   /// Get all rejected entries.
-  Future<List<WriteQueueEntry>> getRejected() async {
-    final rows = await _db.getQueueEntriesByStatus('rejected');
+  ///
+  /// When [userId] is provided, only entries belonging to that user are
+  /// returned.
+  Future<List<WriteQueueEntry>> getRejected({String? userId}) async {
+    final rows = await _db.getQueueEntriesByStatus(
+      'rejected',
+      userId: userId,
+    );
     return rows.map(_fromLocal).toList();
   }
 
   /// Count pending entries.
-  Future<int> countPending() => _db.countPendingQueueEntries();
+  ///
+  /// When [userId] is provided, only counts entries belonging to that user.
+  Future<int> countPending({String? userId}) =>
+      _db.countPendingQueueEntries(userId: userId);
 
   // ── Update ───────────────────────────────────────────────────────────────
 
@@ -114,7 +129,8 @@ class WriteQueueRepository {
   // ── Cleanup ──────────────────────────────────────────────────────────────
 
   /// Delete entries older than [cutoff].
-  Future<int> deleteStale(DateTime cutoff) => _db.deleteStaleQueueEntries(cutoff);
+  Future<int> deleteStale(DateTime cutoff) =>
+      _db.deleteStaleQueueEntries(cutoff);
 
   /// Delete all queue entries for a user.
   Future<int> clearUser(String userId) => _db.clearUserQueueEntries(userId);

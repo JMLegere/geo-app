@@ -214,7 +214,38 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  Stream<UserProfile?> get authStateChanges => _authStateController.stream;
+  Stream<UserProfile?> get authStateChanges {
+    // Mimic Supabase SDK behavior: emit the current session immediately on
+    // subscription (Supabase fires INITIAL_SESSION), then relay future changes.
+    // Each call to this getter creates a fresh stream so every subscriber
+    // independently receives the initial value followed by broadcast events.
+    late StreamController<UserProfile?> controller;
+    StreamSubscription<UserProfile?>? sub;
+
+    controller = StreamController<UserProfile?>(
+      onListen: () {
+        // Emit current state synchronously-ish via microtask so the listener
+        // is wired before the event fires.
+        scheduleMicrotask(() {
+          if (!controller.isClosed) {
+            controller.add(_currentUser);
+          }
+        });
+        // Forward all future broadcast events.
+        sub = _authStateController.stream.listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+      },
+      onCancel: () {
+        sub?.cancel();
+        controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
 
   @override
   void dispose() {

@@ -7,6 +7,7 @@ import 'package:fog_of_world/core/state/inventory_provider.dart';
 import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
 import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
 import 'package:fog_of_world/core/state/write_queue_repository_provider.dart';
+import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
 import 'package:fog_of_world/features/sync/providers/queue_processor_provider.dart';
 import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
 import 'package:fog_of_world/features/sync/models/sync_status.dart';
@@ -67,6 +68,9 @@ class SyncNotifier extends Notifier<SyncStatus> {
     );
   }
 
+  /// Returns the current user's ID, or null if not authenticated.
+  String? get _currentUserId => ref.read(authProvider).user?.id;
+
   /// Triggers a manual sync: flushes the write queue to Supabase.
   ///
   /// Updates state to reflect progress and surfaces user-friendly error
@@ -81,12 +85,15 @@ class SyncNotifier extends Notifier<SyncStatus> {
       return;
     }
 
+    final userId = _currentUserId;
+
     state = state.copyWith(type: SyncStatusType.syncing, errorMessage: null);
 
     try {
-      final summary = await processor.flush();
-      final pending =
-          await ref.read(writeQueueRepositoryProvider).countPending();
+      final summary = await processor.flush(userId: userId);
+      final pending = await ref
+          .read(writeQueueRepositoryProvider)
+          .countPending(userId: userId);
 
       // Process rollbacks for rejected entries.
       if (summary.hasRejections) {
@@ -137,7 +144,9 @@ class SyncNotifier extends Notifier<SyncStatus> {
   /// After processing, rejected entries are deleted from the queue.
   Future<void> _processRejections() async {
     final writeQueueRepo = ref.read(writeQueueRepositoryProvider);
-    final rejected = await writeQueueRepo.getRejected();
+    final rejected = await writeQueueRepo.getRejected(
+      userId: _currentUserId,
+    );
 
     for (final entry in rejected) {
       switch (entry.entityType) {
@@ -198,7 +207,9 @@ class SyncNotifier extends Notifier<SyncStatus> {
   /// Refresh the pending changes count from the write queue.
   Future<void> _refreshPendingCount() async {
     try {
-      final count = await ref.read(writeQueueRepositoryProvider).countPending();
+      final count = await ref
+          .read(writeQueueRepositoryProvider)
+          .countPending(userId: _currentUserId);
       if (state.pendingChanges != count) {
         state = state.copyWith(pendingChanges: count);
       }

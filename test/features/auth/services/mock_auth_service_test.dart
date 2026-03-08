@@ -170,11 +170,12 @@ void main() {
 
       await sub.cancel();
 
-      // signUp emits a profile, signOut emits null.
-      expect(events.length, 2);
-      expect(events[0], isNotNull);
-      expect(events[0]!.email, 'u@example.com');
-      expect(events[1], isNull);
+      // Initial null (no user yet) + signUp profile + signOut null.
+      expect(events.length, 3);
+      expect(events[0], isNull); // initial state
+      expect(events[1], isNotNull);
+      expect(events[1]!.email, 'u@example.com');
+      expect(events[2], isNull);
     });
 
     test('authStateChanges emits user on signIn', () async {

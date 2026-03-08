@@ -95,10 +95,14 @@ class QueueProcessor {
 
   /// Flush pending queue entries to Supabase.
   ///
+  /// When [userId] is provided, only flushes entries belonging to that user —
+  /// prevents sending another user's queued writes after an account switch on
+  /// the same device.
+  ///
   /// Returns a summary of what happened. Safe to call when offline —
   /// returns immediately if Supabase is not configured. Returns empty
   /// summary if a flush is already in progress (no-op).
-  Future<FlushSummary> flush() async {
+  Future<FlushSummary> flush({String? userId}) async {
     if (_flushing) return const FlushSummary();
 
     final persistence = _persistence;
@@ -108,22 +112,26 @@ class QueueProcessor {
 
     _flushing = true;
     try {
-      return await _flushInternal(persistence);
+      return await _flushInternal(persistence, userId: userId);
     } finally {
       _flushing = false;
     }
   }
 
-  Future<FlushSummary> _flushInternal(SupabasePersistence persistence) async {
+  Future<FlushSummary> _flushInternal(
+    SupabasePersistence persistence, {
+    String? userId,
+  }) async {
     // Clean up stale entries first.
     final cutoff = DateTime.now().subtract(
       const Duration(hours: kWriteQueueStaleAgeHours),
     );
     final staleDeleted = await _queueRepo.deleteStale(cutoff);
 
-    // Fetch pending batch.
+    // Fetch pending batch — scoped to current user if provided.
     final pending = await _queueRepo.getPending(
       limit: kWriteQueueFlushBatchSize,
+      userId: userId,
     );
 
     if (pending.isEmpty) {
