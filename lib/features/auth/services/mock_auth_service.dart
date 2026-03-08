@@ -96,9 +96,22 @@ class MockAuthService implements AuthService {
       return existing;
     }
 
-    // New user — create account keyed by phone.
+    // If the user is currently signed in anonymously, upgrade their existing
+    // account by attaching the phone number — preserving their UUID and data.
     // TODO(auth): When OTP verification is enabled, this will require
     // SMS code verification before creating the account.
+    if (_currentUser != null && _currentUser!.isAnonymous) {
+      final upgraded = _currentUser!.copyWith(
+        phoneNumber: phoneNumber,
+        isAnonymous: false,
+      );
+      _phoneProfiles[phoneNumber] = upgraded;
+      _currentUser = upgraded;
+      _authStateController.add(upgraded);
+      return upgraded;
+    }
+
+    // No current session — create a fresh account keyed by phone.
     final profile = UserProfile(
       id: 'phone-${DateTime.now().millisecondsSinceEpoch}',
       email: '',

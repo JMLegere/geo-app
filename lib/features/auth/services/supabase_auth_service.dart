@@ -35,6 +35,32 @@ class SupabaseAuthService implements AuthService {
     return raw is String ? raw : null;
   }
 
+  /// Safely extracts `phone_number` from Supabase user metadata.
+  ///
+  /// Returns `null` if the value is missing or not a [String].
+  static String? _phoneNumberFrom(supa.User user) {
+    final raw = user.userMetadata?['phone_number'];
+    return (raw is String && raw.isNotEmpty) ? raw : null;
+  }
+
+  /// Builds a [UserProfile] from a Supabase [supa.User].
+  ///
+  /// Centralises metadata extraction so every call site stays consistent.
+  static UserProfile _profileFrom(supa.User user) {
+    final phone = _phoneNumberFrom(user);
+    return UserProfile(
+      id: user.id,
+      email: user.email ?? '',
+      phoneNumber: phone,
+      displayName: _displayNameFrom(user),
+      createdAt: DateTime.parse(user.createdAt),
+      // A user with a phone number attached is no longer anonymous, even if
+      // the Supabase `isAnonymous` flag hasn't flipped (we store phone in
+      // metadata, not as the primary auth identity — yet).
+      isAnonymous: phone == null && (user.isAnonymous == true),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // AuthService implementation
   // ---------------------------------------------------------------------------
@@ -51,11 +77,9 @@ class SupabaseAuthService implements AuthService {
       if (user == null) {
         throw const AuthException('Sign-up failed: no user returned');
       }
-      return UserProfile(
-        id: user.id,
+      return _profileFrom(user).copyWith(
         email: user.email ?? email,
         displayName: displayName,
-        createdAt: DateTime.parse(user.createdAt),
       );
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
@@ -80,12 +104,7 @@ class SupabaseAuthService implements AuthService {
       if (user == null) {
         throw const AuthException('Sign-in failed: no user returned');
       }
-      return UserProfile(
-        id: user.id,
-        email: user.email ?? email,
-        displayName: _displayNameFrom(user),
-        createdAt: DateTime.parse(user.createdAt),
-      );
+      return _profileFrom(user);
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     } on AuthException {
@@ -103,31 +122,32 @@ class SupabaseAuthService implements AuthService {
     //   2. User enters 6-digit code
     //   3. await _auth.verifyOTP(phone: phoneNumber, token: code, type: OtpType.sms);
     //
-    // For now: create an anonymous session and store the phone number in
-    // user metadata. Accounts created this way will be wiped when real
-    // phone verification is enabled.
+    // For now: attach the phone number to the current user's metadata.
+    // If there is no existing session, create an anonymous one first.
+    // Accounts created this way will be wiped when real phone verification
+    // is enabled.
     try {
-      final response = await _auth.signInAnonymously();
-      final user = response.user;
+      // Use existing session if available (user is already signed in
+      // anonymously from app startup). Only create a new anonymous session
+      // if there's no current user.
+      var user = _auth.currentUser;
       if (user == null) {
-        throw const AuthException(
-            'Phone sign-in failed: no user returned from anonymous auth');
+        final response = await _auth.signInAnonymously();
+        user = response.user;
+        if (user == null) {
+          throw const AuthException(
+              'Phone sign-in failed: no user returned from anonymous auth');
+        }
       }
 
-      // Attach phone number to the anonymous user's metadata.
-      await _auth.updateUser(
+      // Attach phone number to the user's metadata.
+      final updated = await _auth.updateUser(
         supa.UserAttributes(
           data: {'phone_number': phoneNumber},
         ),
       );
 
-      return UserProfile(
-        id: user.id,
-        email: '',
-        phoneNumber: phoneNumber,
-        displayName: null,
-        createdAt: DateTime.parse(user.createdAt),
-      );
+      return _profileFrom(updated.user ?? user);
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     } catch (e) {
@@ -143,13 +163,7 @@ class SupabaseAuthService implements AuthService {
       if (user == null) {
         throw const AuthException('Anonymous sign-in failed: no user returned');
       }
-      return UserProfile(
-        id: user.id,
-        email: '',
-        displayName: 'Explorer',
-        createdAt: DateTime.parse(user.createdAt),
-        isAnonymous: true,
-      );
+      return _profileFrom(user).copyWith(displayName: 'Explorer');
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     } catch (e) {
@@ -175,11 +189,9 @@ class SupabaseAuthService implements AuthService {
       if (user == null) {
         throw const AuthException('Upgrade failed: no user returned');
       }
-      return UserProfile(
-        id: user.id,
+      return _profileFrom(user).copyWith(
         email: user.email ?? email,
         displayName: displayName ?? _displayNameFrom(user),
-        createdAt: DateTime.parse(user.createdAt),
         isAnonymous: false,
       );
     } on supa.AuthException catch (e) {
@@ -205,13 +217,7 @@ class SupabaseAuthService implements AuthService {
       if (user == null) {
         throw const AuthException('OAuth link failed: no user after linking');
       }
-      return UserProfile(
-        id: user.id,
-        email: user.email ?? '',
-        displayName: _displayNameFrom(user),
-        createdAt: DateTime.parse(user.createdAt),
-        isAnonymous: false,
-      );
+      return _profileFrom(user).copyWith(isAnonymous: false);
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     } on AuthException {
@@ -237,13 +243,7 @@ class SupabaseAuthService implements AuthService {
     try {
       final user = _auth.currentUser;
       if (user == null) return null;
-      return UserProfile(
-        id: user.id,
-        email: user.email ?? '',
-        displayName: _displayNameFrom(user),
-        createdAt: DateTime.parse(user.createdAt),
-        isAnonymous: user.isAnonymous == true,
-      );
+      return _profileFrom(user);
     } on AuthException {
       rethrow;
     } catch (e) {
@@ -266,14 +266,7 @@ class SupabaseAuthService implements AuthService {
       return _auth.onAuthStateChange.map((authState) {
         final session = authState.session;
         if (session == null) return null;
-        final user = session.user;
-        return UserProfile(
-          id: user.id,
-          email: user.email ?? '',
-          displayName: _displayNameFrom(user),
-          createdAt: DateTime.parse(user.createdAt),
-          isAnonymous: user.isAnonymous == true,
-        );
+        return _profileFrom(session.user);
       });
     } catch (e) {
       return Stream.error(AuthException('Supabase not initialised: $e'));
