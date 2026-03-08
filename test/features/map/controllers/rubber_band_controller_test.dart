@@ -1,6 +1,6 @@
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/map/controllers/rubber_band_controller.dart';
+import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
 
 /// Minimal [TickerProvider] for unit tests. Creates a real [Ticker] but
 /// captures the callback so we can manually drive frames without needing

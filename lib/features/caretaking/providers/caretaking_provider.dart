@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/caretaking/models/caretaking_state.dart';
-import 'package:fog_of_world/features/caretaking/services/caretaking_service.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
+import 'package:earth_nova/features/caretaking/services/caretaking_service.dart';
 
 /// Notifier for managing daily visit streak state.
 ///

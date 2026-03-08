@@ -2,14 +2,14 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/models/write_queue_entry.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
-import 'package:fog_of_world/features/sync/services/queue_processor.dart';
-import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/persistence/write_queue_repository.dart';
+import 'package:earth_nova/features/sync/services/queue_processor.dart';
+import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/shared/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/persistence/test_helpers.dart';

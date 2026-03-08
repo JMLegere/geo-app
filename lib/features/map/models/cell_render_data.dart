@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 /// Immutable data class for passing cell rendering data to the fog painter.
 ///

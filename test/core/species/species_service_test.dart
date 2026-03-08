@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/species/species_data_loader.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/species/species_service.dart';
 
 import '../../fixtures/species_fixture.dart';
 

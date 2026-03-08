@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/season.dart';
+import 'package:earth_nova/core/models/season.dart';
 
 class SeasonNotifier extends Notifier<Season> {
   @override

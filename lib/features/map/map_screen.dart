@@ -7,29 +7,29 @@ import 'package:maplibre/maplibre.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
-import 'package:fog_of_world/core/game/game_coordinator.dart';
-import 'package:fog_of_world/core/state/cell_service_provider.dart';
-import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
-import 'package:fog_of_world/core/state/game_coordinator_provider.dart';
-import 'package:fog_of_world/core/state/location_provider.dart';
-import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
-import 'package:fog_of_world/features/location/widgets/location_permission_banner.dart';
-import 'package:fog_of_world/features/map/controllers/rubber_band_controller.dart';
-import 'package:fog_of_world/features/map/providers/camera_controller_provider.dart';
-import 'package:fog_of_world/features/map/providers/camera_mode_provider.dart';
-import 'package:fog_of_world/features/map/providers/fog_overlay_controller_provider.dart';
-import 'package:fog_of_world/features/map/providers/map_state_provider.dart';
-import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
-import 'package:fog_of_world/features/map/utils/map_logger.dart';
-import 'package:fog_of_world/features/map/utils/map_visibility.dart';
-import 'package:fog_of_world/features/map/widgets/debug_hud.dart';
-import 'package:fog_of_world/features/map/widgets/player_marker_layer.dart';
-import 'package:fog_of_world/features/map/widgets/dpad_controls.dart';
-import 'package:fog_of_world/features/map/widgets/map_controls.dart';
-import 'package:fog_of_world/features/map/widgets/status_bar.dart';
-import 'package:fog_of_world/features/map/providers/location_service_provider.dart';
-import 'package:fog_of_world/shared/constants.dart';
-import 'package:fog_of_world/shared/widgets/error_boundary.dart';
+import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/state/cell_service_provider.dart';
+import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/location_provider.dart';
+import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
+import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
+import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
+import 'package:earth_nova/features/map/providers/camera_controller_provider.dart';
+import 'package:earth_nova/features/map/providers/camera_mode_provider.dart';
+import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
+import 'package:earth_nova/features/map/providers/map_state_provider.dart';
+import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/map_logger.dart';
+import 'package:earth_nova/features/map/utils/map_visibility.dart';
+import 'package:earth_nova/features/map/widgets/debug_hud.dart';
+import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
+import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
+import 'package:earth_nova/features/map/widgets/map_controls.dart';
+import 'package:earth_nova/features/map/widgets/status_bar.dart';
+import 'package:earth_nova/features/map/providers/location_service_provider.dart';
+import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/shared/widgets/error_boundary.dart';
 
 /// Fixed zoom presets for the map camera.
 enum ZoomLevel {

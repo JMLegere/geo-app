@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
-import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
-import 'package:fog_of_world/features/achievements/services/achievement_service.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/restoration/providers/restoration_provider.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/models/achievement_state.dart';
+import 'package:earth_nova/features/achievements/services/achievement_service.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/restoration/providers/restoration_provider.dart';
 
 // ---------------------------------------------------------------------------
 // AchievementNotification state + notifier

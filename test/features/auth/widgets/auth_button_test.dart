@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
+import 'package:earth_nova/features/auth/widgets/auth_button.dart';
 
 Widget _wrap(Widget child) =>
     MaterialApp(home: Scaffold(body: Center(child: child)));

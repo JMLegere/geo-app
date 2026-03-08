@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:fog_of_world/core/models/habitat.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 
 /// A spatial index over biome feature points and regions for fast proximity
 /// queries.

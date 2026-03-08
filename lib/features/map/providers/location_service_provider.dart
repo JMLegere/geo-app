@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/location/services/location_service.dart';
+import 'package:earth_nova/features/location/services/location_service.dart';
 
 /// Provides the [LocationService] for GPS/simulation location updates.
 ///

@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/seasonal/services/season_service.dart';
+import 'package:earth_nova/features/seasonal/services/season_service.dart';
 
 /// Provides a singleton [SeasonService].
 ///

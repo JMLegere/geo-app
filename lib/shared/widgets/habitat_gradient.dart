@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/habitat_colors.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/habitat_colors.dart';
 
 /// Builds a habitat-keyed gradient [BoxDecoration] for species cards.
 ///

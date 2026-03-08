@@ -1,16 +1,16 @@
 import 'dart:async';
 
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_event.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/core/services/daily_seed_service.dart';
-import 'package:fog_of_world/core/species/continent_resolver.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/features/biome/services/biome_service.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/features/seasonal/services/season_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_event.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/services/daily_seed_service.dart';
+import 'package:earth_nova/core/species/continent_resolver.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/features/biome/services/biome_service.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/features/seasonal/services/season_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Listens to fog events and emits [DiscoveryEvent]s when a player enters a
 /// new cell (FogState.observed).

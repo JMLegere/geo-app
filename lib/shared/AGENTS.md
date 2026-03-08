@@ -139,7 +139,7 @@ Always use `AppTheme.dark()` and `AppTheme.light()` in `MaterialApp`. Access the
 
 ### Constants Usage
 
-Import constants by name: `import 'package:fog_of_world/shared/constants.dart';`. Never use magic numbers. If a value appears twice, it belongs in `constants.dart` (game balance) or `design_tokens.dart` (visual).
+Import constants by name: `import 'package:earth_nova/shared/constants.dart';`. Never use magic numbers. If a value appears twice, it belongs in `constants.dart` (game balance) or `design_tokens.dart` (visual).
 
 ---
 

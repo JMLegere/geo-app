@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/features/seasonal/widgets/season_indicator.dart';
+import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/features/seasonal/widgets/season_indicator.dart';
 
 // ---------------------------------------------------------------------------
 // Helper

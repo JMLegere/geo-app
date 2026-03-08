@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/core/state/season_provider.dart';
+import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/core/state/season_provider.dart';
 
 void main() {
   group('SeasonNotifier', () {

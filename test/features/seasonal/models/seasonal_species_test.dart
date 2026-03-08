@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/features/seasonal/models/seasonal_species.dart';
+import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/features/seasonal/models/seasonal_species.dart';
 
 void main() {
   group('SeasonAvailability', () {

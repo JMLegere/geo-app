@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/map/controllers/camera_controller.dart';
+import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 
 void main() {
   group('CameraController', () {

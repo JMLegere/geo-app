@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
 
 /// Immutable state for the player's item inventory.
 ///

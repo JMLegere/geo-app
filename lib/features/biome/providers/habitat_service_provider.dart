@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/biome/services/biome_feature_index.dart';
-import 'package:fog_of_world/features/biome/services/biome_service.dart';
+import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
+import 'package:earth_nova/features/biome/services/biome_service.dart';
 
 /// Asynchronously loads [BiomeFeatureIndex] from the bundled JSON asset.
 ///

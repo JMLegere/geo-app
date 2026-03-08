@@ -1,6 +1,6 @@
 import 'package:geobase/geobase.dart';
 
-import 'package:fog_of_world/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
 
 /// Builds GeoJSON strings for the MapLibre native fog overlay layers.
 ///

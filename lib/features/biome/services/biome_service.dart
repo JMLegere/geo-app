@@ -1,6 +1,6 @@
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/features/biome/models/esa_land_cover.dart';
-import 'package:fog_of_world/features/biome/services/biome_feature_index.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/features/biome/models/esa_land_cover.dart';
+import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
 
 /// Strategy interface for resolving a geographic coordinate to an ESA land
 /// cover code.

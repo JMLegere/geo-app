@@ -1,6 +1,6 @@
 # Supabase Setup Guide
 
-This document provides step-by-step instructions for setting up the Supabase backend for the Fog of World game.
+This document provides step-by-step instructions for setting up the Supabase backend for the EarthNova game.
 
 ## Prerequisites
 

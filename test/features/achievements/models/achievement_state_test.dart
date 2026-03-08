@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
-import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/models/achievement_state.dart';
 
 AchievementProgress _makeProgress({
   AchievementId id = AchievementId.explorer,

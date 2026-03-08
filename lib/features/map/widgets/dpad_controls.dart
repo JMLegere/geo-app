@@ -4,8 +4,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/location_provider.dart';
-import 'package:fog_of_world/features/location/services/keyboard_location_service.dart';
+import 'package:earth_nova/core/state/location_provider.dart';
+import 'package:earth_nova/features/location/services/keyboard_location_service.dart';
 
 /// On-screen directional pad for mobile web users who have no physical keyboard.
 ///

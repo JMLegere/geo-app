@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/species/loot_table.dart';
+import 'package:earth_nova/core/species/loot_table.dart';
 
 void main() {
   // ---------------------------------------------------------------------------

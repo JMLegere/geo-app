@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
-import 'package:fog_of_world/features/auth/services/auth_service.dart';
-import 'package:fog_of_world/features/auth/services/mock_auth_service.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
 
 void main() {
   group('MockAuthService', () {

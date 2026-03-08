@@ -1,15 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/player_provider.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/sanctuary/providers/sanctuary_provider.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Fixtures

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/models/item_category.dart';
-import 'package:fog_of_world/features/pack/providers/pack_provider.dart';
-import 'package:fog_of_world/features/pack/widgets/item_detail_sheet.dart';
-import 'package:fog_of_world/features/pack/widgets/item_slot_widget.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/features/pack/providers/pack_provider.dart';
+import 'package:earth_nova/features/pack/widgets/item_detail_sheet.dart';
+import 'package:earth_nova/features/pack/widgets/item_slot_widget.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// 4-column Pokémon-PC-box grid of all fauna [ItemInstance]s the player owns.
 ///

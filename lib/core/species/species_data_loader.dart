@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 
 /// Loads and filters FaunaDefinition data from the bundled IUCN species JSON.
 ///

@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/state/cell_service_provider.dart';
-import 'package:fog_of_world/core/state/fog_resolver_provider.dart';
-import 'package:fog_of_world/features/map/controllers/fog_overlay_controller.dart';
+import 'package:earth_nova/core/state/cell_service_provider.dart';
+import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/features/map/controllers/fog_overlay_controller.dart';
 
 /// Provides the [FogOverlayController] for computing fog render data.
 ///

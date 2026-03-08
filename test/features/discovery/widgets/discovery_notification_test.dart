@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/discovery/widgets/discovery_notification.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

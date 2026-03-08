@@ -1,10 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/species/species_data_loader.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/features/enrichment/providers/enrichment_provider.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/features/enrichment/providers/enrichment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // SpeciesService provider (real IUCN dataset — 32,752 species)

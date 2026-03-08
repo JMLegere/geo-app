@@ -1,13 +1,13 @@
-import 'package:fog_of_world/core/models/animal_class.dart';
-import 'package:fog_of_world/core/models/animal_type.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/climate.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/food_type.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/item_category.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/season.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/season.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EarthNova Game Iconography

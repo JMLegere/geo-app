@@ -3,18 +3,18 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/game/game_coordinator.dart';
-import 'package:fog_of_world/core/models/affix.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/discovery_event.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/species/stats_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — deterministic grid: "row_col" from rounded coords.

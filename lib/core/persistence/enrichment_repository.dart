@@ -1,5 +1,5 @@
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/species_enrichment.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
 
 class EnrichmentRepository {
   EnrichmentRepository(this._db);

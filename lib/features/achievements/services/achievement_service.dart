@@ -1,5 +1,5 @@
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
-import 'package:fog_of_world/features/achievements/models/achievement_state.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/models/achievement_state.dart';
 
 /// Snapshot of player stats used to evaluate achievement conditions.
 ///

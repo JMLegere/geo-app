@@ -2,15 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/models/write_queue_entry.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
-import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
-import 'package:fog_of_world/core/state/write_queue_repository_provider.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/sync/providers/queue_processor_provider.dart';
-import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
-import 'package:fog_of_world/features/sync/models/sync_status.dart';
+import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
+import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/core/state/write_queue_repository_provider.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
+import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/features/sync/models/sync_status.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
 

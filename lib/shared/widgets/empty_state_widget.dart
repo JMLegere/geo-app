@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 /// A reusable empty-state placeholder with an emoji icon, title, optional
 /// subtitle, and optional call-to-action button.

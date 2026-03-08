@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
-import 'package:fog_of_world/core/models/affix.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Deterministic species stat derivation and per-instance rolling.
 ///

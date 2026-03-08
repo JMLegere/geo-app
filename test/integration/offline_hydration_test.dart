@@ -17,12 +17,12 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/core/database/app_database.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/state/app_database_provider.dart';
-import 'package:fog_of_world/core/state/inventory_provider.dart';
-import 'package:fog_of_world/core/state/item_instance_repository_provider.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
+import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

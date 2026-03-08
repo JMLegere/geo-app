@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:fog_of_world/core/services/daily_seed_service.dart';
-import 'package:fog_of_world/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/core/services/daily_seed_service.dart';
+import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 
 /// Provides a [DailySeedService] singleton.
 ///

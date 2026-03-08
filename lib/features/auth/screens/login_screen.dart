@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/widgets/auth_button.dart';
 
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
@@ -14,7 +14,7 @@ import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
 /// Also offers "Continue as Guest" for anonymous play.
 ///
 /// Navigation: sign-in success is handled by the auth-state switch in
-/// `FogOfWorldApp` which replaces this screen with the map.
+/// `EarthNovaApp` which replaces this screen with the map.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Fog of World',
+                  'EarthNova',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall,
                 ),

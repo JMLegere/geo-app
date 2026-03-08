@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/map/widgets/map_controls.dart';
+import 'package:earth_nova/features/map/widgets/map_controls.dart';
 
 void main() {
   group('MapControls', () {

@@ -1,4 +1,4 @@
-# Fog of World — Project Status
+# EarthNova — Project Status
 
 Last updated: 2026-03-03
 

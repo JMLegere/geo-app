@@ -2,9 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
 
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/features/map/models/cell_render_data.dart';
-import 'package:fog_of_world/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/features/map/models/cell_render_data.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 
 /// CustomPainter that renders the fog-of-war overlay using the
 /// "dark overlay with punched holes" Canvas compositing technique.

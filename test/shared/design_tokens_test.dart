@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 void main() {
   // ── Spacing ────────────────────────────────────────────────────────────────

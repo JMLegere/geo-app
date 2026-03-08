@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/features/location/services/gps_filter.dart';
-import 'package:fog_of_world/features/location/services/location_service.dart';
-import 'package:fog_of_world/features/location/services/location_simulator.dart';
-import 'package:fog_of_world/core/state/location_provider.dart';
+import 'package:earth_nova/features/location/services/gps_filter.dart';
+import 'package:earth_nova/features/location/services/location_service.dart';
+import 'package:earth_nova/features/location/services/location_simulator.dart';
+import 'package:earth_nova/core/state/location_provider.dart';
 
 LocationService _testService({int seed = 1}) => LocationService(
       mode: LocationMode.simulation,

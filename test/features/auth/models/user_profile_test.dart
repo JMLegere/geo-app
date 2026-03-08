@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
 
 void main() {
   group('UserProfile', () {

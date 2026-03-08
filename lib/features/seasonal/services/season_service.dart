@@ -1,6 +1,6 @@
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/season.dart';
-import 'package:fog_of_world/features/seasonal/models/seasonal_species.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/features/seasonal/models/seasonal_species.dart';
 
 /// Determines seasonal availability for species and filters species pools.
 ///

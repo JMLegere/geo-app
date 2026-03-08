@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
-import 'package:fog_of_world/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 /// In-memory [AuthService] for development and testing.
 ///

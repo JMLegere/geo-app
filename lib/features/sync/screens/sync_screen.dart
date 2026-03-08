@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/sync/models/sync_status.dart';
-import 'package:fog_of_world/features/sync/providers/sync_provider.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/sync/models/sync_status.dart';
+import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 
 /// A settings-style screen for manual cloud sync.
 ///

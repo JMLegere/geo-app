@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/models/habitat.dart';
-import 'package:fog_of_world/core/models/iucn_status.dart';
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/species/species_service.dart';
-import 'package:fog_of_world/features/achievements/screens/achievement_screen.dart';
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/models/user_profile.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
-import 'package:fog_of_world/features/discovery/providers/discovery_provider.dart';
-import 'package:fog_of_world/features/sanctuary/screens/sanctuary_screen.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/habitat_section.dart';
-import 'package:fog_of_world/features/sanctuary/widgets/sanctuary_health_indicator.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/species/species_service.dart';
+import 'package:earth_nova/features/achievements/screens/achievement_screen.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
+import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
+import 'package:earth_nova/features/sanctuary/widgets/habitat_section.dart';
+import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator.dart';
+import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 // ---------------------------------------------------------------------------
 // Stub auth notifier — returns fixed state without async work (no pending timers)

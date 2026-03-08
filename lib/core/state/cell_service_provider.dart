@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/core/cells/cell_cache.dart';
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/cells/lazy_voronoi_cell_service.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/cell_cache.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Provides the global [CellService] instance.
 ///

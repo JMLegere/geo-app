@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/continent.dart';
-import 'package:fog_of_world/core/species/continent_resolver.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/species/continent_resolver.dart';
 
 void main() {
   // ---------------------------------------------------------------------------

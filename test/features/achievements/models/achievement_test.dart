@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
 
 void main() {
   group('AchievementDefinition registry', () {

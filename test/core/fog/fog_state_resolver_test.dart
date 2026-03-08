@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
-import 'package:fog_of_world/core/cells/cell_service.dart';
-import 'package:fog_of_world/core/fog/fog_event.dart';
-import 'package:fog_of_world/core/fog/fog_state_resolver.dart';
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/fog/fog_event.dart';
+import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — deterministic grid-based cell service.

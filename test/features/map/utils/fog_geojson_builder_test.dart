@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 
-import 'package:fog_of_world/core/models/fog_state.dart';
-import 'package:fog_of_world/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

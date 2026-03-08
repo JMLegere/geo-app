@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fog_of_world/core/models/item_category.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 
 void main() {
   group('ItemCategory', () {

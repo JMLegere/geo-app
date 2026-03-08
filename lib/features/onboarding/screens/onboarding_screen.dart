@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/onboarding/providers/onboarding_provider.dart';
-import 'package:fog_of_world/features/onboarding/widgets/onboarding_page.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
+import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
+import 'package:earth_nova/features/onboarding/widgets/onboarding_page.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 // ---------------------------------------------------------------------------
 // Page definitions

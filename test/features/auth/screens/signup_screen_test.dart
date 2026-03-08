@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/screens/signup_screen.dart';
-import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/screens/signup_screen.dart';
+import 'package:earth_nova/features/auth/widgets/auth_button.dart';
 
 // ---------------------------------------------------------------------------
 // Stub notifiers (top-level — Dart does not allow class defs inside functions)

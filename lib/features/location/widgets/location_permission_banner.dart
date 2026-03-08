@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'package:fog_of_world/core/state/location_provider.dart';
+import 'package:earth_nova/core/state/location_provider.dart';
 
 /// A dismissable banner displayed when GPS permission is denied or location
 /// services are disabled.
@@ -155,7 +155,7 @@ class _LocationPermissionBannerState
       LocationError.permissionDeniedForever => _BannerConfig(
           title: 'Location Permanently Denied',
           subtitle:
-              'Open Settings to allow Fog of World to access your location.',
+              'Open Settings to allow EarthNova to access your location.',
           actionLabel: 'Open Settings',
           onAction: () => Geolocator.openAppSettings(),
         ),

@@ -1,4 +1,4 @@
-import 'package:fog_of_world/core/models/season.dart';
+import 'package:earth_nova/core/models/season.dart';
 
 /// Describes whether a species is available all year or only in one season.
 ///

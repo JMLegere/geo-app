@@ -3,12 +3,12 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/core/models/write_queue_entry.dart';
-import 'package:fog_of_world/core/persistence/item_instance_repository.dart';
-import 'package:fog_of_world/core/persistence/write_queue_repository.dart';
-import 'package:fog_of_world/features/sync/services/supabase_persistence.dart';
-import 'package:fog_of_world/shared/constants.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/persistence/write_queue_repository.dart';
+import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Result of a single queue entry flush attempt.
 sealed class FlushResult {

@@ -1,6 +1,6 @@
 import 'dart:math' show min;
 
-import 'package:fog_of_world/features/achievements/models/achievement.dart';
+import 'package:earth_nova/features/achievements/models/achievement.dart';
 
 /// Per-achievement progress snapshot: current value, target, unlock status.
 class AchievementProgress {

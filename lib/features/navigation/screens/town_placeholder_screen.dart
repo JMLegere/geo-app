@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fog_of_world/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// Placeholder for the Town tab until the NPC system is implemented.
 class TownPlaceholderScreen extends StatelessWidget {

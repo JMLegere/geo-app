@@ -36,7 +36,7 @@ flutter analyze
 
 ```
 lib/
-├── main.dart                   # ProviderScope → FogOfWorldApp → TabShell
+├── main.dart                   # ProviderScope → EarthNovaApp → TabShell
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
 │   ├── cells/                  # Spatial indexing (CellService interface + impls)
 │   ├── config/                 # SupabaseConfig (env vars)

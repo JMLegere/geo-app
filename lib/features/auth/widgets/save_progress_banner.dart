@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/auth/providers/upgrade_prompt_provider.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/widgets/frosted_glass_container.dart';
+import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 
 /// Persistent banner that prompts anonymous users to sign in and save their
 /// progress once they have crossed the upgrade threshold.

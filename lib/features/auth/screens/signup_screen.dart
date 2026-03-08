@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:fog_of_world/features/auth/models/auth_state.dart';
-import 'package:fog_of_world/features/auth/providers/auth_provider.dart';
-import 'package:fog_of_world/features/auth/widgets/auth_button.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/widgets/auth_button.dart';
 
 /// Sign-up screen — pushed on top of the login screen.
 ///
-/// Pops itself when auth succeeds so `FogOfWorldApp`'s home switch can reveal
+/// Pops itself when auth succeeds so `EarthNovaApp`'s home switch can reveal
 /// the map screen cleanly.
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart' hide Durations;
 
-import 'package:fog_of_world/core/models/item_definition.dart';
-import 'package:fog_of_world/core/models/item_instance.dart';
-import 'package:fog_of_world/shared/design_tokens.dart';
-import 'package:fog_of_world/shared/earth_nova_theme.dart';
-import 'package:fog_of_world/shared/game_icons.dart';
-import 'package:fog_of_world/shared/widgets/habitat_gradient.dart';
-import 'package:fog_of_world/shared/widgets/prismatic_border.dart';
-import 'package:fog_of_world/shared/widgets/rarity_badge.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/game_icons.dart';
+import 'package:earth_nova/shared/widgets/habitat_gradient.dart';
+import 'package:earth_nova/shared/widgets/prismatic_border.dart';
+import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
 /// Compact Pokémon-PC-box-style grid cell for a single [ItemInstance].
 ///

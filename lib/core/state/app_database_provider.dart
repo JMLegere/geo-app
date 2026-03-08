@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fog_of_world/core/database/app_database.dart';
+import 'package:earth_nova/core/database/app_database.dart';
 
 /// Singleton [AppDatabase] instance for the entire app.
 ///
