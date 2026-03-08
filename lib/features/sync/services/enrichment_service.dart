@@ -36,6 +36,7 @@ class EnrichmentService {
   EnrichmentService({
     required this.repository,
     this.supabaseClient,
+    this.onEnriched,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 4000,
   }) {
@@ -47,6 +48,10 @@ class EnrichmentService {
   final SupabaseClient? supabaseClient;
   final int maxRetries;
   final int baseDelayMs;
+
+  /// Called after each successful enrichment is cached locally.
+  /// Provider layer uses this to invalidate [enrichmentMapProvider].
+  final void Function(SpeciesEnrichment enrichment)? onEnriched;
 
   static const _maxConcurrent = 2;
   static const _minIntervalMs = 4200;
@@ -150,6 +155,7 @@ class EnrichmentService {
               '${enrichment.animalClass.name}, '
               '${enrichment.foodPreference.name}, '
               '${enrichment.climate.name}');
+          onEnriched?.call(enrichment);
         }
       }
     } on FunctionException catch (e) {

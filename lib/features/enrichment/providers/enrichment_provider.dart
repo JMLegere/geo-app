@@ -16,11 +16,21 @@ final enrichmentServiceProvider = Provider<EnrichmentService>((ref) {
   // Use supabaseClientProvider from sync/ — the single allowed Supabase entry
   // point for features outside of sync/ and supabase_auth_service.dart.
   final client = ref.watch(supabaseClientProvider);
-  return EnrichmentService(repository: repo, supabaseClient: client);
+  return EnrichmentService(
+    repository: repo,
+    supabaseClient: client,
+    onEnriched: (_) => ref.invalidate(enrichmentMapProvider),
+  );
 });
 
+/// Loads all cached enrichments from SQLite.
+///
+/// Invalidated by [EnrichmentService.onEnriched] after each successful
+/// enrichment, which causes [speciesServiceProvider] to rebuild with the
+/// new data.
 final enrichmentMapProvider =
     FutureProvider<Map<String, SpeciesEnrichment>>((ref) async {
-  final service = ref.watch(enrichmentServiceProvider);
-  return service.getEnrichmentMap();
+  final repo = ref.watch(enrichmentRepositoryProvider);
+  final all = await repo.getAllEnrichments();
+  return {for (final e in all) e.definitionId: e};
 });
