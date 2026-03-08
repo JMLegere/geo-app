@@ -45,6 +45,13 @@ class AuthNotifier extends Notifier<AuthState> {
   /// directly to [AuthStatus.authenticated].
   /// When no session exists, signs in anonymously so the user reaches the map
   /// immediately. Users can upgrade to phone auth from settings.
+  ///
+  /// **Session restore race fix (Layer 2):**
+  /// On web, Supabase restores sessions from localStorage asynchronously.
+  /// `_auth.currentUser` may be null at the instant we check, even though a
+  /// valid session exists. We subscribe to `authStateChanges` FIRST, then wait
+  /// briefly for the SDK to fire its initial event. If the first event carries
+  /// a user, we're done. If it's null or times out, we sign in anonymously.
   Future<void> _initializeAuth() async {
     try {
       final bootstrap = ref.read(supabaseBootstrapProvider);
@@ -56,11 +63,27 @@ class AuthNotifier extends Notifier<AuthState> {
 
       _listenToAuthChanges();
 
-      // Check for a persisted session (phone user or previous anonymous).
-      final user = await _authService!.getCurrentUser();
+      // Wait for the SDK's initial auth event — this is when a persisted
+      // session (if any) becomes available. Timeout after 3s to avoid
+      // blocking the user indefinitely on slow networks or missing sessions.
+      final restoredUser = await _authService!.authStateChanges.first.timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => null,
+      );
+
       if (!ref.mounted) return;
-      if (user != null) {
-        state = AuthState.authenticated(user);
+
+      if (restoredUser != null) {
+        state = AuthState.authenticated(restoredUser);
+        return;
+      }
+
+      // Also check synchronously in case the event already fired before our
+      // stream subscription (belt-and-suspenders).
+      final currentUser = await _authService!.getCurrentUser();
+      if (!ref.mounted) return;
+      if (currentUser != null) {
+        state = AuthState.authenticated(currentUser);
         return;
       }
 

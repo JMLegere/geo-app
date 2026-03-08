@@ -71,24 +71,35 @@ class _MockWriteQueueRepository extends WriteQueueRepository {
   }
 
   @override
-  Future<List<WriteQueueEntry>> getPending({int? limit}) async {
-    final pending = _entries
+  Future<List<WriteQueueEntry>> getPending({int? limit, String? userId}) async {
+    var pending = _entries
         .where((e) => e.status == WriteQueueStatus.pending)
         .toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    if (userId != null) {
+      pending = pending.where((e) => e.userId == userId).toList();
+    }
     return limit != null ? pending.take(limit).toList() : pending;
   }
 
   @override
-  Future<List<WriteQueueEntry>> getRejected() async {
-    return _entries
-        .where((e) => e.status == WriteQueueStatus.rejected)
-        .toList();
+  Future<List<WriteQueueEntry>> getRejected({String? userId}) async {
+    var rejected =
+        _entries.where((e) => e.status == WriteQueueStatus.rejected).toList();
+    if (userId != null) {
+      rejected = rejected.where((e) => e.userId == userId).toList();
+    }
+    return rejected;
   }
 
   @override
-  Future<int> countPending() async =>
-      _entries.where((e) => e.status == WriteQueueStatus.pending).length;
+  Future<int> countPending({String? userId}) async {
+    var pending = _entries.where((e) => e.status == WriteQueueStatus.pending);
+    if (userId != null) {
+      pending = pending.where((e) => e.userId == userId);
+    }
+    return pending.length;
+  }
 
   @override
   Future<void> deleteEntry(int id) async {
