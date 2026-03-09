@@ -45,6 +45,7 @@ import 'package:earth_nova/features/map/providers/discovery_service_provider.dar
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// Bridges [GameCoordinator] (core, pure Dart) with feature-layer services.
 ///
@@ -120,19 +121,32 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onItemDiscovered = (event, instance) {
-    // First-discovery badge (★) is server-validated — awarded after the
-    // write queue flushes and validate-encounter confirms this is the
-    // first global discovery. No local badge assignment here.
+    // First-discovery badge (★):
+    // - When Supabase IS configured: server-validated after write queue
+    //   flushes and validate-encounter confirms first global discovery.
+    // - When Supabase is NOT configured (mock/offline): awarded locally
+    //   if this definition hasn't been collected before.
+    final supabase = ref.read(supabasePersistenceProvider);
+    var badgedInstance = instance;
+    if (supabase == null) {
+      // Offline/mock mode: check local inventory for first-of-species.
+      final inventory = ref.read(inventoryProvider);
+      if (!inventory.hasDefinition(instance.definitionId)) {
+        badgedInstance = instance.copyWith(
+          badges: {...instance.badges, kBadgeFirstDiscovery},
+        );
+      }
+    }
 
     ref.read(discoveryProvider.notifier).showDiscovery(event);
-    ref.read(inventoryProvider.notifier).addItem(instance);
-    discoveryService.markCollected(instance.definitionId);
+    ref.read(inventoryProvider.notifier).addItem(badgedInstance);
+    discoveryService.markCollected(badgedInstance.definitionId);
 
     // Persist to SQLite + enqueue for Supabase sync.
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       _persistItemDiscovery(
-        instance: instance,
+        instance: badgedInstance,
         userId: userId,
         itemRepo: itemRepo,
         writeQueueRepo: writeQueueRepo,
