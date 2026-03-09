@@ -66,13 +66,7 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  /// Bypasses OTP verification with a deterministic mock user.
-  ///
-  /// Only available in debug builds (guarded by [kDebugMode] at the call
-  /// site). Creates a stable user profile seeded from the phone number so
-  /// the same phone always produces the same user ID.
   void bypassVerification(String phone) {
-    assert(kDebugMode, 'bypassVerification must only be called in debug mode');
     final user = UserProfile(
       id: 'bypass-${phone.hashCode.toRadixString(16)}',
       email: 'bypass@earthnova.dev',
