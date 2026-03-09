@@ -281,6 +281,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
               totalDistanceKm: profile.totalDistanceKm,
               currentStreak: profile.currentStreak,
               longestStreak: profile.longestStreak,
+              hasCompletedOnboarding: profile.hasCompletedOnboarding,
             );
       } else {
         // No profile row yet — still hydrate cellsObserved from cell progress.

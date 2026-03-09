@@ -16,7 +16,7 @@ import 'package:earth_nova/features/auth/services/auth_service.dart';
 /// [authServiceProvider] for the actual service instance.
 class AuthNotifier extends Notifier<AuthState> {
   @override
-  AuthState build() => const AuthState.unauthenticated();
+  AuthState build() => const AuthState.loading();
 
   /// Direct state setter — called by gameCoordinatorProvider for auth
   /// lifecycle events (session restore, stream events).
@@ -44,6 +44,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Verifies the OTP code for the given phone number.
+  ///
+  /// On failure, returns to [AuthStatus.otpSent] (not unauthenticated) so the
+  /// user stays on the OTP screen and can retry without re-entering their phone.
   Future<void> verifyOtp({
     required String phone,
     required String code,
@@ -57,7 +60,7 @@ class AuthNotifier extends Notifier<AuthState> {
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
       if (!ref.mounted) return;
-      state = AuthState.error(e.message);
+      state = AuthState.otpSent(phone: phone).copyWith(errorMessage: e.message);
     }
   }
 

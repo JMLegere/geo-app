@@ -1,21 +1,84 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/loading_screen.dart';
 import 'package:earth_nova/features/auth/screens/login_screen.dart';
 import 'package:earth_nova/features/auth/screens/otp_verification_screen.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
 import 'package:earth_nova/features/navigation/screens/tab_shell.dart';
 import 'package:earth_nova/features/onboarding/screens/onboarding_screen.dart';
-import 'package:earth_nova/core/config/supabase_bootstrap.dart';
-import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseBootstrap.initialize();
-  runApp(const ProviderScope(child: EarthNovaApp()));
+
+  // 1. Create the appropriate AuthService based on Supabase availability.
+  final AuthService authService =
+      SupabaseBootstrap.initialized ? SupabaseAuthService() : MockAuthService();
+
+  // 2. Create the ProviderContainer so we can inject the service and
+  //    restore the session before the first frame.
+  final container = ProviderContainer();
+
+  // 3. Inject auth service into the provider graph.
+  container.read(authServiceProvider.notifier).set(authService);
+
+  // 4. Attempt session restore. AuthNotifier starts at `loading` so
+  //    LoadingScreen shows while this runs.
+  try {
+    final hasSession = await authService.restoreSession();
+    if (hasSession) {
+      final user = await authService.getCurrentUser();
+      if (user != null) {
+        container
+            .read(authProvider.notifier)
+            .setState(AuthState.authenticated(user));
+      } else {
+        container
+            .read(authProvider.notifier)
+            .setState(const AuthState.unauthenticated());
+      }
+    } else {
+      container
+          .read(authProvider.notifier)
+          .setState(const AuthState.unauthenticated());
+    }
+  } catch (e) {
+    debugPrint('[main] session restore failed: $e');
+    container
+        .read(authProvider.notifier)
+        .setState(const AuthState.unauthenticated());
+  }
+
+  // 5. Bridge auth service stream → auth provider for token refresh,
+  //    session expiry, and external sign-out events.
+  // ignore: cancel_subscriptions — lives for app lifetime
+  final authStreamSub = authService.authStateChanges.listen((user) {
+    if (user != null) {
+      container
+          .read(authProvider.notifier)
+          .setState(AuthState.authenticated(user));
+    } else {
+      container
+          .read(authProvider.notifier)
+          .setState(const AuthState.unauthenticated());
+    }
+  });
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const EarthNovaApp(),
+  ));
 }
 
 /// Root widget — routes declaratively through the full auth flow based on

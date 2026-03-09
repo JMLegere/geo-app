@@ -18,12 +18,12 @@ void main() {
 
     // ── Initial state ────────────────────────────────────────────────────────
 
-    test('Initial build state is unauthenticated', () {
+    test('Initial build state is loading', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final state = container.read(authProvider);
-      expect(state.status, AuthStatus.unauthenticated);
+      expect(state.status, AuthStatus.loading);
     });
 
     test('setState() directly updates state', () {
@@ -81,8 +81,8 @@ void main() {
 
       await container.read(authProvider.notifier).sendOtp('+15551234567');
 
-      // State unchanged — still unauthenticated.
-      expect(container.read(authProvider).status, AuthStatus.unauthenticated);
+      // State unchanged — still loading (initial build state).
+      expect(container.read(authProvider).status, AuthStatus.loading);
     });
 
     // ── verifyOtp ────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ void main() {
       expect(state.user!.phoneNumber, '+15551234567');
     });
 
-    test('verifyOtp with wrong code sets error state', () async {
+    test('verifyOtp with wrong code stays on otpSent with error', () async {
       final container = makeContainer();
       final notifier = container.read(authProvider.notifier);
 
@@ -125,11 +125,14 @@ void main() {
       await notifier.verifyOtp(phone: '+15551234567', code: 'wrong');
 
       final state = container.read(authProvider);
-      expect(state.status, AuthStatus.unauthenticated);
+      // Stays on OTP screen so user can retry — doesn't kick back to login.
+      expect(state.status, AuthStatus.otpSent);
       expect(state.errorMessage, isNotNull);
+      expect(state.phone, '+15551234567');
     });
 
-    test('verifyOtp without prior sendOtp sets error state', () async {
+    test('verifyOtp without prior sendOtp stays on otpSent with error',
+        () async {
       final container = makeContainer();
 
       await container
@@ -137,7 +140,8 @@ void main() {
           .verifyOtp(phone: '+15551234567', code: '123456');
 
       final state = container.read(authProvider);
-      expect(state.status, AuthStatus.unauthenticated);
+      // Service throws because no OTP was sent — stays on OTP screen with error.
+      expect(state.status, AuthStatus.otpSent);
       expect(state.errorMessage, isNotNull);
     });
 

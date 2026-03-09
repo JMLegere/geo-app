@@ -15,16 +15,16 @@ void main() {
 
     // ── Initial state ────────────────────────────────────────────────────────
 
-    test('build() returns AuthState.unauthenticated() immediately', () {
+    test('build() returns AuthState.loading() immediately', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       // Read synchronously before any external code calls setState().
       final state = container.read(authProvider);
 
-      // AuthNotifier.build() returns unauthenticated — the game coordinator
-      // is responsible for restoring sessions and pushing authenticated state.
-      expect(state.status, AuthStatus.unauthenticated);
+      // AuthNotifier.build() returns loading — main() bootstraps auth and
+      // pushes authenticated or unauthenticated state before first frame.
+      expect(state.status, AuthStatus.loading);
       expect(state.user, isNull);
       expect(state.errorMessage, isNull);
     });
