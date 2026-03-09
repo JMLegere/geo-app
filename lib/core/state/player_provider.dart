@@ -6,11 +6,19 @@ class PlayerState {
   final double totalDistanceKm;
   final int cellsObserved;
 
+  /// Cumulative in-game step total across all sessions.
+  final int totalSteps;
+
+  /// Last OS pedometer value seen — used to compute delta on next app open.
+  final int lastKnownStepCount;
+
   PlayerState({
     this.currentStreak = 0,
     this.longestStreak = 0,
     this.totalDistanceKm = 0.0,
     this.cellsObserved = 0,
+    this.totalSteps = 0,
+    this.lastKnownStepCount = 0,
   });
 
   PlayerState copyWith({
@@ -18,12 +26,16 @@ class PlayerState {
     int? longestStreak,
     double? totalDistanceKm,
     int? cellsObserved,
+    int? totalSteps,
+    int? lastKnownStepCount,
   }) {
     return PlayerState(
       currentStreak: currentStreak ?? this.currentStreak,
       longestStreak: longestStreak ?? this.longestStreak,
       totalDistanceKm: totalDistanceKm ?? this.totalDistanceKm,
       cellsObserved: cellsObserved ?? this.cellsObserved,
+      totalSteps: totalSteps ?? this.totalSteps,
+      lastKnownStepCount: lastKnownStepCount ?? this.lastKnownStepCount,
     );
   }
 }
@@ -58,6 +70,20 @@ class PlayerNotifier extends Notifier<PlayerState> {
     );
   }
 
+  /// Adds [delta] steps to the running total and updates the OS baseline.
+  ///
+  /// Called by [StepNotifier] during hydration and live pedometer streaming.
+  void addSteps(int delta) {
+    state = state.copyWith(
+      totalSteps: state.totalSteps + delta,
+    );
+  }
+
+  /// Updates the last-known OS pedometer value for next-session delta calc.
+  void updateLastKnownStepCount(int osSteps) {
+    state = state.copyWith(lastKnownStepCount: osSteps);
+  }
+
   void addDistance(double km) {
     state = state.copyWith(
       totalDistanceKm: state.totalDistanceKm + km,
@@ -78,12 +104,16 @@ class PlayerNotifier extends Notifier<PlayerState> {
     required double totalDistanceKm,
     required int currentStreak,
     required int longestStreak,
+    int totalSteps = 0,
+    int lastKnownStepCount = 0,
   }) {
     state = PlayerState(
       cellsObserved: cellsObserved,
       totalDistanceKm: totalDistanceKm,
       currentStreak: currentStreak,
       longestStreak: longestStreak,
+      totalSteps: totalSteps,
+      lastKnownStepCount: lastKnownStepCount,
     );
   }
 }
