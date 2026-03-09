@@ -10,29 +10,32 @@ final kTestUser = UserProfile(
   phoneNumber: '+15555550100',
   displayName: 'Test Explorer',
   createdAt: DateTime(2025, 1, 1),
-  isAnonymous: false,
 );
 
-/// Fake [AuthService] for testing. Provides full in-memory auth behavior with
-/// predictable results. Suitable for both unit tests (via [shouldThrow] flag)
-/// and integration-style tests (via realistic email/phone validation).
+/// Fake [AuthService] for testing. Provides full in-memory OTP auth behavior
+/// with predictable results. Suitable for both unit tests (via [shouldThrow]
+/// flag) and integration-style tests (via realistic phone validation).
 ///
 /// Implements the CURRENT [AuthService] interface exactly.
+/// Fixed OTP code: '123456' for any phone number.
 class FakeAuthService implements AuthService {
   FakeAuthService();
 
-  final Map<String, String> _passwords = {}; // email → password
-  final Map<String, UserProfile> _profiles = {}; // email → profile
-  final Map<String, UserProfile> _phoneProfiles = {}; // phone → profile
+  /// Maps phone number → profile for signed-in users.
+  final Map<String, UserProfile> _phoneProfiles = {};
+
+  /// Tracks which phone numbers have had an OTP sent (pending verification).
+  final Set<String> _pendingOtp = {};
 
   UserProfile? _currentUser;
 
   final _authStateController = StreamController<UserProfile?>.broadcast();
 
-  static final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-
   /// E.164 phone format: '+' followed by 7-15 digits.
   static final _phoneRegex = RegExp(r'^\+[1-9]\d{6,14}$');
+
+  /// Fixed OTP code accepted by [verifyOtp] in fake mode.
+  static const _mockOtpCode = '123456';
 
   static const _delay = Duration(milliseconds: 100);
 
@@ -45,186 +48,62 @@ class FakeAuthService implements AuthService {
   // ---------------------------------------------------------------------------
 
   @override
-  Future<UserProfile> signUp({
-    required String email,
-    required String password,
-    String? displayName,
+  Future<void> sendOtp(String phone) async {
+    await Future<void>.delayed(_delay);
+
+    if (shouldThrow) throw AuthException(throwMessage);
+
+    if (!_phoneRegex.hasMatch(phone)) {
+      throw const AuthException(
+        'Invalid phone number format. Use E.164 (e.g., +13334445555)',
+      );
+    }
+
+    _pendingOtp.add(phone);
+  }
+
+  @override
+  Future<UserProfile> verifyOtp({
+    required String phone,
+    required String code,
   }) async {
     await Future<void>.delayed(_delay);
 
     if (shouldThrow) throw AuthException(throwMessage);
 
-    if (!_emailRegex.hasMatch(email)) {
-      throw const AuthException('Invalid email format');
-    }
-    if (_passwords.containsKey(email)) {
-      throw const AuthException('Email already registered');
-    }
-
-    final profile = UserProfile(
-      id: 'fake-${DateTime.now().millisecondsSinceEpoch}',
-      email: email,
-      displayName: displayName,
-      createdAt: DateTime.now(),
-    );
-
-    _passwords[email] = password;
-    _profiles[email] = profile;
-    _currentUser = profile;
-    _authStateController.add(profile);
-    return profile;
-  }
-
-  @override
-  Future<UserProfile> signIn({
-    required String email,
-    required String password,
-  }) async {
-    await Future<void>.delayed(_delay);
-
-    if (shouldThrow) throw AuthException(throwMessage);
-
-    final storedPassword = _passwords[email];
-    if (storedPassword == null) {
-      throw const AuthException('User not found');
-    }
-    if (storedPassword != password) {
-      throw const AuthException('Wrong password');
+    if (!_pendingOtp.contains(phone)) {
+      throw const AuthException(
+        'No OTP was sent to this number. Call sendOtp first.',
+      );
     }
 
-    final profile = _profiles[email]!;
-    _currentUser = profile;
-    _authStateController.add(profile);
-    return profile;
-  }
-
-  @override
-  Future<UserProfile> signInWithPhone({required String phoneNumber}) async {
-    await Future<void>.delayed(_delay);
-
-    if (shouldThrow) throw AuthException(throwMessage);
-
-    if (!_phoneRegex.hasMatch(phoneNumber)) {
-      throw const AuthException('Invalid phone number format (E.164 required)');
+    if (code != _mockOtpCode) {
+      throw const AuthException(
+        'Invalid or expired OTP code. Please try again.',
+      );
     }
 
-    // Unified flow: return existing user or create new one.
-    final existing = _phoneProfiles[phoneNumber];
+    _pendingOtp.remove(phone);
+
+    final existing = _phoneProfiles[phone];
     if (existing != null) {
       _currentUser = existing;
       _authStateController.add(existing);
       return existing;
     }
 
-    // If the user is currently signed in anonymously, upgrade their existing
-    // account by attaching the phone number — preserving their UUID and data.
-    if (_currentUser != null && _currentUser!.isAnonymous) {
-      final upgraded = _currentUser!.copyWith(
-        phoneNumber: phoneNumber,
-        isAnonymous: false,
-      );
-      _phoneProfiles[phoneNumber] = upgraded;
-      _currentUser = upgraded;
-      _authStateController.add(upgraded);
-      return upgraded;
-    }
-
-    // No current session — create a fresh account keyed by phone.
     final profile = UserProfile(
       id: 'phone-${DateTime.now().millisecondsSinceEpoch}',
       email: '',
-      phoneNumber: phoneNumber,
+      phoneNumber: phone,
       displayName: null,
       createdAt: DateTime.now(),
     );
 
-    _phoneProfiles[phoneNumber] = profile;
+    _phoneProfiles[phone] = profile;
     _currentUser = profile;
     _authStateController.add(profile);
     return profile;
-  }
-
-  @override
-  Future<UserProfile> signInAnonymously() async {
-    await Future<void>.delayed(_delay);
-
-    if (shouldThrow) throw AuthException(throwMessage);
-
-    // Idempotent: if already signed in as anonymous, return existing user.
-    if (_currentUser != null && _currentUser!.isAnonymous) {
-      _authStateController.add(_currentUser);
-      return _currentUser!;
-    }
-
-    final profile = UserProfile(
-      id: 'anon-${DateTime.now().millisecondsSinceEpoch}',
-      email: '',
-      displayName: 'Explorer',
-      createdAt: DateTime.now(),
-      isAnonymous: true,
-    );
-    _currentUser = profile;
-    _authStateController.add(profile);
-    return profile;
-  }
-
-  @override
-  Future<UserProfile> upgradeWithEmail({
-    required String email,
-    required String password,
-    String? displayName,
-  }) async {
-    await Future<void>.delayed(_delay);
-
-    if (shouldThrow) throw AuthException(throwMessage);
-
-    if (_currentUser == null) {
-      throw const AuthException('No user signed in');
-    }
-    if (!_currentUser!.isAnonymous) {
-      throw const AuthException('User is already upgraded');
-    }
-    if (!_emailRegex.hasMatch(email)) {
-      throw const AuthException('Invalid email format');
-    }
-    if (_passwords.containsKey(email)) {
-      throw const AuthException('Email already registered');
-    }
-
-    final upgraded = _currentUser!.copyWith(
-      email: email,
-      displayName: displayName ?? _currentUser!.displayName,
-      isAnonymous: false,
-    );
-
-    _passwords[email] = password;
-    _profiles[email] = upgraded;
-    _currentUser = upgraded;
-    _authStateController.add(upgraded);
-    return upgraded;
-  }
-
-  @override
-  Future<UserProfile> linkOAuthIdentity({required String provider}) async {
-    await Future<void>.delayed(_delay);
-
-    if (shouldThrow) throw AuthException(throwMessage);
-
-    if (_currentUser == null) {
-      throw const AuthException('No user signed in');
-    }
-    if (!_currentUser!.isAnonymous) {
-      throw const AuthException('User is already upgraded');
-    }
-
-    final upgraded = _currentUser!.copyWith(
-      email: '$provider@oauth.fake',
-      isAnonymous: false,
-    );
-
-    _currentUser = upgraded;
-    _authStateController.add(upgraded);
-    return upgraded;
   }
 
   @override
@@ -238,7 +117,7 @@ class FakeAuthService implements AuthService {
   Future<UserProfile?> getCurrentUser() async => _currentUser;
 
   @override
-  Future<bool> isSessionValid() async => _currentUser != null;
+  Future<bool> restoreSession() async => _currentUser != null;
 
   @override
   Stream<UserProfile?> get authStateChanges {
