@@ -82,6 +82,62 @@ void main() {
       expect(state.cellsObserved, equals(3));
     });
 
+    test('addSteps accumulates total steps', () {
+      final container = ProviderContainer();
+      final notifier = container.read(playerProvider.notifier);
+
+      notifier.addSteps(100);
+      notifier.addSteps(250);
+      notifier.addSteps(50);
+
+      final state = container.read(playerProvider);
+      expect(state.totalSteps, equals(400));
+    });
+
+    test('updateLastKnownStepCount stores OS baseline', () {
+      final container = ProviderContainer();
+      final notifier = container.read(playerProvider.notifier);
+
+      notifier.updateLastKnownStepCount(12345);
+
+      final state = container.read(playerProvider);
+      expect(state.lastKnownStepCount, equals(12345));
+    });
+
+    test('loadProfile restores step fields when provided', () {
+      final container = ProviderContainer();
+      final notifier = container.read(playerProvider.notifier);
+
+      notifier.loadProfile(
+        cellsObserved: 10,
+        totalDistanceKm: 5.0,
+        currentStreak: 3,
+        longestStreak: 7,
+        totalSteps: 5000,
+        lastKnownStepCount: 9999,
+      );
+
+      final state = container.read(playerProvider);
+      expect(state.totalSteps, equals(5000));
+      expect(state.lastKnownStepCount, equals(9999));
+    });
+
+    test('loadProfile defaults step fields to zero', () {
+      final container = ProviderContainer();
+      final notifier = container.read(playerProvider.notifier);
+
+      notifier.loadProfile(
+        cellsObserved: 10,
+        totalDistanceKm: 5.0,
+        currentStreak: 3,
+        longestStreak: 7,
+      );
+
+      final state = container.read(playerProvider);
+      expect(state.totalSteps, equals(0));
+      expect(state.lastKnownStepCount, equals(0));
+    });
+
     test('all stats can be updated independently', () {
       final container = ProviderContainer();
       final notifier = container.read(playerProvider.notifier);

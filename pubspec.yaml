@@ -32,6 +32,9 @@ dependencies:
   # GPS (MIT license, stream-based, iOS + Android + Web)
   geolocator: ^13.0.2
   
+  # Pedometer (step counting — native only, web stub in features/steps/)
+  pedometer_2: ^5.0.4
+  
   # Utilities
   intl: ^0.20.2
   crypto: ^3.0.6

@@ -8,8 +8,9 @@ import 'package:pedometer_2/pedometer_2.dart';
 /// [stepCountStream] emits the OS's running total (steps since last reboot
 /// on Android, or CMPedometer cumulative on iOS). Callers compute deltas.
 class StepService {
-  StreamSubscription<StepCount>? _subscription;
+  StreamSubscription<int>? _subscription;
   final _controller = StreamController<int>.broadcast();
+  final _pedometer = Pedometer();
 
   /// Stream of the OS's cumulative step count. Emits whenever the
   /// pedometer reports a new value (~once per second when walking).
@@ -17,9 +18,9 @@ class StepService {
 
   /// Starts listening to the hardware pedometer.
   void start() {
-    _subscription = Pedometer.stepCountStream.listen(
-      (StepCount event) {
-        _controller.add(event.steps);
+    _subscription = _pedometer.stepCountStream().listen(
+      (int steps) {
+        _controller.add(steps);
       },
       onError: (Object error) {
         // Pedometer unavailable or permission denied — emit nothing.
@@ -36,12 +37,12 @@ class StepService {
     Duration timeout = const Duration(seconds: 5),
   }) async {
     final completer = Completer<int>();
-    StreamSubscription<StepCount>? sub;
+    StreamSubscription<int>? sub;
 
-    sub = Pedometer.stepCountStream.listen(
-      (StepCount event) {
+    sub = _pedometer.stepCountStream().listen(
+      (int steps) {
         if (!completer.isCompleted) {
-          completer.complete(event.steps);
+          completer.complete(steps);
         }
         sub?.cancel();
       },
