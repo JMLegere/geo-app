@@ -33,7 +33,6 @@ import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/profile_repository_provider.dart';
-import 'package:earth_nova/core/state/write_queue_repository_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
@@ -71,7 +70,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final itemRepo = ref.watch(itemInstanceRepositoryProvider);
   final cellProgressRepo = ref.watch(cellProgressRepositoryProvider);
   final profileRepo = ref.watch(profileRepositoryProvider);
-  final writeQueueRepo = ref.watch(writeQueueRepositoryProvider);
   final queueProcessor = ref.watch(queueProcessorProvider);
 
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
@@ -133,7 +131,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellId: cellId,
         userId: userId,
         cellProgressRepo: cellProgressRepo,
-        writeQueueRepo: writeQueueRepo,
         queueProcessor: queueProcessor,
       );
     }
@@ -168,7 +165,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         instance: badgedInstance,
         userId: userId,
         itemRepo: itemRepo,
-        writeQueueRepo: writeQueueRepo,
         queueProcessor: queueProcessor,
       );
     }
@@ -437,7 +433,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       userId: userId,
       playerState: next,
       profileRepo: profileRepo,
-      writeQueueRepo: writeQueueRepo,
       queueProcessor: queueProcessor,
     );
   });
@@ -464,7 +459,6 @@ Future<void> _persistItemDiscovery({
   required ItemInstance instance,
   required String userId,
   required ItemInstanceRepository itemRepo,
-  required WriteQueueRepository writeQueueRepo,
   required QueueProcessor queueProcessor,
 }) async {
   // 1. Write to SQLite (local cache).
@@ -474,7 +468,7 @@ Future<void> _persistItemDiscovery({
     debugPrint('[GameCoordinator] failed to persist item: $e');
   }
 
-  // 2. Enqueue for Supabase sync.
+  // 2. Enqueue for Supabase sync (auto-schedules flush).
   try {
     final payload = jsonEncode({
       'id': instance.id,
@@ -496,14 +490,13 @@ Future<void> _persistItemDiscovery({
       'status': instance.status.name,
     });
 
-    await writeQueueRepo.enqueue(
+    await queueProcessor.enqueue(
       entityType: WriteQueueEntityType.itemInstance,
       entityId: instance.id,
       operation: WriteQueueOperation.upsert,
       payload: payload,
       userId: userId,
     );
-    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue item: $e');
   }
@@ -514,7 +507,6 @@ Future<void> _persistCellVisit({
   required String cellId,
   required String userId,
   required CellProgressRepository cellProgressRepo,
-  required WriteQueueRepository writeQueueRepo,
   required QueueProcessor queueProcessor,
 }) async {
   final now = DateTime.now();
@@ -547,7 +539,7 @@ Future<void> _persistCellVisit({
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
   }
 
-  // 2. Enqueue for Supabase sync with current DB state.
+  // 2. Enqueue for Supabase sync (auto-schedules flush).
   try {
     final payload = jsonEncode({
       'cell_id': cellId,
@@ -558,14 +550,13 @@ Future<void> _persistCellVisit({
       'last_visited': now.toIso8601String(),
     });
 
-    await writeQueueRepo.enqueue(
+    await queueProcessor.enqueue(
       entityType: WriteQueueEntityType.cellProgress,
       entityId: '$userId:$cellId',
       operation: WriteQueueOperation.upsert,
       payload: payload,
       userId: userId,
     );
-    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue cell visit: $e');
   }
@@ -579,7 +570,6 @@ Future<void> _persistProfileState({
   required String userId,
   required PlayerState playerState,
   required ProfileRepository profileRepo,
-  required WriteQueueRepository writeQueueRepo,
   required QueueProcessor queueProcessor,
 }) async {
   final season = Season.fromDate(DateTime.now());
@@ -611,7 +601,7 @@ Future<void> _persistProfileState({
     debugPrint('[GameCoordinator] failed to persist profile: $e');
   }
 
-  // 2. Enqueue for Supabase sync.
+  // 2. Enqueue for Supabase sync (auto-schedules flush).
   try {
     final payload = jsonEncode({
       'display_name': 'Explorer',
@@ -622,14 +612,13 @@ Future<void> _persistProfileState({
       'has_completed_onboarding': playerState.hasCompletedOnboarding,
     });
 
-    await writeQueueRepo.enqueue(
+    await queueProcessor.enqueue(
       entityType: WriteQueueEntityType.profile,
       entityId: userId,
       operation: WriteQueueOperation.upsert,
       payload: payload,
       userId: userId,
     );
-    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
   }

@@ -100,13 +100,36 @@ class QueueProcessor {
   /// Whether a flush is currently in progress.
   bool get isFlushing => _flushing;
 
+  /// Add an entry to the write queue and auto-schedule a flush.
+  ///
+  /// Delegates to [WriteQueueRepository.enqueue] then schedules a debounced
+  /// flush. Callers never need to call [_scheduleFlush] separately — any
+  /// write to the queue automatically queues a sync.
+  Future<int> enqueue({
+    required WriteQueueEntityType entityType,
+    required String entityId,
+    required WriteQueueOperation operation,
+    required String payload,
+    required String userId,
+  }) async {
+    final id = await _queueRepo.enqueue(
+      entityType: entityType,
+      entityId: entityId,
+      operation: operation,
+      payload: payload,
+      userId: userId,
+    );
+    _scheduleFlush(userId: userId);
+    return id;
+  }
+
   /// Schedule a debounced auto-flush.
   ///
   /// Cancels any pending timer and starts a new one. When the timer fires,
   /// calls [flush] and notifies [onAutoFlushComplete] with the result.
   /// Safe to call rapidly — only the last call within the debounce window
   /// triggers a flush.
-  void scheduleFlush({String? userId}) {
+  void _scheduleFlush({String? userId}) {
     if (!canSync) return;
     _autoFlushTimer?.cancel();
     _autoFlushTimer = Timer(
