@@ -12,9 +12,11 @@ import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/food_type.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/season.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
@@ -440,6 +442,13 @@ Future<void> _persistItemDiscovery({
     final payload = jsonEncode({
       'id': instance.id,
       'definition_id': instance.definitionId,
+      'display_name': instance.displayName,
+      'scientific_name': instance.scientificName,
+      'category_name': instance.category.name,
+      'rarity_name': instance.rarity?.name,
+      'habitats_json': instance.habitatsToJson(),
+      'continents_json': instance.continentsToJson(),
+      'taxonomic_class': instance.taxonomicClass,
       'affixes': instance.affixesToJson(),
       'badges_json': instance.badgesToJson(),
       'parent_a_id': instance.parentAId,
@@ -677,6 +686,23 @@ Future<void> hydrateFromSupabase({
       final instance = ItemInstance(
         id: row['id'] as String,
         definitionId: row['definition_id'] as String,
+        displayName: row['display_name'] as String? ?? '',
+        scientificName: row['scientific_name'] as String?,
+        category: ItemCategory.values.firstWhere(
+          (c) => c.name == (row['category_name'] as String? ?? 'fauna'),
+          orElse: () => ItemCategory.fauna,
+        ),
+        rarity: row['rarity_name'] != null
+            ? IucnStatus.values.firstWhere(
+                (r) => r.name == row['rarity_name'],
+                orElse: () => IucnStatus.leastConcern,
+              )
+            : null,
+        habitats:
+            ItemInstance.habitatsFromJson(row['habitats_json'] as String?),
+        continents:
+            ItemInstance.continentsFromJson(row['continents_json'] as String?),
+        taxonomicClass: row['taxonomic_class'] as String?,
         affixes:
             ItemInstance.affixesFromJson(row['affixes'] as String? ?? '[]'),
         badges:

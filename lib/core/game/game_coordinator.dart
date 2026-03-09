@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/shared/constants.dart';
@@ -298,9 +299,18 @@ class GameCoordinator {
       ));
     }
 
+    final definition = event.item;
     final instance = ItemInstance(
       id: instanceId,
-      definitionId: event.item.id,
+      definitionId: definition.id,
+      displayName: definition.displayName,
+      scientificName: definition.scientificName,
+      category: definition.category,
+      rarity: definition.rarity,
+      habitats: definition.habitats,
+      continents: definition.continents,
+      taxonomicClass:
+          definition is FaunaDefinition ? definition.taxonomicClass : null,
       acquiredAt: event.timestamp,
       acquiredInCellId: event.cellId,
       dailySeed: event.dailySeed,
