@@ -4,17 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/utils/phone_validation.dart';
 import 'package:earth_nova/features/auth/widgets/auth_button.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
-/// Provides a unified phone-number flow: new numbers create an account,
-/// existing numbers sign in. No separate signup screen.
-///
-/// Also offers "Continue as Guest" for anonymous play.
-///
-/// Navigation: sign-in success is handled by the auth-state switch in
-/// `EarthNovaApp` which replaces this screen with the map.
+/// Phone-only flow: enter 10-digit US number, tap "Send Code", receive OTP.
+/// On [AuthStatus.otpSent], routing is handled by the auth-state switch in
+/// `EarthNovaApp` — this screen does NOT navigate programmatically.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -24,7 +22,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+
+  /// Inline validation error shown before hitting the provider.
+  String? _localError;
 
   /// Country code prefix — hardcoded to +1 for now.
   static const _countryCode = '+1';
@@ -37,22 +37,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _phoneController.removeListener(_onFieldChanged);
     _phoneController.dispose();
     super.dispose();
   }
 
-  void _onFieldChanged() => setState(() {});
+  void _onFieldChanged() => setState(() {
+        // Clear local validation error as the user types.
+        if (_localError != null) _localError = null;
+      });
 
-  bool _canSubmit(bool isLoading) =>
-      !isLoading && _phoneController.text.length >= 10;
+  String get _fullPhone => '$_countryCode${_phoneController.text.trim()}';
 
-  String get _fullPhoneNumber => '$_countryCode${_phoneController.text.trim()}';
+  bool _isLoading(AuthStatus status) => status == AuthStatus.loading;
 
-  Future<void> _signIn() async {
-    if (!_canSubmit(false)) return;
-    await ref
-        .read(authProvider.notifier)
-        .signInWithPhone(phoneNumber: _fullPhoneNumber);
+  Future<void> _sendCode() async {
+    final phone = _fullPhone;
+
+    if (!isValidE164(phone)) {
+      setState(() => _localError = 'Enter a valid phone number');
+      return;
+    }
+
+    setState(() => _localError = null);
+    await ref.read(authProvider.notifier).sendOtp(phone);
   }
 
   // ---------------------------------------------------------------------------
@@ -62,144 +70,166 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final isLoading = authState.status == AuthStatus.loading;
+    final isLoading = _isLoading(authState.status);
+    final canSubmit = !isLoading && _phoneController.text.trim().length >= 10;
 
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
+    // Visible error: local validation wins; provider error shown otherwise.
+    final errorText = _localError ?? authState.errorMessage;
+
     return Scaffold(
+      backgroundColor: colors.surface,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 80),
+          padding: EdgeInsets.symmetric(horizontal: Spacing.xxxl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(height: Spacing.massive),
 
-                Icon(
-                  Icons.explore_rounded,
-                  size: 64,
-                  color: colors.primary,
+              // ── Brand ───────────────────────────────────────────────────────
+              Text(
+                '🌍',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: ComponentSizes.emptyStateEmoji,
+                  height: 1,
                 ),
-                const SizedBox(height: 20),
+              ),
+              Spacing.gapLg,
+              Text(
+                'EarthNova',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: colors.onSurface,
+                ),
+              ),
+              Spacing.gapXs,
+              Text(
+                'Explore. Discover. Reveal.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.onSurfaceVariant,
+                ),
+              ),
+
+              SizedBox(height: Spacing.massive),
+
+              // ── Phone input ─────────────────────────────────────────────────
+              _PhoneField(
+                controller: _phoneController,
+                enabled: !isLoading,
+                countryCode: _countryCode,
+                onSubmitted: canSubmit ? (_) => _sendCode() : null,
+              ),
+
+              SizedBox(height: Spacing.xxl),
+
+              // ── Submit button ───────────────────────────────────────────────
+              AuthButton(
+                label: 'Send Code',
+                isLoading: isLoading,
+                onPressed: canSubmit ? _sendCode : null,
+              ),
+
+              // ── Error message ───────────────────────────────────────────────
+              if (errorText != null) ...[
+                Spacing.gapMd,
                 Text(
-                  'EarthNova',
+                  errorText,
                   textAlign: TextAlign.center,
-                  style: theme.textTheme.displaySmall,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Explore. Discover. Reveal.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.error,
                   ),
                 ),
-                const SizedBox(height: 56),
-
-                // ── Phone number field ──────────────────────────────────────
-                _buildPhoneField(
-                  controller: _phoneController,
-                  enabled: !isLoading,
-                ),
-                const SizedBox(height: 28),
-
-                AuthButton(
-                  label: 'Continue',
-                  isLoading: isLoading,
-                  onPressed: _canSubmit(isLoading) ? _signIn : null,
-                ),
-
-                if (authState.errorMessage != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    authState.errorMessage!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.error,
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 32),
-                Divider(color: colors.outlineVariant),
-                const SizedBox(height: 24),
-
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () {
-                          ref.read(authProvider.notifier).continueAsGuest();
-                        },
-                  child: Text(
-                    'Continue as Guest',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
               ],
-            ),
+
+              SizedBox(height: Spacing.xxxl),
+            ],
           ),
         ),
       ),
     );
   }
+}
 
-  /// Phone number input with fixed +1 prefix.
-  Widget _buildPhoneField({
-    required TextEditingController controller,
-    bool enabled = true,
-  }) {
+// ── Phone field ─────────────────────────────────────────────────────────────
+
+/// Stateless phone-number text field with a fixed country-code prefix.
+class _PhoneField extends StatelessWidget {
+  const _PhoneField({
+    required this.controller,
+    required this.countryCode,
+    this.enabled = true,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String countryCode;
+  final bool enabled;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return TextFormField(
+    final borderRadius = BorderRadius.circular(Radii.xl);
+
+    return TextField(
       controller: controller,
       keyboardType: TextInputType.phone,
       enabled: enabled,
+      textInputAction: TextInputAction.done,
       inputFormatters: [
         FilteringTextInputFormatter.digitsOnly,
         LengthLimitingTextInputFormatter(10),
       ],
       style: TextStyle(color: colors.onSurface, fontSize: 16),
       decoration: InputDecoration(
-        labelText: 'Phone Number',
         hintText: '5551234567',
+        hintStyle: TextStyle(color: colors.onSurfaceVariant),
         prefixIcon: Padding(
-          padding: const EdgeInsets.only(left: 16, right: 8),
+          padding: EdgeInsets.only(
+            left: Spacing.lg,
+            right: Spacing.sm,
+          ),
           child: Text(
-            _countryCode,
+            countryCode,
             style: TextStyle(
               fontSize: 16,
-              color: colors.onSurface,
               fontWeight: FontWeight.w500,
+              color: colors.onSurface,
             ),
           ),
         ),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         filled: true,
         fillColor: colors.surfaceContainerHigh,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: Spacing.lg,
+          vertical: Spacing.lg,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           borderSide: BorderSide(color: colors.outline),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           borderSide: BorderSide(color: colors.outline),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: borderRadius,
           borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: borderRadius,
+          borderSide: BorderSide(
+            color: colors.outline.withValues(alpha: 0.4),
+          ),
+        ),
       ),
-      onFieldSubmitted: (_) => _signIn(),
+      onSubmitted: onSubmitted,
     );
   }
 }
