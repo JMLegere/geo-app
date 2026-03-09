@@ -211,7 +211,7 @@ Max Concurrent: 5 (Wave 1)
 
 ## TODOs
 
-- [ ] 1. Configure Supabase Phone Auth + Test Phone Numbers
+- [x] 1. Configure Supabase Phone Auth + Test Phone Numbers
 
   **What to do**:
   - This is a **configuration task**, not a code task. Document the required Supabase dashboard settings.
@@ -268,7 +268,7 @@ Max Concurrent: 5 (Wave 1)
   - Message: `🔧 chore(auth): add Supabase phone auth setup documentation`
   - Files: `scripts/setup-supabase-phone-auth.md`
 
-- [ ] 2. Phone Number Validation Utility (E.164)
+- [x] 2. Phone Number Validation Utility (E.164)
 
   **What to do**:
   - Create `lib/features/auth/utils/phone_validation.dart`
@@ -335,7 +335,7 @@ Max Concurrent: 5 (Wave 1)
   - Message: `✨ feat(auth): add E.164 phone number validation utility`
   - Files: `lib/features/auth/utils/phone_validation.dart`, `test/features/auth/utils/phone_validation_test.dart`
 
-- [ ] 3. Rewrite AuthState Model (Remove Anonymous, Add OTP States)
+- [x] 3. Rewrite AuthState Model (Remove Anonymous, Add OTP States)
 
   **What to do**:
   - Rewrite `lib/features/auth/models/auth_state.dart`:
@@ -403,7 +403,7 @@ Max Concurrent: 5 (Wave 1)
   - Message: `♻️ refactor(auth): rewrite AuthState model for phone-only login`
   - Files: `lib/features/auth/models/auth_state.dart`
 
-- [ ] 4. Add hasCompletedOnboarding to Player Profile + DB Migration
+- [x] 4. Add hasCompletedOnboarding to Player Profile + DB Migration
 
   **What to do**:
   - Add `bool hasCompletedOnboarding` field to `PlayerState` in `lib/core/models/player_state.dart` (default: `false`)
@@ -475,7 +475,7 @@ Max Concurrent: 5 (Wave 1)
   - Files: `lib/core/models/player_state.dart`, `lib/core/database/app_database.dart`, `lib/core/database/app_database.g.dart`, `lib/core/persistence/profile_repository.dart`, `lib/core/state/player_provider.dart`
   - Pre-commit: `LD_LIBRARY_PATH=. flutter test test/core/`
 
-- [ ] 5. Create Test Auth Doubles in test/ (Replace MockAuthService Usage)
+- [x] 5. Create Test Auth Doubles in test/ (Replace MockAuthService Usage)
 
   **What to do**:
   - Create `test/fixtures/auth_test_doubles.dart` with:
