@@ -597,6 +597,56 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
+  static const VerificationMeta _displayNameMeta =
+      const VerificationMeta('displayName');
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+      'display_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _scientificNameMeta =
+      const VerificationMeta('scientificName');
+  @override
+  late final GeneratedColumn<String> scientificName = GeneratedColumn<String>(
+      'scientific_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _categoryNameMeta =
+      const VerificationMeta('categoryName');
+  @override
+  late final GeneratedColumn<String> categoryName = GeneratedColumn<String>(
+      'category_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('fauna'));
+  static const VerificationMeta _rarityNameMeta =
+      const VerificationMeta('rarityName');
+  @override
+  late final GeneratedColumn<String> rarityName = GeneratedColumn<String>(
+      'rarity_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _habitatsJsonMeta =
+      const VerificationMeta('habitatsJson');
+  @override
+  late final GeneratedColumn<String> habitatsJson = GeneratedColumn<String>(
+      'habitats_json', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _continentsJsonMeta =
+      const VerificationMeta('continentsJson');
+  @override
+  late final GeneratedColumn<String> continentsJson = GeneratedColumn<String>(
+      'continents_json', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('[]'));
+  static const VerificationMeta _taxonomicClassMeta =
+      const VerificationMeta('taxonomicClass');
+  @override
+  late final GeneratedColumn<String> taxonomicClass = GeneratedColumn<String>(
+      'taxonomic_class', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -609,7 +659,14 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
         acquiredInCellId,
         dailySeed,
         status,
-        badgesJson
+        badgesJson,
+        displayName,
+        scientificName,
+        categoryName,
+        rarityName,
+        habitatsJson,
+        continentsJson,
+        taxonomicClass
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -684,6 +741,48 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           badgesJson.isAcceptableOrUnknown(
               data['badges_json']!, _badgesJsonMeta));
     }
+    if (data.containsKey('display_name')) {
+      context.handle(
+          _displayNameMeta,
+          displayName.isAcceptableOrUnknown(
+              data['display_name']!, _displayNameMeta));
+    }
+    if (data.containsKey('scientific_name')) {
+      context.handle(
+          _scientificNameMeta,
+          scientificName.isAcceptableOrUnknown(
+              data['scientific_name']!, _scientificNameMeta));
+    }
+    if (data.containsKey('category_name')) {
+      context.handle(
+          _categoryNameMeta,
+          categoryName.isAcceptableOrUnknown(
+              data['category_name']!, _categoryNameMeta));
+    }
+    if (data.containsKey('rarity_name')) {
+      context.handle(
+          _rarityNameMeta,
+          rarityName.isAcceptableOrUnknown(
+              data['rarity_name']!, _rarityNameMeta));
+    }
+    if (data.containsKey('habitats_json')) {
+      context.handle(
+          _habitatsJsonMeta,
+          habitatsJson.isAcceptableOrUnknown(
+              data['habitats_json']!, _habitatsJsonMeta));
+    }
+    if (data.containsKey('continents_json')) {
+      context.handle(
+          _continentsJsonMeta,
+          continentsJson.isAcceptableOrUnknown(
+              data['continents_json']!, _continentsJsonMeta));
+    }
+    if (data.containsKey('taxonomic_class')) {
+      context.handle(
+          _taxonomicClassMeta,
+          taxonomicClass.isAcceptableOrUnknown(
+              data['taxonomic_class']!, _taxonomicClassMeta));
+    }
     return context;
   }
 
@@ -715,6 +814,20 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       badgesJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}badges_json'])!,
+      displayName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}display_name'])!,
+      scientificName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}scientific_name']),
+      categoryName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category_name'])!,
+      rarityName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}rarity_name']),
+      habitatsJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}habitats_json'])!,
+      continentsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}continents_json'])!,
+      taxonomicClass: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}taxonomic_class']),
     );
   }
 
@@ -758,6 +871,27 @@ class LocalItemInstance extends DataClass
 
   /// JSON-encoded list of badge strings (e.g. '["first_discovery","beta"]').
   final String badgesJson;
+
+  /// Human-readable display name (e.g. "Red Fox"). Snapshotted at discovery.
+  final String displayName;
+
+  /// Scientific name. Null for non-biological items.
+  final String? scientificName;
+
+  /// Item category (e.g. "fauna", "flora"). Snapshotted at discovery.
+  final String categoryName;
+
+  /// IUCN rarity tier name (e.g. "leastConcern"). Null if no rarity.
+  final String? rarityName;
+
+  /// JSON-encoded list of habitat name strings (e.g. '["forest","plains"]').
+  final String habitatsJson;
+
+  /// JSON-encoded list of continent name strings (e.g. '["asia","europe"]').
+  final String continentsJson;
+
+  /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
+  final String? taxonomicClass;
   const LocalItemInstance(
       {required this.id,
       required this.userId,
@@ -769,7 +903,14 @@ class LocalItemInstance extends DataClass
       this.acquiredInCellId,
       this.dailySeed,
       required this.status,
-      required this.badgesJson});
+      required this.badgesJson,
+      required this.displayName,
+      this.scientificName,
+      required this.categoryName,
+      this.rarityName,
+      required this.habitatsJson,
+      required this.continentsJson,
+      this.taxonomicClass});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -792,6 +933,19 @@ class LocalItemInstance extends DataClass
     }
     map['status'] = Variable<String>(status);
     map['badges_json'] = Variable<String>(badgesJson);
+    map['display_name'] = Variable<String>(displayName);
+    if (!nullToAbsent || scientificName != null) {
+      map['scientific_name'] = Variable<String>(scientificName);
+    }
+    map['category_name'] = Variable<String>(categoryName);
+    if (!nullToAbsent || rarityName != null) {
+      map['rarity_name'] = Variable<String>(rarityName);
+    }
+    map['habitats_json'] = Variable<String>(habitatsJson);
+    map['continents_json'] = Variable<String>(continentsJson);
+    if (!nullToAbsent || taxonomicClass != null) {
+      map['taxonomic_class'] = Variable<String>(taxonomicClass);
+    }
     return map;
   }
 
@@ -816,6 +970,19 @@ class LocalItemInstance extends DataClass
           : Value(dailySeed),
       status: Value(status),
       badgesJson: Value(badgesJson),
+      displayName: Value(displayName),
+      scientificName: scientificName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scientificName),
+      categoryName: Value(categoryName),
+      rarityName: rarityName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rarityName),
+      habitatsJson: Value(habitatsJson),
+      continentsJson: Value(continentsJson),
+      taxonomicClass: taxonomicClass == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taxonomicClass),
     );
   }
 
@@ -834,6 +1001,13 @@ class LocalItemInstance extends DataClass
       dailySeed: serializer.fromJson<String?>(json['dailySeed']),
       status: serializer.fromJson<String>(json['status']),
       badgesJson: serializer.fromJson<String>(json['badgesJson']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      scientificName: serializer.fromJson<String?>(json['scientificName']),
+      categoryName: serializer.fromJson<String>(json['categoryName']),
+      rarityName: serializer.fromJson<String?>(json['rarityName']),
+      habitatsJson: serializer.fromJson<String>(json['habitatsJson']),
+      continentsJson: serializer.fromJson<String>(json['continentsJson']),
+      taxonomicClass: serializer.fromJson<String?>(json['taxonomicClass']),
     );
   }
   @override
@@ -851,6 +1025,13 @@ class LocalItemInstance extends DataClass
       'dailySeed': serializer.toJson<String?>(dailySeed),
       'status': serializer.toJson<String>(status),
       'badgesJson': serializer.toJson<String>(badgesJson),
+      'displayName': serializer.toJson<String>(displayName),
+      'scientificName': serializer.toJson<String?>(scientificName),
+      'categoryName': serializer.toJson<String>(categoryName),
+      'rarityName': serializer.toJson<String?>(rarityName),
+      'habitatsJson': serializer.toJson<String>(habitatsJson),
+      'continentsJson': serializer.toJson<String>(continentsJson),
+      'taxonomicClass': serializer.toJson<String?>(taxonomicClass),
     };
   }
 
@@ -865,7 +1046,14 @@ class LocalItemInstance extends DataClass
           Value<String?> acquiredInCellId = const Value.absent(),
           Value<String?> dailySeed = const Value.absent(),
           String? status,
-          String? badgesJson}) =>
+          String? badgesJson,
+          String? displayName,
+          Value<String?> scientificName = const Value.absent(),
+          String? categoryName,
+          Value<String?> rarityName = const Value.absent(),
+          String? habitatsJson,
+          String? continentsJson,
+          Value<String?> taxonomicClass = const Value.absent()}) =>
       LocalItemInstance(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -880,6 +1068,15 @@ class LocalItemInstance extends DataClass
         dailySeed: dailySeed.present ? dailySeed.value : this.dailySeed,
         status: status ?? this.status,
         badgesJson: badgesJson ?? this.badgesJson,
+        displayName: displayName ?? this.displayName,
+        scientificName:
+            scientificName.present ? scientificName.value : this.scientificName,
+        categoryName: categoryName ?? this.categoryName,
+        rarityName: rarityName.present ? rarityName.value : this.rarityName,
+        habitatsJson: habitatsJson ?? this.habitatsJson,
+        continentsJson: continentsJson ?? this.continentsJson,
+        taxonomicClass:
+            taxonomicClass.present ? taxonomicClass.value : this.taxonomicClass,
       );
   LocalItemInstance copyWithCompanion(LocalItemInstanceTableCompanion data) {
     return LocalItemInstance(
@@ -900,6 +1097,25 @@ class LocalItemInstance extends DataClass
       status: data.status.present ? data.status.value : this.status,
       badgesJson:
           data.badgesJson.present ? data.badgesJson.value : this.badgesJson,
+      displayName:
+          data.displayName.present ? data.displayName.value : this.displayName,
+      scientificName: data.scientificName.present
+          ? data.scientificName.value
+          : this.scientificName,
+      categoryName: data.categoryName.present
+          ? data.categoryName.value
+          : this.categoryName,
+      rarityName:
+          data.rarityName.present ? data.rarityName.value : this.rarityName,
+      habitatsJson: data.habitatsJson.present
+          ? data.habitatsJson.value
+          : this.habitatsJson,
+      continentsJson: data.continentsJson.present
+          ? data.continentsJson.value
+          : this.continentsJson,
+      taxonomicClass: data.taxonomicClass.present
+          ? data.taxonomicClass.value
+          : this.taxonomicClass,
     );
   }
 
@@ -916,14 +1132,38 @@ class LocalItemInstance extends DataClass
           ..write('acquiredInCellId: $acquiredInCellId, ')
           ..write('dailySeed: $dailySeed, ')
           ..write('status: $status, ')
-          ..write('badgesJson: $badgesJson')
+          ..write('badgesJson: $badgesJson, ')
+          ..write('displayName: $displayName, ')
+          ..write('scientificName: $scientificName, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('rarityName: $rarityName, ')
+          ..write('habitatsJson: $habitatsJson, ')
+          ..write('continentsJson: $continentsJson, ')
+          ..write('taxonomicClass: $taxonomicClass')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, userId, definitionId, affixes, parentAId,
-      parentBId, acquiredAt, acquiredInCellId, dailySeed, status, badgesJson);
+  int get hashCode => Object.hash(
+      id,
+      userId,
+      definitionId,
+      affixes,
+      parentAId,
+      parentBId,
+      acquiredAt,
+      acquiredInCellId,
+      dailySeed,
+      status,
+      badgesJson,
+      displayName,
+      scientificName,
+      categoryName,
+      rarityName,
+      habitatsJson,
+      continentsJson,
+      taxonomicClass);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -938,7 +1178,14 @@ class LocalItemInstance extends DataClass
           other.acquiredInCellId == this.acquiredInCellId &&
           other.dailySeed == this.dailySeed &&
           other.status == this.status &&
-          other.badgesJson == this.badgesJson);
+          other.badgesJson == this.badgesJson &&
+          other.displayName == this.displayName &&
+          other.scientificName == this.scientificName &&
+          other.categoryName == this.categoryName &&
+          other.rarityName == this.rarityName &&
+          other.habitatsJson == this.habitatsJson &&
+          other.continentsJson == this.continentsJson &&
+          other.taxonomicClass == this.taxonomicClass);
 }
 
 class LocalItemInstanceTableCompanion
@@ -954,6 +1201,13 @@ class LocalItemInstanceTableCompanion
   final Value<String?> dailySeed;
   final Value<String> status;
   final Value<String> badgesJson;
+  final Value<String> displayName;
+  final Value<String?> scientificName;
+  final Value<String> categoryName;
+  final Value<String?> rarityName;
+  final Value<String> habitatsJson;
+  final Value<String> continentsJson;
+  final Value<String?> taxonomicClass;
   final Value<int> rowid;
   const LocalItemInstanceTableCompanion({
     this.id = const Value.absent(),
@@ -967,6 +1221,13 @@ class LocalItemInstanceTableCompanion
     this.dailySeed = const Value.absent(),
     this.status = const Value.absent(),
     this.badgesJson = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.scientificName = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.rarityName = const Value.absent(),
+    this.habitatsJson = const Value.absent(),
+    this.continentsJson = const Value.absent(),
+    this.taxonomicClass = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalItemInstanceTableCompanion.insert({
@@ -981,6 +1242,13 @@ class LocalItemInstanceTableCompanion
     this.dailySeed = const Value.absent(),
     this.status = const Value.absent(),
     this.badgesJson = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.scientificName = const Value.absent(),
+    this.categoryName = const Value.absent(),
+    this.rarityName = const Value.absent(),
+    this.habitatsJson = const Value.absent(),
+    this.continentsJson = const Value.absent(),
+    this.taxonomicClass = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
@@ -998,6 +1266,13 @@ class LocalItemInstanceTableCompanion
     Expression<String>? dailySeed,
     Expression<String>? status,
     Expression<String>? badgesJson,
+    Expression<String>? displayName,
+    Expression<String>? scientificName,
+    Expression<String>? categoryName,
+    Expression<String>? rarityName,
+    Expression<String>? habitatsJson,
+    Expression<String>? continentsJson,
+    Expression<String>? taxonomicClass,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1012,6 +1287,13 @@ class LocalItemInstanceTableCompanion
       if (dailySeed != null) 'daily_seed': dailySeed,
       if (status != null) 'status': status,
       if (badgesJson != null) 'badges_json': badgesJson,
+      if (displayName != null) 'display_name': displayName,
+      if (scientificName != null) 'scientific_name': scientificName,
+      if (categoryName != null) 'category_name': categoryName,
+      if (rarityName != null) 'rarity_name': rarityName,
+      if (habitatsJson != null) 'habitats_json': habitatsJson,
+      if (continentsJson != null) 'continents_json': continentsJson,
+      if (taxonomicClass != null) 'taxonomic_class': taxonomicClass,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1028,6 +1310,13 @@ class LocalItemInstanceTableCompanion
       Value<String?>? dailySeed,
       Value<String>? status,
       Value<String>? badgesJson,
+      Value<String>? displayName,
+      Value<String?>? scientificName,
+      Value<String>? categoryName,
+      Value<String?>? rarityName,
+      Value<String>? habitatsJson,
+      Value<String>? continentsJson,
+      Value<String?>? taxonomicClass,
       Value<int>? rowid}) {
     return LocalItemInstanceTableCompanion(
       id: id ?? this.id,
@@ -1041,6 +1330,13 @@ class LocalItemInstanceTableCompanion
       dailySeed: dailySeed ?? this.dailySeed,
       status: status ?? this.status,
       badgesJson: badgesJson ?? this.badgesJson,
+      displayName: displayName ?? this.displayName,
+      scientificName: scientificName ?? this.scientificName,
+      categoryName: categoryName ?? this.categoryName,
+      rarityName: rarityName ?? this.rarityName,
+      habitatsJson: habitatsJson ?? this.habitatsJson,
+      continentsJson: continentsJson ?? this.continentsJson,
+      taxonomicClass: taxonomicClass ?? this.taxonomicClass,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1081,6 +1377,27 @@ class LocalItemInstanceTableCompanion
     if (badgesJson.present) {
       map['badges_json'] = Variable<String>(badgesJson.value);
     }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (scientificName.present) {
+      map['scientific_name'] = Variable<String>(scientificName.value);
+    }
+    if (categoryName.present) {
+      map['category_name'] = Variable<String>(categoryName.value);
+    }
+    if (rarityName.present) {
+      map['rarity_name'] = Variable<String>(rarityName.value);
+    }
+    if (habitatsJson.present) {
+      map['habitats_json'] = Variable<String>(habitatsJson.value);
+    }
+    if (continentsJson.present) {
+      map['continents_json'] = Variable<String>(continentsJson.value);
+    }
+    if (taxonomicClass.present) {
+      map['taxonomic_class'] = Variable<String>(taxonomicClass.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1101,6 +1418,13 @@ class LocalItemInstanceTableCompanion
           ..write('dailySeed: $dailySeed, ')
           ..write('status: $status, ')
           ..write('badgesJson: $badgesJson, ')
+          ..write('displayName: $displayName, ')
+          ..write('scientificName: $scientificName, ')
+          ..write('categoryName: $categoryName, ')
+          ..write('rarityName: $rarityName, ')
+          ..write('habitatsJson: $habitatsJson, ')
+          ..write('continentsJson: $continentsJson, ')
+          ..write('taxonomicClass: $taxonomicClass, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2943,6 +3267,13 @@ typedef $$LocalItemInstanceTableTableCreateCompanionBuilder
   Value<String?> dailySeed,
   Value<String> status,
   Value<String> badgesJson,
+  Value<String> displayName,
+  Value<String?> scientificName,
+  Value<String> categoryName,
+  Value<String?> rarityName,
+  Value<String> habitatsJson,
+  Value<String> continentsJson,
+  Value<String?> taxonomicClass,
   Value<int> rowid,
 });
 typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
@@ -2958,6 +3289,13 @@ typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
   Value<String?> dailySeed,
   Value<String> status,
   Value<String> badgesJson,
+  Value<String> displayName,
+  Value<String?> scientificName,
+  Value<String> categoryName,
+  Value<String?> rarityName,
+  Value<String> habitatsJson,
+  Value<String> continentsJson,
+  Value<String?> taxonomicClass,
   Value<int> rowid,
 });
 
@@ -3003,6 +3341,30 @@ class $$LocalItemInstanceTableTableFilterComposer
 
   ColumnFilters<String> get badgesJson => $composableBuilder(
       column: $table.badgesJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+      column: $table.displayName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get scientificName => $composableBuilder(
+      column: $table.scientificName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get categoryName => $composableBuilder(
+      column: $table.categoryName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get rarityName => $composableBuilder(
+      column: $table.rarityName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalItemInstanceTableTableOrderingComposer
@@ -3048,6 +3410,32 @@ class $$LocalItemInstanceTableTableOrderingComposer
 
   ColumnOrderings<String> get badgesJson => $composableBuilder(
       column: $table.badgesJson, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+      column: $table.displayName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get scientificName => $composableBuilder(
+      column: $table.scientificName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get categoryName => $composableBuilder(
+      column: $table.categoryName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get rarityName => $composableBuilder(
+      column: $table.rarityName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalItemInstanceTableTableAnnotationComposer
@@ -3091,6 +3479,27 @@ class $$LocalItemInstanceTableTableAnnotationComposer
 
   GeneratedColumn<String> get badgesJson => $composableBuilder(
       column: $table.badgesJson, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+      column: $table.displayName, builder: (column) => column);
+
+  GeneratedColumn<String> get scientificName => $composableBuilder(
+      column: $table.scientificName, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryName => $composableBuilder(
+      column: $table.categoryName, builder: (column) => column);
+
+  GeneratedColumn<String> get rarityName => $composableBuilder(
+      column: $table.rarityName, builder: (column) => column);
+
+  GeneratedColumn<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass, builder: (column) => column);
 }
 
 class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
@@ -3135,6 +3544,13 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> dailySeed = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> badgesJson = const Value.absent(),
+            Value<String> displayName = const Value.absent(),
+            Value<String?> scientificName = const Value.absent(),
+            Value<String> categoryName = const Value.absent(),
+            Value<String?> rarityName = const Value.absent(),
+            Value<String> habitatsJson = const Value.absent(),
+            Value<String> continentsJson = const Value.absent(),
+            Value<String?> taxonomicClass = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion(
@@ -3149,6 +3565,13 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             dailySeed: dailySeed,
             status: status,
             badgesJson: badgesJson,
+            displayName: displayName,
+            scientificName: scientificName,
+            categoryName: categoryName,
+            rarityName: rarityName,
+            habitatsJson: habitatsJson,
+            continentsJson: continentsJson,
+            taxonomicClass: taxonomicClass,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -3163,6 +3586,13 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> dailySeed = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> badgesJson = const Value.absent(),
+            Value<String> displayName = const Value.absent(),
+            Value<String?> scientificName = const Value.absent(),
+            Value<String> categoryName = const Value.absent(),
+            Value<String?> rarityName = const Value.absent(),
+            Value<String> habitatsJson = const Value.absent(),
+            Value<String> continentsJson = const Value.absent(),
+            Value<String?> taxonomicClass = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion.insert(
@@ -3177,6 +3607,13 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             dailySeed: dailySeed,
             status: status,
             badgesJson: badgesJson,
+            displayName: displayName,
+            scientificName: scientificName,
+            categoryName: categoryName,
+            rarityName: rarityName,
+            habitatsJson: habitatsJson,
+            continentsJson: continentsJson,
+            taxonomicClass: taxonomicClass,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

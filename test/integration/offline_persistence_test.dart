@@ -51,11 +51,15 @@ LocalItemInstance makeItemInstance({
       id: id,
       userId: userId,
       definitionId: definitionId,
+      displayName: 'Test Species',
+      categoryName: 'fauna',
       affixes: '[]',
       acquiredAt: DateTime(2026, 3, 1),
       acquiredInCellId: cellId,
       status: 'active',
       badgesJson: '[]',
+      habitatsJson: '[]',
+      continentsJson: '[]',
     );
 
 /// Build a minimal [LocalPlayerProfile] record.
@@ -207,11 +211,15 @@ void main() {
         id: item.id,
         userId: item.userId,
         definitionId: item.definitionId,
+        displayName: 'Test Species',
+        categoryName: 'fauna',
         affixes: '[]',
         acquiredAt: item.acquiredAt,
         acquiredInCellId: item.acquiredInCellId,
         status: 'donated',
         badgesJson: '[]',
+        habitatsJson: '[]',
+        continentsJson: '[]',
       );
       await db.updateItemInstance(updated);
 

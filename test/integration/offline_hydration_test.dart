@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
@@ -48,17 +49,23 @@ Future<ItemInstance> seedItem(
     id: id,
     userId: userId,
     definitionId: definitionId,
+    displayName: 'Test Species',
+    categoryName: 'fauna',
     affixes: affixes,
     acquiredAt: DateTime(2026, 3, 1),
     acquiredInCellId: cellId,
     status: status,
     badgesJson: '[]',
+    habitatsJson: '[]',
+    continentsJson: '[]',
   );
   await db.insertItemInstance(row);
 
   return ItemInstance(
     id: id,
     definitionId: definitionId,
+    displayName: 'Test Species',
+    category: ItemCategory.fauna,
     affixes: ItemInstance.affixesFromJson(affixes),
     acquiredAt: row.acquiredAt,
     acquiredInCellId: cellId,
@@ -206,6 +213,8 @@ void main() {
       container.read(inventoryProvider.notifier).addItem(ItemInstance(
             id: 'stale-item',
             definitionId: 'fauna_stale_species',
+            displayName: 'Test Species',
+            category: ItemCategory.fauna,
             acquiredAt: DateTime(2026, 1, 1),
           ));
       expect(container.read(inventoryProvider).totalItems, equals(1));
@@ -262,6 +271,8 @@ void main() {
       container.read(inventoryProvider.notifier).addItem(ItemInstance(
             id: 'race-item',
             definitionId: 'fauna_race_species',
+            displayName: 'Test Species',
+            category: ItemCategory.fauna,
             acquiredAt: DateTime.now(),
           ));
       expect(container.read(inventoryProvider).totalItems, equals(1));
@@ -295,6 +306,8 @@ void main() {
       container.read(inventoryProvider.notifier).addItem(ItemInstance(
             id: 'race-item',
             definitionId: 'fauna_race_species',
+            displayName: 'Test Species',
+            category: ItemCategory.fauna,
             acquiredAt: DateTime.now(),
           ));
 
@@ -328,6 +341,8 @@ void main() {
       container.read(inventoryProvider.notifier).addItem(ItemInstance(
             id: 'new-item',
             definitionId: 'fauna_panthera_leo',
+            displayName: 'Test Species',
+            category: ItemCategory.fauna,
             acquiredAt: DateTime.now(),
           ));
 
@@ -362,6 +377,8 @@ void main() {
       final newItem = ItemInstance(
         id: 'discovered-1',
         definitionId: 'fauna_vulpes_vulpes',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: 'cell-7',
       );
@@ -397,6 +414,8 @@ void main() {
         final item = ItemInstance(
           id: 'session1-$i',
           definitionId: defId,
+          displayName: 'Test Species',
+          category: ItemCategory.fauna,
           acquiredAt: DateTime(2026, 3, 1),
         );
         container.read(inventoryProvider.notifier).addItem(item);
@@ -417,6 +436,8 @@ void main() {
       final newItem = ItemInstance(
         id: 'session2-0',
         definitionId: 'fauna_ursus_arctos',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         acquiredAt: DateTime(2026, 3, 2),
       );
       container2.read(inventoryProvider.notifier).addItem(newItem);

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
@@ -27,6 +28,8 @@ class _MockInventoryNotifier extends InventoryNotifier {
           (i) => ItemInstance(
             id: 'mock_item_$i',
             definitionId: 'species_$i',
+            displayName: 'Test Species',
+            category: ItemCategory.fauna,
             acquiredAt: DateTime(2024),
             acquiredInCellId: 'cell_1',
           ),
@@ -40,6 +43,8 @@ class _MockInventoryNotifier extends InventoryNotifier {
         (i) => ItemInstance(
           id: 'mock_item_$i',
           definitionId: 'species_$i',
+          displayName: 'Test Species',
+          category: ItemCategory.fauna,
           acquiredAt: DateTime(2024),
           acquiredInCellId: 'cell_1',
         ),

@@ -145,6 +145,13 @@ class SupabasePersistence {
     required String userId,
     required String definitionId,
     required String affixes,
+    String? displayName,
+    String? scientificName,
+    String? categoryName,
+    String? rarityName,
+    String? habitatsJson,
+    String? continentsJson,
+    String? taxonomicClass,
     String? badgesJson,
     String? parentAId,
     String? parentBId,
@@ -166,6 +173,13 @@ class SupabasePersistence {
         'daily_seed': dailySeed,
         'status': status,
       };
+      if (displayName != null) data['display_name'] = displayName;
+      if (scientificName != null) data['scientific_name'] = scientificName;
+      if (categoryName != null) data['category_name'] = categoryName;
+      if (rarityName != null) data['rarity_name'] = rarityName;
+      if (habitatsJson != null) data['habitats_json'] = habitatsJson;
+      if (continentsJson != null) data['continents_json'] = continentsJson;
+      if (taxonomicClass != null) data['taxonomic_class'] = taxonomicClass;
       if (badgesJson != null) {
         data['badges_json'] = badgesJson;
       }

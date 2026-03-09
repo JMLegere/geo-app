@@ -21,6 +21,7 @@ import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
@@ -414,6 +415,8 @@ void main() {
       final existing = ItemInstance(
         id: 'item-dup',
         definitionId: 'fauna_vulpes_vulpes',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         affixes: const [],
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: 'cell-1',

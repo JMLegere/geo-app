@@ -5,6 +5,7 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
@@ -71,6 +72,8 @@ void _addSpecies(ProviderContainer container, FaunaDefinition species) {
   container.read(inventoryProvider.notifier).addItem(ItemInstance(
         id: 'test_${species.id}',
         definitionId: species.id,
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         acquiredAt: DateTime.now(),
         acquiredInCellId: 'cell_1',
       ));

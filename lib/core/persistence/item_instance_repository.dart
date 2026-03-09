@@ -1,5 +1,9 @@
 import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
 
 /// Repository for ItemInstance CRUD operations.
 ///
@@ -16,6 +20,13 @@ class ItemInstanceRepository {
       id: instance.id,
       userId: userId,
       definitionId: instance.definitionId,
+      displayName: instance.displayName,
+      scientificName: instance.scientificName,
+      categoryName: instance.category.name,
+      rarityName: instance.rarity?.name,
+      habitatsJson: instance.habitatsToJson(),
+      continentsJson: instance.continentsToJson(),
+      taxonomicClass: instance.taxonomicClass,
       affixes: instance.affixesToJson(),
       badgesJson: instance.badgesToJson(),
       parentAId: instance.parentAId,
@@ -32,6 +43,21 @@ class ItemInstanceRepository {
     return ItemInstance(
       id: local.id,
       definitionId: local.definitionId,
+      displayName: local.displayName,
+      scientificName: local.scientificName,
+      category: ItemCategory.values.firstWhere(
+        (c) => c.name == local.categoryName,
+        orElse: () => ItemCategory.fauna,
+      ),
+      rarity: local.rarityName != null
+          ? IucnStatus.values.firstWhere(
+              (r) => r.name == local.rarityName,
+              orElse: () => IucnStatus.leastConcern,
+            )
+          : null,
+      habitats: ItemInstance.habitatsFromJson(local.habitatsJson),
+      continents: ItemInstance.continentsFromJson(local.continentsJson),
+      taxonomicClass: local.taxonomicClass,
       affixes: ItemInstance.affixesFromJson(local.affixes),
       badges: ItemInstance.badgesFromJson(local.badgesJson),
       parentAId: local.parentAId,

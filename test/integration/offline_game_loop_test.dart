@@ -244,11 +244,15 @@ void main() {
         id: 'item-golden',
         userId: 'player-1',
         definitionId: firstEvent.item.id,
+        displayName: 'Test Species',
+        categoryName: 'fauna',
         affixes: '[]',
         badgesJson: '[]',
         acquiredAt: DateTime.now(),
         acquiredInCellId: firstEvent.cellId,
         status: 'active',
+        habitatsJson: '[]',
+        continentsJson: '[]',
       ));
 
       // Mark collected in discovery service.
@@ -413,11 +417,15 @@ void main() {
         id: 'item-golden',
         userId: 'player-1',
         definitionId: 'vulpes_vulpes',
+        displayName: 'Test Species',
+        categoryName: 'fauna',
         affixes: '[]',
         badgesJson: '[]',
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: cellId,
         status: 'active',
+        habitatsJson: '[]',
+        continentsJson: '[]',
       ));
 
       // Verify everything is persisted.
