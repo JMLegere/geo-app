@@ -1,12 +1,10 @@
 {
-  "active_plan": {
-    "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/auto-auth.md",
-    "branch": "feat/auto-auth",
-    "started_at": "2026-03-06T20:00:00.000Z",
-    "current_wave": 3,
-    "completed_tasks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-    "session_ids": {}
-  },
+  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/auth-first-principles.md",
+  "started_at": "2026-03-09T11:46:55.682Z",
+  "session_ids": ["ses_32daf0f46ffeNf2LK21T2G6zKH"],
+  "plan_name": "auth-first-principles",
+  "worktree_path": "/home/jeremy/workspace/geo-app",
+  "branch": "feat/auth-first-principles",
   "completed_plans": [
     {
       "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/app-shell.md",
