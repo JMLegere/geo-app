@@ -170,29 +170,19 @@ class PackNotifier extends Notifier<PackState> {
   }
 
   /// Groups items by their category, filtering to active items only.
+  ///
+  /// Uses the denormalized [ItemInstance.category] field directly. Falls
+  /// back to prefix-based inference for pre-denormalization items whose
+  /// category is still the default.
   static Map<ItemCategory, List<ItemInstance>> _groupByCategory(
     List<ItemInstance> items,
   ) {
     final map = <ItemCategory, List<ItemInstance>>{};
     for (final item in items) {
       if (item.status != ItemInstanceStatus.active) continue;
-      // Infer category from definitionId prefix.
-      final category = _categoryFromDefinitionId(item.definitionId);
-      (map[category] ??= []).add(item);
+      (map[item.category] ??= []).add(item);
     }
     return map;
-  }
-
-  /// Infers ItemCategory from the definition ID prefix convention.
-  /// E.g. "fauna_vulpes_vulpes" → ItemCategory.fauna
-  static ItemCategory _categoryFromDefinitionId(String definitionId) {
-    for (final cat in ItemCategory.values) {
-      if (definitionId.startsWith('${cat.name}_')) {
-        return cat;
-      }
-    }
-    // Default to fauna if no prefix match (legacy IDs).
-    return ItemCategory.fauna;
   }
 }
 
