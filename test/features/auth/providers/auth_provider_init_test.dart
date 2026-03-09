@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
-import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+
+import '../../../fixtures/auth_test_doubles.dart';
 
 void main() {
   group('AuthNotifier initialization', () {
@@ -38,11 +39,11 @@ void main() {
 
       // Simulate what gameCoordinatorProvider.initializeAuth() does:
       // 1. Create and seed the auth service.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
 
       // 2. Sign in anonymously.
-      final user = await mockService.signInAnonymously();
+      final user = await fakeService.signInAnonymously();
 
       // 3. Push authenticated state.
       container.read(authProvider.notifier).setState(
@@ -70,9 +71,9 @@ void main() {
       container.read(authProvider);
 
       // Simulate GC pushing auth state.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
-      final user = await mockService.signInAnonymously();
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
+      final user = await fakeService.signInAnonymously();
       container.read(authProvider.notifier).setState(
             AuthState.authenticated(user),
           );
@@ -87,9 +88,9 @@ void main() {
       container.read(authProvider);
 
       // Simulate GC init.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
-      final user = await mockService.signInAnonymously();
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
+      final user = await fakeService.signInAnonymously();
       container.read(authProvider.notifier).setState(
             AuthState.authenticated(user),
           );

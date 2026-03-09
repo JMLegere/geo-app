@@ -3,21 +3,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
-import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+
+import '../../../fixtures/auth_test_doubles.dart';
 
 void main() {
   group('AuthNotifier', () {
-    // Helper: create container with MockAuthService pre-seeded (simulating
+    // Helper: create container with FakeAuthService pre-seeded (simulating
     // what gameCoordinatorProvider does at startup), then sign in anonymously
     // so tests start from an authenticated state — matching the old behavior
     // where AuthNotifier._initializeAuth() ran automatically.
     Future<ProviderContainer> makeContainer() async {
       final container = ProviderContainer();
-      final mockService = MockAuthService();
+      final fakeService = FakeAuthService();
       // Seed the auth service (simulating what GC does during initializeAuth).
-      container.read(authServiceProvider.notifier).set(mockService);
+      container.read(authServiceProvider.notifier).set(fakeService);
       // Sign in anonymously (simulating GC's anonymous fallback).
-      final user = await mockService.signInAnonymously();
+      final user = await fakeService.signInAnonymously();
       container.read(authProvider.notifier).setState(
             AuthState.authenticated(user),
           );
@@ -252,7 +253,7 @@ void main() {
       addTearDown(container.dispose);
 
       // makeContainer() auto-signs-in anonymously.
-      expect(container.read(authProvider).isAnonymous, isTrue);
+      expect(container.read(authProvider).user?.isAnonymous, isTrue);
 
       final states = <AuthState>[];
       container.listen(authProvider, (_, next) => states.add(next));
@@ -312,7 +313,7 @@ void main() {
 
       // User starts anonymous — capture pre-upgrade state.
       final preUpgrade = container.read(authProvider);
-      expect(preUpgrade.isAnonymous, isTrue);
+      expect(preUpgrade.user?.isAnonymous, isTrue);
 
       await container.read(authProvider.notifier).upgradeWithEmail(
             email: 'not-an-email',
@@ -322,7 +323,7 @@ void main() {
       // On failure, the anonymous session is restored so the user can retry.
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.authenticated);
-      expect(state.isAnonymous, isTrue);
+      expect(state.user?.isAnonymous, isTrue);
     });
 
     // ── linkOAuth ────────────────────────────────────────────────────────────
@@ -333,7 +334,7 @@ void main() {
       addTearDown(container.dispose);
 
       // makeContainer() auto-signs-in anonymously.
-      expect(container.read(authProvider).isAnonymous, isTrue);
+      expect(container.read(authProvider).user?.isAnonymous, isTrue);
 
       await container.read(authProvider.notifier).linkOAuth(provider: 'google');
 
@@ -387,7 +388,7 @@ void main() {
       addTearDown(container.dispose);
 
       // makeContainer() auto-signs-in anonymously.
-      expect(container.read(authProvider).isAnonymous, isTrue);
+      expect(container.read(authProvider).user?.isAnonymous, isTrue);
 
       await container.read(authProvider.notifier).signOutWithWarning();
 

@@ -2,14 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
-import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+
+import '../../../fixtures/auth_test_doubles.dart';
 
 void main() {
-  group('MockAuthService', () {
-    late MockAuthService service;
+  group('FakeAuthService', () {
+    late FakeAuthService service;
 
     setUp(() {
-      service = MockAuthService();
+      service = FakeAuthService();
     });
 
     tearDown(() {

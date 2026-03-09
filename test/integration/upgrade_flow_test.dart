@@ -109,7 +109,7 @@ class _IntegrationUpgradePromptNotifier extends UpgradePromptNotifier {
   @override
   UpgradePromptState build() {
     final totalCollected = ref.watch(inventoryProvider).totalItems;
-    final isAnonymous = ref.watch(authProvider).isAnonymous;
+    final isAnonymous = ref.watch(authProvider).user?.isAnonymous ?? false;
     final supabaseInitialized = ref.read(supabaseBootstrapProvider).initialized;
 
     return UpgradePromptState(
