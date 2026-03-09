@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 /// Thin auth state holder with action wrappers.
@@ -62,6 +64,23 @@ class AuthNotifier extends Notifier<AuthState> {
       if (!ref.mounted) return;
       state = AuthState.otpSent(phone: phone).copyWith(errorMessage: e.message);
     }
+  }
+
+  /// Bypasses OTP verification with a deterministic mock user.
+  ///
+  /// Only available in debug builds (guarded by [kDebugMode] at the call
+  /// site). Creates a stable user profile seeded from the phone number so
+  /// the same phone always produces the same user ID.
+  void bypassVerification(String phone) {
+    assert(kDebugMode, 'bypassVerification must only be called in debug mode');
+    final user = UserProfile(
+      id: 'bypass-${phone.hashCode.toRadixString(16)}',
+      email: 'bypass@earthnova.dev',
+      phoneNumber: phone,
+      displayName: 'Beta Tester',
+      createdAt: DateTime.now(),
+    );
+    state = AuthState.authenticated(user);
   }
 
   /// Signs out the current user.

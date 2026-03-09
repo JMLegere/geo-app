@@ -106,6 +106,18 @@ class _ItemDetailContent extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final def = definition;
 
+    // Prefer denormalized fields from ItemInstance, fall back to definition.
+    final displayName = item.displayName.isNotEmpty
+        ? item.displayName
+        : (def?.displayName ?? 'Unknown Species');
+    final scientificName = item.scientificName ?? def?.scientificName;
+    final rarity = item.rarity ?? def?.rarity;
+    final habitats =
+        item.habitats.isNotEmpty ? item.habitats : (def?.habitats ?? const []);
+    final continents = item.continents.isNotEmpty
+        ? item.continents
+        : (def?.continents ?? const []);
+
     // Find intrinsic affix for stat bars
     final intrinsic =
         item.affixes.where((a) => a.type == AffixType.intrinsic).firstOrNull;
@@ -128,7 +140,7 @@ class _ItemDetailContent extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          def?.displayName ?? 'Unknown Species',
+                          displayName,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -146,10 +158,10 @@ class _ItemDetailContent extends StatelessWidget {
                       ],
                     ],
                   ),
-                  if (def != null) ...[
+                  if (scientificName != null) ...[
                     SizedBox(height: Spacing.xxs),
                     Text(
-                      def.scientificName,
+                      scientificName,
                       style: TextStyle(
                         fontSize: 14,
                         fontStyle: FontStyle.italic,
@@ -161,10 +173,10 @@ class _ItemDetailContent extends StatelessWidget {
                 ],
               ),
             ),
-            if (def?.rarity != null) ...[
+            if (rarity != null) ...[
               SizedBox(width: Spacing.md),
               RarityBadge(
-                status: def!.rarity!,
+                status: rarity,
                 size: RarityBadgeSize.medium,
               ),
             ],
@@ -176,6 +188,9 @@ class _ItemDetailContent extends StatelessWidget {
         SizedBox(height: Spacing.lg),
 
         // ── Properties ───────────────────────────────────────────────────
+        // Enriched-only fields (animalType, animalClass, climate,
+        // foodPreference, seasonRestriction) still require definition.
+        // Denormalized fields (habitat, region, rarity) use instance values.
         if (def != null) ...[
           if (def.animalType != null)
             _PropertyRow(
@@ -190,24 +205,26 @@ class _ItemDetailContent extends StatelessWidget {
                 ? '${GameIcons.animalClass(def.animalClass!)} ${def.animalClass!.displayName}'
                 : 'Awaiting enrichment. Check back soon.',
           ),
-          if (def.habitats.isNotEmpty) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Habitat',
-              value: def.habitats
-                  .map((h) => '${GameIcons.habitat(h)} ${h.displayName}')
-                  .join('  '),
-            ),
-          ],
-          if (def.continents.isNotEmpty) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Region',
-              value: def.continents
-                  .map((c) => '${GameIcons.continent(c)} ${c.displayName}')
-                  .join('  '),
-            ),
-          ],
+        ],
+        if (habitats.isNotEmpty) ...[
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Habitat',
+            value: habitats
+                .map((h) => '${GameIcons.habitat(h)} ${h.displayName}')
+                .join('  '),
+          ),
+        ],
+        if (continents.isNotEmpty) ...[
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Region',
+            value: continents
+                .map((c) => '${GameIcons.continent(c)} ${c.displayName}')
+                .join('  '),
+          ),
+        ],
+        if (def != null) ...[
           SizedBox(height: Spacing.sm),
           _PropertyRow(
             label: 'Climate',
@@ -215,14 +232,16 @@ class _ItemDetailContent extends StatelessWidget {
                 ? '${GameIcons.climate(def.climate!)} ${def.climate!.displayName}'
                 : 'Awaiting enrichment. Check back soon.',
           ),
-          if (def.rarity != null) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Rarity',
-              value:
-                  '${GameIcons.rarity(def.rarity!)} ${EarthNovaTheme.rarityLabel(def.rarity!)}',
-            ),
-          ],
+        ],
+        if (rarity != null) ...[
+          SizedBox(height: Spacing.sm),
+          _PropertyRow(
+            label: 'Rarity',
+            value:
+                '${GameIcons.rarity(rarity)} ${EarthNovaTheme.rarityLabel(rarity)}',
+          ),
+        ],
+        if (def != null) ...[
           SizedBox(height: Spacing.sm),
           _PropertyRow(
             label: 'Diet',
@@ -238,6 +257,12 @@ class _ItemDetailContent extends StatelessWidget {
                   '${GameIcons.season(def.seasonRestriction!)} ${def.seasonRestriction!.displayName}',
             ),
           ],
+        ],
+        // Show divider if we had any property rows
+        if (def != null ||
+            habitats.isNotEmpty ||
+            continents.isNotEmpty ||
+            rarity != null) ...[
           SizedBox(height: Spacing.lg),
           Divider(height: 1, color: cs.outlineVariant),
           SizedBox(height: Spacing.lg),

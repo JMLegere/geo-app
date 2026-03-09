@@ -45,12 +45,18 @@ class ItemSlotWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final def = definition;
     final cs = Theme.of(context).colorScheme;
-    final primaryHabitat =
-        (def != null && def.habitats.isNotEmpty) ? def.habitats.first : null;
+
+    // Prefer denormalized habitats from instance, fall back to definition.
+    final habitats =
+        item.habitats.isNotEmpty ? item.habitats : (def?.habitats ?? const []);
+    final primaryHabitat = habitats.isNotEmpty ? habitats.first : null;
 
     final baseDecoration = primaryHabitat != null
         ? HabitatGradient.tile(primaryHabitat)
         : BoxDecoration(color: cs.surfaceContainerHigh);
+
+    // Prefer denormalized rarity from instance, fall back to definition.
+    final rarity = item.rarity ?? def?.rarity;
 
     // First-discovery items swap the static rarity border for PrismaticBorder,
     // so we omit the Border from their BoxDecoration entirely.
@@ -62,15 +68,15 @@ class ItemSlotWidget extends StatelessWidget {
         // No border — PrismaticBorder paints the animated edge.
       );
     } else {
-      final borderColor = (def?.rarity != null)
-          ? EarthNovaTheme.rarityColor(def!.rarity!)
+      final borderColor = (rarity != null)
+          ? EarthNovaTheme.rarityColor(rarity)
               .withValues(alpha: Opacities.borderSubtle)
           : cs.outline.withValues(alpha: Opacities.borderSubtle);
       effectiveDecoration = baseDecoration.copyWith(
         borderRadius: Radii.borderLg,
         border: Border.all(
           color: borderColor,
-          width: def?.rarity != null ? 1.5 : 1.0,
+          width: rarity != null ? 1.5 : 1.0,
         ),
         boxShadow: Shadows.soft,
       );
@@ -104,12 +110,12 @@ class ItemSlotWidget extends StatelessWidget {
                     ),
                   ),
                   // Rarity badge top-right
-                  if (def?.rarity != null)
+                  if (rarity != null)
                     Positioned(
                       top: 0,
                       right: 0,
                       child: RarityBadge(
-                        status: def!.rarity!,
+                        status: rarity,
                         size: RarityBadgeSize.small,
                       ),
                     ),
@@ -128,7 +134,9 @@ class ItemSlotWidget extends StatelessWidget {
 
             // ── Display name ─────────────────────────────────────────────
             Text(
-              def?.displayName ?? '???',
+              item.displayName.isNotEmpty
+                  ? item.displayName
+                  : (def?.displayName ?? '???'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
