@@ -14,7 +14,7 @@ final dailySeedServiceProvider = Provider<DailySeedService>((ref) {
   final bootstrap = ref.watch(supabaseBootstrapProvider);
 
   SeedFetcher? fetcher;
-  if (bootstrap.initialized) {
+  if (bootstrap) {
     try {
       final client = Supabase.instance.client;
       fetcher = () async {

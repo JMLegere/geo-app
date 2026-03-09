@@ -10,13 +10,10 @@ import 'package:earth_nova/features/auth/utils/phone_validation.dart';
 /// The client only calls `signInWithOtp` (to trigger the SMS) and `verifyOTP`
 /// (to exchange the code for a session).
 ///
-/// This file **must compile** but is NOT the active implementation until
-/// Supabase credentials are configured. `MockAuthService` is used instead
-/// during development and testing.
-///
-/// Wired by `gameCoordinatorProvider` when `SupabaseBootstrap.initialized`
-/// is true (i.e. `SUPABASE_URL` / `SUPABASE_ANON_KEY` supplied as
-/// `--dart-define` values and `Supabase.initialize()` succeeded).
+/// Active when `SupabaseBootstrap.initialized` is true (i.e. `SUPABASE_URL` /
+/// `SUPABASE_ANON_KEY` supplied as `--dart-define` values and
+/// `Supabase.initialize()` succeeded). Falls back to an in-memory stub when
+/// credentials are absent.
 class SupabaseAuthService implements AuthService {
   /// Convenience accessor — throws [AuthException] if Supabase is not
   /// initialised (credentials missing or `Supabase.initialize()` not called).
@@ -51,7 +48,6 @@ class SupabaseAuthService implements AuthService {
   /// Builds a [UserProfile] from a Supabase [supa.User].
   ///
   /// Centralises metadata extraction so every call site stays consistent.
-  /// Phone+OTP users are never anonymous.
   static UserProfile _profileFrom(supa.User user) {
     return UserProfile(
       id: user.id,
@@ -59,7 +55,6 @@ class SupabaseAuthService implements AuthService {
       phoneNumber: _phoneNumberFrom(user) ?? user.phone,
       displayName: _displayNameFrom(user),
       createdAt: DateTime.parse(user.createdAt),
-      isAnonymous: false,
     );
   }
 

@@ -141,7 +141,7 @@ class GameCoordinator {
   /// Called when the auth-resolved user ID changes (initial auth, identity
   /// switch, sign-out). The provider layer uses this to update authProvider
   /// state and trigger re-hydration.
-  void Function(String? userId, bool isAnonymous)? onAuthStateChanged;
+  void Function(String? userId)? onAuthStateChanged;
 
   // ---------------------------------------------------------------------------
   // Auth state (tracked for persistence — userId needed by onCellVisited etc.)

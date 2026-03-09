@@ -12,9 +12,9 @@ class AuthException implements Exception {
 
 /// Abstract contract for phone+OTP authentication.
 ///
-/// Two implementations:
-/// - `MockAuthService` — in-memory, no network (dev & test).
+/// Implementations:
 /// - `SupabaseAuthService` — real backend (prod, requires credentials).
+/// - In-memory stub available for development and testing.
 abstract class AuthService {
   /// Sends a one-time password (OTP) SMS to [phone].
   ///

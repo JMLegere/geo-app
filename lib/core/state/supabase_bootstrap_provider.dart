@@ -2,15 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 
-/// Provides the global [SupabaseBootstrap] instance.
+/// Whether Supabase initialized successfully.
 ///
-/// Consumers `await ref.read(supabaseBootstrapProvider).ready` before
-/// deciding which auth service to use. The [SupabaseBootstrap.initialize]
-/// method is called from `main()` before `ProviderScope` is created, and the
-/// pre-initialized instance is passed in via `overrideWithValue`.
+/// Returns [SupabaseBootstrap.initialized] — a static flag set by
+/// `main()` before `ProviderScope` is created. Stable for the lifetime of
+/// the app (never changes at runtime).
 ///
-/// This is a synchronous [Provider] — the class holds the initialization
-/// future internally rather than exposing it as an async provider state.
-final supabaseBootstrapProvider = Provider<SupabaseBootstrap>((ref) {
-  return SupabaseBootstrap();
+/// Consumers use this to decide whether Supabase-backed services are
+/// available. `false` means the app operates in offline-only mode.
+final supabaseBootstrapProvider = Provider<bool>((ref) {
+  return SupabaseBootstrap.initialized;
 });

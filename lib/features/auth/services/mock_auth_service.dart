@@ -81,7 +81,6 @@ class MockAuthService implements AuthService {
       phoneNumber: phone,
       displayName: null,
       createdAt: DateTime.now(),
-      isAnonymous: false,
     );
 
     _phoneProfiles[phone] = profile;

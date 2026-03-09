@@ -14,32 +14,23 @@ import 'package:earth_nova/features/sync/models/sync_status.dart';
 
 // ── Infrastructure providers ──────────────────────────────────────────────────
 
-/// Resolves to `true` once Supabase bootstrap is complete (success or failure).
+/// Whether Supabase is ready for use.
 ///
-/// Downstream providers that `ref.watch` this will automatically rebuild once
-/// the bootstrap future settles, solving the timing race where providers are
-/// first read before `Supabase.initialize()` finishes.
-final _supabaseReadyProvider = FutureProvider<bool>((ref) async {
-  final bootstrap = ref.watch(supabaseBootstrapProvider);
-  await bootstrap.ready;
-  return bootstrap.initialized;
+/// Delegates to [supabaseBootstrapProvider]. Bootstrap is awaited in `main()`
+/// before `runApp()`, so by the time any provider runs the result is settled.
+final _supabaseReadyProvider = Provider<bool>((ref) {
+  return ref.watch(supabaseBootstrapProvider);
 });
 
 /// Returns the [SupabaseClient] when Supabase is initialised, or null when
-/// credentials are missing, init failed, or bootstrap hasn't completed yet.
+/// credentials are missing or init failed.
 ///
-/// Watches [_supabaseReadyProvider] so it rebuilds after bootstrap settles.
 /// This is the single allowed entry point for Supabase client access outside
 /// of [supabase_auth_service.dart]. Features that need the client (e.g.
 /// enrichment) must import this provider rather than importing
 /// `supabase_flutter` directly.
 final supabaseClientProvider = Provider<SupabaseClient?>((ref) {
-  final ready = ref.watch(_supabaseReadyProvider);
-  final initialized = ready.when(
-    data: (v) => v,
-    loading: () => false,
-    error: (_, __) => false,
-  );
+  final initialized = ref.watch(_supabaseReadyProvider);
   if (!initialized) return null;
   return Supabase.instance.client;
 });
