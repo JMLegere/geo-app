@@ -228,18 +228,29 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 onPressed: canVerify ? _verify : null,
               ),
 
-              const SizedBox(height: Spacing.md),
-              TextButton(
+              const SizedBox(height: Spacing.lg),
+              OutlinedButton(
                 onPressed: isVerifying
                     ? null
                     : () => ref
                         .read(authProvider.notifier)
                         .bypassVerification(widget.phone),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.primary),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Spacing.md,
+                    horizontal: Spacing.lg,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.xl),
+                  ),
+                ),
                 child: Text(
                   'Skip Verification (Beta)',
                   style: TextStyle(
-                    fontSize: 14,
-                    color: colors.onSurfaceVariant,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: colors.primary,
                   ),
                 ),
               ),
