@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 import '../../../fixtures/auth_test_doubles.dart';
@@ -17,324 +16,19 @@ void main() {
       service.dispose();
     });
 
-    // ── signUp ───────────────────────────────────────────────────────────────
+    // ── sendOtp ──────────────────────────────────────────────────────────────
 
-    test('signUp creates user and returns profile with correct email',
+    test('sendOtp succeeds for valid E.164 phone number', () async {
+      await expectLater(
+        service.sendOtp('+15551234567'),
+        completes,
+      );
+    });
+
+    test('sendOtp throws AuthException for invalid phone (no + prefix)',
         () async {
-      final profile = await service.signUp(
-        email: 'test@example.com',
-        password: 'password123',
-      );
-
-      expect(profile.email, 'test@example.com');
-      expect(profile.id, isNotEmpty);
-    });
-
-    test('signUp stores displayName when provided', () async {
-      final profile = await service.signUp(
-        email: 'test@example.com',
-        password: 'password123',
-        displayName: 'Explorer',
-      );
-
-      expect(profile.displayName, 'Explorer');
-    });
-
-    test('signUp with duplicate email throws AuthException', () async {
-      await service.signUp(email: 'dupe@example.com', password: 'pass123');
-
       await expectLater(
-        service.signUp(email: 'dupe@example.com', password: 'other'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('already registered'),
-          ),
-        ),
-      );
-    });
-
-    test('signUp with invalid email format throws AuthException', () async {
-      await expectLater(
-        service.signUp(email: 'not-an-email', password: 'pass123'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('Invalid email format'),
-          ),
-        ),
-      );
-    });
-
-    test('signUp with missing @ throws AuthException', () async {
-      await expectLater(
-        service.signUp(email: 'bademail.com', password: 'pass123'),
-        throwsA(isA<AuthException>()),
-      );
-    });
-
-    // ── signIn ───────────────────────────────────────────────────────────────
-
-    test('signIn with valid credentials returns profile', () async {
-      await service.signUp(email: 'user@example.com', password: 'secret');
-
-      final profile =
-          await service.signIn(email: 'user@example.com', password: 'secret');
-
-      expect(profile.email, 'user@example.com');
-      expect(profile, isA<UserProfile>());
-    });
-
-    test('signIn with wrong password throws AuthException', () async {
-      await service.signUp(email: 'user@example.com', password: 'correct');
-
-      await expectLater(
-        service.signIn(email: 'user@example.com', password: 'wrong'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('Wrong password'),
-          ),
-        ),
-      );
-    });
-
-    test('signIn with unknown email throws AuthException', () async {
-      await expectLater(
-        service.signIn(email: 'ghost@example.com', password: 'pass'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('User not found'),
-          ),
-        ),
-      );
-    });
-
-    // ── signOut ──────────────────────────────────────────────────────────────
-
-    test('signOut clears session', () async {
-      await service.signUp(email: 'user@example.com', password: 'pass');
-      expect(await service.isSessionValid(), isTrue);
-
-      await service.signOut();
-
-      expect(await service.isSessionValid(), isFalse);
-      expect(await service.getCurrentUser(), isNull);
-    });
-
-    // ── getCurrentUser ───────────────────────────────────────────────────────
-
-    test('getCurrentUser returns null when not logged in', () async {
-      final user = await service.getCurrentUser();
-      expect(user, isNull);
-    });
-
-    test('getCurrentUser returns user after signIn', () async {
-      await service.signUp(email: 'user@example.com', password: 'pass');
-      await service.signOut();
-
-      await service.signIn(email: 'user@example.com', password: 'pass');
-
-      final user = await service.getCurrentUser();
-      expect(user, isNotNull);
-      expect(user!.email, 'user@example.com');
-    });
-
-    // ── isSessionValid ───────────────────────────────────────────────────────
-
-    test('isSessionValid returns false when not logged in', () async {
-      expect(await service.isSessionValid(), isFalse);
-    });
-
-    test('isSessionValid returns true after signIn', () async {
-      await service.signUp(email: 'user@example.com', password: 'pass');
-
-      expect(await service.isSessionValid(), isTrue);
-    });
-
-    // ── authStateChanges ─────────────────────────────────────────────────────
-
-    test('authStateChanges emits user on signIn and null on signOut', () async {
-      final events = <UserProfile?>[];
-      final sub = service.authStateChanges.listen(events.add);
-
-      await service.signUp(email: 'u@example.com', password: 'pw');
-      await service.signOut();
-
-      // Allow broadcast stream events to deliver.
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-
-      await sub.cancel();
-
-      // Initial null (no user yet) + signUp profile + signOut null.
-      expect(events.length, 3);
-      expect(events[0], isNull); // initial state
-      expect(events[1], isNotNull);
-      expect(events[1]!.email, 'u@example.com');
-      expect(events[2], isNull);
-    });
-
-    test('authStateChanges emits user on signIn', () async {
-      await service.signUp(email: 'u@example.com', password: 'pw');
-      await service.signOut();
-
-      final events = <UserProfile?>[];
-      final sub = service.authStateChanges.listen(events.add);
-
-      await service.signIn(email: 'u@example.com', password: 'pw');
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      await sub.cancel();
-
-      expect(events, isNotEmpty);
-      expect(events.last, isNotNull);
-      expect(events.last!.email, 'u@example.com');
-    });
-
-    // ── upgradeWithEmail ─────────────────────────────────────────────────────
-
-    test('upgradeWithEmail preserves id and sets isAnonymous to false',
-        () async {
-      final anon = await service.signInAnonymously();
-      expect(anon.isAnonymous, isTrue);
-
-      final upgraded = await service.upgradeWithEmail(
-        email: 'user@example.com',
-        password: 'pass123',
-      );
-
-      expect(upgraded.id, anon.id);
-      expect(upgraded.email, 'user@example.com');
-      expect(upgraded.isAnonymous, isFalse);
-    });
-
-    test('upgradeWithEmail updates displayName when provided', () async {
-      await service.signInAnonymously();
-
-      final upgraded = await service.upgradeWithEmail(
-        email: 'user@example.com',
-        password: 'pass123',
-        displayName: 'Named User',
-      );
-
-      expect(upgraded.displayName, 'Named User');
-    });
-
-    test('upgradeWithEmail preserves displayName when not provided', () async {
-      final anon = await service.signInAnonymously();
-
-      final upgraded = await service.upgradeWithEmail(
-        email: 'user@example.com',
-        password: 'pass123',
-      );
-
-      expect(upgraded.displayName, anon.displayName);
-    });
-
-    test('upgradeWithEmail throws when not anonymous', () async {
-      await service.signUp(email: 'user@example.com', password: 'pass');
-
-      await expectLater(
-        service.upgradeWithEmail(email: 'other@example.com', password: 'pass'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('already upgraded'),
-          ),
-        ),
-      );
-    });
-
-    test('upgradeWithEmail throws for invalid email', () async {
-      await service.signInAnonymously();
-
-      await expectLater(
-        service.upgradeWithEmail(email: 'not-valid', password: 'pass'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('Invalid email'),
-          ),
-        ),
-      );
-    });
-
-    test('upgradeWithEmail throws for duplicate email', () async {
-      await service.signUp(email: 'taken@example.com', password: 'pass');
-      await service.signOut();
-
-      // Sign in as a new anonymous user
-      await service.signInAnonymously();
-
-      await expectLater(
-        service.upgradeWithEmail(email: 'taken@example.com', password: 'pass'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('already registered'),
-          ),
-        ),
-      );
-    });
-
-    test('upgradeWithEmail throws when no user signed in', () async {
-      await expectLater(
-        service.upgradeWithEmail(email: 'user@example.com', password: 'pass'),
-        throwsA(isA<AuthException>()),
-      );
-    });
-
-    test('upgradeWithEmail emits updated profile on authStateChanges',
-        () async {
-      await service.signInAnonymously();
-
-      final events = <UserProfile?>[];
-      final sub = service.authStateChanges.listen(events.add);
-
-      await service.upgradeWithEmail(
-        email: 'user@example.com',
-        password: 'pass',
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      await sub.cancel();
-
-      expect(events, isNotEmpty);
-      expect(events.last, isNotNull);
-      expect(events.last!.isAnonymous, isFalse);
-      expect(events.last!.email, 'user@example.com');
-    });
-
-    // ── signInWithPhone ─────────────────────────────────────────────────────
-
-    test('signInWithPhone creates new user for unknown number', () async {
-      final profile =
-          await service.signInWithPhone(phoneNumber: '+15551234567');
-
-      expect(profile.phoneNumber, '+15551234567');
-      expect(profile.email, '');
-      expect(profile.id, isNotEmpty);
-    });
-
-    test('signInWithPhone returns same profile for existing number', () async {
-      final first = await service.signInWithPhone(phoneNumber: '+15551234567');
-      await service.signOut();
-
-      final second = await service.signInWithPhone(phoneNumber: '+15551234567');
-
-      expect(second.id, first.id);
-      expect(second.phoneNumber, first.phoneNumber);
-    });
-
-    test('signInWithPhone throws for invalid E.164 format', () async {
-      await expectLater(
-        service.signInWithPhone(phoneNumber: '5551234567'),
+        service.sendOtp('5551234567'),
         throwsA(
           isA<AuthException>().having(
             (e) => e.message,
@@ -345,82 +39,197 @@ void main() {
       );
     });
 
-    test('signInWithPhone throws for short phone number', () async {
+    test('sendOtp throws AuthException for short phone number', () async {
       await expectLater(
-        service.signInWithPhone(phoneNumber: '+123'),
+        service.sendOtp('+123'),
         throwsA(isA<AuthException>()),
       );
     });
 
-    test('signInWithPhone emits profile on authStateChanges', () async {
-      final events = <UserProfile?>[];
-      final sub = service.authStateChanges.listen(events.add);
+    test('sendOtp throws when shouldThrow is true', () async {
+      service.shouldThrow = true;
+      service.throwMessage = 'OTP send failed';
 
-      await service.signInWithPhone(phoneNumber: '+15551234567');
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      await sub.cancel();
-
-      expect(events, isNotEmpty);
-      expect(events.last, isNotNull);
-      expect(events.last!.phoneNumber, '+15551234567');
+      await expectLater(
+        service.sendOtp('+15551234567'),
+        throwsA(
+          isA<AuthException>().having(
+            (e) => e.message,
+            'message',
+            contains('OTP send failed'),
+          ),
+        ),
+      );
     });
 
-    test('signInWithPhone sets current user', () async {
-      await service.signInWithPhone(phoneNumber: '+15551234567');
+    // ── verifyOtp ────────────────────────────────────────────────────────────
+
+    test('verifyOtp succeeds with correct code after sendOtp', () async {
+      await service.sendOtp('+15551234567');
+
+      final profile = await service.verifyOtp(
+        phone: '+15551234567',
+        code: '123456',
+      );
+
+      expect(profile.phoneNumber, '+15551234567');
+      expect(profile.id, isNotEmpty);
+    });
+
+    test('verifyOtp throws for wrong OTP code', () async {
+      await service.sendOtp('+15551234567');
+
+      await expectLater(
+        service.verifyOtp(phone: '+15551234567', code: '000000'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('verifyOtp throws when no OTP was sent first', () async {
+      await expectLater(
+        service.verifyOtp(phone: '+15551234567', code: '123456'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('verifyOtp throws when shouldThrow is true', () async {
+      await service.sendOtp('+15551234567');
+      service.shouldThrow = true;
+
+      await expectLater(
+        service.verifyOtp(phone: '+15551234567', code: '123456'),
+        throwsA(isA<AuthException>()),
+      );
+    });
+
+    test('verifyOtp returns same profile for existing phone number', () async {
+      await service.sendOtp('+15551234567');
+      final first = await service.verifyOtp(
+        phone: '+15551234567',
+        code: '123456',
+      );
+
+      // Sign out and re-verify same number.
+      await service.signOut();
+      await service.sendOtp('+15551234567');
+      final second = await service.verifyOtp(
+        phone: '+15551234567',
+        code: '123456',
+      );
+
+      expect(second.id, first.id);
+      expect(second.phoneNumber, first.phoneNumber);
+    });
+
+    // ── signOut ──────────────────────────────────────────────────────────────
+
+    test('signOut clears session', () async {
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
+      expect(await service.getCurrentUser(), isNotNull);
+
+      await service.signOut();
+
+      expect(await service.getCurrentUser(), isNull);
+    });
+
+    // ── getCurrentUser ───────────────────────────────────────────────────────
+
+    test('getCurrentUser returns null when not logged in', () async {
+      final user = await service.getCurrentUser();
+      expect(user, isNull);
+    });
+
+    test('getCurrentUser returns user after verifyOtp', () async {
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
 
       final user = await service.getCurrentUser();
       expect(user, isNotNull);
       expect(user!.phoneNumber, '+15551234567');
     });
 
-    // ── linkOAuthIdentity ────────────────────────────────────────────────────
+    // ── restoreSession ───────────────────────────────────────────────────────
 
-    test('linkOAuthIdentity preserves id and sets isAnonymous to false',
-        () async {
-      final anon = await service.signInAnonymously();
-
-      final upgraded = await service.linkOAuthIdentity(provider: 'google');
-
-      expect(upgraded.id, anon.id);
-      expect(upgraded.isAnonymous, isFalse);
+    test('restoreSession returns false when not logged in', () async {
+      expect(await service.restoreSession(), isFalse);
     });
 
-    test('linkOAuthIdentity throws when not anonymous', () async {
-      await service.signUp(email: 'user@example.com', password: 'pass');
+    test('restoreSession returns true after verifyOtp', () async {
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
 
-      await expectLater(
-        service.linkOAuthIdentity(provider: 'google'),
-        throwsA(
-          isA<AuthException>().having(
-            (e) => e.message,
-            'message',
-            contains('already upgraded'),
-          ),
-        ),
-      );
+      expect(await service.restoreSession(), isTrue);
     });
 
-    test('linkOAuthIdentity throws when no user signed in', () async {
-      await expectLater(
-        service.linkOAuthIdentity(provider: 'google'),
-        throwsA(isA<AuthException>()),
-      );
+    test('restoreSession returns false after signOut', () async {
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
+      await service.signOut();
+
+      expect(await service.restoreSession(), isFalse);
     });
 
-    test('linkOAuthIdentity emits updated profile on authStateChanges',
-        () async {
-      await service.signInAnonymously();
+    // ── authStateChanges ─────────────────────────────────────────────────────
 
-      final events = <UserProfile?>[];
+    test('authStateChanges emits initial null when not logged in', () async {
+      final events = <Object?>[];
       final sub = service.authStateChanges.listen(events.add);
 
-      await service.linkOAuthIdentity(provider: 'apple');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await sub.cancel();
+
+      expect(events, isNotEmpty);
+      expect(events.first, isNull);
+    });
+
+    test('authStateChanges emits user on verifyOtp and null on signOut',
+        () async {
+      final events = <Object?>[];
+      final sub = service.authStateChanges.listen(events.add);
+
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
+      await service.signOut();
+
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await sub.cancel();
+
+      // Initial null + verifyOtp profile + signOut null.
+      expect(events.length, greaterThanOrEqualTo(3));
+      expect(events.first, isNull); // initial state
+      expect(events.last, isNull); // after signOut
+    });
+
+    test('authStateChanges emits user on verifyOtp', () async {
+      final events = <Object?>[];
+      final sub = service.authStateChanges.listen(events.add);
+
+      await service.sendOtp('+15551234567');
+      await service.verifyOtp(phone: '+15551234567', code: '123456');
       await Future<void>.delayed(const Duration(milliseconds: 20));
       await sub.cancel();
 
       expect(events, isNotEmpty);
       expect(events.last, isNotNull);
-      expect(events.last!.isAnonymous, isFalse);
+    });
+
+    // ── setAuthenticated helper ───────────────────────────────────────────────
+
+    test('setAuthenticated() sets current user to kTestUser', () async {
+      service.setAuthenticated();
+
+      final user = await service.getCurrentUser();
+      expect(user, isNotNull);
+      expect(user!.id, kTestUser.id);
+    });
+
+    test('setAuthenticated() accepts custom user', () async {
+      service.setAuthenticated(kTestUser);
+
+      final user = await service.getCurrentUser();
+      expect(user, isNotNull);
+      expect(user!.phoneNumber, kTestUser.phoneNumber);
     });
   });
 }

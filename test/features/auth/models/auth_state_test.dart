@@ -10,7 +10,6 @@ void main() {
         id: 'user-123',
         email: 'test@example.com',
         createdAt: DateTime(2024, 1, 1),
-        isAnonymous: false,
       );
 
       final state = AuthState.authenticated(profile);
