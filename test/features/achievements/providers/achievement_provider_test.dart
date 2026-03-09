@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/achievements/models/achievement.dart';
@@ -89,8 +90,7 @@ void main() {
           );
 
       final state = container.read(achievementProvider);
-      expect(
-          state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
+      expect(state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
     });
 
     test('checkAchievements updates species progress from inventoryProvider',
@@ -100,6 +100,8 @@ void main() {
         inventory.addItem(ItemInstance(
           id: 'item_$i',
           definitionId: 'species_$i',
+          displayName: 'Test Species',
+          category: ItemCategory.fauna,
           acquiredAt: DateTime.now(),
           acquiredInCellId: 'cell_1',
         ));
@@ -110,8 +112,7 @@ void main() {
           );
 
       final state = container.read(achievementProvider);
-      expect(
-          state.achievements[AchievementId.naturalist]!.isUnlocked, isTrue);
+      expect(state.achievements[AchievementId.naturalist]!.isUnlocked, isTrue);
     });
 
     // -------------------------------------------------------------------------
@@ -138,12 +139,10 @@ void main() {
       container.read(achievementProvider.notifier).loadState(saved);
 
       final state = container.read(achievementProvider);
-      expect(
-          state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
+      expect(state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
       expect(state.achievements[AchievementId.firstSteps]!.unlockedAt,
           equals(unlockedAt));
-      expect(
-          state.achievements[AchievementId.explorer]!.isUnlocked, isFalse);
+      expect(state.achievements[AchievementId.explorer]!.isUnlocked, isFalse);
     });
 
     test('loadState replaces all previous state', () {
@@ -166,8 +165,7 @@ void main() {
           .loadState(AchievementsState(achievements: freshMap));
 
       final state = container.read(achievementProvider);
-      expect(
-          state.achievements[AchievementId.firstSteps]!.isUnlocked, isFalse);
+      expect(state.achievements[AchievementId.firstSteps]!.isUnlocked, isFalse);
     });
   });
 

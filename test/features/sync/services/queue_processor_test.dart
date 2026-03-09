@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/write_queue_repository.dart';
@@ -206,6 +207,13 @@ class _MockSupabasePersistence extends SupabasePersistence {
     String? acquiredInCellId,
     String? dailySeed,
     required String status,
+    String? displayName,
+    String? scientificName,
+    String? categoryName,
+    String? rarityName,
+    String? habitatsJson,
+    String? continentsJson,
+    String? taxonomicClass,
   }) async {
     upsertItemInstanceCalls++;
     if (shouldThrowSyncException) throw SyncException(errorMessage);
@@ -772,6 +780,8 @@ void main() {
       final item = ItemInstance(
         id: 'item-uuid-1',
         definitionId: 'fauna_vulpes_vulpes',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         affixes: [],
         badges: {},
         acquiredAt: DateTime(2026, 3, 7, 12),
@@ -813,6 +823,8 @@ void main() {
       final item = ItemInstance(
         id: 'item-uuid-2',
         definitionId: 'fauna_vulpes_vulpes',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         affixes: [],
         badges: {},
         acquiredAt: DateTime(2026, 3, 7, 12),
@@ -852,6 +864,8 @@ void main() {
       final item = ItemInstance(
         id: 'item-uuid-3',
         definitionId: 'fauna_vulpes_vulpes',
+        displayName: 'Test Species',
+        category: ItemCategory.fauna,
         affixes: [],
         badges: {kBadgeFirstDiscovery},
         acquiredAt: DateTime(2026, 3, 7, 12),

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -15,6 +16,8 @@ ItemInstance _makeItem({
     ItemInstance(
       id: id,
       definitionId: definitionId,
+      displayName: 'Test Species',
+      category: ItemCategory.fauna,
       acquiredAt: DateTime(2026, 3, 1),
       acquiredInCellId: cellId,
     );
@@ -58,7 +61,9 @@ void main() {
       expect(container.read(inventoryProvider).items, contains(item));
     });
 
-    test('adding two items with same definitionId counts as 1 unique definition', () {
+    test(
+        'adding two items with same definitionId counts as 1 unique definition',
+        () {
       final container = _makeContainer();
       container.read(inventoryProvider.notifier).addItem(
             _makeItem(id: 'item-1', definitionId: 'fauna_fox'),
