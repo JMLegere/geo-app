@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -79,6 +80,12 @@ class QueueProcessor {
   /// Guards against concurrent flush() calls.
   bool _flushing = false;
 
+  Timer? _autoFlushTimer;
+
+  /// Optional callback invoked after each auto-flush completes.
+  /// Wired by the provider layer to propagate results (badges, rejections).
+  void Function(FlushSummary summary)? onAutoFlushComplete;
+
   QueueProcessor({
     required WriteQueueRepository queueRepo,
     required SupabasePersistence? persistence,
@@ -92,6 +99,29 @@ class QueueProcessor {
 
   /// Whether a flush is currently in progress.
   bool get isFlushing => _flushing;
+
+  /// Schedule a debounced auto-flush.
+  ///
+  /// Cancels any pending timer and starts a new one. When the timer fires,
+  /// calls [flush] and notifies [onAutoFlushComplete] with the result.
+  /// Safe to call rapidly — only the last call within the debounce window
+  /// triggers a flush.
+  void scheduleFlush({String? userId}) {
+    if (!canSync) return;
+    _autoFlushTimer?.cancel();
+    _autoFlushTimer = Timer(
+      const Duration(seconds: kWriteQueueAutoFlushDelaySeconds),
+      () async {
+        final summary = await flush(userId: userId);
+        onAutoFlushComplete?.call(summary);
+      },
+    );
+  }
+
+  void dispose() {
+    _autoFlushTimer?.cancel();
+    _autoFlushTimer = null;
+  }
 
   /// Flush pending queue entries to Supabase.
   ///

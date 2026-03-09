@@ -51,7 +51,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
     final isConnected = ref.watch(supabasePersistenceProvider) != null;
 
     // Initialize pending count from write queue.
-    _refreshPendingCount();
+    refreshPendingCount();
 
     return SyncStatus(
       type: isConnected ? SyncStatusType.idle : SyncStatusType.error,
@@ -88,12 +88,12 @@ class SyncNotifier extends Notifier<SyncStatus> {
 
       // Process rollbacks for rejected entries.
       if (summary.hasRejections) {
-        await _processRejections();
+        await processRejections();
       }
 
       // Propagate server-awarded first-discovery badges to in-memory inventory.
       if (summary.hasFirstBadges) {
-        await _applyFirstBadges(summary.firstBadgeItemIds);
+        await applyFirstBadges(summary.firstBadgeItemIds);
       }
 
       if (summary.hasRejections) {
@@ -133,7 +133,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
   /// source of truth, next full sync will reconcile).
   ///
   /// After processing, rejected entries are deleted from the queue.
-  Future<void> _processRejections() async {
+  Future<void> processRejections() async {
     final writeQueueRepo = ref.read(writeQueueRepositoryProvider);
     final rejected = await writeQueueRepo.getRejected(
       userId: _currentUserId,
@@ -179,7 +179,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
   }
 
   /// Apply server-awarded first-discovery badges to in-memory inventory.
-  Future<void> _applyFirstBadges(List<String> itemIds) async {
+  Future<void> applyFirstBadges(List<String> itemIds) async {
     final itemRepo = ref.read(itemInstanceRepositoryProvider);
     final inventory = ref.read(inventoryProvider.notifier);
 
@@ -196,7 +196,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
   }
 
   /// Refresh the pending changes count from the write queue.
-  Future<void> _refreshPendingCount() async {
+  Future<void> refreshPendingCount() async {
     try {
       final count = await ref
           .read(writeQueueRepositoryProvider)

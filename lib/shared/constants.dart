@@ -222,6 +222,11 @@ const int kWriteQueueRetryBaseSeconds = 2;
 /// Maximum batch size when flushing the write queue.
 const int kWriteQueueFlushBatchSize = 50;
 
+/// Debounce delay in seconds before auto-flushing the write queue.
+/// Batches rapid game events (e.g., 3 discoveries in quick succession)
+/// into a single network round-trip.
+const int kWriteQueueAutoFlushDelaySeconds = 3;
+
 // Daily Seed (Phase 4: Deterministic Daily Encounters)
 /// Grace period in hours for a cached daily seed before discoveries pause.
 /// After this duration, the client must refresh the seed from the server.
