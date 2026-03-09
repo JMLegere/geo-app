@@ -18,31 +18,39 @@ import 'package:earth_nova/features/seasonal/providers/season_service_provider.d
 /// Daily seed rotation is provided via [dailySeedServiceProvider].
 /// Disposed automatically when the provider is invalidated.
 ///
-/// ## Species Service Resolution (lazy getter)
+/// ## Lazy Getter Pattern (species + habitat)
 ///
-/// The species service is resolved lazily at event time via a getter callback
-/// instead of `ref.watch(speciesServiceProvider)`. This is critical because
-/// `speciesServiceProvider` depends on `speciesDataProvider` (FutureProvider
-/// that async-loads 32,752 IUCN records). If we `ref.watch`'d it, the entire
-/// provider chain (DiscoveryService → GameCoordinator) would be torn down and
-/// rebuilt when species data finishes loading, losing all GPS subscriptions
-/// and visited cell state.
+/// Both the species service and habitat service are resolved lazily at event
+/// time via getter callbacks instead of `ref.watch()`. This is critical
+/// because both depend on FutureProviders:
+///
+/// - `speciesServiceProvider` depends on `speciesDataProvider` (FutureProvider
+///   that async-loads 32,752 IUCN records).
+/// - `habitatServiceProvider` depends on `biomeFeatureIndexProvider`
+///   (FutureProvider that async-loads biome feature data from bundled JSON).
+///
+/// If we `ref.watch`'d either, the entire provider chain
+/// (DiscoveryService → GameCoordinator) would be torn down and rebuilt when
+/// the async data finishes loading, losing all GPS subscriptions, visited
+/// cell state, and auth session — causing a dark/broken map.
 ///
 /// With `ref.read` + getter, the DiscoveryService is created once and reads
-/// the latest SpeciesService at the moment a cell is visited. During the
-/// brief loading window, the getter returns an empty SpeciesService (no
-/// encounters fire). Once loaded, it returns the full 32k dataset.
+/// the latest service instances at the moment a cell is visited. During the
+/// brief loading window, getters return fallback instances (empty
+/// SpeciesService / plains-only HabitatService). Once loaded, they return
+/// the full datasets.
 final discoveryServiceProvider = Provider<DiscoveryService>((ref) {
   final fogResolver = ref.watch(fogResolverProvider);
-  final habitatService = ref.watch(habitatServiceProvider);
   final cellService = ref.watch(cellServiceProvider);
   final seasonService = ref.watch(seasonServiceProvider);
   final dailySeedService = ref.watch(dailySeedServiceProvider);
 
-  // Read species service once for fallback, pass lazy getter for event-time
-  // resolution. This breaks the rebuild chain: species data loading does NOT
-  // invalidate this provider or its downstream (gameCoordinatorProvider).
+  // Read species + habitat services once for fallback, pass lazy getters for
+  // event-time resolution. This breaks the rebuild chain: async data loading
+  // does NOT invalidate this provider or its downstream
+  // (gameCoordinatorProvider).
   final speciesService = ref.read(speciesServiceProvider);
+  final habitatService = ref.read(habitatServiceProvider);
 
   final service = DiscoveryService(
     fogResolver: fogResolver,
@@ -52,6 +60,7 @@ final discoveryServiceProvider = Provider<DiscoveryService>((ref) {
     seasonService: seasonService,
     dailySeedService: dailySeedService,
     speciesServiceGetter: () => ref.read(speciesServiceProvider),
+    habitatServiceGetter: () => ref.read(habitatServiceProvider),
   );
   ref.onDispose(() => service.dispose());
   return service;

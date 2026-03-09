@@ -52,6 +52,17 @@ class DiscoveryService {
   /// When null, falls back to the constructor-injected [_speciesService].
   final SpeciesService Function()? _speciesServiceGetter;
 
+  /// Optional lazy getter for [HabitatService].
+  ///
+  /// Same pattern as [_speciesServiceGetter]. When provided, the service reads
+  /// the current [HabitatService] at event time instead of using the instance
+  /// captured at construction. This breaks the rebuild chain caused by
+  /// `biomeFeatureIndexProvider` (FutureProvider) transitioning from loading
+  /// to data, which would otherwise tear down the entire GameCoordinator.
+  ///
+  /// When null, falls back to the constructor-injected [_habitatService].
+  final HabitatService Function()? _habitatServiceGetter;
+
   /// Optional [SeasonService] for filtering out-of-season species.
   ///
   /// When non-null, species returned by [SpeciesService.getSpeciesForCell] are
@@ -106,6 +117,7 @@ class DiscoveryService {
     SeasonService? seasonService,
     DailySeedService? dailySeedService,
     SpeciesService Function()? speciesServiceGetter,
+    HabitatService Function()? habitatServiceGetter,
   })  : _fogResolver = fogResolver,
         _speciesService = speciesService,
         _habitatService = habitatService ?? HabitatService(),
@@ -113,6 +125,7 @@ class DiscoveryService {
         _seasonService = seasonService,
         _dailySeedService = dailySeedService,
         _speciesServiceGetter = speciesServiceGetter,
+        _habitatServiceGetter = habitatServiceGetter,
         _collectedSpeciesIds =
             Set.from(initialCollectedIds ?? const <String>{}) {
     _fogSubscription =
@@ -154,7 +167,8 @@ class DiscoveryService {
     }
 
     // Get the daily seed for encounter determinism.
-    final dailySeed = seedService?.currentSeed?.seed ?? kDailySeedOfflineFallback;
+    final dailySeed =
+        seedService?.currentSeed?.seed ?? kDailySeedOfflineFallback;
 
     // Resolve the cell centre and look up biomes.
     final cellService = _cellService;
@@ -168,7 +182,10 @@ class DiscoveryService {
       lat = 0.0;
       lon = 0.0;
     }
-    final habitats = _habitatService.classifyLocation(lat, lon);
+    // Use lazy getter when available (breaks Riverpod rebuild chain),
+    // fall back to constructor-injected instance.
+    final habitatService = _habitatServiceGetter?.call() ?? _habitatService;
+    final habitats = habitatService.classifyLocation(lat, lon);
     final continent = ContinentResolver.resolve(lat, lon);
 
     // Use lazy getter when available (breaks Riverpod rebuild chain),

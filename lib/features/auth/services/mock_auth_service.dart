@@ -129,6 +129,16 @@ class MockAuthService implements AuthService {
   @override
   Future<UserProfile> signInAnonymously() async {
     await Future<void>.delayed(_delay);
+
+    // Idempotent: if already signed in as anonymous, return existing user.
+    // This prevents generating a new ID on provider rebuild, which would
+    // cause an auth identity change cascade (old anon-X → new anon-Y) and
+    // trigger unnecessary re-hydration on a disposed Ref.
+    if (_currentUser != null && _currentUser!.isAnonymous) {
+      _authStateController.add(_currentUser);
+      return _currentUser!;
+    }
+
     final profile = UserProfile(
       id: 'anon-${DateTime.now().millisecondsSinceEpoch}',
       email: '',
