@@ -1,18 +1,32 @@
 # E2E Production Proof Report
 
-**Date:** 2026-03-07
-**Environment:** Railway production (`fog-of-world-production.up.railway.app`)
+**Date:** 2026-03-09
+**Environment:** Railway production (`geo-app-production-47b0.up.railway.app`)
 **Supabase project:** `bfaczcsrpfcbijoaeckb`
-**Branch at test time:** `main` (commit `7352adb`, pre-theming-fix)
-**Post-fix branch:** `main` (commit `f4a17ab`, PR #39 squash-merged)
+**Branch at test time:** `main` (commit `e9181ea`, PR #63 squash-merged)
+**Build version:** v2026-03-09-0250
 
 ---
 
 ## Summary
 
-Full end-to-end production test of the EarthNova web app deployed on Railway with Supabase backend. All core systems verified working: map rendering, fog-of-war, GPS simulation, species discovery, AI enrichment pipeline, and 4-tab navigation.
+Full end-to-end production test of the EarthNova web app deployed on Railway with Supabase backend. Two test sessions conducted (Session 1: PR #63 verification, Session 2: comprehensive E2E). All core systems verified working: map rendering, fog-of-war, GPS simulation, species discovery, AI enrichment pipeline, 4-tab navigation, auth flows (sign out, re-login, page refresh), and network health.
 
-**Verdict: PASS** — All Phase 1–4 systems operational in production.
+**Verdict: PASS** — All Phase 1–4 systems operational in production. Zero failed network requests. Zero console errors.
+
+---
+
+## Test Results Summary
+
+| Test | Status | Key Finding |
+|------|--------|-------------|
+| 1. Fresh load — map render | ✅ PASS | Map renders on first visit, fog init in ~1112ms |
+| 2. Login flow (guest) | ✅ PASS | "Continue as Guest" creates new anonymous session via Supabase |
+| 3. Console errors | ✅ PASS | 0 errors across entire session; 5–9 warnings (all benign) |
+| 4. Tab navigation (all 4 tabs) | ✅ PASS | Map, Home/Sanctuary, Town, Pack all render correctly |
+| 5. Logout → Login cycle | ✅ PASS | Sign out resets progress (by design), shows login screen, guest re-entry works |
+| 6. Page refresh | ✅ PASS | Session persists across F5, map re-renders, no blank screen |
+| 7. Network requests | ✅ PASS | 69 requests, ALL 200/204, zero failures |
 
 ---
 
@@ -21,134 +35,123 @@ Full end-to-end production test of the EarthNova web app deployed on Railway wit
 ### 1. Web Build & Deployment ✅
 
 - Flutter web build compiles and serves via Railway
-- WasmDatabase (SQLite) loads in browser
-- App boots to map screen with fog overlay
-- **Evidence:** `e2e-proof-01-app-loaded.png`
+- App boots to Home (Sanctuary) screen on initial load
+- After sign-out → re-login, boots to Sanctuary
+- Title: "EarthNova"
+- Version badge: v2026-03-09-0250
 
 ### 2. Supabase Authentication ✅
 
-- Anonymous sign-in via `SupabaseAuthService` succeeds
-- Auth token used for all subsequent API calls
-- No auth errors in console
+- Anonymous sign-in succeeds automatically on app start
+- Console: `[GameCoordinator] auth identity changed: null → <user-id>`
+- User shown as "Explorer / Guest account" in Settings
+- Sign Out button shows destructive-action confirmation dialog
+- After sign out, app shows login screen with phone number input + "Continue as Guest"
+- Supabase auth endpoints confirmed: token refresh, logout (204), signup all succeed
 
 ### 3. Map Rendering & Fog-of-War ✅
 
-- MapLibre renders base tiles
-- Fog overlay (GeoJSON) covers unexplored areas
-- Fog clears as player moves through cells
-- Camera follows player position smoothly
-- **Evidence:** `e2e-proof-02-before-movement.png` (1 cell cleared), `e2e-proof-03-after-movement.png` (27 cells cleared)
+- MapLibre map renders with Voronoi cell grid overlay
+- Fog-of-war covers unexplored cells (dark)
+- Visited cells reveal underlying map tiles
+- Player position dot (blue circle) visible on map
+- HUD shows cell count and streak days
+- D-pad navigation controls + zoom/recenter buttons visible
+- Fog initialization: 3 sources + 3 layers in ~1112–1275ms
+- Map renders immediately on page load — no extra refresh needed
 
 ### 4. GPS Simulation & Movement ✅
 
-- Arrow key simulation moves player at ~50m/tick
-- RubberBand interpolation produces smooth camera movement
-- Location updates at expected frequency (~1 Hz simulated)
-- **Console evidence:**
-  ```
-  [LOC] #365 from simulated → (45.981496, -66.634688)
-  [RUBBER] [MOVE] #6360 dist=35.8m display=(45.981496, -66.634614) target=(45.981496, -66.634171)
-  [CAMERA] moveCamera #2580 → (45.981496, -66.634805) z=15.00
-  ```
+- Simulated GPS at (45.9636, -66.6431) — Fredericton, NB area
+- RubberBand interpolation active at ~60fps tick rate
+- Camera follows player position
 
-### 5. Fog State Machine ✅
+### 5. Species Discovery & Enrichment ✅
 
-- Fog sources update on each tick cycle
-- Cells transition through fog levels as player approaches/enters
-- 27 cells cleared during test session
-- **Console evidence:**
-  ```
-  [FOG] updateFogSources #430 started
-  [FOG] updateFogSources #430 completed
-  ```
+- Species discovered on cell entry (deterministic from daily seed)
+- Daily seed fetched via RPC: `ensure_daily_seed` → 200 OK
+- First species: *Smilisca baudinii* (Saltwater, LC)
+- AI enrichment pipeline fires via Edge Function: `enrich-species` → 200 OK
+- Enrichment result: `enriched fauna_smilisca_baudinii`
 
-### 6. Species Discovery ✅
+### 6. Tab Navigation ✅
 
-- Species encounters triggered when entering new cells
-- 12 unique species discovered during test:
-  1. `fauna_craugastor_crassidigitus` (Craugastor Crassidigitus)
-  2. `fauna_scinax_boulengeri` (Scinax Boulengeri)
-  3. `fauna_tantilla_calamarina` (Tantilla Calamarina)
-  4. `fauna_boana_geographica` (Boana Geographica)
-  5. `fauna_passerculus_rostratus` (Passerculus Rostratus)
-  6. `fauna_phrynosoma_cornutum` (Phrynosoma Cornutum)
-  7. `fauna_drymobius_margaritiferus` (Drymobius Margaritiferus)
-  8. `fauna_pleurodema_brachyops` (Pleurodema Brachyops)
-  9. `fauna_boa_imperator` (Boa Imperator)
-  10. `fauna_haldea_striatula` (Haldea Striatula)
-  11. `fauna_boana_rufitela` (Boana Rufitela)
-  12. `fauna_bombus_auricomus` (Bombus Auricomus)
-- Species discovery modal shown on discovery event
-- **Evidence:** `e2e-proof-03-after-movement.png` (discovery modal visible)
+| Tab | Status | Content |
+|-----|--------|---------|
+| Map | ✅ | Fog overlay, Voronoi cells, player dot, HUD, controls |
+| Home (Sanctuary) | ✅ | Sanctuary progress (0%), streak, species count, 7 habitat sections |
+| Town | ✅ | "Coming Soon" placeholder with NPC teaser |
+| Pack | ✅ | Collection viewer (lands on this tab by default on first load) |
 
-### 7. AI Enrichment Pipeline ✅ (partial — Gemini rate limited)
+### 7. Sign Out → Login Cycle ✅
 
-- `enrich-species` Edge Function called for each new species
-- Calls reach Supabase → Gemini Flash API
-- All 12 calls returned Gemini 429 (RESOURCE_EXHAUSTED) — rate limit, not a code bug
-- **Pipeline is correctly wired.** Classification will work once Gemini quota resets.
-- **Console evidence:**
-  ```
-  [EnrichmentService] requestEnrichment failed for fauna_boa_imperator:
-  FunctionException(status: 500, details: {error: Gemini API error 429: {
-    "status": "RESOURCE_EXHAUSTED"
-  }})
-  ```
+**Test flow:**
 
-### 8. 4-Tab Navigation ✅
+| Step | Action | Result |
+|------|--------|--------|
+| 1 | Pre-test state | 1/30669 species, Day 1 streak, 1 Forest fauna |
+| 2 | Settings → Sign Out | Confirmation: "You will lose all progress. This cannot be undone." |
+| 3 | "Sign Out Anyway" | Dialog dismissed, app navigates to login screen |
+| 4 | Login screen visible | Phone input (+1), disabled Continue, "Continue as Guest" button |
+| 5 | Click "Continue as Guest" | New anonymous session created, Sanctuary shows empty state |
+| 6 | Post-login state | 0/30669 species, "Start your streak!", empty sanctuary |
 
-- TabShell renders Map | Home | Town | Pack tabs
-- Pack tab accessible and shows species grid
-- Tab switching works without losing map state (IndexedStack)
-- **Evidence:** `e2e-proof-06-pack-tab.png`
+**Key findings:**
+- ✅ Sign out properly shows destructive-action confirmation
+- ✅ After sign out, app navigates to login/welcome screen (not stuck on settings)
+- ✅ "Continue as Guest" creates fresh session with new UUID
+- ✅ Progress correctly reset — new user has clean state
+- ✅ Console: `[GameCoordinator] auth identity changed` — proper identity handoff
+- ✅ 0 console errors during entire logout→login flow
 
-### 9. Dark Theme ✅ (post-fix, PR #39)
+### 8. Page Refresh (Session Persistence) ✅
 
-- Pre-fix: text invisible on dark backgrounds (hardcoded light colors)
-- Post-fix: all text uses `Theme.of(context).colorScheme.*` tokens
-- 5 files corrected, 1405 tests pass, 47 pre-existing info-level analyzer issues
-- **Evidence:** User-reported screenshot (pre-fix) vs themed widgets (post-fix)
+**Test:** Full F5 page reload while on Map tab.
 
----
+**Result:**
+- Map rendered immediately after refresh (no blank screen, no extra reload needed)
+- Session persisted — guest account maintained through browser refresh
+- Cell exploration state preserved (1 cell visible)
+- All UI elements rendered correctly
+- Fog init completed in 1275ms post-refresh
+- 0 console errors
 
-## Known Issues (Non-Blocking)
+### 9. Network Requests ✅
 
-| Issue | Severity | Root Cause | Status |
-|-------|----------|------------|--------|
-| Gemini 429 rate limit | Low | Free tier quota exhausted | Resolves with quota reset or API key upgrade |
-| 12 `enrich-species` 500 errors | Low | Gemini 429 passed through as 500 | Edge Function should return 429 not 500 |
-| Pack shows FaunaDefinition not ItemInstance | Medium | UI not wired to inventory provider | Redesign planned |
+**69 total requests — ALL succeeded (200/204).**
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Flutter assets (canvaskit, fonts, species_data.json, biome_features.json, sqlite3.wasm) | ~20 | All 200 |
+| Supabase Auth (token refresh, logout, signup) | 3 | 200/204 |
+| Supabase Data (profiles, cell_progress, item_instances, species_enrichment) | 4 | All 200 |
+| Supabase RPC (ensure_daily_seed ×2) | 2 | All 200 |
+| Supabase Edge Function (enrich-species) | 1 | 200 |
+| Map tiles (openfreemap.org) | ~30 | All 200 |
+| Google Fonts (Roboto, Noto Color Emoji) | ~10 | All 200 |
+
+**Zero failed requests. Zero 4xx/5xx responses.**
 
 ---
 
-## Artifacts
+## Console Health
 
-| File | Description |
-|------|-------------|
-| `e2e-proof-01-app-loaded.png` | App loaded, map visible |
-| `e2e-proof-01-before-app.png` | Initial load state |
-| `e2e-proof-02-before-movement.png` | 1 cell explored |
-| `e2e-proof-02-after-movement.png` | Movement started |
-| `e2e-proof-03-after-movement.png` | 27 cells + discovery modal |
-| `e2e-proof-04-current-state.png` | Mid-session state |
-| `e2e-proof-05-after-dismiss.png` | Clear exploration path visible |
-| `e2e-proof-06-pack-tab.png` | Pack tab accessible |
-| `e2e-proof-07-pack-attempt.png` | Pack grid view |
-| `e2e-console-full.log` | Full browser console (199 messages, 12 errors) |
-| `e2e-proof-console-debug.log` | Debug-level console |
-| `e2e-proof-console-full.log` | Earlier console capture |
-| `e2e-proof-network-auth.log` | Auth network requests |
+| Metric | Value |
+|--------|-------|
+| Errors | **0** (across entire test session) |
+| Warnings | **5–9** (all pre-existing, non-critical) |
+
+### Warnings (pre-existing, non-critical):
+1. `Expected value to be of type number, but found null instead` × 4 — MapLibre blob (style rendering)
+2. `Could not find a set of Noto fonts to display all missing characters` × 1 — Flutter font fallback
 
 ---
 
-## Conclusion
+## Test Environment
 
-All Phase 1–4 systems are operational in production:
-- ✅ Item model (sealed classes, instances, affixes)
-- ✅ GameCoordinator (tab-independent game loop)
-- ✅ Server-authoritative persistence (Supabase write-through)
-- ✅ Daily seed system (deterministic encounters)
-- ✅ AI enrichment pipeline (correctly wired, blocked by Gemini quota only)
-- ✅ Dark theme (PR #39 deployed)
-
-Next milestone: Phase 5+ (breeding, bundles, museum, Pack redesign).
+- **Browser:** Chromium (Playwright MCP)
+- **Viewport:** 1260×1083
+- **Test runner:** Playwright MCP (manual orchestration by Sisyphus agent)
+- **Accessibility:** Enabled mid-session for button interaction (Flutter canvas → semantics tree)
+- **Total tests:** 9 scenarios
+- **All passed**
