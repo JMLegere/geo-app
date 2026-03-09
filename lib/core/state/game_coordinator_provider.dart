@@ -275,13 +275,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         return fog == FogState.observed || fog == FogState.hidden;
       }).length;
 
+      // Capture the in-memory onboarding flag before hydration overwrites
+      // state. Merge monotonically: once true in-memory, never reset to false
+      // by a DB read (e.g. if DB write hadn't landed yet).
+      final currentOnboarding = ref.read(playerProvider).hasCompletedOnboarding;
+
       if (profile != null) {
         ref.read(playerProvider.notifier).loadProfile(
               cellsObserved: cellsObserved,
               totalDistanceKm: profile.totalDistanceKm,
               currentStreak: profile.currentStreak,
               longestStreak: profile.longestStreak,
-              hasCompletedOnboarding: profile.hasCompletedOnboarding,
+              hasCompletedOnboarding:
+                  profile.hasCompletedOnboarding || currentOnboarding,
             );
       } else {
         // No profile row yet — still hydrate cellsObserved from cell progress.
@@ -358,6 +364,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             totalDistanceKm: 0.0,
             currentStreak: 0,
             longestStreak: 0,
+            hasCompletedOnboarding: false, // explicit reset on sign-out
           );
       ref.read(inventoryProvider.notifier).loadItems([]);
       fogResolver.loadVisitedCells({});
@@ -537,6 +544,7 @@ Future<void> _persistProfileState({
         longestStreak: playerState.longestStreak,
         totalDistanceKm: playerState.totalDistanceKm,
         currentSeason: season.name,
+        hasCompletedOnboarding: playerState.hasCompletedOnboarding,
       );
     } else {
       await profileRepo.create(
@@ -546,6 +554,7 @@ Future<void> _persistProfileState({
         longestStreak: playerState.longestStreak,
         totalDistanceKm: playerState.totalDistanceKm,
         currentSeason: season.name,
+        hasCompletedOnboarding: playerState.hasCompletedOnboarding,
       );
     }
   } catch (e) {
@@ -560,6 +569,7 @@ Future<void> _persistProfileState({
       'longest_streak': playerState.longestStreak,
       'total_distance_km': playerState.totalDistanceKm,
       'current_season': season.name,
+      'has_completed_onboarding': playerState.hasCompletedOnboarding,
     });
 
     await writeQueueRepo.enqueue(
@@ -625,6 +635,8 @@ Future<void> hydrateFromSupabase({
         totalDistanceKm:
             (profileMap['total_distance_km'] as num?)?.toDouble() ?? 0.0,
         currentSeason: profileMap['current_season'] as String? ?? 'summer',
+        hasCompletedOnboarding:
+            profileMap['has_completed_onboarding'] as bool? ?? false,
       );
     }
 
