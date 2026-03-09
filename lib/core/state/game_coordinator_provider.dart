@@ -43,7 +43,9 @@ import 'package:earth_nova/features/location/services/location_simulator.dart';
 import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
+import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
+import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -70,6 +72,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final cellProgressRepo = ref.watch(cellProgressRepositoryProvider);
   final profileRepo = ref.watch(profileRepositoryProvider);
   final writeQueueRepo = ref.watch(writeQueueRepositoryProvider);
+  final queueProcessor = ref.watch(queueProcessorProvider);
 
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
 
@@ -86,6 +89,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Wire synchronous enrichment lookup for stat rolling.
   coordinator.enrichedStatsLookup = (definitionId) {
     return enrichmentCache[definitionId];
+  };
+
+  // --- Wire auto-flush callback → post-flush badge/rejection processing ---
+
+  queueProcessor.onAutoFlushComplete = (summary) async {
+    if (summary.hasRejections) {
+      await ref.read(syncProvider.notifier).processRejections();
+    }
+    if (summary.hasFirstBadges) {
+      await ref
+          .read(syncProvider.notifier)
+          .applyFirstBadges(summary.firstBadgeItemIds);
+    }
+    // Refresh pending count in sync UI.
+    await ref.read(syncProvider.notifier).refreshPendingCount();
   };
 
   // --- Wire output callbacks → Riverpod notifiers ---
@@ -116,6 +134,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         cellProgressRepo: cellProgressRepo,
         writeQueueRepo: writeQueueRepo,
+        queueProcessor: queueProcessor,
       );
     }
   };
@@ -150,6 +169,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         itemRepo: itemRepo,
         writeQueueRepo: writeQueueRepo,
+        queueProcessor: queueProcessor,
       );
     }
 
@@ -418,6 +438,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       playerState: next,
       profileRepo: profileRepo,
       writeQueueRepo: writeQueueRepo,
+      queueProcessor: queueProcessor,
     );
   });
 
@@ -425,6 +446,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   ref.onDispose(() {
     coordinator.dispose();
+    queueProcessor.dispose();
     locationService.stop();
   });
 
@@ -443,6 +465,7 @@ Future<void> _persistItemDiscovery({
   required String userId,
   required ItemInstanceRepository itemRepo,
   required WriteQueueRepository writeQueueRepo,
+  required QueueProcessor queueProcessor,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
@@ -480,6 +503,7 @@ Future<void> _persistItemDiscovery({
       payload: payload,
       userId: userId,
     );
+    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue item: $e');
   }
@@ -491,6 +515,7 @@ Future<void> _persistCellVisit({
   required String userId,
   required CellProgressRepository cellProgressRepo,
   required WriteQueueRepository writeQueueRepo,
+  required QueueProcessor queueProcessor,
 }) async {
   final now = DateTime.now();
   int visitCount = 1;
@@ -540,6 +565,7 @@ Future<void> _persistCellVisit({
       payload: payload,
       userId: userId,
     );
+    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue cell visit: $e');
   }
@@ -554,6 +580,7 @@ Future<void> _persistProfileState({
   required PlayerState playerState,
   required ProfileRepository profileRepo,
   required WriteQueueRepository writeQueueRepo,
+  required QueueProcessor queueProcessor,
 }) async {
   final season = Season.fromDate(DateTime.now());
 
@@ -602,6 +629,7 @@ Future<void> _persistProfileState({
       payload: payload,
       userId: userId,
     );
+    queueProcessor.scheduleFlush(userId: userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
   }
