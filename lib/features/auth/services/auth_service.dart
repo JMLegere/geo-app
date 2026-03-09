@@ -10,78 +10,43 @@ class AuthException implements Exception {
   String toString() => 'AuthException: $message';
 }
 
-/// Abstract contract for authentication operations.
+/// Abstract contract for phone+OTP authentication.
 ///
-/// Two implementations:
-/// - `MockAuthService` — in-memory, no network (dev & test).
+/// Implementations:
 /// - `SupabaseAuthService` — real backend (prod, requires credentials).
+/// - In-memory stub available for development and testing.
 abstract class AuthService {
-  /// Creates a new user account.
+  /// Sends a one-time password (OTP) SMS to [phone].
   ///
-  /// Throws [AuthException] on invalid email, duplicate registration, or
+  /// [phone] must be in E.164 format (e.g. '+13334445555').
+  ///
+  /// Throws [AuthException] on invalid phone format, rate limiting, or
   /// network failure.
-  Future<UserProfile> signUp({
-    required String email,
-    required String password,
-    String? displayName,
-  });
+  Future<void> sendOtp(String phone);
 
-  /// Signs in with email and password.
+  /// Verifies the OTP [code] sent to [phone] and returns the authenticated user.
   ///
-  /// Throws [AuthException] on bad credentials or network failure.
-  Future<UserProfile> signIn({
-    required String email,
-    required String password,
-  });
+  /// [phone] must be the same E.164 number passed to [sendOtp].
+  /// [code] is the 6-digit SMS code the user received.
+  ///
+  /// Throws [AuthException] if the code is invalid, expired, or the network
+  /// is unavailable.
+  Future<UserProfile> verifyOtp({required String phone, required String code});
 
-  /// Signs in (or creates an account) with a phone number.
-  ///
-  /// Unified flow: if [phoneNumber] is new, creates an account; if it already
-  /// exists, signs in the existing user. Phone must be E.164 format
-  /// (e.g. '+13334445555').
-  ///
-  /// **Current behavior (pre-OTP):** Authenticates immediately without SMS
-  /// verification. Accounts created this way will be wiped when OTP
-  /// verification is enabled.
-  ///
-  /// **Future behavior (post-OTP):** Will call `signInWithOtp(phone:)` to
-  /// send an SMS code, then require `verifyOtp()` before granting a session.
-  ///
-  /// Throws [AuthException] on invalid phone format or network failure.
-  // TODO(auth): Add OTP verification step when Twilio SMS is configured.
-  // Flow will become: signInWithPhone → requestOtp → verifyOtp → session.
-  Future<UserProfile> signInWithPhone({required String phoneNumber});
-
-  /// Signs out the current user.
+  /// Signs out the current user and clears the local session.
   Future<void> signOut();
 
   /// Returns the currently authenticated user, or null if no session exists.
   Future<UserProfile?> getCurrentUser();
 
-  /// Signs in anonymously (Supabase anonymous auth).
-  Future<UserProfile> signInAnonymously();
-
-  /// Upgrades an anonymous user to a permanent email+password account.
+  /// Checks whether a valid cached session exists without making a network call.
   ///
-  /// Uses Supabase `updateUser()` to preserve the existing UUID.
-  /// Throws [AuthException] if not currently anonymous, email is invalid,
-  /// or the operation fails.
-  Future<UserProfile> upgradeWithEmail({
-    required String email,
-    required String password,
-    String? displayName,
-  });
+  /// Returns true if a non-expired session is present in local storage.
+  /// Returns false if there is no session or it has expired — the user must
+  /// go through the OTP flow again.
+  Future<bool> restoreSession();
 
-  /// Links an OAuth provider (Google/Apple) to the current anonymous account.
-  ///
-  /// Uses Supabase `linkIdentity()` to preserve the existing UUID.
-  /// Throws [AuthException] if not currently anonymous or linking fails.
-  Future<UserProfile> linkOAuthIdentity({required String provider});
-
-  /// Returns true when a valid session is present.
-  Future<bool> isSessionValid();
-
-  /// Stream that emits the current user on sign-in and null on sign-out.
+  /// Stream that emits the current [UserProfile] on sign-in and null on sign-out.
   Stream<UserProfile?> get authStateChanges;
 
   /// Releases resources held by this service.

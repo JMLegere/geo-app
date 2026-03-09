@@ -1,113 +1,134 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/screens/loading_screen.dart';
 import 'package:earth_nova/features/auth/screens/login_screen.dart';
+import 'package:earth_nova/features/auth/screens/otp_verification_screen.dart';
+import 'package:earth_nova/features/auth/models/user_profile.dart';
+import 'package:earth_nova/features/auth/services/auth_service.dart';
+import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
 import 'package:earth_nova/features/navigation/screens/tab_shell.dart';
-import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
 import 'package:earth_nova/features/onboarding/screens/onboarding_screen.dart';
-import 'package:earth_nova/core/config/supabase_bootstrap.dart';
-import 'package:earth_nova/core/state/game_coordinator_provider.dart';
-import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Create and initialize bootstrap before ProviderScope so that all
-  // consumers receive the same pre-initialized instance via overrideWithValue.
-  final bootstrap = SupabaseBootstrap();
-  bootstrap.initialize(); // Non-blocking — resolves in background.
-  runApp(ProviderScope(
-    overrides: [
-      supabaseBootstrapProvider.overrideWithValue(bootstrap),
-    ],
+  await SupabaseBootstrap.initialize();
+
+  // 1. Create the appropriate AuthService based on Supabase availability.
+  final AuthService authService =
+      SupabaseBootstrap.initialized ? SupabaseAuthService() : MockAuthService();
+
+  // 2. Create the ProviderContainer so we can inject the service and
+  //    restore the session before the first frame.
+  final container = ProviderContainer();
+
+  // 3. Inject auth service into the provider graph.
+  container.read(authServiceProvider.notifier).set(authService);
+
+  // 4. Attempt session restore. AuthNotifier starts at `loading` so
+  //    LoadingScreen shows while this runs.
+  try {
+    final hasSession = await authService.restoreSession();
+    if (hasSession) {
+      final user = await authService.getCurrentUser();
+      if (user != null) {
+        container
+            .read(authProvider.notifier)
+            .setState(AuthState.authenticated(user));
+      } else {
+        container
+            .read(authProvider.notifier)
+            .setState(const AuthState.unauthenticated());
+      }
+    } else {
+      container
+          .read(authProvider.notifier)
+          .setState(const AuthState.unauthenticated());
+    }
+  } catch (e) {
+    debugPrint('[main] session restore failed: $e');
+    container
+        .read(authProvider.notifier)
+        .setState(const AuthState.unauthenticated());
+  }
+
+  // 5. Bridge auth service stream → auth provider for token refresh,
+  //    session expiry, and external sign-out events.
+  // ignore: cancel_subscriptions — lives for app lifetime
+  final authStreamSub = authService.authStateChanges.listen((user) {
+    if (user != null) {
+      container
+          .read(authProvider.notifier)
+          .setState(AuthState.authenticated(user));
+    } else {
+      container
+          .read(authProvider.notifier)
+          .setState(const AuthState.unauthenticated());
+    }
+  });
+
+  runApp(UncontrolledProviderScope(
+    container: container,
     child: const EarthNovaApp(),
   ));
 }
 
-/// Root widget — routes through onboarding on first launch, then to
-/// [TabShell] when the user is authenticated (including anonymous), and to
-/// [LoginScreen] when there is no session.
+/// Root widget — routes declaratively through the full auth flow based on
+/// [AuthStatus]. Routing order:
 ///
-/// Routing order:
-/// 1. `onboardingProvider == null` → neutral splash (no flash on cold start)
-/// 2. `onboardingProvider == false` → [OnboardingScreen] (first launch only)
-/// 3. auth loading / authenticated → [TabShell]
-/// 4. unauthenticated → [LoginScreen]
+/// 1. [AuthStatus.loading]    → [LoadingScreen] (auth/hydration in progress)
+/// 2. [AuthStatus.otpSent]    → [OtpVerificationScreen] (OTP input)
+/// 3. [AuthStatus.otpVerifying] → [OtpVerificationScreen] (same screen, verifying)
+/// 4. [AuthStatus.authenticated] + onboarding incomplete → [OnboardingScreen]
+/// 5. [AuthStatus.authenticated] + onboarding complete  → [TabShell]
+/// 6. [AuthStatus.unauthenticated] → [LoginScreen]
+///
+/// Wrapped in [AnimatedSwitcher] for smooth 300ms cross-fades between states.
+/// otpSent and otpVerifying share the same [ValueKey] so the OTP screen does
+/// not rebuild (and lose input state) when verification starts.
 class EarthNovaApp extends ConsumerWidget {
   const EarthNovaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Eagerly trigger GameCoordinator creation — it owns auth initialization.
-    // Without this, auth stays in loading state forever because GC was only
-    // read by MapScreen (which doesn't appear until auth resolves).
-    ref.watch(gameCoordinatorProvider);
-
-    final onboarded = ref.watch(onboardingProvider);
     final authState = ref.watch(authProvider);
+    final playerState = ref.watch(playerProvider);
 
     return MaterialApp(
       title: 'EarthNova',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      home: _resolveHome(onboarded, authState),
-    );
-  }
-
-  Widget _resolveHome(bool? onboarded, AuthState authState) {
-    // Still reading SharedPreferences — show blank scaffold to avoid flicker.
-    if (onboarded == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0D1B2A), // AppTheme._darkSurface
-      );
-    }
-
-    // First launch — onboarding not yet completed.
-    if (!onboarded) {
-      return const OnboardingScreen();
-    }
-
-    // Onboarding complete — use existing auth routing.
-    return switch (authState.status) {
-      AuthStatus.authenticated => const TabShell(),
-      AuthStatus.loading => const _LoadingSplash(),
-      _ => const LoginScreen(),
-    };
-  }
-}
-
-/// Lightweight splash shown while Supabase initializes and auth resolves.
-///
-/// Replaces the previous behavior of routing [AuthStatus.loading] directly to
-/// the main screen, which triggered expensive Voronoi cell computation and
-/// location service startup before auth was ready — freezing the UI on web.
-class _LoadingSplash extends StatelessWidget {
-  const _LoadingSplash();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0D1B2A), // AppTheme._darkSurface
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('🌍', style: TextStyle(fontSize: 48)),
-            SizedBox(height: 20),
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: Color(0xFF4FC3F7),
-              ),
-            ),
-          ],
-        ),
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: _resolveHome(authState, playerState),
       ),
     );
+  }
+
+  Widget _resolveHome(AuthState authState, PlayerState playerState) {
+    return switch (authState.status) {
+      AuthStatus.loading => const LoadingScreen(
+          key: ValueKey('loading'),
+        ),
+      AuthStatus.otpSent || AuthStatus.otpVerifying => OtpVerificationScreen(
+          key: const ValueKey('otp'),
+          phone: authState.phone!,
+        ),
+      AuthStatus.authenticated => playerState.hasCompletedOnboarding
+          ? const TabShell(key: ValueKey('tabshell'))
+          : const OnboardingScreen(key: ValueKey('onboarding')),
+      AuthStatus.unauthenticated => const LoginScreen(
+          key: ValueKey('login'),
+        ),
+    };
   }
 }

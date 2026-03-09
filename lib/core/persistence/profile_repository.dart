@@ -14,6 +14,7 @@ class ProfileRepository {
     int longestStreak = 0,
     double totalDistanceKm = 0.0,
     String currentSeason = 'summer',
+    bool hasCompletedOnboarding = false,
   }) async {
     final profile = LocalPlayerProfile(
       id: userId,
@@ -22,6 +23,7 @@ class ProfileRepository {
       longestStreak: longestStreak,
       totalDistanceKm: totalDistanceKm,
       currentSeason: currentSeason,
+      hasCompletedOnboarding: hasCompletedOnboarding,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -41,6 +43,7 @@ class ProfileRepository {
     int? longestStreak,
     double? totalDistanceKm,
     String? currentSeason,
+    bool? hasCompletedOnboarding,
   }) async {
     final existing = await _db.getPlayerProfile(userId);
     if (existing == null) {
@@ -53,6 +56,8 @@ class ProfileRepository {
       longestStreak: longestStreak ?? existing.longestStreak,
       totalDistanceKm: totalDistanceKm ?? existing.totalDistanceKm,
       currentSeason: currentSeason ?? existing.currentSeason,
+      hasCompletedOnboarding:
+          hasCompletedOnboarding ?? existing.hasCompletedOnboarding,
       updatedAt: DateTime.now(),
     );
 
@@ -123,6 +128,11 @@ class ProfileRepository {
   /// Reset current streak
   Future<void> resetCurrentStreak(String userId) async {
     await update(userId: userId, currentStreak: 0);
+  }
+
+  /// Mark onboarding as complete
+  Future<void> markOnboardingComplete(String userId) async {
+    await update(userId: userId, hasCompletedOnboarding: true);
   }
 
   /// Get all profiles (for debugging/export)

@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
-import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
+
+import '../../../fixtures/auth_test_doubles.dart';
 
 void main() {
   group('AuthNotifier initialization', () {
@@ -14,14 +15,15 @@ void main() {
 
     // ── Initial state ────────────────────────────────────────────────────────
 
-    test('build() returns AuthState.initial() (loading) immediately', () {
+    test('build() returns AuthState.loading() immediately', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       // Read synchronously before any external code calls setState().
       final state = container.read(authProvider);
 
-      // AuthState.initial() returns loading status.
+      // AuthNotifier.build() returns loading — main() bootstraps auth and
+      // pushes authenticated or unauthenticated state before first frame.
       expect(state.status, AuthStatus.loading);
       expect(state.user, isNull);
       expect(state.errorMessage, isNull);
@@ -38,11 +40,13 @@ void main() {
 
       // Simulate what gameCoordinatorProvider.initializeAuth() does:
       // 1. Create and seed the auth service.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
 
-      // 2. Sign in anonymously.
-      final user = await mockService.signInAnonymously();
+      // 2. Sign in via OTP.
+      await fakeService.sendOtp('+15555550100');
+      final user =
+          await fakeService.verifyOtp(phone: '+15555550100', code: '123456');
 
       // 3. Push authenticated state.
       container.read(authProvider.notifier).setState(
@@ -52,7 +56,8 @@ void main() {
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.authenticated);
       expect(state.user, isNotNull);
-      expect(state.user!.displayName, 'Explorer');
+      // FakeAuthService creates profiles with displayName: null (phone-only).
+      expect(state.user!.phoneNumber, '+15555550100');
     });
 
     // ── State transitions ────────────────────────────────────────────────────
@@ -70,13 +75,16 @@ void main() {
       container.read(authProvider);
 
       // Simulate GC pushing auth state.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
-      final user = await mockService.signInAnonymously();
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
+      await fakeService.sendOtp('+15555550100');
+      final user =
+          await fakeService.verifyOtp(phone: '+15555550100', code: '123456');
       container.read(authProvider.notifier).setState(
             AuthState.authenticated(user),
           );
 
+      // Initial build() emits unauthenticated, then setState() pushes authenticated.
       expect(states, contains(AuthStatus.authenticated));
     });
 
@@ -87,9 +95,11 @@ void main() {
       container.read(authProvider);
 
       // Simulate GC init.
-      final mockService = MockAuthService();
-      container.read(authServiceProvider.notifier).set(mockService);
-      final user = await mockService.signInAnonymously();
+      final fakeService = FakeAuthService();
+      container.read(authServiceProvider.notifier).set(fakeService);
+      await fakeService.sendOtp('+15555550100');
+      final user =
+          await fakeService.verifyOtp(phone: '+15555550100', code: '123456');
       container.read(authProvider.notifier).setState(
             AuthState.authenticated(user),
           );
@@ -98,7 +108,8 @@ void main() {
       expect(state.isLoggedIn, isTrue);
       expect(state.user, isNotNull);
       expect(state.user!.id, isNotEmpty);
-      expect(state.user!.displayName, isNotEmpty);
+      // Phone-only users may not have a displayName set.
+      expect(state.user!.phoneNumber, '+15555550100');
     });
   });
 }

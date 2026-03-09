@@ -385,6 +385,7 @@ void main() {
         longestStreak: 5,
         totalDistanceKm: 2.5,
         currentSeason: 'summer',
+        hasCompletedOnboarding: false,
         createdAt: DateTime(2026, 3, 1),
         updatedAt: DateTime(2026, 3, 1),
       ));
@@ -489,6 +490,7 @@ void main() {
         longestStreak: caretaking.longestStreak,
         totalDistanceKm: 0.5,
         currentSeason: 'summer',
+        hasCompletedOnboarding: false,
         createdAt: DateTime(2026, 3, 1),
         updatedAt: DateTime(2026, 3, 3),
       ));

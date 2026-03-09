@@ -23,7 +23,7 @@ import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 /// - Renders nothing ([SizedBox.shrink]) when `showBanner` is false.
 /// - Tapping either the banner body or the "Sign In" button calls [onUpgradeTap].
 /// - Banner is always visible once shown — no dismiss button (the banner
-///   disappears when the user upgrades and `isAnonymous` becomes false).
+///   disappears when [UpgradePromptState.showBanner] becomes false).
 class SaveProgressBanner extends ConsumerWidget {
   const SaveProgressBanner({
     required this.onUpgradeTap,

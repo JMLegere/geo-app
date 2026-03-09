@@ -3,14 +3,23 @@ import 'dart:async';
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 
-/// In-memory [AuthService] for development and testing.
+/// Predictable test user for auth tests.
+final kTestUser = UserProfile(
+  id: 'test-user-001',
+  email: 'test@example.com',
+  phoneNumber: '+15555550100',
+  displayName: 'Test Explorer',
+  createdAt: DateTime(2025, 1, 1),
+);
+
+/// Fake [AuthService] for testing. Provides full in-memory OTP auth behavior
+/// with predictable results. Suitable for both unit tests (via [shouldThrow]
+/// flag) and integration-style tests (via realistic phone validation).
 ///
-/// Simulates phone+OTP authentication without network calls.
-/// The OTP code is always '123456' for any phone number.
-/// Simulates network latency with a 100 ms delay on mutating operations.
-/// Broadcasts auth state changes via a [StreamController].
-class MockAuthService implements AuthService {
-  MockAuthService();
+/// Implements the CURRENT [AuthService] interface exactly.
+/// Fixed OTP code: '123456' for any phone number.
+class FakeAuthService implements AuthService {
+  FakeAuthService();
 
   /// Maps phone number → profile for signed-in users.
   final Map<String, UserProfile> _phoneProfiles = {};
@@ -25,10 +34,14 @@ class MockAuthService implements AuthService {
   /// E.164 phone format: '+' followed by 7-15 digits.
   static final _phoneRegex = RegExp(r'^\+[1-9]\d{6,14}$');
 
-  /// Fixed OTP code accepted by [verifyOtp] in mock mode.
+  /// Fixed OTP code accepted by [verifyOtp] in fake mode.
   static const _mockOtpCode = '123456';
 
   static const _delay = Duration(milliseconds: 100);
+
+  // Config flags for test scenarios
+  bool shouldThrow = false;
+  String throwMessage = 'Test auth error';
 
   // ---------------------------------------------------------------------------
   // AuthService implementation
@@ -37,6 +50,8 @@ class MockAuthService implements AuthService {
   @override
   Future<void> sendOtp(String phone) async {
     await Future<void>.delayed(_delay);
+
+    if (shouldThrow) throw AuthException(throwMessage);
 
     if (!_phoneRegex.hasMatch(phone)) {
       throw const AuthException(
@@ -53,6 +68,8 @@ class MockAuthService implements AuthService {
     required String code,
   }) async {
     await Future<void>.delayed(_delay);
+
+    if (shouldThrow) throw AuthException(throwMessage);
 
     if (!_pendingOtp.contains(phone)) {
       throw const AuthException(
@@ -97,34 +114,25 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  Future<UserProfile?> getCurrentUser() async {
-    return _currentUser;
-  }
+  Future<UserProfile?> getCurrentUser() async => _currentUser;
 
   @override
-  Future<bool> restoreSession() async {
-    return _currentUser != null;
-  }
+  Future<bool> restoreSession() async => _currentUser != null;
 
   @override
   Stream<UserProfile?> get authStateChanges {
     // Mimic Supabase SDK behavior: emit the current session immediately on
     // subscription (Supabase fires INITIAL_SESSION), then relay future changes.
-    // Each call to this getter creates a fresh stream so every subscriber
-    // independently receives the initial value followed by broadcast events.
     late StreamController<UserProfile?> controller;
     StreamSubscription<UserProfile?>? sub;
 
     controller = StreamController<UserProfile?>(
       onListen: () {
-        // Emit current state synchronously-ish via microtask so the listener
-        // is wired before the event fires.
         scheduleMicrotask(() {
           if (!controller.isClosed) {
             controller.add(_currentUser);
           }
         });
-        // Forward all future broadcast events.
         sub = _authStateController.stream.listen(
           controller.add,
           onError: controller.addError,
@@ -141,7 +149,15 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  void dispose() {
-    _authStateController.close();
+  void dispose() => _authStateController.close();
+
+  // ---------------------------------------------------------------------------
+  // Test helpers
+  // ---------------------------------------------------------------------------
+
+  /// Pre-authenticate for tests that need a logged-in user.
+  void setAuthenticated([UserProfile? user]) {
+    _currentUser = user ?? kTestUser;
+    _authStateController.add(_currentUser);
   }
 }

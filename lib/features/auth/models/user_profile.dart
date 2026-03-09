@@ -9,7 +9,6 @@ class UserProfile {
     this.phoneNumber,
     this.displayName,
     required this.createdAt,
-    this.isAnonymous = false,
   });
 
   final String id;
@@ -23,7 +22,6 @@ class UserProfile {
 
   final String? displayName;
   final DateTime createdAt;
-  final bool isAnonymous;
 
   UserProfile copyWith({
     String? id,
@@ -31,7 +29,6 @@ class UserProfile {
     String? phoneNumber,
     String? displayName,
     DateTime? createdAt,
-    bool? isAnonymous,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -39,7 +36,6 @@ class UserProfile {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
-      isAnonymous: isAnonymous ?? this.isAnonymous,
     );
   }
 
@@ -50,7 +46,6 @@ class UserProfile {
       'phoneNumber': phoneNumber,
       'displayName': displayName,
       'createdAt': createdAt.toIso8601String(),
-      'isAnonymous': isAnonymous,
     };
   }
 
@@ -61,7 +56,6 @@ class UserProfile {
       phoneNumber: json['phoneNumber'] as String?,
       displayName: json['displayName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      isAnonymous: json['isAnonymous'] as bool? ?? false,
     );
   }
 
@@ -73,16 +67,15 @@ class UserProfile {
         other.email == email &&
         other.phoneNumber == phoneNumber &&
         other.displayName == displayName &&
-        other.createdAt == createdAt &&
-        other.isAnonymous == isAnonymous;
+        other.createdAt == createdAt;
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, email, phoneNumber, displayName, createdAt, isAnonymous);
+      Object.hash(id, email, phoneNumber, displayName, createdAt);
 
   @override
   String toString() =>
       'UserProfile(id: $id, email: $email, phone: $phoneNumber, '
-      'displayName: $displayName, isAnonymous: $isAnonymous)';
+      'displayName: $displayName)';
 }

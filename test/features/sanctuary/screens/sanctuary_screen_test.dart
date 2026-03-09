@@ -25,7 +25,6 @@ final _anonUser = UserProfile(
   id: 'anon-test',
   email: '',
   createdAt: DateTime(2024),
-  isAnonymous: true,
 );
 
 class _StubAuthNotifier extends AuthNotifier {
@@ -41,7 +40,6 @@ class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
   @override
   UpgradePromptState build() => const UpgradePromptState(
         totalCollected: 0,
-        isAnonymous: true,
         supabaseInitialized: false,
       );
 }

@@ -11,7 +11,7 @@ import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
 // Stub notifiers (top-level — must not be inside functions)
 // ---------------------------------------------------------------------------
 
-/// Anonymous authenticated user — the normal state when this sheet is shown.
+/// Authenticated user — the normal state when this sheet is shown.
 class _AnonNotifier extends AuthNotifier {
   @override
   AuthState build() => AuthState.authenticated(
@@ -19,7 +19,6 @@ class _AnonNotifier extends AuthNotifier {
           id: 'anon-1',
           email: '',
           createdAt: DateTime(2024),
-          isAnonymous: true,
         ),
       );
 }

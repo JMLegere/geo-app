@@ -16,19 +16,17 @@ import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
 // Must be top-level — Riverpod requires concrete class declarations.
 // ---------------------------------------------------------------------------
 
-final _anonymousUser = UserProfile(
-  id: 'anon-123',
-  email: 'anon@example.com',
+final _minimalUser = UserProfile(
+  id: 'user-123',
+  email: '',
   createdAt: DateTime(2024),
-  isAnonymous: true,
 );
 
-final _upgradedUser = UserProfile(
+final _emailUser = UserProfile(
   id: 'user-456',
   email: 'explorer@example.com',
   displayName: 'Alex Explorer',
   createdAt: DateTime(2024),
-  isAnonymous: false,
 );
 
 final _phoneUser = UserProfile(
@@ -37,12 +35,11 @@ final _phoneUser = UserProfile(
   phoneNumber: '+15551234567',
   displayName: 'Phone User',
   createdAt: DateTime(2024),
-  isAnonymous: false,
 );
 
-class _AnonAuthNotifier extends AuthNotifier {
+class _MinimalAuthNotifier extends AuthNotifier {
   @override
-  AuthState build() => AuthState.authenticated(_anonymousUser);
+  AuthState build() => AuthState.authenticated(_minimalUser);
 }
 
 /// Inert upgrade-prompt notifier — returns fixed state, never starts a Timer.
@@ -50,14 +47,13 @@ class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
   @override
   UpgradePromptState build() => const UpgradePromptState(
         totalCollected: 0,
-        isAnonymous: true,
         supabaseInitialized: false,
       );
 }
 
-class _UpgradedAuthNotifier extends AuthNotifier {
+class _EmailAuthNotifier extends AuthNotifier {
   @override
-  AuthState build() => AuthState.authenticated(_upgradedUser);
+  AuthState build() => AuthState.authenticated(_emailUser);
 }
 
 class _PhoneAuthNotifier extends AuthNotifier {
@@ -76,22 +72,21 @@ void main() {
   group('SettingsScreen', () {
     // ── Profile display ──────────────────────────────────────────────────────
 
-    testWidgets('shows "Explorer" and "Guest account" for anonymous user',
+    testWidgets('shows "Explorer" and "No contact info" for minimal user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
 
       expect(find.text('Explorer'), findsOneWidget);
-      expect(find.text('Guest account'), findsOneWidget);
+      expect(find.text('No contact info'), findsOneWidget);
     });
 
-    testWidgets('shows display name and email for upgraded user',
-        (tester) async {
+    testWidgets('shows display name and email for email user', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_EmailAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -111,10 +106,10 @@ void main() {
       expect(find.text('+15551234567'), findsOneWidget);
     });
 
-    testWidgets('shows person icon avatar for anonymous user (no displayName)',
+    testWidgets('shows person icon avatar for user with no displayName',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -122,11 +117,10 @@ void main() {
       expect(find.byIcon(Icons.person), findsOneWidget);
     });
 
-    testWidgets(
-        'shows first letter of display name in avatar for upgraded user',
+    testWidgets('shows first letter of display name in avatar for named user',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_EmailAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -135,36 +129,12 @@ void main() {
       expect(find.text('A'), findsOneWidget);
     });
 
-    // ── Upgrade button ───────────────────────────────────────────────────────
+    // ── Sign-out dialog ──────────────────────────────────────────────────────
 
-    testWidgets('"Add Phone Number" button visible for anonymous user',
+    testWidgets('sign-out shows simple confirmation dialog for all users',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
-        child: const MaterialApp(home: SettingsScreen()),
-      ));
-      await tester.pump();
-
-      expect(find.text('Add Phone Number'), findsOneWidget);
-    });
-
-    testWidgets('"Add Phone Number" button hidden for upgraded user',
-        (tester) async {
-      await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
-        child: const MaterialApp(home: SettingsScreen()),
-      ));
-      await tester.pump();
-
-      expect(find.text('Add Phone Number'), findsNothing);
-    });
-
-    // ── Sign-out dialogs ─────────────────────────────────────────────────────
-
-    testWidgets('sign-out shows destructive warning dialog for anonymous user',
-        (tester) async {
-      await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -173,34 +143,17 @@ void main() {
       await tester.tap(find.text('Sign Out'));
       await tester.pumpAndSettle();
 
-      // Dialog shown with "lose all progress" text.
-      expect(find.byType(AlertDialog), findsOneWidget);
-      expect(find.textContaining('lose all progress'), findsOneWidget);
-      expect(find.text('Sign Out Anyway'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-    });
-
-    testWidgets('sign-out shows simple confirmation dialog for upgraded user',
-        (tester) async {
-      await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_UpgradedAuthNotifier.new)],
-        child: const MaterialApp(home: SettingsScreen()),
-      ));
-      await tester.pump();
-
-      await tester.tap(find.text('Sign Out'));
-      await tester.pumpAndSettle();
-
+      // Simple dialog — no destructive "lose all progress" text.
       expect(find.byType(AlertDialog), findsOneWidget);
       expect(find.text('Are you sure you want to sign out?'), findsOneWidget);
-      // No destructive "lose all progress" text for upgraded users.
       expect(find.textContaining('lose all progress'), findsNothing);
+      expect(find.text('Cancel'), findsOneWidget);
     });
 
     testWidgets('cancel dismisses sign-out dialog without leaving screen',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -219,7 +172,7 @@ void main() {
 
     testWidgets('shows version string', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -231,7 +184,7 @@ void main() {
 
     testWidgets('shows "Settings" in AppBar title', (tester) async {
       await tester.pumpWidget(ProviderScope(
-        overrides: [authProvider.overrideWith(_AnonAuthNotifier.new)],
+        overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
@@ -246,7 +199,7 @@ void main() {
     testWidgets('AppBar has settings gear icon', (tester) async {
       final container = ProviderContainer(
         overrides: [
-          authProvider.overrideWith(_AnonAuthNotifier.new),
+          authProvider.overrideWith(_MinimalAuthNotifier.new),
           speciesServiceProvider.overrideWith((_) => SpeciesService(const [])),
           upgradePromptProvider.overrideWith(_StubUpgradePromptNotifier.new),
         ],
@@ -268,7 +221,7 @@ void main() {
         (tester) async {
       final container = ProviderContainer(
         overrides: [
-          authProvider.overrideWith(_AnonAuthNotifier.new),
+          authProvider.overrideWith(_MinimalAuthNotifier.new),
           speciesServiceProvider.overrideWith((_) => SpeciesService(const [])),
           upgradePromptProvider.overrideWith(_StubUpgradePromptNotifier.new),
         ],

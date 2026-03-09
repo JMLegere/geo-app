@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/onboarding/widgets/onboarding_page.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
@@ -89,7 +89,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _complete() async {
-    await ref.read(onboardingProvider.notifier).markCompleted();
+    ref.read(playerProvider.notifier).markOnboardingComplete();
   }
 
   // ---------------------------------------------------------------------------
@@ -111,8 +111,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _kPages.length,
-                onPageChanged: (index) =>
-                    setState(() => _currentPage = index),
+                onPageChanged: (index) => setState(() => _currentPage = index),
                 itemBuilder: (context, index) =>
                     OnboardingPage(data: _kPages[index]),
               ),

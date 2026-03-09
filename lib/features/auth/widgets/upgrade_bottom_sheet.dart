@@ -6,13 +6,13 @@ import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
-/// Modal bottom sheet for linking a phone number to an anonymous account.
+/// Modal bottom sheet for adding a phone number to an account.
 ///
 /// The phone number becomes the cross-platform account identifier, tying
 /// together Game Center, Google Play, and web sessions.
 ///
-/// Auto-closes when the user successfully links a phone number (transitions
-/// to authenticated with `isAnonymous: false`).
+/// Auto-closes when the user successfully authenticates (transitions
+/// to [AuthStatus.authenticated]).
 ///
 /// ## Usage
 /// ```dart
@@ -61,9 +61,7 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
   Future<void> _linkPhoneNumber() async {
     if (!_canSubmit) return;
-    await ref
-        .read(authProvider.notifier)
-        .signInWithPhone(phoneNumber: _fullPhoneNumber);
+    await ref.read(authProvider.notifier).sendOtp(_fullPhoneNumber);
   }
 
   // ---------------------------------------------------------------------------
@@ -72,9 +70,9 @@ class _UpgradeBottomSheetState extends ConsumerState<UpgradeBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    // Auto-close when upgrade succeeds (anonymous → phone account).
+    // Auto-close when authentication succeeds.
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status == AuthStatus.authenticated && !next.isAnonymous) {
+      if (next.status == AuthStatus.authenticated) {
         if (mounted) Navigator.pop(context);
       }
     });

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
-import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
@@ -13,8 +12,11 @@ import 'package:earth_nova/shared/constants.dart';
 
 /// Immutable state for the upgrade prompt feature.
 ///
-/// Tracks whether an anonymous user has crossed the collection threshold and
-/// should be prompted to create an account.
+/// Tracks whether the player has crossed the collection threshold and
+/// should be prompted to save progress. Login is now required, so this
+/// prompt is always disabled — [shouldShow] and [showBanner] always return
+/// false. Retained for structural compatibility pending full removal in
+/// Task 18.
 ///
 /// Note: [shouldShow] is false on first build because [inventoryProvider]
 /// initializes with an empty [InventoryState] (`totalItems == 0`). The
@@ -23,7 +25,6 @@ import 'package:earth_nova/shared/constants.dart';
 class UpgradePromptState {
   const UpgradePromptState({
     required this.totalCollected,
-    required this.isAnonymous,
     required this.supabaseInitialized,
     this.hasBeenShown = false,
     this.sessionTimeElapsed = false,
@@ -31,9 +32,6 @@ class UpgradePromptState {
 
   /// Total species collected by the player this session.
   final int totalCollected;
-
-  /// Whether the current auth user is anonymous (not upgraded).
-  final bool isAnonymous;
 
   /// Whether the Supabase SDK initialized successfully.
   final bool supabaseInitialized;
@@ -53,37 +51,22 @@ class UpgradePromptState {
 
   /// Whether to show the one-time upgrade bottom sheet.
   ///
-  /// True only when all conditions are met AND the sheet has not yet been shown
-  /// this session. Requires both [kUpgradePromptThreshold] species collected
-  /// AND [kUpgradePromptDelaySeconds] elapsed since app open to prevent
-  /// interrupting early exploration.
-  bool get shouldShow =>
-      totalCollected >= kUpgradePromptThreshold &&
-      isAnonymous &&
-      supabaseInitialized &&
-      sessionTimeElapsed &&
-      !hasBeenShown;
+  /// Always false — login is required so no upgrade prompt is needed.
+  bool get shouldShow => false;
 
   /// Whether to show the persistent upgrade banner.
   ///
-  /// True once the threshold is crossed (anonymous + Supabase configured),
-  /// regardless of whether the bottom sheet has been shown. Remains true
-  /// until the user upgrades their account.
-  bool get showBanner =>
-      totalCollected >= kUpgradePromptThreshold &&
-      isAnonymous &&
-      supabaseInitialized;
+  /// Always false — login is required so no upgrade banner is needed.
+  bool get showBanner => false;
 
   UpgradePromptState copyWith({
     int? totalCollected,
-    bool? isAnonymous,
     bool? supabaseInitialized,
     bool? hasBeenShown,
     bool? sessionTimeElapsed,
   }) {
     return UpgradePromptState(
       totalCollected: totalCollected ?? this.totalCollected,
-      isAnonymous: isAnonymous ?? this.isAnonymous,
       supabaseInitialized: supabaseInitialized ?? this.supabaseInitialized,
       hasBeenShown: hasBeenShown ?? this.hasBeenShown,
       sessionTimeElapsed: sessionTimeElapsed ?? this.sessionTimeElapsed,
@@ -95,20 +78,18 @@ class UpgradePromptState {
     if (identical(this, other)) return true;
     return other is UpgradePromptState &&
         other.totalCollected == totalCollected &&
-        other.isAnonymous == isAnonymous &&
         other.supabaseInitialized == supabaseInitialized &&
         other.hasBeenShown == hasBeenShown &&
         other.sessionTimeElapsed == sessionTimeElapsed;
   }
 
   @override
-  int get hashCode => Object.hash(totalCollected, isAnonymous,
-      supabaseInitialized, hasBeenShown, sessionTimeElapsed);
+  int get hashCode => Object.hash(
+      totalCollected, supabaseInitialized, hasBeenShown, sessionTimeElapsed);
 
   @override
   String toString() => 'UpgradePromptState('
       'totalCollected: $totalCollected, '
-      'isAnonymous: $isAnonymous, '
       'supabaseInitialized: $supabaseInitialized, '
       'hasBeenShown: $hasBeenShown, '
       'sessionTimeElapsed: $sessionTimeElapsed, '
@@ -120,13 +101,15 @@ class UpgradePromptState {
 // UpgradePromptNotifier
 // ---------------------------------------------------------------------------
 
-/// Reactive notifier that evaluates whether to prompt an anonymous user to
-/// upgrade their account after collecting [kUpgradePromptThreshold] species.
+/// Reactive notifier that evaluates whether to prompt a user to upgrade.
 ///
-/// Watches [inventoryProvider] and [authProvider] so state recomputes
-/// automatically whenever inventory or auth changes. Reads
-/// [supabaseBootstrapProvider] once — the initialized flag is stable after
-/// app startup and does not change at runtime.
+/// Login is now required, so [shouldShow] and [showBanner] always return
+/// false. Retained for structural compatibility pending full removal in
+/// Task 18.
+///
+/// Watches [inventoryProvider] so state recomputes automatically whenever
+/// inventory changes. Reads [supabaseBootstrapProvider] once — the
+/// initialized flag is stable after app startup and does not change at runtime.
 ///
 /// Usage:
 /// ```dart
@@ -141,19 +124,16 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   @override
   UpgradePromptState build() {
     final totalCollected = ref.watch(inventoryProvider).totalItems;
-    final isAnonymous = ref.watch(authProvider).isAnonymous;
-    // supabaseBootstrapProvider is a plain Provider (not Notifier) — its value
-    // is stable after app startup, so read() is sufficient here.
-    final supabaseInitialized = ref.read(supabaseBootstrapProvider).initialized;
+    // supabaseBootstrapProvider returns bool directly — stable after app startup.
+    final supabaseInitialized = ref.read(supabaseBootstrapProvider);
 
     // Start session timer on first build. The timer fires once after
     // kUpgradePromptDelaySeconds and sets the flag so subsequent reactive
-    // rebuilds (from inventory/auth changes) see it as true.
+    // rebuilds (from inventory changes) see it as true.
     _startSessionTimer();
 
     return UpgradePromptState(
       totalCollected: totalCollected,
-      isAnonymous: isAnonymous,
       supabaseInitialized: supabaseInitialized,
       hasBeenShown: _hasBeenShown,
       sessionTimeElapsed: _sessionTimeElapsed,
@@ -161,7 +141,7 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   }
 
   /// Session-level flag. Stored as an instance field so that reactive rebuilds
-  /// triggered by [inventoryProvider] or [authProvider] do not reset it —
+  /// triggered by [inventoryProvider] do not reset it —
   /// [build] reads [_hasBeenShown] directly rather than inspecting [state].
   bool _hasBeenShown = false;
 

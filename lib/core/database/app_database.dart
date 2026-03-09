@@ -149,6 +149,8 @@ class LocalPlayerProfileTable extends Table {
   RealColumn get totalDistanceKm => real().withDefault(const Constant(0.0))();
   TextColumn get currentSeason =>
       text().withDefault(const Constant('summer'))();
+  BoolColumn get hasCompletedOnboarding =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -172,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -194,6 +196,10 @@ class AppDatabase extends _$AppDatabase {
         if (from < 5) {
           await m.addColumn(
               localItemInstanceTable, localItemInstanceTable.badgesJson);
+        }
+        if (from < 6) {
+          await m.addColumn(localPlayerProfileTable,
+              localPlayerProfileTable.hasCompletedOnboarding);
         }
       },
     );

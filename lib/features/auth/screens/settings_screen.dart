@@ -3,16 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
-import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Account settings screen.
 ///
 /// Displays:
-/// - Profile section: avatar, display name, email (anonymous fallbacks).
-/// - Upgrade prompt for anonymous users.
-/// - Sign-out with destructive confirmation for anonymous, simple for upgraded.
+/// - Profile section: avatar, display name, phone/email.
+/// - Sign-out with simple confirmation dialog.
 /// - App version info.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -23,63 +21,29 @@ class SettingsScreen extends ConsumerWidget {
 
   /// Resolves the subtitle text under the display name.
   ///
-  /// Priority: phone number → email → anonymous fallback.
-  String _resolveSubtitle(UserProfile? user, bool isAnonymous) {
-    if (user == null || isAnonymous) return 'Guest account';
+  /// Priority: phone number → email → fallback.
+  String _resolveSubtitle(UserProfile? user) {
+    if (user == null) return 'Loading…';
     if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
       return user.phoneNumber!;
     }
     if (user.email.isNotEmpty) return user.email;
-    return 'Guest account';
+    return 'No contact info';
   }
 
   // ---------------------------------------------------------------------------
   // Sign-out
   // ---------------------------------------------------------------------------
 
-  Future<void> _handleSignOut(BuildContext context, WidgetRef ref,
-      {required bool isAnonymous}) async {
-    final confirmed =
-        await _showSignOutDialog(context, isAnonymous: isAnonymous);
+  Future<void> _handleSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await _showSignOutDialog(context);
     if (confirmed != true) return;
     // Guard against widget disposal during async gap.
     if (!context.mounted) return;
-    if (isAnonymous) {
-      // Anonymous users confirmed via destructive dialog — sign out directly.
-      await ref.read(authProvider.notifier).signOut();
-    } else {
-      // Non-anonymous users go through the safety guard.
-      await ref.read(authProvider.notifier).signOutWithWarning();
-    }
+    await ref.read(authProvider.notifier).signOut();
   }
 
-  Future<bool?> _showSignOutDialog(BuildContext context,
-      {required bool isAnonymous}) {
-    if (isAnonymous) {
-      return showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Sign Out?'),
-          content: const Text(
-            'You will lose all progress. This cannot be undone. Are you sure?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.error,
-              ),
-              child: const Text('Sign Out Anyway'),
-            ),
-          ],
-        ),
-      );
-    }
-
+  Future<bool?> _showSignOutDialog(BuildContext context) {
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -103,14 +67,6 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // ---------------------------------------------------------------------------
-  // Upgrade
-  // ---------------------------------------------------------------------------
-
-  void _showUpgrade(BuildContext context) {
-    UpgradeBottomSheet.show(context);
-  }
-
-  // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
 
@@ -120,13 +76,12 @@ class SettingsScreen extends ConsumerWidget {
     final colors = Theme.of(context).colorScheme;
 
     final user = authState.user;
-    final isAnonymous = authState.isAnonymous || user == null;
 
     final displayName = (user?.displayName?.isNotEmpty == true)
         ? user!.displayName!
         : 'Explorer';
-    // Show phone number for phone-auth users, email for email users, fallback for anonymous.
-    final subtitle = _resolveSubtitle(user, isAnonymous);
+    // Show phone number for phone-auth users, email for email users.
+    final subtitle = _resolveSubtitle(user);
     final avatarLetter = (user?.displayName?.isNotEmpty == true)
         ? user!.displayName![0].toUpperCase()
         : null;
@@ -206,32 +161,6 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-                if (isAnonymous) ...[
-                  Spacing.gapLg,
-                  Divider(color: colors.outlineVariant),
-                  Spacing.gapLg,
-                  SizedBox(
-                    height: ComponentSizes.buttonHeight,
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _showUpgrade(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.primary,
-                        foregroundColor: colors.onPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: Radii.borderXl,
-                        ),
-                      ),
-                      child: const Text(
-                        'Add Phone Number',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -251,11 +180,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               trailing: Icon(Icons.logout, color: colors.error, size: 20),
-              onTap: () => _handleSignOut(
-                context,
-                ref,
-                isAnonymous: isAnonymous,
-              ),
+              onTap: () => _handleSignOut(context, ref),
             ),
           ),
 

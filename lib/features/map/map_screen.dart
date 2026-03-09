@@ -21,7 +21,6 @@ import 'package:earth_nova/features/map/providers/fog_overlay_controller_provide
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
-import 'package:earth_nova/features/map/utils/map_visibility.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
 import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
@@ -113,22 +112,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
 
-  /// Safety timeout for [_initFogAndReveal]. If the init pipeline stalls
-  /// (e.g. CDN outage, silent exception), force-reveal the map after this
-  /// duration so the user isn't stuck on a dark screen.
-  static const _kInitTimeout = Duration(seconds: 10);
-
-  /// Whether [_forceReveal] has already been called (prevents double-fire
-  /// from both timeout and normal completion).
-  bool _forceRevealed = false;
-
-  /// Timer that force-reveals the map if [_initFogAndReveal] doesn't
-  /// complete within [_kInitTimeout].
-  Timer? _initTimeoutTimer;
-
-  /// Controls MapLibre container visibility via DOM on web, no-op on native.
-  late final MapVisibility _mapVisibility;
-
   // -- MapLibre source/layer IDs for the fog system --
   static const _fogBaseSrcId = 'fog-base-src';
   static const _fogBaseLayerId = 'fog-base';
@@ -140,8 +123,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void initState() {
     super.initState();
-
-    _mapVisibility = MapVisibility()..hideMapContainer();
 
     _markerPosition = ValueNotifier(null);
 
@@ -160,8 +141,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
-    _initTimeoutTimer?.cancel();
-    _mapVisibility.dispose();
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
@@ -529,33 +508,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   /// Initializes fog layers, computes initial fog state, updates sources,
-  /// then marks the map ready and reveals it by fading out the cover.
+  /// then marks the map ready.
   ///
   /// Extracted from [_onStyleLoaded] so the async flow is explicit.
-  ///
-  /// **Crash prevention**: A safety timeout ([_kInitTimeout]) ensures the map
-  /// is always revealed even if this pipeline stalls (CDN outage, silent
-  /// exception, mounted-check abandonment). The entire body is wrapped in
-  /// try/catch so any unhandled error also triggers [_forceReveal].
+  /// The map is only shown after auth + hydration complete (sequential boot),
+  /// so no hide/reveal hack or safety timeout is needed.
   Future<void> _initFogAndReveal() async {
     MapLogger.fogInitStart();
-
-    // Start the safety timeout. If _initFogAndReveal completes normally,
-    // the timer is cancelled. If it stalls, _forceReveal shows the base map.
-    _initTimeoutTimer = Timer(_kInitTimeout, () {
-      MapLogger.fogInitTimeout(_kInitTimeout.inMilliseconds);
-      _forceReveal();
-    });
 
     try {
       // Capture viewport size synchronously before any async gap.
       final viewportSize = MediaQuery.of(context).size;
 
       await _initFogLayers();
-      if (!mounted || _mapController == null) {
-        _forceReveal();
-        return;
-      }
+      if (!mounted || _mapController == null) return;
       MapLogger.fogInitLayersReady();
 
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
@@ -566,7 +532,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         camera = _mapController!.getCamera();
       } catch (e) {
         MapLogger.getCameraError('_initFogAndReveal', e);
-        _forceReveal();
+        _markMapReady();
         return;
       }
 
@@ -579,49 +545,33 @@ class _MapScreenState extends ConsumerState<MapScreen>
         zoom: camera.zoom,
         viewportSize: viewportSize,
       );
-      if (!mounted) {
-        _forceReveal();
-        return;
-      }
+      if (!mounted) return;
       MapLogger.fogInitDataComputed();
 
       await _updateFogSources();
-      if (!mounted) {
-        _forceReveal();
-        return;
-      }
+      if (!mounted) return;
       MapLogger.fogInitSourcesApplied();
 
-      // Cancel the safety timeout — we completed normally.
-      _initTimeoutTimer?.cancel();
-      _initTimeoutTimer = null;
-
-      // NOW mark the map ready (gates _updateFogRendering fog updates)
-      // and reveal the map via DOM opacity (CSS transition handles animation).
-      _revealMap();
+      // Mark the map ready — gates _updateFogRendering fog updates.
+      _markMapReady();
 
       MapLogger.fogInitComplete();
     } catch (e, stack) {
       MapLogger.fogInitFailed(e, stack);
-      _forceReveal();
+      // On error, still mark ready so the base map is usable.
+      _markMapReady();
     }
   }
 
-  /// Marks the map ready, reveals the MapLibre container, and forces a
-  /// player marker repaint. Called on successful init completion.
-  void _revealMap() {
-    if (_forceRevealed) return; // Already force-revealed by timeout.
-    _forceRevealed = true;
-
+  /// Marks the map ready (gates fog rendering updates) and forces a player
+  /// marker repaint so the marker position is correct after the first render.
+  void _markMapReady() {
     if (!mounted) return;
 
     ref.read(mapStateProvider.notifier).markReady();
-    _mapVisibility.revealMapContainer();
 
-    // Force player marker repaint after fog reveal on Flutter web.
-    // The CSS opacity transition needs at least one animation frame to start.
-    // By using addPostFrameCallback, we guarantee the DOM has processed the
-    // opacity change before forcing the marker to recalculate its screen position.
+    // Force player marker repaint after fog initialization.
+    // Ensures the marker recalculates its screen position after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final currentPos = _markerPosition.value;
@@ -630,22 +580,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _markerPosition.value = currentPos;
       }
     });
-  }
-
-  /// Emergency reveal — called by the safety timeout or on init failure.
-  /// Shows the base map (possibly without fog layers) so the user isn't
-  /// stuck on a dark screen.
-  void _forceReveal() {
-    _initTimeoutTimer?.cancel();
-    _initTimeoutTimer = null;
-
-    if (_forceRevealed) return;
-    _forceRevealed = true;
-
-    if (!mounted) return;
-
-    ref.read(mapStateProvider.notifier).markReady();
-    _mapVisibility.revealMapContainer();
   }
 
   /// Strips all symbol (text/icon) layers from the map style.
@@ -716,19 +650,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         body: Stack(
           children: [
             // ── Layer 0: Fog-colored backdrop ─────────────────────────────────
-            // Visible while the MapLibre container is hidden (CSS opacity 0).
-            // On Flutter web the map's HtmlElementView renders in a separate
-            // HTML layer above the Flutter canvas, so a Flutter widget cannot
-            // cover it — MapVisibility injects a CSS rule to hide the container
-            // until fog is initialised, and this backdrop fills the gap.
+            // Provides the dark background color while the map tiles load.
             Container(color: const Color(0xFF161620)),
 
             // ── Layer 1: MapLibre base map + native fog fill layers ────────────
-            // On web, the container starts hidden via a CSS rule injected by
-            // MapVisibility.hideMapContainer() in initState(). Once fog layers
-            // are initialised and first data applied, revealMapContainer() sets
-            // inline opacity: 1, which overrides the stylesheet rule while the
-            // CSS transition (defined in the same rule) animates the fade-in.
             MapLibreMap(
               options: MapOptions(
                 initStyle: 'https://tiles.openfreemap.org/styles/positron',
