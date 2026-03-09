@@ -17,6 +17,7 @@
 | Tests | 1373 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 46 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
+| Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
 
 **Run commands:**
 ```bash
