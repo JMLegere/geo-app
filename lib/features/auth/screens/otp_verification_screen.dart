@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -229,24 +228,21 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 onPressed: canVerify ? _verify : null,
               ),
 
-              // ── Beta bypass (debug only) ───────────────────────────────
-              if (kDebugMode) ...[
-                const SizedBox(height: Spacing.md),
-                TextButton(
-                  onPressed: isVerifying
-                      ? null
-                      : () => ref
-                          .read(authProvider.notifier)
-                          .bypassVerification(widget.phone),
-                  child: Text(
-                    'Skip Verification (Beta)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: colors.onSurfaceVariant,
-                    ),
+              const SizedBox(height: Spacing.md),
+              TextButton(
+                onPressed: isVerifying
+                    ? null
+                    : () => ref
+                        .read(authProvider.notifier)
+                        .bypassVerification(widget.phone),
+                child: Text(
+                  'Skip Verification (Beta)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
 
               const SizedBox(height: Spacing.xl),
 
