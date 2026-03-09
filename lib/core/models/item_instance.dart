@@ -3,12 +3,25 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'affix.dart';
+import 'continent.dart';
+import 'habitat.dart';
+import 'item_category.dart';
+import 'iucn_status.dart';
 
 /// A unique discovered item. Every discovery creates a new instance.
 ///
 /// PoE / CryptoKitty model: no stacking. Two Red Foxes found in different
 /// cells have different randomly-rolled affixes. Each instance has its own
 /// UUID.
+///
+/// ## Denormalized identity fields
+///
+/// [displayName], [scientificName], [category], [rarity], [habitats],
+/// [continents], and [taxonomicClass] are snapshotted from the
+/// [ItemDefinition] at discovery time. This makes each instance fully
+/// self-contained — the definition registry is not required to render
+/// basic item identity. [definitionId] is still kept for lookups
+/// (enrichment, species service).
 ///
 /// Lifecycle: active → donated | placed | released | traded.
 @immutable
@@ -17,7 +30,38 @@ class ItemInstance {
   final String id;
 
   /// References [ItemDefinition.id] — the static blueprint for this item.
+  /// Kept for enrichment lookups and species service access.
   final String definitionId;
+
+  // ---------------------------------------------------------------------------
+  // Denormalized identity fields (snapshotted from definition at discovery)
+  // ---------------------------------------------------------------------------
+
+  /// Human-readable name (e.g. "Red Fox"). Snapshotted from definition.
+  final String displayName;
+
+  /// Scientific name for biological items. Null for minerals/artifacts/etc.
+  final String? scientificName;
+
+  /// Which of the 7 item categories this belongs to. Snapshotted from definition.
+  final ItemCategory category;
+
+  /// IUCN rarity tier. Null for items without conservation status.
+  final IucnStatus? rarity;
+
+  /// Habitats where this item spawns. Snapshotted from definition.
+  final List<Habitat> habitats;
+
+  /// Geographic regions where this item appears. Snapshotted from definition.
+  final List<Continent> continents;
+
+  /// Taxonomic class string (e.g. "Mammalia", "Aves"). Fauna only — null for
+  /// all other categories.
+  final String? taxonomicClass;
+
+  // ---------------------------------------------------------------------------
+  // Instance-specific fields
+  // ---------------------------------------------------------------------------
 
   /// Item modifiers: one intrinsic (base stats) + rolled prefix/suffix.
   ///
@@ -56,6 +100,13 @@ class ItemInstance {
   const ItemInstance({
     required this.id,
     required this.definitionId,
+    required this.displayName,
+    this.scientificName,
+    required this.category,
+    this.rarity,
+    this.habitats = const [],
+    this.continents = const [],
+    this.taxonomicClass,
     this.affixes = const [],
     this.badges = const {},
     this.parentAId,
@@ -82,6 +133,13 @@ class ItemInstance {
   ItemInstance copyWith({
     String? id,
     String? definitionId,
+    String? displayName,
+    String? scientificName,
+    ItemCategory? category,
+    IucnStatus? rarity,
+    List<Habitat>? habitats,
+    List<Continent>? continents,
+    String? taxonomicClass,
     List<Affix>? affixes,
     Set<String>? badges,
     String? parentAId,
@@ -94,6 +152,13 @@ class ItemInstance {
     return ItemInstance(
       id: id ?? this.id,
       definitionId: definitionId ?? this.definitionId,
+      displayName: displayName ?? this.displayName,
+      scientificName: scientificName ?? this.scientificName,
+      category: category ?? this.category,
+      rarity: rarity ?? this.rarity,
+      habitats: habitats ?? this.habitats,
+      continents: continents ?? this.continents,
+      taxonomicClass: taxonomicClass ?? this.taxonomicClass,
       affixes: affixes ?? this.affixes,
       badges: badges ?? this.badges,
       parentAId: parentAId ?? this.parentAId,
@@ -123,6 +188,47 @@ class ItemInstance {
     return list.cast<String>().toSet();
   }
 
+  /// Serialize habitats list to JSON string for database storage.
+  String habitatsToJson() => jsonEncode(habitats.map((h) => h.name).toList());
+
+  /// Deserialize habitats list from JSON string (database storage).
+  static List<Habitat> habitatsFromJson(String? json) {
+    if (json == null || json.isEmpty) return const [];
+    try {
+      final list = jsonDecode(json) as List;
+      return list
+          .whereType<String>()
+          .map((s) => Habitat.values.firstWhere(
+                (h) => h.name == s,
+                orElse: () => Habitat.forest,
+              ))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Serialize continents list to JSON string for database storage.
+  String continentsToJson() =>
+      jsonEncode(continents.map((c) => c.name).toList());
+
+  /// Deserialize continents list from JSON string (database storage).
+  static List<Continent> continentsFromJson(String? json) {
+    if (json == null || json.isEmpty) return const [];
+    try {
+      final list = jsonDecode(json) as List;
+      return list
+          .whereType<String>()
+          .map((s) => Continent.values.firstWhere(
+                (c) => c.name == s,
+                orElse: () => Continent.asia,
+              ))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -134,6 +240,7 @@ class ItemInstance {
 
   @override
   String toString() => 'ItemInstance(id: $id, definitionId: $definitionId, '
+      'displayName: $displayName, category: $category, rarity: $rarity, '
       'affixes: ${affixes.length}, status: $status)';
 }
 
