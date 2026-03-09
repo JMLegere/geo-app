@@ -27,6 +27,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
@@ -77,17 +78,23 @@ Future<ItemInstance> _seedItem(
     id: id,
     userId: userId,
     definitionId: definitionId,
+    displayName: 'Test Species',
+    categoryName: 'fauna',
     affixes: '[]',
     acquiredAt: DateTime(2026, 3, 1),
     acquiredInCellId: cellId,
     status: 'active',
     badgesJson: '[]',
+    habitatsJson: '[]',
+    continentsJson: '[]',
   );
   await db.insertItemInstance(row);
 
   return ItemInstance(
     id: id,
     definitionId: definitionId,
+    displayName: 'Test Species',
+    category: ItemCategory.fauna,
     affixes: const [],
     acquiredAt: row.acquiredAt,
     acquiredInCellId: cellId,
@@ -345,11 +352,15 @@ void main() {
         id: 'other-item',
         userId: 'other-user-xyz',
         definitionId: 'fauna_ailurus_fulgens',
+        displayName: 'Test Species',
+        categoryName: 'fauna',
         affixes: '[]',
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: 'cell-99',
         status: 'active',
         badgesJson: '[]',
+        habitatsJson: '[]',
+        continentsJson: '[]',
       );
       await db.insertItemInstance(otherRow);
 
