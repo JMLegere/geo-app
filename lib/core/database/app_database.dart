@@ -75,6 +75,32 @@ class LocalItemInstanceTable extends Table {
   /// JSON-encoded list of badge strings (e.g. '["first_discovery","beta"]').
   TextColumn get badgesJson => text().withDefault(const Constant('[]'))();
 
+  // ---------------------------------------------------------------------------
+  // Denormalized identity fields (snapshotted from definition at discovery)
+  // Added in schema v7.
+  // ---------------------------------------------------------------------------
+
+  /// Human-readable display name (e.g. "Red Fox"). Snapshotted at discovery.
+  TextColumn get displayName => text().withDefault(const Constant(''))();
+
+  /// Scientific name. Null for non-biological items.
+  TextColumn get scientificName => text().nullable()();
+
+  /// Item category (e.g. "fauna", "flora"). Snapshotted at discovery.
+  TextColumn get categoryName => text().withDefault(const Constant('fauna'))();
+
+  /// IUCN rarity tier name (e.g. "leastConcern"). Null if no rarity.
+  TextColumn get rarityName => text().nullable()();
+
+  /// JSON-encoded list of habitat name strings (e.g. '["forest","plains"]').
+  TextColumn get habitatsJson => text().withDefault(const Constant('[]'))();
+
+  /// JSON-encoded list of continent name strings (e.g. '["asia","europe"]').
+  TextColumn get continentsJson => text().withDefault(const Constant('[]'))();
+
+  /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
+  TextColumn get taxonomicClass => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -174,7 +200,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -200,6 +226,24 @@ class AppDatabase extends _$AppDatabase {
         if (from < 6) {
           await m.addColumn(localPlayerProfileTable,
               localPlayerProfileTable.hasCompletedOnboarding);
+        }
+        if (from < 7) {
+          // Add denormalized identity fields to item instances.
+          // categoryName is new — not present before v7.
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.displayName);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.scientificName);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.categoryName);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.rarityName);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.habitatsJson);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.continentsJson);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.taxonomicClass);
         }
       },
     );
