@@ -220,6 +220,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Declared before hydrateAndStart so the closure can capture it.
   PlayerState? lastPersistedProfile;
 
+  // Track which user we last hydrated for. Used by the auth change listener
+  // to detect identity changes (e.g. logout → re-login with different user).
+  // We can't rely on authProvider's previous value because the previous state
+  // after logout is unauthenticated (userId=null), making it impossible to
+  // compare against the new userId.
+  String? lastHydratedUserId;
+
   /// Load player data from SQLite into providers (inventory, cells, profile,
   /// enrichment cache). Does NOT start the game loop — call [startLoop]
   /// separately after this completes.
@@ -301,6 +308,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   }
 
   void hydrateAndStart(String userId) {
+    lastHydratedUserId = userId;
+
     // CRITICAL: On web, IndexedDB-backed SQLite may lose data between
     // sessions. Fetch from Supabase first to populate the local cache,
     // then run the existing SQLite hydration path.
@@ -422,6 +431,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             .read(authProvider.notifier)
             .setState(const AuthState.unauthenticated());
         coordinator.setCurrentUserId(null);
+
+        // Clear in-memory state on sign-out so stale data from the old
+        // user doesn't bleed into the next session. On re-login, the
+        // auth change listener below triggers a full re-hydration.
+        ref.read(playerProvider.notifier).loadProfile(
+              cellsObserved: 0,
+              totalDistanceKm: 0.0,
+              currentStreak: 0,
+              longestStreak: 0,
+            );
+        ref.read(inventoryProvider.notifier).loadItems([]);
+        fogResolver.loadVisitedCells({});
+        enrichmentCache.clear();
+        lastPersistedProfile = null;
       }
     });
   }
@@ -431,19 +454,37 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   // --- Re-hydrate when auth identity changes post-startup ---
   //
-  // After the initial hydrate-and-start completes, the player may upgrade
-  // their identity (e.g., signInWithPhone adds a phone number). If the
-  // userId changes (anonymous → identified account), reload their data
-  // from SQLite. If the userId stays the same (phone added to same anon
-  // account), this is a no-op since the data is already loaded.
+  // Handles TWO scenarios:
+  // 1. User upgrades identity (signInWithPhone) — userId may change if
+  //    Supabase creates a new account for the phone credential.
+  // 2. User logs out then back in — previous auth state is unauthenticated
+  //    (userId=null), so we track lastHydratedUserId instead.
+  //
+  // Uses lastHydratedUserId (set during hydrateAndStart) rather than
+  // previous?.user?.id because after logout → login, the previous auth
+  // state is unauthenticated and has no userId.
   ref.listen<AuthState>(authProvider, (previous, next) {
-    final prevId = previous?.user?.id;
     final nextId = next.user?.id;
-    if (nextId == null || prevId == null) return;
-    if (nextId == prevId) return; // Same user — no reload needed.
-    debugPrint('[GameCoordinator] auth identity changed: $prevId → $nextId, '
-        're-hydrating player data');
-    rehydrateData(nextId);
+    if (nextId == null) return; // Sign-out — handled by stream listener above.
+    if (nextId == lastHydratedUserId) return; // Same user — no reload needed.
+    debugPrint('[GameCoordinator] auth identity changed: '
+        '$lastHydratedUserId → $nextId, re-hydrating player data');
+    lastHydratedUserId = nextId;
+    coordinator.setCurrentUserId(nextId);
+
+    // Full hydration chain: Supabase → SQLite → providers.
+    // On web, IndexedDB may have been cleared, so we need to pull from
+    // Supabase first (not just rehydrateData which only reads SQLite).
+    hydrateFromSupabase(
+      userId: nextId,
+      persistence: ref.read(supabasePersistenceProvider),
+      profileRepo: profileRepo,
+      cellProgressRepo: cellProgressRepo,
+      itemRepo: itemRepo,
+      enrichmentRepo: enrichmentRepo,
+    ).then((_) => rehydrateData(nextId)).catchError((Object e) {
+      debugPrint('[GameCoordinator] re-hydration after auth change failed: $e');
+    });
   });
 
   // --- Wire profile write-through: persist on PlayerState changes ---
