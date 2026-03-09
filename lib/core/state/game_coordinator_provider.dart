@@ -304,6 +304,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // CRITICAL: On web, IndexedDB-backed SQLite may lose data between
     // sessions. Fetch from Supabase first to populate the local cache,
     // then run the existing SQLite hydration path.
+    //
+    // The game loop MUST start even if hydration fails (e.g. Ref disposed
+    // due to provider rebuild race). Without .catchError, a rejected Future
+    // from rehydrateData() would prevent startLoop() from ever firing,
+    // leaving the map with zero GPS processing.
     hydrateFromSupabase(
       userId: userId,
       persistence: ref.read(supabasePersistenceProvider),
@@ -312,8 +317,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       itemRepo: itemRepo,
       enrichmentRepo: enrichmentRepo,
     ).then((_) => rehydrateData(userId)).then((_) {
-      startLoop();
-
       // Re-queue enrichment for any fauna in inventory that lacks it.
       // Runs async after game loop starts — non-blocking. Covers:
       //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
@@ -323,6 +326,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         ref: ref,
         enrichmentCache: enrichmentCache,
       );
+    }).catchError((Object e) {
+      debugPrint('[GameCoordinator] hydration chain failed '
+          '(starting loop anyway): $e');
+    }).whenComplete(() {
+      startLoop();
     });
   }
 
@@ -336,6 +344,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   Future<void> initializeAuth() async {
     final bootstrap = ref.read(supabaseBootstrapProvider);
     await bootstrap.ready;
+    if (!ref.mounted) return; // Provider disposed during bootstrap wait.
 
     // 1. Create the appropriate AuthService.
     if (bootstrap.initialized) {
@@ -358,8 +367,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     } catch (_) {
       // Timeout or stream error — try getCurrentUser() as fallback.
     }
+    if (!ref.mounted) return; // Provider disposed during session restore.
 
     restoredUser ??= await authService!.getCurrentUser();
+    if (!ref.mounted) return; // Provider disposed during getCurrentUser.
 
     // 3. If no session exists, sign in anonymously.
     if (restoredUser == null) {
@@ -372,6 +383,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           debugPrint('[GameCoordinator] falling back to MockAuthService');
           authService!.dispose();
           authService = MockAuthService();
+          if (!ref.mounted) return; // Provider disposed during fallback.
           ref.read(authServiceProvider.notifier).set(authService!);
           try {
             restoredUser = await authService!.signInAnonymously();
@@ -380,6 +392,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           }
         }
       }
+      if (!ref.mounted) return; // Provider disposed during sign-in.
     }
 
     // 4. Push auth state to authProvider + coordinator.
