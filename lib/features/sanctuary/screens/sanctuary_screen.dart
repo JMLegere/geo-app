@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/features/achievements/screens/achievement_screen.dart';
+
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/settings_screen.dart';
 import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
 import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
@@ -12,6 +14,7 @@ import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator
 import 'package:earth_nova/features/sanctuary/widgets/streak_badge.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Ambient gallery of collected species grouped by habitat.
 ///
@@ -38,6 +41,21 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
       // Upgrade prompt listener lives in PackScreen only (both screens are
       // in an IndexedStack, so duplicate listeners caused double-triggering).
     });
+  }
+
+  Widget _buildIdenticonAction(BuildContext context) {
+    final userId = ref.watch(authProvider).user?.id;
+    return IconButton(
+      icon: IdenticonAvatar(seed: userId ?? 'anonymous', size: 28),
+      tooltip: 'Settings',
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SettingsScreen(),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -86,20 +104,7 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen> {
               );
             },
           ),
-          IconButton(
-            icon: Icon(
-              Icons.settings,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
+          _buildIdenticonAction(context),
         ],
       ),
       body: CustomScrollView(

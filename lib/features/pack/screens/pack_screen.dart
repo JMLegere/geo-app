@@ -2,8 +2,10 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:earth_nova/features/auth/screens/settings_screen.dart';
+
 import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
 import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:earth_nova/features/pack/providers/pack_provider.dart';
@@ -11,6 +13,7 @@ import 'package:earth_nova/features/pack/widgets/category_stub_tab.dart';
 import 'package:earth_nova/features/pack/widgets/character_tab.dart';
 import 'package:earth_nova/features/pack/widgets/fauna_grid_tab.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Main Pack screen — a scrollable 8-tab inventory viewer.
 ///
@@ -64,6 +67,21 @@ class _PackScreenState extends ConsumerState<PackScreen>
     super.dispose();
   }
 
+  Widget _buildIdenticonAction(BuildContext context) {
+    final userId = ref.watch(authProvider).user?.id;
+    return IconButton(
+      icon: IdenticonAvatar(seed: userId ?? 'anonymous', size: 28),
+      tooltip: 'Settings',
+      onPressed: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SettingsScreen(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -86,17 +104,7 @@ class _PackScreenState extends ConsumerState<PackScreen>
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: Icon(Icons.settings, color: cs.onSurface),
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
+          _buildIdenticonAction(context),
         ],
         bottom: TabBar(
           controller: _tabController,
