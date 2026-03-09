@@ -5,81 +5,56 @@ import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/login_screen.dart';
 import 'package:earth_nova/features/navigation/screens/tab_shell.dart';
-import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
 import 'package:earth_nova/features/onboarding/screens/onboarding_screen.dart';
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
-import 'package:earth_nova/core/state/game_coordinator_provider.dart';
-import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Create and initialize bootstrap before ProviderScope so that all
-  // consumers receive the same pre-initialized instance via overrideWithValue.
-  final bootstrap = SupabaseBootstrap();
-  bootstrap.initialize(); // Non-blocking — resolves in background.
-  runApp(ProviderScope(
-    overrides: [
-      supabaseBootstrapProvider.overrideWithValue(bootstrap),
-    ],
-    child: const EarthNovaApp(),
-  ));
+  await SupabaseBootstrap.initialize();
+  runApp(const ProviderScope(child: EarthNovaApp()));
 }
 
 /// Root widget — routes through onboarding on first launch, then to
-/// [TabShell] when the user is authenticated (including anonymous), and to
-/// [LoginScreen] when there is no session.
+/// [TabShell] when the user is authenticated, and to [LoginScreen] when
+/// there is no session.
 ///
-/// Routing order:
-/// 1. `onboardingProvider == null` → neutral splash (no flash on cold start)
-/// 2. `onboardingProvider == false` → [OnboardingScreen] (first launch only)
-/// 3. auth loading / authenticated → [TabShell]
-/// 4. unauthenticated → [LoginScreen]
+/// Auth is resolved BEFORE this widget is created (via [SupabaseBootstrap]
+/// in [main]). Routing order:
+/// 1. [AuthStatus.loading] → [_LoadingSplash]
+/// 2. [AuthStatus.authenticated] + onboarding incomplete → [OnboardingScreen]
+/// 3. [AuthStatus.authenticated] + onboarding complete → [TabShell]
+/// 4. Any other status → [LoginScreen]
 class EarthNovaApp extends ConsumerWidget {
   const EarthNovaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Eagerly trigger GameCoordinator creation — it owns auth initialization.
-    // Without this, auth stays in loading state forever because GC was only
-    // read by MapScreen (which doesn't appear until auth resolves).
-    ref.watch(gameCoordinatorProvider);
-
-    final onboarded = ref.watch(onboardingProvider);
     final authState = ref.watch(authProvider);
+    final playerState = ref.watch(playerProvider);
 
     return MaterialApp(
       title: 'EarthNova',
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.dark,
-      home: _resolveHome(onboarded, authState),
+      home: _resolveHome(authState, playerState),
     );
   }
 
-  Widget _resolveHome(bool? onboarded, AuthState authState) {
-    // Still reading SharedPreferences — show blank scaffold to avoid flicker.
-    if (onboarded == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFF0D1B2A), // AppTheme._darkSurface
-      );
-    }
-
-    // First launch — onboarding not yet completed.
-    if (!onboarded) {
-      return const OnboardingScreen();
-    }
-
-    // Onboarding complete — use existing auth routing.
+  Widget _resolveHome(AuthState authState, PlayerState playerState) {
     return switch (authState.status) {
-      AuthStatus.authenticated => const TabShell(),
       AuthStatus.loading => const _LoadingSplash(),
-      _ => const LoginScreen(),
+      AuthStatus.authenticated => playerState.hasCompletedOnboarding
+          ? const TabShell()
+          : const OnboardingScreen(),
+      _ => const LoginScreen(), // unauthenticated, otpSent, otpVerifying
     };
   }
 }
 
-/// Lightweight splash shown while Supabase initializes and auth resolves.
+/// Lightweight splash shown while auth resolves.
 ///
 /// Replaces the previous behavior of routing [AuthStatus.loading] directly to
 /// the main screen, which triggered expensive Voronoi cell computation and

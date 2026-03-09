@@ -5,21 +5,21 @@ import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 /// Thin auth state holder with action wrappers.
 ///
-/// Auth orchestration (session restore, anonymous fallback) lives in
-/// [gameCoordinatorProvider]. This notifier handles:
+/// Auth orchestration (session restore, fallback) lives in the game
+/// coordinator. This notifier handles:
 ///   - State storage (reactive, watched by UI and routing)
 ///   - Action wrappers that delegate to [authServiceProvider]
 ///   - Loading/error state transitions for each action
 ///
-/// [gameCoordinatorProvider] calls [setState] for auth lifecycle events.
-/// UI calls action methods (signIn, signOut, etc.) which read
+/// The game coordinator calls [setState] for auth lifecycle events.
+/// UI calls action methods (sendOtp, verifyOtp, signOut) which read
 /// [authServiceProvider] for the actual service instance.
 class AuthNotifier extends Notifier<AuthState> {
   @override
-  AuthState build() => const AuthState.initial();
+  AuthState build() => const AuthState.unauthenticated();
 
   /// Direct state setter — called by gameCoordinatorProvider for auth
-  /// lifecycle events (session restore, anonymous fallback, stream events).
+  /// lifecycle events (session restore, stream events).
   void setState(AuthState newState) {
     state = newState;
   }
@@ -28,59 +28,31 @@ class AuthNotifier extends Notifier<AuthState> {
   // UI-facing action methods — delegate to authServiceProvider
   // ---------------------------------------------------------------------------
 
-  /// Signs in with email and password.
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  /// Sends an OTP to the given phone number.
+  Future<void> sendOtp(String phone) async {
     final service = ref.read(authServiceProvider);
     if (service == null) return;
-    state = const AuthState.loading();
+    state = AuthState.otpSent(phone: phone);
     try {
-      final user = await service.signIn(email: email, password: password);
+      await service.sendOtp(phone);
       if (!ref.mounted) return;
-      state = AuthState.authenticated(user);
+      state = AuthState.otpSent(phone: phone);
     } on AuthException catch (e) {
       if (!ref.mounted) return;
       state = AuthState.error(e.message);
     }
   }
 
-  /// Creates a new account with email and password.
-  Future<void> signUp({
-    required String email,
-    required String password,
-    String? displayName,
+  /// Verifies the OTP code for the given phone number.
+  Future<void> verifyOtp({
+    required String phone,
+    required String code,
   }) async {
     final service = ref.read(authServiceProvider);
     if (service == null) return;
-    state = const AuthState.loading();
+    state = AuthState.otpVerifying(phone: phone);
     try {
-      final user = await service.signUp(
-        email: email,
-        password: password,
-        displayName: displayName,
-      );
-      if (!ref.mounted) return;
-      state = AuthState.authenticated(user);
-    } on AuthException catch (e) {
-      if (!ref.mounted) return;
-      state = AuthState.error(e.message);
-    }
-  }
-
-  /// Signs in (or creates an account) with a phone number.
-  ///
-  /// Does NOT transition through [AuthState.loading] — the user is already
-  /// authenticated anonymously and we're upgrading in-place. A loading
-  /// transition would null the user ID, causing downstream providers
-  /// (GameCoordinator, inventory, fog) to see a null user and potentially
-  /// reset game state.
-  Future<void> signInWithPhone({required String phoneNumber}) async {
-    final service = ref.read(authServiceProvider);
-    if (service == null) return;
-    try {
-      final user = await service.signInWithPhone(phoneNumber: phoneNumber);
+      final user = await service.verifyOtp(phone: phone, code: code);
       if (!ref.mounted) return;
       state = AuthState.authenticated(user);
     } on AuthException catch (e) {
@@ -100,85 +72,6 @@ class AuthNotifier extends Notifier<AuthState> {
     } on AuthException catch (e) {
       if (!ref.mounted) return;
       state = AuthState.error(e.message);
-    }
-  }
-
-  /// Signs out with a guard for anonymous users.
-  ///
-  /// Anonymous users cannot safely sign out — their local data would be lost.
-  /// Sets an error state instead of signing out.
-  Future<void> signOutWithWarning() async {
-    if (state.isAnonymous) {
-      state = AuthState.error(
-        'Cannot sign out anonymous user — data will be lost',
-      );
-      return;
-    }
-    await signOut();
-  }
-
-  /// Signs in anonymously. Falls back to error state if it fails — the
-  /// fallback-to-mock logic lives in gameCoordinatorProvider.
-  Future<void> continueAsGuest() async {
-    final service = ref.read(authServiceProvider);
-    if (service == null) return;
-    state = const AuthState.loading();
-    try {
-      final user = await service.signInAnonymously();
-      if (!ref.mounted) return;
-      state = AuthState.authenticated(user);
-    } on AuthException catch (e) {
-      if (!ref.mounted) return;
-      state = AuthState.error(e.message);
-    }
-  }
-
-  /// Upgrades an anonymous account to a permanent email+password account.
-  /// Preserves the existing UUID — no data is orphaned.
-  Future<void> upgradeWithEmail({
-    required String email,
-    required String password,
-    String? displayName,
-  }) async {
-    final service = ref.read(authServiceProvider);
-    if (service == null) return;
-    if (!state.isAnonymous) return;
-    final previousUser = state.user;
-    state = const AuthState.loading();
-    try {
-      final user = await service.upgradeWithEmail(
-        email: email,
-        password: password,
-        displayName: displayName,
-      );
-      if (!ref.mounted) return;
-      state = AuthState.authenticated(user);
-    } on AuthException catch (e) {
-      if (!ref.mounted) return;
-      if (previousUser != null) {
-        state = AuthState.authenticated(previousUser);
-      } else {
-        state = AuthState.error(e.message);
-      }
-    }
-  }
-
-  /// Links an OAuth provider (Google/Apple) to the current anonymous account.
-  Future<void> linkOAuth({required String provider}) async {
-    final service = ref.read(authServiceProvider);
-    if (service == null) return;
-    if (!state.isAnonymous) return;
-    final previousUser = state.user;
-    try {
-      await service.linkOAuthIdentity(provider: provider);
-      if (!ref.mounted) return;
-    } on AuthException catch (e) {
-      if (!ref.mounted) return;
-      if (previousUser != null) {
-        state = AuthState.authenticated(previousUser);
-      } else {
-        state = AuthState.error(e.message);
-      }
     }
   }
 }

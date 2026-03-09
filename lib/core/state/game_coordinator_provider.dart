@@ -25,7 +25,6 @@ import 'package:earth_nova/core/persistence/write_queue_repository.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
-import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
@@ -34,11 +33,7 @@ import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/profile_repository_provider.dart';
 import 'package:earth_nova/core/state/write_queue_repository_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
-import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
-import 'package:earth_nova/features/auth/services/auth_service.dart';
-import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
-import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/enrichment/providers/enrichment_provider.dart';
 import 'package:earth_nova/features/location/services/location_service.dart';
@@ -308,8 +303,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   }
 
   void hydrateAndStart(String userId) {
-    lastHydratedUserId = userId;
-
     // CRITICAL: On web, IndexedDB-backed SQLite may lose data between
     // sessions. Fetch from Supabase first to populate the local cache,
     // then run the existing SQLite hydration path.
@@ -343,148 +336,42 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     });
   }
 
-  // --- Auth lifecycle: create service, restore session, start game ---
+  // --- Auth state handler ---
   //
-  // Declared in the synchronous provider body so ref.onDispose() can clean
-  // up. The async _initializeAuth closure populates them.
-  AuthService? authService;
-  StreamSubscription<UserProfile?>? authStreamSub;
+  // Called on initial provider creation (for the case where auth is already
+  // authenticated before this provider is first accessed) and on every future
+  // auth state transition via ref.listen.
 
-  Future<void> initializeAuth() async {
-    final bootstrap = ref.read(supabaseBootstrapProvider);
-    await bootstrap.ready;
-    if (!ref.mounted) return; // Provider disposed during bootstrap wait.
-
-    // 1. Create the appropriate AuthService.
-    if (bootstrap.initialized) {
-      authService = SupabaseAuthService();
-    } else {
-      authService = MockAuthService();
-    }
-    ref.read(authServiceProvider.notifier).set(authService!);
-
-    // 2. Try to restore an existing session.
-    //
-    // authStateChanges emits the current session on subscription (both
-    // MockAuthService and SupabaseAuthService do this). Wait up to 3s for
-    // it. Belt-and-suspenders: also try getCurrentUser() in case the
-    // stream doesn't fire.
-    UserProfile? restoredUser;
-    try {
-      restoredUser = await authService!.authStateChanges.first
-          .timeout(const Duration(seconds: 3));
-    } catch (_) {
-      // Timeout or stream error — try getCurrentUser() as fallback.
-    }
-    if (!ref.mounted) return; // Provider disposed during session restore.
-
-    restoredUser ??= await authService!.getCurrentUser();
-    if (!ref.mounted) return; // Provider disposed during getCurrentUser.
-
-    // 3. If no session exists, sign in anonymously.
-    if (restoredUser == null) {
-      try {
-        restoredUser = await authService!.signInAnonymously();
-      } on AuthException catch (e) {
-        debugPrint('[GameCoordinator] anonymous sign-in failed: $e');
-        // Last resort: if Supabase auth failed, fall back to MockAuthService.
-        if (authService is! MockAuthService) {
-          debugPrint('[GameCoordinator] falling back to MockAuthService');
-          authService!.dispose();
-          authService = MockAuthService();
-          if (!ref.mounted) return; // Provider disposed during fallback.
-          ref.read(authServiceProvider.notifier).set(authService!);
-          try {
-            restoredUser = await authService!.signInAnonymously();
-          } catch (e2) {
-            debugPrint('[GameCoordinator] mock anonymous sign-in failed: $e2');
-          }
-        }
-      }
-      if (!ref.mounted) return; // Provider disposed during sign-in.
-    }
-
-    // 4. Push auth state to authProvider + coordinator.
-    if (restoredUser != null) {
-      ref.read(authProvider.notifier).setState(
-            AuthState.authenticated(restoredUser),
+  void handleAuthState(AuthState authState) {
+    final userId = authState.user?.id;
+    if (authState.status == AuthStatus.authenticated && userId != null) {
+      if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
+      lastHydratedUserId = userId;
+      coordinator.setCurrentUserId(userId);
+      hydrateAndStart(userId);
+    } else if (authState.status == AuthStatus.unauthenticated) {
+      coordinator.setCurrentUserId(null);
+      lastHydratedUserId = null;
+      ref.read(playerProvider.notifier).loadProfile(
+            cellsObserved: 0,
+            totalDistanceKm: 0.0,
+            currentStreak: 0,
+            longestStreak: 0,
           );
-      coordinator.setCurrentUserId(restoredUser.id);
-      hydrateAndStart(restoredUser.id);
-    } else {
-      ref
-          .read(authProvider.notifier)
-          .setState(const AuthState.unauthenticated());
-      startLoop();
+      ref.read(inventoryProvider.notifier).loadItems([]);
+      fogResolver.loadVisitedCells({});
+      enrichmentCache.clear();
+      lastPersistedProfile = null;
     }
-
-    // 5. Start ongoing auth stream listener for future auth events
-    //    (sign-in, sign-out, token refresh, identity changes from UI actions).
-    authStreamSub = authService!.authStateChanges.listen((user) {
-      if (user != null) {
-        ref.read(authProvider.notifier).setState(
-              AuthState.authenticated(user),
-            );
-        coordinator.setCurrentUserId(user.id);
-      } else {
-        ref
-            .read(authProvider.notifier)
-            .setState(const AuthState.unauthenticated());
-        coordinator.setCurrentUserId(null);
-
-        // Clear in-memory state on sign-out so stale data from the old
-        // user doesn't bleed into the next session. On re-login, the
-        // auth change listener below triggers a full re-hydration.
-        ref.read(playerProvider.notifier).loadProfile(
-              cellsObserved: 0,
-              totalDistanceKm: 0.0,
-              currentStreak: 0,
-              longestStreak: 0,
-            );
-        ref.read(inventoryProvider.notifier).loadItems([]);
-        fogResolver.loadVisitedCells({});
-        enrichmentCache.clear();
-        lastPersistedProfile = null;
-      }
-    });
   }
 
-  // Fire auth initialization (async, non-blocking).
-  initializeAuth();
+  // Immediate check — handles the case where this provider is created
+  // after auth is already authenticated (no state change fires in that case).
+  handleAuthState(ref.read(authProvider));
 
-  // --- Re-hydrate when auth identity changes post-startup ---
-  //
-  // Handles TWO scenarios:
-  // 1. User upgrades identity (signInWithPhone) — userId may change if
-  //    Supabase creates a new account for the phone credential.
-  // 2. User logs out then back in — previous auth state is unauthenticated
-  //    (userId=null), so we track lastHydratedUserId instead.
-  //
-  // Uses lastHydratedUserId (set during hydrateAndStart) rather than
-  // previous?.user?.id because after logout → login, the previous auth
-  // state is unauthenticated and has no userId.
+  // React to future auth state transitions (sign-in, sign-out, re-login).
   ref.listen<AuthState>(authProvider, (previous, next) {
-    final nextId = next.user?.id;
-    if (nextId == null) return; // Sign-out — handled by stream listener above.
-    if (nextId == lastHydratedUserId) return; // Same user — no reload needed.
-    debugPrint('[GameCoordinator] auth identity changed: '
-        '$lastHydratedUserId → $nextId, re-hydrating player data');
-    lastHydratedUserId = nextId;
-    coordinator.setCurrentUserId(nextId);
-
-    // Full hydration chain: Supabase → SQLite → providers.
-    // On web, IndexedDB may have been cleared, so we need to pull from
-    // Supabase first (not just rehydrateData which only reads SQLite).
-    hydrateFromSupabase(
-      userId: nextId,
-      persistence: ref.read(supabasePersistenceProvider),
-      profileRepo: profileRepo,
-      cellProgressRepo: cellProgressRepo,
-      itemRepo: itemRepo,
-      enrichmentRepo: enrichmentRepo,
-    ).then((_) => rehydrateData(nextId)).catchError((Object e) {
-      debugPrint('[GameCoordinator] re-hydration after auth change failed: $e');
-    });
+    handleAuthState(next);
   });
 
   // --- Wire profile write-through: persist on PlayerState changes ---
@@ -515,8 +402,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   ref.onDispose(() {
     coordinator.dispose();
     locationService.stop();
-    authStreamSub?.cancel();
-    authService?.dispose();
   });
 
   return coordinator;
