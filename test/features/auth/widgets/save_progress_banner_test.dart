@@ -11,17 +11,20 @@ import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
 
 /// Returns a fixed [UpgradePromptState] without touching the real provider
 /// graph (collection / auth / supabase). Safe for isolated widget tests.
+///
+/// NOTE: [UpgradePromptState.showBanner] is hardcoded to false in the new
+/// auth design — the upgrade prompt is permanently disabled. These tests
+/// verify that the banner never renders regardless of the underlying state.
 class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
-  _StubUpgradePromptNotifier({required bool showBanner})
-      : _showBanner = showBanner;
+  _StubUpgradePromptNotifier({required bool supabaseInitialized})
+      : _supabaseInitialized = supabaseInitialized;
 
-  final bool _showBanner;
+  final bool _supabaseInitialized;
 
   @override
   UpgradePromptState build() => UpgradePromptState(
-        totalCollected: _showBanner ? 10 : 0,
-        isAnonymous: _showBanner,
-        supabaseInitialized: _showBanner,
+        totalCollected: 10,
+        supabaseInitialized: _supabaseInitialized,
       );
 }
 
@@ -29,11 +32,16 @@ class _StubUpgradePromptNotifier extends UpgradePromptNotifier {
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrapWithBanner({required bool showBanner, required Widget child}) {
+Widget _wrapWithBanner({
+  required bool supabaseInitialized,
+  required Widget child,
+}) {
   return ProviderScope(
     overrides: [
       upgradePromptProvider.overrideWith(
-        () => _StubUpgradePromptNotifier(showBanner: showBanner),
+        () => _StubUpgradePromptNotifier(
+          supabaseInitialized: supabaseInitialized,
+        ),
       ),
     ],
     child: MaterialApp(
@@ -48,118 +56,61 @@ Widget _wrapWithBanner({required bool showBanner, required Widget child}) {
 
 void main() {
   group('SaveProgressBanner', () {
-    testWidgets('renders banner when showBanner is true', (tester) async {
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () {}),
-        ),
-      );
+    // showBanner is hardcoded to false in the new auth design — the upgrade
+    // prompt is permanently disabled. The banner should never render.
 
-      expect(find.byType(SaveProgressBanner), findsOneWidget);
-      expect(find.text('Save your progress'), findsOneWidget);
-    });
-
-    testWidgets('renders SizedBox.shrink when showBanner is false',
+    testWidgets('banner is never shown — showBanner is always false',
         (tester) async {
       await tester.pumpWidget(
         _wrapWithBanner(
-          showBanner: false,
+          supabaseInitialized: true,
           child: SaveProgressBanner(onUpgradeTap: () {}),
         ),
       );
 
-      // No visible banner texts when hidden.
+      // Banner content is never rendered.
+      expect(find.text('Save your progress'), findsNothing);
+      expect(find.text('Sign in to keep your discoveries'), findsNothing);
+      expect(find.text('Sign In'), findsNothing);
+      expect(find.byType(OutlinedButton), findsNothing);
+    });
+
+    testWidgets('banner is hidden when supabase is not initialized',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrapWithBanner(
+          supabaseInitialized: false,
+          child: SaveProgressBanner(onUpgradeTap: () {}),
+        ),
+      );
+
       expect(find.text('Save your progress'), findsNothing);
       expect(find.text('Sign In'), findsNothing);
     });
 
-    testWidgets('banner contains "Save your progress" text when visible',
+    testWidgets('widget tree still contains SaveProgressBanner widget',
         (tester) async {
       await tester.pumpWidget(
         _wrapWithBanner(
-          showBanner: true,
+          supabaseInitialized: true,
           child: SaveProgressBanner(onUpgradeTap: () {}),
         ),
       );
 
-      expect(find.text('Save your progress'), findsOneWidget);
+      // The widget itself is present in the tree, just renders as SizedBox.shrink.
+      expect(find.byType(SaveProgressBanner), findsOneWidget);
     });
 
-    testWidgets('banner contains subtitle text when visible', (tester) async {
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () {}),
-        ),
-      );
-
-      expect(find.text('Sign in to keep your discoveries'), findsOneWidget);
-    });
-
-    testWidgets('banner contains "Sign In" button when visible', (tester) async {
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () {}),
-        ),
-      );
-
-      expect(find.text('Sign In'), findsOneWidget);
-      expect(find.byType(OutlinedButton), findsOneWidget);
-    });
-
-    testWidgets('tapping the "Sign In" button invokes callback', (tester) async {
-      var tapped = false;
-
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () => tapped = true),
-        ),
-      );
-
-      await tester.tap(find.byType(OutlinedButton));
-      expect(tapped, isTrue);
-    });
-
-    testWidgets('tapping the banner body invokes callback', (tester) async {
-      var tapped = false;
-
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () => tapped = true),
-        ),
-      );
-
-      // Tap the primary text — lands on the GestureDetector wrapping the banner.
-      await tester.tap(find.text('Save your progress'));
-      expect(tapped, isTrue);
-    });
-
-    testWidgets('no "Sign In" button rendered when banner is hidden',
+    testWidgets('no OutlinedButton rendered regardless of state',
         (tester) async {
       await tester.pumpWidget(
         _wrapWithBanner(
-          showBanner: false,
+          supabaseInitialized: true,
           child: SaveProgressBanner(onUpgradeTap: () {}),
         ),
       );
 
       expect(find.byType(OutlinedButton), findsNothing);
-    });
-
-    testWidgets('cloud upload icon is visible when banner is shown',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrapWithBanner(
-          showBanner: true,
-          child: SaveProgressBanner(onUpgradeTap: () {}),
-        ),
-      );
-
-      expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
     });
   });
 }

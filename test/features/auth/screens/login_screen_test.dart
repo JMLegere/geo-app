@@ -33,19 +33,20 @@ void main() {
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      // One TextFormField: phone number.
-      expect(find.byType(TextFormField), findsOneWidget);
+      // One TextField: phone number (uses TextField, not TextFormField).
+      expect(find.byType(TextField), findsOneWidget);
+      // +1 country code prefix is rendered as a Text widget inside prefixIcon.
       expect(find.text('+1'), findsOneWidget);
     });
 
-    testWidgets('renders continue button', (tester) async {
+    testWidgets('renders send code button', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
       expect(find.byType(AuthButton), findsOneWidget);
-      expect(find.text('Continue'), findsOneWidget);
+      expect(find.text('Send Code'), findsOneWidget);
     });
 
     testWidgets('does not render Create Account link', (tester) async {
@@ -58,16 +59,17 @@ void main() {
       expect(find.text('Create Account'), findsNothing);
     });
 
-    testWidgets('renders Continue as Guest link', (tester) async {
+    testWidgets('does not render Continue as Guest link', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      expect(find.text('Continue as Guest'), findsOneWidget);
+      // Phone-only flow — no anonymous/guest path.
+      expect(find.text('Continue as Guest'), findsNothing);
     });
 
-    testWidgets('continue button is disabled when phone field is empty',
+    testWidgets('send code button is disabled when phone field is empty',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
@@ -78,28 +80,28 @@ void main() {
       expect(button.onPressed, isNull);
     });
 
-    testWidgets('continue button is enabled when phone has 10 digits',
+    testWidgets('send code button is enabled when phone has 10 digits',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      await tester.enterText(find.byType(TextFormField).first, '5551234567');
+      await tester.enterText(find.byType(TextField).first, '5551234567');
       await tester.pump();
 
       final button = tester.widget<AuthButton>(find.byType(AuthButton));
       expect(button.onPressed, isNotNull);
     });
 
-    testWidgets('continue button stays disabled with fewer than 10 digits',
+    testWidgets('send code button stays disabled with fewer than 10 digits',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
-      await tester.enterText(find.byType(TextFormField).first, '55512');
+      await tester.enterText(find.byType(TextField).first, '55512');
       await tester.pump();
 
       final button = tester.widget<AuthButton>(find.byType(AuthButton));
