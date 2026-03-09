@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +6,8 @@ import 'package:earth_nova/features/map/utils/map_visibility.dart';
 import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:earth_nova/features/navigation/screens/town_placeholder_screen.dart';
 import 'package:earth_nova/features/pack/screens/pack_screen.dart';
+import 'package:earth_nova/features/auth/models/auth_state.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/navigation/providers/tab_index_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -46,6 +46,17 @@ class _TabShellState extends ConsumerState<TabShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(tabIndexProvider);
+
+    // Pop pushed routes (Settings, Achievements) when the user signs out so
+    // the AnimatedSwitcher-driven LoginScreen becomes fully visible.
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (previous?.status == AuthStatus.authenticated &&
+          next.status == AuthStatus.unauthenticated) {
+        if (context.mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      }
+    });
 
     // Listen for tab changes to control MapLibre visibility on web.
     // On native platforms, MapVisibility is a no-op.

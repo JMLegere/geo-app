@@ -62,6 +62,7 @@ class SupabasePersistence {
     int? longestStreak,
     double? totalDistanceKm,
     String? currentSeason,
+    bool? hasCompletedOnboarding,
   }) async {
     final data = <String, dynamic>{
       'id': userId,
@@ -72,6 +73,9 @@ class SupabasePersistence {
     if (longestStreak != null) data['longest_streak'] = longestStreak;
     if (totalDistanceKm != null) data['total_distance_km'] = totalDistanceKm;
     if (currentSeason != null) data['current_season'] = currentSeason;
+    if (hasCompletedOnboarding != null) {
+      data['has_completed_onboarding'] = hasCompletedOnboarding;
+    }
 
     try {
       await _client.from('profiles').upsert(data);

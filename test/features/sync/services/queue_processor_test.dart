@@ -175,6 +175,9 @@ class _MockSupabasePersistence extends SupabasePersistence {
   int upsertProfileCalls = 0;
   int deleteItemInstanceCalls = 0;
 
+  /// Captures the last hasCompletedOnboarding value passed to upsertProfile.
+  bool? lastProfileHasCompletedOnboarding;
+
   void reset() {
     shouldThrowSyncException = false;
     shouldRejectValidation = false;
@@ -185,6 +188,7 @@ class _MockSupabasePersistence extends SupabasePersistence {
     upsertCellProgressCalls = 0;
     upsertProfileCalls = 0;
     deleteItemInstanceCalls = 0;
+    lastProfileHasCompletedOnboarding = null;
   }
 
   // ── Overridden methods ────────────────────────────────────────────────────
@@ -251,8 +255,10 @@ class _MockSupabasePersistence extends SupabasePersistence {
     int? longestStreak,
     double? totalDistanceKm,
     String? currentSeason,
+    bool? hasCompletedOnboarding,
   }) async {
     upsertProfileCalls++;
+    lastProfileHasCompletedOnboarding = hasCompletedOnboarding;
     if (shouldThrowSyncException) throw SyncException(errorMessage);
     if (shouldRejectValidation) throw SyncRejectedException(errorMessage);
   }
@@ -361,6 +367,16 @@ String _profilePayload() => jsonEncode({
       'longest_streak': 10,
       'total_distance_km': 15.2,
       'current_season': 'winter',
+    });
+
+/// Build a profile payload JSON that includes has_completed_onboarding.
+String _profilePayloadWithOnboarding() => jsonEncode({
+      'display_name': 'TestPlayer',
+      'current_streak': 5,
+      'longest_streak': 10,
+      'total_distance_km': 15.2,
+      'current_season': 'winter',
+      'has_completed_onboarding': true,
     });
 
 // ---------------------------------------------------------------------------
@@ -879,6 +895,49 @@ void main() {
       for (var i = 1; i < delays.length; i++) {
         expect(delays[i], greaterThan(delays[i - 1]));
       }
+    });
+
+    // ── has_completed_onboarding passthrough ──────────────────────────────
+
+    test('flush profile entry passes has_completed_onboarding to persistence',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: _profilePayloadWithOnboarding(),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(1));
+      expect(mockPersistence.upsertProfileCalls, equals(1));
+      expect(mockPersistence.lastProfileHasCompletedOnboarding, isTrue);
+    });
+
+    test(
+        'flush profile entry without has_completed_onboarding passes null to persistence',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: _profilePayload(),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(1));
+      expect(mockPersistence.upsertProfileCalls, equals(1));
+      expect(mockPersistence.lastProfileHasCompletedOnboarding, isNull);
     });
   });
 }

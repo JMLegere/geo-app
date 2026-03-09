@@ -507,5 +507,60 @@ void main() {
       expect(enrichment.wit, equals(30)); // Default
       expect(enrichment.speed, equals(30)); // Default
     });
+
+    // ── has_completed_onboarding hydration ────────────────────────────────
+
+    test('hydrates has_completed_onboarding true from Supabase profile',
+        () async {
+      mockPersistence.profileData = {
+        'id': _userId,
+        'display_name': 'Onboarded User',
+        'current_streak': 1,
+        'longest_streak': 1,
+        'total_distance_km': 0.0,
+        'current_season': 'summer',
+        'has_completed_onboarding': true,
+      };
+
+      await hydrateFromSupabase(
+        userId: _userId,
+        persistence: mockPersistence,
+        profileRepo: profileRepo,
+        cellProgressRepo: cellProgressRepo,
+        itemRepo: itemRepo,
+        enrichmentRepo: enrichmentRepo,
+      );
+
+      final profile = await profileRepo.read(_userId);
+      expect(profile, isNotNull);
+      expect(profile!.hasCompletedOnboarding, isTrue);
+    });
+
+    test(
+        'hydrates has_completed_onboarding defaults to false when missing from profile',
+        () async {
+      mockPersistence.profileData = {
+        'id': _userId,
+        'display_name': 'New User',
+        'current_streak': 0,
+        'longest_streak': 0,
+        'total_distance_km': 0.0,
+        'current_season': 'summer',
+        // has_completed_onboarding intentionally absent
+      };
+
+      await hydrateFromSupabase(
+        userId: _userId,
+        persistence: mockPersistence,
+        profileRepo: profileRepo,
+        cellProgressRepo: cellProgressRepo,
+        itemRepo: itemRepo,
+        enrichmentRepo: enrichmentRepo,
+      );
+
+      final profile = await profileRepo.read(_userId);
+      expect(profile, isNotNull);
+      expect(profile!.hasCompletedOnboarding, isFalse);
+    });
   });
 }

@@ -10,9 +10,12 @@ CREATE TABLE profiles (
   longest_streak INT DEFAULT 0,
   total_distance_km DOUBLE PRECISION DEFAULT 0,
   current_season TEXT DEFAULT 'summer',
+  has_completed_onboarding BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+-- NOTE: To add this column to an existing Supabase deployment, run:
+--   ALTER TABLE profiles ADD COLUMN IF NOT EXISTS has_completed_onboarding BOOLEAN DEFAULT false;
 
 -- Per-cell exploration progress
 CREATE TABLE cell_progress (

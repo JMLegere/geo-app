@@ -345,6 +345,7 @@ class QueueProcessor {
           longestStreak: (data['longest_streak'] as num?)?.toInt(),
           totalDistanceKm: (data['total_distance_km'] as num?)?.toDouble(),
           currentSeason: data['current_season'] as String?,
+          hasCompletedOnboarding: data['has_completed_onboarding'] as bool?,
         );
       case WriteQueueOperation.delete:
         // Profile delete not currently used — no-op.
