@@ -123,15 +123,27 @@ class QueueProcessor {
     return id;
   }
 
-  /// Schedule a debounced auto-flush.
+  /// Flush immediately, bypassing the debounce timer.
   ///
-  /// Cancels any pending timer and starts a new one. When the timer fires,
-  /// calls [flush] and notifies [onAutoFlushComplete] with the result.
-  /// Safe to call rapidly — only the last call within the debounce window
-  /// triggers a flush.
+  /// Cancels any pending timer and flushes now. Use for lifecycle events
+  /// (page hide, app backgrounded) where the process may be killed soon.
+  Future<FlushSummary> flushNow({String? userId}) async {
+    _autoFlushTimer?.cancel();
+    _autoFlushTimer = null;
+    final summary = await flush(userId: userId);
+    onAutoFlushComplete?.call(summary);
+    return summary;
+  }
+
+  /// Schedule an auto-flush if one is not already pending.
+  ///
+  /// Unlike a debounce (which resets on every call), this fires exactly once
+  /// per window. Rapid enqueue() calls during active play won't postpone the
+  /// flush — the first enqueue starts the timer, subsequent ones are no-ops
+  /// until the timer fires and clears.
   void _scheduleFlush({String? userId}) {
     if (!canSync) return;
-    _autoFlushTimer?.cancel();
+    if (_autoFlushTimer?.isActive ?? false) return;
     _autoFlushTimer = Timer(
       const Duration(seconds: kWriteQueueAutoFlushDelaySeconds),
       () async {
