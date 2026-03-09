@@ -5,6 +5,7 @@ import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Account settings screen.
 ///
@@ -82,10 +83,6 @@ class SettingsScreen extends ConsumerWidget {
         : 'Explorer';
     // Show phone number for phone-auth users, email for email users.
     final subtitle = _resolveSubtitle(user);
-    final avatarLetter = (user?.displayName?.isNotEmpty == true)
-        ? user!.displayName![0].toUpperCase()
-        : null;
-
     return Scaffold(
       backgroundColor: colors.surface,
       appBar: AppBar(
@@ -116,24 +113,10 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    // Avatar
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: colors.primaryContainer,
-                      child: avatarLetter != null
-                          ? Text(
-                              avatarLetter,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: colors.onPrimaryContainer,
-                              ),
-                            )
-                          : Icon(
-                              Icons.person,
-                              size: 28,
-                              color: colors.onPrimaryContainer,
-                            ),
+                    // Identicon avatar — matches the shell-level icon.
+                    IdenticonAvatar(
+                      seed: user?.id ?? 'anonymous',
+                      size: 56,
                     ),
                     Spacing.gapHLg,
                     Expanded(

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/features/map/map_screen.dart';
-import 'package:earth_nova/features/map/utils/map_visibility.dart';
-import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
-import 'package:earth_nova/features/navigation/screens/town_placeholder_screen.dart';
-import 'package:earth_nova/features/pack/screens/pack_screen.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/screens/settings_screen.dart';
+import 'package:earth_nova/features/map/map_screen.dart';
+import 'package:earth_nova/features/map/utils/map_visibility.dart';
 import 'package:earth_nova/features/navigation/providers/tab_index_provider.dart';
+import 'package:earth_nova/features/navigation/screens/town_placeholder_screen.dart';
+import 'package:earth_nova/features/pack/screens/pack_screen.dart';
+import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
 ///
@@ -68,6 +71,9 @@ class _TabShellState extends ConsumerState<TabShell> {
       }
     });
 
+    final authState = ref.watch(authProvider);
+    final userId = authState.user?.id;
+
     return Scaffold(
       body: Stack(
         children: [
@@ -80,6 +86,24 @@ class _TabShellState extends ConsumerState<TabShell> {
               PackScreen(),
             ],
           ),
+          // ── Player identicon — persistent settings trigger ─────────────
+          // Shown on tabs without their own AppBar (Map, Town).
+          // Tabs with AppBars include the identicon in their actions instead.
+          if (userId != null && (currentIndex == 0 || currentIndex == 2))
+            Positioned(
+              top: MediaQuery.of(context).padding.top + Spacing.sm,
+              right: Spacing.md,
+              child: _PlayerIdenticonButton(
+                userId: userId,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
           // Build version stamp — bottom right, above nav bar.
           Positioned(
             right: 8,
@@ -121,6 +145,53 @@ class _TabShellState extends ConsumerState<TabShell> {
             label: 'Pack',
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+/// Tappable identicon avatar with subtle backdrop for map-tab legibility.
+///
+/// Uses a frosted container so the identicon remains visible against bright
+/// map tiles and dark AppBar backgrounds alike.
+class _PlayerIdenticonButton extends StatelessWidget {
+  const _PlayerIdenticonButton({
+    required this.userId,
+    required this.onTap,
+  });
+
+  final String userId;
+  final VoidCallback onTap;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Semantics(
+        label: 'Player profile and settings',
+        button: true,
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colors.surfaceContainer.withValues(alpha: 0.85),
+            border: Border.all(
+              color: colors.outline.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+            boxShadow: Shadows.soft,
+          ),
+          child: IdenticonAvatar(seed: userId, size: _size),
+        ),
       ),
     );
   }

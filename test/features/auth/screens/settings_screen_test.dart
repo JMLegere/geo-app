@@ -10,6 +10,7 @@ import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart'
 import 'package:earth_nova/features/auth/screens/settings_screen.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
+import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 // ---------------------------------------------------------------------------
 // Stub notifiers
@@ -106,7 +107,7 @@ void main() {
       expect(find.text('+15551234567'), findsOneWidget);
     });
 
-    testWidgets('shows person icon avatar for user with no displayName',
+    testWidgets('shows identicon avatar for user with no displayName',
         (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_MinimalAuthNotifier.new)],
@@ -114,19 +115,17 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.byIcon(Icons.person), findsOneWidget);
+      expect(find.byType(IdenticonAvatar), findsOneWidget);
     });
 
-    testWidgets('shows first letter of display name in avatar for named user',
-        (tester) async {
+    testWidgets('shows identicon avatar for named user', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_EmailAuthNotifier.new)],
         child: const MaterialApp(home: SettingsScreen()),
       ));
       await tester.pump();
 
-      // First letter of 'Alex Explorer' is 'A'.
-      expect(find.text('A'), findsOneWidget);
+      expect(find.byType(IdenticonAvatar), findsOneWidget);
     });
 
     // ── Sign-out dialog ──────────────────────────────────────────────────────
@@ -195,8 +194,8 @@ void main() {
 
   // ── SanctuaryScreen gear icon ─────────────────────────────────────────────
 
-  group('SanctuaryScreen gear icon', () {
-    testWidgets('AppBar has settings gear icon', (tester) async {
+  group('SanctuaryScreen identicon', () {
+    testWidgets('AppBar has identicon avatar for settings', (tester) async {
       final container = ProviderContainer(
         overrides: [
           authProvider.overrideWith(_MinimalAuthNotifier.new),
@@ -214,10 +213,10 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.byIcon(Icons.settings), findsOneWidget);
+      expect(find.byType(IdenticonAvatar), findsOneWidget);
     });
 
-    testWidgets('tapping gear icon navigates to SettingsScreen',
+    testWidgets('tapping identicon navigates to SettingsScreen',
         (tester) async {
       final container = ProviderContainer(
         overrides: [
@@ -236,7 +235,7 @@ void main() {
       );
       await tester.pump();
 
-      await tester.tap(find.byIcon(Icons.settings));
+      await tester.tap(find.byType(IdenticonAvatar));
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsScreen), findsOneWidget);
