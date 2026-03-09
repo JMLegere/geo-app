@@ -3,55 +3,35 @@ import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 
 void main() {
   group('SupabaseBootstrap', () {
-    // ── initialize ───────────────────────────────────────────────────────────
-
-    test('initialize() sets initialized = false when credentials missing', () {
-      // When SUPABASE_URL is empty (the default in tests), initialize()
-      // should set ready to an already-resolved future and leave
-      // initialized = false.
-      final bootstrap = SupabaseBootstrap();
-      bootstrap.initialize();
-
-      // ready should be immediately resolved (no async work).
-      expect(bootstrap.ready, completes);
-      // initialized should remain false.
-      expect(bootstrap.initialized, isFalse);
-    });
-
-    test('ready completes immediately when no credentials', () async {
-      final bootstrap = SupabaseBootstrap();
-      bootstrap.initialize();
-
-      // ready should resolve without delay.
-      final stopwatch = Stopwatch()..start();
-      await bootstrap.ready;
-      stopwatch.stop();
-
-      // Should complete in <100ms (no actual Supabase init).
-      expect(stopwatch.elapsedMilliseconds, lessThan(100));
-    });
-
-    test('ready Future resolves after initialization attempt', () async {
-      // Even though we can't actually initialize Supabase in tests (no valid
-      // credentials), we can verify that ready is a Future that
-      // eventually resolves (either to success or failure).
-      final bootstrap = SupabaseBootstrap();
-      bootstrap.initialize();
-
-      // This should not hang or throw.
-      await expectLater(bootstrap.ready, completes);
-    });
+    // ── Static API ───────────────────────────────────────────────────────────
 
     test('initialized defaults to false before initialize() is called', () {
-      final bootstrap = SupabaseBootstrap();
-      expect(bootstrap.initialized, isFalse);
+      // Static field — reflects the current state of the class.
+      // In tests (no credentials), this should be false.
+      expect(SupabaseBootstrap.initialized, isFalse);
     });
 
-    test('ready defaults to resolved future before initialize() is called',
+    test('initialize() returns false when credentials missing', () async {
+      // When SUPABASE_URL is empty (the default in tests), initialize()
+      // should return false and leave initialized = false.
+      final result = await SupabaseBootstrap.initialize();
+
+      expect(result, isFalse);
+      expect(SupabaseBootstrap.initialized, isFalse);
+    });
+
+    test('initialize() completes without throwing when no credentials',
         () async {
-      final bootstrap = SupabaseBootstrap();
-      // Should complete immediately without calling initialize().
-      await expectLater(bootstrap.ready, completes);
+      // Should not throw even with missing credentials.
+      await expectLater(SupabaseBootstrap.initialize(), completes);
+    });
+
+    test('initialize() is idempotent — calling twice is safe', () async {
+      // Multiple calls should not throw or corrupt state.
+      await SupabaseBootstrap.initialize();
+      await SupabaseBootstrap.initialize();
+
+      expect(SupabaseBootstrap.initialized, isFalse);
     });
   });
 }

@@ -11,6 +11,7 @@ import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/map_screen.dart';
 import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
+import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/main.dart';
 
 /// Stub notifier that reports onboarding as complete without touching
@@ -30,9 +31,15 @@ class _AuthenticatedNotifier extends AuthNotifier {
           email: '',
           displayName: 'Explorer',
           createdAt: DateTime.now(),
-          isAnonymous: true,
         ),
       );
+}
+
+/// Stub notifier that reports onboarding as complete via PlayerState,
+/// which is what EarthNovaApp actually checks for routing.
+class _OnboardedPlayerNotifier extends PlayerNotifier {
+  @override
+  PlayerState build() => PlayerState(hasCompletedOnboarding: true);
 }
 
 /// Minimal CellService for creating a no-op GameCoordinator in tests.
@@ -71,6 +78,7 @@ void main() {
         overrides: [
           onboardingProvider.overrideWith(_CompletedOnboardingNotifier.new),
           authProvider.overrideWith(_AuthenticatedNotifier.new),
+          playerProvider.overrideWith(_OnboardedPlayerNotifier.new),
           gameCoordinatorProvider.overrideWithValue(noOpCoordinator),
         ],
         child: const EarthNovaApp(),
