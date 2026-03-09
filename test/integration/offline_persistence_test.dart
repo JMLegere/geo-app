@@ -74,6 +74,7 @@ LocalPlayerProfile makeProfile({
       longestStreak: longestStreak,
       totalDistanceKm: totalDistanceKm,
       currentSeason: currentSeason,
+      hasCompletedOnboarding: false,
       createdAt: DateTime(2026, 3, 1),
       updatedAt: DateTime(2026, 3, 1),
     );

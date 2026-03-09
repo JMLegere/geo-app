@@ -12,6 +12,9 @@ class PlayerState {
   /// Last OS pedometer value seen — used to compute delta on next app open.
   final int lastKnownStepCount;
 
+  /// Whether the player has completed the onboarding flow.
+  final bool hasCompletedOnboarding;
+
   PlayerState({
     this.currentStreak = 0,
     this.longestStreak = 0,
@@ -19,6 +22,7 @@ class PlayerState {
     this.cellsObserved = 0,
     this.totalSteps = 0,
     this.lastKnownStepCount = 0,
+    this.hasCompletedOnboarding = false,
   });
 
   PlayerState copyWith({
@@ -28,6 +32,7 @@ class PlayerState {
     int? cellsObserved,
     int? totalSteps,
     int? lastKnownStepCount,
+    bool? hasCompletedOnboarding,
   }) {
     return PlayerState(
       currentStreak: currentStreak ?? this.currentStreak,
@@ -36,6 +41,8 @@ class PlayerState {
       cellsObserved: cellsObserved ?? this.cellsObserved,
       totalSteps: totalSteps ?? this.totalSteps,
       lastKnownStepCount: lastKnownStepCount ?? this.lastKnownStepCount,
+      hasCompletedOnboarding:
+          hasCompletedOnboarding ?? this.hasCompletedOnboarding,
     );
   }
 }
@@ -106,6 +113,7 @@ class PlayerNotifier extends Notifier<PlayerState> {
     required int longestStreak,
     int totalSteps = 0,
     int lastKnownStepCount = 0,
+    bool hasCompletedOnboarding = false,
   }) {
     state = PlayerState(
       cellsObserved: cellsObserved,
@@ -114,7 +122,12 @@ class PlayerNotifier extends Notifier<PlayerState> {
       longestStreak: longestStreak,
       totalSteps: totalSteps,
       lastKnownStepCount: lastKnownStepCount,
+      hasCompletedOnboarding: hasCompletedOnboarding,
     );
+  }
+
+  void markOnboardingComplete() {
+    state = state.copyWith(hasCompletedOnboarding: true);
   }
 }
 

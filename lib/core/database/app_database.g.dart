@@ -1156,6 +1156,16 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('summer'));
+  static const VerificationMeta _hasCompletedOnboardingMeta =
+      const VerificationMeta('hasCompletedOnboarding');
+  @override
+  late final GeneratedColumn<bool> hasCompletedOnboarding =
+      GeneratedColumn<bool>('has_completed_onboarding', aliasedName, false,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("has_completed_onboarding" IN (0, 1))'),
+          defaultValue: const Constant(false));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1180,6 +1190,7 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
         longestStreak,
         totalDistanceKm,
         currentSeason,
+        hasCompletedOnboarding,
         createdAt,
         updatedAt
       ];
@@ -1230,6 +1241,12 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
           currentSeason.isAcceptableOrUnknown(
               data['current_season']!, _currentSeasonMeta));
     }
+    if (data.containsKey('has_completed_onboarding')) {
+      context.handle(
+          _hasCompletedOnboardingMeta,
+          hasCompletedOnboarding.isAcceptableOrUnknown(
+              data['has_completed_onboarding']!, _hasCompletedOnboardingMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1259,6 +1276,9 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
           DriftSqlType.double, data['${effectivePrefix}total_distance_km'])!,
       currentSeason: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}current_season'])!,
+      hasCompletedOnboarding: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}has_completed_onboarding'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1280,6 +1300,7 @@ class LocalPlayerProfile extends DataClass
   final int longestStreak;
   final double totalDistanceKm;
   final String currentSeason;
+  final bool hasCompletedOnboarding;
   final DateTime createdAt;
   final DateTime updatedAt;
   const LocalPlayerProfile(
@@ -1289,6 +1310,7 @@ class LocalPlayerProfile extends DataClass
       required this.longestStreak,
       required this.totalDistanceKm,
       required this.currentSeason,
+      required this.hasCompletedOnboarding,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -1300,6 +1322,7 @@ class LocalPlayerProfile extends DataClass
     map['longest_streak'] = Variable<int>(longestStreak);
     map['total_distance_km'] = Variable<double>(totalDistanceKm);
     map['current_season'] = Variable<String>(currentSeason);
+    map['has_completed_onboarding'] = Variable<bool>(hasCompletedOnboarding);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1313,6 +1336,7 @@ class LocalPlayerProfile extends DataClass
       longestStreak: Value(longestStreak),
       totalDistanceKm: Value(totalDistanceKm),
       currentSeason: Value(currentSeason),
+      hasCompletedOnboarding: Value(hasCompletedOnboarding),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1328,6 +1352,8 @@ class LocalPlayerProfile extends DataClass
       longestStreak: serializer.fromJson<int>(json['longestStreak']),
       totalDistanceKm: serializer.fromJson<double>(json['totalDistanceKm']),
       currentSeason: serializer.fromJson<String>(json['currentSeason']),
+      hasCompletedOnboarding:
+          serializer.fromJson<bool>(json['hasCompletedOnboarding']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1342,6 +1368,7 @@ class LocalPlayerProfile extends DataClass
       'longestStreak': serializer.toJson<int>(longestStreak),
       'totalDistanceKm': serializer.toJson<double>(totalDistanceKm),
       'currentSeason': serializer.toJson<String>(currentSeason),
+      'hasCompletedOnboarding': serializer.toJson<bool>(hasCompletedOnboarding),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1354,6 +1381,7 @@ class LocalPlayerProfile extends DataClass
           int? longestStreak,
           double? totalDistanceKm,
           String? currentSeason,
+          bool? hasCompletedOnboarding,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       LocalPlayerProfile(
@@ -1363,6 +1391,8 @@ class LocalPlayerProfile extends DataClass
         longestStreak: longestStreak ?? this.longestStreak,
         totalDistanceKm: totalDistanceKm ?? this.totalDistanceKm,
         currentSeason: currentSeason ?? this.currentSeason,
+        hasCompletedOnboarding:
+            hasCompletedOnboarding ?? this.hasCompletedOnboarding,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1383,6 +1413,9 @@ class LocalPlayerProfile extends DataClass
       currentSeason: data.currentSeason.present
           ? data.currentSeason.value
           : this.currentSeason,
+      hasCompletedOnboarding: data.hasCompletedOnboarding.present
+          ? data.hasCompletedOnboarding.value
+          : this.hasCompletedOnboarding,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1397,6 +1430,7 @@ class LocalPlayerProfile extends DataClass
           ..write('longestStreak: $longestStreak, ')
           ..write('totalDistanceKm: $totalDistanceKm, ')
           ..write('currentSeason: $currentSeason, ')
+          ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1404,8 +1438,16 @@ class LocalPlayerProfile extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, displayName, currentStreak, longestStreak,
-      totalDistanceKm, currentSeason, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      displayName,
+      currentStreak,
+      longestStreak,
+      totalDistanceKm,
+      currentSeason,
+      hasCompletedOnboarding,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1416,6 +1458,7 @@ class LocalPlayerProfile extends DataClass
           other.longestStreak == this.longestStreak &&
           other.totalDistanceKm == this.totalDistanceKm &&
           other.currentSeason == this.currentSeason &&
+          other.hasCompletedOnboarding == this.hasCompletedOnboarding &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1428,6 +1471,7 @@ class LocalPlayerProfileTableCompanion
   final Value<int> longestStreak;
   final Value<double> totalDistanceKm;
   final Value<String> currentSeason;
+  final Value<bool> hasCompletedOnboarding;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1438,6 +1482,7 @@ class LocalPlayerProfileTableCompanion
     this.longestStreak = const Value.absent(),
     this.totalDistanceKm = const Value.absent(),
     this.currentSeason = const Value.absent(),
+    this.hasCompletedOnboarding = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1449,6 +1494,7 @@ class LocalPlayerProfileTableCompanion
     this.longestStreak = const Value.absent(),
     this.totalDistanceKm = const Value.absent(),
     this.currentSeason = const Value.absent(),
+    this.hasCompletedOnboarding = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1461,6 +1507,7 @@ class LocalPlayerProfileTableCompanion
     Expression<int>? longestStreak,
     Expression<double>? totalDistanceKm,
     Expression<String>? currentSeason,
+    Expression<bool>? hasCompletedOnboarding,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1472,6 +1519,8 @@ class LocalPlayerProfileTableCompanion
       if (longestStreak != null) 'longest_streak': longestStreak,
       if (totalDistanceKm != null) 'total_distance_km': totalDistanceKm,
       if (currentSeason != null) 'current_season': currentSeason,
+      if (hasCompletedOnboarding != null)
+        'has_completed_onboarding': hasCompletedOnboarding,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1485,6 +1534,7 @@ class LocalPlayerProfileTableCompanion
       Value<int>? longestStreak,
       Value<double>? totalDistanceKm,
       Value<String>? currentSeason,
+      Value<bool>? hasCompletedOnboarding,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1495,6 +1545,8 @@ class LocalPlayerProfileTableCompanion
       longestStreak: longestStreak ?? this.longestStreak,
       totalDistanceKm: totalDistanceKm ?? this.totalDistanceKm,
       currentSeason: currentSeason ?? this.currentSeason,
+      hasCompletedOnboarding:
+          hasCompletedOnboarding ?? this.hasCompletedOnboarding,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1522,6 +1574,10 @@ class LocalPlayerProfileTableCompanion
     if (currentSeason.present) {
       map['current_season'] = Variable<String>(currentSeason.value);
     }
+    if (hasCompletedOnboarding.present) {
+      map['has_completed_onboarding'] =
+          Variable<bool>(hasCompletedOnboarding.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1543,6 +1599,7 @@ class LocalPlayerProfileTableCompanion
           ..write('longestStreak: $longestStreak, ')
           ..write('totalDistanceKm: $totalDistanceKm, ')
           ..write('currentSeason: $currentSeason, ')
+          ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3154,6 +3211,7 @@ typedef $$LocalPlayerProfileTableTableCreateCompanionBuilder
   Value<int> longestStreak,
   Value<double> totalDistanceKm,
   Value<String> currentSeason,
+  Value<bool> hasCompletedOnboarding,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3166,6 +3224,7 @@ typedef $$LocalPlayerProfileTableTableUpdateCompanionBuilder
   Value<int> longestStreak,
   Value<double> totalDistanceKm,
   Value<String> currentSeason,
+  Value<bool> hasCompletedOnboarding,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3198,6 +3257,10 @@ class $$LocalPlayerProfileTableTableFilterComposer
 
   ColumnFilters<String> get currentSeason => $composableBuilder(
       column: $table.currentSeason, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get hasCompletedOnboarding => $composableBuilder(
+      column: $table.hasCompletedOnboarding,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3237,6 +3300,10 @@ class $$LocalPlayerProfileTableTableOrderingComposer
       column: $table.currentSeason,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get hasCompletedOnboarding => $composableBuilder(
+      column: $table.hasCompletedOnboarding,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3270,6 +3337,9 @@ class $$LocalPlayerProfileTableTableAnnotationComposer
 
   GeneratedColumn<String> get currentSeason => $composableBuilder(
       column: $table.currentSeason, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasCompletedOnboarding => $composableBuilder(
+      column: $table.hasCompletedOnboarding, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3315,6 +3385,7 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<int> longestStreak = const Value.absent(),
             Value<double> totalDistanceKm = const Value.absent(),
             Value<String> currentSeason = const Value.absent(),
+            Value<bool> hasCompletedOnboarding = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3326,6 +3397,7 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             longestStreak: longestStreak,
             totalDistanceKm: totalDistanceKm,
             currentSeason: currentSeason,
+            hasCompletedOnboarding: hasCompletedOnboarding,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3337,6 +3409,7 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<int> longestStreak = const Value.absent(),
             Value<double> totalDistanceKm = const Value.absent(),
             Value<String> currentSeason = const Value.absent(),
+            Value<bool> hasCompletedOnboarding = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3348,6 +3421,7 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             longestStreak: longestStreak,
             totalDistanceKm: totalDistanceKm,
             currentSeason: currentSeason,
+            hasCompletedOnboarding: hasCompletedOnboarding,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
