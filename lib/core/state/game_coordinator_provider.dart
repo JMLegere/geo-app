@@ -374,7 +374,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       cellProgressRepo: cellProgressRepo,
       itemRepo: itemRepo,
       enrichmentRepo: enrichmentRepo,
-    ).then((_) => rehydrateData(userId)).then((_) {
+    ).then((_) => rehydrateData(userId)).then((_) async {
+      // Restore last known position before starting the game loop.
+      // This ensures the map and keyboard service start at the player's
+      // previous location instead of the hardcoded Fredericton default.
+      final profile = await profileRepo.read(userId);
+      if (profile?.lastLat != null && profile?.lastLon != null) {
+        locationService.setInitialPosition(
+          profile!.lastLat!,
+          profile.lastLon!,
+        );
+        debugPrint('[GameCoordinator] restored position: '
+            '${profile.lastLat}, ${profile.lastLon}');
+      }
+
       // Re-queue enrichment for any fauna in inventory that lacks it.
       // Runs async after game loop starts — non-blocking. Covers:
       //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
@@ -460,11 +473,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     lastPersistedProfile = next;
 
+    // Capture current position for session restore.
+    final currentPos = ref.read(locationProvider).currentPosition;
+
     _persistProfileState(
       userId: userId,
       playerState: next,
       profileRepo: profileRepo,
       queueProcessor: queueProcessor,
+      lastLat: currentPos?.lat,
+      lastLon: currentPos?.lon,
     );
   });
 
@@ -597,11 +615,16 @@ Future<void> _persistCellVisit({
 ///
 /// Called whenever [PlayerNotifier] state changes (cells observed, distance,
 /// streaks). Fire-and-forget — errors are logged but don't crash the UI.
+///
+/// [lastLat] and [lastLon] are the player's current position, saved so the
+/// next session can restore from their last known location.
 Future<void> _persistProfileState({
   required String userId,
   required PlayerState playerState,
   required ProfileRepository profileRepo,
   required QueueProcessor queueProcessor,
+  double? lastLat,
+  double? lastLon,
 }) async {
   final season = Season.fromDate(DateTime.now());
 
@@ -616,6 +639,9 @@ Future<void> _persistProfileState({
         totalDistanceKm: playerState.totalDistanceKm,
         currentSeason: season.name,
         hasCompletedOnboarding: playerState.hasCompletedOnboarding,
+        lastLat: lastLat,
+        lastLon: lastLon,
+        updateLastPosition: lastLat != null && lastLon != null,
       );
     } else {
       await profileRepo.create(
@@ -626,6 +652,8 @@ Future<void> _persistProfileState({
         totalDistanceKm: playerState.totalDistanceKm,
         currentSeason: season.name,
         hasCompletedOnboarding: playerState.hasCompletedOnboarding,
+        lastLat: lastLat,
+        lastLon: lastLon,
       );
     }
   } catch (e) {
@@ -641,6 +669,8 @@ Future<void> _persistProfileState({
       'total_distance_km': playerState.totalDistanceKm,
       'current_season': season.name,
       'has_completed_onboarding': playerState.hasCompletedOnboarding,
+      if (lastLat != null) 'last_lat': lastLat,
+      if (lastLon != null) 'last_lon': lastLon,
     });
 
     await queueProcessor.enqueue(
