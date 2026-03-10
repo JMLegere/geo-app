@@ -155,8 +155,10 @@ const int kCameraZoomDurationMs = 300;
 const double kRubberBandMinSpeedMps = 1.389;
 
 /// Speed multiplier applied to the distance between display and target.
-/// Higher = snappier catch-up. `speed = max(minSpeed, k * distance)`.
-const double kRubberBandSpeedMultiplier = 2.5;
+/// `speed = max(minSpeed, k * distance)`. At steady state the lag distance
+/// equals `playerSpeed / k`. With k = 1/3.6 ≈ 0.278, 100 km/h produces
+/// ~100 m of lag, 50 km/h → ~50 m, walking (5 km/h) → ~5 m.
+const double kRubberBandSpeedMultiplier = 1.0 / 3.6;
 
 /// Distance threshold in meters below which the marker snaps to the target.
 /// Prevents sub-pixel oscillation when effectively arrived.
@@ -261,6 +263,14 @@ const int kUpgradePromptDelaySeconds = 120;
 const String kAppVersion = '0.1.0';
 
 // Step-based Exploration
+/// Minimum steps granted per day since last login during step hydration.
+///
+/// On login, the actual pedometer delta is compared against
+/// `daysSinceLastSession × kMinDailyStepGrant` and the larger value wins.
+/// This guarantees progress even when the pedometer is unavailable (web) or
+/// the device was stationary.
+const int kMinDailyStepGrant = 1000;
+
 /// Step cost for remotely exploring a frontier cell via the cell info sheet.
 ///
 /// Spending this many steps calls [FogStateResolver.visitCellRemotely], which
