@@ -1,0 +1,37 @@
+SCENARIO 2: Non-click map events are ignored
+=============================================
+
+Test: "getCellId is not called when event is not a click"
+File: test/features/map/providers/cell_selection_provider_test.dart
+
+Preconditions:
+  - MockCellService with call tracking (calls list)
+  - _onMapEvent() guard: `if (event is MapEventClick)`
+
+Steps:
+  1. Simulate non-click event (e.g., MapEventMoveCamera) — modeled as isClickEvent=false
+  2. Assert getCellId NOT called (calls list is empty)
+  3. Assert cellSelectionProvider state unchanged (still null)
+
+Result: PASS ✓
+  - getCellId.calls.length == 0 ✓
+  - No cell selection triggered ✓
+
+Implementation guard in map_screen.dart:
+  void _onMapEvent(MapEvent event) {
+    // Only MapEventClick triggers cell selection — all other events are ignored.
+    if (event is MapEventClick) {
+      // ... getCellId called here
+    }
+    // MapEventMoveCamera, MapEventRotate, etc. fall through with no action
+  }
+
+Why this matters:
+  - MapLibre fires many events (camera move, rotate, zoom, etc.)
+  - Without the guard, every camera animation would trigger getCellId
+  - The rubber-band controller fires camera moves at 60fps — this would be catastrophic
+  - The `is MapEventClick` type check is the only correct filter
+
+Test suite result: 174/174 tests pass
+  - 14 new tests (cell_selection_provider_test.dart)
+  - 160 existing tests unchanged

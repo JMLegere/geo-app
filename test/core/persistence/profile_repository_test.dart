@@ -216,5 +216,82 @@ void main() {
       expect(profile2!.currentStreak, 2);
       expect(profile2.longestStreak, 5);
     });
+
+    test('step fields round-trip through SQLite', () async {
+      const userId = 'step_user';
+
+      // Create profile with step values
+      await repo.create(
+        userId: userId,
+        displayName: 'StepPlayer',
+        totalSteps: 1500,
+        lastKnownStepCount: 42000,
+      );
+
+      // Read back and assert initial values
+      final profile = await repo.read(userId);
+      expect(profile, isNotNull);
+      expect(profile!.totalSteps, 1500);
+      expect(profile.lastKnownStepCount, 42000);
+
+      // Update totalSteps only
+      await repo.update(
+        userId: userId,
+        totalSteps: 2000,
+      );
+
+      // Read again and assert updated totalSteps, lastKnownStepCount unchanged
+      final updated = await repo.read(userId);
+      expect(updated!.totalSteps, 2000);
+      expect(updated.lastKnownStepCount, 42000);
+
+      // Update lastKnownStepCount only
+      await repo.update(
+        userId: userId,
+        lastKnownStepCount: 55000,
+      );
+
+      // Read again and assert both fields correct
+      final updated2 = await repo.read(userId);
+      expect(updated2!.totalSteps, 2000);
+      expect(updated2.lastKnownStepCount, 55000);
+    });
+
+    test('step fields default to zero when not provided', () async {
+      const userId = 'default_step_user';
+
+      // Create with no step fields
+      await repo.create(
+        userId: userId,
+        displayName: 'Player',
+      );
+
+      final profile = await repo.read(userId);
+      expect(profile!.totalSteps, 0);
+      expect(profile.lastKnownStepCount, 0);
+    });
+
+    test('update preserves step fields when not specified', () async {
+      const userId = 'preserve_step_user';
+
+      // Create with step values
+      await repo.create(
+        userId: userId,
+        displayName: 'Player',
+        totalSteps: 500,
+        lastKnownStepCount: 10000,
+      );
+
+      // Update an unrelated field — steps must be preserved
+      await repo.update(
+        userId: userId,
+        currentStreak: 3,
+      );
+
+      final profile = await repo.read(userId);
+      expect(profile!.totalSteps, 500);
+      expect(profile.lastKnownStepCount, 10000);
+      expect(profile.currentStreak, 3);
+    });
   });
 }

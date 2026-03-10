@@ -60,6 +60,8 @@ class ProfileRepository {
     double? lastLat,
     double? lastLon,
     bool updateLastPosition = false,
+    int? totalSteps,
+    int? lastKnownStepCount,
   }) async {
     final existing = await _db.getPlayerProfile(userId);
     if (existing == null) {
@@ -76,6 +78,8 @@ class ProfileRepository {
           hasCompletedOnboarding ?? existing.hasCompletedOnboarding,
       lastLat: updateLastPosition ? Value(lastLat) : Value.absent(),
       lastLon: updateLastPosition ? Value(lastLon) : Value.absent(),
+      totalSteps: totalSteps ?? existing.totalSteps,
+      lastKnownStepCount: lastKnownStepCount ?? existing.lastKnownStepCount,
       updatedAt: DateTime.now(),
     );
 

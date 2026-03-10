@@ -7,6 +7,20 @@ import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/steps/services/step_service.dart';
 
 // ---------------------------------------------------------------------------
+// Service provider (overridable for testing)
+// ---------------------------------------------------------------------------
+
+/// Provides the [StepService] instance used by [StepNotifier].
+///
+/// Override in tests to inject a mock [StepService]:
+/// ```dart
+/// container = ProviderContainer(overrides: [
+///   stepServiceProvider.overrideWithValue(MockStepService()),
+/// ]);
+/// ```
+final stepServiceProvider = Provider<StepService>((ref) => StepService());
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -62,7 +76,7 @@ class StepNotifier extends Notifier<StepState> {
 
   @override
   StepState build() {
-    _stepService = StepService();
+    _stepService = ref.read(stepServiceProvider);
 
     ref.onDispose(() {
       _liveSub?.cancel();

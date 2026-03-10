@@ -578,7 +578,7 @@ Max Concurrent: 4 (Wave 1)
   - Files: `lib/shared/constants.dart`, `lib/features/location/services/keyboard_location_web.dart`, `lib/features/map/widgets/dpad_controls.dart`, test file
   - Pre-commit: `LD_LIBRARY_PATH=. flutter test`
 
-- [ ] 5. Step persistence — ProfileRepository + _persistProfileState wiring
+- [x] 5. Step persistence — ProfileRepository + _persistProfileState wiring
 
   **What to do**:
   - Update `ProfileRepository.create()` to accept `totalSteps` and `lastKnownStepCount` parameters (with defaults of 0)
@@ -673,7 +673,7 @@ Max Concurrent: 4 (Wave 1)
   - Files: `lib/core/persistence/profile_repository.dart`, `lib/core/state/game_coordinator_provider.dart`, `lib/core/state/player_provider.dart`, tests
   - Pre-commit: `LD_LIBRARY_PATH=. flutter test`
 
-- [ ] 6. StepNotifier hydration + live stream wiring in gameCoordinatorProvider
+- [x] 6. StepNotifier hydration + live stream wiring in gameCoordinatorProvider
 
   **What to do**:
   - Import `step_provider.dart` in `game_coordinator_provider.dart`
@@ -783,7 +783,7 @@ Max Concurrent: 4 (Wave 1)
   - Files: `lib/core/state/game_coordinator_provider.dart`, test files
   - Pre-commit: `LD_LIBRARY_PATH=. flutter test`
 
-- [ ] 7. Map tap handler + cell selection state
+- [x] 7. Map tap handler + cell selection state
 
   **What to do**:
   - Implement `_onMapEvent()` in `map_screen.dart` (currently empty at line 622) to handle `MapEventClick`:

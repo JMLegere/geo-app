@@ -27,6 +27,7 @@ import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
 import 'package:earth_nova/features/map/widgets/status_bar.dart';
 import 'package:earth_nova/features/location/services/location_service.dart';
+import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
@@ -627,8 +628,25 @@ class _MapScreenState extends ConsumerState<MapScreen>
     //   animateCamera → MapEventMoveCamera → updateFogSources → MapLibre
     //   layout → new MapEventMoveCamera → repeat (zoom jitter).
     //
-    // We keep the handler for future user gesture detection (free mode)
-    // but no longer update fog or provider state from camera events.
+    // Only MapEventClick triggers cell selection — all other events are ignored.
+    if (event is MapEventClick) {
+      // MapLibre Position is (lng, lat) — longitude first.
+      // event.point.lat/lng return num, so cast to double for getCellId.
+      final lat = event.point.lat.toDouble();
+      final lon = event.point.lng.toDouble();
+      final cellService = ref.read(cellServiceProvider);
+      final cellId = cellService.getCellId(lat, lon);
+      _onCellTapped(cellId);
+    }
+  }
+
+  /// Called when the user taps the map and a cell ID has been resolved.
+  ///
+  /// Stores the selected cell in [cellSelectionProvider]. The bottom sheet
+  /// (T8) will observe this provider and present the exploration UI.
+  void _onCellTapped(String cellId) {
+    debugPrint('[TAP] Cell tapped: $cellId');
+    ref.read(cellSelectionProvider.notifier).select(cellId);
   }
 
   // ---------------------------------------------------------------------------

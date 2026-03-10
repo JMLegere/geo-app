@@ -1,0 +1,40 @@
+SCENARIO 1: Map tap resolves to correct cell ID
+================================================
+
+Test: "tap at Fredericton resolves to correct cell ID"
+File: test/features/map/providers/cell_selection_provider_test.dart
+
+Preconditions:
+  - MockCellService with deterministic getCellId(lat, lon) → "cell_{floor(lat)}_{floor(lon)}"
+
+Steps:
+  1. Simulate MapEventClick at lat=45.9636, lon=-66.6431 (Fredericton, NB)
+  2. Call getCellId(tapLat, tapLon) — mirrors _onMapEvent() logic
+  3. Assert getCellId called with lat=45.9636, lon=-66.6431 (not swapped)
+  4. Assert resolved cell ID = "cell_45_-67" (floor(45.9636)=45, floor(-66.6431)=-67)
+
+Result: PASS ✓
+  - getCellId called exactly once
+  - lat=45.9636 (positive, northern hemisphere) ✓
+  - lon=-66.6431 (negative, western hemisphere) ✓
+  - cellId="cell_45_-67" ✓
+
+Additional tests passing:
+  - "lat/lon are NOT swapped — lat is first arg to getCellId" ✓
+  - "different tap positions resolve to different cell IDs" ✓
+  - "same tap position always resolves to same cell ID (deterministic)" ✓
+  - "getCellId is called exactly once per click event" ✓
+
+Implementation in map_screen.dart:
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventClick) {
+      final lat = event.point.lat.toDouble();  // num → double
+      final lon = event.point.lng.toDouble();  // num → double
+      final cellService = ref.read(cellServiceProvider);
+      final cellId = cellService.getCellId(lat, lon);
+      _onCellTapped(cellId);
+    }
+  }
+
+Key gotcha: event.point.lat/lng return num (not double) — must call .toDouble()
+Key gotcha: MapLibre Position(lng, lat) — access via .lat and .lng properties (correct order)
