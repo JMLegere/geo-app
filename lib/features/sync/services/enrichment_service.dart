@@ -15,6 +15,7 @@ class _EnrichmentRequest {
   final String scientificName;
   final String commonName;
   final String taxonomicClass;
+  final bool force;
   final int attempt;
 
   _EnrichmentRequest({
@@ -22,6 +23,7 @@ class _EnrichmentRequest {
     required this.scientificName,
     required this.commonName,
     required this.taxonomicClass,
+    this.force = false,
     this.attempt = 0,
   });
 
@@ -30,6 +32,7 @@ class _EnrichmentRequest {
         scientificName: scientificName,
         commonName: commonName,
         taxonomicClass: taxonomicClass,
+        force: force,
         attempt: attempt + 1,
       );
 }
@@ -70,6 +73,7 @@ class EnrichmentService {
     required String scientificName,
     required String commonName,
     required String taxonomicClass,
+    bool force = false,
   }) async {
     if (supabaseClient == null) {
       debugPrint('[EnrichmentService] skipping $definitionId — '
@@ -83,6 +87,7 @@ class EnrichmentService {
       scientificName: scientificName,
       commonName: commonName,
       taxonomicClass: taxonomicClass,
+      force: force,
     ));
     _inFlight.add(definitionId);
     _scheduleDrain();
@@ -147,6 +152,7 @@ class EnrichmentService {
           'common_name': request.commonName,
           'taxonomic_class': request.taxonomicClass,
           if (validClasses != null) 'valid_animal_classes': validClasses,
+          if (request.force) 'force': true,
         },
       );
 

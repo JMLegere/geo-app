@@ -1174,6 +1174,8 @@ Future<void> _requeueUnenrichedSpecies({
     final allIds = {...unenrichedIds, ...incompleteIds};
 
     // Queue enrichment requests for the gap set.
+    // Incomplete enrichments (have a row but missing size) need force=true
+    // to make the Edge Function delete the stale row and re-enrich.
     for (final defId in allIds) {
       final fauna = faunaById[defId]!;
       enrichmentService.requestEnrichment(
@@ -1181,6 +1183,7 @@ Future<void> _requeueUnenrichedSpecies({
         scientificName: fauna.scientificName,
         commonName: fauna.displayName,
         taxonomicClass: fauna.taxonomicClass,
+        force: incompleteIds.contains(defId),
       );
     }
 

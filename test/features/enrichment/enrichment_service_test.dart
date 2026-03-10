@@ -56,19 +56,37 @@ void main() {
       expect(map, isEmpty);
     });
 
+    test(
+        'requestEnrichment with force=true is a no-op when supabaseClient is null',
+        () async {
+      await service.requestEnrichment(
+        definitionId: 'fauna_vulpes_vulpes',
+        scientificName: 'Vulpes vulpes',
+        commonName: 'Red Fox',
+        taxonomicClass: 'Mammalia',
+        force: true,
+      );
+      final map = await service.getEnrichmentMap();
+      expect(map, isEmpty);
+    });
+
     test('syncEnrichments returns 0 when supabaseClient is null', () async {
       final count = await service.syncEnrichments();
       expect(count, 0);
     });
 
-    test('getEnrichmentMap returns empty map when no enrichments cached', () async {
+    test('getEnrichmentMap returns empty map when no enrichments cached',
+        () async {
       final map = await service.getEnrichmentMap();
       expect(map, isEmpty);
     });
 
-    test('getEnrichmentMap returns enrichments seeded directly into repo', () async {
-      await repo.upsertEnrichment(makeEnrichment(definitionId: 'fauna_a', brawn: 30, wit: 30, speed: 30));
-      await repo.upsertEnrichment(makeEnrichment(definitionId: 'fauna_b', brawn: 20, wit: 40, speed: 30));
+    test('getEnrichmentMap returns enrichments seeded directly into repo',
+        () async {
+      await repo.upsertEnrichment(makeEnrichment(
+          definitionId: 'fauna_a', brawn: 30, wit: 30, speed: 30));
+      await repo.upsertEnrichment(makeEnrichment(
+          definitionId: 'fauna_b', brawn: 20, wit: 40, speed: 30));
 
       final map = await service.getEnrichmentMap();
       expect(map.keys, containsAll(['fauna_a', 'fauna_b']));
@@ -102,11 +120,13 @@ void main() {
     });
 
     test('getEnrichmentMap reflects latest upserted values', () async {
-      await repo.upsertEnrichment(makeEnrichment(brawn: 30, wit: 40, speed: 20));
+      await repo
+          .upsertEnrichment(makeEnrichment(brawn: 30, wit: 40, speed: 20));
       var map = await service.getEnrichmentMap();
       expect(map['fauna_vulpes_vulpes']!.brawn, 30);
 
-      await repo.upsertEnrichment(makeEnrichment(brawn: 50, wit: 25, speed: 15));
+      await repo
+          .upsertEnrichment(makeEnrichment(brawn: 50, wit: 25, speed: 15));
       map = await service.getEnrichmentMap();
       expect(map['fauna_vulpes_vulpes']!.brawn, 50);
     });
