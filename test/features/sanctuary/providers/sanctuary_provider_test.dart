@@ -258,4 +258,67 @@ void main() {
       expect(state.currentStreak, equals(0));
     });
   });
+
+  group('SanctuaryTab — enum', () {
+    test('has 5 tabs in correct order', () {
+      expect(SanctuaryTab.values, [
+        SanctuaryTab.zoo,
+        SanctuaryTab.feeding,
+        SanctuaryTab.breeding,
+        SanctuaryTab.museum,
+        SanctuaryTab.achievements,
+      ]);
+    });
+
+    test('displayName returns human-readable label for each tab', () {
+      expect(SanctuaryTab.zoo.displayName, 'Zoo');
+      expect(SanctuaryTab.feeding.displayName, 'Feeding');
+      expect(SanctuaryTab.breeding.displayName, 'Breeding');
+      expect(SanctuaryTab.museum.displayName, 'Museum');
+      expect(SanctuaryTab.achievements.displayName, 'Achievements');
+    });
+
+    test('emoji returns correct emoji for each tab', () {
+      expect(SanctuaryTab.zoo.emoji, '🏠');
+      expect(SanctuaryTab.feeding.emoji, '🍎');
+      expect(SanctuaryTab.breeding.emoji, '🧬');
+      expect(SanctuaryTab.museum.emoji, '🏛️');
+      expect(SanctuaryTab.achievements.emoji, '🏆');
+    });
+  });
+
+  group('SanctuaryState — activeTab', () {
+    test('defaults to SanctuaryTab.zoo', () {
+      final container = _makeContainer();
+      final state = container.read(sanctuaryProvider);
+
+      expect(state.activeTab, equals(SanctuaryTab.zoo));
+    });
+
+    test('setActiveTab changes the active tab', () {
+      final container = _makeContainer();
+      container
+          .read(sanctuaryProvider.notifier)
+          .setActiveTab(SanctuaryTab.achievements);
+
+      final state = container.read(sanctuaryProvider);
+
+      expect(state.activeTab, equals(SanctuaryTab.achievements));
+    });
+
+    test('setActiveTab preserves other state fields', () {
+      final container = _makeContainer();
+      _addSpecies(container, _forestFox);
+
+      container
+          .read(sanctuaryProvider.notifier)
+          .setActiveTab(SanctuaryTab.museum);
+
+      final state = container.read(sanctuaryProvider);
+
+      expect(state.activeTab, equals(SanctuaryTab.museum));
+      expect(state.totalCollected, equals(1));
+      expect(state.speciesByHabitat[Habitat.forest], isNotNull);
+    });
+  });
 }
