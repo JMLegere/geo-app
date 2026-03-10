@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/auth/widgets/upgrade_bottom_sheet.dart';
 import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:earth_nova/features/sanctuary/widgets/habitat_section.dart';
@@ -113,7 +114,7 @@ class ZooTab extends ConsumerWidget {
           const SliverFillRemaining(
             hasScrollBody: false,
             child: EmptyStateWidget(
-              icon: '🏡',
+              icon: GameIcons.placed,
               title: 'Your sanctuary is empty',
               subtitle:
                   'Discover species to populate it!\nExplore the map to find wildlife.',

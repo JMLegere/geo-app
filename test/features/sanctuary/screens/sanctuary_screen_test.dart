@@ -139,7 +139,7 @@ void main() {
 
       for (final tab in SanctuaryTab.values) {
         expect(
-          find.text('${tab.emoji} ${tab.displayName}'),
+          find.text('${tab.icon} ${tab.displayName}'),
           findsOneWidget,
           reason: '${tab.displayName} tab label should be visible',
         );

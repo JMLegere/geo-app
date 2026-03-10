@@ -6,6 +6,7 @@ import 'package:earth_nova/features/pack/providers/pack_provider.dart';
 import 'package:earth_nova/features/pack/widgets/item_detail_sheet.dart';
 import 'package:earth_nova/features/pack/widgets/item_slot_widget.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// 4-column Pokémon-PC-box grid of all fauna [ItemInstance]s the player owns.
@@ -21,8 +22,8 @@ class FaunaGridTab extends ConsumerWidget {
     final items = state.itemsByCategory[ItemCategory.fauna] ?? const [];
 
     if (items.isEmpty) {
-      return const EmptyStateWidget(
-        icon: '🐾',
+      return EmptyStateWidget(
+        icon: GameIcons.category(ItemCategory.fauna),
         title: 'No fauna collected yet',
         subtitle: 'Explore the world to discover wildlife!',
       );

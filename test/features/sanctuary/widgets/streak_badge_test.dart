@@ -29,7 +29,7 @@ void main() {
       expect(find.text('Day 30'), findsOneWidget);
     });
 
-    testWidgets('shows flame emoji when streak > 0', (tester) async {
+    testWidgets('shows flame icon when streak > 0', (tester) async {
       await _pump(tester, 3);
       expect(find.text('🔥'), findsOneWidget);
     });
@@ -39,7 +39,7 @@ void main() {
       expect(find.text('Start your streak!'), findsOneWidget);
     });
 
-    testWidgets('does NOT show flame emoji when streak is 0', (tester) async {
+    testWidgets('does NOT show flame icon when streak is 0', (tester) async {
       await _pump(tester, 0);
       expect(find.text('🔥'), findsNothing);
     });

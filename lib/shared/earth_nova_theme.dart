@@ -146,19 +146,6 @@ class EarthNovaTheme extends ThemeExtension<EarthNovaTheme> {
         IucnStatus.extinct => 'EX',
       };
 
-  // ── Habitat emojis ────────────────────────────────────────────────────────
-
-  /// Emoji icons per habitat for placeholder art.
-  static const Map<String, String> habitatEmojis = {
-    'forest': '🌲',
-    'plains': '🌾',
-    'freshwater': '💧',
-    'saltwater': '🌊',
-    'swamp': '🌿',
-    'mountain': '⛰️',
-    'desert': '🏜️',
-  };
-
   // ── ThemeExtension overrides ──────────────────────────────────────────────
 
   @override

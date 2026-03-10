@@ -5,6 +5,8 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 
@@ -128,6 +130,15 @@ class EnrichmentService {
     debugPrint('[EnrichmentService] invoking enrich-species for '
         '${request.definitionId} (${request.commonName})');
     try {
+      final expectedType =
+          AnimalType.fromTaxonomicClass(request.taxonomicClass);
+      final validClasses = expectedType != null
+          ? AnimalClass.values
+              .where((c) => c.parentType == expectedType)
+              .map((c) => c.name)
+              .toList()
+          : null;
+
       final response = await client.functions.invoke(
         'enrich-species',
         body: {
@@ -135,6 +146,7 @@ class EnrichmentService {
           'scientific_name': request.scientificName,
           'common_name': request.commonName,
           'taxonomic_class': request.taxonomicClass,
+          if (validClasses != null) 'valid_animal_classes': validClasses,
         },
       );
 
@@ -150,6 +162,14 @@ class EnrichmentService {
               '${data['error']}');
         } else {
           final enrichment = SpeciesEnrichment.fromJson(data);
+          if (expectedType != null &&
+              enrichment.animalClass.parentType != expectedType) {
+            debugPrint('[EnrichmentService] rejected ${request.definitionId}: '
+                'animalClass ${enrichment.animalClass.name} '
+                'does not match expected type ${expectedType.name}');
+            _inFlight.remove(request.definitionId);
+            return;
+          }
           await repository.upsertEnrichment(enrichment);
           debugPrint('[EnrichmentService] enriched ${request.definitionId}: '
               '${enrichment.animalClass.name}, '

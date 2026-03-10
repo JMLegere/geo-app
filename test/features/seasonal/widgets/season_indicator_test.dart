@@ -15,10 +15,12 @@ Widget _wrap(Widget child) => MaterialApp(
 /// [SeasonIndicator].
 Color? _indicatorColor(WidgetTester tester) {
   final container = tester.widget<Container>(
-    find.descendant(
-      of: find.byType(SeasonIndicator),
-      matching: find.byType(Container),
-    ).first,
+    find
+        .descendant(
+          of: find.byType(SeasonIndicator),
+          matching: find.byType(Container),
+        )
+        .first,
   );
   return (container.decoration as BoxDecoration?)?.color;
 }
@@ -45,7 +47,7 @@ void main() {
       expect(find.text('Winter'), findsOneWidget);
     });
 
-    testWidgets('shows ☀️ emoji in summer', (tester) async {
+    testWidgets('shows ☀️ icon in summer', (tester) async {
       await tester.pumpWidget(
         _wrap(const SeasonIndicator(season: Season.summer)),
       );
@@ -53,7 +55,7 @@ void main() {
       expect(find.text('☀️'), findsOneWidget);
     });
 
-    testWidgets('shows ❄️ emoji in winter', (tester) async {
+    testWidgets('shows ❄️ icon in winter', (tester) async {
       await tester.pumpWidget(
         _wrap(const SeasonIndicator(season: Season.winter)),
       );

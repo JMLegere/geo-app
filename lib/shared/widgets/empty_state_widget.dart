@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
-/// A reusable empty-state placeholder with an emoji icon, title, optional
+/// A reusable empty-state placeholder with an icon, title, optional
 /// subtitle, and optional call-to-action button.
 ///
 /// Usage:
@@ -22,7 +22,7 @@ class EmptyStateWidget extends StatelessWidget {
     super.key,
   });
 
-  /// Emoji or short string shown as the visual anchor (large text).
+  /// Icon or short string shown as the visual anchor (large text).
   final String icon;
 
   /// Primary message — short and direct.
@@ -41,14 +41,15 @@ class EmptyStateWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Spacing.huge, vertical: Spacing.xxxl),
+        padding: EdgeInsets.symmetric(
+            horizontal: Spacing.huge, vertical: Spacing.xxxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon
             Text(
               icon,
-              style: TextStyle(fontSize: ComponentSizes.emptyStateEmoji),
+              style: TextStyle(fontSize: ComponentSizes.emptyStateIcon),
             ),
             Spacing.gapXl,
 
@@ -86,8 +87,8 @@ class EmptyStateWidget extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Colors.white,
-                  padding:
-                      EdgeInsets.symmetric(horizontal: Spacing.xxl, vertical: Spacing.md),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: Spacing.xxl, vertical: Spacing.md),
                   shape: RoundedRectangleBorder(
                     borderRadius: Radii.borderLg,
                   ),

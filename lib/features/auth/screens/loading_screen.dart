@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 /// Hydration loading screen — shown between login and map while game data loads.
 ///
@@ -21,7 +22,7 @@ class LoadingScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '🌍',
+              GameIcons.globe,
               style: theme.textTheme.headlineMedium?.copyWith(fontSize: 48),
             ),
             Spacing.gapXl,

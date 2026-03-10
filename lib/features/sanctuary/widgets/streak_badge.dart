@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 /// Small pill badge showing the player's daily visit streak.
 ///
-/// - When [streak] > 0: flame emoji + "Day N" with warm orange pill background.
+/// - When [streak] > 0: flame icon + "Day N" with warm orange pill background.
 /// - When [streak] == 0: "Start your streak!" in muted italic gray, no flame.
 class StreakBadge extends StatelessWidget {
   /// Player's current daily visit streak.
@@ -26,7 +27,8 @@ class StreakBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Spacing.md, vertical: Spacing.sm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.md, vertical: Spacing.sm),
       decoration: BoxDecoration(
         color: const Color(0xFFFF9800).withValues(alpha: 0.15),
         borderRadius: Radii.borderPill,
@@ -34,7 +36,7 @@ class StreakBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 14)),
+          Text(GameIcons.streak, style: const TextStyle(fontSize: 14)),
           SizedBox(width: Spacing.xs),
           Text(
             'Day $streak',

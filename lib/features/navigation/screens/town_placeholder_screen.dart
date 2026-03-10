@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// Placeholder for the Town tab until the NPC system is implemented.
@@ -11,7 +12,7 @@ class TownPlaceholderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: EmptyStateWidget(
-        icon: '🏘️',
+        icon: GameIcons.town,
         title: 'Town — Coming Soon',
         subtitle:
             'Discover NPCs while exploring the map.\nThey\'ll gather here.',

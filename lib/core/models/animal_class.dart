@@ -1,4 +1,3 @@
-
 import 'animal_type.dart';
 
 /// ~35 game-designed animal sub-classifications.

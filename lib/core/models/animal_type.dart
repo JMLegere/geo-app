@@ -1,4 +1,3 @@
-
 /// 5 animal types derived deterministically from IUCN taxonomicClass.
 enum AnimalType {
   mammal,
@@ -70,9 +69,7 @@ enum AnimalType {
       'Merostomata' =>
         AnimalType.bug,
       // Cephalopoda → fish (matches AnimalClass.cephalopod)
-      'CEPHALOPODA' ||
-      'Cephalopoda' =>
-        AnimalType.fish,
+      'CEPHALOPODA' || 'Cephalopoda' => AnimalType.fish,
       _ => null,
     };
   }

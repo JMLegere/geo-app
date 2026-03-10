@@ -32,7 +32,7 @@ enum PackTab {
         PackTab.orbs => 'Orbs',
       };
 
-  String get emoji => switch (this) {
+  String get icon => switch (this) {
         PackTab.character => '🧑',
         PackTab.fauna => '🐾',
         PackTab.flora => '🌿',

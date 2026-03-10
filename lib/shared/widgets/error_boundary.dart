@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 /// An error boundary that catches Flutter framework errors in its subtree
 /// and displays fallback UI instead of a red crash screen.
@@ -104,7 +105,8 @@ class DefaultErrorFallback extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('😕', style: TextStyle(fontSize: ComponentSizes.emptyStateEmoji)),
+              Text(GameIcons.error,
+                  style: TextStyle(fontSize: ComponentSizes.emptyStateIcon)),
               Spacing.gapXl,
               Text(
                 'Something went wrong',

@@ -278,12 +278,12 @@ void main() {
       expect(SanctuaryTab.achievements.displayName, 'Achievements');
     });
 
-    test('emoji returns correct emoji for each tab', () {
-      expect(SanctuaryTab.zoo.emoji, '🏠');
-      expect(SanctuaryTab.feeding.emoji, '🍎');
-      expect(SanctuaryTab.breeding.emoji, '🧬');
-      expect(SanctuaryTab.museum.emoji, '🏛️');
-      expect(SanctuaryTab.achievements.emoji, '🏆');
+    test('icon returns correct icon for each tab', () {
+      expect(SanctuaryTab.zoo.icon, '🏠');
+      expect(SanctuaryTab.feeding.icon, '🍎');
+      expect(SanctuaryTab.breeding.icon, '🧬');
+      expect(SanctuaryTab.museum.icon, '🏛️');
+      expect(SanctuaryTab.achievements.icon, '🏆');
     });
   });
 
