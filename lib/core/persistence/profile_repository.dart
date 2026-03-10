@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:earth_nova/core/database/app_database.dart';
 
 /// Repository for managing player profile
@@ -15,6 +16,8 @@ class ProfileRepository {
     double totalDistanceKm = 0.0,
     String currentSeason = 'summer',
     bool hasCompletedOnboarding = false,
+    double? lastLat,
+    double? lastLon,
   }) async {
     final profile = LocalPlayerProfile(
       id: userId,
@@ -24,6 +27,8 @@ class ProfileRepository {
       totalDistanceKm: totalDistanceKm,
       currentSeason: currentSeason,
       hasCompletedOnboarding: hasCompletedOnboarding,
+      lastLat: lastLat,
+      lastLon: lastLon,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -36,6 +41,10 @@ class ProfileRepository {
   }
 
   /// Update a player profile
+  ///
+  /// [lastLat] and [lastLon] use a sentinel wrapper to distinguish "not
+  /// provided" from "set to null". Pass the value directly — `null` means
+  /// "leave unchanged" (same as other nullable params).
   Future<void> update({
     required String userId,
     String? displayName,
@@ -44,6 +53,9 @@ class ProfileRepository {
     double? totalDistanceKm,
     String? currentSeason,
     bool? hasCompletedOnboarding,
+    double? lastLat,
+    double? lastLon,
+    bool updateLastPosition = false,
   }) async {
     final existing = await _db.getPlayerProfile(userId);
     if (existing == null) {
@@ -58,6 +70,8 @@ class ProfileRepository {
       currentSeason: currentSeason ?? existing.currentSeason,
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? existing.hasCompletedOnboarding,
+      lastLat: updateLastPosition ? Value(lastLat) : Value.absent(),
+      lastLon: updateLastPosition ? Value(lastLon) : Value.absent(),
       updatedAt: DateTime.now(),
     );
 

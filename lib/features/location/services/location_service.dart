@@ -16,6 +16,16 @@ class LocationService {
   final RealGpsService? gpsService;
   final GpsFilter filter;
 
+  /// Tracks the currently active location mode at runtime.
+  ///
+  /// On web, this starts as [LocationMode.keyboard] and may switch to
+  /// [LocationMode.realGps] if the browser grants GPS permission.
+  /// UI (e.g. DPad visibility) should listen to this notifier.
+  final ValueNotifier<LocationMode> activeModeNotifier;
+
+  /// Web GPS service — created lazily when web attempts GPS fallback.
+  RealGpsService? _webGpsService;
+
   LocationService({
     LocationMode? mode,
     LocationSimulator? simulator,
@@ -35,7 +45,8 @@ class LocationService {
             (_resolvedMode(mode) == LocationMode.realGps
                 ? RealGpsService()
                 : null),
-        filter = filter ?? GpsFilter();
+        filter = filter ?? GpsFilter(),
+        activeModeNotifier = ValueNotifier(mode ?? _defaultMode());
 
   static LocationMode _defaultMode() =>
       kIsWeb ? LocationMode.keyboard : LocationMode.realGps;
@@ -56,9 +67,19 @@ class LocationService {
 
   bool get isTracking => _isTracking;
 
+  /// Sets the initial position before [start] is called.
+  ///
+  /// Used to restore the player's last known position from the database.
+  /// Only affects keyboard mode (web) — GPS modes use real position.
+  void setInitialPosition(double lat, double lon) {
+    keyboardService?.setPosition(lat, lon);
+  }
+
   void dispose() {
     stop();
     _outputController.close();
+    activeModeNotifier.dispose();
+    _webGpsService?.dispose();
   }
 
   void start() {
@@ -89,6 +110,12 @@ class LocationService {
               .cast<SimulatedLocation>()
               .listen(_outputController.add);
           kb.start();
+
+          // On web, attempt real GPS in the background. If granted,
+          // switch from keyboard to GPS stream seamlessly.
+          if (kIsWeb) {
+            _attemptWebGpsFallback();
+          }
         }
       case LocationMode.realGps:
         final gps = gpsService;
@@ -104,6 +131,50 @@ class LocationService {
     }
   }
 
+  /// Attempts to use real browser GPS on web.
+  ///
+  /// Runs async — keyboard keeps working in the meantime.
+  /// If GPS permission is granted, cancels keyboard subscription and
+  /// switches to GPS stream. If denied, keyboard continues as-is.
+  void _attemptWebGpsFallback() {
+    _webGpsService = RealGpsService();
+    final webGps = _webGpsService!;
+
+    webGps.ensurePermission().then((status) {
+      if (status != GpsPermissionStatus.granted) {
+        debugPrint('[LocationService] web GPS denied ($status) — '
+            'keeping keyboard mode');
+        webGps.dispose();
+        _webGpsService = null;
+        return;
+      }
+
+      // GPS granted — switch over.
+      debugPrint('[LocationService] web GPS granted — switching from '
+          'keyboard to GPS');
+
+      // Stop keyboard.
+      _subscription?.cancel();
+      _subscription = null;
+      keyboardService?.stop();
+
+      // Subscribe to GPS stream.
+      _subscription = webGps.locationStream
+          .map((loc) => filter.filter(loc))
+          .where((loc) => loc != null)
+          .cast<SimulatedLocation>()
+          .listen(_outputController.add);
+      webGps.start();
+
+      activeModeNotifier.value = LocationMode.realGps;
+    }).catchError((Object e) {
+      debugPrint('[LocationService] web GPS attempt failed: $e — '
+          'keeping keyboard mode');
+      webGps.dispose();
+      _webGpsService = null;
+    });
+  }
+
   void stop() {
     if (!_isTracking) return;
     _isTracking = false;
@@ -116,6 +187,7 @@ class LocationService {
         simulator?.stop();
       case LocationMode.keyboard:
         keyboardService?.stop();
+        _webGpsService?.stop();
       case LocationMode.realGps:
         gpsService?.stop();
     }

@@ -177,6 +177,8 @@ class LocalPlayerProfileTable extends Table {
       text().withDefault(const Constant('summer'))();
   BoolColumn get hasCompletedOnboarding =>
       boolean().withDefault(const Constant(false))();
+  RealColumn get lastLat => real().nullable()();
+  RealColumn get lastLon => real().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -200,7 +202,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -244,6 +246,13 @@ class AppDatabase extends _$AppDatabase {
               localItemInstanceTable, localItemInstanceTable.continentsJson);
           await m.addColumn(
               localItemInstanceTable, localItemInstanceTable.taxonomicClass);
+        }
+        if (from < 8) {
+          // Add last known position to player profile for session restore.
+          await m.addColumn(
+              localPlayerProfileTable, localPlayerProfileTable.lastLat);
+          await m.addColumn(
+              localPlayerProfileTable, localPlayerProfileTable.lastLon);
         }
       },
     );

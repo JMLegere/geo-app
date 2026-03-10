@@ -1490,6 +1490,18 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
           defaultConstraints: GeneratedColumn.constraintIsAlways(
               'CHECK ("has_completed_onboarding" IN (0, 1))'),
           defaultValue: const Constant(false));
+  static const VerificationMeta _lastLatMeta =
+      const VerificationMeta('lastLat');
+  @override
+  late final GeneratedColumn<double> lastLat = GeneratedColumn<double>(
+      'last_lat', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _lastLonMeta =
+      const VerificationMeta('lastLon');
+  @override
+  late final GeneratedColumn<double> lastLon = GeneratedColumn<double>(
+      'last_lon', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1515,6 +1527,8 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
         totalDistanceKm,
         currentSeason,
         hasCompletedOnboarding,
+        lastLat,
+        lastLon,
         createdAt,
         updatedAt
       ];
@@ -1571,6 +1585,14 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
           hasCompletedOnboarding.isAcceptableOrUnknown(
               data['has_completed_onboarding']!, _hasCompletedOnboardingMeta));
     }
+    if (data.containsKey('last_lat')) {
+      context.handle(_lastLatMeta,
+          lastLat.isAcceptableOrUnknown(data['last_lat']!, _lastLatMeta));
+    }
+    if (data.containsKey('last_lon')) {
+      context.handle(_lastLonMeta,
+          lastLon.isAcceptableOrUnknown(data['last_lon']!, _lastLonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1603,6 +1625,10 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
       hasCompletedOnboarding: attachedDatabase.typeMapping.read(
           DriftSqlType.bool,
           data['${effectivePrefix}has_completed_onboarding'])!,
+      lastLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}last_lat']),
+      lastLon: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}last_lon']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1625,6 +1651,8 @@ class LocalPlayerProfile extends DataClass
   final double totalDistanceKm;
   final String currentSeason;
   final bool hasCompletedOnboarding;
+  final double? lastLat;
+  final double? lastLon;
   final DateTime createdAt;
   final DateTime updatedAt;
   const LocalPlayerProfile(
@@ -1635,6 +1663,8 @@ class LocalPlayerProfile extends DataClass
       required this.totalDistanceKm,
       required this.currentSeason,
       required this.hasCompletedOnboarding,
+      this.lastLat,
+      this.lastLon,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -1647,6 +1677,12 @@ class LocalPlayerProfile extends DataClass
     map['total_distance_km'] = Variable<double>(totalDistanceKm);
     map['current_season'] = Variable<String>(currentSeason);
     map['has_completed_onboarding'] = Variable<bool>(hasCompletedOnboarding);
+    if (!nullToAbsent || lastLat != null) {
+      map['last_lat'] = Variable<double>(lastLat);
+    }
+    if (!nullToAbsent || lastLon != null) {
+      map['last_lon'] = Variable<double>(lastLon);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1661,6 +1697,12 @@ class LocalPlayerProfile extends DataClass
       totalDistanceKm: Value(totalDistanceKm),
       currentSeason: Value(currentSeason),
       hasCompletedOnboarding: Value(hasCompletedOnboarding),
+      lastLat: lastLat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLat),
+      lastLon: lastLon == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLon),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1678,6 +1720,8 @@ class LocalPlayerProfile extends DataClass
       currentSeason: serializer.fromJson<String>(json['currentSeason']),
       hasCompletedOnboarding:
           serializer.fromJson<bool>(json['hasCompletedOnboarding']),
+      lastLat: serializer.fromJson<double?>(json['lastLat']),
+      lastLon: serializer.fromJson<double?>(json['lastLon']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1693,6 +1737,8 @@ class LocalPlayerProfile extends DataClass
       'totalDistanceKm': serializer.toJson<double>(totalDistanceKm),
       'currentSeason': serializer.toJson<String>(currentSeason),
       'hasCompletedOnboarding': serializer.toJson<bool>(hasCompletedOnboarding),
+      'lastLat': serializer.toJson<double?>(lastLat),
+      'lastLon': serializer.toJson<double?>(lastLon),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1706,6 +1752,8 @@ class LocalPlayerProfile extends DataClass
           double? totalDistanceKm,
           String? currentSeason,
           bool? hasCompletedOnboarding,
+          Value<double?> lastLat = const Value.absent(),
+          Value<double?> lastLon = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       LocalPlayerProfile(
@@ -1717,6 +1765,8 @@ class LocalPlayerProfile extends DataClass
         currentSeason: currentSeason ?? this.currentSeason,
         hasCompletedOnboarding:
             hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+        lastLat: lastLat.present ? lastLat.value : this.lastLat,
+        lastLon: lastLon.present ? lastLon.value : this.lastLon,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1740,6 +1790,8 @@ class LocalPlayerProfile extends DataClass
       hasCompletedOnboarding: data.hasCompletedOnboarding.present
           ? data.hasCompletedOnboarding.value
           : this.hasCompletedOnboarding,
+      lastLat: data.lastLat.present ? data.lastLat.value : this.lastLat,
+      lastLon: data.lastLon.present ? data.lastLon.value : this.lastLon,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1755,6 +1807,8 @@ class LocalPlayerProfile extends DataClass
           ..write('totalDistanceKm: $totalDistanceKm, ')
           ..write('currentSeason: $currentSeason, ')
           ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
+          ..write('lastLat: $lastLat, ')
+          ..write('lastLon: $lastLon, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1770,6 +1824,8 @@ class LocalPlayerProfile extends DataClass
       totalDistanceKm,
       currentSeason,
       hasCompletedOnboarding,
+      lastLat,
+      lastLon,
       createdAt,
       updatedAt);
   @override
@@ -1783,6 +1839,8 @@ class LocalPlayerProfile extends DataClass
           other.totalDistanceKm == this.totalDistanceKm &&
           other.currentSeason == this.currentSeason &&
           other.hasCompletedOnboarding == this.hasCompletedOnboarding &&
+          other.lastLat == this.lastLat &&
+          other.lastLon == this.lastLon &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1796,6 +1854,8 @@ class LocalPlayerProfileTableCompanion
   final Value<double> totalDistanceKm;
   final Value<String> currentSeason;
   final Value<bool> hasCompletedOnboarding;
+  final Value<double?> lastLat;
+  final Value<double?> lastLon;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1807,6 +1867,8 @@ class LocalPlayerProfileTableCompanion
     this.totalDistanceKm = const Value.absent(),
     this.currentSeason = const Value.absent(),
     this.hasCompletedOnboarding = const Value.absent(),
+    this.lastLat = const Value.absent(),
+    this.lastLon = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1819,6 +1881,8 @@ class LocalPlayerProfileTableCompanion
     this.totalDistanceKm = const Value.absent(),
     this.currentSeason = const Value.absent(),
     this.hasCompletedOnboarding = const Value.absent(),
+    this.lastLat = const Value.absent(),
+    this.lastLon = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1832,6 +1896,8 @@ class LocalPlayerProfileTableCompanion
     Expression<double>? totalDistanceKm,
     Expression<String>? currentSeason,
     Expression<bool>? hasCompletedOnboarding,
+    Expression<double>? lastLat,
+    Expression<double>? lastLon,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1845,6 +1911,8 @@ class LocalPlayerProfileTableCompanion
       if (currentSeason != null) 'current_season': currentSeason,
       if (hasCompletedOnboarding != null)
         'has_completed_onboarding': hasCompletedOnboarding,
+      if (lastLat != null) 'last_lat': lastLat,
+      if (lastLon != null) 'last_lon': lastLon,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1859,6 +1927,8 @@ class LocalPlayerProfileTableCompanion
       Value<double>? totalDistanceKm,
       Value<String>? currentSeason,
       Value<bool>? hasCompletedOnboarding,
+      Value<double?>? lastLat,
+      Value<double?>? lastLon,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1871,6 +1941,8 @@ class LocalPlayerProfileTableCompanion
       currentSeason: currentSeason ?? this.currentSeason,
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+      lastLat: lastLat ?? this.lastLat,
+      lastLon: lastLon ?? this.lastLon,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1902,6 +1974,12 @@ class LocalPlayerProfileTableCompanion
       map['has_completed_onboarding'] =
           Variable<bool>(hasCompletedOnboarding.value);
     }
+    if (lastLat.present) {
+      map['last_lat'] = Variable<double>(lastLat.value);
+    }
+    if (lastLon.present) {
+      map['last_lon'] = Variable<double>(lastLon.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1924,6 +2002,8 @@ class LocalPlayerProfileTableCompanion
           ..write('totalDistanceKm: $totalDistanceKm, ')
           ..write('currentSeason: $currentSeason, ')
           ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
+          ..write('lastLat: $lastLat, ')
+          ..write('lastLon: $lastLon, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3649,6 +3729,8 @@ typedef $$LocalPlayerProfileTableTableCreateCompanionBuilder
   Value<double> totalDistanceKm,
   Value<String> currentSeason,
   Value<bool> hasCompletedOnboarding,
+  Value<double?> lastLat,
+  Value<double?> lastLon,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3662,6 +3744,8 @@ typedef $$LocalPlayerProfileTableTableUpdateCompanionBuilder
   Value<double> totalDistanceKm,
   Value<String> currentSeason,
   Value<bool> hasCompletedOnboarding,
+  Value<double?> lastLat,
+  Value<double?> lastLon,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3698,6 +3782,12 @@ class $$LocalPlayerProfileTableTableFilterComposer
   ColumnFilters<bool> get hasCompletedOnboarding => $composableBuilder(
       column: $table.hasCompletedOnboarding,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get lastLat => $composableBuilder(
+      column: $table.lastLat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get lastLon => $composableBuilder(
+      column: $table.lastLon, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3741,6 +3831,12 @@ class $$LocalPlayerProfileTableTableOrderingComposer
       column: $table.hasCompletedOnboarding,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get lastLat => $composableBuilder(
+      column: $table.lastLat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get lastLon => $composableBuilder(
+      column: $table.lastLon, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3777,6 +3873,12 @@ class $$LocalPlayerProfileTableTableAnnotationComposer
 
   GeneratedColumn<bool> get hasCompletedOnboarding => $composableBuilder(
       column: $table.hasCompletedOnboarding, builder: (column) => column);
+
+  GeneratedColumn<double> get lastLat =>
+      $composableBuilder(column: $table.lastLat, builder: (column) => column);
+
+  GeneratedColumn<double> get lastLon =>
+      $composableBuilder(column: $table.lastLon, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3823,6 +3925,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<double> totalDistanceKm = const Value.absent(),
             Value<String> currentSeason = const Value.absent(),
             Value<bool> hasCompletedOnboarding = const Value.absent(),
+            Value<double?> lastLat = const Value.absent(),
+            Value<double?> lastLon = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3835,6 +3939,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             totalDistanceKm: totalDistanceKm,
             currentSeason: currentSeason,
             hasCompletedOnboarding: hasCompletedOnboarding,
+            lastLat: lastLat,
+            lastLon: lastLon,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3847,6 +3953,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<double> totalDistanceKm = const Value.absent(),
             Value<String> currentSeason = const Value.absent(),
             Value<bool> hasCompletedOnboarding = const Value.absent(),
+            Value<double?> lastLat = const Value.absent(),
+            Value<double?> lastLon = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3859,6 +3967,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             totalDistanceKm: totalDistanceKm,
             currentSeason: currentSeason,
             hasCompletedOnboarding: hasCompletedOnboarding,
+            lastLat: lastLat,
+            lastLon: lastLon,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
