@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
@@ -268,6 +269,27 @@ class _ItemDetailContent extends StatelessWidget {
           SizedBox(height: Spacing.lg),
         ],
 
+        // ── Size & Weight ─────────────────────────────────────────────────
+        if (intrinsic != null &&
+            intrinsic.values.containsKey(kSizeAffixKey)) ...[
+          _PropertyRow(
+            label: 'Size',
+            value:
+                '${GameIcons.size} ${_formatSize(intrinsic.values[kSizeAffixKey] as String)}',
+          ),
+          if (intrinsic.values.containsKey(kWeightAffixKey)) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Weight',
+              value:
+                  '${GameIcons.weight} ${_formatWeight((intrinsic.values[kWeightAffixKey] as num).round())}',
+            ),
+          ],
+          SizedBox(height: Spacing.lg),
+          Divider(height: 1, color: cs.outlineVariant),
+          SizedBox(height: Spacing.lg),
+        ],
+
         // ── Stat bars ────────────────────────────────────────────────────
         if (intrinsic != null) ...[
           Text(
@@ -354,6 +376,36 @@ class _ItemDetailContent extends StatelessWidget {
       'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+
+  /// Capitalize an [AnimalSize] enum name for display (e.g. "medium" → "Medium").
+  static String _formatSize(String sizeEnumName) {
+    try {
+      final size = AnimalSize.fromString(sizeEnumName);
+      return '${size.name[0].toUpperCase()}${size.name.substring(1)}';
+    } on ArgumentError {
+      return sizeEnumName;
+    }
+  }
+
+  /// Format weight in grams to human-friendly units.
+  ///
+  /// - Under 1 kg → "123 g"
+  /// - 1 kg to 999 kg → "45.2 kg" (1 decimal)
+  /// - 1,000 kg+ → "12.5 t" (metric tonnes, 1 decimal)
+  static String _formatWeight(int grams) {
+    if (grams < 1000) return '$grams g';
+    if (grams < 1000000) {
+      final kg = grams / 1000.0;
+      // Drop decimal if it's a whole number.
+      return kg == kg.roundToDouble()
+          ? '${kg.round()} kg'
+          : '${kg.toStringAsFixed(1)} kg';
+    }
+    final tonnes = grams / 1000000.0;
+    return tonnes == tonnes.roundToDouble()
+        ? '${tonnes.round()} t'
+        : '${tonnes.toStringAsFixed(1)} t';
   }
 
   static String _truncateCellId(String cellId) {

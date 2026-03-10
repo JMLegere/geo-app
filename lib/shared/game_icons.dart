@@ -165,6 +165,11 @@ abstract final class GameIcons {
         Season.winter => '❄️',
       };
 
+  // ── Size & Weight ─────────────────────────────────────────────────────────
+
+  static const String size = '📏';
+  static const String weight = '⚖️';
+
   // ── Stats (for detail sheets) ────────────────────────────────────────────
 
   static const String brawn = '💪';

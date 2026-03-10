@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/player_provider.dart';
@@ -29,6 +30,15 @@ import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 class StatusBar extends ConsumerWidget {
   const StatusBar({super.key});
 
+  /// Formats a step count for compact display: "0", "999", "1.2k", "15k".
+  @visibleForTesting
+  static String formatSteps(int steps) {
+    if (steps < 1000) return '$steps';
+    final k = steps / 1000;
+    // Show one decimal only when < 10k (e.g. 1.2k, 9.9k), else whole (15k).
+    return k < 10 ? '${k.toStringAsFixed(1)}k' : '${k.round()}k';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final player = ref.watch(playerProvider);
@@ -46,6 +56,8 @@ class StatusBar extends ConsumerWidget {
           _StatPill(
               icon: GameIcons.cellsExplored,
               value: '${player.cellsObserved} cells'),
+          _StatPill(
+              icon: GameIcons.steps, value: formatSteps(player.totalSteps)),
           _StatPill(
               icon: GameIcons.streak, value: '${player.currentStreak} days'),
         ],
