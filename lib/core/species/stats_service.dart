@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Deterministic species stat derivation and per-instance rolling.
@@ -119,6 +120,30 @@ class StatsService {
         'wit': _rollStat(base.wit, seedHash[2]),
       },
     );
+  }
+
+  /// Roll a deterministic weight in grams for an item instance.
+  ///
+  /// Uses SHA-256 of [instanceSeed] (typically the instance UUID) to produce
+  /// a uniform random integer in \[[size.minGrams], [size.maxGrams]\].
+  ///
+  /// Each instance gets a unique weight because each has a unique UUID.
+  /// The roll is fully deterministic and server-re-derivable.
+  int rollWeightGrams({
+    required AnimalSize size,
+    required String instanceSeed,
+  }) {
+    final hash =
+        sha256.convert(utf8.encode('$kWeightSeedPrefix$instanceSeed')).bytes;
+
+    // Use first 4 bytes as a big-endian unsigned 32-bit integer.
+    final raw = BigInt.from(hash[0]) << 24 |
+        BigInt.from(hash[1]) << 16 |
+        BigInt.from(hash[2]) << 8 |
+        BigInt.from(hash[3]);
+
+    return (raw % BigInt.from(size.rangeSpan) + BigInt.from(size.minGrams))
+        .toInt();
   }
 
   /// Convert 2 hash bytes to a raw positive value (1–65536, never zero).

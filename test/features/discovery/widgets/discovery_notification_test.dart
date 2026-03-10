@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';

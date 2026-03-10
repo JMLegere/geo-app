@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
@@ -73,13 +74,14 @@ class GameCoordinator {
   /// Whether the GPS source is real hardware (vs keyboard/simulation).
   final bool isRealGps;
 
-  /// Optional synchronous lookup for AI-enriched base stats.
+  /// Optional synchronous lookup for AI-enriched base stats and size.
   ///
   /// When set, [_onDiscovery] passes enriched stats to [StatsService] so
   /// rolled instance stats reflect real-world biology instead of hash values.
+  /// [size] is used to roll a deterministic weight in grams for the instance.
   /// Returns null when no enrichment is cached for the given definition ID.
-  ({int speed, int brawn, int wit})? Function(String definitionId)?
-      enrichedStatsLookup;
+  ({int speed, int brawn, int wit, AnimalSize? size})? Function(
+      String definitionId)? enrichedStatsLookup;
 
   // ---------------------------------------------------------------------------
   // Dual-position state
@@ -296,11 +298,36 @@ class GameCoordinator {
     final enriched = enrichedStatsLookup?.call(event.item.id);
     final affixes = <Affix>[];
     if (enriched != null) {
-      affixes.add(_statsService.rollIntrinsicAffix(
+      final baseStats = (
+        speed: enriched.speed,
+        brawn: enriched.brawn,
+        wit: enriched.wit,
+      );
+      final intrinsic = _statsService.rollIntrinsicAffix(
         scientificName: event.item.scientificName ?? '',
         instanceSeed: instanceId,
-        enrichedBaseStats: enriched,
-      ));
+        enrichedBaseStats: baseStats,
+      );
+
+      // If size is known, roll a deterministic weight and include in affix.
+      final size = enriched.size;
+      if (size != null) {
+        final weightGrams = _statsService.rollWeightGrams(
+          size: size,
+          instanceSeed: instanceId,
+        );
+        affixes.add(Affix(
+          id: intrinsic.id,
+          type: intrinsic.type,
+          values: {
+            ...intrinsic.values,
+            kSizeAffixKey: size.name,
+            kWeightAffixKey: weightGrams,
+          },
+        ));
+      } else {
+        affixes.add(intrinsic);
+      }
     }
 
     final definition = event.item;

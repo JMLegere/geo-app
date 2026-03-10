@@ -14,8 +14,8 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1373 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 46 info-level issues |
+| Tests | 1453 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | 83 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
 
@@ -167,8 +167,10 @@ These are the target architecture decisions from two design jams. They describe 
 ### Wall 1f: Species Identity
 
 - **Stats:** AI-canonical. Brawn + Wit + Speed = 90. Based on real-world characteristics (cheetah=fast, elephant=strong, octopus=smart).
+- **Size:** AI-canonical. 9 categories: fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal. Enriched per species.
+- **Weight:** Instance-level. Random integer grams within the species' size band, seeded by instance UUID. Deterministic via SHA-256 (`"weight:$instanceSeed"`).
 - **Color:** RGB derived from stats. R=brawn/90×255, G=speed/90×255, B=wit/90×255.
-- **Instance variance:** All instances get canonical base ±30% SHA-256 variance. No special first-50 handling.
+- **Instance variance:** All instances get canonical base ±30% SHA-256 variance. No special first-50 handling. Weight varies within size band per instance.
 - **Art:** Crowd-canonical. AI default + player uploads. 51% lock at daily reset. Moderation via free AI screening only (no community reports).
 - **Badges:** First Discovery (★), Pioneer (#2–50), Artist (winning art), Beta (beta period). Instance-level, stack.
 - **Species Card UI:** Frame (rarity+badges) → Art → Badge icons → Stats (RGB bars) → Color identity → Name plate.

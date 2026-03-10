@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/food_type.dart';
 
@@ -16,6 +17,7 @@ class SpeciesEnrichment {
     required this.brawn,
     required this.wit,
     required this.speed,
+    this.size,
     this.artUrl,
     required this.enrichedAt,
   }) {
@@ -33,10 +35,12 @@ class SpeciesEnrichment {
   final int brawn;
   final int wit;
   final int speed;
+  final AnimalSize? size;
   final String? artUrl;
   final DateTime enrichedAt;
 
   factory SpeciesEnrichment.fromJson(Map<String, dynamic> json) {
+    final sizeStr = json['size'] as String?;
     return SpeciesEnrichment(
       definitionId: json['definition_id'] as String,
       animalClass: AnimalClass.fromString(json['animal_class'] as String),
@@ -45,6 +49,7 @@ class SpeciesEnrichment {
       brawn: json['brawn'] as int,
       wit: json['wit'] as int,
       speed: json['speed'] as int,
+      size: sizeStr != null ? AnimalSize.fromString(sizeStr) : null,
       artUrl: json['art_url'] as String?,
       enrichedAt: DateTime.parse(json['enriched_at'] as String),
     );
@@ -58,6 +63,7 @@ class SpeciesEnrichment {
         'brawn': brawn,
         'wit': wit,
         'speed': speed,
+        'size': size?.name,
         'art_url': artUrl,
         'enriched_at': enrichedAt.toIso8601String(),
       };
@@ -71,6 +77,7 @@ class SpeciesEnrichment {
       brawn: row.brawn,
       wit: row.wit,
       speed: row.speed,
+      size: row.size != null ? AnimalSize.fromString(row.size!) : null,
       artUrl: row.artUrl,
       enrichedAt: row.enrichedAt,
     );
@@ -85,6 +92,7 @@ class SpeciesEnrichment {
       brawn: brawn,
       wit: wit,
       speed: speed,
+      size: size?.name,
       artUrl: artUrl,
       enrichedAt: enrichedAt,
     );
@@ -99,6 +107,7 @@ class SpeciesEnrichment {
       brawn: Value(brawn),
       wit: Value(wit),
       speed: Value(speed),
+      size: Value(size?.name),
       artUrl: Value(artUrl),
       enrichedAt: Value(enrichedAt),
     );
@@ -112,6 +121,7 @@ class SpeciesEnrichment {
     int? brawn,
     int? wit,
     int? speed,
+    AnimalSize? size,
     String? artUrl,
     DateTime? enrichedAt,
   }) {
@@ -123,6 +133,7 @@ class SpeciesEnrichment {
       brawn: brawn ?? this.brawn,
       wit: wit ?? this.wit,
       speed: speed ?? this.speed,
+      size: size ?? this.size,
       artUrl: artUrl ?? this.artUrl,
       enrichedAt: enrichedAt ?? this.enrichedAt,
     );
@@ -140,5 +151,5 @@ class SpeciesEnrichment {
   @override
   String toString() =>
       'SpeciesEnrichment($definitionId, $animalClass, $foodPreference, '
-      '$climate, brawn:$brawn wit:$wit speed:$speed)';
+      '$climate, brawn:$brawn wit:$wit speed:$speed, size:$size)';
 }

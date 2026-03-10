@@ -1,6 +1,6 @@
 # Test Suite
 
-1373 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1453 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -12,7 +12,7 @@ LD_LIBRARY_PATH=. flutter test test/core/  # Subsystem only
 
 ## Structure
 
-Mirrors lib/ exactly. 92 test files.
+Mirrors lib/ exactly. 93 test files.
 
 Additional directories:
 - `fixtures/` — `species_fixture.dart` with `kSpeciesFixtureJson` (50 species, all habitats/continents/IUCN statuses)
@@ -24,6 +24,7 @@ Additional directories:
 - `kSpeciesFixtureJson` — 50-species JSON string covering all 7 habitats, 6 continents, 6 IUCN statuses, 5 taxonomic classes. Used in 10+ test files.
 - `createTestDatabase()` — `AppDatabase(NativeDatabase.memory())`. In `test/core/persistence/test_helpers.dart`.
 - `GameSession` — Full game session fixture wiring all services. In `test/integration/offline_game_loop_test.dart`.
+- `test/core/models/animal_size_test.dart` — 28 tests for `AnimalSize` enum (gram ranges, rangeSpan, fromString, boundary coverage).
 
 ## Mock Pattern
 

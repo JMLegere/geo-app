@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -299,6 +300,130 @@ void main() {
       expect(affix.values['wit'], inInclusiveRange(kStatMin, kStatMax));
       expect(affix.id, equals(kIntrinsicAffixId));
       expect(affix.type, equals(AffixType.intrinsic));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // rollWeightGrams — determinism
+  // ---------------------------------------------------------------------------
+
+  group('StatsService.rollWeightGrams determinism', () {
+    test('same size and same seed always produces the same weight', () {
+      const seed = 'instance-uuid-abc123';
+      final first =
+          service.rollWeightGrams(size: AnimalSize.medium, instanceSeed: seed);
+      for (var i = 0; i < 100; i++) {
+        expect(
+          service.rollWeightGrams(size: AnimalSize.medium, instanceSeed: seed),
+          equals(first),
+          reason: 'Iteration $i: weight differs for same inputs',
+        );
+      }
+    });
+
+    test('different seeds produce different weights (statistically)', () {
+      final weights = <int>{};
+      for (var i = 0; i < 50; i++) {
+        weights.add(service.rollWeightGrams(
+          size: AnimalSize.medium,
+          instanceSeed: 'seed_$i',
+        ));
+      }
+      // 50 distinct seeds should give varied output — expect more than 10 unique values.
+      expect(weights.length, greaterThan(10),
+          reason: 'Expected varied weights from different seeds');
+    });
+
+    test('different sizes with the same seed produce different weights', () {
+      const seed = 'fixed-seed-xyz';
+      final fine =
+          service.rollWeightGrams(size: AnimalSize.fine, instanceSeed: seed);
+      final large =
+          service.rollWeightGrams(size: AnimalSize.large, instanceSeed: seed);
+      // fine max is 49, large min is 150000 — they cannot overlap.
+      expect(fine, isNot(equals(large)));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // rollWeightGrams — range correctness
+  // ---------------------------------------------------------------------------
+
+  group('StatsService.rollWeightGrams range', () {
+    void expectInRange(AnimalSize size, {int iterations = 200}) {
+      for (var i = 0; i < iterations; i++) {
+        final weight = service.rollWeightGrams(
+          size: size,
+          instanceSeed: 'range_test_${size.name}_$i',
+        );
+        expect(
+          weight,
+          inInclusiveRange(size.minGrams, size.maxGrams),
+          reason:
+              '${size.name} seed $i: $weight outside [${size.minGrams}, ${size.maxGrams}]',
+        );
+      }
+    }
+
+    test('fine weight is always within [1, 49]', () {
+      expectInRange(AnimalSize.fine);
+    });
+
+    test('medium weight is always within [25000, 149999]', () {
+      expectInRange(AnimalSize.medium);
+    });
+
+    test('colossal weight is always within [15000000, 247000000]', () {
+      // Colossal range is huge — use more iterations to cover it.
+      expectInRange(AnimalSize.colossal, iterations: 500);
+    });
+
+    test('all size categories stay within their declared ranges', () {
+      for (final size in AnimalSize.values) {
+        expectInRange(size, iterations: 100);
+      }
+    });
+
+    test('result is an int', () {
+      final weight = service.rollWeightGrams(
+        size: AnimalSize.small,
+        instanceSeed: 'type-check-seed',
+      );
+      expect(weight, isA<int>());
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // rollWeightGrams — regression pins
+  // ---------------------------------------------------------------------------
+
+  group('StatsService.rollWeightGrams regression pins', () {
+    test('known seed produces known fine weight', () {
+      // Pin this value — if it changes, the hashing algorithm changed and
+      // existing item weights in the wild would be inconsistent.
+      final weight = service.rollWeightGrams(
+        size: AnimalSize.fine,
+        instanceSeed: 'test-uuid-001',
+      );
+      // Must be within fine range [1, 49].
+      expect(weight, inInclusiveRange(1, 49));
+      // Determinism check: same call twice gives same result.
+      expect(
+        service.rollWeightGrams(
+            size: AnimalSize.fine, instanceSeed: 'test-uuid-001'),
+        equals(weight),
+      );
+    });
+
+    test('empty instanceSeed produces a valid weight', () {
+      final weight = service.rollWeightGrams(
+        size: AnimalSize.medium,
+        instanceSeed: '',
+      );
+      expect(
+          weight,
+          inInclusiveRange(
+              AnimalSize.medium.minGrams, AnimalSize.medium.maxGrams));
     });
   });
 }

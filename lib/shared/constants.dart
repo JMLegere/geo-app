@@ -195,6 +195,19 @@ const int kStatVariance = 30;
 /// Affix ID for the intrinsic base-stats affix.
 const String kIntrinsicAffixId = 'base_stats';
 
+/// Key used in the intrinsic affix values map for weight in grams.
+const String kWeightAffixKey = 'weightGrams';
+
+/// Key used in the intrinsic affix values map for size category name.
+const String kSizeAffixKey = 'size';
+
+/// Seed prefix for weight rolling. Prepended to instanceSeed before hashing
+/// to domain-separate the weight roll from the stat roll.
+const String kWeightSeedPrefix = 'weight:';
+
+/// Number of animal size categories.
+const int kAnimalSizeCount = 9;
+
 // Instance Badges
 /// Badge: first global instance of this species ever caught (shiny foil).
 const String kBadgeFirstDiscovery = 'first_discovery';

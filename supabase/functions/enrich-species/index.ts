@@ -16,6 +16,9 @@ const ANIMAL_CLASSES = [
 
 const FOOD_TYPES = ["critter", "fish", "fruit", "grub", "nectar", "seed", "veg"];
 const CLIMATES = ["tropic", "temperate", "boreal", "frigid"];
+const ANIMAL_SIZES = [
+  "fine", "diminutive", "tiny", "small", "medium", "large", "huge", "gargantuan", "colossal",
+];
 
 interface EnrichRequest {
   definition_id: string;
@@ -34,6 +37,7 @@ interface EnrichmentRow {
   brawn: number;
   wit: number;
   speed: number;
+  size: string;
   art_url: string | null;
   enriched_at: string;
 }
@@ -45,6 +49,7 @@ interface EnrichmentResponse {
   brawn: number;
   wit: number;
   speed: number;
+  size: string;
 }
 
 function isValidEnrichment(
@@ -56,6 +61,7 @@ function isValidEnrichment(
   if (!ANIMAL_CLASSES.includes(d.animal_class as string)) return false;
   if (!FOOD_TYPES.includes(d.food_preference as string)) return false;
   if (!CLIMATES.includes(d.climate as string)) return false;
+  if (!ANIMAL_SIZES.includes(d.size as string)) return false;
   const brawn = Number(d.brawn);
   const wit = Number(d.wit);
   const speed = Number(d.speed);
@@ -93,6 +99,16 @@ ${classConstraint}
     seed = seeds, grains, nuts, kernels (for granivores like sparrows, finches, rodents)
     veg = leaves, roots, grass, plant matter that is NOT fruit/seed/nectar (for herbivores/folivores)
 - climate: one of [${CLIMATES.join(", ")}] (primary habitat climate zone)
+- size: one of [${ANIMAL_SIZES.join(", ")}] — pick based on adult body mass:
+    fine = insects, tiny invertebrates (< 50 g)
+    diminutive = small insects, frogs, mice (50-500 g)
+    tiny = squirrels, rats, small birds (500 g - 4 kg)
+    small = foxes, rabbits, medium dogs (4-25 kg)
+    medium = wolves, large cats, deer (25-150 kg)
+    large = bears, big cats, large ungulates (150-500 kg)
+    huge = rhinos, hippos, small cetaceans (500-2,000 kg)
+    gargantuan = elephants, large cetaceans (2-15 t)
+    colossal = blue whales, colossal marine life (15+ t)
 - brawn: integer (physical strength/size, 0-90)
 - wit: integer (intelligence/cunning, 0-90)  
 - speed: integer (speed/agility, 0-90)
@@ -221,6 +237,7 @@ serve(async (req: Request) => {
       brawn: enrichment.brawn,
       wit: enrichment.wit,
       speed: enrichment.speed,
+      size: enrichment.size,
       art_url: null,
     };
 

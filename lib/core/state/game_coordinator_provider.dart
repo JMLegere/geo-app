@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -77,7 +78,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   // In-memory enrichment cache for synchronous stat lookups during discovery.
   // Populated during hydration, updated when new enrichments arrive.
-  final enrichmentCache = <String, ({int speed, int brawn, int wit})>{};
+  final enrichmentCache =
+      <String, ({int speed, int brawn, int wit, AnimalSize? size})>{};
 
   final coordinator = GameCoordinator(
     fogResolver: fogResolver,
@@ -190,6 +192,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             speed: enrichment.speed,
             brawn: enrichment.brawn,
             wit: enrichment.wit,
+            size: enrichment.size,
           );
           enrichmentCache[fauna.id] = stats;
 
@@ -291,7 +294,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // 0. Populate enrichment cache for synchronous stat lookups.
       for (final e in enrichments) {
         enrichmentCache[e.definitionId] =
-            (speed: e.speed, brawn: e.brawn, wit: e.wit);
+            (speed: e.speed, brawn: e.brawn, wit: e.wit, size: e.size);
       }
 
       // 1. Hydrate inventory
@@ -825,6 +828,18 @@ Future<void> hydrateFromSupabase({
             ? DateTime.parse(enrichedAtStr)
             : DateTime.now();
 
+        // Parse optional size (may be null for enrichments created before
+        // the size field was added).
+        final sizeStr = row['size'] as String?;
+        AnimalSize? size;
+        if (sizeStr != null) {
+          try {
+            size = AnimalSize.fromString(sizeStr);
+          } catch (_) {
+            // Unknown size value — leave null.
+          }
+        }
+
         final enrichment = SpeciesEnrichment(
           definitionId: row['definition_id'] as String,
           animalClass: AnimalClass.values.firstWhere(
@@ -842,6 +857,7 @@ Future<void> hydrateFromSupabase({
           brawn: row['brawn'] as int? ?? 30,
           wit: row['wit'] as int? ?? 30,
           speed: row['speed'] as int? ?? 30,
+          size: size,
           artUrl: row['art_url'] as String?,
           enrichedAt: enrichedAt,
         );
@@ -863,26 +879,92 @@ Future<void> hydrateFromSupabase({
   }
 }
 
+/// Check if an item needs intrinsic affix backfill.
+///
+/// Returns true when EITHER:
+/// - Item has no intrinsic affix at all (needs stats + weight)
+/// - Item has intrinsic affix but lacks weight AND enrichment now has size
+///   (was enriched before size field was added, needs weight rolled)
+bool _needsIntrinsicBackfill(
+  ItemInstance item,
+  ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
+) {
+  final intrinsic = item.affixes
+      .cast<Affix?>()
+      .firstWhere((a) => a!.type == AffixType.intrinsic, orElse: () => null);
+
+  // No intrinsic affix at all — needs full backfill.
+  if (intrinsic == null) return true;
+
+  // Has intrinsic affix but enrichment now has size and item lacks weight.
+  if (enrichedStats.size != null &&
+      !intrinsic.values.containsKey(kWeightAffixKey)) {
+    return true;
+  }
+
+  return false;
+}
+
 /// Roll an intrinsic affix for a single item and persist the update.
 ///
 /// Shared by both the real-time [onEnriched] path and the startup sweep.
 /// Updates: in-memory inventory, SQLite, and write queue.
 Future<void> _rollAndPersistIntrinsicAffix({
   required ItemInstance item,
-  required ({int speed, int brawn, int wit}) enrichedStats,
+  required ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
   required Ref ref,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
   required String userId,
 }) async {
+  final baseStats = (
+    speed: enrichedStats.speed,
+    brawn: enrichedStats.brawn,
+    wit: enrichedStats.wit,
+  );
   final intrinsic = statsService.rollIntrinsicAffix(
     scientificName: item.scientificName ?? '',
     instanceSeed: item.id,
-    enrichedBaseStats: enrichedStats,
+    enrichedBaseStats: baseStats,
   );
+
+  // If size is known, roll a deterministic weight and merge into affix.
+  Affix finalAffix;
+  final size = enrichedStats.size;
+  if (size != null) {
+    final weightGrams = statsService.rollWeightGrams(
+      size: size,
+      instanceSeed: item.id,
+    );
+    finalAffix = Affix(
+      id: intrinsic.id,
+      type: intrinsic.type,
+      values: {
+        ...intrinsic.values,
+        kSizeAffixKey: size.name,
+        kWeightAffixKey: weightGrams,
+      },
+    );
+  } else {
+    finalAffix = intrinsic;
+  }
+
+  // Replace existing intrinsic affix if present (e.g., re-enrichment added
+  // size to a previously stats-only affix), otherwise prepend new one.
+  final existingIntrinsic =
+      item.affixes.any((a) => a.type == AffixType.intrinsic);
+  final List<Affix> newAffixes;
+  if (existingIntrinsic) {
+    newAffixes = item.affixes
+        .map((a) => a.type == AffixType.intrinsic ? finalAffix : a)
+        .toList();
+  } else {
+    newAffixes = [finalAffix, ...item.affixes];
+  }
+
   final updated = item.copyWith(
-    affixes: [intrinsic, ...item.affixes],
+    affixes: newAffixes,
   );
 
   // 1. Update in-memory inventory.
@@ -936,7 +1018,7 @@ Future<void> _rollAndPersistIntrinsicAffix({
 /// Called by [onEnriched] when a new enrichment arrives in-session.
 Future<void> _backfillIntrinsicAffixes({
   required String definitionId,
-  required ({int speed, int brawn, int wit}) enrichedStats,
+  required ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
   required Ref ref,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
@@ -947,7 +1029,7 @@ Future<void> _backfillIntrinsicAffixes({
   final itemsToFix = inventory.items
       .where((item) =>
           item.definitionId == definitionId &&
-          !item.affixes.any((a) => a.type == AffixType.intrinsic))
+          _needsIntrinsicBackfill(item, enrichedStats))
       .toList();
 
   if (itemsToFix.isEmpty) return;
@@ -979,7 +1061,8 @@ Future<void> _backfillIntrinsicAffixes({
 ///   - Any other edge case where enrichment exists but stats don't
 Future<void> _backfillAllMissingAffixes({
   required Ref ref,
-  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+  required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
+      enrichmentCache,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
@@ -990,13 +1073,13 @@ Future<void> _backfillAllMissingAffixes({
     final itemsToFix = inventory.items
         .where((item) =>
             enrichmentCache.containsKey(item.definitionId) &&
-            !item.affixes.any((a) => a.type == AffixType.intrinsic))
+            _needsIntrinsicBackfill(item, enrichmentCache[item.definitionId]!))
         .toList();
 
     if (itemsToFix.isEmpty) return;
 
     debugPrint('[GameCoordinator] startup backfill: ${itemsToFix.length} '
-        'items missing intrinsic affixes');
+        'items need intrinsic affix update');
 
     for (final item in itemsToFix) {
       await _rollAndPersistIntrinsicAffix(
@@ -1017,14 +1100,17 @@ Future<void> _backfillAllMissingAffixes({
   }
 }
 
-/// Re-queue enrichment requests for fauna in inventory that lack enrichment.
+/// Re-queue enrichment requests for fauna in inventory that lack enrichment
+/// or have incomplete enrichment (e.g., enriched before size field was added).
 ///
 /// Covers species that were dropped due to rate limits, app restarts (in-memory
-/// queue lost), or pipeline changes. Waits for species data to load, then
-/// compares inventory fauna against the enrichment cache.
+/// queue lost), pipeline changes, or new enrichment fields added after initial
+/// enrichment. Waits for species data to load, then compares inventory fauna
+/// against the enrichment cache.
 Future<void> _requeueUnenrichedSpecies({
   required Ref ref,
-  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+  required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
+      enrichmentCache,
 }) async {
   try {
     final speciesData = await ref.read(speciesDataProvider.future);
@@ -1037,19 +1123,26 @@ Future<void> _requeueUnenrichedSpecies({
       faunaById[fauna.id] = fauna;
     }
 
-    // Find unique fauna definition IDs in inventory that lack enrichment.
+    // Find unique fauna definition IDs in inventory that lack enrichment
+    // or have incomplete enrichment (e.g., missing size from older pipeline).
     // Uses faunaById to naturally filter to fauna items only (ItemInstance
     // has no category field — the species data map is the filter).
     final unenrichedIds = <String>{};
+    final incompleteIds = <String>{};
     for (final item in inventory.items) {
-      if (!enrichmentCache.containsKey(item.definitionId) &&
-          faunaById.containsKey(item.definitionId)) {
+      if (!faunaById.containsKey(item.definitionId)) continue;
+
+      if (!enrichmentCache.containsKey(item.definitionId)) {
         unenrichedIds.add(item.definitionId);
+      } else if (enrichmentCache[item.definitionId]!.size == null) {
+        incompleteIds.add(item.definitionId);
       }
     }
 
+    final allIds = {...unenrichedIds, ...incompleteIds};
+
     // Queue enrichment requests for the gap set.
-    for (final defId in unenrichedIds) {
+    for (final defId in allIds) {
       final fauna = faunaById[defId]!;
       enrichmentService.requestEnrichment(
         definitionId: fauna.id,
@@ -1062,6 +1155,10 @@ Future<void> _requeueUnenrichedSpecies({
     if (unenrichedIds.isNotEmpty) {
       debugPrint('[GameCoordinator] re-queued ${unenrichedIds.length} '
           'unenriched species for enrichment');
+    }
+    if (incompleteIds.isNotEmpty) {
+      debugPrint('[GameCoordinator] re-queued ${incompleteIds.length} '
+          'species with incomplete enrichment (missing size)');
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to re-queue unenriched species: $e');

@@ -7,6 +7,7 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/models/habitat.dart';
@@ -380,7 +381,7 @@ void main() {
         // Wire enrichment lookup with known base stats.
         c.enrichedStatsLookup = (definitionId) {
           if (definitionId == 'fauna_vulpes_vulpes') {
-            return (speed: 50, brawn: 20, wit: 20);
+            return (speed: 50, brawn: 20, wit: 20, size: null);
           }
           return null;
         };
@@ -419,6 +420,179 @@ void main() {
         s.gps.close();
         s.discovery.close();
         c.dispose();
+      });
+
+      test(
+          'created ItemInstance with enrichment + size has weight and size in affix',
+          () {
+        ItemInstance? instance;
+        final c = _makeCoordinator();
+        // Wire enrichment lookup with size included.
+        c.enrichedStatsLookup = (definitionId) {
+          if (definitionId == 'fauna_vulpes_vulpes') {
+            return (speed: 50, brawn: 20, wit: 20, size: AnimalSize.small);
+          }
+          return null;
+        };
+        c.onItemDiscovered = (_, inst) => instance = inst;
+        final s = _startCoordinator(c);
+
+        final fauna = _testFauna(
+          id: 'fauna_vulpes_vulpes',
+          scientificName: 'Vulpes vulpes',
+        );
+        final event = _testDiscoveryEvent(
+          item: fauna,
+          cellId: 'test_cell_42',
+        );
+        s.discovery.add(event);
+
+        expect(instance, isNotNull);
+
+        // Exactly one intrinsic affix with stats + size + weight.
+        expect(instance!.affixes, hasLength(1));
+        final affix = instance!.affixes.first;
+        expect(affix.id, kIntrinsicAffixId);
+        expect(affix.type, AffixType.intrinsic);
+
+        // Stats present.
+        expect(affix.values, containsPair('speed', isA<int>()));
+        expect(affix.values, containsPair('brawn', isA<int>()));
+        expect(affix.values, containsPair('wit', isA<int>()));
+
+        // Size and weight present.
+        expect(affix.values[kSizeAffixKey], 'small');
+        expect(affix.values[kWeightAffixKey], isA<int>());
+
+        // Weight is within the small size band (4,000–24,999 grams).
+        final weight = affix.values[kWeightAffixKey] as int;
+        expect(weight, greaterThanOrEqualTo(AnimalSize.small.minGrams));
+        expect(weight, lessThanOrEqualTo(AnimalSize.small.maxGrams));
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test(
+          'created ItemInstance with enrichment but no size has stats but no weight',
+          () {
+        ItemInstance? instance;
+        final c = _makeCoordinator();
+        // Wire enrichment without size (pre-size enrichment).
+        c.enrichedStatsLookup = (definitionId) {
+          if (definitionId == 'fauna_vulpes_vulpes') {
+            return (speed: 50, brawn: 20, wit: 20, size: null);
+          }
+          return null;
+        };
+        c.onItemDiscovered = (_, inst) => instance = inst;
+        final s = _startCoordinator(c);
+
+        final fauna = _testFauna(
+          id: 'fauna_vulpes_vulpes',
+          scientificName: 'Vulpes vulpes',
+        );
+        final event = _testDiscoveryEvent(
+          item: fauna,
+          cellId: 'test_cell_42',
+        );
+        s.discovery.add(event);
+
+        expect(instance, isNotNull);
+        expect(instance!.affixes, hasLength(1));
+        final affix = instance!.affixes.first;
+
+        // Stats present.
+        expect(affix.values, containsPair('speed', isA<int>()));
+        expect(affix.values, containsPair('brawn', isA<int>()));
+        expect(affix.values, containsPair('wit', isA<int>()));
+
+        // Size and weight NOT present (enrichment had no size).
+        expect(affix.values.containsKey(kSizeAffixKey), isFalse);
+        expect(affix.values.containsKey(kWeightAffixKey), isFalse);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('weight is deterministic for same instance seed', () {
+        final instances = <ItemInstance>[];
+        // Run discovery twice with the same event to get two instances.
+        for (var i = 0; i < 2; i++) {
+          final c = _makeCoordinator();
+          c.enrichedStatsLookup = (definitionId) {
+            if (definitionId == 'fauna_vulpes_vulpes') {
+              return (speed: 50, brawn: 20, wit: 20, size: AnimalSize.medium);
+            }
+            return null;
+          };
+          c.onItemDiscovered = (_, inst) => instances.add(inst);
+          final s = _startCoordinator(c);
+          s.discovery.add(_testDiscoveryEvent(
+            item: _testFauna(
+              id: 'fauna_vulpes_vulpes',
+              scientificName: 'Vulpes vulpes',
+            ),
+            cellId: 'test_cell_42',
+          ));
+          s.gps.close();
+          s.discovery.close();
+          c.dispose();
+        }
+
+        expect(instances, hasLength(2));
+        // Two different instances get different UUIDs → different weights.
+        // (They CAN be equal by chance but given the medium band 25k–150k
+        // it's astronomically unlikely.)
+        final w1 = instances[0].affixes.first.values[kWeightAffixKey] as int;
+        final w2 = instances[1].affixes.first.values[kWeightAffixKey] as int;
+        // Both within medium band.
+        expect(
+            w1,
+            inInclusiveRange(
+                AnimalSize.medium.minGrams, AnimalSize.medium.maxGrams));
+        expect(
+            w2,
+            inInclusiveRange(
+                AnimalSize.medium.minGrams, AnimalSize.medium.maxGrams));
+      });
+
+      test('different size bands produce weights in respective ranges', () {
+        final sizes = [AnimalSize.fine, AnimalSize.huge, AnimalSize.colossal];
+        final instances = <ItemInstance>[];
+
+        for (final size in sizes) {
+          final c = _makeCoordinator();
+          c.enrichedStatsLookup =
+              (_) => (speed: 30, brawn: 30, wit: 30, size: size);
+          c.onItemDiscovered = (_, inst) => instances.add(inst);
+          final s = _startCoordinator(c);
+          s.discovery.add(_testDiscoveryEvent(
+            item: _testFauna(
+              id: 'fauna_test_species',
+              scientificName: 'Testus specius',
+            ),
+            cellId: 'cell_${size.name}',
+          ));
+          s.gps.close();
+          s.discovery.close();
+          c.dispose();
+        }
+
+        expect(instances, hasLength(3));
+
+        for (var i = 0; i < sizes.length; i++) {
+          final weight =
+              instances[i].affixes.first.values[kWeightAffixKey] as int;
+          expect(weight, greaterThanOrEqualTo(sizes[i].minGrams),
+              reason:
+                  '${sizes[i].name} weight should be >= ${sizes[i].minGrams}');
+          expect(weight, lessThanOrEqualTo(sizes[i].maxGrams),
+              reason:
+                  '${sizes[i].name} weight should be <= ${sizes[i].maxGrams}');
+        }
       });
     });
 
