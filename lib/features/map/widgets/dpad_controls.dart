@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/features/location/services/keyboard_location_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 /// On-screen directional pad for mobile web users who have no physical keyboard.
 ///
@@ -29,9 +30,10 @@ class DPadControls extends ConsumerStatefulWidget {
 }
 
 class _DPadControlsState extends ConsumerState<DPadControls> {
-  static const _stepMeters = 10.0;
+  static const _stepMeters = kWebKeyboardStepMeters;
   static const _earthRadius = 6371000.0;
-  static const _tickInterval = Duration(milliseconds: 100);
+  static const _tickInterval =
+      Duration(milliseconds: kWebKeyboardTickIntervalMs);
 
   Timer? _longPressTimer;
 

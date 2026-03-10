@@ -260,9 +260,26 @@ const int kUpgradePromptDelaySeconds = 120;
 /// Application version string displayed in Settings.
 const String kAppVersion = '0.1.0';
 
+// Step-based Exploration
+/// Step cost for remotely exploring a frontier cell via the cell info sheet.
+///
+/// Spending this many steps calls [FogStateResolver.visitCellRemotely], which
+/// marks the cell as visited and triggers species discoveries via the
+/// [DiscoveryService] subscription.
+const int kStepCostPerCell = 1000;
+
 /// Build timestamp injected via `--dart-define=BUILD_TIMESTAMP=...` at build
 /// time. Falls back to 'dev' for local development runs.
 const String kBuildTimestamp = String.fromEnvironment(
   'BUILD_TIMESTAMP',
   defaultValue: 'dev',
 );
+
+// Web Platform Movement (5x slower than current, since web has no pedometer)
+/// Step distance in meters for web keyboard/D-pad movement per tick.
+/// 5x reduction from original 10.0 to match realistic walking speed (~4 m/s).
+const double kWebKeyboardStepMeters = 2.0;
+
+/// Tick interval in milliseconds for web keyboard/D-pad movement.
+/// 5x increase from original 100ms to slow down movement cadence.
+const int kWebKeyboardTickIntervalMs = 500;

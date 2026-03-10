@@ -44,6 +44,7 @@ import 'package:earth_nova/features/location/services/location_simulator.dart';
 import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
+import 'package:earth_nova/features/steps/providers/step_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
@@ -340,6 +341,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
               longestStreak: profile.longestStreak,
               hasCompletedOnboarding:
                   profile.hasCompletedOnboarding || currentOnboarding,
+              totalSteps: profile.totalSteps,
+              lastKnownStepCount: profile.lastKnownStepCount,
             );
       } else {
         // No profile row yet — still hydrate cellsObserved from cell progress.
@@ -356,6 +359,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // Capture hydrated profile state so the write-through listener
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
+
+      // 4. Hydrate step counter (native only — web has no pedometer).
+      // Must run AFTER profile hydration so totalSteps is already loaded.
+      // Computes login delta: currentOsSteps - lastKnownStepCount.
+      // Passes profile.updatedAt as lastSessionDate for recap subtitle.
+      if (!kIsWeb) {
+        try {
+          final stepNotifier = ref.read(stepProvider.notifier);
+          await stepNotifier.hydrate(
+            lastKnownStepCount: profile?.lastKnownStepCount ?? 0,
+            totalSteps: ref.read(playerProvider).totalSteps,
+            lastSessionDate: profile?.updatedAt,
+          );
+        } catch (e) {
+          debugPrint('[GameCoordinator] step hydration failed: $e');
+        }
+      }
     } catch (e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');
     }
@@ -419,6 +439,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           '(starting loop anyway): $e');
     }).whenComplete(() {
       startLoop();
+
+      // Start live pedometer stream after game loop is running (native only).
+      // Must be after hydrate() so _lastStreamValue is set as the baseline.
+      if (!kIsWeb) {
+        ref.read(stepProvider.notifier).startLiveStream();
+      }
     });
   }
 
@@ -645,6 +671,8 @@ Future<void> _persistProfileState({
         lastLat: lastLat,
         lastLon: lastLon,
         updateLastPosition: lastLat != null && lastLon != null,
+        totalSteps: playerState.totalSteps,
+        lastKnownStepCount: playerState.lastKnownStepCount,
       );
     } else {
       await profileRepo.create(
@@ -657,6 +685,8 @@ Future<void> _persistProfileState({
         hasCompletedOnboarding: playerState.hasCompletedOnboarding,
         lastLat: lastLat,
         lastLon: lastLon,
+        totalSteps: playerState.totalSteps,
+        lastKnownStepCount: playerState.lastKnownStepCount,
       );
     }
   } catch (e) {
@@ -672,6 +702,8 @@ Future<void> _persistProfileState({
       'total_distance_km': playerState.totalDistanceKm,
       'current_season': season.name,
       'has_completed_onboarding': playerState.hasCompletedOnboarding,
+      'total_steps': playerState.totalSteps,
+      'last_known_step_count': playerState.lastKnownStepCount,
       if (lastLat != null) 'last_lat': lastLat,
       if (lastLon != null) 'last_lon': lastLon,
     });

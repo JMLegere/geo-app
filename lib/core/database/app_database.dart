@@ -180,6 +180,9 @@ class LocalPlayerProfileTable extends Table {
       boolean().withDefault(const Constant(false))();
   RealColumn get lastLat => real().nullable()();
   RealColumn get lastLon => real().nullable()();
+  IntColumn get totalSteps => integer().withDefault(const Constant(0))();
+  IntColumn get lastKnownStepCount =>
+      integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -203,7 +206,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -259,6 +262,13 @@ class AppDatabase extends _$AppDatabase {
           // Add size column to species enrichment (AnimalSize enum name).
           await m.addColumn(
               localSpeciesEnrichmentTable, localSpeciesEnrichmentTable.size);
+        }
+        if (from < 10) {
+          // Add step tracking columns to player profile.
+          await m.addColumn(
+              localPlayerProfileTable, localPlayerProfileTable.totalSteps);
+          await m.addColumn(localPlayerProfileTable,
+              localPlayerProfileTable.lastKnownStepCount);
         }
       },
     );

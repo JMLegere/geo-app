@@ -1,0 +1,27 @@
+# Task 2: PlayerNotifier.spendSteps() — Sufficient Balance Test
+
+## Test Scenario
+Spend 500 steps with balance 1000 → returns true, balance becomes 500
+
+## Test Output
+00:00 +11: PlayerNotifier spendSteps returns true and reduces totalSteps when amount <= totalSteps
+00:00 +12: PlayerNotifier spendSteps returns false and does not mutate state when amount > totalSteps
+00:00 +13: PlayerNotifier spendSteps returns true when spending exact balance
+00:00 +14: PlayerNotifier spendSteps returns false when spending zero
+00:00 +15: PlayerNotifier spendSteps returns false when spending negative amount
+00:00 +16: PlayerNotifier spendSteps does not modify other PlayerState fields
+00:00 +17: All tests passed!
+
+## Verification
+✓ Test 11: Sufficient balance (1000 → spend 500 → 500) PASS
+✓ Test 13: Exact balance (500 → spend 500 → 0) PASS
+✓ Test 16: Field isolation (other fields unchanged) PASS
+
+## Implementation Details
+- Method: PlayerNotifier.spendSteps(int amount) → bool
+- Guard: if (amount <= 0 || amount > state.totalSteps) return false;
+- Update: state = state.copyWith(totalSteps: state.totalSteps - amount);
+- Return: true on success, false on failure
+
+## Status
+✓ COMPLETE — All 6 spendSteps tests passing

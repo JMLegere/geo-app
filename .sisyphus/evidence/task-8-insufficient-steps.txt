@@ -1,0 +1,14 @@
+SCENARIO: Explore button disabled with insufficient steps
+DATE: 2026-03-10
+TEST: CellInfoSheet disables Explore button when steps < kStepCostPerCell
+
+SETUP:
+- FogStateResolver with cell_10_10 on frontier
+- playerProvider.addSteps(200) → totalSteps = 200 (< kStepCostPerCell = 500)
+
+ASSERTIONS VERIFIED:
+- ElevatedButton(key: 'explore_button') is present: ✓
+- btn.onPressed IS null (button disabled): ✓
+- find.textContaining('Not enough steps') findsOneWidget: ✓
+
+RESULT: PASS ✓

@@ -7,35 +7,58 @@ import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/steps/services/step_service.dart';
 
 // ---------------------------------------------------------------------------
+// Service provider (overridable for testing)
+// ---------------------------------------------------------------------------
+
+/// Provides the [StepService] instance used by [StepNotifier].
+///
+/// Override in tests to inject a mock [StepService]:
+/// ```dart
+/// container = ProviderContainer(overrides: [
+///   stepServiceProvider.overrideWithValue(MockStepService()),
+/// ]);
+/// ```
+final stepServiceProvider = Provider<StepService>((ref) => StepService());
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
-/// Immutable step-counting state for the cha-ching animation and live counter.
+/// Immutable step-counting state for the recap animation and live counter.
 class StepState {
-  /// Steps accumulated since last login (the "cha-ching" amount).
+  /// Steps accumulated since last login (the recap amount).
   final int loginDelta;
 
-  /// Whether the cha-ching count-up animation is currently playing.
+  /// Whether the recap count-up animation is currently playing.
   final bool isAnimating;
 
-  /// Whether the cha-ching animation has already completed this session.
+  /// Whether the recap animation has already completed this session.
   final bool hasAnimated;
+
+  /// When the player's profile was last persisted (i.e. their previous session).
+  ///
+  /// Used by [StepRecap] to display "since Mar 8" instead of the generic
+  /// "earned while away". Null on first launch (no prior session).
+  final DateTime? lastSessionDate;
 
   const StepState({
     this.loginDelta = 0,
     this.isAnimating = false,
     this.hasAnimated = false,
+    this.lastSessionDate,
   });
 
   StepState copyWith({
     int? loginDelta,
     bool? isAnimating,
     bool? hasAnimated,
+    DateTime? lastSessionDate,
   }) {
     return StepState(
       loginDelta: loginDelta ?? this.loginDelta,
       isAnimating: isAnimating ?? this.isAnimating,
       hasAnimated: hasAnimated ?? this.hasAnimated,
+      lastSessionDate: lastSessionDate ?? this.lastSessionDate,
     );
   }
 }
@@ -44,7 +67,7 @@ class StepState {
 // Notifier
 // ---------------------------------------------------------------------------
 
-/// Manages step counting: login delta calculation, cha-ching animation state,
+/// Manages step counting: login delta calculation, recap animation state,
 /// and live step stream forwarding to [PlayerNotifier].
 ///
 /// Lifecycle:
@@ -53,7 +76,7 @@ class StepState {
 ///    adds delta to PlayerState.totalSteps.
 /// 2. [startLiveStream] subscribes to the continuous pedometer stream
 ///    and adds incremental steps to PlayerState in real-time.
-/// 3. [markAnimationComplete] called by UI when the cha-ching animation
+/// 3. [markAnimationComplete] called by UI when the recap animation
 ///    finishes playing.
 class StepNotifier extends Notifier<StepState> {
   late final StepService _stepService;
@@ -62,7 +85,7 @@ class StepNotifier extends Notifier<StepState> {
 
   @override
   StepState build() {
-    _stepService = StepService();
+    _stepService = ref.read(stepServiceProvider);
 
     ref.onDispose(() {
       _liveSub?.cancel();
@@ -75,10 +98,15 @@ class StepNotifier extends Notifier<StepState> {
   /// Computes the login delta and updates player state.
   ///
   /// Called once during startup hydration with the persisted baseline.
+  /// [lastSessionDate] is the profile's `updatedAt` timestamp — when the
+  /// player's previous session last wrote to the database. Passed through to
+  /// [StepState.lastSessionDate] for the recap subtitle.
+  ///
   /// Returns the computed delta for logging.
   Future<int> hydrate({
     required int lastKnownStepCount,
     required int totalSteps,
+    DateTime? lastSessionDate,
   }) async {
     final currentOsSteps = await _stepService.getCurrentStepCount();
 
@@ -97,6 +125,7 @@ class StepNotifier extends Notifier<StepState> {
     state = state.copyWith(
       loginDelta: delta,
       isAnimating: delta > 0,
+      lastSessionDate: lastSessionDate,
     );
 
     debugPrint('[StepNotifier] hydrated: os=$currentOsSteps, '
@@ -122,7 +151,7 @@ class StepNotifier extends Notifier<StepState> {
     });
   }
 
-  /// Called by UI when the cha-ching animation finishes.
+  /// Called by UI when the recap animation finishes.
   void markAnimationComplete() {
     state = state.copyWith(
       isAnimating: false,

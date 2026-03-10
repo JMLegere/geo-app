@@ -86,6 +86,21 @@ class PlayerNotifier extends Notifier<PlayerState> {
     );
   }
 
+  /// Spends [amount] steps from the player's balance.
+  ///
+  /// Returns true and reduces totalSteps by [amount] if [amount] <= totalSteps.
+  /// Returns false and does not mutate state if [amount] > totalSteps or [amount] <= 0.
+  bool spendSteps(int amount) {
+    if (amount <= 0 || amount > state.totalSteps) {
+      return false;
+    }
+
+    state = state.copyWith(
+      totalSteps: state.totalSteps - amount,
+    );
+    return true;
+  }
+
   /// Updates the last-known OS pedometer value for next-session delta calc.
   void updateLastKnownStepCount(int osSteps) {
     state = state.copyWith(lastKnownStepCount: osSteps);

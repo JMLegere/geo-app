@@ -151,5 +151,92 @@ void main() {
       expect(state.totalDistanceKm, equals(5.0));
       expect(state.cellsObserved, equals(1));
     });
+
+    group('spendSteps', () {
+      test('returns true and reduces totalSteps when amount <= totalSteps', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(1000);
+        final result = notifier.spendSteps(500);
+
+        expect(result, isTrue);
+        final state = container.read(playerProvider);
+        expect(state.totalSteps, equals(500));
+      });
+
+      test('returns false and does not mutate state when amount > totalSteps',
+          () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(499);
+        final result = notifier.spendSteps(500);
+
+        expect(result, isFalse);
+        final state = container.read(playerProvider);
+        expect(state.totalSteps, equals(499));
+      });
+
+      test('returns true when spending exact balance', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(500);
+        final result = notifier.spendSteps(500);
+
+        expect(result, isTrue);
+        final state = container.read(playerProvider);
+        expect(state.totalSteps, equals(0));
+      });
+
+      test('returns false when spending zero', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(1000);
+        final result = notifier.spendSteps(0);
+
+        expect(result, isFalse);
+        final state = container.read(playerProvider);
+        expect(state.totalSteps, equals(1000));
+      });
+
+      test('returns false when spending negative amount', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(1000);
+        final result = notifier.spendSteps(-100);
+
+        expect(result, isFalse);
+        final state = container.read(playerProvider);
+        expect(state.totalSteps, equals(1000));
+      });
+
+      test('does not modify other PlayerState fields', () {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        final notifier = container.read(playerProvider.notifier);
+
+        notifier.addSteps(1000);
+        notifier.incrementStreak();
+        notifier.addDistance(5.0);
+        notifier.incrementCellsObserved();
+
+        notifier.spendSteps(500);
+
+        final state = container.read(playerProvider);
+        expect(state.currentStreak, equals(1));
+        expect(state.totalDistanceKm, equals(5.0));
+        expect(state.cellsObserved, equals(1));
+        expect(state.totalSteps, equals(500));
+      });
+    });
   });
 }

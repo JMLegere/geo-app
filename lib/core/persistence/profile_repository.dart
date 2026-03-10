@@ -18,6 +18,8 @@ class ProfileRepository {
     bool hasCompletedOnboarding = false,
     double? lastLat,
     double? lastLon,
+    int totalSteps = 0,
+    int lastKnownStepCount = 0,
   }) async {
     final profile = LocalPlayerProfile(
       id: userId,
@@ -29,6 +31,8 @@ class ProfileRepository {
       hasCompletedOnboarding: hasCompletedOnboarding,
       lastLat: lastLat,
       lastLon: lastLon,
+      totalSteps: totalSteps,
+      lastKnownStepCount: lastKnownStepCount,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -56,6 +60,8 @@ class ProfileRepository {
     double? lastLat,
     double? lastLon,
     bool updateLastPosition = false,
+    int? totalSteps,
+    int? lastKnownStepCount,
   }) async {
     final existing = await _db.getPlayerProfile(userId);
     if (existing == null) {
@@ -72,6 +78,8 @@ class ProfileRepository {
           hasCompletedOnboarding ?? existing.hasCompletedOnboarding,
       lastLat: updateLastPosition ? Value(lastLat) : Value.absent(),
       lastLon: updateLastPosition ? Value(lastLon) : Value.absent(),
+      totalSteps: totalSteps ?? existing.totalSteps,
+      lastKnownStepCount: lastKnownStepCount ?? existing.lastKnownStepCount,
       updatedAt: DateTime.now(),
     );
 
