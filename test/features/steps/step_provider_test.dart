@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
 import 'package:earth_nova/features/steps/services/step_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // Mock StepService
@@ -73,9 +74,14 @@ ProviderContainer makeContainer(MockStepService mockService) {
 
 void main() {
   group('StepNotifier.hydrate()', () {
-    test('computes login delta when lastKnownStepCount > 0', () async {
-      // OS reports 5000 steps; last known was 4500 → delta = 500.
-      final mock = MockStepService(currentStepCount: 5000);
+    // ------------------------------------------------------------------
+    // Pedometer delta vs minimum floor
+    // ------------------------------------------------------------------
+
+    test('uses pedometer delta when it exceeds the daily minimum', () async {
+      // OS reports 6500 steps; last known was 4500 → pedometer delta = 2000.
+      // Daily minimum = 1000 × 1 day = 1000. Pedometer wins.
+      final mock = MockStepService(currentStepCount: 6500);
       final container = makeContainer(mock);
 
       final delta = await container.read(stepProvider.notifier).hydrate(
@@ -83,24 +89,85 @@ void main() {
             totalSteps: 100,
           );
 
-      expect(delta, equals(500));
+      expect(delta, equals(2000));
+      expect(container.read(stepProvider).loginDelta, equals(2000));
     });
 
-    test('updates stepState.loginDelta after hydration', () async {
-      final mock = MockStepService(currentStepCount: 5000);
+    test('uses daily minimum when pedometer delta is lower', () async {
+      // OS reports 4700; last known 4500 → pedometer delta = 200.
+      // Daily minimum = 1000 × 1 day = 1000. Minimum wins.
+      final mock = MockStepService(currentStepCount: 4700);
       final container = makeContainer(mock);
+
+      final delta = await container.read(stepProvider.notifier).hydrate(
+            lastKnownStepCount: 4500,
+            totalSteps: 100,
+          );
+
+      expect(delta, equals(kMinDailyStepGrant));
+    });
+
+    test('scales minimum by days since last session', () async {
+      // No pedometer steps (web stub).
+      // Last session 3 days ago → minimum = 1000 × 3 = 3000.
+      final mock = MockStepService(currentStepCount: 0);
+      final container = makeContainer(mock);
+
+      final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3));
+      final delta = await container.read(stepProvider.notifier).hydrate(
+            lastKnownStepCount: 0,
+            totalSteps: 0,
+            lastSessionDate: threeDaysAgo,
+          );
+
+      expect(delta, equals(kMinDailyStepGrant * 3));
+    });
+
+    test('caps days-since at 30 to prevent runaway grants', () async {
+      final mock = MockStepService(currentStepCount: 0);
+      final container = makeContainer(mock);
+
+      final longAgo = DateTime.now().subtract(const Duration(days: 100));
+      final delta = await container.read(stepProvider.notifier).hydrate(
+            lastKnownStepCount: 0,
+            totalSteps: 0,
+            lastSessionDate: longAgo,
+          );
+
+      expect(delta, equals(kMinDailyStepGrant * 30));
+    });
+
+    // ------------------------------------------------------------------
+    // Player state integration
+    // ------------------------------------------------------------------
+
+    test('adds delta to playerProvider.totalSteps', () async {
+      // Pedometer delta = 2000, exceeds minimum → delta = 2000.
+      final mock = MockStepService(currentStepCount: 6500);
+      final container = makeContainer(mock);
+
+      container.read(playerProvider.notifier).loadProfile(
+            cellsObserved: 0,
+            totalDistanceKm: 0.0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalSteps: 100,
+          );
 
       await container.read(stepProvider.notifier).hydrate(
             lastKnownStepCount: 4500,
             totalSteps: 100,
           );
 
-      final stepState = container.read(stepProvider);
-      expect(stepState.loginDelta, equals(500));
+      expect(container.read(playerProvider).totalSteps, equals(2100));
     });
 
+    // ------------------------------------------------------------------
+    // Animation state
+    // ------------------------------------------------------------------
+
     test('sets isAnimating=true when delta > 0', () async {
-      final mock = MockStepService(currentStepCount: 5000);
+      final mock = MockStepService(currentStepCount: 6500);
       final container = makeContainer(mock);
 
       await container.read(stepProvider.notifier).hydrate(
@@ -111,29 +178,27 @@ void main() {
       expect(container.read(stepProvider).isAnimating, isTrue);
     });
 
-    test('adds delta to playerProvider.totalSteps', () async {
-      final mock = MockStepService(currentStepCount: 5000);
+    test('isAnimating is always true since minimum floor is at least 1000',
+        () async {
+      // Even with 0 pedometer delta, the minimum floor ensures delta > 0.
+      final mock = MockStepService(currentStepCount: 0);
       final container = makeContainer(mock);
 
-      // Set initial totalSteps via loadProfile.
-      container.read(playerProvider.notifier).loadProfile(
-            cellsObserved: 0,
-            totalDistanceKm: 0.0,
-            currentStreak: 0,
-            longestStreak: 0,
-            totalSteps: 100,
-          );
-
       await container.read(stepProvider.notifier).hydrate(
-            lastKnownStepCount: 4500,
-            totalSteps: 100,
+            lastKnownStepCount: 0,
+            totalSteps: 0,
           );
 
-      expect(container.read(playerProvider).totalSteps, equals(600));
+      expect(container.read(stepProvider).isAnimating, isTrue);
+      expect(
+          container.read(stepProvider).loginDelta, equals(kMinDailyStepGrant));
     });
 
-    test('delta is 0 when lastKnownStepCount is 0 (first launch)', () async {
-      // First launch: no persisted baseline → delta = 0.
+    // ------------------------------------------------------------------
+    // Edge cases
+    // ------------------------------------------------------------------
+
+    test('first launch grants daily minimum (lastKnownStepCount=0)', () async {
       final mock = MockStepService(currentStepCount: 5000);
       final container = makeContainer(mock);
 
@@ -142,13 +207,13 @@ void main() {
             totalSteps: 0,
           );
 
-      expect(delta, equals(0));
-      expect(container.read(stepProvider).loginDelta, equals(0));
-      expect(container.read(stepProvider).isAnimating, isFalse);
+      // Pedometer delta is 0 (no baseline), minimum floor = 1000.
+      expect(delta, equals(kMinDailyStepGrant));
     });
 
-    test('clamps delta to 0 on device reboot (OS counter reset)', () async {
-      // OS counter reset to 100 but last known was 5000 → delta clamped to 0.
+    test('device reboot grants daily minimum (OS counter reset)', () async {
+      // OS counter reset to 100 but last known was 5000 → pedometer delta
+      // clamped to 0. Daily minimum = 1000 → delta = 1000.
       final mock = MockStepService(currentStepCount: 100);
       final container = makeContainer(mock);
 
@@ -157,29 +222,21 @@ void main() {
             totalSteps: 10000,
           );
 
-      expect(delta, equals(0));
-      expect(container.read(stepProvider).isAnimating, isFalse);
+      expect(delta, equals(kMinDailyStepGrant));
     });
 
-    test('does not add steps to player when delta is 0', () async {
-      final mock = MockStepService(currentStepCount: 4500);
+    test('stores lastSessionDate in state', () async {
+      final mock = MockStepService(currentStepCount: 6500);
       final container = makeContainer(mock);
 
-      container.read(playerProvider.notifier).loadProfile(
-            cellsObserved: 0,
-            totalDistanceKm: 0.0,
-            currentStreak: 0,
-            longestStreak: 0,
-            totalSteps: 200,
-          );
-
+      final sessionDate = DateTime(2026, 3, 8);
       await container.read(stepProvider.notifier).hydrate(
-            lastKnownStepCount: 4500, // same as OS → delta = 0
-            totalSteps: 200,
+            lastKnownStepCount: 4500,
+            totalSteps: 0,
+            lastSessionDate: sessionDate,
           );
 
-      // totalSteps unchanged.
-      expect(container.read(playerProvider).totalSteps, equals(200));
+      expect(container.read(stepProvider).lastSessionDate, equals(sessionDate));
     });
   });
 
@@ -188,7 +245,6 @@ void main() {
       final mock = MockStepService(currentStepCount: 1000);
       final container = makeContainer(mock);
 
-      // Hydrate first to set _lastStreamValue baseline.
       await container.read(stepProvider.notifier).hydrate(
             lastKnownStepCount: 900,
             totalSteps: 0,
@@ -200,10 +256,10 @@ void main() {
     });
 
     test('forwards incremental steps to playerProvider', () async {
+      // Pedometer delta = 100, minimum = 1000 → hydrate adds 1000.
       final mock = MockStepService(currentStepCount: 1000);
       final container = makeContainer(mock);
 
-      // Hydrate: baseline = 1000.
       await container.read(stepProvider.notifier).hydrate(
             lastKnownStepCount: 900,
             totalSteps: 0,
@@ -211,12 +267,12 @@ void main() {
 
       container.read(stepProvider.notifier).startLiveStream();
 
-      // Emit 1050 → increment = 50.
+      // Emit 1050 → increment = 50 (from baseline 1000).
       mock.emitSteps(1050);
       await Future<void>.delayed(Duration.zero);
 
-      // Player should have gained 100 (delta from hydrate) + 50 (live) = 150.
-      expect(container.read(playerProvider).totalSteps, equals(150));
+      // 1000 (hydrate) + 50 (live) = 1050.
+      expect(container.read(playerProvider).totalSteps, equals(1050));
     });
 
     test('ignores negative increments (step counter glitch)', () async {
@@ -234,14 +290,15 @@ void main() {
       mock.emitSteps(500);
       await Future<void>.delayed(Duration.zero);
 
-      // No steps added (delta from hydrate was 0, live increment was 0).
-      expect(container.read(playerProvider).totalSteps, equals(0));
+      // Only hydration steps (minimum floor), no live increment.
+      expect(container.read(playerProvider).totalSteps,
+          equals(kMinDailyStepGrant));
     });
   });
 
   group('StepNotifier.markAnimationComplete()', () {
     test('sets isAnimating=false and hasAnimated=true', () async {
-      final mock = MockStepService(currentStepCount: 5000);
+      final mock = MockStepService(currentStepCount: 6500);
       final container = makeContainer(mock);
 
       await container.read(stepProvider.notifier).hydrate(

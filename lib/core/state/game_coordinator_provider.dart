@@ -360,21 +360,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
 
-      // 4. Hydrate step counter (native only — web has no pedometer).
+      // 4. Hydrate step counter (all platforms).
       // Must run AFTER profile hydration so totalSteps is already loaded.
-      // Computes login delta: currentOsSteps - lastKnownStepCount.
+      // Computes login delta: max(pedometerDelta, daysSince × kMinDailyStepGrant).
+      // Web pedometer returns 0, so the daily minimum floor guarantees progress.
       // Passes profile.updatedAt as lastSessionDate for recap subtitle.
-      if (!kIsWeb) {
-        try {
-          final stepNotifier = ref.read(stepProvider.notifier);
-          await stepNotifier.hydrate(
-            lastKnownStepCount: profile?.lastKnownStepCount ?? 0,
-            totalSteps: ref.read(playerProvider).totalSteps,
-            lastSessionDate: profile?.updatedAt,
-          );
-        } catch (e) {
-          debugPrint('[GameCoordinator] step hydration failed: $e');
-        }
+      try {
+        final stepNotifier = ref.read(stepProvider.notifier);
+        await stepNotifier.hydrate(
+          lastKnownStepCount: profile?.lastKnownStepCount ?? 0,
+          totalSteps: ref.read(playerProvider).totalSteps,
+          lastSessionDate: profile?.updatedAt,
+        );
+      } catch (e) {
+        debugPrint('[GameCoordinator] step hydration failed: $e');
       }
     } catch (e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');

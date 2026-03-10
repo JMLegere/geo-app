@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/steps/services/step_service.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // Service provider (overridable for testing)
@@ -111,9 +113,17 @@ class StepNotifier extends Notifier<StepState> {
     final currentOsSteps = await _stepService.getCurrentStepCount();
 
     // Compute delta. Clamp to ≥ 0 to handle device reboot (OS counter resets).
-    final delta = lastKnownStepCount > 0
+    final pedometerDelta = lastKnownStepCount > 0
         ? (currentOsSteps - lastKnownStepCount).clamp(0, currentOsSteps)
         : 0;
+
+    // Guaranteed minimum: kMinDailyStepGrant per day since last session.
+    // Covers web (no pedometer) and idle native devices alike.
+    final daysSinceLastSession = lastSessionDate != null
+        ? DateTime.now().difference(lastSessionDate!).inDays.clamp(1, 30)
+        : 1;
+    final minimumGrant = kMinDailyStepGrant * daysSinceLastSession;
+    final delta = max(pedometerDelta, minimumGrant);
 
     if (delta > 0) {
       ref.read(playerProvider.notifier).addSteps(delta);
@@ -129,7 +139,8 @@ class StepNotifier extends Notifier<StepState> {
     );
 
     debugPrint('[StepNotifier] hydrated: os=$currentOsSteps, '
-        'lastKnown=$lastKnownStepCount, delta=$delta, '
+        'lastKnown=$lastKnownStepCount, pedometer=$pedometerDelta, '
+        'minimum=$minimumGrant (${daysSinceLastSession}d), delta=$delta, '
         'newTotal=${totalSteps + delta}');
 
     return delta;
