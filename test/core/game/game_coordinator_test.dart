@@ -380,7 +380,7 @@ void main() {
         // Wire enrichment lookup with known base stats.
         c.enrichedStatsLookup = (definitionId) {
           if (definitionId == 'fauna_vulpes_vulpes') {
-            return (speed: 50, brawn: 20, wit: 20);
+            return (speed: 50, brawn: 20, wit: 20, size: null);
           }
           return null;
         };

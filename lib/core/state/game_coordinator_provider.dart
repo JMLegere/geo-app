@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -77,7 +78,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   // In-memory enrichment cache for synchronous stat lookups during discovery.
   // Populated during hydration, updated when new enrichments arrive.
-  final enrichmentCache = <String, ({int speed, int brawn, int wit})>{};
+  final enrichmentCache =
+      <String, ({int speed, int brawn, int wit, AnimalSize? size})>{};
 
   final coordinator = GameCoordinator(
     fogResolver: fogResolver,
@@ -190,6 +192,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             speed: enrichment.speed,
             brawn: enrichment.brawn,
             wit: enrichment.wit,
+            size: enrichment.size,
           );
           enrichmentCache[fauna.id] = stats;
 
@@ -291,7 +294,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // 0. Populate enrichment cache for synchronous stat lookups.
       for (final e in enrichments) {
         enrichmentCache[e.definitionId] =
-            (speed: e.speed, brawn: e.brawn, wit: e.wit);
+            (speed: e.speed, brawn: e.brawn, wit: e.wit, size: e.size);
       }
 
       // 1. Hydrate inventory
@@ -825,6 +828,18 @@ Future<void> hydrateFromSupabase({
             ? DateTime.parse(enrichedAtStr)
             : DateTime.now();
 
+        // Parse optional size (may be null for enrichments created before
+        // the size field was added).
+        final sizeStr = row['size'] as String?;
+        AnimalSize? size;
+        if (sizeStr != null) {
+          try {
+            size = AnimalSize.fromString(sizeStr);
+          } catch (_) {
+            // Unknown size value — leave null.
+          }
+        }
+
         final enrichment = SpeciesEnrichment(
           definitionId: row['definition_id'] as String,
           animalClass: AnimalClass.values.firstWhere(
@@ -842,6 +857,7 @@ Future<void> hydrateFromSupabase({
           brawn: row['brawn'] as int? ?? 30,
           wit: row['wit'] as int? ?? 30,
           speed: row['speed'] as int? ?? 30,
+          size: size,
           artUrl: row['art_url'] as String?,
           enrichedAt: enrichedAt,
         );
@@ -869,20 +885,47 @@ Future<void> hydrateFromSupabase({
 /// Updates: in-memory inventory, SQLite, and write queue.
 Future<void> _rollAndPersistIntrinsicAffix({
   required ItemInstance item,
-  required ({int speed, int brawn, int wit}) enrichedStats,
+  required ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
   required Ref ref,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
   required String userId,
 }) async {
+  final baseStats = (
+    speed: enrichedStats.speed,
+    brawn: enrichedStats.brawn,
+    wit: enrichedStats.wit,
+  );
   final intrinsic = statsService.rollIntrinsicAffix(
     scientificName: item.scientificName ?? '',
     instanceSeed: item.id,
-    enrichedBaseStats: enrichedStats,
+    enrichedBaseStats: baseStats,
   );
+
+  // If size is known, roll a deterministic weight and merge into affix.
+  Affix finalAffix;
+  final size = enrichedStats.size;
+  if (size != null) {
+    final weightGrams = statsService.rollWeightGrams(
+      size: size,
+      instanceSeed: item.id,
+    );
+    finalAffix = Affix(
+      id: intrinsic.id,
+      type: intrinsic.type,
+      values: {
+        ...intrinsic.values,
+        kSizeAffixKey: size.name,
+        kWeightAffixKey: weightGrams,
+      },
+    );
+  } else {
+    finalAffix = intrinsic;
+  }
+
   final updated = item.copyWith(
-    affixes: [intrinsic, ...item.affixes],
+    affixes: [finalAffix, ...item.affixes],
   );
 
   // 1. Update in-memory inventory.
@@ -936,7 +979,7 @@ Future<void> _rollAndPersistIntrinsicAffix({
 /// Called by [onEnriched] when a new enrichment arrives in-session.
 Future<void> _backfillIntrinsicAffixes({
   required String definitionId,
-  required ({int speed, int brawn, int wit}) enrichedStats,
+  required ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
   required Ref ref,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
@@ -979,7 +1022,8 @@ Future<void> _backfillIntrinsicAffixes({
 ///   - Any other edge case where enrichment exists but stats don't
 Future<void> _backfillAllMissingAffixes({
   required Ref ref,
-  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+  required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
+      enrichmentCache,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
@@ -1024,7 +1068,8 @@ Future<void> _backfillAllMissingAffixes({
 /// compares inventory fauna against the enrichment cache.
 Future<void> _requeueUnenrichedSpecies({
   required Ref ref,
-  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+  required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
+      enrichmentCache,
 }) async {
   try {
     final speciesData = await ref.read(speciesDataProvider.future);
