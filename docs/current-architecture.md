@@ -186,7 +186,7 @@ Write-through: every local write optionally also writes to Supabase. No queue, n
 
 **Querying:** `SpeciesService` filters in-memory list by habitat, continent, season. No index, no pagination — linear scan.
 
-**Loot table:** `LootTable` uses IUCN status → 10^x weight mapping. SHA-256(cellId) seeds the RNG for deterministic per-cell species.
+**Loot table:** `LootTable` uses IUCN status → 3^x weight mapping. SHA-256(cellId) seeds the RNG for deterministic per-cell species.
 
 **Habitat resolution:** `BiomeService` maps ESA WorldCover codes → 7 habitats. Currently uses `DefaultHabitatLookup` (returns Plains for everything) until GeoTIFF integration.
 

@@ -30,7 +30,8 @@ void main() {
       expect(species.rarity, equals(IucnStatus.leastConcern));
     });
 
-    test('id is stored as provided (fauna_ prefix + lowercase scientific name)', () {
+    test('id is stored as provided (fauna_ prefix + lowercase scientific name)',
+        () {
       final species = makeRedFox();
       expect(species.id, equals('fauna_vulpes_vulpes'));
     });
@@ -137,11 +138,11 @@ void main() {
 
     test('all 6 IUCN statuses are available', () {
       expect(IucnStatus.values.length, equals(6));
-      expect(IucnStatus.leastConcern.weight, equals(100000));
-      expect(IucnStatus.nearThreatened.weight, equals(10000));
-      expect(IucnStatus.vulnerable.weight, equals(1000));
-      expect(IucnStatus.endangered.weight, equals(100));
-      expect(IucnStatus.criticallyEndangered.weight, equals(10));
+      expect(IucnStatus.leastConcern.weight, equals(243));
+      expect(IucnStatus.nearThreatened.weight, equals(81));
+      expect(IucnStatus.vulnerable.weight, equals(27));
+      expect(IucnStatus.endangered.weight, equals(9));
+      expect(IucnStatus.criticallyEndangered.weight, equals(3));
       expect(IucnStatus.extinct.weight, equals(1));
     });
 
@@ -149,12 +150,12 @@ void main() {
       expect(Continent.values.length, equals(6));
     });
 
-    test('IucnStatus weights decrease by 10x per tier', () {
+    test('IucnStatus weights decrease by 3x per tier', () {
       final tiers = IucnStatus.values;
       for (var i = 0; i < tiers.length - 1; i++) {
-        expect(tiers[i].weight, equals(tiers[i + 1].weight * 10),
+        expect(tiers[i].weight, equals(tiers[i + 1].weight * 3),
             reason:
-                '${tiers[i].name}.weight should be 10x ${tiers[i + 1].name}.weight');
+                '${tiers[i].name}.weight should be 3x ${tiers[i + 1].name}.weight');
       }
     });
 

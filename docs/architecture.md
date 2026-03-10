@@ -117,7 +117,7 @@ gameCoordinatorProvider.build()
 | **Cell** | Spatial region on the map (Voronoi polygon or H3 hexagon) |
 | **Fog-of-war** | Visibility system that reveals the map as you explore — Civilization style |
 | **Encounter** | A species appearing in a cell when you visit it (3 per cell, deterministic) |
-| **Loot table** | Weighted random selection (Path of Exile 10^x progression) |
+| **Loot table** | Weighted random selection (3^x progression) |
 | **Restoration** | Collecting 3 unique species in a cell = fully restored habitat |
 | **Sanctuary** | Personal species collection, grouped by habitat |
 | **Caretaking** | Daily visit streak tracking |

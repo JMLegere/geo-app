@@ -25,7 +25,8 @@ void main() {
       expect(records.isNotEmpty, isTrue);
     });
 
-    test('parses exactly 50 valid species from fixture (excludes unknowns)', () {
+    test('parses exactly 50 valid species from fixture (excludes unknowns)',
+        () {
       expect(records.length, equals(50));
     });
 
@@ -154,8 +155,7 @@ void main() {
 
     test('returns non-empty lists for all 7 habitats', () {
       for (final habitat in Habitat.values) {
-        final result =
-            SpeciesDataLoader.forHabitat(records.cast(), habitat);
+        final result = SpeciesDataLoader.forHabitat(records.cast(), habitat);
         expect(result.isNotEmpty, isTrue,
             reason: 'No species found for habitat ${habitat.name}');
       }
@@ -271,7 +271,8 @@ void main() {
   });
 
   group('SpeciesService.getSpeciesForCell', () {
-    test('is deterministic — same cellId+habitats+continent always returns same species',
+    test(
+        'is deterministic — same cellId+habitats+continent always returns same species',
         () {
       const cellId = 'cell_42_forest_europe';
       const habitats = {Habitat.forest};
@@ -338,7 +339,8 @@ void main() {
       expect(found, isEmpty);
     });
 
-    test('returned species all belong to at least one requested habitat and to the continent',
+    test(
+        'returned species all belong to at least one requested habitat and to the continent',
         () {
       final found = service.getSpeciesForCell(
         cellId: 'cell_validate',
@@ -370,7 +372,8 @@ void main() {
           reason: 'getSpeciesForCell should not return duplicate species');
     });
 
-    test('multi-habitat union: result may include species from any habitat', () {
+    test('multi-habitat union: result may include species from any habitat',
+        () {
       // forest + freshwater union for Asia
       final found = service.getSpeciesForCell(
         cellId: 'cell_multi_habitat',
@@ -433,8 +436,8 @@ void main() {
       const habitats = {Habitat.forest};
       const continent = Continent.europe;
 
-      final pool = service.getPoolForArea(
-          habitats: habitats, continent: continent);
+      final pool =
+          service.getPoolForArea(habitats: habitats, continent: continent);
       final found = service.getSpeciesForCell(
         cellId: 'cell_pool_check',
         dailySeed: 'test_seed',
@@ -460,11 +463,9 @@ void main() {
         continent: Continent.europe,
       );
       // Union must be at least as large as either individual pool.
-      expect(unionPool.length,
-          greaterThanOrEqualTo(forestPool.length),
+      expect(unionPool.length, greaterThanOrEqualTo(forestPool.length),
           reason: 'Union pool must include all forest species');
-      expect(unionPool.length,
-          greaterThanOrEqualTo(freshwaterPool.length),
+      expect(unionPool.length, greaterThanOrEqualTo(freshwaterPool.length),
           reason: 'Union pool must include all freshwater species');
     });
   });
@@ -557,11 +558,11 @@ void main() {
         }
       }
 
-      // With weights 400000 vs 100, LC should appear ~4000x more often.
+      // With weights 972 (4×LC) vs 9 (EN), LC should appear ~108x more often.
       // Even over 500 rolls, LC >> EN.
-      expect(lcCount, greaterThan(enCount * 10),
+      expect(lcCount, greaterThan(enCount * 5),
           reason:
-              'LC species (weight 100000) should appear far more than EN (weight 100). '
+              'LC species (weight 243) should appear far more than EN (weight 9). '
               'Got LC=$lcCount, EN=$enCount over $cellCount cells');
     });
   });
