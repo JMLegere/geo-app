@@ -391,22 +391,23 @@ abstract final class AppTheme {
   /// Badge background colour for each IUCN rarity tier.
   ///
   /// Used consistently across `DiscoveryNotificationOverlay`, species cards,
-  /// and pack filters.  Follows conservation-status convention:
-  /// green → yellow → orange → red → dark-red → near-black.
+  /// and pack filters.  White → green → blue → gold → purple → amber.
   static Color rarityColor(IucnStatus status) => switch (status) {
-        IucnStatus.leastConcern => const Color(0xFF4CAF50), // green
-        IucnStatus.nearThreatened => const Color(0xFFFFEB3B), // yellow
-        IucnStatus.vulnerable => const Color(0xFFFF9800), // orange
-        IucnStatus.endangered => const Color(0xFFF44336), // red
-        IucnStatus.criticallyEndangered => const Color(0xFFB71C1C), // dark red
-        IucnStatus.extinct => const Color(0xFF000000), // black
+        IucnStatus.leastConcern => const Color(0xFFFFFFFF), // white
+        IucnStatus.nearThreatened => const Color(0xFF4CAF50), // green
+        IucnStatus.vulnerable => const Color(0xFF2196F3), // blue
+        IucnStatus.endangered => const Color(0xFFFFD700), // gold
+        IucnStatus.criticallyEndangered => const Color(0xFF9C27B0), // purple
+        IucnStatus.extinct => const Color(0xFFFFC107), // amber
       };
 
   /// Badge foreground (text / icon) colour for each IUCN rarity tier.
   ///
-  /// Yellow badges need dark text for contrast; all others use white.
-  static Color onRarityColor(IucnStatus status) =>
-      status == IucnStatus.nearThreatened
-          ? const Color(0xFF1A1A2E)
-          : Colors.white;
+  /// Light backgrounds (white, gold, amber) need dark text; others use white.
+  static Color onRarityColor(IucnStatus status) => switch (status) {
+        IucnStatus.leastConcern => const Color(0xFF1A1A2E), // dark on white
+        IucnStatus.endangered => const Color(0xFF1A1A2E), // dark on gold
+        IucnStatus.extinct => const Color(0xFF1A1A2E), // dark on amber
+        _ => Colors.white,
+      };
 }

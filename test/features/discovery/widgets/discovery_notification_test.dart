@@ -146,7 +146,7 @@ void main() {
       expect(find.text('EN'), findsOneWidget);
     });
 
-    testWidgets('shows correct rarity badge color for LC (green)',
+    testWidgets('shows correct rarity badge color for LC (white)',
         (tester) async {
       final container = await _pumpOverlay(tester);
 
@@ -155,22 +155,22 @@ void main() {
           );
       await tester.pump();
 
-      // Find the rarity badge Container by looking for green color decoration.
+      // Find the rarity badge Container by looking for white color decoration.
       final containers = tester.widgetList<Container>(find.byType(Container));
       final badgeContainer = containers.firstWhere(
         (c) {
           final decoration = c.decoration;
           if (decoration is BoxDecoration) {
-            return decoration.color == const Color(0xFF4CAF50);
+            return decoration.color == const Color(0xFFFFFFFF);
           }
           return false;
         },
-        orElse: () => throw StateError('No green LC badge found'),
+        orElse: () => throw StateError('No white LC badge found'),
       );
       expect(badgeContainer, isNotNull);
     });
 
-    testWidgets('shows correct rarity badge color for EX (black)',
+    testWidgets('shows correct rarity badge color for EX (amber)',
         (tester) async {
       final container = await _pumpOverlay(tester);
 
@@ -184,11 +184,11 @@ void main() {
         (c) {
           final decoration = c.decoration;
           if (decoration is BoxDecoration) {
-            return decoration.color == const Color(0xFF000000);
+            return decoration.color == const Color(0xFFFFC107);
           }
           return false;
         },
-        orElse: () => throw StateError('No black EX badge found'),
+        orElse: () => throw StateError('No amber EX badge found'),
       );
       expect(badgeContainer, isNotNull);
     });

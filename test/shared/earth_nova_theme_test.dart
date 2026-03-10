@@ -12,13 +12,15 @@ void main() {
     test('dark theme contains EarthNovaTheme extension', () {
       final theme = AppTheme.dark();
       final ext = theme.extension<EarthNovaTheme>();
-      expect(ext, isNotNull, reason: 'EarthNovaTheme must be registered in dark theme');
+      expect(ext, isNotNull,
+          reason: 'EarthNovaTheme must be registered in dark theme');
     });
 
     test('light theme contains EarthNovaTheme extension', () {
       final theme = AppTheme.light();
       final ext = theme.extension<EarthNovaTheme>();
-      expect(ext, isNotNull, reason: 'EarthNovaTheme must be registered in light theme');
+      expect(ext, isNotNull,
+          reason: 'EarthNovaTheme must be registered in light theme');
     });
   });
 
@@ -103,21 +105,29 @@ void main() {
 
   group('EarthNovaTheme static helpers', () {
     test('rarityColor returns distinct colors for each status', () {
-      final colors = IucnStatus.values
-          .map(EarthNovaTheme.rarityColor)
-          .toSet();
+      final colors = IucnStatus.values.map(EarthNovaTheme.rarityColor).toSet();
       expect(colors.length, equals(IucnStatus.values.length),
           reason: 'Each IUCN status should have a unique rarity color');
     });
 
-    test('onRarityColor is dark for nearThreatened, white otherwise', () {
-      // Near Threatened uses yellow badge — needs dark text
-      final ntColor = EarthNovaTheme.onRarityColor(IucnStatus.nearThreatened);
-      expect(ntColor, isNot(equals(Colors.white)));
+    test('onRarityColor is dark for light backgrounds, white otherwise', () {
+      const darkText = Color(0xFF1A1A2E);
+      // Light backgrounds (white, gold, amber) need dark text
+      for (final status in [
+        IucnStatus.leastConcern,
+        IucnStatus.endangered,
+        IucnStatus.extinct,
+      ]) {
+        expect(EarthNovaTheme.onRarityColor(status), equals(darkText),
+            reason: '$status should use dark on-rarity color');
+      }
 
-      // All others use white text
-      for (final status in IucnStatus.values) {
-        if (status == IucnStatus.nearThreatened) continue;
+      // Dark backgrounds (green, blue, purple) use white text
+      for (final status in [
+        IucnStatus.nearThreatened,
+        IucnStatus.vulnerable,
+        IucnStatus.criticallyEndangered,
+      ]) {
         expect(EarthNovaTheme.onRarityColor(status), equals(Colors.white),
             reason: '$status should use white on-rarity color');
       }
@@ -136,7 +146,8 @@ void main() {
         expect(
           EarthNovaTheme.rarityColor(status),
           equals(AppTheme.rarityColor(status)),
-          reason: 'EarthNovaTheme and AppTheme rarity colors must match for $status',
+          reason:
+              'EarthNovaTheme and AppTheme rarity colors must match for $status',
         );
       }
     });
@@ -146,7 +157,8 @@ void main() {
         expect(
           EarthNovaTheme.onRarityColor(status),
           equals(AppTheme.onRarityColor(status)),
-          reason: 'EarthNovaTheme and AppTheme on-rarity colors must match for $status',
+          reason:
+              'EarthNovaTheme and AppTheme on-rarity colors must match for $status',
         );
       }
     });
