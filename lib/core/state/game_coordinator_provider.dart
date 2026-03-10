@@ -879,6 +879,32 @@ Future<void> hydrateFromSupabase({
   }
 }
 
+/// Check if an item needs intrinsic affix backfill.
+///
+/// Returns true when EITHER:
+/// - Item has no intrinsic affix at all (needs stats + weight)
+/// - Item has intrinsic affix but lacks weight AND enrichment now has size
+///   (was enriched before size field was added, needs weight rolled)
+bool _needsIntrinsicBackfill(
+  ItemInstance item,
+  ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
+) {
+  final intrinsic = item.affixes
+      .cast<Affix?>()
+      .firstWhere((a) => a!.type == AffixType.intrinsic, orElse: () => null);
+
+  // No intrinsic affix at all — needs full backfill.
+  if (intrinsic == null) return true;
+
+  // Has intrinsic affix but enrichment now has size and item lacks weight.
+  if (enrichedStats.size != null &&
+      !intrinsic.values.containsKey(kWeightAffixKey)) {
+    return true;
+  }
+
+  return false;
+}
+
 /// Roll an intrinsic affix for a single item and persist the update.
 ///
 /// Shared by both the real-time [onEnriched] path and the startup sweep.
@@ -924,8 +950,21 @@ Future<void> _rollAndPersistIntrinsicAffix({
     finalAffix = intrinsic;
   }
 
+  // Replace existing intrinsic affix if present (e.g., re-enrichment added
+  // size to a previously stats-only affix), otherwise prepend new one.
+  final existingIntrinsic =
+      item.affixes.any((a) => a.type == AffixType.intrinsic);
+  final List<Affix> newAffixes;
+  if (existingIntrinsic) {
+    newAffixes = item.affixes
+        .map((a) => a.type == AffixType.intrinsic ? finalAffix : a)
+        .toList();
+  } else {
+    newAffixes = [finalAffix, ...item.affixes];
+  }
+
   final updated = item.copyWith(
-    affixes: [finalAffix, ...item.affixes],
+    affixes: newAffixes,
   );
 
   // 1. Update in-memory inventory.
@@ -990,7 +1029,7 @@ Future<void> _backfillIntrinsicAffixes({
   final itemsToFix = inventory.items
       .where((item) =>
           item.definitionId == definitionId &&
-          !item.affixes.any((a) => a.type == AffixType.intrinsic))
+          _needsIntrinsicBackfill(item, enrichedStats))
       .toList();
 
   if (itemsToFix.isEmpty) return;
@@ -1034,13 +1073,13 @@ Future<void> _backfillAllMissingAffixes({
     final itemsToFix = inventory.items
         .where((item) =>
             enrichmentCache.containsKey(item.definitionId) &&
-            !item.affixes.any((a) => a.type == AffixType.intrinsic))
+            _needsIntrinsicBackfill(item, enrichmentCache[item.definitionId]!))
         .toList();
 
     if (itemsToFix.isEmpty) return;
 
     debugPrint('[GameCoordinator] startup backfill: ${itemsToFix.length} '
-        'items missing intrinsic affixes');
+        'items need intrinsic affix update');
 
     for (final item in itemsToFix) {
       await _rollAndPersistIntrinsicAffix(
@@ -1061,11 +1100,13 @@ Future<void> _backfillAllMissingAffixes({
   }
 }
 
-/// Re-queue enrichment requests for fauna in inventory that lack enrichment.
+/// Re-queue enrichment requests for fauna in inventory that lack enrichment
+/// or have incomplete enrichment (e.g., enriched before size field was added).
 ///
 /// Covers species that were dropped due to rate limits, app restarts (in-memory
-/// queue lost), or pipeline changes. Waits for species data to load, then
-/// compares inventory fauna against the enrichment cache.
+/// queue lost), pipeline changes, or new enrichment fields added after initial
+/// enrichment. Waits for species data to load, then compares inventory fauna
+/// against the enrichment cache.
 Future<void> _requeueUnenrichedSpecies({
   required Ref ref,
   required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
@@ -1082,19 +1123,26 @@ Future<void> _requeueUnenrichedSpecies({
       faunaById[fauna.id] = fauna;
     }
 
-    // Find unique fauna definition IDs in inventory that lack enrichment.
+    // Find unique fauna definition IDs in inventory that lack enrichment
+    // or have incomplete enrichment (e.g., missing size from older pipeline).
     // Uses faunaById to naturally filter to fauna items only (ItemInstance
     // has no category field — the species data map is the filter).
     final unenrichedIds = <String>{};
+    final incompleteIds = <String>{};
     for (final item in inventory.items) {
-      if (!enrichmentCache.containsKey(item.definitionId) &&
-          faunaById.containsKey(item.definitionId)) {
+      if (!faunaById.containsKey(item.definitionId)) continue;
+
+      if (!enrichmentCache.containsKey(item.definitionId)) {
         unenrichedIds.add(item.definitionId);
+      } else if (enrichmentCache[item.definitionId]!.size == null) {
+        incompleteIds.add(item.definitionId);
       }
     }
 
+    final allIds = {...unenrichedIds, ...incompleteIds};
+
     // Queue enrichment requests for the gap set.
-    for (final defId in unenrichedIds) {
+    for (final defId in allIds) {
       final fauna = faunaById[defId]!;
       enrichmentService.requestEnrichment(
         definitionId: fauna.id,
@@ -1107,6 +1155,10 @@ Future<void> _requeueUnenrichedSpecies({
     if (unenrichedIds.isNotEmpty) {
       debugPrint('[GameCoordinator] re-queued ${unenrichedIds.length} '
           'unenriched species for enrichment');
+    }
+    if (incompleteIds.isNotEmpty) {
+      debugPrint('[GameCoordinator] re-queued ${incompleteIds.length} '
+          'species with incomplete enrichment (missing size)');
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to re-queue unenriched species: $e');
