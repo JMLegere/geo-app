@@ -205,11 +205,8 @@ void main() {
 
       // Simulate the guard check: only MapEventClick triggers getCellId.
       // A non-click event (e.g., camera move) should not call getCellId.
-      // We model this as: the guard returns early, so getCellId is never called.
-      const isClickEvent = false; // simulates MapEventMoveCamera
-      if (isClickEvent) {
-        cellService.getCellId(0, 0); // should NOT be reached
-      }
+      // We model this by verifying that a fresh mock has zero calls —
+      // the provider's _onMapEvent guard returns early for non-click events.
 
       expect(cellService.calls, isEmpty,
           reason: 'getCellId must not be called for non-click events');
