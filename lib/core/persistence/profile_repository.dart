@@ -18,6 +18,8 @@ class ProfileRepository {
     bool hasCompletedOnboarding = false,
     double? lastLat,
     double? lastLon,
+    int totalSteps = 0,
+    int lastKnownStepCount = 0,
   }) async {
     final profile = LocalPlayerProfile(
       id: userId,
@@ -29,6 +31,8 @@ class ProfileRepository {
       hasCompletedOnboarding: hasCompletedOnboarding,
       lastLat: lastLat,
       lastLon: lastLon,
+      totalSteps: totalSteps,
+      lastKnownStepCount: lastKnownStepCount,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

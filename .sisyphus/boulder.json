@@ -1,20 +1,9 @@
 {
-  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/auth-first-principles.md",
-  "started_at": "2026-03-09T11:46:55.682Z",
-  "session_ids": ["ses_32daf0f46ffeNf2LK21T2G6zKH"],
-  "plan_name": "auth-first-principles",
-  "worktree_path": "/home/jeremy/workspace/geo-app",
-  "branch": "feat/auth-first-principles",
-  "completed_plans": [
-    {
-      "plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/app-shell.md",
-      "completed_at": "2026-03-06T13:30:00.000Z",
-      "commits": [
-        "43fe4eb - ♻️ refactor(pack): rename Journal→Pack throughout codebase",
-        "9165e42 - ✨ feat(navigation): add 4-tab app shell with tab persistence",
-        "65e4ea0 - ✨ feat(navigation): wire TabShell into app entry point",
-        "1857d5a - 📝 docs: update roadmap and docs for app shell navigation"
-      ]
-    }
-  ]
+  "active_plan": "/home/jeremy/workspace/geo-app/.sisyphus/plans/step-exploration.md",
+  "started_at": "2026-03-10T15:23:55.120Z",
+  "session_ids": [
+    "ses_327d8fbeeffeCkdnBgionyo9o3"
+  ],
+  "plan_name": "step-exploration",
+  "agent": "atlas"
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:math';
 
+import 'package:earth_nova/shared/constants.dart';
 import 'package:geobase/geobase.dart';
 import 'package:web/web.dart';
 
@@ -12,9 +13,10 @@ KeyboardLocationService createKeyboardLocationService() =>
     _KeyboardLocationWebService();
 
 class _KeyboardLocationWebService implements KeyboardLocationService {
-  static const _stepMeters = 10.0;
+  static const _stepMeters = kWebKeyboardStepMeters;
   static const _earthRadius = 6371000.0;
-  static const _tickInterval = Duration(milliseconds: 100);
+  static const _tickInterval =
+      Duration(milliseconds: kWebKeyboardTickIntervalMs);
 
   Geographic _position = const Geographic(lat: 45.9636, lon: -66.6431);
 

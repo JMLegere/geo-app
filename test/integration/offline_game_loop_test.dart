@@ -390,6 +390,8 @@ void main() {
         totalDistanceKm: 2.5,
         currentSeason: 'summer',
         hasCompletedOnboarding: false,
+        totalSteps: 0,
+        lastKnownStepCount: 0,
         createdAt: DateTime(2026, 3, 1),
         updatedAt: DateTime(2026, 3, 1),
       ));
@@ -499,6 +501,8 @@ void main() {
         totalDistanceKm: 0.5,
         currentSeason: 'summer',
         hasCompletedOnboarding: false,
+        totalSteps: 0,
+        lastKnownStepCount: 0,
         createdAt: DateTime(2026, 3, 1),
         updatedAt: DateTime(2026, 3, 3),
       ));

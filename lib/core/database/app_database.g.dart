@@ -1502,6 +1502,22 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
   late final GeneratedColumn<double> lastLon = GeneratedColumn<double>(
       'last_lon', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _totalStepsMeta =
+      const VerificationMeta('totalSteps');
+  @override
+  late final GeneratedColumn<int> totalSteps = GeneratedColumn<int>(
+      'total_steps', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastKnownStepCountMeta =
+      const VerificationMeta('lastKnownStepCount');
+  @override
+  late final GeneratedColumn<int> lastKnownStepCount = GeneratedColumn<int>(
+      'last_known_step_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1529,6 +1545,8 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
         hasCompletedOnboarding,
         lastLat,
         lastLon,
+        totalSteps,
+        lastKnownStepCount,
         createdAt,
         updatedAt
       ];
@@ -1593,6 +1611,18 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
       context.handle(_lastLonMeta,
           lastLon.isAcceptableOrUnknown(data['last_lon']!, _lastLonMeta));
     }
+    if (data.containsKey('total_steps')) {
+      context.handle(
+          _totalStepsMeta,
+          totalSteps.isAcceptableOrUnknown(
+              data['total_steps']!, _totalStepsMeta));
+    }
+    if (data.containsKey('last_known_step_count')) {
+      context.handle(
+          _lastKnownStepCountMeta,
+          lastKnownStepCount.isAcceptableOrUnknown(
+              data['last_known_step_count']!, _lastKnownStepCountMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1629,6 +1659,10 @@ class $LocalPlayerProfileTableTable extends LocalPlayerProfileTable
           .read(DriftSqlType.double, data['${effectivePrefix}last_lat']),
       lastLon: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}last_lon']),
+      totalSteps: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}total_steps'])!,
+      lastKnownStepCount: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}last_known_step_count'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1653,6 +1687,8 @@ class LocalPlayerProfile extends DataClass
   final bool hasCompletedOnboarding;
   final double? lastLat;
   final double? lastLon;
+  final int totalSteps;
+  final int lastKnownStepCount;
   final DateTime createdAt;
   final DateTime updatedAt;
   const LocalPlayerProfile(
@@ -1665,6 +1701,8 @@ class LocalPlayerProfile extends DataClass
       required this.hasCompletedOnboarding,
       this.lastLat,
       this.lastLon,
+      required this.totalSteps,
+      required this.lastKnownStepCount,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -1683,6 +1721,8 @@ class LocalPlayerProfile extends DataClass
     if (!nullToAbsent || lastLon != null) {
       map['last_lon'] = Variable<double>(lastLon);
     }
+    map['total_steps'] = Variable<int>(totalSteps);
+    map['last_known_step_count'] = Variable<int>(lastKnownStepCount);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1703,6 +1743,8 @@ class LocalPlayerProfile extends DataClass
       lastLon: lastLon == null && nullToAbsent
           ? const Value.absent()
           : Value(lastLon),
+      totalSteps: Value(totalSteps),
+      lastKnownStepCount: Value(lastKnownStepCount),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1722,6 +1764,8 @@ class LocalPlayerProfile extends DataClass
           serializer.fromJson<bool>(json['hasCompletedOnboarding']),
       lastLat: serializer.fromJson<double?>(json['lastLat']),
       lastLon: serializer.fromJson<double?>(json['lastLon']),
+      totalSteps: serializer.fromJson<int>(json['totalSteps']),
+      lastKnownStepCount: serializer.fromJson<int>(json['lastKnownStepCount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1739,6 +1783,8 @@ class LocalPlayerProfile extends DataClass
       'hasCompletedOnboarding': serializer.toJson<bool>(hasCompletedOnboarding),
       'lastLat': serializer.toJson<double?>(lastLat),
       'lastLon': serializer.toJson<double?>(lastLon),
+      'totalSteps': serializer.toJson<int>(totalSteps),
+      'lastKnownStepCount': serializer.toJson<int>(lastKnownStepCount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1754,6 +1800,8 @@ class LocalPlayerProfile extends DataClass
           bool? hasCompletedOnboarding,
           Value<double?> lastLat = const Value.absent(),
           Value<double?> lastLon = const Value.absent(),
+          int? totalSteps,
+          int? lastKnownStepCount,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       LocalPlayerProfile(
@@ -1767,6 +1815,8 @@ class LocalPlayerProfile extends DataClass
             hasCompletedOnboarding ?? this.hasCompletedOnboarding,
         lastLat: lastLat.present ? lastLat.value : this.lastLat,
         lastLon: lastLon.present ? lastLon.value : this.lastLon,
+        totalSteps: totalSteps ?? this.totalSteps,
+        lastKnownStepCount: lastKnownStepCount ?? this.lastKnownStepCount,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1792,6 +1842,11 @@ class LocalPlayerProfile extends DataClass
           : this.hasCompletedOnboarding,
       lastLat: data.lastLat.present ? data.lastLat.value : this.lastLat,
       lastLon: data.lastLon.present ? data.lastLon.value : this.lastLon,
+      totalSteps:
+          data.totalSteps.present ? data.totalSteps.value : this.totalSteps,
+      lastKnownStepCount: data.lastKnownStepCount.present
+          ? data.lastKnownStepCount.value
+          : this.lastKnownStepCount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1809,6 +1864,8 @@ class LocalPlayerProfile extends DataClass
           ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
           ..write('lastLat: $lastLat, ')
           ..write('lastLon: $lastLon, ')
+          ..write('totalSteps: $totalSteps, ')
+          ..write('lastKnownStepCount: $lastKnownStepCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1826,6 +1883,8 @@ class LocalPlayerProfile extends DataClass
       hasCompletedOnboarding,
       lastLat,
       lastLon,
+      totalSteps,
+      lastKnownStepCount,
       createdAt,
       updatedAt);
   @override
@@ -1841,6 +1900,8 @@ class LocalPlayerProfile extends DataClass
           other.hasCompletedOnboarding == this.hasCompletedOnboarding &&
           other.lastLat == this.lastLat &&
           other.lastLon == this.lastLon &&
+          other.totalSteps == this.totalSteps &&
+          other.lastKnownStepCount == this.lastKnownStepCount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1856,6 +1917,8 @@ class LocalPlayerProfileTableCompanion
   final Value<bool> hasCompletedOnboarding;
   final Value<double?> lastLat;
   final Value<double?> lastLon;
+  final Value<int> totalSteps;
+  final Value<int> lastKnownStepCount;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1869,6 +1932,8 @@ class LocalPlayerProfileTableCompanion
     this.hasCompletedOnboarding = const Value.absent(),
     this.lastLat = const Value.absent(),
     this.lastLon = const Value.absent(),
+    this.totalSteps = const Value.absent(),
+    this.lastKnownStepCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1883,6 +1948,8 @@ class LocalPlayerProfileTableCompanion
     this.hasCompletedOnboarding = const Value.absent(),
     this.lastLat = const Value.absent(),
     this.lastLon = const Value.absent(),
+    this.totalSteps = const Value.absent(),
+    this.lastKnownStepCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1898,6 +1965,8 @@ class LocalPlayerProfileTableCompanion
     Expression<bool>? hasCompletedOnboarding,
     Expression<double>? lastLat,
     Expression<double>? lastLon,
+    Expression<int>? totalSteps,
+    Expression<int>? lastKnownStepCount,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1913,6 +1982,9 @@ class LocalPlayerProfileTableCompanion
         'has_completed_onboarding': hasCompletedOnboarding,
       if (lastLat != null) 'last_lat': lastLat,
       if (lastLon != null) 'last_lon': lastLon,
+      if (totalSteps != null) 'total_steps': totalSteps,
+      if (lastKnownStepCount != null)
+        'last_known_step_count': lastKnownStepCount,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1929,6 +2001,8 @@ class LocalPlayerProfileTableCompanion
       Value<bool>? hasCompletedOnboarding,
       Value<double?>? lastLat,
       Value<double?>? lastLon,
+      Value<int>? totalSteps,
+      Value<int>? lastKnownStepCount,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -1943,6 +2017,8 @@ class LocalPlayerProfileTableCompanion
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,
       lastLat: lastLat ?? this.lastLat,
       lastLon: lastLon ?? this.lastLon,
+      totalSteps: totalSteps ?? this.totalSteps,
+      lastKnownStepCount: lastKnownStepCount ?? this.lastKnownStepCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1980,6 +2056,12 @@ class LocalPlayerProfileTableCompanion
     if (lastLon.present) {
       map['last_lon'] = Variable<double>(lastLon.value);
     }
+    if (totalSteps.present) {
+      map['total_steps'] = Variable<int>(totalSteps.value);
+    }
+    if (lastKnownStepCount.present) {
+      map['last_known_step_count'] = Variable<int>(lastKnownStepCount.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2004,6 +2086,8 @@ class LocalPlayerProfileTableCompanion
           ..write('hasCompletedOnboarding: $hasCompletedOnboarding, ')
           ..write('lastLat: $lastLat, ')
           ..write('lastLon: $lastLon, ')
+          ..write('totalSteps: $totalSteps, ')
+          ..write('lastKnownStepCount: $lastKnownStepCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3767,6 +3851,8 @@ typedef $$LocalPlayerProfileTableTableCreateCompanionBuilder
   Value<bool> hasCompletedOnboarding,
   Value<double?> lastLat,
   Value<double?> lastLon,
+  Value<int> totalSteps,
+  Value<int> lastKnownStepCount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3782,6 +3868,8 @@ typedef $$LocalPlayerProfileTableTableUpdateCompanionBuilder
   Value<bool> hasCompletedOnboarding,
   Value<double?> lastLat,
   Value<double?> lastLon,
+  Value<int> totalSteps,
+  Value<int> lastKnownStepCount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3824,6 +3912,13 @@ class $$LocalPlayerProfileTableTableFilterComposer
 
   ColumnFilters<double> get lastLon => $composableBuilder(
       column: $table.lastLon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get totalSteps => $composableBuilder(
+      column: $table.totalSteps, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get lastKnownStepCount => $composableBuilder(
+      column: $table.lastKnownStepCount,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3873,6 +3968,13 @@ class $$LocalPlayerProfileTableTableOrderingComposer
   ColumnOrderings<double> get lastLon => $composableBuilder(
       column: $table.lastLon, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get totalSteps => $composableBuilder(
+      column: $table.totalSteps, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get lastKnownStepCount => $composableBuilder(
+      column: $table.lastKnownStepCount,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3915,6 +4017,12 @@ class $$LocalPlayerProfileTableTableAnnotationComposer
 
   GeneratedColumn<double> get lastLon =>
       $composableBuilder(column: $table.lastLon, builder: (column) => column);
+
+  GeneratedColumn<int> get totalSteps => $composableBuilder(
+      column: $table.totalSteps, builder: (column) => column);
+
+  GeneratedColumn<int> get lastKnownStepCount => $composableBuilder(
+      column: $table.lastKnownStepCount, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3963,6 +4071,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<bool> hasCompletedOnboarding = const Value.absent(),
             Value<double?> lastLat = const Value.absent(),
             Value<double?> lastLon = const Value.absent(),
+            Value<int> totalSteps = const Value.absent(),
+            Value<int> lastKnownStepCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3977,6 +4087,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             hasCompletedOnboarding: hasCompletedOnboarding,
             lastLat: lastLat,
             lastLon: lastLon,
+            totalSteps: totalSteps,
+            lastKnownStepCount: lastKnownStepCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3991,6 +4103,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             Value<bool> hasCompletedOnboarding = const Value.absent(),
             Value<double?> lastLat = const Value.absent(),
             Value<double?> lastLon = const Value.absent(),
+            Value<int> totalSteps = const Value.absent(),
+            Value<int> lastKnownStepCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -4005,6 +4119,8 @@ class $$LocalPlayerProfileTableTableTableManager extends RootTableManager<
             hasCompletedOnboarding: hasCompletedOnboarding,
             lastLat: lastLat,
             lastLon: lastLon,
+            totalSteps: totalSteps,
+            lastKnownStepCount: lastKnownStepCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,

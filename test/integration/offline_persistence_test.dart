@@ -79,6 +79,8 @@ LocalPlayerProfile makeProfile({
       totalDistanceKm: totalDistanceKm,
       currentSeason: currentSeason,
       hasCompletedOnboarding: false,
+      totalSteps: 0,
+      lastKnownStepCount: 0,
       createdAt: DateTime(2026, 3, 1),
       updatedAt: DateTime(2026, 3, 1),
     );

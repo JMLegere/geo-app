@@ -129,7 +129,8 @@ class FogStateResolver {
   /// 1. Stores the current player position for distance calculations.
   /// 2. Resolves the current cell and its immediate neighbors.
   /// 3. If the current cell is new (first visit), adds it to [visitedCellIds],
-  ///    updates [explorationFrontier], and emits a [FogStateChangedEvent].
+  ///    updates [explorationFrontier], and emits a [FogStateChangedEvent] with
+  ///    [FogState.observed] (player is physically present).
   void onLocationUpdate(double lat, double lon) {
     _playerLat = lat;
     _playerLon = lon;
@@ -139,29 +140,42 @@ class FogStateResolver {
     _currentNeighborIds = _cellService.getNeighborIds(newCellId).toSet();
 
     if (!_visitedCellIds.contains(newCellId)) {
-      // Capture old computed state before adding to visited set.
-      final wasInFrontier = _explorationFrontier.contains(newCellId);
-      final oldState =
-          wasInFrontier ? FogState.unexplored : FogState.undetected;
+      _markCellVisited(newCellId, FogState.observed);
+    }
+  }
 
-      _visitedCellIds.add(newCellId);
-      _explorationFrontier.remove(newCellId);
+  /// Marks [cellId] as visited without moving the player's position.
+  ///
+  /// Used for remote exploration (e.g., step spending) where the player
+  /// spends resources to reveal a frontier cell without physically traveling.
+  ///
+  /// The cell must be on the [explorationFrontier] — only cells adjacent to
+  /// already-visited cells can be unlocked remotely. This enforces geographic
+  /// reachability: players cannot jump over unexplored territory.
+  ///
+  /// Emits a [FogStateChangedEvent] with [FogState.hidden] (not observed —
+  /// the player is not physically present). Downstream listeners such as
+  /// [DiscoveryService] can react to this event identically to physical visits.
+  ///
+  /// **Does NOT** modify [currentCellId], [currentNeighborIds], or the stored
+  /// player coordinates — the player's position context is unchanged.
+  ///
+  /// Throws [ArgumentError] if [cellId] is not in [explorationFrontier].
+  /// Silent no-op if [cellId] is already in [visitedCellIds].
+  void visitCellRemotely(String cellId) {
+    // Silent no-op: already visited cells carry no additional state change.
+    if (_visitedCellIds.contains(cellId)) return;
 
-      for (final neighbor in _cellService.getNeighborIds(newCellId)) {
-        if (!_visitedCellIds.contains(neighbor)) {
-          _explorationFrontier.add(neighbor);
-        }
-      }
-
-      // newState is Observed: the cell is now the current cell.
-      _streamController.add(
-        FogStateChangedEvent(
-          cellId: newCellId,
-          oldState: oldState,
-          newState: FogState.observed,
-        ),
+    // Enforce frontier constraint: only reachable cells can be visited remotely.
+    if (!_explorationFrontier.contains(cellId)) {
+      throw ArgumentError(
+        'Cannot visit cell remotely: "$cellId" is not in the exploration '
+        'frontier. Only cells adjacent to visited cells can be visited remotely.',
       );
     }
+
+    // Remote visit = hidden (player is not there — just revealed).
+    _markCellVisited(cellId, FogState.hidden);
   }
 
   /// Restores visited cells from persistence.
@@ -224,6 +238,38 @@ class FogStateResolver {
   // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
+
+  /// Shared cell-visit logic called by both [onLocationUpdate] and
+  /// [visitCellRemotely].
+  ///
+  /// Adds [cellId] to [visitedCellIds], removes it from
+  /// [explorationFrontier], expands the frontier with [cellId]'s unvisited
+  /// neighbors, and emits a [FogStateChangedEvent] with [newState].
+  ///
+  /// The caller is responsible for the frontier/visited pre-check: this
+  /// method assumes [cellId] is not already in [visitedCellIds].
+  void _markCellVisited(String cellId, FogState newState) {
+    // Capture old computed state before mutating the visited set.
+    final wasInFrontier = _explorationFrontier.contains(cellId);
+    final oldState = wasInFrontier ? FogState.unexplored : FogState.undetected;
+
+    _visitedCellIds.add(cellId);
+    _explorationFrontier.remove(cellId);
+
+    for (final neighbor in _cellService.getNeighborIds(cellId)) {
+      if (!_visitedCellIds.contains(neighbor)) {
+        _explorationFrontier.add(neighbor);
+      }
+    }
+
+    _streamController.add(
+      FogStateChangedEvent(
+        cellId: cellId,
+        oldState: oldState,
+        newState: newState,
+      ),
+    );
+  }
 
   /// Haversine great-circle distance formula.
   ///

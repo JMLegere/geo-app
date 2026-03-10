@@ -127,7 +127,8 @@ void main() {
     // -------------------------------------------------------------------------
     // Test 2: Observed for the current cell after onLocationUpdate.
     // -------------------------------------------------------------------------
-    test('2. resolve() returns observed for the current cell after onLocationUpdate',
+    test(
+        '2. resolve() returns observed for the current cell after onLocationUpdate',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
       expect(resolver.resolve('cell_0_0'), equals(FogState.observed));
@@ -136,7 +137,8 @@ void main() {
     // -------------------------------------------------------------------------
     // Test 3: Concealed for neighbors of the current cell.
     // -------------------------------------------------------------------------
-    test('3. resolve() returns concealed for neighbors of the current cell', () {
+    test('3. resolve() returns concealed for neighbors of the current cell',
+        () {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // The 8 immediate integer neighbors of cell_0_0 are all concealed.
@@ -302,8 +304,8 @@ void main() {
       expect(cells, contains('cell_0_0'));
 
       // Mutating the copy must not affect the resolver's internal state.
-      expect(() => (cells as dynamic).add('cell_99_99'),
-          throwsUnsupportedError);
+      expect(
+          () => (cells as dynamic).add('cell_99_99'), throwsUnsupportedError);
       expect(resolver.visitedCellIds, isNot(contains('cell_99_99')));
     });
 
@@ -325,8 +327,7 @@ void main() {
     // -------------------------------------------------------------------------
     // Test 16: Concealed cell becomes unexplored when player moves away.
     // -------------------------------------------------------------------------
-    test(
-        '16. concealed cell becomes unexplored/hidden when player moves away',
+    test('16. concealed cell becomes unexplored/hidden when player moves away',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
       // cell_1_0 is adjacent to cell_0_0 → concealed.
@@ -385,9 +386,7 @@ void main() {
     // -------------------------------------------------------------------------
     // Test 20: 50km detection — cells beyond radius are undetected.
     // -------------------------------------------------------------------------
-    test(
-        '20. detection: cells beyond radius are undetected',
-        () {
+    test('20. detection: cells beyond radius are undetected', () {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // cell_3_0 center at (3°, 0°) ≈ 333 km — well beyond detection radius.
@@ -457,7 +456,8 @@ void main() {
     // -------------------------------------------------------------------------
     // Test: Once detected, cells never revert to undetected.
     // -------------------------------------------------------------------------
-    test('once detected via proximity, cells stay unexplored when player moves away',
+    test(
+        'once detected via proximity, cells stay unexplored when player moves away',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
 
@@ -481,7 +481,8 @@ void main() {
       expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
     });
 
-    test('loadVisitedCells seeds ever-detected set so frontier stays unexplored',
+    test(
+        'loadVisitedCells seeds ever-detected set so frontier stays unexplored',
         () {
       resolver.loadVisitedCells({'cell_0_0'});
 
@@ -493,7 +494,8 @@ void main() {
       expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
     });
 
-    test('event oldState is undetected when entering a never-detected cell', () {
+    test('event oldState is undetected when entering a never-detected cell',
+        () {
       // Jump to a far cell — no prior frontier around cell_20_20.
       final events = collectEvents(resolver, () {
         resolver.onLocationUpdate(20.0, 20.0);
@@ -503,6 +505,164 @@ void main() {
       expect(events[0].cellId, equals('cell_20_20'));
       expect(events[0].oldState, equals(FogState.undetected));
       expect(events[0].newState, equals(FogState.observed));
+    });
+
+    // =========================================================================
+    // visitCellRemotely — TDD suite
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // RED: visitCellRemotely throws ArgumentError for a cell not on the
+    //      exploration frontier.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely throws ArgumentError for cell not in exploration frontier',
+        () {
+      // No frontier yet — resolver is freshly initialised.
+      expect(
+        () => resolver.visitCellRemotely('non_frontier_cell_99_99'),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // GREEN: visitCellRemotely succeeds for a frontier cell — adds it to
+    //        visitedCellIds and emits FogStateChangedEvent with hidden state.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely adds frontier cell to visitedCellIds and emits hidden event',
+        () {
+      // Establish frontier: visit cell_0_0 so cell_1_0 becomes a frontier cell.
+      resolver.onLocationUpdate(0.0, 0.0);
+      expect(resolver.explorationFrontier, contains('cell_1_0'));
+
+      final events = collectEvents(resolver, () {
+        resolver.visitCellRemotely('cell_1_0');
+      });
+
+      // Exactly one event emitted.
+      expect(events.length, equals(1));
+      expect(events[0].cellId, equals('cell_1_0'));
+      // Remote visit = hidden, NOT observed (player is NOT there).
+      expect(events[0].newState, equals(FogState.hidden));
+      expect(events[0].oldState, equals(FogState.unexplored));
+      // Cell is now in visited set.
+      expect(resolver.visitedCellIds, contains('cell_1_0'));
+    });
+
+    // -------------------------------------------------------------------------
+    // REFACTOR: visitCellRemotely is a silent no-op when the cell is already
+    //           in visitedCellIds (no event emitted, no throw).
+    // -------------------------------------------------------------------------
+    test('visitCellRemotely is silent no-op for already-visited cell', () {
+      // Visit cell_0_0 via location update — it is now in visitedCellIds.
+      resolver.onLocationUpdate(0.0, 0.0);
+      // Remotely visit frontier cell cell_1_0.
+      resolver.visitCellRemotely('cell_1_0');
+      expect(resolver.visitedCellIds, contains('cell_1_0'));
+
+      // Calling visitCellRemotely again for the same already-visited cell
+      // should be a no-op: no event, no throw.
+      final events = collectEvents(resolver, () {
+        resolver.visitCellRemotely('cell_1_0');
+      });
+
+      expect(events, isEmpty);
+    });
+
+    // -------------------------------------------------------------------------
+    // visitCellRemotely updates explorationFrontier: removes the cell and adds
+    // its unvisited neighbors.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely removes cell from frontier and adds its unvisited neighbors',
+        () {
+      resolver.onLocationUpdate(0.0, 0.0);
+      // cell_1_0 is frontier; cell_2_0 is NOT yet frontier.
+      expect(resolver.explorationFrontier, contains('cell_1_0'));
+      expect(resolver.explorationFrontier, isNot(contains('cell_2_0')));
+
+      resolver.visitCellRemotely('cell_1_0');
+
+      // cell_1_0 removed from frontier.
+      expect(resolver.explorationFrontier, isNot(contains('cell_1_0')));
+      // cell_2_0 (neighbor of cell_1_0, unvisited) is now frontier.
+      expect(resolver.explorationFrontier, contains('cell_2_0'));
+    });
+
+    // -------------------------------------------------------------------------
+    // visitCellRemotely does NOT modify currentCellId or player coordinates.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely does not change currentCellId or player coordinates',
+        () {
+      resolver.onLocationUpdate(5.0, 5.0);
+      expect(resolver.currentCellId, equals('cell_5_5'));
+
+      // cell_6_5 is a neighbor of cell_5_5 → frontier.
+      resolver.visitCellRemotely('cell_6_5');
+
+      // Player context unchanged.
+      expect(resolver.currentCellId, equals('cell_5_5'));
+      // distanceToCell('cell_5_5') == 0 only if player is still at (5°, 5°).
+      expect(resolver.distanceToCell('cell_5_5'), closeTo(0.0, 1.0));
+    });
+
+    // -------------------------------------------------------------------------
+    // visitCellRemotely: resolve() returns FogState.hidden for the remote cell
+    // (NOT observed), confirming player is not present.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely: resolve() returns hidden for the remote cell (not observed)',
+        () {
+      resolver.onLocationUpdate(0.0, 0.0);
+
+      resolver.visitCellRemotely('cell_1_0');
+
+      // Player is at cell_0_0 → cell_1_0 is visited but NOT current cell.
+      // resolve() should return hidden (the permanent visit state).
+      expect(resolver.resolve('cell_1_0'), equals(FogState.hidden));
+      // Current cell is still observed.
+      expect(resolver.resolve('cell_0_0'), equals(FogState.observed));
+    });
+
+    // -------------------------------------------------------------------------
+    // visitCellRemotely: onVisitedCellAdded stream fires — DiscoveryService
+    // integration contract.
+    // -------------------------------------------------------------------------
+    test(
+        'visitCellRemotely emits on onVisitedCellAdded stream (DiscoveryService contract)',
+        () {
+      resolver.onLocationUpdate(0.0, 0.0);
+
+      final received = <FogStateChangedEvent>[];
+      final sub = resolver.onVisitedCellAdded.listen(received.add);
+
+      resolver.visitCellRemotely('cell_1_0');
+
+      sub.cancel();
+
+      expect(received.length, equals(1));
+      expect(received[0].cellId, equals('cell_1_0'));
+      expect(received[0].newState, equals(FogState.hidden));
+    });
+
+    // -------------------------------------------------------------------------
+    // visitCellRemotely: existing onLocationUpdate() behaviour is unchanged
+    // after the _markCellVisited refactor.
+    // -------------------------------------------------------------------------
+    test(
+        'onLocationUpdate behaviour is unchanged after _markCellVisited refactor',
+        () {
+      final events = collectEvents(resolver, () {
+        resolver.onLocationUpdate(0.0, 0.0);
+      });
+
+      // Still emits observed (not hidden) for physical location visits.
+      expect(events.length, equals(1));
+      expect(events[0].newState, equals(FogState.observed));
+      expect(resolver.currentCellId, equals('cell_0_0'));
+      expect(resolver.visitedCellIds, contains('cell_0_0'));
     });
   });
 }

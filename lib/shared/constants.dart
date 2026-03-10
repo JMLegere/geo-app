@@ -266,3 +266,12 @@ const String kBuildTimestamp = String.fromEnvironment(
   'BUILD_TIMESTAMP',
   defaultValue: 'dev',
 );
+
+// Web Platform Movement (5x slower than current, since web has no pedometer)
+/// Step distance in meters for web keyboard/D-pad movement per tick.
+/// 5x reduction from original 10.0 to match realistic walking speed (~4 m/s).
+const double kWebKeyboardStepMeters = 2.0;
+
+/// Tick interval in milliseconds for web keyboard/D-pad movement.
+/// 5x increase from original 100ms to slow down movement cadence.
+const int kWebKeyboardTickIntervalMs = 500;
