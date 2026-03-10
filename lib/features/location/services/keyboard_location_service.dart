@@ -16,5 +16,9 @@ abstract class KeyboardLocationService {
   /// [dLat] and [dLon] are in degrees.
   void moveStep(double dLat, double dLon);
 
+  /// Sets the current position directly (e.g. restoring from saved state).
+  /// Does NOT emit a location event — call [start] to begin streaming.
+  void setPosition(double lat, double lon);
+
   factory KeyboardLocationService() => createKeyboardLocationService();
 }

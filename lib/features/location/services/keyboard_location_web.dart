@@ -71,12 +71,27 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
     );
   }
 
+  @override
+  void setPosition(double lat, double lon) {
+    _position = Geographic(lat: lat, lon: lon);
+  }
+
   /// Keys we intercept — movement keys should not reach MapLibre's native
   /// keyboard handler (which pans the map independently and fights our
   /// rubber-band camera system).
   static const _movementKeys = {
-    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-    'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'w',
+    'W',
+    'a',
+    'A',
+    's',
+    'S',
+    'd',
+    'D',
   };
 
   void _onKeyDown(Event e) {
@@ -105,16 +120,24 @@ class _KeyboardLocationWebService implements KeyboardLocationService {
     final metersPerDegLat = _earthRadius * (pi / 180.0);
     final metersPerDegLon = metersPerDegLat * cos(_position.lat * pi / 180.0);
 
-    if (_keysHeld.contains('w') || _keysHeld.contains('W') || _keysHeld.contains('ArrowUp')) {
+    if (_keysHeld.contains('w') ||
+        _keysHeld.contains('W') ||
+        _keysHeld.contains('ArrowUp')) {
       dLat += _stepMeters / metersPerDegLat;
     }
-    if (_keysHeld.contains('s') || _keysHeld.contains('S') || _keysHeld.contains('ArrowDown')) {
+    if (_keysHeld.contains('s') ||
+        _keysHeld.contains('S') ||
+        _keysHeld.contains('ArrowDown')) {
       dLat -= _stepMeters / metersPerDegLat;
     }
-    if (_keysHeld.contains('a') || _keysHeld.contains('A') || _keysHeld.contains('ArrowLeft')) {
+    if (_keysHeld.contains('a') ||
+        _keysHeld.contains('A') ||
+        _keysHeld.contains('ArrowLeft')) {
       dLon -= _stepMeters / metersPerDegLon;
     }
-    if (_keysHeld.contains('d') || _keysHeld.contains('D') || _keysHeld.contains('ArrowRight')) {
+    if (_keysHeld.contains('d') ||
+        _keysHeld.contains('D') ||
+        _keysHeld.contains('ArrowRight')) {
       dLon += _stepMeters / metersPerDegLon;
     }
 
