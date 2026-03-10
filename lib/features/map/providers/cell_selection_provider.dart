@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Holds the currently selected cell ID from a map tap.
+/// Holds the currently selected cell ID from a map long press.
 ///
 /// `null` means no cell is selected. Set by [_MapScreenState._onCellTapped]
-/// when the user taps the map. Consumed by the exploration bottom sheet (T8).
+/// when the user long-presses the map. Consumed by the exploration bottom sheet.
 ///
 /// Uses a simple [Notifier] so the selection can be cleared programmatically
 /// (e.g., when the bottom sheet is dismissed).
@@ -24,6 +24,6 @@ class CellSelectionNotifier extends Notifier<String?> {
 
 /// Provider for the currently selected cell ID.
 ///
-/// `null` = no selection. Updated by map tap events in [MapScreen].
+/// `null` = no selection. Updated by map long-press events in [MapScreen].
 final cellSelectionProvider =
     NotifierProvider<CellSelectionNotifier, String?>(CellSelectionNotifier.new);
