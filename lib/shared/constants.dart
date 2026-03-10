@@ -260,6 +260,14 @@ const int kUpgradePromptDelaySeconds = 120;
 /// Application version string displayed in Settings.
 const String kAppVersion = '0.1.0';
 
+// Step-based Exploration
+/// Step cost for remotely exploring a frontier cell via the cell info sheet.
+///
+/// Spending this many steps calls [FogStateResolver.visitCellRemotely], which
+/// marks the cell as visited and triggers species discoveries via the
+/// [DiscoveryService] subscription.
+const int kStepCostPerCell = 1000;
+
 /// Build timestamp injected via `--dart-define=BUILD_TIMESTAMP=...` at build
 /// time. Falls back to 'dev' for local development runs.
 const String kBuildTimestamp = String.fromEnvironment(
