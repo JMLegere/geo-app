@@ -66,15 +66,72 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  void bypassVerification(String phone) {
-    final user = UserProfile(
-      id: 'bypass-${phone.hashCode.toRadixString(16)}',
-      email: 'bypass@earthnova.dev',
-      phoneNumber: phone,
-      displayName: 'Beta Tester',
-      createdAt: DateTime.now(),
-    );
-    state = AuthState.authenticated(user);
+  /// Bypasses OTP by signing in anonymously via [AuthService].
+  ///
+  /// Creates a real backend auth session (real UUID, real JWT) so all
+  /// persistence — RLS, write queue, server validation — works correctly.
+  /// Requires "Enable Anonymous Sign-Ins" in the Supabase dashboard
+  /// (Authentication → Providers → Anonymous).
+  Future<void> bypassVerification(String phone) async {
+    final service = ref.read(authServiceProvider);
+    if (service == null) return;
+
+    state = AuthState.otpVerifying(phone: phone);
+    try {
+      final user = await service.signInAnonymously();
+
+      debugPrint(
+        '[Auth] bypass: anonymous sign-in OK — '
+        'userId=${user.id}, phone=$phone',
+      );
+
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(user);
+    } on AuthException catch (e) {
+      debugPrint('[Auth] bypass failed: $e');
+      if (!ref.mounted) return;
+      state = AuthState.otpSent(phone: phone).copyWith(
+        errorMessage: e.message,
+      );
+    } catch (e) {
+      debugPrint('[Auth] bypass failed: $e');
+      if (!ref.mounted) return;
+      state = AuthState.otpSent(phone: phone).copyWith(
+        errorMessage: 'Bypass sign-in failed. Check connection and try again.',
+      );
+    }
+  }
+
+  /// Signs in with phone number only — no OTP, no password prompt.
+  ///
+  /// Creates a new account on first use, signs in on subsequent uses.
+  /// Same phone = same account across devices.
+  Future<void> signInWithPhone(String phone) async {
+    final service = ref.read(authServiceProvider);
+    if (service == null) return;
+
+    state = const AuthState.loading();
+    try {
+      final user = await service.signInWithPhone(phone);
+
+      debugPrint(
+        '[Auth] phone sign-in OK — '
+        'userId=${user.id}, phone=$phone',
+      );
+
+      if (!ref.mounted) return;
+      state = AuthState.authenticated(user);
+    } on AuthException catch (e) {
+      debugPrint('[Auth] phone sign-in failed: $e');
+      if (!ref.mounted) return;
+      state = AuthState.error(e.message);
+    } catch (e) {
+      debugPrint('[Auth] phone sign-in failed: $e');
+      if (!ref.mounted) return;
+      state = AuthState.error(
+        'Sign-in failed. Check your connection and try again.',
+      );
+    }
   }
 
   /// Signs out the current user.

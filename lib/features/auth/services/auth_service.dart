@@ -46,6 +46,26 @@ abstract class AuthService {
   /// go through the OTP flow again.
   Future<bool> restoreSession();
 
+  /// Signs in anonymously without phone/OTP verification.
+  ///
+  /// Creates a real backend user with a valid session. Used by the beta
+  /// bypass flow. Throws [AuthException] on failure (e.g. anonymous auth
+  /// not enabled on the backend, network error).
+  Future<UserProfile> signInAnonymously();
+
+  /// Signs in (or signs up) using only a phone number — no OTP, no password
+  /// from the user's perspective.
+  ///
+  /// A deterministic password is derived behind the scenes so the same phone
+  /// always resolves to the same Supabase account. Requires "Phone
+  /// Confirmations" to be disabled in the Supabase dashboard.
+  ///
+  /// [phone] must be in E.164 format (e.g. '+13334445555').
+  ///
+  /// Throws [AuthException] on invalid phone, network failure, or backend
+  /// misconfiguration.
+  Future<UserProfile> signInWithPhone(String phone);
+
   /// Stream that emits the current [UserProfile] on sign-in and null on sign-out.
   Stream<UserProfile?> get authStateChanges;
 

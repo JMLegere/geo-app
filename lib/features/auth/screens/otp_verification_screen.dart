@@ -232,7 +232,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
               OutlinedButton(
                 onPressed: isVerifying
                     ? null
-                    : () => ref
+                    : () async => ref
                         .read(authProvider.notifier)
                         .bypassVerification(widget.phone),
                 style: OutlinedButton.styleFrom(

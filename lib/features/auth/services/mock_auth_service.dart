@@ -90,6 +90,53 @@ class MockAuthService implements AuthService {
   }
 
   @override
+  Future<UserProfile> signInAnonymously() async {
+    await Future<void>.delayed(_delay);
+    final profile = UserProfile(
+      id: 'anon-${DateTime.now().millisecondsSinceEpoch}',
+      email: '',
+      phoneNumber: null,
+      displayName: 'Beta Tester',
+      createdAt: DateTime.now(),
+    );
+    _currentUser = profile;
+    _authStateController.add(profile);
+    return profile;
+  }
+
+  @override
+  Future<UserProfile> signInWithPhone(String phone) async {
+    await Future<void>.delayed(_delay);
+
+    if (!_phoneRegex.hasMatch(phone)) {
+      throw const AuthException(
+        'Invalid phone number format. Use E.164 (e.g., +13334445555)',
+      );
+    }
+
+    // Return existing profile for this phone, or create a new one.
+    final existing = _phoneProfiles[phone];
+    if (existing != null) {
+      _currentUser = existing;
+      _authStateController.add(existing);
+      return existing;
+    }
+
+    final profile = UserProfile(
+      id: 'phone-${DateTime.now().millisecondsSinceEpoch}',
+      email: '',
+      phoneNumber: phone,
+      displayName: null,
+      createdAt: DateTime.now(),
+    );
+
+    _phoneProfiles[phone] = profile;
+    _currentUser = profile;
+    _authStateController.add(profile);
+    return profile;
+  }
+
+  @override
   Future<void> signOut() async {
     await Future<void>.delayed(_delay);
     _currentUser = null;

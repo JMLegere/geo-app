@@ -39,14 +39,14 @@ void main() {
       expect(find.text('+1'), findsOneWidget);
     });
 
-    testWidgets('renders send code button', (tester) async {
+    testWidgets('renders continue button', (tester) async {
       await tester.pumpWidget(ProviderScope(
         overrides: [authProvider.overrideWith(_UnauthNotifier.new)],
         child: const MaterialApp(home: LoginScreen()),
       ));
 
       expect(find.byType(AuthButton), findsOneWidget);
-      expect(find.text('Send Code'), findsOneWidget);
+      expect(find.text('Continue'), findsOneWidget);
     });
 
     testWidgets('does not render Create Account link', (tester) async {

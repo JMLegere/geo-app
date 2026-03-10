@@ -10,9 +10,9 @@ import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
-/// Phone-only flow: enter 10-digit US number, tap "Send Code", receive OTP.
-/// On [AuthStatus.otpSent], routing is handled by the auth-state switch in
-/// `EarthNovaApp` — this screen does NOT navigate programmatically.
+/// Phone-only flow: enter 10-digit US number, tap "Continue". No OTP — the
+/// phone number is the account identity. New users are created on first use,
+/// returning users are signed in automatically.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -51,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _isLoading(AuthStatus status) => status == AuthStatus.loading;
 
-  Future<void> _sendCode() async {
+  Future<void> _signIn() async {
     final phone = _fullPhone;
 
     if (!isValidE164(phone)) {
@@ -60,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     setState(() => _localError = null);
-    await ref.read(authProvider.notifier).sendOtp(phone);
+    await ref.read(authProvider.notifier).signInWithPhone(phone);
   }
 
   // ---------------------------------------------------------------------------
@@ -122,16 +122,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _phoneController,
                 enabled: !isLoading,
                 countryCode: _countryCode,
-                onSubmitted: canSubmit ? (_) => _sendCode() : null,
+                onSubmitted: canSubmit ? (_) => _signIn() : null,
               ),
 
               SizedBox(height: Spacing.xxl),
 
               // ── Submit button ───────────────────────────────────────────────
               AuthButton(
-                label: 'Send Code',
+                label: 'Continue',
                 isLoading: isLoading,
-                onPressed: canSubmit ? _sendCode : null,
+                onPressed: canSubmit ? _signIn : null,
               ),
 
               // ── Error message ───────────────────────────────────────────────

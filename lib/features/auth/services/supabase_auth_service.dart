@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
@@ -121,6 +124,88 @@ class SupabaseAuthService implements AuthService {
       throw AuthException(
           'Network error. Check your connection and try again.');
     }
+  }
+
+  @override
+  Future<UserProfile> signInAnonymously() async {
+    try {
+      final response = await _auth.signInAnonymously();
+      final user = response.user;
+      if (user == null) {
+        throw const AuthException(
+          'Anonymous sign-in failed: no user returned.',
+        );
+      }
+      return _profileFrom(user);
+    } on supa.AuthApiException catch (e) {
+      throw AuthException('Anonymous sign-in failed: ${e.message}');
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'Network error. Check your connection and try again.',
+      );
+    }
+  }
+
+  @override
+  Future<UserProfile> signInWithPhone(String phone) async {
+    if (!isValidE164(phone)) {
+      throw const AuthException(
+        'Invalid phone number format. Use E.164 (e.g., +13334445555)',
+      );
+    }
+
+    final password = _derivePassword(phone);
+
+    try {
+      // Try sign-up first (new user).
+      final signUpResponse = await _auth.signUp(
+        phone: phone,
+        password: password,
+      );
+
+      final user = signUpResponse.user;
+
+      // Supabase returns a user with empty identities when the phone is
+      // already registered (to prevent enumeration). Fall through to
+      // signInWithPassword in that case.
+      if (user != null && (user.identities?.isNotEmpty ?? false)) {
+        return _profileFrom(user);
+      }
+    } on supa.AuthApiException catch (_) {
+      // Swallow — fall through to signInWithPassword.
+    }
+
+    // Existing user — sign in with the derived password.
+    try {
+      final signInResponse = await _auth.signInWithPassword(
+        phone: phone,
+        password: password,
+      );
+      final user = signInResponse.user;
+      if (user == null) {
+        throw const AuthException('Phone sign-in failed: no user returned.');
+      }
+      return _profileFrom(user);
+    } on supa.AuthApiException catch (e) {
+      throw AuthException('Phone sign-in failed: ${e.message}');
+    } on AuthException {
+      rethrow;
+    } catch (e) {
+      throw AuthException(
+        'Network error. Check your connection and try again.',
+      );
+    }
+  }
+
+  /// Deterministic password derived from phone number.
+  ///
+  /// Not for security — just satisfies Supabase's auth API requirement.
+  /// Same phone always produces same password so returning users can sign in.
+  static String _derivePassword(String phone) {
+    final bytes = utf8.encode('$phone:earthnova-beta-2026');
+    return sha256.convert(bytes).toString();
   }
 
   @override
