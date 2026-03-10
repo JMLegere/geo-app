@@ -156,18 +156,22 @@ class SupabaseAuthService implements AuthService {
       );
     }
 
+    final email = _deriveEmail(phone);
     final password = _derivePassword(phone);
 
     try {
-      // Try sign-up first (new user).
+      // Try sign-up first (new user). Uses a derived email so we bypass the
+      // phone provider entirely — no OTP, no phone confirmation issues, no
+      // conflict with legacy OTP-created accounts.
       final signUpResponse = await _auth.signUp(
-        phone: phone,
+        email: email,
         password: password,
+        data: {'phone_number': phone},
       );
 
       final user = signUpResponse.user;
 
-      // Supabase returns a user with empty identities when the phone is
+      // Supabase returns a user with empty identities when the email is
       // already registered (to prevent enumeration). Fall through to
       // signInWithPassword in that case.
       if (user != null && (user.identities?.isNotEmpty ?? false)) {
@@ -180,7 +184,7 @@ class SupabaseAuthService implements AuthService {
     // Existing user — sign in with the derived password.
     try {
       final signInResponse = await _auth.signInWithPassword(
-        phone: phone,
+        email: email,
         password: password,
       );
       final user = signInResponse.user;
@@ -197,6 +201,16 @@ class SupabaseAuthService implements AuthService {
         'Network error. Check your connection and try again.',
       );
     }
+  }
+
+  /// Derives a deterministic email from a phone number.
+  ///
+  /// Bypasses the Supabase phone provider entirely — uses the email provider
+  /// instead so there are no OTP, phone confirmation, or legacy account
+  /// conflicts. The email is not real and never receives mail.
+  static String _deriveEmail(String phone) {
+    final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    return '$digits@earthnova.app';
   }
 
   /// Deterministic password derived from phone number.
