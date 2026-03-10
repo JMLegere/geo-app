@@ -6,6 +6,35 @@ import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 
 // ---------------------------------------------------------------------------
+// Sanctuary Tab enum
+// ---------------------------------------------------------------------------
+
+/// Tabs in the Sanctuary screen. Order matches the scrollable TabBar.
+enum SanctuaryTab {
+  zoo,
+  feeding,
+  breeding,
+  museum,
+  achievements;
+
+  String get displayName => switch (this) {
+        SanctuaryTab.zoo => 'Zoo',
+        SanctuaryTab.feeding => 'Feeding',
+        SanctuaryTab.breeding => 'Breeding',
+        SanctuaryTab.museum => 'Museum',
+        SanctuaryTab.achievements => 'Achievements',
+      };
+
+  String get emoji => switch (this) {
+        SanctuaryTab.zoo => '🏠',
+        SanctuaryTab.feeding => '🍎',
+        SanctuaryTab.breeding => '🧬',
+        SanctuaryTab.museum => '🏛️',
+        SanctuaryTab.achievements => '🏆',
+      };
+}
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -23,11 +52,15 @@ class SanctuaryState {
   /// Player's current daily visit streak (from [PlayerState]).
   final int currentStreak;
 
+  /// Currently selected tab.
+  final SanctuaryTab activeTab;
+
   const SanctuaryState({
     this.speciesByHabitat = const <Habitat, List<FaunaDefinition>>{},
     this.totalCollected = 0,
     this.totalInPool = 0,
     this.currentStreak = 0,
+    this.activeTab = SanctuaryTab.zoo,
   });
 
   /// Completion fraction in the range [0.0, 1.0].
@@ -41,12 +74,14 @@ class SanctuaryState {
     int? totalCollected,
     int? totalInPool,
     int? currentStreak,
+    SanctuaryTab? activeTab,
   }) {
     return SanctuaryState(
       speciesByHabitat: speciesByHabitat ?? this.speciesByHabitat,
       totalCollected: totalCollected ?? this.totalCollected,
       totalInPool: totalInPool ?? this.totalInPool,
       currentStreak: currentStreak ?? this.currentStreak,
+      activeTab: activeTab ?? this.activeTab,
     );
   }
 }
@@ -80,6 +115,11 @@ class SanctuaryNotifier extends Notifier<SanctuaryState> {
       collectedIds: inventoryState.uniqueDefinitionIds,
       streak: playerState.currentStreak,
     );
+  }
+
+  /// Set the active tab.
+  void setActiveTab(SanctuaryTab tab) {
+    state = state.copyWith(activeTab: tab);
   }
 
   void _updateFromInventory(InventoryState inventoryState) {

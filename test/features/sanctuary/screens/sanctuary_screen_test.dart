@@ -6,14 +6,13 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/species/species_service.dart';
-import 'package:earth_nova/features/achievements/screens/achievement_screen.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
-import 'package:earth_nova/features/sanctuary/widgets/habitat_section.dart';
 import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
@@ -107,26 +106,15 @@ void main() {
       expect(find.text('Sanctuary'), findsOneWidget);
     });
 
-    testWidgets('shows SanctuaryHealthIndicator', (tester) async {
+    testWidgets('shows SanctuaryHealthIndicator in Zoo tab', (tester) async {
       await _pumpScreen(tester);
       expect(find.byType(SanctuaryHealthIndicator), findsOneWidget);
     });
 
-    testWidgets('shows HabitatSection widgets', (tester) async {
-      await _pumpScreen(tester);
-      // With no collected species, the sanctuary shows an empty-state widget
-      // and hides habitat sections until the first species is discovered.
-      expect(find.byType(EmptyStateWidget), findsOneWidget);
-      expect(find.byType(HabitatSection), findsNothing);
-    });
-
-    testWidgets('shows habitat sections (lazy list renders visible items)',
+    testWidgets('shows empty state in Zoo tab when nothing collected',
         (tester) async {
       await _pumpScreen(tester);
-      // With no collected species the empty state is shown, not the sliver
-      // list.  Habitat sections only render once totalCollected > 0.
       expect(find.byType(EmptyStateWidget), findsOneWidget);
-      expect(find.byType(HabitatSection), findsNothing);
     });
 
     testWidgets('shows 0% health indicator when nothing collected',
@@ -141,17 +129,63 @@ void main() {
       expect(find.textContaining('species'), findsWidgets);
     });
 
-    testWidgets('AppBar has trophy icon button', (tester) async {
+    // -----------------------------------------------------------------------
+    // Tab bar tests
+    // -----------------------------------------------------------------------
+
+    testWidgets('renders TabBar with all 5 sanctuary tabs', (tester) async {
       await _pumpScreen(tester);
-      expect(find.byIcon(Icons.emoji_events), findsOneWidget);
+      expect(find.byType(TabBar), findsOneWidget);
+
+      for (final tab in SanctuaryTab.values) {
+        expect(
+          find.text('${tab.emoji} ${tab.displayName}'),
+          findsOneWidget,
+          reason: '${tab.displayName} tab label should be visible',
+        );
+      }
     });
 
-    testWidgets('tapping trophy icon navigates to AchievementScreen',
+    testWidgets('Zoo tab is selected by default', (tester) async {
+      await _pumpScreen(tester);
+      // Zoo tab content (health indicator) is visible on load
+      expect(find.byType(SanctuaryHealthIndicator), findsOneWidget);
+    });
+
+    testWidgets('tapping Feeding tab shows coming-soon stub', (tester) async {
+      await _pumpScreen(tester);
+      await tester.tap(find.text('🍎 Feeding'));
+      await tester.pumpAndSettle();
+      expect(find.text('Feeding coming soon'), findsOneWidget);
+    });
+
+    testWidgets('tapping Breeding tab shows coming-soon stub', (tester) async {
+      await _pumpScreen(tester);
+      await tester.tap(find.text('🧬 Breeding'));
+      await tester.pumpAndSettle();
+      expect(find.text('Breeding coming soon'), findsOneWidget);
+    });
+
+    testWidgets('tapping Museum tab shows coming-soon stub', (tester) async {
+      await _pumpScreen(tester);
+      await tester.tap(find.text('🏛️ Museum'));
+      await tester.pumpAndSettle();
+      expect(find.text('Museum coming soon'), findsOneWidget);
+    });
+
+    testWidgets('tapping Achievements tab shows achievement list',
         (tester) async {
       await _pumpScreen(tester);
-      await tester.tap(find.byIcon(Icons.emoji_events));
+      await tester.tap(find.text('🏆 Achievements'));
       await tester.pumpAndSettle();
-      expect(find.byType(AchievementScreen), findsOneWidget);
+      // Achievement list shows "X / Y Unlocked" header
+      expect(find.textContaining('Unlocked'), findsOneWidget);
+    });
+
+    testWidgets('does not show trophy icon button in AppBar', (tester) async {
+      await _pumpScreen(tester);
+      // Trophy icon was removed — achievements are now a tab
+      expect(find.byIcon(Icons.emoji_events), findsNothing);
     });
   });
 }
