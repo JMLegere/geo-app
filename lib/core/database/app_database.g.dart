@@ -2057,6 +2057,11 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
   late final GeneratedColumn<int> speed = GeneratedColumn<int>(
       'speed', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<String> size = GeneratedColumn<String>(
+      'size', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _artUrlMeta = const VerificationMeta('artUrl');
   @override
   late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
@@ -2079,6 +2084,7 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
         brawn,
         wit,
         speed,
+        size,
         artUrl,
         enrichedAt
       ];
@@ -2141,6 +2147,10 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
     } else if (isInserting) {
       context.missing(_speedMeta);
     }
+    if (data.containsKey('size')) {
+      context.handle(
+          _sizeMeta, size.isAcceptableOrUnknown(data['size']!, _sizeMeta));
+    }
     if (data.containsKey('art_url')) {
       context.handle(_artUrlMeta,
           artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
@@ -2174,6 +2184,8 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
           .read(DriftSqlType.int, data['${effectivePrefix}wit'])!,
       speed: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}speed'])!,
+      size: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}size']),
       artUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
       enrichedAt: attachedDatabase.typeMapping
@@ -2196,6 +2208,7 @@ class LocalSpeciesEnrichment extends DataClass
   final int brawn;
   final int wit;
   final int speed;
+  final String? size;
   final String? artUrl;
   final DateTime enrichedAt;
   const LocalSpeciesEnrichment(
@@ -2206,6 +2219,7 @@ class LocalSpeciesEnrichment extends DataClass
       required this.brawn,
       required this.wit,
       required this.speed,
+      this.size,
       this.artUrl,
       required this.enrichedAt});
   @override
@@ -2218,6 +2232,9 @@ class LocalSpeciesEnrichment extends DataClass
     map['brawn'] = Variable<int>(brawn);
     map['wit'] = Variable<int>(wit);
     map['speed'] = Variable<int>(speed);
+    if (!nullToAbsent || size != null) {
+      map['size'] = Variable<String>(size);
+    }
     if (!nullToAbsent || artUrl != null) {
       map['art_url'] = Variable<String>(artUrl);
     }
@@ -2234,6 +2251,7 @@ class LocalSpeciesEnrichment extends DataClass
       brawn: Value(brawn),
       wit: Value(wit),
       speed: Value(speed),
+      size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       artUrl:
           artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
       enrichedAt: Value(enrichedAt),
@@ -2251,6 +2269,7 @@ class LocalSpeciesEnrichment extends DataClass
       brawn: serializer.fromJson<int>(json['brawn']),
       wit: serializer.fromJson<int>(json['wit']),
       speed: serializer.fromJson<int>(json['speed']),
+      size: serializer.fromJson<String?>(json['size']),
       artUrl: serializer.fromJson<String?>(json['artUrl']),
       enrichedAt: serializer.fromJson<DateTime>(json['enrichedAt']),
     );
@@ -2266,6 +2285,7 @@ class LocalSpeciesEnrichment extends DataClass
       'brawn': serializer.toJson<int>(brawn),
       'wit': serializer.toJson<int>(wit),
       'speed': serializer.toJson<int>(speed),
+      'size': serializer.toJson<String?>(size),
       'artUrl': serializer.toJson<String?>(artUrl),
       'enrichedAt': serializer.toJson<DateTime>(enrichedAt),
     };
@@ -2279,6 +2299,7 @@ class LocalSpeciesEnrichment extends DataClass
           int? brawn,
           int? wit,
           int? speed,
+          Value<String?> size = const Value.absent(),
           Value<String?> artUrl = const Value.absent(),
           DateTime? enrichedAt}) =>
       LocalSpeciesEnrichment(
@@ -2289,6 +2310,7 @@ class LocalSpeciesEnrichment extends DataClass
         brawn: brawn ?? this.brawn,
         wit: wit ?? this.wit,
         speed: speed ?? this.speed,
+        size: size.present ? size.value : this.size,
         artUrl: artUrl.present ? artUrl.value : this.artUrl,
         enrichedAt: enrichedAt ?? this.enrichedAt,
       );
@@ -2307,6 +2329,7 @@ class LocalSpeciesEnrichment extends DataClass
       brawn: data.brawn.present ? data.brawn.value : this.brawn,
       wit: data.wit.present ? data.wit.value : this.wit,
       speed: data.speed.present ? data.speed.value : this.speed,
+      size: data.size.present ? data.size.value : this.size,
       artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
       enrichedAt:
           data.enrichedAt.present ? data.enrichedAt.value : this.enrichedAt,
@@ -2323,6 +2346,7 @@ class LocalSpeciesEnrichment extends DataClass
           ..write('brawn: $brawn, ')
           ..write('wit: $wit, ')
           ..write('speed: $speed, ')
+          ..write('size: $size, ')
           ..write('artUrl: $artUrl, ')
           ..write('enrichedAt: $enrichedAt')
           ..write(')'))
@@ -2331,7 +2355,7 @@ class LocalSpeciesEnrichment extends DataClass
 
   @override
   int get hashCode => Object.hash(definitionId, animalClass, foodPreference,
-      climate, brawn, wit, speed, artUrl, enrichedAt);
+      climate, brawn, wit, speed, size, artUrl, enrichedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2343,6 +2367,7 @@ class LocalSpeciesEnrichment extends DataClass
           other.brawn == this.brawn &&
           other.wit == this.wit &&
           other.speed == this.speed &&
+          other.size == this.size &&
           other.artUrl == this.artUrl &&
           other.enrichedAt == this.enrichedAt);
 }
@@ -2356,6 +2381,7 @@ class LocalSpeciesEnrichmentTableCompanion
   final Value<int> brawn;
   final Value<int> wit;
   final Value<int> speed;
+  final Value<String?> size;
   final Value<String?> artUrl;
   final Value<DateTime> enrichedAt;
   final Value<int> rowid;
@@ -2367,6 +2393,7 @@ class LocalSpeciesEnrichmentTableCompanion
     this.brawn = const Value.absent(),
     this.wit = const Value.absent(),
     this.speed = const Value.absent(),
+    this.size = const Value.absent(),
     this.artUrl = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2379,6 +2406,7 @@ class LocalSpeciesEnrichmentTableCompanion
     required int brawn,
     required int wit,
     required int speed,
+    this.size = const Value.absent(),
     this.artUrl = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2397,6 +2425,7 @@ class LocalSpeciesEnrichmentTableCompanion
     Expression<int>? brawn,
     Expression<int>? wit,
     Expression<int>? speed,
+    Expression<String>? size,
     Expression<String>? artUrl,
     Expression<DateTime>? enrichedAt,
     Expression<int>? rowid,
@@ -2409,6 +2438,7 @@ class LocalSpeciesEnrichmentTableCompanion
       if (brawn != null) 'brawn': brawn,
       if (wit != null) 'wit': wit,
       if (speed != null) 'speed': speed,
+      if (size != null) 'size': size,
       if (artUrl != null) 'art_url': artUrl,
       if (enrichedAt != null) 'enriched_at': enrichedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2423,6 +2453,7 @@ class LocalSpeciesEnrichmentTableCompanion
       Value<int>? brawn,
       Value<int>? wit,
       Value<int>? speed,
+      Value<String?>? size,
       Value<String?>? artUrl,
       Value<DateTime>? enrichedAt,
       Value<int>? rowid}) {
@@ -2434,6 +2465,7 @@ class LocalSpeciesEnrichmentTableCompanion
       brawn: brawn ?? this.brawn,
       wit: wit ?? this.wit,
       speed: speed ?? this.speed,
+      size: size ?? this.size,
       artUrl: artUrl ?? this.artUrl,
       enrichedAt: enrichedAt ?? this.enrichedAt,
       rowid: rowid ?? this.rowid,
@@ -2464,6 +2496,9 @@ class LocalSpeciesEnrichmentTableCompanion
     if (speed.present) {
       map['speed'] = Variable<int>(speed.value);
     }
+    if (size.present) {
+      map['size'] = Variable<String>(size.value);
+    }
     if (artUrl.present) {
       map['art_url'] = Variable<String>(artUrl.value);
     }
@@ -2486,6 +2521,7 @@ class LocalSpeciesEnrichmentTableCompanion
           ..write('brawn: $brawn, ')
           ..write('wit: $wit, ')
           ..write('speed: $speed, ')
+          ..write('size: $size, ')
           ..write('artUrl: $artUrl, ')
           ..write('enrichedAt: $enrichedAt, ')
           ..write('rowid: $rowid')
@@ -4006,6 +4042,7 @@ typedef $$LocalSpeciesEnrichmentTableTableCreateCompanionBuilder
   required int brawn,
   required int wit,
   required int speed,
+  Value<String?> size,
   Value<String?> artUrl,
   Value<DateTime> enrichedAt,
   Value<int> rowid,
@@ -4019,6 +4056,7 @@ typedef $$LocalSpeciesEnrichmentTableTableUpdateCompanionBuilder
   Value<int> brawn,
   Value<int> wit,
   Value<int> speed,
+  Value<String?> size,
   Value<String?> artUrl,
   Value<DateTime> enrichedAt,
   Value<int> rowid,
@@ -4054,6 +4092,9 @@ class $$LocalSpeciesEnrichmentTableTableFilterComposer
 
   ColumnFilters<int> get speed => $composableBuilder(
       column: $table.speed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnFilters(column));
@@ -4094,6 +4135,9 @@ class $$LocalSpeciesEnrichmentTableTableOrderingComposer
   ColumnOrderings<int> get speed => $composableBuilder(
       column: $table.speed, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnOrderings(column));
 
@@ -4130,6 +4174,9 @@ class $$LocalSpeciesEnrichmentTableTableAnnotationComposer
 
   GeneratedColumn<int> get speed =>
       $composableBuilder(column: $table.speed, builder: (column) => column);
+
+  GeneratedColumn<String> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
 
   GeneratedColumn<String> get artUrl =>
       $composableBuilder(column: $table.artUrl, builder: (column) => column);
@@ -4176,6 +4223,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             Value<int> brawn = const Value.absent(),
             Value<int> wit = const Value.absent(),
             Value<int> speed = const Value.absent(),
+            Value<String?> size = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
             Value<DateTime> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -4188,6 +4236,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             brawn: brawn,
             wit: wit,
             speed: speed,
+            size: size,
             artUrl: artUrl,
             enrichedAt: enrichedAt,
             rowid: rowid,
@@ -4200,6 +4249,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             required int brawn,
             required int wit,
             required int speed,
+            Value<String?> size = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
             Value<DateTime> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -4212,6 +4262,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             brawn: brawn,
             wit: wit,
             speed: speed,
+            size: size,
             artUrl: artUrl,
             enrichedAt: enrichedAt,
             rowid: rowid,

@@ -116,6 +116,7 @@ class LocalSpeciesEnrichmentTable extends Table {
   IntColumn get brawn => integer()();
   IntColumn get wit => integer()();
   IntColumn get speed => integer()();
+  TextColumn get size => text().nullable()();
   TextColumn get artUrl => text().nullable()();
   DateTimeColumn get enrichedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -202,7 +203,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -253,6 +254,11 @@ class AppDatabase extends _$AppDatabase {
               localPlayerProfileTable, localPlayerProfileTable.lastLat);
           await m.addColumn(
               localPlayerProfileTable, localPlayerProfileTable.lastLon);
+        }
+        if (from < 9) {
+          // Add size column to species enrichment (AnimalSize enum name).
+          await m.addColumn(
+              localSpeciesEnrichmentTable, localSpeciesEnrichmentTable.size);
         }
       },
     );
@@ -369,6 +375,7 @@ class AppDatabase extends _$AppDatabase {
       brawn: Value(enrichment.brawn),
       wit: Value(enrichment.wit),
       speed: Value(enrichment.speed),
+      size: Value(enrichment.size),
       artUrl: Value(enrichment.artUrl),
       enrichedAt: Value(enrichment.enrichedAt),
     );
