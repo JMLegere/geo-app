@@ -75,8 +75,7 @@ class EarthNovaTheme extends ThemeExtension<EarthNovaTheme> {
   factory EarthNovaTheme.dark(ColorScheme cs) => EarthNovaTheme(
         frostedGlassTint:
             cs.surfaceContainer.withValues(alpha: Opacities.frostedDark),
-        frostedGlassBorder:
-            cs.outline.withValues(alpha: Opacities.borderLight),
+        frostedGlassBorder: cs.outline.withValues(alpha: Opacities.borderLight),
         frostedNotificationTint: cs.surfaceContainerHigh
             .withValues(alpha: Opacities.frostedNotification),
         frostedNotificationBorder:
@@ -84,8 +83,8 @@ class EarthNovaTheme extends ThemeExtension<EarthNovaTheme> {
         cardShadow: Shadows.medium,
         elevatedShadow: Shadows.elevatedDark,
         successColor: const Color(0xFF10B981),
-        successContainerColor:
-            const Color(0xFF10B981).withValues(alpha: Opacities.badgeBackground),
+        successContainerColor: const Color(0xFF10B981)
+            .withValues(alpha: Opacities.badgeBackground),
       );
 
   /// Light mode — white frosted-glass, softer shadows.
@@ -101,8 +100,8 @@ class EarthNovaTheme extends ThemeExtension<EarthNovaTheme> {
         cardShadow: Shadows.soft,
         elevatedShadow: Shadows.elevated,
         successColor: const Color(0xFF10B981),
-        successContainerColor:
-            const Color(0xFF10B981).withValues(alpha: Opacities.badgeBackgroundSubtle),
+        successContainerColor: const Color(0xFF10B981)
+            .withValues(alpha: Opacities.badgeBackgroundSubtle),
       );
 
   // ── Static accessors ──────────────────────────────────────────────────────
@@ -118,21 +117,24 @@ class EarthNovaTheme extends ThemeExtension<EarthNovaTheme> {
 
   /// Badge background colour for each IUCN rarity tier.
   ///
-  /// Green → yellow → orange → red → dark red → black.
+  /// White → green → blue → gold → purple → amber.
   static Color rarityColor(IucnStatus status) => switch (status) {
-        IucnStatus.leastConcern => const Color(0xFF4CAF50),
-        IucnStatus.nearThreatened => const Color(0xFFFFEB3B),
-        IucnStatus.vulnerable => const Color(0xFFFF9800),
-        IucnStatus.endangered => const Color(0xFFF44336),
-        IucnStatus.criticallyEndangered => const Color(0xFFB71C1C),
-        IucnStatus.extinct => const Color(0xFF000000),
+        IucnStatus.leastConcern => const Color(0xFFFFFFFF), // white
+        IucnStatus.nearThreatened => const Color(0xFF4CAF50), // green
+        IucnStatus.vulnerable => const Color(0xFF2196F3), // blue
+        IucnStatus.endangered => const Color(0xFFFFD700), // gold
+        IucnStatus.criticallyEndangered => const Color(0xFF9C27B0), // purple
+        IucnStatus.extinct => const Color(0xFFFFC107), // amber
       };
 
-  /// Badge foreground colour — dark text on yellow, white on everything else.
-  static Color onRarityColor(IucnStatus status) =>
-      status == IucnStatus.nearThreatened
-          ? const Color(0xFF1A1A2E)
-          : Colors.white;
+  /// Badge foreground colour — dark text on light backgrounds (white, gold,
+  /// amber), white on everything else.
+  static Color onRarityColor(IucnStatus status) => switch (status) {
+        IucnStatus.leastConcern => const Color(0xFF1A1A2E), // dark on white
+        IucnStatus.endangered => const Color(0xFF1A1A2E), // dark on gold
+        IucnStatus.extinct => const Color(0xFF1A1A2E), // dark on amber
+        _ => Colors.white,
+      };
 
   /// Short IUCN code for badge labels.
   static String rarityLabel(IucnStatus status) => switch (status) {
