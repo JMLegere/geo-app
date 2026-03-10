@@ -48,11 +48,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
-  - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `artUrl` (nullable), `enrichedAt`
+  - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `size` (nullable text — `AnimalSize` enum name), `artUrl` (nullable), `enrichedAt`
   - `LocalWriteQueueTable`: `id` (int, autoIncrement PK), `entityType`, `entityId`, `operation`, `payload`, `userId`, `status` (default 'pending'), `attempts` (default 0), `lastError` (nullable), `createdAt`, `updatedAt`
 - Write queue query methods: `enqueueEntry`, `getPendingEntries`, `getRejectedEntries`, `countPendingEntries`, `confirmEntry`, `rejectEntry`, `incrementEntryAttempts`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
-- `schemaVersion = 4`. Migration v2→v3: LocalSpeciesEnrichmentTable. Migration v3→v4: LocalWriteQueueTable.
+- `schemaVersion = 9`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column on `LocalSpeciesEnrichmentTable`.
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
@@ -120,7 +120,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - Output via callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) — wired by `gameCoordinatorProvider`.
 - `onRawGpsUpdate` uses broadcast StreamController with `sync: true`.
 - `GpsError` and `GpsPermissionResult` mirror feature-layer enums to avoid core→features dependency.
-- Discovery processing: rolls intrinsic affix via StatsService, creates ItemInstance with UUID.
+- Discovery processing: rolls intrinsic affix via StatsService, creates ItemInstance with UUID. When enrichment includes `AnimalSize`, also rolls `weightGrams` via `StatsService.rollWeightGrams()` and adds `size` + `weightGrams` to intrinsic affix values map.
+- `enrichedStatsLookup` callback type: `({int speed, int brawn, int wit, AnimalSize? size})? Function(String definitionId)?`
 
 ---
 
@@ -128,7 +129,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Immutable value objects for domain entities.
 
-**Public API** (19 models):
+**Public API** (20 models):
 - `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 3^x progression: LC=243, NT=81, VU=27, EN=9, CR=3, EX=1.
 - `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
@@ -151,7 +152,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
 - `Continent`: enum (asia, northAmerica, southAmerica, africa, oceania, europe). `fromDataString(String)` handles IUCN format strings.
 - `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
-- `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
+- `AnimalSize`: enum (fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal). Each value has `minGrams` and `maxGrams` (metric). `rangeSpan` = maxGrams - minGrams + 1. `fromString(String)` parser (case-insensitive). 9 size categories from fine (1–49g) to colossal (15M–247M g). Colossal max = 130% of ~190t blue whale record.
+- `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `size: AnimalSize?`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `size` and `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
 
 **Conventions**:
 - All models are immutable with `@immutable` annotation
@@ -226,7 +228,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `cellProgressRepositoryProvider`: `Provider<CellProgressRepository>` — watches appDatabaseProvider. Cell visit persistence.
 - `profileRepositoryProvider`: `Provider<ProfileRepository>` — watches appDatabaseProvider. Player profile persistence.
 - `dailySeedServiceProvider`: `Provider<DailySeedService>` — reads `supabaseClientProvider`. Wires Supabase RPC `ensure_daily_seed()` as `SeedFetcher` callback. Works without Supabase (offline fallback).
-- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through.
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through. Enrichment cache type: `Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>`. Rolls weight when size is available during discovery/backfill.
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)

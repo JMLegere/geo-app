@@ -46,6 +46,22 @@ Generic weighted random selection:
 
 3^x progression. Higher weight = MORE common (not rarer).
 
+## StatsService
+
+Deterministic stat and weight rolling for item instances. Pure Dart, SHA-256 only (no `dart:math`).
+
+**Public API**:
+- `rollIntrinsicAffix(scientificName, instanceSeed, {enrichedStats})` → `Affix` with `{speed, brawn, wit}` values. Base stats from enrichment (sum=90) get ±30 per-instance variance, clamped to [1, 100].
+- `rollWeightGrams(AnimalSize size, String instanceSeed)` → `int` (grams). Uses `SHA-256("weight:$instanceSeed")` → first 4 bytes → BigInt mod rangeSpan + minGrams. Domain-separated seed prefix `kWeightSeedPrefix = 'weight:'`.
+
+**Conventions**:
+- Seed format for stats: `"$scientificName:$instanceSeed"` — changing this breaks all existing stat rolls
+- Seed format for weight: `"weight:$instanceSeed"` — domain-separated from stats to ensure independence
+- Weight is an integer number of **grams** within the `AnimalSize` band's `[minGrams, maxGrams]` range
+- Each instance gets a unique weight — seeded by instance UUID, no daily seed involved
+- Without enrichment, `rollIntrinsicAffix` uses fallback base stats (30, 30, 30)
+- Without size, weight is not rolled (omitted from affix values map)
+
 ## Gotchas
 
 - Changing SHA-256 algorithm or seed format breaks ALL existing cell→species mappings
