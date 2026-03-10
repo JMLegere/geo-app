@@ -11,7 +11,7 @@ import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
 /// Compact Pokémon-PC-box-style grid cell for a single [ItemInstance].
 ///
-/// Renders a habitat gradient background, the creature emoji (or habitat/
+/// Renders a habitat gradient background, the creature icon (or habitat/
 /// fallback), a tiny [RarityBadge] in the top-right corner, and the
 /// display name truncated to one line at the bottom.
 ///
@@ -96,12 +96,12 @@ class ItemSlotWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Main area: emoji + badges ────────────────────────────────
+            // ── Main area: icon + badges ─────────────────────────────────
             Expanded(
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Creature / habitat emoji centred
+                  // Creature / habitat icon centred
                   Center(
                     child: Text(
                       _resolveEmoji(def),
@@ -163,9 +163,9 @@ class ItemSlotWidget extends StatelessWidget {
     return slot;
   }
 
-  /// Returns the best emoji to display for this item.
+  /// Returns the best icon to display for this item.
   ///
-  /// Priority: animalClass emoji → animalType emoji → habitat emoji → unknown.
+  /// Priority: animalClass icon → animalType icon → habitat icon → unknown.
   static String _resolveEmoji(FaunaDefinition? def) {
     if (def == null) return GameIcons.unknown;
     return GameIcons.fauna(def);

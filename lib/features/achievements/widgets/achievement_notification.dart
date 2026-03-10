@@ -152,8 +152,9 @@ class _AchievementToast extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                definition.emoji,
-                style: const TextStyle(fontSize: ComponentSizes.notificationEmoji),
+                definition.icon,
+                style: const TextStyle(
+                    fontSize: ComponentSizes.notificationIconSize),
               ),
             ),
           ),

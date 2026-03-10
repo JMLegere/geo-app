@@ -12,14 +12,14 @@ import 'package:earth_nova/core/models/season.dart';
 // ═══════════════════════════════════════════════════════════════════════════════
 // EarthNova Game Iconography
 //
-// Emoji placeholders for every game concept. These will eventually be replaced
+// Icon placeholders for every game concept. These will eventually be replaced
 // with custom sprite assets. Every UI that shows a game concept should pull
-// its icon from here — never hardcode emoji inline.
+// its icon from here — never hardcode an icon string inline.
 //
 // Organized by domain. Lookup via static methods that accept domain enums.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Centralized emoji icons for all game concepts.
+/// Centralized icons for all game concepts.
 ///
 /// Usage:
 /// ```dart
@@ -43,7 +43,7 @@ abstract final class GameIcons {
   // ── Animal Types (5) ─────────────────────────────────────────────────────
 
   static String animalType(AnimalType type) => switch (type) {
-        AnimalType.mammal => '🦊',
+        AnimalType.mammal => '🐾',
         AnimalType.bird => '🐦',
         AnimalType.fish => '🐟',
         AnimalType.reptile => '🦎',
@@ -55,10 +55,10 @@ abstract final class GameIcons {
   static String animalClass(AnimalClass cls) => switch (cls) {
         // Bird (7)
         AnimalClass.birdOfPrey => '🦅',
-        AnimalClass.gameBird => '🐔',
+        AnimalClass.gameBird => '🦃',
         AnimalClass.nightbird => '🦉',
         AnimalClass.parrot => '🦜',
-        AnimalClass.songbird => '🐤',
+        AnimalClass.songbird => '🐦',
         AnimalClass.waterfowl => '🦆',
         AnimalClass.woodpecker => '🪶',
         // Bug (9)
@@ -74,19 +74,19 @@ abstract final class GameIcons {
         // Fish (6)
         AnimalClass.cartilaginousFish => '🦈',
         AnimalClass.cephalopod => '🐙',
-        AnimalClass.clamsUrchinsAndCrustaceans => '🦀',
-        AnimalClass.jawlessFish => '🐡',
-        AnimalClass.lobeFinnedFish => '🐠',
-        AnimalClass.rayFinnedFish => '🐟',
+        AnimalClass.clamsUrchinsAndCrustaceans => '🦞',
+        AnimalClass.jawlessFish => '🐟',
+        AnimalClass.lobeFinnedFish => '🐟',
+        AnimalClass.rayFinnedFish => '🐠',
         // Mammal (8)
         AnimalClass.bat => '🦇',
-        AnimalClass.carnivore => '🐺',
+        AnimalClass.carnivore => '🦁',
         AnimalClass.hare => '🐇',
         AnimalClass.herbivore => '🦌',
         AnimalClass.primate => '🐒',
-        AnimalClass.rodent => '🐀',
+        AnimalClass.rodent => '🐭',
         AnimalClass.seaMammal => '🐋',
-        AnimalClass.shrew => '🐭',
+        AnimalClass.shrew => '🐀',
         // Reptile (5)
         AnimalClass.amphibian => '🐸',
         AnimalClass.crocodile => '🐊',
@@ -95,7 +95,7 @@ abstract final class GameIcons {
         AnimalClass.turtle => '🐢',
       };
 
-  /// Best emoji for a fauna item: class → type → habitat → unknown.
+  /// Best icon for a fauna item: class → type → habitat → unknown.
   static String fauna(FaunaDefinition def) {
     if (def.animalClass != null) return animalClass(def.animalClass!);
     if (def.animalType != null) return animalType(def.animalType!);
@@ -187,4 +187,7 @@ abstract final class GameIcons {
   static const String steps = '🚶';
   static const String unknown = '❓';
   static const String empty = '◻️';
+  static const String town = '🏘️';
+  static const String globe = '🌍';
+  static const String error = '😕';
 }

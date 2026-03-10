@@ -199,7 +199,7 @@ class _AchievementTile extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  definition.emoji,
+                  definition.icon,
                   style: const TextStyle(fontSize: 26),
                 ),
               ),

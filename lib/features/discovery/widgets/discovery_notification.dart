@@ -4,9 +4,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
@@ -211,6 +213,16 @@ class _DiscoveryCard extends StatelessWidget {
 
   const _DiscoveryCard({super.key, required this.event});
 
+  /// Returns the best icon for the discovered item.
+  ///
+  /// Fallback chain: animalClass → animalType → habitat → unknown.
+  static String _iconForItem(ItemDefinition item) {
+    if (item is FaunaDefinition) {
+      return GameIcons.fauna(item);
+    }
+    return GameIcons.unknown;
+  }
+
   @override
   Widget build(BuildContext context) {
     final item = event.item;
@@ -234,10 +246,11 @@ class _DiscoveryCard extends StatelessWidget {
               color: rarityColor.withValues(alpha: Opacities.badgeBackground),
               borderRadius: Radii.borderLg,
             ),
-            child: const Center(
+            child: Center(
               child: Text(
-                '🦎',
-                style: TextStyle(fontSize: ComponentSizes.notificationEmoji),
+                _iconForItem(item),
+                style: const TextStyle(
+                    fontSize: ComponentSizes.notificationIconSize),
               ),
             ),
           ),

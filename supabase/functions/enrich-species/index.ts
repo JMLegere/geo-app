@@ -22,6 +22,7 @@ interface EnrichRequest {
   scientific_name: string;
   common_name: string;
   taxonomic_class: string;
+  valid_animal_classes?: string[];
   force?: boolean;
 }
 
@@ -46,7 +47,10 @@ interface EnrichmentResponse {
   speed: number;
 }
 
-function isValidEnrichment(data: unknown): data is EnrichmentResponse {
+function isValidEnrichment(
+  data: unknown,
+  validAnimalClasses?: string[],
+): data is EnrichmentResponse {
   if (typeof data !== "object" || data === null) return false;
   const d = data as Record<string, unknown>;
   if (!ANIMAL_CLASSES.includes(d.animal_class as string)) return false;
@@ -59,6 +63,11 @@ function isValidEnrichment(data: unknown): data is EnrichmentResponse {
   if (!Number.isInteger(wit) || wit < 0) return false;
   if (!Number.isInteger(speed) || speed < 0) return false;
   if (brawn + wit + speed !== 90) return false;
+
+  if (validAnimalClasses?.length &&
+      !validAnimalClasses.includes(d.animal_class as string)) {
+    return false;
+  }
   return true;
 }
 
@@ -67,9 +76,14 @@ async function callLLM(
   scientificName: string,
   commonName: string,
   taxonomicClass: string,
+  validAnimalClasses?: string[],
 ): Promise<EnrichmentResponse> {
+  const classConstraint = validAnimalClasses?.length
+    ? `CRITICAL: You MUST pick animal_class from ONLY these: [${validAnimalClasses.join(", ")}]`
+    : `- animal_class: one of [${ANIMAL_CLASSES.join(", ")}]`;
+
   const prompt = `You are a wildlife classification expert. Given this species, return a JSON object with EXACTLY these fields:
-- animal_class: one of [${ANIMAL_CLASSES.join(", ")}]
+${classConstraint}
 - food_preference: one of [${FOOD_TYPES.join(", ")}] — pick based on the species' PRIMARY real-world diet:
     critter = small animals (mice, lizards, frogs, small birds — for predators)
     fish = fish, aquatic prey (for piscivores)
@@ -128,8 +142,10 @@ Return only valid JSON, no markdown.`;
   if (!text) throw new Error("Empty Groq response");
 
   const parsed = JSON.parse(text);
-  if (!isValidEnrichment(parsed)) {
-    throw new Error(`Invalid enrichment from Groq: ${JSON.stringify(parsed)}`);
+  if (!isValidEnrichment(parsed, validAnimalClasses)) {
+    throw new Error(
+      `Invalid enrichment from Groq for ${taxonomicClass}: ${JSON.stringify(parsed)}`,
+    );
   }
   return parsed;
 }
@@ -141,7 +157,7 @@ serve(async (req: Request) => {
 
   try {
     const body: EnrichRequest = await req.json();
-    const { definition_id, scientific_name, common_name, taxonomic_class, force } = body;
+    const { definition_id, scientific_name, common_name, taxonomic_class, valid_animal_classes, force } = body;
 
     if (!definition_id || !scientific_name || !common_name || !taxonomic_class) {
       return new Response(
@@ -150,7 +166,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // Input length validation — prevent prompt injection and token abuse
     if (definition_id.length > 200 || scientific_name.length > 200 ||
         common_name.length > 200 || taxonomic_class.length > 100) {
       return new Response(
@@ -158,6 +173,10 @@ serve(async (req: Request) => {
         { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
+
+    const sanitizedClasses = valid_animal_classes?.filter(
+      (c) => ANIMAL_CLASSES.includes(c),
+    );
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -192,7 +211,7 @@ serve(async (req: Request) => {
       });
     }
 
-    const enrichment = await callLLM(groqKey, scientific_name, common_name, taxonomic_class);
+    const enrichment = await callLLM(groqKey, scientific_name, common_name, taxonomic_class, sanitizedClasses);
 
     const row: Omit<EnrichmentRow, "enriched_at"> = {
       definition_id,

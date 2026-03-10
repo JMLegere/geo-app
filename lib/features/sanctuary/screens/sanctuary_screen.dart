@@ -121,7 +121,7 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen>
                 (tab) => Tab(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-                    child: Text('${tab.emoji} ${tab.displayName}'),
+                    child: Text('${tab.icon} ${tab.displayName}'),
                   ),
                 ),
               )

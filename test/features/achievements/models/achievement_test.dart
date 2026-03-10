@@ -40,12 +40,12 @@ void main() {
       }
     });
 
-    test('all definitions have non-empty emoji', () {
+    test('all definitions have non-empty icon', () {
       for (final def in kAchievementDefinitions.values) {
         expect(
-          def.emoji.trim().isNotEmpty,
+          def.icon.trim().isNotEmpty,
           isTrue,
-          reason: '${def.id} has an empty emoji',
+          reason: '${def.id} has an empty icon',
         );
       }
     });
@@ -55,7 +55,8 @@ void main() {
         expect(
           def.targetValue > 0,
           isTrue,
-          reason: '${def.id} has targetValue=${def.targetValue} which is not positive',
+          reason:
+              '${def.id} has targetValue=${def.targetValue} which is not positive',
         );
       }
     });

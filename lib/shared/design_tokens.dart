@@ -237,11 +237,11 @@ abstract final class ComponentSizes {
   /// Standard button height.
   static const double buttonHeight = 52;
 
-  /// Empty-state emoji size.
-  static const double emptyStateEmoji = 52;
+  /// Empty-state icon size.
+  static const double emptyStateIcon = 52;
 
-  /// Notification emoji size.
-  static const double notificationEmoji = 24;
+  /// Notification icon size (font/icon size inside notification container).
+  static const double notificationIconSize = 24;
 
   /// Silhouette placeholder size (uncollected species).
   static const double silhouetteBox = 48;

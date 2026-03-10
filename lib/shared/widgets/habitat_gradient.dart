@@ -59,8 +59,8 @@ abstract final class HabitatGradient {
     );
   }
 
-  /// Returns the habitat emoji for placeholder art.
-  static String emoji(Habitat habitat) => switch (habitat) {
+  /// Returns the habitat icon for placeholder art.
+  static String icon(Habitat habitat) => switch (habitat) {
         Habitat.forest => '🌲',
         Habitat.plains => '🌾',
         Habitat.freshwater => '💧',

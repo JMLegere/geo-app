@@ -58,7 +58,7 @@ class SaveProgressBanner extends ConsumerWidget {
               ),
               child: Icon(
                 Icons.cloud_upload_outlined,
-                size: ComponentSizes.notificationEmoji,
+                size: ComponentSizes.notificationIconSize,
                 color: Theme.of(context).colorScheme.onPrimaryContainer,
               ),
             ),

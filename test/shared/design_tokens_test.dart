@@ -164,13 +164,14 @@ void main() {
         Opacities.badgeBackgroundSubtle,
       ];
       for (final v in values) {
-        expect(v, inInclusiveRange(0.0, 1.0), reason: 'Opacity $v out of range');
+        expect(v, inInclusiveRange(0.0, 1.0),
+            reason: 'Opacity $v out of range');
       }
     });
 
     test('notification frosted is most opaque', () {
-      expect(Opacities.frostedNotification,
-          greaterThan(Opacities.frostedLight));
+      expect(
+          Opacities.frostedNotification, greaterThan(Opacities.frostedLight));
       expect(Opacities.frostedLight, greaterThan(Opacities.frostedDark));
     });
   });
@@ -181,8 +182,8 @@ void main() {
     test('all sizes are positive', () {
       expect(ComponentSizes.notificationIcon, greaterThan(0));
       expect(ComponentSizes.buttonHeight, greaterThan(0));
-      expect(ComponentSizes.emptyStateEmoji, greaterThan(0));
-      expect(ComponentSizes.notificationEmoji, greaterThan(0));
+      expect(ComponentSizes.emptyStateIcon, greaterThan(0));
+      expect(ComponentSizes.notificationIcon, greaterThan(0));
       expect(ComponentSizes.silhouetteBox, greaterThan(0));
     });
   });

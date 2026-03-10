@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/core/models/season.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 /// A compact pill badge showing the current [Season].
 ///
-/// Renders an emoji + label on a tinted background:
+/// Renders an icon + label on a tinted background:
 /// - Summer → ☀️ "Summer" on amber-50 (#FFF9C4)
 /// - Winter → ❄️ "Winter" on blue-100 (#BBDEFB)
 ///
@@ -36,9 +37,7 @@ class SeasonIndicator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         // Amber-50 for summer, Blue-100 for winter.
-        color: isSummer
-            ? const Color(0xFFFFF9C4)
-            : const Color(0xFFBBDEFB),
+        color: isSummer ? const Color(0xFFFFF9C4) : const Color(0xFFBBDEFB),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -46,7 +45,7 @@ class SeasonIndicator extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            isSummer ? '☀️' : '❄️',
+            GameIcons.season(season),
             style: const TextStyle(fontSize: 12),
           ),
           const SizedBox(width: 4),

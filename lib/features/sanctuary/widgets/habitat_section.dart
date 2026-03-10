@@ -3,13 +3,13 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/features/sanctuary/widgets/sanctuary_species_tile.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
-import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/habitat_colors.dart';
 
 /// One collapsible section in the Sanctuary screen for a single habitat.
 ///
 /// Shows:
-/// - Header row: habitat emoji + name (bold 16px) + species count (muted 13px)
+/// - Header row: habitat icon + name (bold 16px) + species count (muted 13px)
 /// - 2-column grid of [SanctuarySpeciesTile] for each collected species
 /// - Empty state message when [species] is empty
 class HabitatSection extends StatelessWidget {
@@ -34,17 +34,18 @@ class HabitatSection extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
           child: Row(
             children: [
-              // Habitat emoji in tinted pill
+              // Habitat icon in tinted pill
               Container(
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: HabitatColors.primaryFor(habitat).withValues(alpha: 0.12),
+                  color:
+                      HabitatColors.primaryFor(habitat).withValues(alpha: 0.12),
                   borderRadius: Radii.borderLg,
                 ),
                 child: Center(
                   child: Text(
-                    EarthNovaTheme.habitatEmojis[habitat.name] ?? '🌍',
+                    GameIcons.habitat(habitat),
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
@@ -65,8 +66,7 @@ class HabitatSection extends StatelessWidget {
 
               // Count chip
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: Radii.borderMd,
@@ -120,5 +120,3 @@ class HabitatSection extends StatelessWidget {
     );
   }
 }
-
-

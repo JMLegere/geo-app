@@ -5,7 +5,7 @@ import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
 /// Placeholder tab for sanctuary features not yet implemented.
 ///
-/// Shows an [EmptyStateWidget] with the tab emoji and a "coming soon"
+/// Shows an [EmptyStateWidget] with the tab icon and a "coming soon"
 /// message. Used for Feeding, Breeding, and Museum until those features
 /// have real UI.
 class SanctuaryStubTab extends StatelessWidget {
@@ -17,7 +17,7 @@ class SanctuaryStubTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return EmptyStateWidget(
-      icon: tab.emoji,
+      icon: tab.icon,
       title: '${tab.displayName} coming soon',
       subtitle: 'This feature will be available in a future update.',
     );

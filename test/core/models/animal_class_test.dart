@@ -119,7 +119,8 @@ void main() {
       });
 
       test('lobeFinnedFish → "Lobe-finned Fish"', () {
-        expect(AnimalClass.lobeFinnedFish.displayName, equals('Lobe-finned Fish'));
+        expect(
+            AnimalClass.lobeFinnedFish.displayName, equals('Lobe-finned Fish'));
       });
 
       test('landMollusk → "Land Mollusk"', () {
@@ -127,7 +128,8 @@ void main() {
       });
 
       test('rayFinnedFish → "Ray-finned Fish"', () {
-        expect(AnimalClass.rayFinnedFish.displayName, equals('Ray-finned Fish'));
+        expect(
+            AnimalClass.rayFinnedFish.displayName, equals('Ray-finned Fish'));
       });
     });
 

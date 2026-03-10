@@ -25,7 +25,7 @@ enum SanctuaryTab {
         SanctuaryTab.achievements => 'Achievements',
       };
 
-  String get emoji => switch (this) {
+  String get icon => switch (this) {
         SanctuaryTab.zoo => '🏠',
         SanctuaryTab.feeding => '🍎',
         SanctuaryTab.breeding => '🧬',

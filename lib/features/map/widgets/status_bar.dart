@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
 
 /// Top status bar showing key exploration stats (Apple Maps style).
 ///
 /// Reads [playerProvider] for live stats:
-/// - 🔍 Cells observed
-/// - 🔥 Current exploration streak in days
+/// - Cells observed
+/// - Current exploration streak in days
 ///
 /// Uses a translucent frosted-glass background via [FrostedGlassContainer]
 /// and respects the device's safe area (status bar height).
@@ -37,24 +38,28 @@ class StatusBar extends ConsumerWidget {
       blur: Blurs.statusBar,
       bottomBorderOnly: true,
       borderRadius: 0,
-      padding: EdgeInsets.fromLTRB(Spacing.lg, topPadding + Spacing.sm, Spacing.lg, 10),
+      padding: EdgeInsets.fromLTRB(
+          Spacing.lg, topPadding + Spacing.sm, Spacing.lg, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _StatPill(emoji: '🔍', value: '${player.cellsObserved} cells'),
-          _StatPill(emoji: '🔥', value: '${player.currentStreak} days'),
+          _StatPill(
+              icon: GameIcons.cellsExplored,
+              value: '${player.cellsObserved} cells'),
+          _StatPill(
+              icon: GameIcons.streak, value: '${player.currentStreak} days'),
         ],
       ),
     );
   }
 }
 
-/// A compact stat chip with an emoji label and a formatted value.
+/// A compact stat chip with an icon label and a formatted value.
 class _StatPill extends StatelessWidget {
-  final String emoji;
+  final String icon;
   final String value;
 
-  const _StatPill({required this.emoji, required this.value});
+  const _StatPill({required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +69,8 @@ class _StatPill extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: Spacing.md, vertical: 5),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh.withValues(alpha: Opacities.chipBackground),
+        color:
+            cs.surfaceContainerHigh.withValues(alpha: Opacities.chipBackground),
         borderRadius: Radii.borderXxxl,
         border: Border.all(
           color: cs.outline.withValues(alpha: Opacities.borderSubtle),
@@ -72,7 +78,7 @@ class _StatPill extends StatelessWidget {
         ),
       ),
       child: Text(
-        '$emoji $value',
+        '$icon $value',
         style: tt.labelMedium?.copyWith(
           color: cs.onSurface,
           letterSpacing: 0.2,
