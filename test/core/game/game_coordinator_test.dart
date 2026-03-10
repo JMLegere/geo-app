@@ -62,6 +62,53 @@ class _MockCellService implements CellService {
 }
 
 // ---------------------------------------------------------------------------
+// _GridCellService — grid with real neighbors (for exploration guard tests).
+// Cell IDs: "lat_lon" from rounded coords. Neighbors = 4 cardinal directions.
+// ---------------------------------------------------------------------------
+class _GridCellService implements CellService {
+  @override
+  String getCellId(double lat, double lon) => '${lat.round()}_${lon.round()}';
+
+  @override
+  Geographic getCellCenter(String cellId) {
+    final parts = cellId.split('_');
+    return Geographic(
+      lat: double.parse(parts[0]),
+      lon: double.parse(parts[1]),
+    );
+  }
+
+  @override
+  List<Geographic> getCellBoundary(String cellId) => [];
+
+  @override
+  List<String> getNeighborIds(String cellId) {
+    final parts = cellId.split('_');
+    final r = int.parse(parts[0]);
+    final c = int.parse(parts[1]);
+    return [
+      '${r - 1}_$c', // north
+      '${r + 1}_$c', // south
+      '${r}_${c - 1}', // west
+      '${r}_${c + 1}', // east
+    ];
+  }
+
+  @override
+  List<String> getCellsInRing(String cellId, int k) => [cellId];
+
+  @override
+  List<String> getCellsAroundLocation(double lat, double lon, int k) =>
+      [getCellId(lat, lon)];
+
+  @override
+  double get cellEdgeLengthMeters => 100.0;
+
+  @override
+  String get systemName => 'GridWithNeighbors';
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -69,12 +116,15 @@ typedef _GpsUpdate = ({Geographic position, double accuracy});
 
 GameCoordinator _makeCoordinator({
   FogStateResolver? fogResolver,
+  CellService? cellService,
   StatsService statsService = const StatsService(),
   bool isRealGps = false,
 }) {
+  final cells = cellService ?? _MockCellService();
   return GameCoordinator(
-    fogResolver: fogResolver ?? FogStateResolver(_MockCellService()),
+    fogResolver: fogResolver ?? FogStateResolver(cells),
     statsService: statsService,
+    cellService: cells,
     isRealGps: isRealGps,
   );
 }
@@ -1006,6 +1056,227 @@ void main() {
 
         s.gps.close();
         s.discovery.close();
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // Exploration guard
+    // -----------------------------------------------------------------------
+    group('exploration guard', () {
+      test('exploration allowed when marker cell matches GPS cell', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        // Set raw GPS to (10, 20).
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        final fogUpdates = <Geographic>[];
+        c.onPlayerLocationUpdate = (pos, acc) => fogUpdates.add(pos);
+
+        // Marker in same cell as GPS → exploration should proceed.
+        c.updatePlayerPosition(10.0, 20.0);
+
+        expect(c.explorationDisabled, isFalse);
+        expect(fogUpdates, hasLength(1));
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('exploration allowed when marker cell is adjacent to GPS cell', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        // GPS at (10, 20). Neighbors: 9_20, 11_20, 10_19, 10_21.
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        final fogUpdates = <Geographic>[];
+        c.onPlayerLocationUpdate = (pos, acc) => fogUpdates.add(pos);
+
+        // Marker at (11, 20) — adjacent cell → should be allowed.
+        c.updatePlayerPosition(11.0, 20.0);
+
+        expect(c.explorationDisabled, isFalse);
+        expect(fogUpdates, hasLength(1));
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('exploration disabled when marker cell is beyond adjacent cells',
+          () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        // GPS at (10, 20).
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        bool? disabledCallbackValue;
+        c.onExplorationDisabledChanged = (disabled) {
+          disabledCallbackValue = disabled;
+        };
+
+        final fogUpdates = <Geographic>[];
+        c.onPlayerLocationUpdate = (pos, acc) => fogUpdates.add(pos);
+
+        // Marker at (15, 25) — 2+ cells away → exploration disabled.
+        c.updatePlayerPosition(15.0, 25.0);
+
+        expect(c.explorationDisabled, isTrue);
+        expect(disabledCallbackValue, isTrue);
+        // Position should still be pushed for UI (camera/marker).
+        expect(fogUpdates, hasLength(1));
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('exploration re-enables when marker catches up to GPS cell', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        // GPS at (10, 20).
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        final disabledHistory = <bool>[];
+        c.onExplorationDisabledChanged = (disabled) {
+          disabledHistory.add(disabled);
+        };
+
+        // Frame 1: far away → disabled.
+        c.updatePlayerPosition(15.0, 25.0);
+        expect(c.explorationDisabled, isTrue);
+
+        // Frames 2-5: fill throttle (no game logic runs).
+        for (var i = 0; i < 4; i++) {
+          c.updatePlayerPosition(15.0, 25.0);
+        }
+
+        // Frame 6: catch up to GPS cell → re-enabled.
+        c.updatePlayerPosition(10.0, 20.0);
+        expect(c.explorationDisabled, isFalse);
+        expect(disabledHistory, [true, false]);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('exploration allowed before first GPS fix (rawGps null)', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        // No GPS update — rawGpsPosition is null.
+        expect(c.rawGpsPosition, isNull);
+
+        final fogUpdates = <Geographic>[];
+        c.onPlayerLocationUpdate = (pos, acc) => fogUpdates.add(pos);
+
+        // Should still process game logic normally.
+        c.updatePlayerPosition(10.0, 20.0);
+
+        expect(c.explorationDisabled, isFalse);
+        expect(fogUpdates, hasLength(1));
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('callback only fires on state transitions, not every tick', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        final s = _startCoordinator(c);
+
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        final disabledHistory = <bool>[];
+        c.onExplorationDisabledChanged = (disabled) {
+          disabledHistory.add(disabled);
+        };
+
+        // Frame 1: disabled (far away). Frame 6: still disabled (different
+        // far-away cell). Both process game logic, but callback fires once.
+        c.updatePlayerPosition(15.0, 25.0); // frame 1 → processes
+        c.updatePlayerPosition(16.0, 26.0); // frame 2 → skipped
+        c.updatePlayerPosition(17.0, 27.0); // frame 3 → skipped
+        c.updatePlayerPosition(18.0, 28.0); // frame 4 → skipped
+        c.updatePlayerPosition(19.0, 29.0); // frame 5 → skipped
+        c.updatePlayerPosition(
+            20.0, 30.0); // frame 6 → processes, still disabled
+
+        expect(disabledHistory, [true]); // Only one transition.
+
+        // Frame 7-11: fill. Frame 12: catches up → re-enabled.
+        c.updatePlayerPosition(10.0, 20.0); // frame 7 → skipped
+        c.updatePlayerPosition(10.0, 20.0); // frame 8 → skipped
+        c.updatePlayerPosition(10.0, 20.0); // frame 9 → skipped
+        c.updatePlayerPosition(10.0, 20.0); // frame 10 → skipped
+        c.updatePlayerPosition(10.0, 20.0); // frame 11 → skipped
+        c.updatePlayerPosition(10.0, 20.0); // frame 12 → processes, re-enabled
+
+        expect(disabledHistory, [true, false]); // Only two transitions total.
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('fog is NOT updated when exploration is disabled', () {
+        final cells = _GridCellService();
+        final fogResolver = FogStateResolver(cells);
+        final c = _makeCoordinator(
+          cellService: cells,
+          fogResolver: fogResolver,
+        );
+        final s = _startCoordinator(c);
+
+        // GPS at (10, 20).
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        // Frame 1: visit (10, 20) normally to establish it as visited.
+        c.updatePlayerPosition(10.0, 20.0);
+        final visitedBefore = fogResolver.visitedCellIds.length;
+
+        // Frames 2-5: fill throttle.
+        for (var i = 0; i < 4; i++) {
+          c.updatePlayerPosition(10.0, 20.0);
+        }
+
+        // Frame 6: move marker far away → disabled, fog NOT updated.
+        c.updatePlayerPosition(15.0, 25.0);
+        expect(c.explorationDisabled, isTrue);
+        expect(fogResolver.visitedCellIds.length, visitedBefore);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
       });
     });
   });
