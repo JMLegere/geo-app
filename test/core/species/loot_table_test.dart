@@ -128,17 +128,15 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Weight distribution — 10^x scaling
+  // Weight distribution — 3^x scaling
   // ---------------------------------------------------------------------------
 
   group('LootTable weight distribution', () {
-    test(
-        'LC (100000) appears ~10x more often than NT (10000) over 10,000 rolls',
-        () {
+    test('LC (243) appears ~3x more often than NT (81) over 10,000 rolls', () {
       // Two items with LC and NT weights.
       final table = LootTable<String>([
-        ('LC', 100000),
-        ('NT', 10000),
+        ('LC', 243),
+        ('NT', 81),
       ]);
 
       var lcCount = 0;
@@ -151,25 +149,25 @@ void main() {
         if (result == 'NT') ntCount++;
       }
 
-      // LC should be ~10x more common than NT.
-      // With 10,000 rolls: expected LC ≈ 9091, NT ≈ 909.
+      // LC should be ~3x more common than NT.
+      // With 10,000 rolls: expected LC ≈ 7500, NT ≈ 2500.
       // Allow generous bounds to avoid flakiness.
-      expect(lcCount, greaterThan(ntCount * 7),
-          reason: 'LC weight (100000) should dominate NT weight (10000)');
+      expect(lcCount, greaterThan(ntCount * 2),
+          reason: 'LC weight (243) should dominate NT weight (81)');
     });
 
     test('length and totalWeight reflect the entries', () {
       final table = LootTable<String>([
-        ('a', 100000),
-        ('b', 10000),
-        ('c', 1000),
-        ('d', 100),
-        ('e', 10),
+        ('a', 243),
+        ('b', 81),
+        ('c', 27),
+        ('d', 9),
+        ('e', 3),
         ('f', 1),
       ]);
 
       expect(table.length, equals(6));
-      expect(table.totalWeight, equals(111111));
+      expect(table.totalWeight, equals(364));
     });
   });
 }

@@ -1,13 +1,12 @@
 /// IUCN Red List conservation status, used as rarity tiers.
 ///
-/// Weights follow a 10^x progression (Path of Exile loot table style).
-/// Each tier is 10x rarer than the one above it.
+/// Weights follow a 3^x progression. Each tier is 3x rarer than the one above.
 enum IucnStatus {
-  leastConcern(100000),
-  nearThreatened(10000),
-  vulnerable(1000),
-  endangered(100),
-  criticallyEndangered(10),
+  leastConcern(243),
+  nearThreatened(81),
+  vulnerable(27),
+  endangered(9),
+  criticallyEndangered(3),
   extinct(1);
 
   /// Loot table weight. Higher = more common.
@@ -16,23 +15,23 @@ enum IucnStatus {
   const IucnStatus(this.weight);
 
   String get displayName => switch (this) {
-    IucnStatus.leastConcern => 'Least Concern',
-    IucnStatus.nearThreatened => 'Near Threatened',
-    IucnStatus.vulnerable => 'Vulnerable',
-    IucnStatus.endangered => 'Endangered',
-    IucnStatus.criticallyEndangered => 'Critically Endangered',
-    IucnStatus.extinct => 'Extinct',
-  };
+        IucnStatus.leastConcern => 'Least Concern',
+        IucnStatus.nearThreatened => 'Near Threatened',
+        IucnStatus.vulnerable => 'Vulnerable',
+        IucnStatus.endangered => 'Endangered',
+        IucnStatus.criticallyEndangered => 'Critically Endangered',
+        IucnStatus.extinct => 'Extinct',
+      };
 
-  /// Color for UI display (conservation status indicator).
+  /// Color for UI display (rarity indicator).
   String get colorHex => switch (this) {
-    IucnStatus.leastConcern => '#4CAF50',       // Green
-    IucnStatus.nearThreatened => '#8BC34A',      // Light green
-    IucnStatus.vulnerable => '#FFC107',           // Amber
-    IucnStatus.endangered => '#FF9800',           // Orange
-    IucnStatus.criticallyEndangered => '#F44336', // Red
-    IucnStatus.extinct => '#9C27B0',              // Purple
-  };
+        IucnStatus.leastConcern => '#FFFFFF', // White
+        IucnStatus.nearThreatened => '#4CAF50', // Green
+        IucnStatus.vulnerable => '#2196F3', // Blue
+        IucnStatus.endangered => '#FFD700', // Gold
+        IucnStatus.criticallyEndangered => '#9C27B0', // Purple
+        IucnStatus.extinct => '#FFC107', // Amber
+      };
 
   static IucnStatus fromString(String value) {
     return IucnStatus.values.firstWhere(

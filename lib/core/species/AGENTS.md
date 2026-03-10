@@ -37,14 +37,14 @@ Generic weighted random selection:
 
 | Status | Weight | Relative Frequency |
 |--------|--------|--------------------|
-| Least Concern | 100,000 | Extremely common |
-| Near Threatened | 10,000 | Common |
-| Vulnerable | 1,000 | Uncommon |
-| Endangered | 100 | Rare |
-| Critically Endangered | 10 | Very rare |
+| Least Concern | 243 | Common |
+| Near Threatened | 81 | Uncommon |
+| Vulnerable | 27 | Rare |
+| Endangered | 9 | Very rare |
+| Critically Endangered | 3 | Ultra rare |
 | Extinct | 1 | Legendary |
 
-10^x progression. Path of Exile style. Higher weight = MORE common (not rarer).
+3^x progression. Higher weight = MORE common (not rarer).
 
 ## Gotchas
 

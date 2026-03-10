@@ -90,7 +90,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 3. **Voronoi cells** — The cell system uses Voronoi tessellation (not H3). `CellService` is an abstract interface; H3 exists as a fallback.
 
-4. **IUCN rarity = loot weights** — 6 IUCN statuses map to 10^x weights: Least Concern (100k), Near Threatened (10k), Vulnerable (1k), Endangered (100), Critically Endangered (10), Extinct (1). Path of Exile style.
+4. **IUCN rarity = loot weights** — 6 IUCN statuses map to 3^x weights: Least Concern (243), Near Threatened (81), Vulnerable (27), Endangered (9), Critically Endangered (3), Extinct (1).
 
 5. **Server-authoritative** — Supabase is the source of truth. SQLite is a local cache and offline write queue. Client can roll encounters offline using cached daily seed (24h grace); server re-derives and validates on reconnect. Rejected actions roll back locally.
 
@@ -383,7 +383,7 @@ Additional directories:
 |-----------|-------|-----------|
 | Species | 32,752 (real IUCN dataset) | Full biodiversity catalog |
 | Habitats | 7 | Forest, Plains, Freshwater, Saltwater, Swamp, Mountain, Desert |
-| IUCN rarity tiers | 6 | LC, NT, VU, EN, CR, EX — with 10^x loot weights |
+| IUCN rarity tiers | 6 | LC, NT, VU, EN, CR, EX — with 3^x loot weights |
 | Fog levels | 5 | Undetected (1.0), Unexplored (1.0), Concealed (0.95), Hidden (0.5), Observed (0.0) |
 | Seasons | 2 | Summer (May–Oct), Winter (Nov–Apr) |
 | Continents | 6 | Asia, North America, South America, Africa, Oceania, Europe |
