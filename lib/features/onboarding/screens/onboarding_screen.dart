@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/core/state/profile_repository_provider.dart';
+import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/onboarding/widgets/onboarding_page.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
@@ -90,6 +92,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Future<void> _complete() async {
     ref.read(playerProvider.notifier).markOnboardingComplete();
+
+    // Persist to SQLite so returning users skip onboarding on next login.
+    final userId = ref.read(authProvider).user?.id;
+    if (userId != null) {
+      await ref.read(profileRepositoryProvider).markOnboardingComplete(userId);
+    }
   }
 
   // ---------------------------------------------------------------------------
