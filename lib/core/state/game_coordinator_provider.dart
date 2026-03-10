@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -185,11 +186,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           .then((_) async {
         final enrichment = await enrichmentRepo.getEnrichment(fauna.id);
         if (enrichment != null) {
-          enrichmentCache[fauna.id] = (
+          final stats = (
             speed: enrichment.speed,
             brawn: enrichment.brawn,
             wit: enrichment.wit,
           );
+          enrichmentCache[fauna.id] = stats;
+
+          // Retroactively roll intrinsic affixes for any existing items
+          // of this species that were discovered before enrichment arrived.
+          final userId = ref.read(authProvider).user?.id;
+          if (userId != null) {
+            await _backfillIntrinsicAffixes(
+              definitionId: fauna.id,
+              enrichedStats: stats,
+              ref: ref,
+              statsService: coordinator.statsService,
+              itemRepo: itemRepo,
+              queueProcessor: queueProcessor,
+              userId: userId,
+            );
+          }
         }
       }).catchError((Object e) {
         debugPrint('[GameCoordinator] enrichment request failed: $e');
@@ -366,6 +383,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       _requeueUnenrichedSpecies(
         ref: ref,
         enrichmentCache: enrichmentCache,
+      );
+
+      // Backfill intrinsic affixes for items that were discovered before
+      // enrichment was available. This is the primary safety net — runs
+      // on every startup after both inventory and enrichment cache are
+      // populated. Catches ALL edge cases: items from before this fix,
+      // missed onEnriched callbacks, race conditions, etc.
+      _backfillAllMissingAffixes(
+        ref: ref,
+        enrichmentCache: enrichmentCache,
+        statsService: coordinator.statsService,
+        itemRepo: itemRepo,
+        queueProcessor: queueProcessor,
+        userId: userId,
       );
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] hydration chain failed '
@@ -799,6 +830,160 @@ Future<void> hydrateFromSupabase({
     // Network error, Supabase down, etc. — continue with SQLite-only.
     debugPrint('[GameCoordinator] Supabase hydration failed (continuing '
         'with local data): $e');
+  }
+}
+
+/// Roll an intrinsic affix for a single item and persist the update.
+///
+/// Shared by both the real-time [onEnriched] path and the startup sweep.
+/// Updates: in-memory inventory, SQLite, and write queue.
+Future<void> _rollAndPersistIntrinsicAffix({
+  required ItemInstance item,
+  required ({int speed, int brawn, int wit}) enrichedStats,
+  required Ref ref,
+  required StatsService statsService,
+  required ItemInstanceRepository itemRepo,
+  required QueueProcessor queueProcessor,
+  required String userId,
+}) async {
+  final intrinsic = statsService.rollIntrinsicAffix(
+    scientificName: item.scientificName ?? '',
+    instanceSeed: item.id,
+    enrichedBaseStats: enrichedStats,
+  );
+  final updated = item.copyWith(
+    affixes: [intrinsic, ...item.affixes],
+  );
+
+  // 1. Update in-memory inventory.
+  ref.read(inventoryProvider.notifier).updateItem(updated);
+
+  // 2. Persist to SQLite.
+  try {
+    await itemRepo.updateItem(updated, userId);
+  } catch (e) {
+    debugPrint('[GameCoordinator] failed to persist backfilled item '
+        '${item.id}: $e');
+  }
+
+  // 3. Enqueue for Supabase sync.
+  try {
+    final payload = jsonEncode({
+      'id': updated.id,
+      'definition_id': updated.definitionId,
+      'display_name': updated.displayName,
+      'scientific_name': updated.scientificName,
+      'category_name': updated.category.name,
+      'rarity_name': updated.rarity?.name,
+      'habitats_json': updated.habitatsToJson(),
+      'continents_json': updated.continentsToJson(),
+      'taxonomic_class': updated.taxonomicClass,
+      'affixes': updated.affixesToJson(),
+      'badges_json': updated.badgesToJson(),
+      'parent_a_id': updated.parentAId,
+      'parent_b_id': updated.parentBId,
+      'acquired_at': updated.acquiredAt.toIso8601String(),
+      'acquired_in_cell_id': updated.acquiredInCellId,
+      'daily_seed': updated.dailySeed,
+      'status': updated.status.name,
+    });
+
+    await queueProcessor.enqueue(
+      entityType: WriteQueueEntityType.itemInstance,
+      entityId: updated.id,
+      operation: WriteQueueOperation.upsert,
+      payload: payload,
+      userId: userId,
+    );
+  } catch (e) {
+    debugPrint('[GameCoordinator] failed to enqueue backfilled item '
+        '${item.id}: $e');
+  }
+}
+
+/// Retroactively roll intrinsic affixes for items of a single species.
+///
+/// Called by [onEnriched] when a new enrichment arrives in-session.
+Future<void> _backfillIntrinsicAffixes({
+  required String definitionId,
+  required ({int speed, int brawn, int wit}) enrichedStats,
+  required Ref ref,
+  required StatsService statsService,
+  required ItemInstanceRepository itemRepo,
+  required QueueProcessor queueProcessor,
+  required String userId,
+}) async {
+  final inventory = ref.read(inventoryProvider);
+  final itemsToFix = inventory.items
+      .where((item) =>
+          item.definitionId == definitionId &&
+          !item.affixes.any((a) => a.type == AffixType.intrinsic))
+      .toList();
+
+  if (itemsToFix.isEmpty) return;
+
+  debugPrint('[GameCoordinator] backfilling intrinsic affixes for '
+      '${itemsToFix.length} items of $definitionId');
+
+  for (final item in itemsToFix) {
+    await _rollAndPersistIntrinsicAffix(
+      item: item,
+      enrichedStats: enrichedStats,
+      ref: ref,
+      statsService: statsService,
+      itemRepo: itemRepo,
+      queueProcessor: queueProcessor,
+      userId: userId,
+    );
+  }
+}
+
+/// Startup sweep: backfill intrinsic affixes for ALL items in inventory
+/// where enrichment data exists but the item has no intrinsic affix.
+///
+/// This is the primary safety net — runs on every startup after both
+/// inventory and enrichment cache are populated. Catches:
+///   - Items discovered before this fix was deployed
+///   - Missed onEnriched callbacks (app crash, race conditions)
+///   - Items hydrated from Supabase that were created without affixes
+///   - Any other edge case where enrichment exists but stats don't
+Future<void> _backfillAllMissingAffixes({
+  required Ref ref,
+  required Map<String, ({int speed, int brawn, int wit})> enrichmentCache,
+  required StatsService statsService,
+  required ItemInstanceRepository itemRepo,
+  required QueueProcessor queueProcessor,
+  required String userId,
+}) async {
+  try {
+    final inventory = ref.read(inventoryProvider);
+    final itemsToFix = inventory.items
+        .where((item) =>
+            enrichmentCache.containsKey(item.definitionId) &&
+            !item.affixes.any((a) => a.type == AffixType.intrinsic))
+        .toList();
+
+    if (itemsToFix.isEmpty) return;
+
+    debugPrint('[GameCoordinator] startup backfill: ${itemsToFix.length} '
+        'items missing intrinsic affixes');
+
+    for (final item in itemsToFix) {
+      await _rollAndPersistIntrinsicAffix(
+        item: item,
+        enrichedStats: enrichmentCache[item.definitionId]!,
+        ref: ref,
+        statsService: statsService,
+        itemRepo: itemRepo,
+        queueProcessor: queueProcessor,
+        userId: userId,
+      );
+    }
+
+    debugPrint('[GameCoordinator] startup backfill complete: '
+        '${itemsToFix.length} items fixed');
+  } catch (e) {
+    debugPrint('[GameCoordinator] startup backfill failed: $e');
   }
 }
 

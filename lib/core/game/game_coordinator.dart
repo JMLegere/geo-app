@@ -66,6 +66,10 @@ class GameCoordinator {
   final FogStateResolver _fogResolver;
   final StatsService _statsService;
 
+  /// Exposes the stats service for retroactive affix rolling by the
+  /// provider layer (e.g. when enrichment arrives after discovery).
+  StatsService get statsService => _statsService;
+
   /// Whether the GPS source is real hardware (vs keyboard/simulation).
   final bool isRealGps;
 
