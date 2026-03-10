@@ -630,8 +630,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     //   animateCamera → MapEventMoveCamera → updateFogSources → MapLibre
     //   layout → new MapEventMoveCamera → repeat (zoom jitter).
     //
-    // Only MapEventClick triggers cell selection — all other events are ignored.
-    if (event is MapEventClick) {
+    // Only MapEventLongClick triggers cell selection — tap is reserved for
+    // future interactions (e.g. species, markers). Long press shows cell details.
+    if (event is MapEventLongClick) {
       // MapLibre Position is (lng, lat) — longitude first.
       // event.point.lat/lng return num, so cast to double for getCellId.
       final lat = event.point.lat.toDouble();
@@ -642,7 +643,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
-  /// Called when the user taps the map and a cell ID has been resolved.
+  /// Called when the user long-presses the map and a cell ID has been resolved.
   ///
   /// Stores the selected cell in [cellSelectionProvider] (for external
   /// observers) and shows the exploration bottom sheet.
