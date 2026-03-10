@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Durations;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/models/item_category.dart';
@@ -14,6 +15,20 @@ import 'package:earth_nova/shared/game_icons.dart';
 /// breakdown.
 class CharacterTab extends ConsumerWidget {
   const CharacterTab({super.key});
+
+  /// Formats a step count with comma grouping: "0", "1,200", "15,000".
+  @visibleForTesting
+  static String formatSteps(int steps) {
+    if (steps < 1000) return '$steps';
+    // Simple comma grouping without intl dependency.
+    final s = steps.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,7 +79,8 @@ class CharacterTab extends ConsumerWidget {
               _StatRow(
                 icon: GameIcons.streak,
                 label: 'Streak',
-                value: '${stats.currentStreak} day${stats.currentStreak == 1 ? '' : 's'}',
+                value:
+                    '${stats.currentStreak} day${stats.currentStreak == 1 ? '' : 's'}',
                 cs: cs,
               ),
               _StatRow(
@@ -84,6 +100,12 @@ class CharacterTab extends ConsumerWidget {
                 icon: GameIcons.cellsExplored,
                 label: 'Cells observed',
                 value: '${stats.cellsObserved}',
+                cs: cs,
+              ),
+              _StatRow(
+                icon: GameIcons.steps,
+                label: 'Steps',
+                value: formatSteps(stats.totalSteps),
                 cs: cs,
                 isLast: true,
               ),
@@ -225,8 +247,7 @@ class _StatRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w600,
-                  color:
-                      isHighlighted ? cs.primary : cs.onSurface,
+                  color: isHighlighted ? cs.primary : cs.onSurface,
                 ),
               ),
             ],
