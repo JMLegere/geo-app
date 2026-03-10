@@ -1,6 +1,6 @@
 # Test Suite
 
-1449 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1453 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
