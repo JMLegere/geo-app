@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
@@ -66,6 +67,7 @@ enum GpsPermissionResult {
 class GameCoordinator {
   final FogStateResolver _fogResolver;
   final StatsService _statsService;
+  final CellService _cellService;
 
   /// Exposes the stats service for retroactive affix rolling by the
   /// provider layer (e.g. when enrichment arrives after discovery).
@@ -166,6 +168,21 @@ class GameCoordinator {
   }
 
   // ---------------------------------------------------------------------------
+  // Exploration guard — disabled when player marker cell ≠ raw GPS cell
+  // ---------------------------------------------------------------------------
+
+  bool _explorationDisabled = false;
+
+  /// Whether exploration is currently disabled because the player marker
+  /// is in a different cell than the real GPS position (moving too fast).
+  bool get explorationDisabled => _explorationDisabled;
+
+  /// Called when the exploration-disabled state changes.
+  /// `true` = exploration was just blocked (banner should show).
+  /// `false` = exploration re-enabled (banner should hide).
+  void Function(bool disabled)? onExplorationDisabledChanged;
+
+  // ---------------------------------------------------------------------------
   // Stream subscriptions
   // ---------------------------------------------------------------------------
 
@@ -189,9 +206,11 @@ class GameCoordinator {
   GameCoordinator({
     required FogStateResolver fogResolver,
     required StatsService statsService,
+    required CellService cellService,
     this.isRealGps = false,
   })  : _fogResolver = fogResolver,
-        _statsService = statsService;
+        _statsService = statsService,
+        _cellService = cellService;
 
   // ---------------------------------------------------------------------------
   // Lifecycle
@@ -355,6 +374,40 @@ class GameCoordinator {
   // ---------------------------------------------------------------------------
 
   void _processGameLogic(double lat, double lon) {
+    // 0. Exploration guard — skip fog/discovery if marker cell is too far
+    //    from real GPS cell. Allows same cell + adjacent cells (handles
+    //    rubber-band lag at cell boundaries). Before first GPS fix
+    //    (_rawGpsPosition is null), allow exploration.
+    final rawGps = _rawGpsPosition;
+    if (rawGps != null) {
+      final markerCellId = _cellService.getCellId(lat, lon);
+      final gpsCellId = _cellService.getCellId(rawGps.lat, rawGps.lon);
+
+      final isNearby = markerCellId == gpsCellId ||
+          _cellService.getNeighborIds(gpsCellId).contains(markerCellId);
+
+      if (!isNearby) {
+        // Player marker is beyond adjacent cells — moving too fast.
+        if (!_explorationDisabled) {
+          _explorationDisabled = true;
+          onExplorationDisabledChanged?.call(true);
+        }
+
+        // Still push position for UI (camera, marker), but skip fog/discovery.
+        onPlayerLocationUpdate?.call(
+          Geographic(lat: lat, lon: lon),
+          _rawGpsAccuracy,
+        );
+        return;
+      }
+
+      // Marker is in GPS cell or adjacent — re-enable if it was disabled.
+      if (_explorationDisabled) {
+        _explorationDisabled = false;
+        onExplorationDisabledChanged?.call(false);
+      }
+    }
+
     // 1. Update fog-of-war state using player (marker) position.
     _fogResolver.onLocationUpdate(lat, lon);
 

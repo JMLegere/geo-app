@@ -97,6 +97,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   bool _showDebugHud = false;
 
+  /// Whether to show the "moving too fast" exploration-disabled banner.
+  /// Set `true` when exploration is blocked (marker cell ≠ GPS cell),
+  /// cleared when exploration re-enables (cells match again).
+  bool _showExplorationBanner = false;
+
   /// Current zoom preset. Defaults to player-level (tight around current cell).
   ZoomLevel _zoomLevel = ZoomLevel.player;
 
@@ -138,6 +143,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Read GameCoordinator — it's already started by the provider.
     _gameCoordinator = ref.read(gameCoordinatorProvider);
 
+    // Wire exploration-disabled banner.
+    _gameCoordinator.onExplorationDisabledChanged = (disabled) {
+      if (mounted) setState(() => _showExplorationBanner = disabled);
+    };
+
     // Subscribe to raw GPS updates to feed the rubber-band.
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
@@ -145,6 +155,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   @override
   void dispose() {
+    _gameCoordinator.onExplorationDisabledChanged = null;
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
@@ -788,6 +799,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ),
             ),
 
+            // ── Layer 3.75: Exploration disabled banner ─────────────────────
+            if (_showExplorationBanner)
+              const Positioned(
+                bottom: 100,
+                left: 0,
+                right: 0,
+                child: _ExplorationDisabledBanner(),
+              ),
+
             // ── Layer 3.8: Step recap animation overlay ─────────────────────
             // Centered horizontally, positioned in the lower third of the
             // screen. IgnorePointer so it never captures map touches.
@@ -859,6 +879,53 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 },
                 onToggleDebug: () =>
                     setState(() => _showDebugHud = !_showDebugHud),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner shown when exploration is disabled because the player marker is in a
+/// different cell than the real GPS position (moving too fast for exploration).
+class _ExplorationDisabledBanner extends StatelessWidget {
+  const _ExplorationDisabledBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEE2E2),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFEF4444)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.speed_rounded,
+              size: 16,
+              color: Color(0xFFDC2626),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'MOVING TOO FAST, EXPLORATION IS CURRENTLY DISABLED',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF991B1B),
+                letterSpacing: 0.5,
               ),
             ),
           ],

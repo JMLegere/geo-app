@@ -68,9 +68,11 @@ void main() {
     // Create a minimal no-op GameCoordinator for the test. EarthNovaApp
     // watches gameCoordinatorProvider to eagerly trigger auth init, but in
     // tests we override authProvider directly so GC doesn't need to run.
+    final stubCellService = _StubCellService();
     final noOpCoordinator = GameCoordinator(
-      fogResolver: FogStateResolver(_StubCellService()),
+      fogResolver: FogStateResolver(stubCellService),
       statsService: StatsService(),
+      cellService: stubCellService,
     );
 
     await tester.pumpWidget(

@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
@@ -68,6 +69,7 @@ import 'package:earth_nova/shared/constants.dart';
 /// 7. Disposes on provider invalidation
 final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final fogResolver = ref.watch(fogResolverProvider);
+  final cellService = ref.watch(cellServiceProvider);
   final locationService = ref.watch(locationServiceProvider);
   final discoveryService = ref.watch(discoveryServiceProvider);
   final itemRepo = ref.watch(itemInstanceRepositoryProvider);
@@ -85,6 +87,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final coordinator = GameCoordinator(
     fogResolver: fogResolver,
     statsService: const StatsService(),
+    cellService: cellService,
     isRealGps: locationService.mode == LocationMode.realGps,
   );
 
