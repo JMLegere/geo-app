@@ -363,12 +363,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // 4. Hydrate step counter (native only — web has no pedometer).
       // Must run AFTER profile hydration so totalSteps is already loaded.
       // Computes login delta: currentOsSteps - lastKnownStepCount.
+      // Passes profile.updatedAt as lastSessionDate for recap subtitle.
       if (!kIsWeb) {
         try {
           final stepNotifier = ref.read(stepProvider.notifier);
           await stepNotifier.hydrate(
             lastKnownStepCount: profile?.lastKnownStepCount ?? 0,
             totalSteps: ref.read(playerProvider).totalSteps,
+            lastSessionDate: profile?.updatedAt,
           );
         } catch (e) {
           debugPrint('[GameCoordinator] step hydration failed: $e');
