@@ -13,6 +13,7 @@ import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
+import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
 import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
 import 'package:earth_nova/features/map/providers/camera_controller_provider.dart';
@@ -29,6 +30,7 @@ import 'package:earth_nova/features/map/widgets/status_bar.dart';
 import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
+import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 
@@ -642,11 +644,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   /// Called when the user taps the map and a cell ID has been resolved.
   ///
-  /// Stores the selected cell in [cellSelectionProvider]. The bottom sheet
-  /// (T8) will observe this provider and present the exploration UI.
+  /// Stores the selected cell in [cellSelectionProvider] (for external
+  /// observers) and shows the exploration bottom sheet.
   void _onCellTapped(String cellId) {
     debugPrint('[TAP] Cell tapped: $cellId');
     ref.read(cellSelectionProvider.notifier).select(cellId);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => CellInfoSheet(cellId: cellId),
+    ).whenComplete(() {
+      // Clear selection when sheet is dismissed (swipe or pop).
+      ref.read(cellSelectionProvider.notifier).clear();
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -774,6 +785,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     ),
                   );
                 },
+              ),
+            ),
+
+            // ── Layer 3.8: Step recap animation overlay ─────────────────────
+            // Centered horizontally, positioned in the lower third of the
+            // screen. IgnorePointer so it never captures map touches.
+            const Align(
+              alignment: Alignment(0, 0.45),
+              child: IgnorePointer(
+                child: StepRecap(),
               ),
             ),
 
