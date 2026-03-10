@@ -26,6 +26,7 @@ import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
 import 'package:earth_nova/features/map/widgets/status_bar.dart';
+import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
@@ -771,16 +772,26 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 ),
               ),
 
-            // ── Layer 4.5: DPad controls (web only) ──────────────────────────
-            if (kIsWeb)
-              Positioned(
-                left: 16,
-                bottom: 16,
-                child: DPadControls(
-                  keyboardService:
-                      ref.read(locationServiceProvider).keyboardService!,
-                ),
-              ),
+            // ── Layer 4.5: DPad controls (keyboard mode only) ────────────────
+            // Visible on web when using keyboard movement. Hidden when
+            // browser GPS is granted (activeModeNotifier switches to realGps).
+            ValueListenableBuilder<LocationMode>(
+              valueListenable:
+                  ref.read(locationServiceProvider).activeModeNotifier,
+              builder: (context, activeMode, child) {
+                if (activeMode != LocationMode.keyboard) {
+                  return const SizedBox.shrink();
+                }
+                return Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: DPadControls(
+                    keyboardService:
+                        ref.read(locationServiceProvider).keyboardService!,
+                  ),
+                );
+              },
+            ),
 
             // ── Layer 5: Map controls (recenter + debug) ──────────────────────
             Positioned(
