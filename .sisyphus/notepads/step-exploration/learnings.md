@@ -161,3 +161,87 @@ The `_onMapEvent` method is a widget method — not directly unit-testable witho
 - hydrate: no steps added when delta=0
 - startLiveStream: start() called, incremental steps forwarded, negative increments ignored
 - markAnimationComplete: isAnimating=false, hasAnimated=true
+
+
+## T8: CellInfoSheet — Modal Bottom Sheet + Exploration Flow (2026-03-10)
+
+### isWebPlatformOverride Pattern for Platform-Conditional UI
+- `kIsWeb` is a compile-time constant — can't be overridden in tests
+- Solution: add `@visibleForTesting bool? isWebPlatformOverride` constructor param
+- Widget uses `isWebPlatformOverride ?? kIsWeb` internally
+- Tests pass `isWebPlatformOverride: true` to simulate web without changing platform
+
+### visitCellRemotely + spendSteps Ordering
+- Steps are checked BEFORE `visitCellRemotely` is called (prevents overdraft)
+- On `ArgumentError` from `visitCellRemotely` (cell left frontier between render and tap), refund via `addSteps(kStepCostPerCell)`
+- `_isExploring` bool flag prevents rapid double-tap spending — set true on tap, never reset (sheet closes)
+
+### FogStateResolver.explorationFrontier for Button State
+- `fogResolver.explorationFrontier.contains(cellId)` determines if Explore button is enabled
+- `fogResolver.visitedCellIds.contains(cellId)` determines "Already explored" message
+- Player's current cell: compare `cellId` to `fogResolver.currentCellId` (or equivalent)
+
+### showModalBottomSheet Wiring in map_screen.dart
+- Called from `_onCellTapped(cellId)` — replaces the old no-op stub
+- `.whenComplete()` callback calls `ref.read(cellSelectionProvider.notifier).clear()`
+- This ensures selection state is cleared whether user taps away or Explore completes
+
+### MockCellService in Widget Tests
+- Widget tests need a `CellService` that returns deterministic neighbors
+- Implement `CellService` interface directly (not via Mockito)
+- `getNeighborIds` returns Moore neighborhood (8-connected) for simple grid IDs
+
+### Provider Override Pattern for Widget Tests
+- Use `ProviderContainer` + `UncontrolledProviderScope` to inject overrides into widget tree
+- Seed player steps via `container.read(playerProvider.notifier).addSteps(1000)` before `pumpWidget`
+- Seed fog state via `resolver.onLocationUpdate(Geographic(lat:..., lon:...))` before pump
+
+### Files Created/Modified
+- `lib/features/map/widgets/cell_info_sheet.dart` — new (334 lines)
+- `lib/features/map/map_screen.dart` — `_onCellTapped` wired to `showModalBottomSheet`
+- `lib/shared/constants.dart` — added `kStepCostPerCell = 500`
+- `test/features/map/widgets/cell_info_sheet_test.dart` — 9 widget tests
+
+### Test Results: 29/29 pass in test/features/map/widgets/
+
+
+## T9: StepChaChing Overlay Animation (2026-03-10)
+
+### TweenAnimationBuilder.onEnd Timing in Tests
+- `onEnd` fires at the END of the animation, but the widget disappears in the SAME frame
+- `markAnimationComplete()` sets `isAnimating=false` synchronously → widget returns `SizedBox.shrink()` immediately
+- Consequence: `+loginDelta` text is NEVER visible in tests — the widget disappears when `onEnd` fires
+- Fix: test "count-up reaches loginDelta" should check `hasAnimated=true` (state flag), not the text value
+
+### Entry Animation Adds to Total Duration
+- `TweenAnimationBuilder` starts AFTER the entry `AnimationController` completes
+- Entry duration: 350ms (`Durations.slow`). Count-up: 1500ms. Total: ~1850ms
+- Tests that pump only 1500ms will NOT see `onEnd` fire — must pump 1850ms+
+- Debug pattern: pump 1ms increments near expected end time and print state
+
+### ConsumerStatefulWidget + TweenAnimationBuilder Pattern
+- Entry animation: `AnimationController` + `ScaleTransition` + `FadeTransition` (started via `addPostFrameCallback`)
+- Count-up: `TweenAnimationBuilder<int>` with `IntTween`, `onEnd` callback
+- `ref.listen` in `build()` handles future `isAnimating` transitions (e.g., second hydration)
+- `initState()` reads initial state via `ref.read()` for the first-mount case
+
+### _stepService Library-Private Workaround
+- `_stepService` in `StepNotifier` is file-private (Dart underscore = library-private)
+- Test subclass `_TestStepNotifier extends StepNotifier` cannot access it
+- Fix: override `build()` WITHOUT calling `super.build()` — skips `stepServiceProvider` read entirely
+- Safe because `markAnimationComplete()` only mutates `state`, never touches `_stepService`
+
+### Test Results: 7/7 pass
+- shows card when isAnimating=true and loginDelta > 0
+- count-up starts at 0 at animation start
+- count-up reaches loginDelta by end of animation (via hasAnimated flag)
+- does not show when isAnimating=false
+- does not show when loginDelta is 0 even if isAnimating=true
+- calls markAnimationComplete after count-up animation ends
+- widget disappears after markAnimationComplete is called
+- does not call markAnimationComplete when isAnimating=false
+
+### Files Created/Modified
+- `lib/features/steps/widgets/step_cha_ching.dart` — new (231 lines)
+- `lib/features/map/map_screen.dart` — Layer 3.8 overlay added
+- `test/features/steps/widgets/step_cha_ching_test.dart` — 7 widget tests

@@ -1,0 +1,10 @@
+00:00 +0: loading /home/jeremy/workspace/geo-app/test/features/steps/widgets/step_cha_ching_test.dart
+00:00 +0: StepChaChing shows card when isAnimating=true and loginDelta > 0
+00:00 +1: StepChaChing count-up starts at 0 at animation start
+00:00 +2: StepChaChing count-up reaches loginDelta by end of animation
+00:00 +3: StepChaChing does not show when isAnimating=false
+00:00 +4: StepChaChing does not show when loginDelta is 0 even if isAnimating=true
+00:00 +5: StepChaChing calls markAnimationComplete after count-up animation ends
+00:00 +6: StepChaChing widget disappears after markAnimationComplete is called
+00:00 +7: StepChaChing does not call markAnimationComplete when isAnimating=false
+00:00 +8: All tests passed!
