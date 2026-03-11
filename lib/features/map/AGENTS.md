@@ -14,7 +14,7 @@ lib/features/map/
 ├── layers/             # Fog rendering layer (Canvas compositing)
 ├── models/             # Screen-space projection models
 ├── providers/          # Riverpod NotifierProviders (camera state, mode)
-├── utils/              # Pure math utilities (Mercator projection)
+├── utils/              # GeoJSON builders, Mercator projection, icon rendering
 ├── widgets/            # UI overlays (HUD, controls, status bar)
 └── map_screen.dart     # Feature root screen (NOT in screens/)
 ```
@@ -30,7 +30,7 @@ Pure logic controllers with callback injection. **NOT Riverpod Notifiers.** Plai
 **3 controllers:**
 
 - **CameraController**: Follow/free mode switching, zoom constraints (min/max), camera movement logic. Calls `onCameraMove(lat, lon)`, `onZoomChanged(zoom)` callbacks.
-- **FogOverlayController**: Manages fog render state. Triggers repaint when fog state changes.
+- **FogOverlayController**: Manages fog render state + cell property icon GeoJSON + territory border GeoJSON. Has `cellPropertiesCache`, `dailySeed`, and `locationNodesCache` setters. Getters: `cellIconsGeoJson` (SymbolLayer), `borderFillGeoJson` (FillLayer), `borderLinesGeoJson` (LineLayer). Territory border build is guarded by non-empty `cellPropertiesCache` and `locationNodesCache`.
 - **MapOverlayController**: Coordinates multiple overlays (fog, player marker, debug HUD).
 
 **Controller Pattern:**
@@ -94,6 +94,20 @@ UI components overlaid on the map:
   - `buildMidFog()` — individual polygons for hidden/concealed/unexplored with density property
   - `buildCellBorders()` — line outlines for unexplored (0.4 opacity) + concealed (0.25 opacity)
   - All coordinates are `[longitude, latitude]` (GeoJSON convention)
+- **territory_border_geojson_builder.dart**: Stellaris-style territory border rendering. Two static methods:
+  - `buildBorderFill()` — Polygon FeatureCollection with BFS-computed `border_distance_<level>` and `region_color_<level>` properties for quadratic opacity falloff (0.15 → 0.04 → 0.01 → 0.00 over 3 cells)
+  - `buildBorderLines()` — LineString FeatureCollection on shared Voronoi edges where adjacent cells belong to different admin regions. Properties: `border_color`, `line_weight`, `admin_level`
+  - Stacking rule: only lowest-level differing border renders between adjacent cells (district > city > state > country)
+  - Color: from `LocationNode.colorHex`, or deterministic FNV-1a hash of `osmId` when null
+  - Line weights: country 3px, state 2px, city 1.5px, district 1px (constants in `shared/constants.dart`)
+- **cell_property_geojson_builder.dart**: Builds Point FeatureCollection for cell property icons:
+  - `buildCellIcons()` — GeoJSON Point features with `icon`, `offsetX`, `offsetY` properties
+  - Visibility rules: current/visited → full grid (habitat + climate + event), adjacent unvisited with event → "?" icon, else → nothing
+  - Icon IDs reference images registered via `MapIconRenderer`
+- **map_icon_renderer.dart**: Renders emoji to PNG bytes for MapLibre `addImage()`:
+  - `renderEmoji(String emoji)` → `Future<Uint8List>` (64×64 PNG via Canvas/TextPainter)
+  - Static ID helpers: `habitatIconId()`, `climateIconId()`, `eventIconId()`, `eventUnknownId`
+  - Required because MapLibre cannot render emoji in `text-field` (BMP-only limitation)
 - **mercator_projection.dart**: Pure Web Mercator math. `geoToScreen`/`screenToGeo`/`visibleBounds`. Lat clamped ±85.051129°.
 - **map_visibility.dart**: CSS-based MapLibre container visibility control for web. `AnimatedOpacity` cannot hide `HtmlElementView` — CSS injection required.
 - **map_logger.dart**: Rate-limited logger with channels (RUBBER, CAMERA, FOG, KEY, LOC). Errors always log immediately. **Known debt:** mutable static variables.
@@ -109,6 +123,72 @@ The fog is rendered using 3 MapLibre native GeoJSON layers (NOT Canvas):
 3. **fog-border** — Line outlines at unexplored (0.4) and concealed (0.25) opacity.
 
 **Pre-rendering trick:** Unexplored cells are rendered in mid-fog at concealed density (0.95) but hidden behind the opaque base layer. When a cell transitions from unexplored to concealed, the base-fog hole is punched, revealing the already-rendered mid-fog polygon. This eliminates flash artifacts during transitions.
+
+---
+
+## Cell Property Icons Layer
+
+4th MapLibre layer — SymbolLayer rendering cell property icons as registered PNG images.
+
+**Pipeline:**
+```
+GameIcons emoji → MapIconRenderer.renderEmoji() → PNG bytes
+  → controller.addImage(id, bytes) → MapLibre image registry
+    → SymbolLayer reads 'icon-image' from GeoJSON feature properties
+```
+
+**Source/Layer IDs:** `cell-icons-src` / `cell-icons-layer`
+
+**Icon visibility rules (CellPropertyGeoJsonBuilder):**
+- Current cell OR visited cell → full grid: habitat (top-left), climate (top-right), event (bottom-center)
+- Adjacent unvisited with event → single "❓" unknown icon (Witcher 3 style)
+- Everything else → no icons
+
+**Data flow per frame:**
+1. `_updateFogRendering()` sets `fogOverlayController.cellPropertiesCache` + `dailySeed`
+2. `fogOverlayController.update()` calls `CellPropertyGeoJsonBuilder.buildCellIcons()`
+3. GeoJSON source updated via `setGeoJsonSource()`
+4. SymbolLayer renders icons using `['get', 'icon']` data-driven expression
+
+**MapLibre emoji limitation:** Emoji in `text-field` silently drops characters outside BMP (U+0000–U+FFFF). Most emoji are outside BMP. Solution: render to PNG and use `addImage()`.
+
+**SymbolLayer note:** v0.1.2 constructor does NOT forward `minZoom`/`maxZoom` from base class.
+
+---
+
+## Territory Border Layers
+
+5th and 6th MapLibre layers — Stellaris-style territory borders showing admin region ownership.
+
+**Source/Layer IDs:**
+- `territory-border-fill-src` / `territory-border-fill` — FillLayer with data-driven opacity from `border_distance_country`
+- `territory-border-lines-src` / `territory-border-lines` — LineLayer with data-driven `border_color` and `line_weight`
+
+**Layer ordering:** Rendered between `fog-border` and `cell-icons` layers.
+
+**Data flow:**
+1. `_loadLocationNodes()` lazily loads all `LocationNode` records from `LocationNodeRepository.getAll()` on first fog render
+2. `fogOverlayController.locationNodesCache` receives the node map
+3. `_buildGeoJson()` calls `TerritoryBorderGeoJsonBuilder.buildBorderFill()` / `.buildBorderLines()`
+4. GeoJSON sources updated via `setGeoJsonSource()` in `_updateFogSources()`
+
+**Fill layer properties per feature:**
+```json
+{"cell_id": "v_123_456", "border_distance_country": 0, "region_color_country": "#FF0000"}
+```
+
+**Line layer properties per feature:**
+```json
+{"admin_level": "country", "border_color": "#FF0000", "line_weight": 3.0}
+```
+
+**Opacity formula (quadratic falloff):** `base_opacity * (1 - distance/maxDistance)^2`
+- Distance 0 (border cell): 0.15
+- Distance 1: ~0.04
+- Distance 2: ~0.01
+- Distance 3+: 0.00
+
+**Location node loading:** Lazy, fires once. Does not refresh during gameplay. Cache won't update until app restart if new cells are enriched.
 
 ---
 
@@ -179,6 +259,7 @@ All services injected via Riverpod providers. The widget manages:
 - `_gameCoordinator` (read from gameCoordinatorProvider, already started)
 - `_rawGpsSubscription` (subscribes to coordinator.onRawGpsUpdate for rubber-band)
 - `_showDebugHud` toggle state
+- `_locationNodesMap` / `_locationNodesLoaded` (lazy-loaded LocationNode cache for territory borders)
 - Fog GeoJSON rendering (throttled ~10 Hz via `_renderFrame`)
 
 **Removed from map_screen (now in GameCoordinator):**

@@ -256,6 +256,33 @@ class SupabasePersistence {
     }
   }
 
+  // -- Cell Properties ---------------------------------------------------------
+
+  Future<void> upsertCellProperties({
+    required String cellId,
+    required String habitats,
+    required String climate,
+    required String continent,
+    String? locationId,
+  }) async {
+    try {
+      await _client.from('cell_properties').upsert(
+        {
+          'cell_id': cellId,
+          'habitats': habitats,
+          'climate': climate,
+          'continent': continent,
+          'location_id': locationId,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        onConflict: 'cell_id',
+      );
+    } catch (e) {
+      debugPrint('[SupabasePersistence] upsertCellProperties failed: $e');
+      throw SyncException('Failed to save cell properties.', cause: e);
+    }
+  }
+
   // -- Species Enrichment -----------------------------------------------------
 
   Future<List<Map<String, dynamic>>> fetchEnrichments({DateTime? since}) async {

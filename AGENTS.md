@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
 | Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1453 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1694 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 83 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
@@ -73,7 +73,7 @@ lib/
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | ~167 (lib/) + 111 (test/) |
+| Dart source files | ~205 (lib/) + 124 (test/) |
 | Total lines | ~34,000 |
 | Largest file | `app_database.g.dart` (1,989 lines — generated) |
 | Largest feature | `map/` (25 files) |
@@ -455,6 +455,17 @@ When a feature misbehaves:
 - Persistence operations: operation type, row count, latency
 - Sync events: type, status, retry count
 - Tile requests: URL (masked key), HTTP status, response size
+
+---
+
+## Repo Hygiene
+
+- **Single docs directory**: All documentation lives in `docs/`. No `doc/`, `documentation/`, or other variants.
+- **No stale research artifacts**: One-off research notes, brainstorm dumps, and superseded designs get consolidated into the relevant design doc or deleted. Don't leave scratch files in the repo.
+- **Generated files stay generated**: Never hand-edit `*.g.dart`, `*.freezed.dart`, or other build_runner outputs.
+- **Assets are intentional**: Everything in `assets/` is loaded at runtime. Don't commit unused data files, test exports, or draft datasets.
+- **No orphan directories**: Empty directories or directories with only `.gitkeep` should be removed unless they serve a structural purpose.
+- **Clean up after yourself**: When deleting a feature or consolidating files, remove all traces — imports, test files, doc references, AGENTS.md mentions.
 
 ---
 

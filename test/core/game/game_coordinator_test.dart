@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 
+import 'package:earth_nova/core/cells/cell_property_resolver.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
+import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/models/habitat.dart';
@@ -1279,5 +1282,279 @@ void main() {
         c.dispose();
       });
     });
+
+    // -----------------------------------------------------------------------
+    // Cell property resolution
+    // -----------------------------------------------------------------------
+    group('cell property resolution', () {
+      test('resolves properties for current cell on game tick', () {
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(_StubCellPropertyResolver());
+        final s = _startCoordinator(c);
+
+        c.updatePlayerPosition(1.0, 1.0);
+
+        // _MockCellService.getCellId(1.0, 1.0) → "1_1"
+        expect(c.cellPropertiesCache, contains('1_1'));
+        expect(c.cellPropertiesCache['1_1']!.habitats, {Habitat.plains});
+        // _MockCellService.getCellCenter("1_1") → Geographic(40.01, -99.99)
+        // Climate.fromLatitude(40.01) → temperate
+        expect(c.cellPropertiesCache['1_1']!.climate, Climate.temperate);
+        expect(c.cellPropertiesCache['1_1']!.continent, Continent.northAmerica);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('does not resolve when resolver is null', () {
+        final c = _makeCoordinator();
+        // No setCellPropertyResolver call.
+        final s = _startCoordinator(c);
+
+        c.updatePlayerPosition(1.0, 1.0);
+
+        expect(c.cellPropertiesCache, isEmpty);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('caches properties — same cell not resolved twice', () {
+        int resolveCount = 0;
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(
+            _CountingCellPropertyResolver(() => resolveCount++));
+        final s = _startCoordinator(c);
+
+        // Frame 1: resolves cell "1_1".
+        c.updatePlayerPosition(1.0, 1.0);
+        final countAfterFirst = resolveCount;
+
+        // Frames 2-5: throttled, no game logic.
+        for (var i = 0; i < 4; i++) {
+          c.updatePlayerPosition(1.0, 1.0);
+        }
+
+        // Frame 6: game logic runs again for same cell — should NOT re-resolve.
+        c.updatePlayerPosition(1.0, 1.0);
+
+        expect(resolveCount, countAfterFirst);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('onCellPropertiesResolved fires for each new cell', () {
+        final resolved = <CellProperties>[];
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(_StubCellPropertyResolver());
+        c.onCellPropertiesResolved = (props) => resolved.add(props);
+        final s = _startCoordinator(c);
+
+        c.updatePlayerPosition(1.0, 1.0);
+
+        // At least one callback for the current cell.
+        expect(resolved, isNotEmpty);
+        expect(resolved.any((p) => p.cellId == '1_1'), isTrue);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('onCellPropertiesResolved does NOT fire for cached cells', () {
+        final resolved = <CellProperties>[];
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(_StubCellPropertyResolver());
+        c.onCellPropertiesResolved = (props) => resolved.add(props);
+        final s = _startCoordinator(c);
+
+        // Frame 1.
+        c.updatePlayerPosition(1.0, 1.0);
+        final countAfterFirst = resolved.length;
+
+        // Frames 2-5: throttled.
+        for (var i = 0; i < 4; i++) {
+          c.updatePlayerPosition(1.0, 1.0);
+        }
+
+        // Frame 6: same cell — no new callbacks.
+        c.updatePlayerPosition(1.0, 1.0);
+        expect(resolved.length, countAfterFirst);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('loadCellProperties pre-populates cache (hydration)', () {
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+
+        final preloaded = CellProperties(
+          cellId: '1_1',
+          habitats: {Habitat.forest},
+          climate: Climate.boreal,
+          continent: Continent.europe,
+          locationId: null,
+          createdAt: DateTime(2026, 1, 1),
+        );
+        c.loadCellProperties({'1_1': preloaded});
+
+        expect(c.cellPropertiesCache['1_1'], isNotNull);
+        expect(c.cellPropertiesCache['1_1']!.habitats, {Habitat.forest});
+        expect(c.cellPropertiesCache['1_1']!.climate, Climate.boreal);
+        expect(c.cellPropertiesCache['1_1']!.continent, Continent.europe);
+
+        c.dispose();
+      });
+
+      test('pre-loaded cell is not re-resolved when player enters it', () {
+        int resolveCount = 0;
+        final cells = _MockCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(
+            _CountingCellPropertyResolver(() => resolveCount++));
+
+        // Pre-load cell "1_1".
+        c.loadCellProperties({
+          '1_1': CellProperties(
+            cellId: '1_1',
+            habitats: {Habitat.forest},
+            climate: Climate.boreal,
+            continent: Continent.europe,
+            locationId: null,
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        });
+
+        final s = _startCoordinator(c);
+
+        // Frame 1: cell "1_1" already cached → should not resolve.
+        c.updatePlayerPosition(1.0, 1.0);
+
+        // resolveCount may still be >0 for neighbors, but "1_1" itself
+        // should not trigger a resolve. The cache should still have the
+        // pre-loaded values.
+        expect(c.cellPropertiesCache['1_1']!.habitats, {Habitat.forest});
+        expect(c.cellPropertiesCache['1_1']!.climate, Climate.boreal);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+
+      test('cellPropertiesCache is read-only (unmodifiable)', () {
+        final c = _makeCoordinator();
+        c.loadCellProperties({
+          'x': CellProperties(
+            cellId: 'x',
+            habitats: {Habitat.plains},
+            climate: Climate.temperate,
+            continent: Continent.northAmerica,
+            locationId: null,
+            createdAt: DateTime.now(),
+          ),
+        });
+
+        expect(
+          () => c.cellPropertiesCache['y'] = CellProperties(
+            cellId: 'y',
+            habitats: {Habitat.plains},
+            climate: Climate.temperate,
+            continent: Continent.northAmerica,
+            locationId: null,
+            createdAt: DateTime.now(),
+          ),
+          throwsUnsupportedError,
+        );
+
+        c.dispose();
+      });
+
+      test('properties not resolved when exploration is disabled', () {
+        final cells = _GridCellService();
+        final c = _makeCoordinator(cellService: cells);
+        c.setCellPropertyResolver(_StubCellPropertyResolver());
+        final s = _startCoordinator(c);
+
+        // GPS at (10, 20).
+        s.gps.add((
+          position: Geographic(lat: 10.0, lon: 20.0),
+          accuracy: 5.0,
+        ));
+
+        // Frame 1: visit (10, 20) normally.
+        c.updatePlayerPosition(10.0, 20.0);
+        final cacheSize = c.cellPropertiesCache.length;
+
+        // Frames 2-5: fill throttle.
+        for (var i = 0; i < 4; i++) {
+          c.updatePlayerPosition(10.0, 20.0);
+        }
+
+        // Frame 6: far away → exploration disabled, NO new properties.
+        c.updatePlayerPosition(50.0, 60.0);
+        expect(c.explorationDisabled, isTrue);
+        expect(c.cellPropertiesCache.length, cacheSize);
+
+        s.gps.close();
+        s.discovery.close();
+        c.dispose();
+      });
+    });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Cell property resolver test doubles
+// ---------------------------------------------------------------------------
+
+/// Stub resolver returning deterministic properties for any cell.
+class _StubCellPropertyResolver implements CellPropertyResolver {
+  @override
+  CellProperties resolve({
+    required String cellId,
+    required double lat,
+    required double lon,
+  }) {
+    return CellProperties(
+      cellId: cellId,
+      habitats: {Habitat.plains},
+      climate: Climate.fromLatitude(lat),
+      continent: Continent.northAmerica,
+      locationId: null,
+      createdAt: DateTime.now(),
+    );
+  }
+}
+
+/// Resolver that counts how many times resolve() is called.
+class _CountingCellPropertyResolver implements CellPropertyResolver {
+  final void Function() _onResolve;
+  _CountingCellPropertyResolver(this._onResolve);
+
+  @override
+  CellProperties resolve({
+    required String cellId,
+    required double lat,
+    required double lon,
+  }) {
+    _onResolve();
+    return CellProperties(
+      cellId: cellId,
+      habitats: {Habitat.plains},
+      climate: Climate.fromLatitude(lat),
+      continent: Continent.northAmerica,
+      locationId: null,
+      createdAt: DateTime.now(),
+    );
+  }
 }

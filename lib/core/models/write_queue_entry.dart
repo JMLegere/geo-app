@@ -9,13 +9,15 @@ enum WriteQueueEntityType {
   cellProgress,
 
   /// Player profile (streaks, distance, season).
-  profile;
+  profile,
+
+  /// Cell properties (habitats, climate, continent, location).
+  cellProperties;
 
   static WriteQueueEntityType fromString(String value) {
     return WriteQueueEntityType.values.firstWhere(
       (e) => e.name == value,
-      orElse: () =>
-          throw ArgumentError('Unknown WriteQueueEntityType: $value'),
+      orElse: () => throw ArgumentError('Unknown WriteQueueEntityType: $value'),
     );
   }
 
@@ -34,8 +36,7 @@ enum WriteQueueOperation {
   static WriteQueueOperation fromString(String value) {
     return WriteQueueOperation.values.firstWhere(
       (e) => e.name == value,
-      orElse: () =>
-          throw ArgumentError('Unknown WriteQueueOperation: $value'),
+      orElse: () => throw ArgumentError('Unknown WriteQueueOperation: $value'),
     );
   }
 
@@ -54,8 +55,7 @@ enum WriteQueueStatus {
   static WriteQueueStatus fromString(String value) {
     return WriteQueueStatus.values.firstWhere(
       (e) => e.name == value,
-      orElse: () =>
-          throw ArgumentError('Unknown WriteQueueStatus: $value'),
+      orElse: () => throw ArgumentError('Unknown WriteQueueStatus: $value'),
     );
   }
 
@@ -179,8 +179,7 @@ class WriteQueueEntry {
       );
 
   @override
-  String toString() =>
-      'WriteQueueEntry(id: $id, entityType: $entityType, '
+  String toString() => 'WriteQueueEntry(id: $id, entityType: $entityType, '
       'entityId: $entityId, operation: $operation, '
       'status: $status, attempts: $attempts)';
 }

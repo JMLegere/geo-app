@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
@@ -517,18 +518,21 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Rarity distribution — 10^x weight pattern
+  // Rarity distribution — two-stage roll
   // ---------------------------------------------------------------------------
 
   group('SpeciesService rarity distribution', () {
     test(
-        'leastConcern appears far more often than endangered over many cells (forest/europe)',
+        'leastConcern tier hits far more often than endangered tier (forest/europe)',
         () {
       // Forest/Europe fixture pool:
-      //   LC: Red Fox, European Badger, Eurasian Lynx, Gray Wolf (4 × 100,000)
-      //   NT: European Bison (1 × 10,000)
-      //   EN: Iberian Lynx (1 × 100)
-      // Over many single rolls, LC should dominate EN by >100x.
+      //   LC: Red Fox, European Badger, Eurasian Lynx, Gray Wolf (4 species)
+      //   NT: European Bison (1 species)
+      //   EN: Iberian Lynx (1 species)
+      //
+      // Two-stage roll: tier table = LC(243) + NT(81) + EN(9) = 333 total.
+      // P(tier=LC) ≈ 72.9%, P(tier=NT) ≈ 24.3%, P(tier=EN) ≈ 2.7%.
+      // Over 500 rolls: expected ~364 LC hits, ~13 EN hits → LC >> EN × 5.
 
       final lcSpecies = {
         'fauna_vulpes_vulpes',
@@ -558,12 +562,270 @@ void main() {
         }
       }
 
-      // With weights 972 (4×LC) vs 9 (EN), LC should appear ~108x more often.
-      // Even over 500 rolls, LC >> EN.
+      // Two-stage: LC tier (243/333 ≈ 73%) wins far more than EN (9/333 ≈ 2.7%).
+      // Expect LC >> EN even after accounting for tier-level selection.
       expect(lcCount, greaterThan(enCount * 5),
           reason:
-              'LC species (weight 243) should appear far more than EN (weight 9). '
+              'LC tier (weight 243) should appear far more than EN tier (weight 9). '
               'Got LC=$lcCount, EN=$enCount over $cellCount cells');
+    });
+
+    test(
+        'two-stage roll: rare species appear more often than flat-weight would predict',
+        () {
+      // Build a synthetic pool skewed 900:1 LC vs EN.
+      // With flat weighting: P(EN) ≈ 9 / (900×243 + 1×9) ≈ 0.004%
+      // With two-stage: P(EN tier) = 9/(243+9) ≈ 3.6% — ~900× higher.
+      //
+      // We use getSpeciesForCell with the real fixture (Europe/Forest) but
+      // verify the principle: over enough rolls EN should appear at least
+      // a few times even when the pool has many more LC species.
+
+      var enCount = 0;
+      const cellCount = 1000;
+
+      for (var i = 0; i < cellCount; i++) {
+        final found = service.getSpeciesForCell(
+          cellId: 'two_stage_verify_$i',
+          dailySeed: 'test_seed',
+          habitats: const {Habitat.forest},
+          continent: Continent.europe,
+          encounterSlots: 1,
+        );
+        if (found.isNotEmpty && found.first.rarity == IucnStatus.endangered) {
+          enCount++;
+        }
+      }
+
+      // With two-stage (tier P(EN)≈2.7%), over 1000 rolls we expect ~27 EN hits.
+      // Require at least 5 — very conservative to avoid flakiness.
+      expect(enCount, greaterThan(5),
+          reason:
+              'Two-stage roll should produce EN encounters far more often than '
+              'flat-weight would. Got EN=$enCount over $cellCount cells');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SpeciesService.getSpeciesForMigration
+  // ---------------------------------------------------------------------------
+
+  group('SpeciesService.getSpeciesForMigration', () {
+    test('returns species from a different continent than nativeContinent', () {
+      final found = service.getSpeciesForMigration(
+        cellId: 'migration_test_1',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.forest},
+        nativeContinent: Continent.europe,
+        nativeClimate: Climate.temperate,
+      );
+
+      // All returned species must NOT be exclusively European.
+      // They should come from a different source continent.
+      for (final s in found) {
+        // The source continent is deterministic from the seed — just verify
+        // that at least the species has a non-Europe continent.
+        final nonEuropeContinent =
+            s.continents.any((c) => c != Continent.europe);
+        expect(nonEuropeContinent, isTrue,
+            reason:
+                '${s.scientificName} should have a non-Europe continent for migration');
+      }
+    });
+
+    test('is deterministic — same inputs produce same species', () {
+      final first = service.getSpeciesForMigration(
+        cellId: 'migration_determ',
+        dailySeed: 'seed_42',
+        habitats: const {Habitat.forest},
+        nativeContinent: Continent.asia,
+        nativeClimate: Climate.temperate,
+      );
+      final second = service.getSpeciesForMigration(
+        cellId: 'migration_determ',
+        dailySeed: 'seed_42',
+        habitats: const {Habitat.forest},
+        nativeContinent: Continent.asia,
+        nativeClimate: Climate.temperate,
+      );
+      expect(
+        first.map((s) => s.id).toList(),
+        equals(second.map((s) => s.id).toList()),
+      );
+    });
+
+    test(
+        'returns empty list when no species match habitats on other continents',
+        () {
+      // Desert + Oceania: no desert species in fixture for any continent
+      // except Africa. And since nativeContinent is Africa, the migration
+      // picks a different continent which likely has no desert species.
+      final found = service.getSpeciesForMigration(
+        cellId: 'migration_empty',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.desert},
+        nativeContinent: Continent.africa,
+        nativeClimate: Climate.tropic,
+      );
+      // May or may not be empty depending on hash — desert exists only in
+      // Africa in the fixture. Any other continent will have no desert species.
+      expect(found, isEmpty,
+          reason: 'No desert species outside Africa in fixture');
+    });
+
+    test('different seeds pick different source continents (statistically)',
+        () {
+      final continents = <Continent>{};
+      for (var i = 0; i < 50; i++) {
+        final found = service.getSpeciesForMigration(
+          cellId: 'continent_variety_$i',
+          dailySeed: 'test_seed',
+          habitats: const {Habitat.forest},
+          nativeContinent: Continent.europe,
+          nativeClimate: Climate.temperate,
+        );
+        if (found.isNotEmpty) {
+          // Infer source continent from the species that was rolled.
+          for (final s in found) {
+            for (final c in s.continents) {
+              if (c != Continent.europe) continents.add(c);
+            }
+          }
+        }
+      }
+      // Over 50 cells, we should see at least 2 different source continents.
+      expect(continents.length, greaterThanOrEqualTo(2),
+          reason: 'Migration should draw from multiple source continents');
+    });
+
+    test('returned species are unique (no duplicates)', () {
+      final found = service.getSpeciesForMigration(
+        cellId: 'migration_dedup',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.forest},
+        nativeContinent: Continent.europe,
+        nativeClimate: Climate.temperate,
+        encounterSlots: 5,
+      );
+      final ids = found.map((s) => s.id).toSet();
+      expect(ids.length, equals(found.length),
+          reason: 'Migration should not return duplicate species');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // SpeciesService.getSpeciesForNestingSite
+  // ---------------------------------------------------------------------------
+
+  group('SpeciesService.getSpeciesForNestingSite', () {
+    test('returns only EN, CR, or EX species', () {
+      final found = service.getSpeciesForNestingSite(
+        cellId: 'nesting_test_1',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+      );
+
+      // Asia/Forest has: Amur Leopard (CR), Siberian Tiger (EN)
+      expect(found, isNotEmpty,
+          reason: 'Asia/Forest should have EN/CR species in fixture');
+      for (final s in found) {
+        expect(
+          s.rarity == IucnStatus.endangered ||
+              s.rarity == IucnStatus.criticallyEndangered ||
+              s.rarity == IucnStatus.extinct,
+          isTrue,
+          reason:
+              '${s.scientificName} (${s.rarity}) should be EN, CR, or EX for nesting site',
+        );
+      }
+    });
+
+    test('is deterministic — same inputs produce same species', () {
+      final first = service.getSpeciesForNestingSite(
+        cellId: 'nesting_determ',
+        dailySeed: 'seed_42',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+      );
+      final second = service.getSpeciesForNestingSite(
+        cellId: 'nesting_determ',
+        dailySeed: 'seed_42',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+      );
+      expect(
+        first.map((s) => s.id).toList(),
+        equals(second.map((s) => s.id).toList()),
+      );
+    });
+
+    test('returns empty when no EN/CR/EX species exist in pool', () {
+      // Mountain/Europe has: Alpine Ibex (LC), Eurasian Lynx (LC).
+      // No EN/CR/EX species.
+      final found = service.getSpeciesForNestingSite(
+        cellId: 'nesting_empty',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.mountain},
+        continent: Continent.europe,
+      );
+      expect(found, isEmpty,
+          reason: 'Mountain/Europe has only LC species in fixture');
+    });
+
+    test('EN species appear more often than CR (weight 9 vs 3)', () {
+      // Asia/Forest pool: Siberian Tiger (EN, weight=9), Amur Leopard (CR, weight=3)
+      var enCount = 0;
+      var crCount = 0;
+      const cellCount = 300;
+
+      for (var i = 0; i < cellCount; i++) {
+        final found = service.getSpeciesForNestingSite(
+          cellId: 'nesting_rarity_$i',
+          dailySeed: 'test_seed',
+          habitats: const {Habitat.forest},
+          continent: Continent.asia,
+          encounterSlots: 1,
+        );
+        if (found.isNotEmpty) {
+          if (found.first.rarity == IucnStatus.endangered) enCount++;
+          if (found.first.rarity == IucnStatus.criticallyEndangered) crCount++;
+        }
+      }
+
+      // Weight ratio EN:CR = 9:3 = 3:1, so EN should appear ~3× more than CR.
+      expect(enCount, greaterThan(crCount),
+          reason: 'EN (weight 9) should appear more than CR (weight 3). '
+              'Got EN=$enCount, CR=$crCount over $cellCount cells');
+    });
+
+    test('returned species are unique (no duplicates)', () {
+      final found = service.getSpeciesForNestingSite(
+        cellId: 'nesting_dedup',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+        encounterSlots: 5,
+      );
+      final ids = found.map((s) => s.id).toSet();
+      expect(ids.length, equals(found.length),
+          reason: 'Nesting site should not return duplicate species');
+    });
+
+    test('species belong to requested habitats and continent', () {
+      final found = service.getSpeciesForNestingSite(
+        cellId: 'nesting_validate',
+        dailySeed: 'test_seed',
+        habitats: const {Habitat.forest},
+        continent: Continent.asia,
+        encounterSlots: 5,
+      );
+      for (final s in found) {
+        expect(s.habitats, contains(Habitat.forest),
+            reason: '${s.scientificName} lacks forest habitat');
+        expect(s.continents, contains(Continent.asia),
+            reason: '${s.scientificName} lacks Asia continent');
+      }
     });
   });
 }

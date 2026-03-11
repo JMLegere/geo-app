@@ -242,6 +242,10 @@ const int kWriteQueueFlushBatchSize = 50;
 /// into a single network round-trip.
 const int kWriteQueueAutoFlushDelaySeconds = 3;
 
+// Cell Events (Rotating Layer)
+/// Percentage of cells that have an event on any given day (~12%).
+const int kCellEventChancePercent = 12;
+
 // Daily Seed (Phase 4: Deterministic Daily Encounters)
 /// Grace period in hours for a cached daily seed before discoveries pause.
 /// After this duration, the client must refresh the seed from the server.
@@ -282,7 +286,7 @@ const int kStepCostPerCell = 1000;
 /// time. Falls back to 'dev' for local development runs.
 const String kBuildTimestamp = String.fromEnvironment(
   'BUILD_TIMESTAMP',
-  defaultValue: 'dev',
+  defaultValue: 'β dev',
 );
 
 // Web Platform Movement (5x slower than current, since web has no pedometer)
@@ -293,3 +297,32 @@ const double kWebKeyboardStepMeters = 2.0;
 /// Tick interval in milliseconds for web keyboard/D-pad movement.
 /// 5x increase from original 100ms to slow down movement cadence.
 const int kWebKeyboardTickIntervalMs = 500;
+
+// Territory Border Rendering (Stellaris-style)
+/// Maximum BFS distance from a border cell for gradient fill.
+/// Cells beyond this distance have no border properties (clean map).
+const int kBorderMaxDistance = 3;
+
+/// Border fill opacity at distance 0 (directly on the border).
+const double kBorderOpacityDistance0 = 0.15;
+
+/// Border fill opacity at distance 1 (one cell from border).
+const double kBorderOpacityDistance1 = 0.04;
+
+/// Border fill opacity at distance 2 (two cells from border).
+const double kBorderOpacityDistance2 = 0.01;
+
+/// Border line opacity for all admin levels.
+const double kBorderLineOpacity = 0.7;
+
+/// Border line weight for country-level boundaries.
+const double kBorderLineWeightCountry = 3.0;
+
+/// Border line weight for state-level boundaries.
+const double kBorderLineWeightState = 2.0;
+
+/// Border line weight for city-level boundaries.
+const double kBorderLineWeightCity = 1.5;
+
+/// Border line weight for district-level boundaries.
+const double kBorderLineWeightDistrict = 1.0;

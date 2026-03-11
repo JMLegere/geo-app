@@ -145,7 +145,8 @@ void main() {
     // Speed scaling
     // -----------------------------------------------------------------------
 
-    test('speed increases with distance (farther target = faster movement)', () {
+    test('speed increases with distance (farther target = faster movement)',
+        () {
       final rb = createController();
 
       // Start at a fixed position.

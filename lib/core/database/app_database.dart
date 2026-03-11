@@ -165,6 +165,39 @@ class LocalWriteQueueTable extends Table {
   // Note: autoIncrement() implies primary key — do NOT override primaryKey.
 }
 
+/// Permanent geo-derived properties for a Voronoi cell.
+/// Resolved once when a cell is first made adjacent. Globally shared.
+@DataClassName('LocalCellProperties')
+class LocalCellPropertiesTable extends Table {
+  TextColumn get cellId => text()(); // Voronoi cell ID (PK)
+  TextColumn get habitats =>
+      text()(); // JSON array of habitat names e.g. '["forest","freshwater"]'
+  TextColumn get climate => text()(); // Climate enum name
+  TextColumn get continent => text()(); // Continent enum name
+  TextColumn get locationId => text().nullable()(); // FK → location_nodes
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {cellId};
+}
+
+/// A node in the administrative location hierarchy (country, state, city, etc.).
+/// Globally shared — not per-user.
+@DataClassName('LocalLocationNode')
+class LocalLocationNodeTable extends Table {
+  TextColumn get id => text()(); // UUID (PK)
+  IntColumn get osmId =>
+      integer().nullable()(); // OSM relation ID (null for synthetic nodes)
+  TextColumn get name => text()(); // "Fredericton"
+  TextColumn get adminLevel => text()(); // AdminLevel enum name
+  TextColumn get parentId => text().nullable()(); // FK → parent node
+  TextColumn get colorHex => text().nullable()(); // hex from flag, or null
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Local representation of player profile
 /// Mirrors Supabase `profiles` table
 @DataClassName('LocalPlayerProfile')
@@ -200,13 +233,15 @@ class LocalPlayerProfileTable extends Table {
   LocalPlayerProfileTable,
   LocalSpeciesEnrichmentTable,
   LocalWriteQueueTable,
+  LocalCellPropertiesTable,
+  LocalLocationNodeTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
@@ -269,6 +304,34 @@ class AppDatabase extends _$AppDatabase {
               localPlayerProfileTable, localPlayerProfileTable.totalSteps);
           await m.addColumn(localPlayerProfileTable,
               localPlayerProfileTable.lastKnownStepCount);
+        }
+        if (from < 11) {
+          await m.createTable(localCellPropertiesTable);
+          await m.createTable(localLocationNodeTable);
+        }
+        if (from < 12) {
+          // Make osmId nullable for synthetic nodes (world, continent).
+          // SQLite doesn't support ALTER COLUMN, so we recreate the table.
+          await customStatement('''
+            CREATE TABLE local_location_node_table_new (
+              id TEXT NOT NULL PRIMARY KEY,
+              osm_id INTEGER,
+              name TEXT NOT NULL,
+              admin_level TEXT NOT NULL,
+              parent_id TEXT,
+              color_hex TEXT,
+              created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+            )
+          ''');
+          await customStatement('''
+            INSERT INTO local_location_node_table_new
+              (id, osm_id, name, admin_level, parent_id, color_hex, created_at)
+            SELECT id, osm_id, name, admin_level, parent_id, color_hex, created_at
+            FROM local_location_node_table
+          ''');
+          await customStatement('DROP TABLE local_location_node_table');
+          await customStatement(
+              'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
         }
       },
     );
@@ -518,5 +581,67 @@ class AppDatabase extends _$AppDatabase {
     return (delete(localWriteQueueTable)
           ..where((tbl) => tbl.userId.equals(userId)))
         .go();
+  }
+
+  // ========================================================================
+  // CELL PROPERTIES QUERIES
+  // ========================================================================
+
+  Future<LocalCellProperties?> getCellProperties(String cellId) {
+    return (select(localCellPropertiesTable)
+          ..where((tbl) => tbl.cellId.equals(cellId)))
+        .getSingleOrNull();
+  }
+
+  Future<List<LocalCellProperties>> getAllCellProperties() {
+    return select(localCellPropertiesTable).get();
+  }
+
+  Future<void> upsertCellProperties(LocalCellProperties properties) async {
+    await into(localCellPropertiesTable).insert(
+      properties,
+      onConflict: DoUpdate((_) => properties),
+    );
+  }
+
+  Future<void> updateCellPropertiesLocationId(
+      String cellId, String locationId) async {
+    await (update(localCellPropertiesTable)
+          ..where((tbl) => tbl.cellId.equals(cellId)))
+        .write(LocalCellPropertiesTableCompanion(
+      locationId: Value(locationId),
+    ));
+  }
+
+  // ========================================================================
+  // LOCATION NODE QUERIES
+  // ========================================================================
+
+  Future<LocalLocationNode?> getLocationNode(String id) {
+    return (select(localLocationNodeTable)..where((tbl) => tbl.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  Future<LocalLocationNode?> getLocationNodeByOsmId(int osmId) {
+    return (select(localLocationNodeTable)
+          ..where((tbl) => tbl.osmId.equals(osmId)))
+        .getSingleOrNull();
+  }
+
+  Future<void> upsertLocationNode(LocalLocationNode node) async {
+    await into(localLocationNodeTable).insert(
+      node,
+      onConflict: DoUpdate((_) => node),
+    );
+  }
+
+  Future<List<LocalLocationNode>> getLocationNodeChildren(String parentId) {
+    return (select(localLocationNodeTable)
+          ..where((tbl) => tbl.parentId.equals(parentId)))
+        .get();
+  }
+
+  Future<List<LocalLocationNode>> getAllLocationNodes() {
+    return select(localLocationNodeTable).get();
   }
 }

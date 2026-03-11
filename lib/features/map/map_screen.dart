@@ -8,10 +8,16 @@ import 'package:maplibre/maplibre.dart';
 import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/models/cell_event.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
+import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
+import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
@@ -20,8 +26,12 @@ import 'package:earth_nova/features/map/providers/camera_controller_provider.dar
 import 'package:earth_nova/features/map/providers/camera_mode_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
+import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
+import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
 import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
@@ -129,6 +139,23 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _fogBorderSrcId = 'fog-border-src';
   static const _fogBorderLayerId = 'fog-border';
 
+  // -- MapLibre source/layer IDs for cell property icons --
+  static const _cellIconsSrcId = 'cell-icons-src';
+  static const _cellIconsLayerId = 'cell-icons';
+
+  // -- MapLibre source/layer IDs for territory borders --
+  static const _borderFillSrcId = 'territory-border-fill-src';
+  static const _borderFillLayerId = 'territory-border-fill';
+  static const _borderLinesSrcId = 'territory-border-lines-src';
+  static const _borderLinesLayerId = 'territory-border-lines';
+
+  /// Whether the cell property icon images have been registered with MapLibre.
+  bool _iconImagesRegistered = false;
+
+  /// Cached location nodes — loaded once, refreshed when enrichment completes.
+  Map<String, LocationNode> _locationNodesMap = const {};
+  bool _locationNodesLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -221,10 +248,126 @@ class _MapScreenState extends ConsumerState<MapScreen>
         },
       ));
 
+      // Territory border fill: gradient polygons near admin boundaries.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _borderFillSrcId,
+            data: TerritoryBorderGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _borderFillLayerId,
+        sourceId: _borderFillSrcId,
+        paint: {
+          'fill-color': ['get', 'region_color_country'],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            [
+              'coalesce',
+              ['get', 'border_distance_country'],
+              3
+            ],
+            0,
+            0.15,
+            1,
+            0.04,
+            2,
+            0.01,
+            3,
+            0.0,
+          ],
+        },
+      ));
+
+      // Territory border lines: colored edges at admin boundaries.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _borderLinesSrcId,
+            data: TerritoryBorderGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(LineLayer(
+        id: _borderLinesLayerId,
+        sourceId: _borderLinesSrcId,
+        paint: {
+          'line-color': ['get', 'border_color'],
+          'line-width': ['get', 'line_weight'],
+          'line-opacity': 0.7,
+        },
+      ));
+
+      // Cell property icons: Point features rendered as symbols.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _cellIconsSrcId,
+            data: CellPropertyGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(SymbolLayer(
+        id: _cellIconsLayerId,
+        sourceId: _cellIconsSrcId,
+        layout: {
+          'icon-image': ['get', 'icon'],
+          'icon-size': 0.4,
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true,
+          'icon-offset': ['get', 'offset'],
+        },
+      ));
+
+      // Register emoji images asynchronously (non-blocking).
+      _registerIconImages(controller);
+
       _fogLayersInitialized = true;
       MapLogger.fogLayersInitialized();
     } catch (e, stack) {
       MapLogger.fogLayersInitError(e, stack);
+    }
+  }
+
+  /// Registers all cell property emoji images with MapLibre.
+  ///
+  /// Called once during [_initFogLayers]. Each emoji is rendered to PNG via
+  /// [MapIconRenderer] and registered with `addImage()`. The SymbolLayer
+  /// references these by ID (e.g., "habitat-forest", "climate-tropic").
+  Future<void> _registerIconImages(MapController controller) async {
+    if (_iconImagesRegistered) return;
+
+    try {
+      // Habitat icons (7).
+      for (final habitat in Habitat.values) {
+        final bytes =
+            await MapIconRenderer.renderEmoji(GameIcons.habitat(habitat));
+        await controller.addImage(
+          MapIconRenderer.habitatIconId(habitat.name),
+          bytes,
+        );
+      }
+
+      // Climate icons (4).
+      for (final climate in Climate.values) {
+        final bytes =
+            await MapIconRenderer.renderEmoji(GameIcons.climate(climate));
+        await controller.addImage(
+          MapIconRenderer.climateIconId(climate.name),
+          bytes,
+        );
+      }
+
+      // Event icons (2 + unknown).
+      for (final eventType in CellEventType.values) {
+        final bytes =
+            await MapIconRenderer.renderEmoji(GameIcons.cellEvent(eventType));
+        await controller.addImage(
+          MapIconRenderer.eventIconId(eventType.name),
+          bytes,
+        );
+      }
+      final unknownBytes =
+          await MapIconRenderer.renderEmoji(GameIcons.eventUnknown);
+      await controller.addImage(MapIconRenderer.eventUnknownId, unknownBytes);
+
+      _iconImagesRegistered = true;
+    } catch (e, stack) {
+      debugPrint('[MAP] Failed to register icon images: $e\n$stack');
     }
   }
 
@@ -254,6 +397,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
           id: _fogBorderSrcId,
           data: fogOverlayController.cellBorderGeoJson,
         ),
+        controller.updateGeoJsonSource(
+          id: _borderFillSrcId,
+          data: fogOverlayController.borderFillGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _borderLinesSrcId,
+          data: fogOverlayController.borderLinesGeoJson,
+        ),
+        if (_iconImagesRegistered)
+          controller.updateGeoJsonSource(
+            id: _cellIconsSrcId,
+            data: fogOverlayController.cellIconsGeoJson,
+          ),
       ]);
       MapLogger.fogUpdateCompleted();
     } catch (e, stack) {
@@ -465,6 +621,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
       }
 
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
+
+      // Feed cell properties + daily seed for icon rendering.
+      fogOverlayController.cellPropertiesCache =
+          _gameCoordinator.cellPropertiesCache;
+      final seedState = ref.read(dailySeedServiceProvider).currentSeed;
+      fogOverlayController.dailySeed = seedState?.seed ?? '';
+
+      // Lazy-load location nodes for territory border rendering.
+      if (!_locationNodesLoaded) {
+        _locationNodesLoaded = true;
+        _loadLocationNodes();
+      }
+      fogOverlayController.locationNodesCache = _locationNodesMap;
+
       fogOverlayController.update(
         cameraLat: camera.center.lat.toDouble(),
         cameraLon: camera.center.lng.toDouble(),
@@ -473,6 +643,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
       );
       ref.read(mapStateProvider.notifier).updateCameraPosition(lat, lon);
       _updateFogSources();
+    }
+  }
+
+  /// Loads all location nodes from the database and caches them.
+  ///
+  /// Called lazily on the first fog render frame. Runs async but the map
+  /// continues rendering without borders until the load completes (same
+  /// pattern as cell properties lazy loading).
+  Future<void> _loadLocationNodes() async {
+    try {
+      final repo = ref.read(locationNodeRepositoryProvider);
+      final nodes = await repo.getAll();
+      if (!mounted) return;
+      _locationNodesMap = {for (final n in nodes) n.id: n};
+    } catch (e) {
+      debugPrint('[MAP] Failed to load location nodes: $e');
     }
   }
 

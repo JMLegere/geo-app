@@ -1,9 +1,16 @@
 import 'dart:async';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/cells/event_resolver.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/cell_event.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/services/daily_seed_service.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart';
 import 'package:earth_nova/core/species/species_service.dart';
@@ -75,6 +82,18 @@ class DiscoveryService {
   /// When non-null, encounters use the daily seed for rotation.
   /// When null, falls back to a static offline seed.
   final DailySeedService? _dailySeedService;
+
+  /// Optional lookup for pre-resolved cell properties from GameCoordinator's
+  /// cell properties cache.
+  ///
+  /// When set, uses cached habitats/continent/climate instead of re-resolving
+  /// via HabitatService + ContinentResolver. Also enables cell event detection
+  /// (Migration, Nesting Site) which replaces normal encounters.
+  ///
+  /// Wired by gameCoordinatorProvider after construction to avoid circular
+  /// dependency: both discoveryServiceProvider and gameCoordinatorProvider
+  /// exist in the same provider graph.
+  CellProperties? Function(String cellId)? cellPropertiesLookup;
 
   /// Internal set of species IDs the player has already collected.
   ///
@@ -170,7 +189,12 @@ class DiscoveryService {
     final dailySeed =
         seedService?.currentSeed?.seed ?? kDailySeedOfflineFallback;
 
-    // Resolve the cell centre and look up biomes.
+    // Try to use pre-resolved cell properties from GameCoordinator's cache.
+    // This provides habitats/continent/climate from the geo-resolution pipeline
+    // and enables cell event detection (Migration, Nesting Site).
+    final cellProps = cellPropertiesLookup?.call(event.cellId);
+
+    // Resolve cell centre and biomes (fallback when no cached properties).
     final cellService = _cellService;
     final double lat;
     final double lon;
@@ -182,22 +206,71 @@ class DiscoveryService {
       lat = 0.0;
       lon = 0.0;
     }
-    // Use lazy getter when available (breaks Riverpod rebuild chain),
-    // fall back to constructor-injected instance.
-    final habitatService = _habitatServiceGetter?.call() ?? _habitatService;
-    final habitats = habitatService.classifyLocation(lat, lon);
-    final continent = ContinentResolver.resolve(lat, lon);
+
+    final Set<Habitat> habitats;
+    final Continent continent;
+    final Climate climate;
+    if (cellProps != null) {
+      habitats = cellProps.habitats;
+      continent = cellProps.continent;
+      climate = cellProps.climate;
+    } else {
+      // Fallback: resolve manually (pre-cell-properties behavior).
+      final habitatService = _habitatServiceGetter?.call() ?? _habitatService;
+      habitats = habitatService.classifyLocation(lat, lon);
+      continent = ContinentResolver.resolve(lat, lon);
+      climate = Climate.fromLatitude(lat);
+    }
 
     // Use lazy getter when available (breaks Riverpod rebuild chain),
     // fall back to constructor-injected instance.
     final speciesService = _speciesServiceGetter?.call() ?? _speciesService;
 
-    var species = speciesService.getSpeciesForCell(
-      cellId: event.cellId,
-      dailySeed: dailySeed,
-      habitats: habitats,
-      continent: continent,
-    );
+    // Check for a cell event (Migration, Nesting Site). Events REPLACE
+    // base encounters — they're not additive.
+    final cellEvent = EventResolver.resolve(dailySeed, event.cellId);
+    CellEventType? eventType;
+    List<FaunaDefinition> species;
+
+    if (cellEvent != null) {
+      eventType = cellEvent.type;
+      switch (cellEvent.type) {
+        case CellEventType.migration:
+          species = speciesService.getSpeciesForMigration(
+            cellId: event.cellId,
+            dailySeed: dailySeed,
+            habitats: habitats,
+            nativeContinent: continent,
+            nativeClimate: climate,
+          );
+        case CellEventType.nestingSite:
+          species = speciesService.getSpeciesForNestingSite(
+            cellId: event.cellId,
+            dailySeed: dailySeed,
+            habitats: habitats,
+            continent: continent,
+          );
+      }
+
+      // If event-specific pool is empty, fall back to normal encounters.
+      if (species.isEmpty) {
+        eventType = null;
+        species = speciesService.getSpeciesForCell(
+          cellId: event.cellId,
+          dailySeed: dailySeed,
+          habitats: habitats,
+          continent: continent,
+        );
+      }
+    } else {
+      // Normal encounter (no event).
+      species = speciesService.getSpeciesForCell(
+        cellId: event.cellId,
+        dailySeed: dailySeed,
+        habitats: habitats,
+        continent: continent,
+      );
+    }
 
     // Filter by current season when a SeasonService is wired in.
     // Capture in a local variable to enable null promotion (field promotion
@@ -217,6 +290,7 @@ class DiscoveryService {
           isNew: isNew,
           timestamp: event.timestamp,
           dailySeed: dailySeed,
+          cellEventType: eventType,
         ),
       );
     }

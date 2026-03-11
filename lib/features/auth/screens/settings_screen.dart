@@ -181,7 +181,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               trailing: Text(
-                'v$kAppVersion',
+                kBuildTimestamp,
                 style: TextStyle(
                   fontSize: 13,
                   color: colors.onSurfaceVariant,

@@ -1,5 +1,6 @@
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/cell_event.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
@@ -175,6 +176,16 @@ abstract final class GameIcons {
   static const String brawn = '💪';
   static const String wit = '🧠';
   static const String speed = '⚡';
+
+  // ── Cell Events (2) ────────────────────────────────────────────────────
+
+  static String cellEvent(CellEventType type) => switch (type) {
+        CellEventType.migration => '🦅',
+        CellEventType.nestingSite => '🪺',
+      };
+
+  /// Icon for cells with an event that hasn't been visited yet (Witcher 3 "?").
+  static const String eventUnknown = '❓';
 
   // ── Misc game concepts ───────────────────────────────────────────────────
 

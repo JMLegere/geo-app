@@ -3169,6 +3169,749 @@ class LocalWriteQueueTableCompanion
   }
 }
 
+class $LocalCellPropertiesTableTable extends LocalCellPropertiesTable
+    with TableInfo<$LocalCellPropertiesTableTable, LocalCellProperties> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalCellPropertiesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cellIdMeta = const VerificationMeta('cellId');
+  @override
+  late final GeneratedColumn<String> cellId = GeneratedColumn<String>(
+      'cell_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _habitatsMeta =
+      const VerificationMeta('habitats');
+  @override
+  late final GeneratedColumn<String> habitats = GeneratedColumn<String>(
+      'habitats', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _climateMeta =
+      const VerificationMeta('climate');
+  @override
+  late final GeneratedColumn<String> climate = GeneratedColumn<String>(
+      'climate', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _continentMeta =
+      const VerificationMeta('continent');
+  @override
+  late final GeneratedColumn<String> continent = GeneratedColumn<String>(
+      'continent', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _locationIdMeta =
+      const VerificationMeta('locationId');
+  @override
+  late final GeneratedColumn<String> locationId = GeneratedColumn<String>(
+      'location_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [cellId, habitats, climate, continent, locationId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_cell_properties_table';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<LocalCellProperties> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('cell_id')) {
+      context.handle(_cellIdMeta,
+          cellId.isAcceptableOrUnknown(data['cell_id']!, _cellIdMeta));
+    } else if (isInserting) {
+      context.missing(_cellIdMeta);
+    }
+    if (data.containsKey('habitats')) {
+      context.handle(_habitatsMeta,
+          habitats.isAcceptableOrUnknown(data['habitats']!, _habitatsMeta));
+    } else if (isInserting) {
+      context.missing(_habitatsMeta);
+    }
+    if (data.containsKey('climate')) {
+      context.handle(_climateMeta,
+          climate.isAcceptableOrUnknown(data['climate']!, _climateMeta));
+    } else if (isInserting) {
+      context.missing(_climateMeta);
+    }
+    if (data.containsKey('continent')) {
+      context.handle(_continentMeta,
+          continent.isAcceptableOrUnknown(data['continent']!, _continentMeta));
+    } else if (isInserting) {
+      context.missing(_continentMeta);
+    }
+    if (data.containsKey('location_id')) {
+      context.handle(
+          _locationIdMeta,
+          locationId.isAcceptableOrUnknown(
+              data['location_id']!, _locationIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cellId};
+  @override
+  LocalCellProperties map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCellProperties(
+      cellId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}cell_id'])!,
+      habitats: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}habitats'])!,
+      climate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}climate'])!,
+      continent: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}continent'])!,
+      locationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $LocalCellPropertiesTableTable createAlias(String alias) {
+    return $LocalCellPropertiesTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCellProperties extends DataClass
+    implements Insertable<LocalCellProperties> {
+  final String cellId;
+  final String habitats;
+  final String climate;
+  final String continent;
+  final String? locationId;
+  final DateTime createdAt;
+  const LocalCellProperties(
+      {required this.cellId,
+      required this.habitats,
+      required this.climate,
+      required this.continent,
+      this.locationId,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['cell_id'] = Variable<String>(cellId);
+    map['habitats'] = Variable<String>(habitats);
+    map['climate'] = Variable<String>(climate);
+    map['continent'] = Variable<String>(continent);
+    if (!nullToAbsent || locationId != null) {
+      map['location_id'] = Variable<String>(locationId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalCellPropertiesTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalCellPropertiesTableCompanion(
+      cellId: Value(cellId),
+      habitats: Value(habitats),
+      climate: Value(climate),
+      continent: Value(continent),
+      locationId: locationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalCellProperties.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCellProperties(
+      cellId: serializer.fromJson<String>(json['cellId']),
+      habitats: serializer.fromJson<String>(json['habitats']),
+      climate: serializer.fromJson<String>(json['climate']),
+      continent: serializer.fromJson<String>(json['continent']),
+      locationId: serializer.fromJson<String?>(json['locationId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cellId': serializer.toJson<String>(cellId),
+      'habitats': serializer.toJson<String>(habitats),
+      'climate': serializer.toJson<String>(climate),
+      'continent': serializer.toJson<String>(continent),
+      'locationId': serializer.toJson<String?>(locationId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalCellProperties copyWith(
+          {String? cellId,
+          String? habitats,
+          String? climate,
+          String? continent,
+          Value<String?> locationId = const Value.absent(),
+          DateTime? createdAt}) =>
+      LocalCellProperties(
+        cellId: cellId ?? this.cellId,
+        habitats: habitats ?? this.habitats,
+        climate: climate ?? this.climate,
+        continent: continent ?? this.continent,
+        locationId: locationId.present ? locationId.value : this.locationId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  LocalCellProperties copyWithCompanion(
+      LocalCellPropertiesTableCompanion data) {
+    return LocalCellProperties(
+      cellId: data.cellId.present ? data.cellId.value : this.cellId,
+      habitats: data.habitats.present ? data.habitats.value : this.habitats,
+      climate: data.climate.present ? data.climate.value : this.climate,
+      continent: data.continent.present ? data.continent.value : this.continent,
+      locationId:
+          data.locationId.present ? data.locationId.value : this.locationId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCellProperties(')
+          ..write('cellId: $cellId, ')
+          ..write('habitats: $habitats, ')
+          ..write('climate: $climate, ')
+          ..write('continent: $continent, ')
+          ..write('locationId: $locationId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(cellId, habitats, climate, continent, locationId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCellProperties &&
+          other.cellId == this.cellId &&
+          other.habitats == this.habitats &&
+          other.climate == this.climate &&
+          other.continent == this.continent &&
+          other.locationId == this.locationId &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalCellPropertiesTableCompanion
+    extends UpdateCompanion<LocalCellProperties> {
+  final Value<String> cellId;
+  final Value<String> habitats;
+  final Value<String> climate;
+  final Value<String> continent;
+  final Value<String?> locationId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalCellPropertiesTableCompanion({
+    this.cellId = const Value.absent(),
+    this.habitats = const Value.absent(),
+    this.climate = const Value.absent(),
+    this.continent = const Value.absent(),
+    this.locationId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalCellPropertiesTableCompanion.insert({
+    required String cellId,
+    required String habitats,
+    required String climate,
+    required String continent,
+    this.locationId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : cellId = Value(cellId),
+        habitats = Value(habitats),
+        climate = Value(climate),
+        continent = Value(continent);
+  static Insertable<LocalCellProperties> custom({
+    Expression<String>? cellId,
+    Expression<String>? habitats,
+    Expression<String>? climate,
+    Expression<String>? continent,
+    Expression<String>? locationId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cellId != null) 'cell_id': cellId,
+      if (habitats != null) 'habitats': habitats,
+      if (climate != null) 'climate': climate,
+      if (continent != null) 'continent': continent,
+      if (locationId != null) 'location_id': locationId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalCellPropertiesTableCompanion copyWith(
+      {Value<String>? cellId,
+      Value<String>? habitats,
+      Value<String>? climate,
+      Value<String>? continent,
+      Value<String?>? locationId,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return LocalCellPropertiesTableCompanion(
+      cellId: cellId ?? this.cellId,
+      habitats: habitats ?? this.habitats,
+      climate: climate ?? this.climate,
+      continent: continent ?? this.continent,
+      locationId: locationId ?? this.locationId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cellId.present) {
+      map['cell_id'] = Variable<String>(cellId.value);
+    }
+    if (habitats.present) {
+      map['habitats'] = Variable<String>(habitats.value);
+    }
+    if (climate.present) {
+      map['climate'] = Variable<String>(climate.value);
+    }
+    if (continent.present) {
+      map['continent'] = Variable<String>(continent.value);
+    }
+    if (locationId.present) {
+      map['location_id'] = Variable<String>(locationId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCellPropertiesTableCompanion(')
+          ..write('cellId: $cellId, ')
+          ..write('habitats: $habitats, ')
+          ..write('climate: $climate, ')
+          ..write('continent: $continent, ')
+          ..write('locationId: $locationId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalLocationNodeTableTable extends LocalLocationNodeTable
+    with TableInfo<$LocalLocationNodeTableTable, LocalLocationNode> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalLocationNodeTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _osmIdMeta = const VerificationMeta('osmId');
+  @override
+  late final GeneratedColumn<int> osmId = GeneratedColumn<int>(
+      'osm_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _adminLevelMeta =
+      const VerificationMeta('adminLevel');
+  @override
+  late final GeneratedColumn<String> adminLevel = GeneratedColumn<String>(
+      'admin_level', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _parentIdMeta =
+      const VerificationMeta('parentId');
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+      'parent_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _colorHexMeta =
+      const VerificationMeta('colorHex');
+  @override
+  late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
+      'color_hex', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, osmId, name, adminLevel, parentId, colorHex, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_location_node_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalLocationNode> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('osm_id')) {
+      context.handle(
+          _osmIdMeta, osmId.isAcceptableOrUnknown(data['osm_id']!, _osmIdMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('admin_level')) {
+      context.handle(
+          _adminLevelMeta,
+          adminLevel.isAcceptableOrUnknown(
+              data['admin_level']!, _adminLevelMeta));
+    } else if (isInserting) {
+      context.missing(_adminLevelMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(_parentIdMeta,
+          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
+    }
+    if (data.containsKey('color_hex')) {
+      context.handle(_colorHexMeta,
+          colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalLocationNode map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalLocationNode(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      osmId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}osm_id']),
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      adminLevel: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}admin_level'])!,
+      parentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
+      colorHex: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}color_hex']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $LocalLocationNodeTableTable createAlias(String alias) {
+    return $LocalLocationNodeTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalLocationNode extends DataClass
+    implements Insertable<LocalLocationNode> {
+  final String id;
+  final int? osmId;
+  final String name;
+  final String adminLevel;
+  final String? parentId;
+  final String? colorHex;
+  final DateTime createdAt;
+  const LocalLocationNode(
+      {required this.id,
+      this.osmId,
+      required this.name,
+      required this.adminLevel,
+      this.parentId,
+      this.colorHex,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || osmId != null) {
+      map['osm_id'] = Variable<int>(osmId);
+    }
+    map['name'] = Variable<String>(name);
+    map['admin_level'] = Variable<String>(adminLevel);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    if (!nullToAbsent || colorHex != null) {
+      map['color_hex'] = Variable<String>(colorHex);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalLocationNodeTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalLocationNodeTableCompanion(
+      id: Value(id),
+      osmId:
+          osmId == null && nullToAbsent ? const Value.absent() : Value(osmId),
+      name: Value(name),
+      adminLevel: Value(adminLevel),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      colorHex: colorHex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(colorHex),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalLocationNode.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalLocationNode(
+      id: serializer.fromJson<String>(json['id']),
+      osmId: serializer.fromJson<int?>(json['osmId']),
+      name: serializer.fromJson<String>(json['name']),
+      adminLevel: serializer.fromJson<String>(json['adminLevel']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      colorHex: serializer.fromJson<String?>(json['colorHex']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'osmId': serializer.toJson<int?>(osmId),
+      'name': serializer.toJson<String>(name),
+      'adminLevel': serializer.toJson<String>(adminLevel),
+      'parentId': serializer.toJson<String?>(parentId),
+      'colorHex': serializer.toJson<String?>(colorHex),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalLocationNode copyWith(
+          {String? id,
+          Value<int?> osmId = const Value.absent(),
+          String? name,
+          String? adminLevel,
+          Value<String?> parentId = const Value.absent(),
+          Value<String?> colorHex = const Value.absent(),
+          DateTime? createdAt}) =>
+      LocalLocationNode(
+        id: id ?? this.id,
+        osmId: osmId.present ? osmId.value : this.osmId,
+        name: name ?? this.name,
+        adminLevel: adminLevel ?? this.adminLevel,
+        parentId: parentId.present ? parentId.value : this.parentId,
+        colorHex: colorHex.present ? colorHex.value : this.colorHex,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  LocalLocationNode copyWithCompanion(LocalLocationNodeTableCompanion data) {
+    return LocalLocationNode(
+      id: data.id.present ? data.id.value : this.id,
+      osmId: data.osmId.present ? data.osmId.value : this.osmId,
+      name: data.name.present ? data.name.value : this.name,
+      adminLevel:
+          data.adminLevel.present ? data.adminLevel.value : this.adminLevel,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalLocationNode(')
+          ..write('id: $id, ')
+          ..write('osmId: $osmId, ')
+          ..write('name: $name, ')
+          ..write('adminLevel: $adminLevel, ')
+          ..write('parentId: $parentId, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, osmId, name, adminLevel, parentId, colorHex, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalLocationNode &&
+          other.id == this.id &&
+          other.osmId == this.osmId &&
+          other.name == this.name &&
+          other.adminLevel == this.adminLevel &&
+          other.parentId == this.parentId &&
+          other.colorHex == this.colorHex &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalLocationNodeTableCompanion
+    extends UpdateCompanion<LocalLocationNode> {
+  final Value<String> id;
+  final Value<int?> osmId;
+  final Value<String> name;
+  final Value<String> adminLevel;
+  final Value<String?> parentId;
+  final Value<String?> colorHex;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalLocationNodeTableCompanion({
+    this.id = const Value.absent(),
+    this.osmId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.adminLevel = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalLocationNodeTableCompanion.insert({
+    required String id,
+    this.osmId = const Value.absent(),
+    required String name,
+    required String adminLevel,
+    this.parentId = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        adminLevel = Value(adminLevel);
+  static Insertable<LocalLocationNode> custom({
+    Expression<String>? id,
+    Expression<int>? osmId,
+    Expression<String>? name,
+    Expression<String>? adminLevel,
+    Expression<String>? parentId,
+    Expression<String>? colorHex,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (osmId != null) 'osm_id': osmId,
+      if (name != null) 'name': name,
+      if (adminLevel != null) 'admin_level': adminLevel,
+      if (parentId != null) 'parent_id': parentId,
+      if (colorHex != null) 'color_hex': colorHex,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalLocationNodeTableCompanion copyWith(
+      {Value<String>? id,
+      Value<int?>? osmId,
+      Value<String>? name,
+      Value<String>? adminLevel,
+      Value<String?>? parentId,
+      Value<String?>? colorHex,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return LocalLocationNodeTableCompanion(
+      id: id ?? this.id,
+      osmId: osmId ?? this.osmId,
+      name: name ?? this.name,
+      adminLevel: adminLevel ?? this.adminLevel,
+      parentId: parentId ?? this.parentId,
+      colorHex: colorHex ?? this.colorHex,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (osmId.present) {
+      map['osm_id'] = Variable<int>(osmId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (adminLevel.present) {
+      map['admin_level'] = Variable<String>(adminLevel.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (colorHex.present) {
+      map['color_hex'] = Variable<String>(colorHex.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalLocationNodeTableCompanion(')
+          ..write('id: $id, ')
+          ..write('osmId: $osmId, ')
+          ..write('name: $name, ')
+          ..write('adminLevel: $adminLevel, ')
+          ..write('parentId: $parentId, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3182,6 +3925,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalSpeciesEnrichmentTableTable(this);
   late final $LocalWriteQueueTableTable localWriteQueueTable =
       $LocalWriteQueueTableTable(this);
+  late final $LocalCellPropertiesTableTable localCellPropertiesTable =
+      $LocalCellPropertiesTableTable(this);
+  late final $LocalLocationNodeTableTable localLocationNodeTable =
+      $LocalLocationNodeTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3191,7 +3938,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         localItemInstanceTable,
         localPlayerProfileTable,
         localSpeciesEnrichmentTable,
-        localWriteQueueTable
+        localWriteQueueTable,
+        localCellPropertiesTable,
+        localLocationNodeTable
       ];
 }
 
@@ -4670,6 +5419,411 @@ typedef $$LocalWriteQueueTableTableProcessedTableManager
         ),
         LocalWriteQueueEntry,
         PrefetchHooks Function()>;
+typedef $$LocalCellPropertiesTableTableCreateCompanionBuilder
+    = LocalCellPropertiesTableCompanion Function({
+  required String cellId,
+  required String habitats,
+  required String climate,
+  required String continent,
+  Value<String?> locationId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$LocalCellPropertiesTableTableUpdateCompanionBuilder
+    = LocalCellPropertiesTableCompanion Function({
+  Value<String> cellId,
+  Value<String> habitats,
+  Value<String> climate,
+  Value<String> continent,
+  Value<String?> locationId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$LocalCellPropertiesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalCellPropertiesTableTable> {
+  $$LocalCellPropertiesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cellId => $composableBuilder(
+      column: $table.cellId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get habitats => $composableBuilder(
+      column: $table.habitats, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get climate => $composableBuilder(
+      column: $table.climate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get continent => $composableBuilder(
+      column: $table.continent, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationId => $composableBuilder(
+      column: $table.locationId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalCellPropertiesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalCellPropertiesTableTable> {
+  $$LocalCellPropertiesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cellId => $composableBuilder(
+      column: $table.cellId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get habitats => $composableBuilder(
+      column: $table.habitats, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get climate => $composableBuilder(
+      column: $table.climate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get continent => $composableBuilder(
+      column: $table.continent, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationId => $composableBuilder(
+      column: $table.locationId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalCellPropertiesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalCellPropertiesTableTable> {
+  $$LocalCellPropertiesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cellId =>
+      $composableBuilder(column: $table.cellId, builder: (column) => column);
+
+  GeneratedColumn<String> get habitats =>
+      $composableBuilder(column: $table.habitats, builder: (column) => column);
+
+  GeneratedColumn<String> get climate =>
+      $composableBuilder(column: $table.climate, builder: (column) => column);
+
+  GeneratedColumn<String> get continent =>
+      $composableBuilder(column: $table.continent, builder: (column) => column);
+
+  GeneratedColumn<String> get locationId => $composableBuilder(
+      column: $table.locationId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalCellPropertiesTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalCellPropertiesTableTable,
+    LocalCellProperties,
+    $$LocalCellPropertiesTableTableFilterComposer,
+    $$LocalCellPropertiesTableTableOrderingComposer,
+    $$LocalCellPropertiesTableTableAnnotationComposer,
+    $$LocalCellPropertiesTableTableCreateCompanionBuilder,
+    $$LocalCellPropertiesTableTableUpdateCompanionBuilder,
+    (
+      LocalCellProperties,
+      BaseReferences<_$AppDatabase, $LocalCellPropertiesTableTable,
+          LocalCellProperties>
+    ),
+    LocalCellProperties,
+    PrefetchHooks Function()> {
+  $$LocalCellPropertiesTableTableTableManager(
+      _$AppDatabase db, $LocalCellPropertiesTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalCellPropertiesTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalCellPropertiesTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalCellPropertiesTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> cellId = const Value.absent(),
+            Value<String> habitats = const Value.absent(),
+            Value<String> climate = const Value.absent(),
+            Value<String> continent = const Value.absent(),
+            Value<String?> locationId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalCellPropertiesTableCompanion(
+            cellId: cellId,
+            habitats: habitats,
+            climate: climate,
+            continent: continent,
+            locationId: locationId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String cellId,
+            required String habitats,
+            required String climate,
+            required String continent,
+            Value<String?> locationId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalCellPropertiesTableCompanion.insert(
+            cellId: cellId,
+            habitats: habitats,
+            climate: climate,
+            continent: continent,
+            locationId: locationId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalCellPropertiesTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $LocalCellPropertiesTableTable,
+        LocalCellProperties,
+        $$LocalCellPropertiesTableTableFilterComposer,
+        $$LocalCellPropertiesTableTableOrderingComposer,
+        $$LocalCellPropertiesTableTableAnnotationComposer,
+        $$LocalCellPropertiesTableTableCreateCompanionBuilder,
+        $$LocalCellPropertiesTableTableUpdateCompanionBuilder,
+        (
+          LocalCellProperties,
+          BaseReferences<_$AppDatabase, $LocalCellPropertiesTableTable,
+              LocalCellProperties>
+        ),
+        LocalCellProperties,
+        PrefetchHooks Function()>;
+typedef $$LocalLocationNodeTableTableCreateCompanionBuilder
+    = LocalLocationNodeTableCompanion Function({
+  required String id,
+  Value<int?> osmId,
+  required String name,
+  required String adminLevel,
+  Value<String?> parentId,
+  Value<String?> colorHex,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$LocalLocationNodeTableTableUpdateCompanionBuilder
+    = LocalLocationNodeTableCompanion Function({
+  Value<String> id,
+  Value<int?> osmId,
+  Value<String> name,
+  Value<String> adminLevel,
+  Value<String?> parentId,
+  Value<String?> colorHex,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$LocalLocationNodeTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
+  $$LocalLocationNodeTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get osmId => $composableBuilder(
+      column: $table.osmId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get adminLevel => $composableBuilder(
+      column: $table.adminLevel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get colorHex => $composableBuilder(
+      column: $table.colorHex, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalLocationNodeTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
+  $$LocalLocationNodeTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get osmId => $composableBuilder(
+      column: $table.osmId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get adminLevel => $composableBuilder(
+      column: $table.adminLevel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get parentId => $composableBuilder(
+      column: $table.parentId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get colorHex => $composableBuilder(
+      column: $table.colorHex, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalLocationNodeTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
+  $$LocalLocationNodeTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get osmId =>
+      $composableBuilder(column: $table.osmId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get adminLevel => $composableBuilder(
+      column: $table.adminLevel, builder: (column) => column);
+
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<String> get colorHex =>
+      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalLocationNodeTableTable,
+    LocalLocationNode,
+    $$LocalLocationNodeTableTableFilterComposer,
+    $$LocalLocationNodeTableTableOrderingComposer,
+    $$LocalLocationNodeTableTableAnnotationComposer,
+    $$LocalLocationNodeTableTableCreateCompanionBuilder,
+    $$LocalLocationNodeTableTableUpdateCompanionBuilder,
+    (
+      LocalLocationNode,
+      BaseReferences<_$AppDatabase, $LocalLocationNodeTableTable,
+          LocalLocationNode>
+    ),
+    LocalLocationNode,
+    PrefetchHooks Function()> {
+  $$LocalLocationNodeTableTableTableManager(
+      _$AppDatabase db, $LocalLocationNodeTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalLocationNodeTableTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalLocationNodeTableTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalLocationNodeTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<int?> osmId = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> adminLevel = const Value.absent(),
+            Value<String?> parentId = const Value.absent(),
+            Value<String?> colorHex = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalLocationNodeTableCompanion(
+            id: id,
+            osmId: osmId,
+            name: name,
+            adminLevel: adminLevel,
+            parentId: parentId,
+            colorHex: colorHex,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<int?> osmId = const Value.absent(),
+            required String name,
+            required String adminLevel,
+            Value<String?> parentId = const Value.absent(),
+            Value<String?> colorHex = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalLocationNodeTableCompanion.insert(
+            id: id,
+            osmId: osmId,
+            name: name,
+            adminLevel: adminLevel,
+            parentId: parentId,
+            colorHex: colorHex,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalLocationNodeTableTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $LocalLocationNodeTableTable,
+        LocalLocationNode,
+        $$LocalLocationNodeTableTableFilterComposer,
+        $$LocalLocationNodeTableTableOrderingComposer,
+        $$LocalLocationNodeTableTableAnnotationComposer,
+        $$LocalLocationNodeTableTableCreateCompanionBuilder,
+        $$LocalLocationNodeTableTableUpdateCompanionBuilder,
+        (
+          LocalLocationNode,
+          BaseReferences<_$AppDatabase, $LocalLocationNodeTableTable,
+              LocalLocationNode>
+        ),
+        LocalLocationNode,
+        PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4689,4 +5843,10 @@ class $AppDatabaseManager {
               _db, _db.localSpeciesEnrichmentTable);
   $$LocalWriteQueueTableTableTableManager get localWriteQueueTable =>
       $$LocalWriteQueueTableTableTableManager(_db, _db.localWriteQueueTable);
+  $$LocalCellPropertiesTableTableTableManager get localCellPropertiesTable =>
+      $$LocalCellPropertiesTableTableTableManager(
+          _db, _db.localCellPropertiesTable);
+  $$LocalLocationNodeTableTableTableManager get localLocationNodeTable =>
+      $$LocalLocationNodeTableTableTableManager(
+          _db, _db.localLocationNodeTable);
 }

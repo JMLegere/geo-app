@@ -3,10 +3,14 @@ import 'dart:ui';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/features/map/models/cell_render_data.dart';
+import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
 /// Computes fog GeoJSON for MapLibre native fill layers.
 ///
@@ -66,6 +70,26 @@ class FogOverlayController {
   /// GeoJSON string for the restoration overlay layer.
   final String _restorationGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
 
+  /// GeoJSON string for cell property icon Point features.
+  String _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
+
+  /// Cell properties cache — set externally from GameCoordinator.
+  Map<String, CellProperties> _cellPropertiesCache = const {};
+
+  /// Location nodes cache — set externally when enrichment data is loaded.
+  Map<String, LocationNode> _locationNodesCache = const {};
+
+  /// GeoJSON string for territory border fill (gradient polygons).
+  String _borderFillGeoJson =
+      TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+
+  /// GeoJSON string for territory border lines (admin boundary edges).
+  String _borderLinesGeoJson =
+      TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+
+  /// Current daily seed for event resolution.
+  String _dailySeed = '';
+
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
 
@@ -83,6 +107,26 @@ class FogOverlayController {
 
   /// GeoJSON for the green restoration overlay.
   String get restorationGeoJson => _restorationGeoJson;
+
+  /// GeoJSON for cell property icon Points (habitat, climate, event icons).
+  String get cellIconsGeoJson => _cellIconsGeoJson;
+
+  /// GeoJSON for territory border gradient fill (Stellaris-style).
+  String get borderFillGeoJson => _borderFillGeoJson;
+
+  /// GeoJSON for territory border lines (admin boundary edges).
+  String get borderLinesGeoJson => _borderLinesGeoJson;
+
+  /// Updates the cell properties cache snapshot from GameCoordinator.
+  set cellPropertiesCache(Map<String, CellProperties> cache) =>
+      _cellPropertiesCache = cache;
+
+  /// Updates the location nodes cache from the database.
+  set locationNodesCache(Map<String, LocationNode> cache) =>
+      _locationNodesCache = cache;
+
+  /// Updates the daily seed used for event resolution.
+  set dailySeed(String seed) => _dailySeed = seed;
 
   FogOverlayController({
     required this.cellService,
@@ -195,6 +239,43 @@ class FogOverlayController {
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
     );
+
+    // Build cell property icons (habitat, climate, event).
+    if (_cellPropertiesCache.isNotEmpty && _dailySeed.isNotEmpty) {
+      _cellIconsGeoJson = CellPropertyGeoJsonBuilder.buildCellIcons(
+        cellStates: cellStates,
+        cellProperties: _cellPropertiesCache,
+        currentCellId: fogResolver.currentCellId,
+        adjacentCellIds: fogResolver.currentNeighborIds,
+        visitedCellIds: fogResolver.visitedCellIds,
+        dailySeed: _dailySeed,
+        getCellCenter: cellService.getCellCenter,
+      );
+    } else {
+      _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
+    }
+
+    // Build territory border overlays.
+    if (_locationNodesCache.isNotEmpty && _cellPropertiesCache.isNotEmpty) {
+      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
+        cellProperties: _cellPropertiesCache,
+        locationNodes: _locationNodesCache,
+        visibleCellIds: cellStates.keys.toSet(),
+        getNeighborIds: cellService.getNeighborIds,
+        getBoundary: cellService.getCellBoundary,
+      );
+      _borderLinesGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
+        cellProperties: _cellPropertiesCache,
+        locationNodes: _locationNodesCache,
+        visibleCellIds: cellStates.keys.toSet(),
+        getNeighborIds: cellService.getNeighborIds,
+        getBoundary: cellService.getCellBoundary,
+      );
+    } else {
+      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+      _borderLinesGeoJson =
+          TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+    }
 
     // Keep legacy renderData empty — no longer needed for Canvas painting.
     _renderData = const [];
