@@ -330,6 +330,7 @@ WriteQueueEntry makeEntry({
   String? lastError,
   DateTime? createdAt,
 }) {
+  final now = DateTime.now();
   return WriteQueueEntry(
     id: id,
     entityType: entityType,
@@ -340,8 +341,8 @@ WriteQueueEntry makeEntry({
     status: status,
     attempts: attempts,
     lastError: lastError,
-    createdAt: createdAt ?? DateTime(2026, 3, 7, 12),
-    updatedAt: DateTime(2026, 3, 7, 12),
+    createdAt: createdAt ?? now,
+    updatedAt: now,
   );
 }
 

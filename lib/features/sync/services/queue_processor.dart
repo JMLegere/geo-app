@@ -259,6 +259,8 @@ class QueueProcessor {
           await _processCellProgress(entry, persistence);
         case WriteQueueEntityType.profile:
           await _processProfile(entry, persistence);
+        case WriteQueueEntityType.cellProperties:
+          await _processCellProperties(entry, persistence);
       }
       return FlushConfirmed(awardedFirstBadgeItemId: awardedItemId);
     } on SyncRejectedException catch (e) {
@@ -430,6 +432,29 @@ class QueueProcessor {
         // Profile delete not currently used — no-op.
         debugPrint(
           '[QueueProcessor] profile delete not implemented: '
+          '${entry.entityId}',
+        );
+    }
+  }
+
+  Future<void> _processCellProperties(
+    WriteQueueEntry entry,
+    SupabasePersistence persistence,
+  ) async {
+    switch (entry.operation) {
+      case WriteQueueOperation.upsert:
+        final data = jsonDecode(entry.payload) as Map<String, dynamic>;
+        await persistence.upsertCellProperties(
+          cellId: data['cell_id'] as String,
+          habitats: data['habitats'] as String,
+          climate: data['climate'] as String,
+          continent: data['continent'] as String,
+          locationId: data['location_id'] as String?,
+        );
+      case WriteQueueOperation.delete:
+        // Cell properties delete not currently used — no-op.
+        debugPrint(
+          '[QueueProcessor] cell properties delete not implemented: '
           '${entry.entityId}',
         );
     }

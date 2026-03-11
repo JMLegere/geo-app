@@ -158,8 +158,9 @@ class SyncNotifier extends Notifier<SyncStatus> {
 
         case WriteQueueEntityType.cellProgress:
         case WriteQueueEntityType.profile:
-          // No local rollback for cell progress or profile — server
-          // reconciliation on next full sync will handle these.
+        case WriteQueueEntityType.cellProperties:
+          // No local rollback for cell progress, profile, or cell properties
+          // — server reconciliation on next full sync will handle these.
           debugPrint(
             '[SyncNotifier] rejected ${entry.entityType.name}: '
             '${entry.entityId} — ${entry.lastError}',
