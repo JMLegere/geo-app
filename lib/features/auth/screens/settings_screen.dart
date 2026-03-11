@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
@@ -30,6 +31,15 @@ class SettingsScreen extends ConsumerWidget {
     }
     if (user.email.isNotEmpty) return user.email;
     return 'No contact info';
+  }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
   // ---------------------------------------------------------------------------
@@ -145,6 +155,52 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
               ],
+            ),
+          ),
+
+          Spacing.gapXxl,
+
+          // ── Cloud Sync ────────────────────────────────────────────────────────
+          _SectionCard(
+            child: Consumer(
+              builder: (context, ref, _) {
+                final syncStatus = ref.watch(syncProvider);
+                final isSyncing = syncStatus.type.name == 'syncing';
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    isSyncing ? 'Syncing...' : 'Sync Now',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: colors.primary,
+                    ),
+                  ),
+                  subtitle: syncStatus.lastSyncedAt != null
+                      ? Text(
+                          'Last synced: ${_formatTime(syncStatus.lastSyncedAt!)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.onSurfaceVariant,
+                          ),
+                        )
+                      : null,
+                  trailing: isSyncing
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.primary,
+                          ),
+                        )
+                      : Icon(Icons.cloud_upload,
+                          color: colors.primary, size: 20),
+                  onTap: isSyncing
+                      ? null
+                      : () => ref.read(syncProvider.notifier).syncNow(),
+                );
+              },
             ),
           ),
 
