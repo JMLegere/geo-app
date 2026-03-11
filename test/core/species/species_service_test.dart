@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
@@ -518,7 +519,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Rarity distribution — two-stage roll
+  // Rarity distribution — three-stage roll
   // ---------------------------------------------------------------------------
 
   group('SpeciesService rarity distribution', () {
@@ -530,7 +531,7 @@ void main() {
       //   NT: European Bison (1 species)
       //   EN: Iberian Lynx (1 species)
       //
-      // Two-stage roll: tier table = LC(243) + NT(81) + EN(9) = 333 total.
+      // Three-stage roll: tier table = LC(243) + NT(81) + EN(9) = 333 total.
       // P(tier=LC) ≈ 72.9%, P(tier=NT) ≈ 24.3%, P(tier=EN) ≈ 2.7%.
       // Over 500 rolls: expected ~364 LC hits, ~13 EN hits → LC >> EN × 5.
 
@@ -562,7 +563,7 @@ void main() {
         }
       }
 
-      // Two-stage: LC tier (243/333 ≈ 73%) wins far more than EN (9/333 ≈ 2.7%).
+      // Three-stage: LC tier (243/333 ≈ 73%) wins far more than EN (9/333 ≈ 2.7%).
       // Expect LC >> EN even after accounting for tier-level selection.
       expect(lcCount, greaterThan(enCount * 5),
           reason:
@@ -571,11 +572,11 @@ void main() {
     });
 
     test(
-        'two-stage roll: rare species appear more often than flat-weight would predict',
+        'three-stage roll: rare species appear more often than flat-weight would predict',
         () {
       // Build a synthetic pool skewed 900:1 LC vs EN.
       // With flat weighting: P(EN) ≈ 9 / (900×243 + 1×9) ≈ 0.004%
-      // With two-stage: P(EN tier) = 9/(243+9) ≈ 3.6% — ~900× higher.
+      // With three-stage: P(EN tier) = 9/(243+9) ≈ 3.6% — ~900× higher.
       //
       // We use getSpeciesForCell with the real fixture (Europe/Forest) but
       // verify the principle: over enough rolls EN should appear at least
@@ -586,7 +587,7 @@ void main() {
 
       for (var i = 0; i < cellCount; i++) {
         final found = service.getSpeciesForCell(
-          cellId: 'two_stage_verify_$i',
+          cellId: 'three_stage_verify_$i',
           dailySeed: 'test_seed',
           habitats: const {Habitat.forest},
           continent: Continent.europe,
@@ -597,12 +598,39 @@ void main() {
         }
       }
 
-      // With two-stage (tier P(EN)≈2.7%), over 1000 rolls we expect ~27 EN hits.
+      // With three-stage (tier P(EN)≈2.7%), over 1000 rolls we expect ~27 EN hits.
       // Require at least 5 — very conservative to avoid flakiness.
       expect(enCount, greaterThan(5),
           reason:
-              'Two-stage roll should produce EN encounters far more often than '
+              'Three-stage roll should produce EN encounters far more often than '
               'flat-weight would. Got EN=$enCount over $cellCount cells');
+    });
+
+    test('three-stage roll: multiple animal types appear across many cells',
+        () {
+      // Over 200 cells with forest/asia (mammals, birds, reptiles all present),
+      // the type-diversity stage should produce encounters from > 1 animal type.
+      final types = <AnimalType>{};
+      const cellCount = 200;
+
+      for (var i = 0; i < cellCount; i++) {
+        final found = service.getSpeciesForCell(
+          cellId: 'type_diversity_$i',
+          dailySeed: 'test_seed',
+          habitats: const {Habitat.forest},
+          continent: Continent.asia,
+          encounterSlots: 1,
+        );
+        if (found.isNotEmpty) {
+          final t = found.first.animalType;
+          if (t != null) types.add(t);
+        }
+      }
+
+      expect(types.length, greaterThan(1),
+          reason:
+              'Three-stage type selection should produce multiple animal types. '
+              'Got types=${types.map((t) => t.name).toList()} over $cellCount cells');
     });
   });
 
