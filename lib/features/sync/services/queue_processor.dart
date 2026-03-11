@@ -142,12 +142,19 @@ class QueueProcessor {
   /// flush — the first enqueue starts the timer, subsequent ones are no-ops
   /// until the timer fires and clears.
   void _scheduleFlush({String? userId}) {
-    if (!canSync) return;
+    if (!canSync) {
+      debugPrint('[QueueProcessor] skipping flush - Supabase not configured');
+      return;
+    }
     if (_autoFlushTimer?.isActive ?? false) return;
+    debugPrint(
+        '[QueueProcessor] scheduling auto-flush in ${kWriteQueueAutoFlushDelaySeconds}s');
     _autoFlushTimer = Timer(
       const Duration(seconds: kWriteQueueAutoFlushDelaySeconds),
       () async {
+        debugPrint('[QueueProcessor] running auto-flush');
         final summary = await flush(userId: userId);
+        debugPrint('[QueueProcessor] auto-flush complete: $summary');
         onAutoFlushComplete?.call(summary);
       },
     );
