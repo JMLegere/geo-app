@@ -176,7 +176,7 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.textContaining('v0.1.0'), findsOneWidget);
+      expect(find.text('β dev'), findsOneWidget);
     });
 
     // ── Settings title ───────────────────────────────────────────────────────
