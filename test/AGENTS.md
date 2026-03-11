@@ -1,6 +1,6 @@
 # Test Suite
 
-1453 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1694 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -12,7 +12,7 @@ LD_LIBRARY_PATH=. flutter test test/core/  # Subsystem only
 
 ## Structure
 
-Mirrors lib/ exactly. 93 test files.
+Mirrors lib/ exactly. ~125 test files.
 
 Additional directories:
 - `fixtures/` — `species_fixture.dart` with `kSpeciesFixtureJson` (50 species, all habitats/continents/IUCN statuses)
@@ -80,6 +80,20 @@ Defined per-file (not shared). Each test file has its own factories.
 - H3 tests need `LD_LIBRARY_PATH=.` or FFI call will crash
 - Performance tests use generous budgets (3× typical desktop time) — don't tighten without CI benchmarking
 
+## Cell Properties Tests
+
+| File | Tests | What it covers |
+|------|-------|---------------|
+| `test/core/cells/country_resolver_test.dart` | 44 | Country→continent resolution, bbox filter, ray-casting, fallback |
+| `test/core/cells/event_resolver_test.dart` | 11 | Deterministic event assignment, ~12% rate, equal weights |
+| `test/core/cells/cell_property_resolver_test.dart` | 10 | Habitat+climate+continent integration, mock lookups |
+| `test/core/game/game_coordinator_test.dart` | 9 (cell group) | Cell property resolution in game tick, cache, callbacks |
+| `test/core/species/species_service_test.dart` | ~19 (event group) | Migration species, nesting site, climate preference, empty pools |
+| `test/features/discovery/services/discovery_service_test.dart` | 7 (event group) | cellPropertiesLookup integration, event→encounter replacement |
+| `test/features/sync/services/location_enrichment_service_test.dart` | 12 | Null client no-op, dedup, callback wiring, dispose safety, AdminLevel parsing |
+| `test/features/map/utils/cell_property_geojson_builder_test.dart` | 16 | Icon visibility rules, GeoJSON Point features, offsets, fog filtering, icon ID naming |
+| `test/features/map/utils/territory_border_geojson_builder_test.dart` | 19 | Border fill BFS, border lines shared-edge detection, admin level stacking, color generation, unmapped neighbor handling |
+
 ## Coverage Gaps
 
-No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback).
+No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback), `features/map/utils/map_icon_renderer.dart` (requires Flutter Canvas — widget test needed).

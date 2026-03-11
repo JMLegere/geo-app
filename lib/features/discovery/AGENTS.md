@@ -12,12 +12,28 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 ## Encounter Flow
 
 1. Player enters new cell → fogResolver emits FogStateChangedEvent
-2. DiscoveryService receives event → calls speciesService.getSpeciesForCell()
-3. Species rolled deterministically (SHA-256 seeded by cellId)
-4. GameCoordinator rolls intrinsic affix via StatsService, creates ItemInstance with UUID
-5. gameCoordinatorProvider wires callbacks → discoveryProvider.notifier.showDiscovery() + inventoryProvider.notifier.addItem() + discoveryService.markCollected() + SQLite persistence
-5b. gameCoordinatorProvider fires enrichmentService.requestEnrichment() (fire-and-forget) if species not yet enriched
-6. DiscoveryNotificationOverlay displays toast
+2. DiscoveryService receives event → checks `cellPropertiesLookup(cellId)` for cell event
+3. **No event** → normal `speciesService.getSpeciesForCell()` (habitat + continent + climate + season)
+4. **Migration event** → `speciesService.getSpeciesForMigration()` — species from different continent, prefers different climate
+5. **Nesting Site event** → `speciesService.getSpeciesForNestingSite()` — guaranteed EN/CR/EX species
+6. Species rolled deterministically (SHA-256 seeded by dailySeed + cellId)
+7. `DiscoveryEvent` created with `cellEventType` field (null for normal encounters)
+8. GameCoordinator rolls intrinsic affix via StatsService, creates ItemInstance with UUID
+9. gameCoordinatorProvider wires callbacks → discoveryProvider.notifier.showDiscovery() + inventoryProvider.notifier.addItem() + discoveryService.markCollected() + SQLite persistence
+9b. gameCoordinatorProvider fires enrichmentService.requestEnrichment() (fire-and-forget) if species not yet enriched
+10. DiscoveryNotificationOverlay displays toast
+
+## Cell Properties Integration
+
+**`cellPropertiesLookup`**: Mutable callback field on DiscoveryService. Type: `CellProperties? Function(String cellId)?`
+
+**Wiring**: Set by `gameCoordinatorProvider` after both DiscoveryService and GameCoordinator are created. Points to `gameCoordinator.getCellProperties()`. Avoids circular provider dependency — callback only invoked at event time, never during construction.
+
+**Event flow in `_onFogStateChanged()`**:
+1. Lookup `CellProperties` for the visited cell via `cellPropertiesLookup`
+2. If properties have an event → use event-specific species method
+3. If no properties or no event → fall through to normal encounter
+4. `DiscoveryEvent.cellEventType` records which event triggered (for UI display)
 
 ## Enrichment Integration
 
@@ -47,8 +63,11 @@ Three providers in `discovery_provider.dart`:
 - Species encounters are deterministic: same cellId always yields same species. This is by design.
 - `speciesServiceProvider` is async-aware via `speciesDataProvider` FutureProvider — returns empty service during loading, full service when ready
 - Season affects which species appear (80% year-round, 10% summer-only, 10% winter-only)
-- Encounter slots per cell: 3 max (from kEncounterSlotsPerCell or default parameter)
+- Encounter slots per cell: 1 (kEncounterSlotsPerCell)
 - Tests must override `speciesServiceProvider` (not `speciesDataProvider`) to inject test fixtures
+- `cellPropertiesLookup` is nullable — DiscoveryService works without it (falls through to normal encounters)
+- Cell events REPLACE base encounters (not additive). If migration has no valid species, falls back to normal roll.
+- `FaunaDefinition.climate` is nullable (AI-enriched) — migration prefers climate mismatch but falls back to full pool
 
 ## State Shape
 

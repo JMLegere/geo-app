@@ -18,6 +18,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **Architecture / design jam** | `current-architecture.md` + `ideal-architecture.md` | `roadmap.md` (Technical Roadmap section) |
 | **Item system / inventory** | `item-system-design.md` | `ideal-architecture.md` (server-authoritative context) |
 | **Species stats / art / crowdsourcing** | `species-community-system.md` | `item-system-design.md` (item model context) |
+| **Cell properties / events / borders** | `cell-properties-design.md` | `data-model.md` (persistence) + `game-loop.md` (integration) |
 | **UI/widget work** | `architecture.md` (layer rules) | Feature AGENTS.md |
 | **Test writing** | `test/AGENTS.md` | `data-model.md` (for fixtures) |
 
@@ -36,6 +37,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | `state.md` | ~105 | All Riverpod providers, types, dependencies, cross-feature wiring | Provider added/renamed/re-wired |
 | `data-model.md` | ~175 | Models, DB schema, persistence contracts, species JSON, ESA mapping | Model/table/field added or changed |
 | `tech-stack.md` | ~115 | Framework versions, packages, build/deploy commands, CI status | Dependency upgraded or config changed |
+| `cell-properties-design.md` | ~773 | Cell properties system: permanent layer (habitat, climate, location hierarchy), rotating events, map visualization (icons + Stellaris borders), resolution flow, persistence | Cell property rules changed, new event type, border rendering approach changed |
 | `auth-prerequisites.md` | ~250 | Supabase dashboard, Google/Apple OAuth, dart-define setup | OAuth provider added/changed |
 
 ## Maintenance Rules

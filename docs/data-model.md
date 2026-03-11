@@ -19,6 +19,8 @@ All domain models, database schema, and persistence contracts.
 | `FoodType` | critter, fish, fruit, grub, nectar, seed, veg | Food category for sanctuary feeding |
 | `OrbDimension` | habitat, class, climate | Orb type dimension (3 dimensions, ~46 total types) |
 | `ActivityType` | photograph, forage, lure, survey | Cell activity types (future) |
+| `CellEventType` | migration, nestingSite | Daily rotating cell events (~12% of cells) |
+| `AdminLevel` | world, continent, country, state, city, district | Location hierarchy level (6 tiers) |
 
 ### Value Objects
 
@@ -37,6 +39,10 @@ All domain models, database schema, and persistence contracts.
 | `SpeciesEnrichment` | definitionId (PK), animalClass: AnimalClass, foodPreference: FoodType, climate: Climate, brawn: int, wit: int, speed: int, artUrl: String?, enrichedAt: DateTime | definitionId | AI-enriched species data from Gemini Flash. All fields required except artUrl. Validates brawn+wit+speed=90 at runtime. |
 | `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact, food, orb | — | Item type classification (7 categories) |
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
+| `CellProperties` | cellId, habitats: Set\<Habitat\>, climate: Climate, continent: Continent, locationId: String?, createdAt | cellId | Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` |
+| `CellEvent` | type: CellEventType, cellId, dailySeed | — | Rotating daily event (not persisted, recomputable). ~12% of cells per day |
+| `LocationNode` | id, name, adminLevel: AdminLevel, parentId, osmId, geometry | id | Location hierarchy node. 6 levels: world→continent→country→state→city→district |
+| `DiscoveryEvent` | *(existing)* + `cellEventType: CellEventType?` | — | Added nullable field to indicate which cell event triggered the encounter (null = normal) |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |
 
@@ -89,7 +95,7 @@ Loaded at startup by `SpeciesDataLoader`. Parsed into `List<FaunaDefinition>`.
 
 ## Database Schema (Drift SQLite)
 
-Schema version: **4** (v3→v4 migration creates `LocalWriteQueueTable`).
+Schema version: **12** (v10→v11 adds `LocalCellPropertiesTable` + `LocalLocationNodeTable`, v11→v12 makes `LocalLocationNodeTable.osmId` nullable via table recreation).
 
 ### LocalCellProgressTable
 
@@ -155,7 +161,7 @@ Unique constraint: `{userId, cellId}`
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
 | `id` | int PK | autoIncrement | Auto-incrementing PK — do NOT override `primaryKey` getter |
-| `entityType` | text | — | `'itemInstance'`, `'cellProgress'`, `'profile'` |
+| `entityType` | text | — | `'itemInstance'`, `'cellProgress'`, `'profile'`, `'cellProperties'` |
 | `entityId` | text | — | Entity's primary key |
 | `operation` | text | — | `'upsert'`, `'delete'` |
 | `payload` | text | — | JSON snapshot of entity state |
@@ -166,6 +172,31 @@ Unique constraint: `{userId, cellId}`
 | `createdAt` | datetime | — | When enqueued |
 | `updatedAt` | datetime | — | Last status change |
 
+### LocalCellPropertiesTable
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| `cellId` | text PK | — | Voronoi cell ID (e.g., "v_123_456") |
+| `habitatsJson` | text | — | JSON array of Habitat enum names |
+| `climate` | text | — | Climate enum name |
+| `continent` | text | — | Continent enum name |
+| `locationId` | text | nullable | FK → LocationNode (backfilled async) |
+| `createdAt` | datetime | — | When properties were first resolved |
+
+Cell properties are **globally shared** (not per-user). No userId column.
+
+### LocalLocationNodeTable
+
+| Column | Type | Default | Notes |
+|--------|------|---------|-------|
+| `id` | text PK | — | Unique location ID |
+| `name` | text | — | Display name (e.g., "New Brunswick") |
+| `adminLevel` | text | — | AdminLevel enum name |
+| `parentId` | text | nullable | FK → parent LocationNode |
+| `osmId` | text | nullable | OpenStreetMap ID |
+| `geometryJson` | text | nullable | GeoJSON geometry (optional) |
+| `createdAt` | datetime | — | When node was created |
+
 ## Repositories (lib/core/persistence/)
 
 | Repository | Table | Key Operations |
@@ -175,6 +206,8 @@ Unique constraint: `{userId, cellId}`
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `deleteItem(id)`, `readByStatus(userId, status)` |
 | `EnrichmentRepository` | LocalSpeciesEnrichment | `getEnrichment(definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List)`, `getEnrichmentsSince(DateTime)` |
 | `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
+| `CellPropertyRepository` | LocalCellProperties | `get(cellId)`, `upsert(CellProperties)`, `updateLocationId(cellId, locationId)`, `getAll()` |
+| `LocationNodeRepository` | LocalLocationNode | `get(id)`, `getByOsmId(osmId)`, `upsert(LocationNode)`, `getChildren(parentId)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 
@@ -201,6 +234,14 @@ When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-on
 **item_instances** (per-user):
 - `id` (UUID PK), `user_id`, `definition_id`, `category_name`, `affixes_json`, `parent_a_id`, `parent_b_id`, `daily_seed`, `status`, `created_at`
 - RLS: Users can only CRUD their own rows.
+
+**cell_properties** (global, shared):
+- `cell_id` (text PK), `habitats_json` (text), `climate` (text), `continent` (text), `location_id` (text nullable), `created_at` (timestamptz)
+- RLS: All authenticated users can read and upsert. Globally shared — not per-user.
+
+**location_nodes** (global, shared):
+- `id` (text PK), `name` (text), `admin_level` (text), `parent_id` (text nullable FK), `osm_id` (text nullable unique), `geometry_json` (text nullable), `created_at` (timestamptz)
+- RLS: All authenticated users can read and upsert. Lazily populated as players encounter cells.
 
 **daily_seeds** (server-managed):
 - `seed_date` (date PK), `seed_value` (text), `created_at` (timestamptz)

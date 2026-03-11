@@ -10,6 +10,7 @@ GameCoordinator runs at ProviderScope level (never stops on tab switch) and owns
 - GPS stream subscription and error handling
 - Game loop tick (~10 Hz throttle)
 - Fog state computation via FogStateResolver
+- Cell property resolution (habitat, climate, continent, events) via CellPropertyResolver
 - Discovery event processing (rolls intrinsic affixes, creates ItemInstances)
 - Output callbacks wired by gameCoordinatorProvider
 
@@ -31,6 +32,7 @@ The map screen is a pure renderer — it reads coordinator state and feeds rubbe
 - `onGpsErrorChanged(GpsError)` → locationProvider error state
 - `onCellVisited()` → playerProvider.incrementCellsObserved()
 - `onItemDiscovered(DiscoveryEvent, ItemInstance)` → inventoryProvider + discoveryProvider
+- `onCellPropertiesResolved(String cellId, CellProperties)` → persists to CellPropertyRepository + write queue
 
 **Streams:**
 - `onRawGpsUpdate` — broadcast (sync:true), `({Geographic position, double accuracy})` at 1Hz
@@ -66,15 +68,34 @@ MapScreen subscribes → RubberBand.setTarget() → interpolates (60fps)
     → throttle to ~10Hz (every 6th frame)
     → _processGameLogic()
       ├─ fogResolver.onLocationUpdate()
+      ├─ _resolveCellProperties(lat, lon)  ← resolves for current + adjacent cells
       └─ onPlayerLocationUpdate callback
 
+Cell Properties: _resolveCellProperties()
+  → for each adjacent cell not in _cellPropertiesCache:
+    → CellPropertyResolver.resolve(cellId, lat, lon) ← synchronous, instant
+    → stores in _cellPropertiesCache (Map<String, CellProperties>)
+    → fires onCellPropertiesResolved callback (→ SQLite + write queue)
+
 Discovery: fogResolver.onVisitedCellAdded
-  → DiscoveryService → DiscoveryEvent
+  → DiscoveryService → checks cellPropertiesLookup for event
+    ├─ no event → normal LootTable roll
+    ├─ migration → SpeciesService.getSpeciesForMigration()
+    └─ nestingSite → SpeciesService.getSpeciesForNestingSite()
+  → DiscoveryEvent (with cellEventType field)
   → GameCoordinator._onDiscovery()
     ├─ StatsService.rollIntrinsicAffix()
     ├─ creates ItemInstance with UUID
     └─ onItemDiscovered callback
 ```
+
+## Cell Properties Cache
+
+- `_cellPropertiesCache`: `Map<String, CellProperties>` — in-memory, populated on adjacency
+- `loadCellProperties(Map<String, CellProperties>)` — hydrates cache from SQLite on startup
+- Properties resolved synchronously in game tick (no async needed)
+- Cache persists across tab switches (GameCoordinator runs forever)
+- `getCellProperties(String cellId)` — public getter for cache lookup
 
 ---
 
@@ -84,7 +105,7 @@ Discovery: fogResolver.onVisitedCellAdded
 - `onRawGpsUpdate`: `StreamController.broadcast(sync: true)` — listeners must not do async
 - `GpsError`/`GpsPermissionResult` mirror feature-layer enums to avoid core→features dependency
 - Discovery: rolls intrinsic affix, creates ItemInstance with UUID + affixes + status=active
-- Dependencies: FogStateResolver, StatsService (core only — no features/ imports)
+- Dependencies: FogStateResolver, StatsService, CellPropertyResolver (core only — no features/ imports)
 
 ---
 
@@ -103,3 +124,5 @@ Discovery: fogResolver.onVisitedCellAdded
 - **First frame**: Frame counter starts at 0 — first `updatePlayerPosition()` always processes
 - **Don't throttle externally**: MapScreen calls at 60fps — GameCoordinator handles its own throttling
 - **stop() vs dispose()**: `stop()` allows restart, `dispose()` is permanent (closes StreamController)
+- **Cell properties are globally shared** (not per-user) — SQLite writes don't need userId, but write queue entries still need userId for routing
+- **Cell properties hydrated in parallel** with inventory + cell progress during `rehydrateData()` via `getAllCellProperties()` → `loadCellProperties()`

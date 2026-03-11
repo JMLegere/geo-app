@@ -14,6 +14,21 @@ Core encounter mechanic. `getSpeciesForCell(cellId, habitats, continent, {dailyS
 
 Also provides: `getPoolForArea()`, `forHabitat()`, `forContinent()`, `all`, `totalSpecies`.
 
+### Event-Specific Methods
+
+- `getSpeciesForMigration(habitats, nativeContinent, nativeClimate, dailySeed, cellId)` → `List<FaunaDefinition>`
+  - Picks a **different continent** deterministically: `SHA-256("${dailySeed}_migration_continent_${cellId}")` → mod over other continents
+  - Filters species by cell's habitats × migration continent
+  - **Prefers species with different climate** when `FaunaDefinition.climate` is available (AI-enriched). Falls back to full pool from different continent if no climate-mismatched species exist.
+  - Standard rarity weights (LC=243 through EX=1)
+
+- `getSpeciesForNestingSite(habitats, continent, dailySeed, cellId)` → `List<FaunaDefinition>`
+  - Filters to **EN/CR/EX species only** from cell's native habitats × continent
+  - Relative probabilities within rare pool: EN=9, CR=3, EX=1
+  - Returns empty list if no rare species match (caller falls back to normal roll)
+
+**Key rule**: Both methods return species for `kEncounterSlotsPerCell` (currently 1) slots. Events REPLACE base encounters.
+
 ## LootTable<T>
 
 Generic weighted random selection:

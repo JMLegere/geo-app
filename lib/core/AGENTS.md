@@ -8,13 +8,16 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 ### cells/
 
-**Purpose**: Cell geometry and spatial queries. Abstracts H3 and Voronoi implementations behind a common interface.
+**Purpose**: Cell geometry, spatial queries, and cell property resolution. Abstracts H3 and Voronoi implementations behind a common interface.
 
 **Public API**:
 - `CellService` interface: `getCellId(lat, lon)`, `getCellCenter(cellId)`, `getCellBoundary(cellId)`, `getNeighborIds(cellId)`, `getCellsInRing(cellId, k)`, `getCellsAroundLocation(lat, lon, k)`, `cellEdgeLengthMeters`, `systemName`
 - `LazyVoronoiCellService`: Infinite-world Voronoi with lazy seed materialization. Cell IDs: `"v_{row}_{col}"`. ~180m median diameter.
 - `H3CellService`: H3 hexagons at resolution 9 (~174m edge length). Cell IDs: hex BigInt strings.
 - `CellCache`: Decorator that memoizes center/boundary/neighbor/ring lookups. Does NOT cache `getCellId()`.
+- `CellPropertyResolver`: Synchronous cell property resolution — `resolve(cellId, lat, lon)` → `CellProperties`. Uses `HabitatLookup` + `ContinentLookup` interfaces.
+- `EventResolver`: Static `resolve(dailySeed, cellId)` → `CellEvent?`. Deterministic via SHA-256, ~12% hit rate.
+- `CountryResolver`: `resolve(lat, lon)` → `Continent`. Ray-casting against bundled Natural Earth 1:110m country polygons. Implements `ContinentLookup`.
 
 **Conventions**:
 - Cell IDs are opaque strings (H3 uses hex strings, Voronoi uses `"v_{row}_{col}"`)
@@ -22,6 +25,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `getCellsInRing(cellId, k: 0)` returns a list containing only `cellId`
 - `getCellsInRing(cellId, k: 1)` returns the 6 immediate neighbors (H3) or nearest Voronoi cells
 - Strategy pattern: inject via `cellServiceProvider` (currently `CellCache(LazyVoronoiCellService(...))`)
+- `CellPropertyResolver.resolve()` is synchronous — safe to call in game tick
+- `CountryResolver.load(jsonString)` factory — loaded by `countryResolverProvider` (FutureProvider)
 
 ---
 
@@ -44,15 +49,18 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Drift ORM schema and database connection.
 
 **Public API**:
-- `AppDatabase`: Drift database with 5 tables
+- `AppDatabase`: Drift database with 7 tables
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
   - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `size` (nullable text — `AnimalSize` enum name), `artUrl` (nullable), `enrichedAt`
   - `LocalWriteQueueTable`: `id` (int, autoIncrement PK), `entityType`, `entityId`, `operation`, `payload`, `userId`, `status` (default 'pending'), `attempts` (default 0), `lastError` (nullable), `createdAt`, `updatedAt`
+  - `LocalCellPropertiesTable`: `cellId` (text PK), `habitatsJson` (text), `climate` (text), `continent` (text), `locationId` (text nullable), `createdAt` (datetime). Globally shared (no userId).
+  - `LocalLocationNodeTable`: `id` (text PK), `name` (text), `adminLevel` (text), `parentId` (text nullable), `osmId` (text nullable), `geometryJson` (text nullable), `createdAt` (datetime)
 - Write queue query methods: `enqueueEntry`, `getPendingEntries`, `getRejectedEntries`, `countPendingEntries`, `confirmEntry`, `rejectEntry`, `incrementEntryAttempts`
+- Cell property query methods: `getCellProperties(cellId)`, `upsertCellProperties(companion)`, `getAllCellProperties()`, `getLocationNode(id)`, `upsertLocationNode(companion)`, `getLocationNodeByOsmId(osmId)`, `getLocationNodeChildren(parentId)`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
-- `schemaVersion = 9`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column on `LocalSpeciesEnrichmentTable`.
+- `schemaVersion = 12`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 LocalLocationNodeTable osmId nullable (table recreation for SQLite).
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
@@ -129,7 +137,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Immutable value objects for domain entities.
 
-**Public API** (20 models):
+**Public API** (23 models):
 - `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 3^x progression: LC=243, NT=81, VU=27, EN=9, CR=3, EX=1.
 - `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
@@ -152,6 +160,10 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `Season`: enum (summer, winter). `fromDate(DateTime)` uses month ranges: summer = May-Oct, winter = Nov-Apr.
 - `Continent`: enum (asia, northAmerica, southAmerica, africa, oceania, europe). `fromDataString(String)` handles IUCN format strings.
 - `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
+- `CellProperties`: `cellId`, `habitats: Set<Habitat>`, `climate: Climate`, `continent: Continent`, `locationId: String?`, `createdAt`. Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` for persistence.
+- `CellEvent`: `type: CellEventType`, `cellId`, `dailySeed`. Rotating daily event. `CellEventType` enum: migration, nestingSite. Not persisted — deterministic from seed + cellId.
+- `LocationNode`: `id`, `name`, `adminLevel: AdminLevel`, `parentId`, `osmId`, `geometry`. `AdminLevel` enum: world, continent, country, state, city, district. 6-level location hierarchy.
+- `DiscoveryEvent`: *(existing)* — added `cellEventType: CellEventType?` nullable field indicating which cell event triggered the encounter (null = normal).
 - `AnimalSize`: enum (fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal). Each value has `minGrams` and `maxGrams` (metric). `rangeSpan` = maxGrams - minGrams + 1. `fromString(String)` parser (case-insensitive). 9 size categories from fine (1–49g) to colossal (15M–247M g). Colossal max = 130% of ~190t blue whale record.
 - `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `size: AnimalSize?`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `size` and `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
 
@@ -179,6 +191,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
 - `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
 - `WriteQueueRepository`: `enqueue(WriteQueueEntry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)`. Offline write queue CRUD.
+- `CellPropertyRepository`: `get(cellId)`, `upsert(CellProperties)`, `updateLocationId(cellId, locationId)`, `getAll()`. Cell property CRUD. Globally shared (not per-user).
+- `LocationNodeRepository`: `get(id)`, `getByOsmId(osmId)`, `upsert(LocationNode)`, `getChildren(parentId)`. Location hierarchy CRUD.
 
 **Conventions**:
 - Repositories take `AppDatabase` in constructor
@@ -193,7 +207,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Deterministic species encounter generation and data loading.
 
 **Public API**:
-- `SpeciesService`: `getSpeciesForCell(cellId, habitats, continent, {required dailySeed, encounterSlots})`, `rollMultiple(LootTable, int n, String seed)`
+- `SpeciesService`: `getSpeciesForCell(cellId, habitats, continent, {required dailySeed, encounterSlots})`, `rollMultiple(LootTable, int n, String seed)`, `getSpeciesForMigration(habitats, nativeContinent, nativeClimate, dailySeed, cellId)`, `getSpeciesForNestingSite(habitats, continent, dailySeed, cellId)`
 - `LootTable<T>`: Generic weighted random selection. `add(T item, int weight)`, `roll(String seed)`.
 - `SpeciesDataLoader`: `loadSpeciesData()` returns `Future<List<FaunaDefinition>>` from `assets/species_data.json`.
 - `ContinentResolver`: `getContinent(Geographic)` uses bounding boxes. Africa split at 20°E.
@@ -212,7 +226,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (16 providers):
+**Public API** (20 providers):
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
@@ -228,7 +242,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `cellProgressRepositoryProvider`: `Provider<CellProgressRepository>` — watches appDatabaseProvider. Cell visit persistence.
 - `profileRepositoryProvider`: `Provider<ProfileRepository>` — watches appDatabaseProvider. Player profile persistence.
 - `dailySeedServiceProvider`: `Provider<DailySeedService>` — reads `supabaseClientProvider`. Wires Supabase RPC `ensure_daily_seed()` as `SeedFetcher` callback. Works without Supabase (offline fallback).
-- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, and profile changes to SQLite + write queue. Listens to `playerProvider` for profile write-through. Enrichment cache type: `Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>`. Rolls weight when size is available during discovery/backfill.
+- `cellPropertyRepositoryProvider`: `Provider<CellPropertyRepository>` — watches appDatabaseProvider. Cell property CRUD (get, upsert, updateLocationId, getAll).
+- `locationNodeRepositoryProvider`: `Provider<LocationNodeRepository>` — watches appDatabaseProvider. Location hierarchy node CRUD (get, upsert, getChildren, getByOsmId).
+- `countryResolverProvider`: `FutureProvider<CountryResolver>` — loads `assets/country_boundaries.json`. Offline country→continent resolution via ray-casting.
+- `cellPropertyResolverProvider`: `Provider<CellPropertyResolver>` — watches habitatServiceProvider + countryResolverProvider. Falls back to DefaultHabitatLookup + legacy ContinentResolver during loading.
+- `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile + cell properties from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, profile changes, and cell properties to SQLite + write queue. Listens to `playerProvider` for profile write-through. Wires `cellPropertiesLookup` on DiscoveryService. Triggers `locationEnrichmentServiceProvider` for cells without locationId. Enrichment cache type: `Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>`. Rolls weight when size is available during discovery/backfill.
 
 **Conventions**:
 - Uses Riverpod v3.2.1 `Notifier` pattern (NOT `StateNotifier`)
@@ -248,7 +266,7 @@ models/  (no dependencies)
   ↓
 config/  (no dependencies)
   ↓
-cells/  (depends on: geobase)
+cells/  (depends on: geobase, models/)
   ↓
 database/  (depends on: models/, drift)
   ↓
@@ -260,9 +278,9 @@ species/  (depends on: models/, cells/)
   ↓
 services/  (depends on: models/, shared/)
   ↓
-game/  (depends on: fog/, models/, species/)
+game/  (depends on: fog/, models/, species/, cells/)
   ↓
-state/  (depends on: models/, persistence/, fog/, game/, services/, riverpod)
+state/  (depends on: models/, persistence/, fog/, game/, services/, cells/, riverpod)
 ```
 
 External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells), `drift` (ORM), `riverpod` (state).
@@ -317,8 +335,16 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - ALL game logic (fog, discovery, stats) uses `playerPosition`, NOT `rawGpsPosition`.
 - `updatePlayerPosition()` throttles game logic to ~10Hz via frame counter.
 
+### Cell Properties Resolution
+- `CellPropertyResolver.resolve()` is **synchronous and instant** — safe to call in the ~10Hz game tick
+- Cell properties are globally shared (not per-user) — no userId in SQLite table or cache
+- `CountryResolver` loaded async (FutureProvider) — `cellPropertyResolverProvider` falls back to legacy `ContinentResolver` during loading
+- `HabitatService implements HabitatLookup` — bridged in features/biome/. Falls back to `DefaultHabitatLookup` (returns plains) during loading.
+- Events (migration, nesting site) are NOT persisted — deterministic from dailySeed + cellId, recomputable
+- `cellPropertiesLookup` on DiscoveryService is a mutable callback field, wired by gameCoordinatorProvider after construction. Avoids circular dependency.
+
 ### Startup Hydration Order
-- `gameCoordinatorProvider` must hydrate inventory + cell progress + profile from SQLite BEFORE starting the game loop.
+- `gameCoordinatorProvider` must hydrate inventory + cell progress + profile + cell properties from SQLite BEFORE starting the game loop.
 - `loadItems()` replaces inventory state entirely — a discovery during the race window would be wiped.
 - `cellsObserved` is hydrated from cell progress count (observed + hidden fog states), NOT from profile.currentStreak.
 - Auth may not be settled when the provider initializes. Use `ref.listen(authProvider)` with a `started` guard to wait.
