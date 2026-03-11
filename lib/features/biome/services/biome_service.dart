@@ -1,3 +1,4 @@
+import 'package:earth_nova/core/cells/cell_property_resolver.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/features/biome/models/esa_land_cover.dart';
 import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
@@ -73,7 +74,7 @@ class CoordinateHabitatLookup implements HabitatLookupStrategy {
 ///
 /// When no data is available from either source the returned set always
 /// contains `{Habitat.plains}` as the most generic fallback.
-class HabitatService {
+class HabitatService implements HabitatLookup {
   final HabitatLookupStrategy _lookup;
   final BiomeFeatureIndex? _featureIndex;
 
