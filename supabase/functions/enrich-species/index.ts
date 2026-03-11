@@ -221,7 +221,10 @@ serve(async (req: Request) => {
       .eq("definition_id", definition_id)
       .maybeSingle();
 
-    if (existing) {
+    // If row exists and already has size, return it as-is.
+    // If row exists but has no size (enriched before size field was added),
+    // fall through to re-enrich so the size gets populated.
+    if (existing && (existing as EnrichmentRow).size) {
       return new Response(JSON.stringify(existing as EnrichmentRow), {
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
@@ -238,30 +241,21 @@ serve(async (req: Request) => {
       wit: enrichment.wit,
       speed: enrichment.speed,
       size: enrichment.size,
-      art_url: null,
+      art_url: existing ? (existing as EnrichmentRow).art_url : null,
     };
 
-    const { data: inserted, error: insertError } = await supabase
+    // Upsert: inserts new row or updates existing row missing size.
+    const { data: upserted, error: upsertError } = await supabase
       .from("species_enrichment")
-      .insert(row)
+      .upsert(row, { onConflict: "definition_id" })
       .select()
       .single();
 
-    if (insertError) {
-      if (insertError.code === "23505") {
-        const { data: concurrent } = await supabase
-          .from("species_enrichment")
-          .select("*")
-          .eq("definition_id", definition_id)
-          .maybeSingle();
-        return new Response(JSON.stringify(concurrent), {
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`Insert failed: ${insertError.message}`);
+    if (upsertError) {
+      throw new Error(`Upsert failed: ${upsertError.message}`);
     }
 
-    return new Response(JSON.stringify(inserted), {
+    return new Response(JSON.stringify(upserted), {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (err) {
