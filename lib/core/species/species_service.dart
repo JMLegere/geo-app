@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
@@ -12,15 +13,20 @@ import 'package:earth_nova/shared/constants.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
 ///
-/// Uses a two-stage rarity roll seeded by daily seed + cell ID to
+/// Uses a three-stage rarity roll seeded by daily seed + cell ID to
 /// deterministically select which species a player can encounter in a given
 /// cell on a given day. Species are filtered by habitat(s) and continent before
 /// rolling. Same cell + same day = same species. Different day = different species.
 ///
-/// **Two-stage roll**: Stage 1 picks a rarity tier using IucnStatus weights
-/// (243/81/27/9/3/1). Stage 2 picks uniformly within that tier's species pool.
-/// This eliminates dataset-composition bias: the 76% LC dataset no longer
-/// inflates encounter rates — tier selection is independent of pool sizes.
+/// **Three-stage roll**:
+/// - Stage 1: Pick a rarity tier using IucnStatus weights (243/81/27/9/3/1).
+///   Eliminates dataset-composition bias — LC's 76% share no longer dominates.
+/// - Stage 2: Pick an animal type with even weight from the types present in
+///   that tier's pool. Ensures type diversity across rolls.
+/// - Stage 3: Pick uniformly within the rarity × type pool.
+///
+/// Species without a recognized taxonomic class (null animalType) are pooled
+/// together and treated as a synthetic extra type for Stage 2 fairness.
 class SpeciesService {
   final List<FaunaDefinition> _allRecords;
 
@@ -45,9 +51,10 @@ class SpeciesService {
   /// This is the core encounter mechanic:
   /// 1. Union species pools for all [habitats] × [continent] combinations
   /// 2. Group pool by rarity tier
-  /// 3. Roll [encounterSlots] slots with two-stage rarity selection:
+  /// 3. Roll [encounterSlots] slots with three-stage rarity selection:
   ///    a. Pick a rarity tier using IucnStatus weights (3^x progression)
-  ///    b. Pick uniformly within that tier's species
+  ///    b. Pick an animal type with even weight from types in that tier
+  ///    c. Pick uniformly within that rarity × type pool
   /// 4. Return the selected species (unique, no duplicates)
   ///
   /// [cellId] determines spatial location. [dailySeed] rotates species daily.
@@ -73,7 +80,7 @@ class SpeciesService {
 
     // Daily seed + cell ID → species rotate daily per cell.
     final combinedSeed = '${dailySeed}_$cellId';
-    return _rollTwoStageMultiple(
+    return _rollThreeStageMultiple(
         combinedSeed, encounterSlots, _groupByRarity(pool));
   }
 
@@ -142,8 +149,8 @@ class SpeciesService {
     final effectivePool =
         differentClimatePool.isNotEmpty ? differentClimatePool : pool.toList();
 
-    // 4. Roll from the effective pool using two-stage rarity selection.
-    return _rollTwoStageMultiple(
+    // 4. Roll from the effective pool using three-stage rarity selection.
+    return _rollThreeStageMultiple(
       '${dailySeed}_$cellId',
       encounterSlots,
       _groupByRarity(effectivePool),
@@ -181,9 +188,9 @@ class SpeciesService {
     }).toList();
     if (rarePool.isEmpty) return [];
 
-    // 3. Roll with two-stage selection within the rare pool
+    // 3. Roll with three-stage selection within the rare pool
     //    (tier weights EN=9 > CR=3 > EX=1 preserved via tier table).
-    return _rollTwoStageMultiple(
+    return _rollThreeStageMultiple(
       '${dailySeed}_$cellId',
       encounterSlots,
       _groupByRarity(rarePool),
@@ -214,25 +221,27 @@ class SpeciesService {
     return result;
   }
 
-  /// Two-stage rarity roll: pick tier first, then pick uniformly within tier.
+  /// Three-stage rarity roll: tier → animal type → uniform pick within type.
   ///
   /// **Stage 1**: Build a [LootTable] over the rarity tiers present in
   /// [poolByRarity], weighted by [IucnStatus.weight] (3^x). Roll to select
   /// a tier. This step is dataset-composition-independent — a pool with 900
-  /// LC and 100 EN species still gives EN a 9/252 ≈ 3.6% tier-hit chance,
-  /// not 0.2% as weighted-flat would.
+  /// LC and 100 EN species still gives EN a 9/252 ≈ 3.6% tier-hit chance.
   ///
-  /// **Stage 2**: Pick uniformly within the selected tier's species list,
-  /// seeded by a domain-separated hash.
+  /// **Stage 2**: Within the selected tier's pool, group by [AnimalType]
+  /// (mammal/bird/fish/reptile/bug) and pick a type with **even weight**.
+  /// Species with null animalType are grouped into a synthetic "unknown"
+  /// bucket. Types are sorted by enum index for stable ordering. This ensures
+  /// type diversity across rolls — no single type dominates by pool size alone.
+  ///
+  /// **Stage 3**: Pick uniformly within the rarity × type pool, seeded by a
+  /// domain-separated hash.
   ///
   /// Uniqueness: if the rolled species was already selected this call, we
-  /// retry (up to [n] × 10 total attempts). If a tier becomes exhausted
-  /// (all species already selected), that tier still gets hit by Stage 1
-  /// and the attempt is simply wasted — this is rare and bounded by
-  /// [maxAttempts].
+  /// retry (up to [n] × 10 total attempts).
   ///
-  /// Seed format: `"${baseSeed}_${attempt}_t"` for tier, `"${baseSeed}_${attempt}_s"` for species.
-  List<FaunaDefinition> _rollTwoStageMultiple(
+  /// Seed format: `"${baseSeed}_${attempt}_t"` for tier, `"${baseSeed}_${attempt}_ty"` for type, `"${baseSeed}_${attempt}_s"` for species.
+  List<FaunaDefinition> _rollThreeStageMultiple(
     String baseSeed,
     int n,
     Map<IucnStatus, List<FaunaDefinition>> poolByRarity,
@@ -252,17 +261,40 @@ class SpeciesService {
     while (results.length < n && attempt < maxAttempts) {
       final attemptSeed = '${baseSeed}_$attempt';
 
-      // Stage 1: pick rarity tier.
+      // Stage 1: pick rarity tier (weighted by IucnStatus.weight).
       final tier = tierTable.roll('${attemptSeed}_t');
-
-      // Stage 2: pick uniformly within tier's pool.
       final tierPool = poolByRarity[tier]!;
+
+      // Stage 2: pick animal type with even weight.
+      // Group tier pool by AnimalType. Null animalType → sentinel null key.
+      final typeMap = <AnimalType?, List<FaunaDefinition>>{};
+      for (final s in tierPool) {
+        (typeMap[s.animalType] ??= []).add(s);
+      }
+      // Sort keys for stable ordering: known types by enum index, null last.
+      final typeKeys = typeMap.keys.toList()
+        ..sort((a, b) {
+          if (a == null) return 1;
+          if (b == null) return -1;
+          return a.index.compareTo(b.index);
+        });
+      final typeHash = sha256.convert(utf8.encode('${attemptSeed}_ty')).bytes;
+      final typeIdx = (((typeHash[0] << 24) |
+                  (typeHash[1] << 16) |
+                  (typeHash[2] << 8) |
+                  typeHash[3]) &
+              0x7FFFFFFF) %
+          typeKeys.length;
+      final chosenType = typeKeys[typeIdx];
+      final typePool = typeMap[chosenType]!;
+
+      // Stage 3: pick uniformly within rarity × type pool.
       final hash = sha256.convert(utf8.encode('${attemptSeed}_s')).bytes;
       final idx =
           (((hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3]) &
                   0x7FFFFFFF) %
-              tierPool.length;
-      final species = tierPool[idx];
+              typePool.length;
+      final species = typePool[idx];
 
       if (seen.add(species)) {
         results.add(species);
