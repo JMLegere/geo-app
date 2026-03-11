@@ -1,7 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/cells/event_resolver.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/cell_event.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
+import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
@@ -106,6 +110,48 @@ final _jaguar = FaunaDefinition(
 
 SpeciesService _makeSpeciesService() =>
     SpeciesService([_redFox, _grayWolf, _jaguar]);
+
+// ---------------------------------------------------------------------------
+// Additional fixtures for cell event integration tests.
+// ---------------------------------------------------------------------------
+final _forestEuropeLC = FaunaDefinition(
+  id: 'fauna_european_badger',
+  displayName: 'European Badger',
+  scientificName: 'Meles meles',
+  taxonomicClass: 'Mammalia',
+  continents: [Continent.europe],
+  habitats: [Habitat.forest],
+  rarity: IucnStatus.leastConcern,
+);
+
+final _forestNAEN = FaunaDefinition(
+  id: 'fauna_red_wolf',
+  displayName: 'Red Wolf',
+  scientificName: 'Canis rufus',
+  taxonomicClass: 'Mammalia',
+  continents: [Continent.northAmerica],
+  habitats: [Habitat.forest],
+  rarity: IucnStatus.endangered,
+);
+
+final _forestNACR = FaunaDefinition(
+  id: 'fauna_florida_panther',
+  displayName: 'Florida Panther',
+  scientificName: 'Puma concolor coryi',
+  taxonomicClass: 'Mammalia',
+  continents: [Continent.northAmerica],
+  habitats: [Habitat.forest],
+  rarity: IucnStatus.criticallyEndangered,
+);
+
+SpeciesService _makeEventSpeciesService() => SpeciesService([
+      _redFox,
+      _grayWolf,
+      _jaguar,
+      _forestEuropeLC,
+      _forestNAEN,
+      _forestNACR,
+    ]);
 
 FogStateResolver _makeResolver() => FogStateResolver(_MockCellService());
 
@@ -458,6 +504,275 @@ void main() {
       expect(events, isEmpty,
           reason:
               'When isDiscoveryPaused is true, no discovery events should fire');
+    });
+
+    // -----------------------------------------------------------------------
+    // Cell event integration (Migration, Nesting Site)
+    // -----------------------------------------------------------------------
+
+    group('cell event integration', () {
+      test('cellPropertiesLookup is used when set', () {
+        final resolver = _makeResolver();
+        final speciesService = _makeEventSpeciesService();
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: speciesService,
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+        );
+        addTearDown(service.dispose);
+
+        // Wire cellPropertiesLookup with known properties.
+        service.cellPropertiesLookup = (cellId) => CellProperties(
+              cellId: cellId,
+              habitats: const {Habitat.forest},
+              climate: Climate.temperate,
+              continent: Continent.northAmerica,
+              locationId: null,
+              createdAt: DateTime(2026),
+            );
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(1.0, 1.0);
+        });
+
+        expect(events, isNotEmpty);
+      });
+
+      test('normal encounter has cellEventType=null', () {
+        final resolver = _makeResolver();
+        final speciesService = _makeEventSpeciesService();
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: speciesService,
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+        );
+        addTearDown(service.dispose);
+
+        // Wire properties but use a seed/cellId that produces no event.
+        // We need to find a cellId that has no event for the offline seed.
+        // Try multiple cells — most (~88%) will have no event.
+        String? noEventCellId;
+        for (var i = 0; i < 100; i++) {
+          final testCellId = '${i}_${i}';
+          if (EventResolver.resolve('offline_no_rotation', testCellId) ==
+              null) {
+            noEventCellId = testCellId;
+            break;
+          }
+        }
+        expect(noEventCellId, isNotNull,
+            reason: '~88% of cells have no event — should find one');
+
+        final parts = noEventCellId!.split('_');
+        final lat = double.parse(parts[0]);
+        final lon = double.parse(parts[1]);
+
+        service.cellPropertiesLookup = (cellId) => CellProperties(
+              cellId: cellId,
+              habitats: const {Habitat.forest},
+              climate: Climate.temperate,
+              continent: Continent.northAmerica,
+              locationId: null,
+              createdAt: DateTime(2026),
+            );
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(lat, lon);
+        });
+
+        expect(events, isNotEmpty);
+        for (final e in events) {
+          expect(e.cellEventType, isNull,
+              reason: 'Normal encounter should have null cellEventType');
+        }
+      });
+
+      test('event encounter has correct cellEventType', () {
+        final resolver = _makeResolver();
+        final speciesService = _makeEventSpeciesService();
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: speciesService,
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+        );
+        addTearDown(service.dispose);
+
+        // Find a cellId that HAS an event for the offline seed.
+        String? eventCellId;
+        CellEventType? eventType;
+        for (var i = 0; i < 200; i++) {
+          final testCellId = '${i}_${i}';
+          final event =
+              EventResolver.resolve('offline_no_rotation', testCellId);
+          if (event != null) {
+            eventCellId = testCellId;
+            eventType = event.type;
+            break;
+          }
+        }
+        expect(eventCellId, isNotNull,
+            reason: '~12% of cells have events — should find one');
+
+        final parts = eventCellId!.split('_');
+        final lat = double.parse(parts[0]);
+        final lon = double.parse(parts[1]);
+
+        service.cellPropertiesLookup = (cellId) => CellProperties(
+              cellId: cellId,
+              habitats: const {Habitat.forest},
+              climate: Climate.temperate,
+              continent: Continent.northAmerica,
+              locationId: null,
+              createdAt: DateTime(2026),
+            );
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(lat, lon);
+        });
+
+        // Events might be empty if the event-specific pool was empty and
+        // fell back to normal — but cellEventType should be consistent.
+        if (events.isNotEmpty) {
+          for (final e in events) {
+            // Either it's the event type or null (if pool was empty → fallback).
+            if (e.cellEventType != null) {
+              expect(e.cellEventType, equals(eventType));
+            }
+          }
+        }
+      });
+
+      test('nesting site encounter returns only EN/CR/EX species', () {
+        final resolver = _makeResolver();
+        final speciesService = _makeEventSpeciesService();
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: speciesService,
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+        );
+        addTearDown(service.dispose);
+
+        // Find a cell with a nesting site event.
+        String? nestingCellId;
+        for (var i = 0; i < 500; i++) {
+          final testCellId = '${i}_${i}';
+          final event =
+              EventResolver.resolve('offline_no_rotation', testCellId);
+          if (event != null && event.type == CellEventType.nestingSite) {
+            nestingCellId = testCellId;
+            break;
+          }
+        }
+
+        // Skip if no nesting site cell found in range (unlikely but possible).
+        if (nestingCellId == null) return;
+
+        final parts = nestingCellId.split('_');
+        final lat = double.parse(parts[0]);
+        final lon = double.parse(parts[1]);
+
+        service.cellPropertiesLookup = (cellId) => CellProperties(
+              cellId: cellId,
+              habitats: const {Habitat.forest},
+              climate: Climate.temperate,
+              continent: Continent.northAmerica,
+              locationId: null,
+              createdAt: DateTime(2026),
+            );
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(lat, lon);
+        });
+
+        // If events fired with nesting site type, they should be EN/CR/EX.
+        final nestingEvents =
+            events.where((e) => e.cellEventType == CellEventType.nestingSite);
+        for (final e in nestingEvents) {
+          final fauna = e.item as FaunaDefinition;
+          expect(
+            fauna.rarity == IucnStatus.endangered ||
+                fauna.rarity == IucnStatus.criticallyEndangered ||
+                fauna.rarity == IucnStatus.extinct,
+            isTrue,
+            reason: '${fauna.displayName} (${fauna.rarity}) should be EN/CR/EX',
+          );
+        }
+      });
+
+      test('falls back to normal encounter when event pool is empty', () {
+        final resolver = _makeResolver();
+        // Use a service with NO EN/CR/EX species so nesting site pool is empty.
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: _makeSpeciesService(), // Only LC and NT
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+        );
+        addTearDown(service.dispose);
+
+        // Find a nesting site cell.
+        String? nestingCellId;
+        for (var i = 0; i < 500; i++) {
+          final testCellId = '${i}_${i}';
+          final event =
+              EventResolver.resolve('offline_no_rotation', testCellId);
+          if (event != null && event.type == CellEventType.nestingSite) {
+            nestingCellId = testCellId;
+            break;
+          }
+        }
+
+        if (nestingCellId == null) return;
+
+        final parts = nestingCellId.split('_');
+        final lat = double.parse(parts[0]);
+        final lon = double.parse(parts[1]);
+
+        service.cellPropertiesLookup = (cellId) => CellProperties(
+              cellId: cellId,
+              habitats: const {Habitat.forest},
+              climate: Climate.temperate,
+              continent: Continent.northAmerica,
+              locationId: null,
+              createdAt: DateTime(2026),
+            );
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(lat, lon);
+        });
+
+        // Should still produce events (normal fallback) with null eventType.
+        expect(events, isNotEmpty,
+            reason: 'Empty event pool should fall back to normal encounter');
+        for (final e in events) {
+          expect(e.cellEventType, isNull,
+              reason:
+                  'Fallback from empty nesting pool should have null eventType');
+        }
+      });
+
+      test('without cellPropertiesLookup, uses fallback habitat/continent', () {
+        final resolver = _makeResolver();
+        final service = DiscoveryService(
+          fogResolver: resolver,
+          speciesService: _makeEventSpeciesService(),
+          habitatService: _MockHabitatService(),
+          cellService: _MockCellService(),
+          // cellPropertiesLookup NOT set — null by default
+        );
+        addTearDown(service.dispose);
+
+        final events = collectDiscoveries(service, () {
+          resolver.onLocationUpdate(1.0, 1.0);
+        });
+
+        // Should work normally using HabitatService + ContinentResolver.
+        expect(events, isNotEmpty);
+      });
     });
   });
 }

@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/core/cells/cell_property_resolver.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
@@ -68,6 +70,7 @@ class GameCoordinator {
   final FogStateResolver _fogResolver;
   final StatsService _statsService;
   final CellService _cellService;
+  CellPropertyResolver? _cellPropertyResolver;
 
   /// Exposes the stats service for retroactive affix rolling by the
   /// provider layer (e.g. when enrichment arrives after discovery).
@@ -84,6 +87,37 @@ class GameCoordinator {
   /// Returns null when no enrichment is cached for the given definition ID.
   ({int speed, int brawn, int wit, AnimalSize? size})? Function(
       String definitionId)? enrichedStatsLookup;
+
+  // ---------------------------------------------------------------------------
+  // Cell properties — in-memory cache of resolved geo-derived properties
+  // ---------------------------------------------------------------------------
+
+  /// In-memory cache of resolved cell properties.
+  /// Populated as cells become adjacent (ring-1 of player position).
+  /// Keyed by cell ID.
+  final Map<String, CellProperties> _cellPropertiesCache = {};
+
+  /// Read-only access to the in-memory cell properties cache.
+  /// Used by discovery integration to determine cell context.
+  Map<String, CellProperties> get cellPropertiesCache =>
+      Map.unmodifiable(_cellPropertiesCache);
+
+  /// Called when cell properties are resolved for a new cell.
+  /// The provider layer persists to SQLite + enqueues for Supabase sync.
+  void Function(CellProperties properties)? onCellPropertiesResolved;
+
+  /// Update the cell property resolver. Called by the provider layer when
+  /// the resolver's backing data (BiomeFeatureIndex, CountryResolver) becomes
+  /// available or updates.
+  void setCellPropertyResolver(CellPropertyResolver? resolver) {
+    _cellPropertyResolver = resolver;
+  }
+
+  /// Pre-populate the cell properties cache from persisted data (SQLite).
+  /// Called during hydration before the game loop starts.
+  void loadCellProperties(Map<String, CellProperties> properties) {
+    _cellPropertiesCache.addAll(properties);
+  }
 
   // ---------------------------------------------------------------------------
   // Dual-position state
@@ -411,11 +445,47 @@ class GameCoordinator {
     // 1. Update fog-of-war state using player (marker) position.
     _fogResolver.onLocationUpdate(lat, lon);
 
-    // 2. Push player position as the official location.
+    // 2. Resolve cell properties for current + adjacent cells.
+    _resolveCellProperties(lat, lon);
+
+    // 3. Push player position as the official location.
     onPlayerLocationUpdate?.call(
       Geographic(lat: lat, lon: lon),
       _rawGpsAccuracy,
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private — Cell property resolution
+  // ---------------------------------------------------------------------------
+
+  /// Resolve geo-derived properties for the current cell and ring-1 neighbors.
+  ///
+  /// Skips cells already in [_cellPropertiesCache]. For each newly resolved
+  /// cell, fires [onCellPropertiesResolved] so the provider layer can persist.
+  void _resolveCellProperties(double lat, double lon) {
+    final resolver = _cellPropertyResolver;
+    if (resolver == null) return;
+
+    final currentCellId = _cellService.getCellId(lat, lon);
+    final neighborIds = _cellService.getNeighborIds(currentCellId);
+
+    // Current cell + ring-1 neighbors.
+    final cellIds = [currentCellId, ...neighborIds];
+
+    for (final cellId in cellIds) {
+      if (_cellPropertiesCache.containsKey(cellId)) continue;
+
+      final center = _cellService.getCellCenter(cellId);
+      final properties = resolver.resolve(
+        cellId: cellId,
+        lat: center.lat,
+        lon: center.lon,
+      );
+
+      _cellPropertiesCache[cellId] = properties;
+      onCellPropertiesResolved?.call(properties);
+    }
   }
 
   // ---------------------------------------------------------------------------

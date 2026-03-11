@@ -22,13 +22,17 @@ import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/season.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
+import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/persistence/write_queue_repository.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
+import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
+import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
@@ -46,6 +50,7 @@ import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
+import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
@@ -78,6 +83,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final queueProcessor = ref.watch(queueProcessorProvider);
 
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
+  final cellPropertyResolver = ref.watch(cellPropertyResolverProvider);
+  final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
+  final locationEnrichmentService =
+      ref.watch(locationEnrichmentServiceProvider);
 
   // In-memory enrichment cache for synchronous stat lookups during discovery.
   // Populated during hydration, updated when new enrichments arrive.
@@ -90,6 +99,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     cellService: cellService,
     isRealGps: locationService.mode == LocationMode.realGps,
   );
+
+  // Wire cell property resolver for geo-derived cell properties.
+  coordinator.setCellPropertyResolver(cellPropertyResolver);
+
+  // Wire cell properties lookup on discovery service so it can use
+  // pre-resolved properties and detect cell events (Migration, Nesting Site).
+  // Set as a mutable field to avoid circular provider dependency — the
+  // callback is only invoked at event time (never during construction).
+  discoveryService.cellPropertiesLookup =
+      (cellId) => coordinator.cellPropertiesCache[cellId];
 
   // Wire synchronous enrichment lookup for stat rolling.
   coordinator.enrichedStatsLookup = (definitionId) {
@@ -139,6 +158,30 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         cellProgressRepo: cellProgressRepo,
         queueProcessor: queueProcessor,
+      );
+    }
+  };
+
+  coordinator.onCellPropertiesResolved = (CellProperties properties) {
+    // Persist cell properties to SQLite + enqueue for Supabase sync.
+    // Cell properties are global (not per-user), so no userId needed for
+    // SQLite. Write queue still needs userId for routing.
+    _persistCellProperties(
+      properties: properties,
+      cellPropertyRepo: cellPropertyRepo,
+      queueProcessor: queueProcessor,
+      userId: ref.read(authProvider).user?.id,
+    );
+
+    // Fire async location enrichment when location hierarchy is unknown.
+    // The Edge Function calls Nominatim → builds hierarchy → saves to
+    // Supabase, then we cache locally and update the cell's locationId.
+    if (properties.locationId == null) {
+      final center = cellService.getCellCenter(properties.cellId);
+      locationEnrichmentService.requestEnrichment(
+        cellId: properties.cellId,
+        lat: center.lat,
+        lon: center.lon,
       );
     }
   };
@@ -288,17 +331,28 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo.readByUser(userId),
         profileRepo.read(userId),
         enrichmentRepo.getAllEnrichments(),
+        cellPropertyRepo.getAll(),
       ]);
 
       final items = results[0]! as List<ItemInstance>;
       final cellRows = results[1]! as List<LocalCellProgress>;
       final profile = results[2] as LocalPlayerProfile?;
       final enrichments = results[3]! as List<SpeciesEnrichment>;
+      final cellProperties = results[4]! as List<CellProperties>;
 
-      // 0. Populate enrichment cache for synchronous stat lookups.
+      // 0a. Populate enrichment cache for synchronous stat lookups.
       for (final e in enrichments) {
         enrichmentCache[e.definitionId] =
             (speed: e.speed, brawn: e.brawn, wit: e.wit, size: e.size);
+      }
+
+      // 0b. Pre-populate cell properties cache from SQLite.
+      if (cellProperties.isNotEmpty) {
+        final propsMap = <String, CellProperties>{};
+        for (final cp in cellProperties) {
+          propsMap[cp.cellId] = cp;
+        }
+        coordinator.loadCellProperties(propsMap);
       }
 
       // 1. Hydrate inventory
@@ -579,6 +633,47 @@ Future<void> _persistItemDiscovery({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue item: $e');
+  }
+}
+
+/// Persist cell properties to SQLite and enqueue for Supabase sync.
+///
+/// Cell properties are globally shared (not per-user), so the SQLite write
+/// has no userId. The write queue entry still needs userId for routing.
+Future<void> _persistCellProperties({
+  required CellProperties properties,
+  required CellPropertyRepository cellPropertyRepo,
+  required QueueProcessor queueProcessor,
+  required String? userId,
+}) async {
+  // 1. Write to SQLite (local cache).
+  try {
+    await cellPropertyRepo.upsert(properties);
+  } catch (e) {
+    debugPrint('[GameCoordinator] failed to persist cell properties: $e');
+  }
+
+  // 2. Enqueue for Supabase sync (auto-schedules flush).
+  if (userId != null) {
+    try {
+      final payload = jsonEncode({
+        'cell_id': properties.cellId,
+        'habitats': jsonEncode(properties.habitats.map((h) => h.name).toList()),
+        'climate': properties.climate.name,
+        'continent': properties.continent.name,
+        'location_id': properties.locationId,
+      });
+
+      await queueProcessor.enqueue(
+        entityType: WriteQueueEntityType.cellProperties,
+        entityId: properties.cellId,
+        operation: WriteQueueOperation.upsert,
+        payload: payload,
+        userId: userId,
+      );
+    } catch (e) {
+      debugPrint('[GameCoordinator] failed to enqueue cell properties: $e');
+    }
   }
 }
 

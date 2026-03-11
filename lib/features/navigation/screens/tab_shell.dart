@@ -143,7 +143,7 @@ class _TabShellState extends ConsumerState<TabShell>
                 children: [
                   const _SyncIndicator(),
                   Text(
-                    'v$kBuildTimestamp',
+                    kBuildTimestamp,
                     style: TextStyle(
                       fontSize: 10,
                       color: Theme.of(context)
