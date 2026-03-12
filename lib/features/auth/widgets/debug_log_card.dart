@@ -29,6 +29,7 @@ class _DebugLogCardState extends ConsumerState<DebugLogCard> {
   }
 
   void _copyToClipboard(BuildContext context, List<String> lines) {
+    debugPrint('[ACTION] copy debug log (${lines.length} lines)');
     Clipboard.setData(ClipboardData(text: lines.join('\n')));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -39,6 +40,7 @@ class _DebugLogCardState extends ConsumerState<DebugLogCard> {
   }
 
   void _clear() {
+    debugPrint('[ACTION] clear debug log');
     DebugLogBuffer.instance.clear();
   }
 

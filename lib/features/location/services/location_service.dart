@@ -136,11 +136,21 @@ class LocationService {
   /// Runs async — keyboard keeps working in the meantime.
   /// If GPS permission is granted, cancels keyboard subscription and
   /// switches to GPS stream. If denied, keyboard continues as-is.
+  ///
+  /// Guards subscription swap with [_switchingToGps] flag to prevent
+  /// concurrent modification if [start] is called again during the async gap.
+  bool _switchingToGps = false;
+
   void _attemptWebGpsFallback() {
+    if (_switchingToGps) return;
+    _switchingToGps = true;
+
     _webGpsService = RealGpsService();
     final webGps = _webGpsService!;
 
     webGps.ensurePermission().then((status) {
+      _switchingToGps = false;
+
       if (status != GpsPermissionStatus.granted) {
         debugPrint('[LocationService] web GPS denied ($status) — '
             'keeping keyboard mode');
@@ -168,6 +178,7 @@ class LocationService {
 
       activeModeNotifier.value = LocationMode.realGps;
     }).catchError((Object e) {
+      _switchingToGps = false;
       debugPrint('[LocationService] web GPS attempt failed: $e — '
           'keeping keyboard mode');
       webGps.dispose();

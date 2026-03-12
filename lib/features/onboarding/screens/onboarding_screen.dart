@@ -91,6 +91,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _complete() async {
+    debugPrint('[ACTION] onboarding complete (page $_currentPage)');
     ref.read(playerProvider.notifier).markOnboardingComplete();
 
     // Persist to SQLite so returning users skip onboarding on next login.
