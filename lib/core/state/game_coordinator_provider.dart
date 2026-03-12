@@ -744,8 +744,6 @@ Future<void> _persistCellVisit({
   int visitCount = 1;
   double distanceWalked = 0.0;
   double restorationLevel = 0.0;
-  bool sqliteSucceeded = false;
-
   // 1. Upsert cell progress in SQLite (create if first visit, update if returning).
   try {
     final existing = await cellProgressRepo.read(userId, cellId);
@@ -767,14 +765,12 @@ Future<void> _persistCellVisit({
         lastVisited: now,
       );
     }
-    sqliteSucceeded = true;
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
     return; // Do not enqueue — payload would contain stale default values.
   }
 
   // 2. Enqueue for Supabase sync only when SQLite write succeeded.
-  if (!sqliteSucceeded) return;
   try {
     final payload = jsonEncode({
       'cell_id': cellId,
