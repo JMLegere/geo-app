@@ -95,7 +95,10 @@ class LocationEnrichmentService {
     }
   }
 
-  Future<void> _executeRequest(_EnrichRequest request) async {
+  Future<void> _executeRequest(
+    _EnrichRequest request, {
+    bool isRetry = false,
+  }) async {
     final client = supabaseClient;
     if (client == null) return;
 
@@ -146,6 +149,21 @@ class LocationEnrichmentService {
       if (e.status == 429) {
         _handleRateLimit(request);
         return;
+      }
+      // 401 = JWT rejected by Edge Function gateway. Refresh the session
+      // and retry once — covers stale tokens after web session restore.
+      if (e.status == 401 && !isRetry) {
+        debugPrint('[LocationEnrichment] 401 for ${request.cellId} '
+            '— refreshing session and retrying');
+        try {
+          await client.auth.refreshSession();
+          await _executeRequest(request, isRetry: true);
+          return;
+        } catch (refreshErr) {
+          debugPrint('[LocationEnrichment] refresh + retry failed for '
+              '${request.cellId}: $refreshErr');
+          return;
+        }
       }
       debugPrint('[LocationEnrichment] function error for '
           '${request.cellId}: $e');

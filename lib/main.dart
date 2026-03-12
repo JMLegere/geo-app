@@ -37,7 +37,9 @@ Future<void> main() async {
   // 4. Attempt session restore. AuthNotifier starts at `loading` so
   //    LoadingScreen shows while this runs.
   try {
+    debugPrint('[AUTH] restoring session…');
     final hasSession = await authService.restoreSession();
+    debugPrint('[AUTH] restoreSession → $hasSession');
     if (hasSession) {
       final user = await authService.getCurrentUser();
       if (user != null) {
@@ -55,7 +57,7 @@ Future<void> main() async {
           .setState(const AuthState.unauthenticated());
     }
   } catch (e) {
-    debugPrint('[main] session restore failed: $e');
+    debugPrint('[AUTH] session restore failed: $e');
     container
         .read(authProvider.notifier)
         .setState(const AuthState.unauthenticated());

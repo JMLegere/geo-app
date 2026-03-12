@@ -46,13 +46,6 @@ abstract class AuthService {
   /// go through the OTP flow again.
   Future<bool> restoreSession();
 
-  /// Signs in anonymously without phone/OTP verification.
-  ///
-  /// Creates a real backend user with a valid session. Used by the beta
-  /// bypass flow. Throws [AuthException] on failure (e.g. anonymous auth
-  /// not enabled on the backend, network error).
-  Future<UserProfile> signInAnonymously();
-
   /// Signs in (or signs up) using only a phone number — no OTP, no password
   /// from the user's perspective.
   ///

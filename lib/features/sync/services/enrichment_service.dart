@@ -130,7 +130,10 @@ class EnrichmentService {
     }
   }
 
-  Future<void> _executeRequest(_EnrichmentRequest request) async {
+  Future<void> _executeRequest(
+    _EnrichmentRequest request, {
+    bool isRetry = false,
+  }) async {
     final client = supabaseClient;
     if (client == null) {
       debugPrint('[EnrichmentService] _executeRequest: client null, '
@@ -139,7 +142,8 @@ class EnrichmentService {
     }
 
     debugPrint('[EnrichmentService] invoking enrich-species for '
-        '${request.definitionId} (${request.commonName})');
+        '${request.definitionId} (${request.commonName})'
+        '${isRetry ? ' [retry]' : ''}');
     try {
       final expectedType =
           AnimalType.fromTaxonomicClass(request.taxonomicClass);
@@ -195,6 +199,21 @@ class EnrichmentService {
       if (e.status == 429) {
         _handleRateLimit(request);
         return;
+      }
+      // 401 = JWT rejected by Edge Function gateway. Refresh the session
+      // and retry once — covers stale tokens after web session restore.
+      if (e.status == 401 && !isRetry) {
+        debugPrint('[EnrichmentService] 401 for ${request.definitionId} '
+            '— refreshing session and retrying');
+        try {
+          await client.auth.refreshSession();
+          await _executeRequest(request, isRetry: true);
+          return;
+        } catch (refreshErr) {
+          debugPrint('[EnrichmentService] refresh + retry failed for '
+              '${request.definitionId}: $refreshErr');
+          return;
+        }
       }
       debugPrint('[EnrichmentService] function error for '
           '${request.definitionId}: $e');
