@@ -56,12 +56,14 @@ class LocationEnrichmentService {
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _drainTimer;
   bool _rateLimited = false;
+  bool _disposed = false;
 
   void requestEnrichment({
     required String cellId,
     required double lat,
     required double lon,
   }) {
+    if (_disposed) return;
     if (supabaseClient == null) return;
     if (_inFlight.contains(cellId)) return;
 
@@ -82,7 +84,7 @@ class LocationEnrichmentService {
   }
 
   Future<void> _drain() async {
-    while (_queue.isNotEmpty && !_rateLimited) {
+    while (_queue.isNotEmpty && !_rateLimited && !_disposed) {
       final request = _queue.removeFirst();
       _lastRequestTime = DateTime.now();
 
@@ -211,12 +213,14 @@ class LocationEnrichmentService {
         '(attempt ${retried.attempt})');
 
     Timer(Duration(milliseconds: backoffMs), () {
+      if (_disposed) return;
       _rateLimited = false;
       _scheduleDrain();
     });
   }
 
   void dispose() {
+    _disposed = true;
     _drainTimer?.cancel();
   }
 }

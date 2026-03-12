@@ -154,7 +154,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   bool _iconImagesRegistered = false;
 
   /// Cached location nodes — loaded once, refreshed when enrichment completes.
-  Map<String, LocationNode> _locationNodesMap = const {};
+  Map<String, LocationNode> _locationNodesMap = {};
   bool _locationNodesLoaded = false;
 
   @override
@@ -200,6 +200,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // When enrichment completes, fetch the saved LocationNode and push it into
     // the fog overlay cache so territory borders update without an app restart.
     locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
+      if (!mounted) return;
       ref.read(locationNodeRepositoryProvider).get(locationId).then((node) {
         if (node != null && mounted) {
           ref.read(fogOverlayControllerProvider).addLocationNode(node);
