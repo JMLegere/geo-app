@@ -22,8 +22,7 @@ class DailySeedState {
   });
 
   bool get isStale {
-    final ageHours =
-        DateTime.now().toUtc().difference(fetchedAt).inHours;
+    final ageHours = DateTime.now().toUtc().difference(fetchedAt).inHours;
     return ageHours >= kDailySeedGraceHours;
   }
 
@@ -31,8 +30,7 @@ class DailySeedState {
     return seedDate == _todayUtcString();
   }
 
-  int get ageHours =>
-      DateTime.now().toUtc().difference(fetchedAt).inHours;
+  int get ageHours => DateTime.now().toUtc().difference(fetchedAt).inHours;
 
   // Equality by seed+date only — fetchedAt and isServerSeed are metadata,
   // not identity. Two states with same seed on same date are functionally equal.
@@ -116,7 +114,18 @@ class DailySeedService {
   }
 
   Future<DailySeedState> refreshSeed() async {
+    // Preserve the existing valid seed before clearing, so fetchSeed()'s
+    // catch block can fall back to it if the server request fails — instead
+    // of replacing the real seed with kDailySeedOfflineFallback.
+    final previousSeed = _cached;
     _cached = null;
-    return fetchSeed();
+    final result = await fetchSeed();
+    // If fetchSeed() fell back to the offline seed (fetch failed and cached
+    // was null because we just cleared it), restore the previous valid seed.
+    if (!result.isServerSeed && previousSeed != null) {
+      _cached = previousSeed;
+      return previousSeed;
+    }
+    return result;
   }
 }

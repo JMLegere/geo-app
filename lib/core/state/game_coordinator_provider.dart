@@ -87,6 +87,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final locationEnrichmentService =
       ref.watch(locationEnrichmentServiceProvider);
 
+  // Guard flag: set to true in ref.onDispose to prevent callbacks and
+  // startLoop() from calling ref.read() on a dead provider reference.
+  // This closes the race where .whenComplete() fires after disposal.
+  var _providerDisposed = false;
+
   // In-memory enrichment cache for synchronous stat lookups during discovery.
   // Populated during hydration, updated when new enrichments arrive.
   final enrichmentCache =
@@ -118,6 +123,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // the in-memory cache and backfills intrinsic affixes — matching what the
   // in-session discovery path (Path A) already does.
   ref.read(enrichmentServiceProvider).onEnrichedHook = (enrichment) {
+    if (_providerDisposed) return;
     debugPrint('[GameCoordinator] onEnrichedHook: backfilling affixes for '
         '${enrichment.definitionId}');
     enrichmentCache[enrichment.definitionId] = (
@@ -145,6 +151,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // --- Wire auto-flush callback → post-flush badge/rejection processing ---
 
   queueProcessor.onAutoFlushComplete = (summary) async {
+    if (_providerDisposed) return;
     if (summary.hasRejections) {
       await ref.read(syncProvider.notifier).processRejections();
     }
@@ -160,10 +167,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // --- Wire output callbacks → Riverpod notifiers ---
 
   coordinator.onPlayerLocationUpdate = (Geographic position, double accuracy) {
+    if (_providerDisposed) return;
     ref.read(locationProvider.notifier).updateLocation(position, accuracy);
   };
 
   coordinator.onGpsErrorChanged = (GpsError error) {
+    if (_providerDisposed) return;
     final locationError = switch (error) {
       GpsError.none => LocationError.none,
       GpsError.permissionDenied => LocationError.permissionDenied,
@@ -175,6 +184,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onCellVisited = (String cellId) {
+    if (_providerDisposed) return;
     ref.read(playerProvider.notifier).incrementCellsObserved();
 
     // Persist cell visit to SQLite + enqueue for Supabase sync.
@@ -190,6 +200,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onCellPropertiesResolved = (CellProperties properties) {
+    if (_providerDisposed) return;
     // Persist cell properties to SQLite + enqueue for Supabase sync.
     // Cell properties are global (not per-user), so no userId needed for
     // SQLite. Write queue still needs userId for routing.
@@ -214,6 +225,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   };
 
   coordinator.onItemDiscovered = (event, instance) {
+    if (_providerDisposed) return;
     // First-discovery badge (★):
     // - When Supabase IS configured: server-validated after write queue
     //   flushes and validate-encounter confirms first global discovery.
@@ -321,6 +333,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final dailySeedService = ref.read(dailySeedServiceProvider);
 
   void startLoop() {
+    // Guard: provider may have been disposed while the async hydration chain
+    // was in flight (e.g. hot restart, auth change). Never start the loop
+    // against a dead ref.
+    if (_providerDisposed) return;
+
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
     dailySeedService.fetchSeed().then((_) {
@@ -601,6 +618,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // --- Cleanup ---
 
   ref.onDispose(() {
+    _providerDisposed = true;
     coordinator.dispose();
     queueProcessor.dispose();
     locationService.stop();
