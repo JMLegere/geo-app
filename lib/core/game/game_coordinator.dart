@@ -10,6 +10,7 @@ import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
@@ -117,6 +118,43 @@ class GameCoordinator {
   /// Called during hydration before the game loop starts.
   void loadCellProperties(Map<String, CellProperties> properties) {
     _cellPropertiesCache.addAll(properties);
+  }
+
+  /// Re-resolve cells in the cache that have only `{plains}` as their habitat.
+  ///
+  /// These cells were likely resolved before the biome feature index loaded,
+  /// causing them to get the default plains fallback. Now that real biome data
+  /// is available, re-resolve them to get accurate habitats.
+  ///
+  /// Returns the list of updated [CellProperties] so the caller can persist.
+  List<CellProperties> reResolvePlainsOnlyCells() {
+    final resolver = _cellPropertyResolver;
+    if (resolver == null) return [];
+
+    final updated = <CellProperties>[];
+
+    for (final entry in _cellPropertiesCache.entries.toList()) {
+      final props = entry.value;
+      // Only re-resolve cells with a single habitat of plains.
+      // Multi-habitat sets or non-plains habitats were resolved with real data.
+      if (props.habitats.length == 1 &&
+          props.habitats.first == Habitat.plains) {
+        final center = _cellService.getCellCenter(entry.key);
+        final resolved = resolver.resolve(
+          cellId: entry.key,
+          lat: center.lat,
+          lon: center.lon,
+        );
+
+        // Only update if re-resolution found different habitats.
+        if (resolved.habitats != props.habitats) {
+          _cellPropertiesCache[entry.key] = resolved;
+          updated.add(resolved);
+        }
+      }
+    }
+
+    return updated;
   }
 
   // ---------------------------------------------------------------------------

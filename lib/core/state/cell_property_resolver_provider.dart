@@ -5,6 +5,7 @@ import 'package:earth_nova/core/cells/country_resolver.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart';
 import 'package:earth_nova/core/state/country_resolver_provider.dart';
 import 'package:earth_nova/features/biome/providers/habitat_service_provider.dart';
+import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
 
 /// Default [ContinentLookup] used while [CountryResolver] asset is loading.
 ///
@@ -19,12 +20,22 @@ class _FallbackContinentLookup implements ContinentLookup {
 
 /// Provides a [CellPropertyResolver] backed by real geographic data.
 ///
-/// - **Habitat**: from [habitatServiceProvider] (BiomeFeatureIndex when ready,
-///   plains fallback during loading).
+/// Returns `null` while the biome feature index is still loading. This
+/// prevents the game coordinator from resolving cells with a plains-only
+/// fallback and permanently caching incorrect habitats.
+///
+/// - **Habitat**: from [habitatServiceProvider] (BiomeFeatureIndex when ready).
 /// - **Continent**: from [countryResolverProvider] (bundled Natural Earth
 ///   country boundaries when ready, bounding-box heuristic during loading).
 /// - **Climate**: always from latitude math (synchronous, no data dependency).
-final cellPropertyResolverProvider = Provider<CellPropertyResolver>((ref) {
+final cellPropertyResolverProvider = Provider<CellPropertyResolver?>((ref) {
+  final biomeAsync = ref.watch(biomeFeatureIndexProvider);
+
+  // Don't create a resolver until the biome feature index is loaded.
+  // Without real biome data, all cells would resolve to {plains} and get
+  // persisted — permanently poisoning the cell properties cache.
+  if (biomeAsync is! AsyncData<BiomeFeatureIndex>) return null;
+
   final habitatService = ref.watch(habitatServiceProvider);
 
   final countryResolverAsync = ref.watch(countryResolverProvider);
