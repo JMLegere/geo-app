@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/auth_state.dart';
-import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 
 /// Thin auth state holder with action wrappers.

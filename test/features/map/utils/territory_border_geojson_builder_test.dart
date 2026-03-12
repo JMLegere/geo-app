@@ -417,12 +417,13 @@ void main() {
         expect(features, isNotEmpty);
 
         for (final f in features) {
-          final fProps = (f as Map)['properties'] as Map;
+          final fMap = f as Map;
+          final fProps = fMap['properties'] as Map;
           expect(fProps['admin_level'], 'country');
           expect(fProps['line_weight'], 3.0);
           expect(fProps.containsKey('border_color'), isTrue);
 
-          final geometry = (f as Map)['geometry'] as Map;
+          final geometry = fMap['geometry'] as Map;
           expect(geometry['type'], 'LineString');
           final coords = geometry['coordinates'] as List;
           expect(coords.length, 2); // Shared edge = 2 points.

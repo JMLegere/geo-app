@@ -1,6 +1,4 @@
 import 'package:earth_nova/core/database/app_database.dart';
-import 'package:earth_nova/core/models/continent.dart';
-import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
