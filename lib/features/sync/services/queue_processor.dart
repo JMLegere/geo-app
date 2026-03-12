@@ -450,9 +450,17 @@ class QueueProcessor {
     switch (entry.operation) {
       case WriteQueueOperation.upsert:
         final data = jsonDecode(entry.payload) as Map<String, dynamic>;
+        // Defensively handle habitats encoded as either a List (new format)
+        // or a double-encoded JSON string (old format written before the fix).
+        final habitatsRaw = data['habitats'];
+        final List<String> habitats = habitatsRaw is List
+            ? List<String>.from(habitatsRaw)
+            : List<String>.from(
+                jsonDecode(habitatsRaw as String) as List<dynamic>,
+              );
         await persistence.upsertCellProperties(
           cellId: data['cell_id'] as String,
-          habitats: List<String>.from(data['habitats'] as List<dynamic>),
+          habitats: habitats,
           climate: data['climate'] as String,
           continent: data['continent'] as String,
           locationId: data['location_id'] as String?,
