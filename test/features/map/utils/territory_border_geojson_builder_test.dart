@@ -420,7 +420,7 @@ void main() {
           final fMap = f as Map;
           final fProps = fMap['properties'] as Map;
           expect(fProps['admin_level'], 'country');
-          expect(fProps['line_weight'], 3.0);
+          expect(fProps['line_weight'], 12.0);
           expect(fProps.containsKey('border_color'), isTrue);
 
           final geometry = fMap['geometry'] as Map;
@@ -503,7 +503,7 @@ void main() {
         final fProps = (features.first as Map)['properties'] as Map;
         // Should render as state border (lowest differing), not country.
         expect(fProps['admin_level'], 'state');
-        expect(fProps['line_weight'], 2.0);
+        expect(fProps['line_weight'], 8.0);
       });
 
       test('line weight varies by admin level', () {
@@ -571,7 +571,7 @@ void main() {
 
         final fProps = (features.first as Map)['properties'] as Map;
         expect(fProps['admin_level'], 'district');
-        expect(fProps['line_weight'], 1.0);
+        expect(fProps['line_weight'], 4.0);
       });
 
       test('border line coordinates use lon,lat GeoJSON convention', () {

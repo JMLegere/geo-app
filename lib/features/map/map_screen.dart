@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
@@ -41,6 +40,8 @@ import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
+import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
+import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 
@@ -178,11 +179,42 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Subscribe to raw GPS updates to feed the rubber-band.
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
+
+    // Wire fog visibility → location enrichment.
+    //
+    // When a cell first becomes visible in the viewport, request admin-border
+    // enrichment for it. The service rate-limits to 1 req/1.2 s and
+    // deduplicates via its _inFlight set, so repeated calls are safe.
+    final fogOverlayController = ref.read(fogOverlayControllerProvider);
+    final locationEnrichmentService =
+        ref.read(locationEnrichmentServiceProvider);
+
+    fogOverlayController.onCellBecameVisible = (cellId, lat, lon) {
+      locationEnrichmentService.requestEnrichment(
+        cellId: cellId,
+        lat: lat,
+        lon: lon,
+      );
+    };
+
+    // When enrichment completes, fetch the saved LocationNode and push it into
+    // the fog overlay cache so territory borders update without an app restart.
+    locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
+      ref.read(locationNodeRepositoryProvider).get(locationId).then((node) {
+        if (node != null && mounted) {
+          ref.read(fogOverlayControllerProvider).addLocationNode(node);
+        }
+      }).catchError((Object e) {
+        debugPrint('[MapScreen] failed to load location node $locationId: $e');
+      });
+    };
   }
 
   @override
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
+    ref.read(fogOverlayControllerProvider).onCellBecameVisible = null;
+    ref.read(locationEnrichmentServiceProvider).onLocationEnriched = null;
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
@@ -1037,6 +1069,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 right: 0,
                 child: _ExplorationDisabledBanner(),
               ),
+
+            // ── Layer 3.76: Sync toast overlay ────────────────────────────────
+            const Positioned(
+              bottom: 72,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SyncToastOverlay(),
+              ),
+            ),
 
             // ── Layer 3.8: Step recap animation overlay ─────────────────────
             // Centered horizontally, positioned in the lower third of the

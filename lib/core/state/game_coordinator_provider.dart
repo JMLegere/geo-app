@@ -49,7 +49,6 @@ import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
-import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
@@ -84,8 +83,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
   final cellPropertyResolver = ref.watch(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
-  final locationEnrichmentService =
-      ref.watch(locationEnrichmentServiceProvider);
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
   // startLoop() from calling ref.read() on a dead provider reference.
@@ -210,18 +207,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       queueProcessor: queueProcessor,
       userId: ref.read(authProvider).user?.id,
     );
-
-    // Fire async location enrichment when location hierarchy is unknown.
-    // The Edge Function calls Nominatim → builds hierarchy → saves to
-    // Supabase, then we cache locally and update the cell's locationId.
-    if (properties.locationId == null) {
-      final center = cellService.getCellCenter(properties.cellId);
-      locationEnrichmentService.requestEnrichment(
-        cellId: properties.cellId,
-        lat: center.lat,
-        lon: center.lon,
-      );
-    }
   };
 
   coordinator.onItemDiscovered = (event, instance) {

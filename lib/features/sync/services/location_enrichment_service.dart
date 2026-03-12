@@ -162,12 +162,13 @@ class LocationEnrichmentService {
       final id = nodeData['id'] as String;
       final name = nodeData['name'] as String;
       final level = nodeData['level'] as String;
+      final parentId = nodeData['parent_id'] as String?;
       return LocationNode(
         id: id,
         osmId: null,
         name: name,
         adminLevel: AdminLevel.fromString(level),
-        parentId: null,
+        parentId: parentId,
         colorHex: null,
       );
     } catch (e) {

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
@@ -19,6 +20,7 @@ import 'package:earth_nova/shared/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await SupabaseBootstrap.initialize();
 
   // 1. Create the appropriate AuthService based on Supabase availability.
@@ -74,10 +76,20 @@ Future<void> main() async {
     }
   });
 
-  runApp(UncontrolledProviderScope(
-    container: container,
-    child: const EarthNovaApp(),
-  ));
+  // Run inside a Zone that intercepts all print() output (which includes
+  // debugPrint and MapLogger) and feeds it to the in-app debug log viewer.
+  runZoned(
+    () => runApp(UncontrolledProviderScope(
+      container: container,
+      child: const EarthNovaApp(),
+    )),
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        DebugLogBuffer.instance.add(line);
+        parent.print(zone, line); // preserve console output
+      },
+    ),
+  );
 }
 
 /// Root widget — routes declaratively through the full auth flow based on

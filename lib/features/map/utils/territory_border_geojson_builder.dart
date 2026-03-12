@@ -245,11 +245,11 @@ class TerritoryBorderGeoJsonBuilder {
 
   /// Line weight by admin level (country=thickest, district=thinnest).
   static double _lineWeight(AdminLevel level) => switch (level) {
-        AdminLevel.country => 3.0,
-        AdminLevel.state => 2.0,
-        AdminLevel.city => 1.5,
-        AdminLevel.district => 1.0,
-        _ => 1.0,
+        AdminLevel.country => 12.0,
+        AdminLevel.state => 8.0,
+        AdminLevel.city => 6.0,
+        AdminLevel.district => 4.0,
+        _ => 4.0,
       };
 
   /// Builds ancestor chain (nodeId per admin level) for each cell.
