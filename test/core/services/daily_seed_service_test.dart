@@ -24,8 +24,7 @@ void main() {
       final state = DailySeedState(
         seed: 'abc123',
         seedDate: _todayUtc(),
-        fetchedAt:
-            DateTime.now().toUtc().subtract(const Duration(hours: 25)),
+        fetchedAt: DateTime.now().toUtc().subtract(const Duration(hours: 25)),
         isServerSeed: true,
       );
 
@@ -36,8 +35,7 @@ void main() {
       final state = DailySeedState(
         seed: 'abc123',
         seedDate: _todayUtc(),
-        fetchedAt:
-            DateTime.now().toUtc().subtract(const Duration(hours: 23)),
+        fetchedAt: DateTime.now().toUtc().subtract(const Duration(hours: 23)),
         isServerSeed: true,
       );
 
@@ -58,7 +56,8 @@ void main() {
     });
 
     test('returns false when seedDate is yesterday', () {
-      final yesterday = DateTime.now().toUtc().subtract(const Duration(days: 1));
+      final yesterday =
+          DateTime.now().toUtc().subtract(const Duration(days: 1));
       final yesterdayStr =
           '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
 
@@ -143,8 +142,7 @@ void main() {
       final state = DailySeedState(
         seed: 'abc',
         seedDate: _todayUtc(),
-        fetchedAt:
-            DateTime.now().toUtc().subtract(const Duration(hours: 5)),
+        fetchedAt: DateTime.now().toUtc().subtract(const Duration(hours: 5)),
         isServerSeed: true,
       );
 
@@ -185,7 +183,8 @@ void main() {
       expect(result.isServerSeed, isFalse);
     });
 
-    test('fetchSeed() caches result — second call returns cached state', () async {
+    test('fetchSeed() caches result — second call returns cached state',
+        () async {
       final service = DailySeedService();
 
       final first = await service.fetchSeed();
@@ -204,7 +203,8 @@ void main() {
       expect(service.currentSeed!.seed, equals(kDailySeedOfflineFallback));
     });
 
-    test('isDiscoveryPaused is always false for offline fallback seed', () async {
+    test('isDiscoveryPaused is always false for offline fallback seed',
+        () async {
       final service = DailySeedService();
 
       // No seed yet — should be false.
@@ -244,7 +244,8 @@ void main() {
       expect(result.isForToday, isTrue);
     });
 
-    test('offline fallback seed is not stale immediately after fetch', () async {
+    test('offline fallback seed is not stale immediately after fetch',
+        () async {
       final service = DailySeedService();
 
       final result = await service.fetchSeed();
@@ -270,7 +271,8 @@ void main() {
       expect(result.isForToday, isTrue);
     });
 
-    test('fetchSeed() falls back to offline seed when fetcher throws', () async {
+    test('fetchSeed() falls back to offline seed when fetcher throws',
+        () async {
       final service = DailySeedService(
         fetchRemoteSeed: () async => throw Exception('Network error'),
       );
@@ -281,7 +283,8 @@ void main() {
       expect(result.isServerSeed, isFalse);
     });
 
-    test('fetchSeed() returns cached seed when fetcher throws on re-fetch', () async {
+    test('fetchSeed() returns cached seed when fetcher throws on re-fetch',
+        () async {
       var callCount = 0;
       final service = DailySeedService(
         fetchRemoteSeed: () async {
@@ -300,7 +303,8 @@ void main() {
       expect(callCount, equals(1));
     });
 
-    test('refreshSeed() falls back to offline when fetcher throws and cache cleared', () async {
+    test('refreshSeed() preserves previous valid seed when fetcher throws',
+        () async {
       var callCount = 0;
       final service = DailySeedService(
         fetchRemoteSeed: () async {
@@ -312,7 +316,24 @@ void main() {
 
       await service.fetchSeed();
 
-      // refreshSeed() clears cache, then fetcher throws → offline fallback.
+      // refreshSeed() clears cache, then fetcher throws → previous server seed
+      // is restored (not replaced with offline fallback). This preserves
+      // deterministic species for cells already visited today.
+      final refreshed = await service.refreshSeed();
+      expect(refreshed.seed, equals('first_server_seed'));
+      expect(refreshed.isServerSeed, isTrue);
+    });
+
+    test(
+        'refreshSeed() falls back to offline seed when no previous seed and fetcher throws',
+        () async {
+      final service = DailySeedService(
+        fetchRemoteSeed: () async {
+          throw Exception('Network error on first call');
+        },
+      );
+
+      // No prior fetchSeed() call → no cached seed → offline fallback expected.
       final refreshed = await service.refreshSeed();
       expect(refreshed.seed, equals(kDailySeedOfflineFallback));
       expect(refreshed.isServerSeed, isFalse);

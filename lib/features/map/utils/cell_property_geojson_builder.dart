@@ -102,7 +102,7 @@ class CellPropertyGeoJsonBuilder {
     // Full property grid: current cell OR visited cell (including hidden).
     final showFullGrid = isCurrent || isVisited;
 
-    if (showFullGrid) {
+    if (showFullGrid && props.habitats.isNotEmpty) {
       // Primary habitat icon (top-left of grid).
       final primaryHabitat = props.habitats.first;
       icons.add(_IconPlacement(
