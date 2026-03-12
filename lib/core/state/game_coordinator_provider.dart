@@ -384,6 +384,24 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         coordinator.loadCellProperties(propsMap);
       }
 
+      // 0c. Re-resolve cells that were resolved before biome data loaded.
+      // These cells have {plains} as their only habitat due to the fallback
+      // HabitatService being active during initial loading. Now that the real
+      // resolver is available, re-resolve them to get accurate habitats.
+      final reResolved = coordinator.reResolvePlainsOnlyCells();
+      if (reResolved.isNotEmpty) {
+        debugPrint('[GameCoordinator] re-resolved ${reResolved.length} '
+            'plains-only cells with real biome data');
+        for (final props in reResolved) {
+          _persistCellProperties(
+            properties: props,
+            cellPropertyRepo: cellPropertyRepo,
+            queueProcessor: queueProcessor,
+            userId: ref.read(authProvider).user?.id,
+          );
+        }
+      }
+
       // 1. Hydrate inventory
       if (items.isNotEmpty) {
         ref.read(inventoryProvider.notifier).loadItems(items);
