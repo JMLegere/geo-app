@@ -28,7 +28,6 @@ import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
-import 'package:earth_nova/core/persistence/write_queue_repository.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
@@ -113,6 +112,34 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Wire synchronous enrichment lookup for stat rolling.
   coordinator.enrichedStatsLookup = (definitionId) {
     return enrichmentCache[definitionId];
+  };
+
+  // Wire enrichment hook so the startup requeue path (Path B) also updates
+  // the in-memory cache and backfills intrinsic affixes — matching what the
+  // in-session discovery path (Path A) already does.
+  ref.read(enrichmentServiceProvider).onEnrichedHook = (enrichment) {
+    debugPrint('[GameCoordinator] onEnrichedHook: backfilling affixes for '
+        '${enrichment.definitionId}');
+    enrichmentCache[enrichment.definitionId] = (
+      speed: enrichment.speed,
+      brawn: enrichment.brawn,
+      wit: enrichment.wit,
+      size: enrichment.size,
+    );
+    final userId = ref.read(authProvider).user?.id;
+    if (userId != null) {
+      _backfillIntrinsicAffixes(
+        definitionId: enrichment.definitionId,
+        enrichedStats: enrichmentCache[enrichment.definitionId]!,
+        ref: ref,
+        statsService: coordinator.statsService,
+        itemRepo: itemRepo,
+        queueProcessor: queueProcessor,
+        userId: userId,
+      ).catchError((Object e) {
+        debugPrint('[GameCoordinator] onEnrichedHook backfill failed: $e');
+      });
+    }
   };
 
   // --- Wire auto-flush callback → post-flush badge/rejection processing ---

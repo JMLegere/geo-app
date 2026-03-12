@@ -331,44 +331,86 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Future<void> _registerIconImages(MapController controller) async {
     if (_iconImagesRegistered) return;
 
-    try {
-      // Habitat icons (7).
-      for (final habitat in Habitat.values) {
+    final totalIcons = Habitat.values.length +
+        Climate.values.length +
+        CellEventType.values.length +
+        1; // +1 for unknown
+    MapLogger.iconRegistrationStarted(totalIcons);
+
+    var succeeded = 0;
+    var failed = 0;
+
+    // Habitat icons (7).
+    for (final habitat in Habitat.values) {
+      try {
         final bytes =
             await MapIconRenderer.renderEmoji(GameIcons.habitat(habitat));
         await controller.addImage(
           MapIconRenderer.habitatIconId(habitat.name),
           bytes,
         );
+        succeeded++;
+        MapLogger.iconRegistered(MapIconRenderer.habitatIconId(habitat.name));
+      } catch (e) {
+        failed++;
+        MapLogger.iconRegistrationFailed(
+            MapIconRenderer.habitatIconId(habitat.name), e);
       }
+    }
 
-      // Climate icons (4).
-      for (final climate in Climate.values) {
+    // Climate icons (4).
+    for (final climate in Climate.values) {
+      try {
         final bytes =
             await MapIconRenderer.renderEmoji(GameIcons.climate(climate));
         await controller.addImage(
           MapIconRenderer.climateIconId(climate.name),
           bytes,
         );
+        succeeded++;
+        MapLogger.iconRegistered(MapIconRenderer.climateIconId(climate.name));
+      } catch (e) {
+        failed++;
+        MapLogger.iconRegistrationFailed(
+            MapIconRenderer.climateIconId(climate.name), e);
       }
+    }
 
-      // Event icons (2 + unknown).
-      for (final eventType in CellEventType.values) {
+    // Event icons (2 + unknown).
+    for (final eventType in CellEventType.values) {
+      try {
         final bytes =
             await MapIconRenderer.renderEmoji(GameIcons.cellEvent(eventType));
         await controller.addImage(
           MapIconRenderer.eventIconId(eventType.name),
           bytes,
         );
+        succeeded++;
+        MapLogger.iconRegistered(MapIconRenderer.eventIconId(eventType.name));
+      } catch (e) {
+        failed++;
+        MapLogger.iconRegistrationFailed(
+            MapIconRenderer.eventIconId(eventType.name), e);
       }
+    }
+
+    // Unknown event icon.
+    try {
       final unknownBytes =
           await MapIconRenderer.renderEmoji(GameIcons.eventUnknown);
       await controller.addImage(MapIconRenderer.eventUnknownId, unknownBytes);
-
-      _iconImagesRegistered = true;
-    } catch (e, stack) {
-      debugPrint('[MAP] Failed to register icon images: $e\n$stack');
+      succeeded++;
+      MapLogger.iconRegistered(MapIconRenderer.eventUnknownId);
+    } catch (e) {
+      failed++;
+      MapLogger.iconRegistrationFailed(MapIconRenderer.eventUnknownId, e);
     }
+
+    MapLogger.iconRegistrationComplete(succeeded, failed);
+
+    // Set flag even with partial failures — successfully registered icons
+    // should render. MapLibre silently skips unregistered image references.
+    _iconImagesRegistered = true;
   }
 
   /// Updates the fog GeoJSON sources with new data from the controller.
@@ -657,8 +699,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final nodes = await repo.getAll();
       if (!mounted) return;
       _locationNodesMap = {for (final n in nodes) n.id: n};
+      MapLogger.locationNodesLoaded(_locationNodesMap.length);
     } catch (e) {
-      debugPrint('[MAP] Failed to load location nodes: $e');
+      MapLogger.locationNodesLoadError(e);
     }
   }
 

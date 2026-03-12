@@ -255,13 +255,49 @@ class MapLogger {
     );
   }
 
+  // -- Icon registration --
+
+  static int _iconRegCount = 0;
+
+  static void iconRegistrationStarted(int totalIcons) {
+    _log('ICONS', 'Starting registration of $totalIcons icon images');
+  }
+
+  static void iconRegistered(String id) {
+    _iconRegCount++;
+    _log('ICONS', '✓ Registered icon image: $id ($_iconRegCount total)');
+  }
+
+  static void iconRegistrationFailed(String id, Object error) {
+    _errorCount++;
+    _log('ICONS', '❌ Failed to register icon image "$id": $error',
+        isError: true);
+  }
+
+  static void iconRegistrationComplete(int succeeded, int failed) {
+    _log('ICONS',
+        'Icon registration complete: $succeeded succeeded, $failed failed');
+  }
+
+  // -- Location nodes --
+
+  static void locationNodesLoaded(int count) {
+    _log('MAP', 'Loaded $count location nodes for territory borders');
+  }
+
+  static void locationNodesLoadError(Object error) {
+    _errorCount++;
+    _log('MAP', '❌ Failed to load location nodes: $error', isError: true);
+  }
+
   // -- Summary --
 
   static void printSummary() {
     _log(
         'SUMMARY',
         'ticks=$_tickCount  camera=$_cameraCount  '
-            'fog=$_fogUpdateCount  loc=$_locationCount  errors=$_errorCount');
+            'fog=$_fogUpdateCount  loc=$_locationCount  '
+            'icons=$_iconRegCount  errors=$_errorCount');
   }
 
   // -- Internal --

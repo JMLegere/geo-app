@@ -58,6 +58,12 @@ class EnrichmentService {
   /// Provider layer uses this to invalidate [enrichmentMapProvider].
   final void Function(SpeciesEnrichment enrichment)? onEnriched;
 
+  /// Secondary hook called after [onEnriched]. Set by [gameCoordinatorProvider]
+  /// to update the in-memory enrichment cache and backfill intrinsic affixes
+  /// for items whose enrichment arrived via the startup requeue path.
+  /// Mutable so it can be wired after provider construction.
+  void Function(SpeciesEnrichment enrichment)? onEnrichedHook;
+
   static const _maxConcurrent = 2;
   static const _minIntervalMs = 4200;
 
@@ -182,6 +188,7 @@ class EnrichmentService {
               '${enrichment.foodPreference.name}, '
               '${enrichment.climate.name}');
           onEnriched?.call(enrichment);
+          onEnrichedHook?.call(enrichment);
         }
       }
     } on FunctionException catch (e) {

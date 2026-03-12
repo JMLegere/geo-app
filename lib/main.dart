@@ -10,7 +10,6 @@ import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/loading_screen.dart';
 import 'package:earth_nova/features/auth/screens/login_screen.dart';
 import 'package:earth_nova/features/auth/screens/otp_verification_screen.dart';
-import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
 import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
@@ -62,7 +61,7 @@ Future<void> main() async {
 
   // 5. Bridge auth service stream → auth provider for token refresh,
   //    session expiry, and external sign-out events.
-  // ignore: cancel_subscriptions — lives for app lifetime
+  // ignore: cancel_subscriptions, unused_local_variable — lives for app lifetime
   final authStreamSub = authService.authStateChanges.listen((user) {
     if (user != null) {
       container

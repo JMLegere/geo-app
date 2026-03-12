@@ -120,7 +120,7 @@ class StepNotifier extends Notifier<StepState> {
     // Guaranteed minimum: kMinDailyStepGrant per day since last session.
     // Covers web (no pedometer) and idle native devices alike.
     final daysSinceLastSession = lastSessionDate != null
-        ? DateTime.now().difference(lastSessionDate!).inDays.clamp(1, 30)
+        ? DateTime.now().difference(lastSessionDate).inDays.clamp(1, 30)
         : 1;
     final minimumGrant = kMinDailyStepGrant * daysSinceLastSession;
     final delta = max(pedometerDelta, minimumGrant);
