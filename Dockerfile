@@ -4,7 +4,7 @@ WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-RUN SHORT=${GIT_COMMIT:0:7}; \
+RUN SHORT=$(printf '%.7s' "$GIT_COMMIT"); \
     BUILD_TS="β $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
