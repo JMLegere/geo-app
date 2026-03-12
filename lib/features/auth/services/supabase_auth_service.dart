@@ -159,29 +159,7 @@ class SupabaseAuthService implements AuthService {
     final email = _deriveEmail(phone);
     final password = _derivePassword(phone);
 
-    try {
-      // Try sign-up first (new user). Uses a derived email so we bypass the
-      // phone provider entirely — no OTP, no phone confirmation issues, no
-      // conflict with legacy OTP-created accounts.
-      final signUpResponse = await _auth.signUp(
-        email: email,
-        password: password,
-        data: {'phone_number': phone},
-      );
-
-      final user = signUpResponse.user;
-
-      // Supabase returns a user with empty identities when the email is
-      // already registered (to prevent enumeration). Fall through to
-      // signInWithPassword in that case.
-      if (user != null && (user.identities?.isNotEmpty ?? false)) {
-        return _profileFrom(user);
-      }
-    } on supa.AuthApiException catch (_) {
-      // Swallow — fall through to signInWithPassword.
-    }
-
-    // Existing user — sign in with the derived password.
+    // Try existing user first — sign in with the derived password.
     try {
       final signInResponse = await _auth.signInWithPassword(
         email: email,
@@ -193,7 +171,33 @@ class SupabaseAuthService implements AuthService {
       }
       return _profileFrom(user);
     } on supa.AuthApiException catch (e) {
-      throw AuthException('Phone sign-in failed: ${e.message}');
+      final msg = e.message.toLowerCase();
+      // If invalid credentials, fall through to sign-up (new user).
+      if (!msg.contains('invalid')) {
+        throw AuthException('Phone sign-in failed: ${e.message}');
+      }
+    }
+
+    // New user — try sign-up. Uses a derived email so we bypass the
+    // phone provider entirely — no OTP, no phone confirmation issues, no
+    // conflict with legacy OTP-created accounts.
+    try {
+      final signUpResponse = await _auth.signUp(
+        email: email,
+        password: password,
+        data: {'phone_number': phone},
+      );
+
+      final user = signUpResponse.user;
+
+      // Supabase returns a user with empty identities when the email is
+      // already registered (to prevent enumeration). This shouldn't happen
+      // since we already tried signInWithPassword, but guard against it.
+      if (user != null && (user.identities?.isNotEmpty ?? false)) {
+        return _profileFrom(user);
+      }
+    } on supa.AuthApiException catch (e) {
+      throw AuthException('Phone sign-up failed: ${e.message}');
     } on AuthException {
       rethrow;
     } catch (e) {
@@ -201,6 +205,8 @@ class SupabaseAuthService implements AuthService {
         'Network error. Check your connection and try again.',
       );
     }
+
+    throw const AuthException('Phone sign-up failed: no user returned.');
   }
 
   /// Derives a deterministic email from a phone number.

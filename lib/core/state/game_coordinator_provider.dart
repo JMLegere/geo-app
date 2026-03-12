@@ -710,7 +710,7 @@ Future<void> _persistCellProperties({
     try {
       final payload = jsonEncode({
         'cell_id': properties.cellId,
-        'habitats': jsonEncode(properties.habitats.map((h) => h.name).toList()),
+        'habitats': properties.habitats.map((h) => h.name).toList(),
         'climate': properties.climate.name,
         'continent': properties.continent.name,
         'location_id': properties.locationId,
