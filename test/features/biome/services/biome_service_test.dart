@@ -169,27 +169,35 @@ void main() {
         final service = HabitatService();
         expect(service.classifyLocation(51.5, -0.1), equals({Habitat.plains}));
         expect(service.classifyLocation(0.0, 0.0), equals({Habitat.plains}));
-        expect(service.classifyLocation(-33.8, 151.2), equals({Habitat.plains}));
+        expect(
+            service.classifyLocation(-33.8, 151.2), equals({Habitat.plains}));
       });
 
-      test('returns correct single-element set with pre-loaded region data', () {
+      test('returns correct single-element set with pre-loaded region data',
+          () {
         final lookup = CoordinateHabitatLookup();
         lookup.loadRegionData({
-          CoordinateHabitatLookup.gridKey(51.5, -0.1): 10,  // tree cover → forest
-          CoordinateHabitatLookup.gridKey(51.5, 0.0): 60,   // bare sparse → desert
-          CoordinateHabitatLookup.gridKey(51.5, -0.2): 90,  // wetland    → swamp
-          CoordinateHabitatLookup.gridKey(51.5, -0.3): 80,  // perm.water → freshwater
-          CoordinateHabitatLookup.gridKey(51.5, -0.4): 95,  // mangroves  → swamp
-          CoordinateHabitatLookup.gridKey(51.5, -0.5): 70,  // snow/ice   → mountain
+          CoordinateHabitatLookup.gridKey(51.5, -0.1):
+              10, // tree cover → forest
+          CoordinateHabitatLookup.gridKey(51.5, 0.0):
+              60, // bare sparse → desert
+          CoordinateHabitatLookup.gridKey(51.5, -0.2): 90, // wetland    → swamp
+          CoordinateHabitatLookup.gridKey(51.5, -0.3):
+              80, // perm.water → freshwater
+          CoordinateHabitatLookup.gridKey(51.5, -0.4): 95, // mangroves  → swamp
+          CoordinateHabitatLookup.gridKey(51.5, -0.5):
+              70, // snow/ice   → mountain
         });
         final service = HabitatService(lookup: lookup);
 
         expect(service.classifyLocation(51.5, -0.1), equals({Habitat.forest}));
         expect(service.classifyLocation(51.5, 0.0), equals({Habitat.desert}));
         expect(service.classifyLocation(51.5, -0.2), equals({Habitat.swamp}));
-        expect(service.classifyLocation(51.5, -0.3), equals({Habitat.freshwater}));
+        expect(
+            service.classifyLocation(51.5, -0.3), equals({Habitat.freshwater}));
         expect(service.classifyLocation(51.5, -0.4), equals({Habitat.swamp}));
-        expect(service.classifyLocation(51.5, -0.5), equals({Habitat.mountain}));
+        expect(
+            service.classifyLocation(51.5, -0.5), equals({Habitat.mountain}));
       });
 
       test('falls back to {plains} for coordinate absent from pre-loaded data',
@@ -200,8 +208,10 @@ void main() {
         });
         final service = HabitatService(lookup: lookup);
 
-        expect(service.classifyLocation(51.5, -0.1), equals({Habitat.forest})); // known
-        expect(service.classifyLocation(48.8, 2.3), equals({Habitat.plains}));  // absent
+        expect(service.classifyLocation(51.5, -0.1),
+            equals({Habitat.forest})); // known
+        expect(service.classifyLocation(48.8, 2.3),
+            equals({Habitat.plains})); // absent
       });
     });
 
@@ -253,7 +263,8 @@ void main() {
       });
 
       test('returns multiple habitats for multi-feature location', () {
-        // Coastline + forest region both cover (0.0, 0.0).
+        // Coastline + forest polygon both cover (0.0, 0.0).
+        // Forest polygon is a square from (-1,-1) to (1,1) containing the origin.
         const json = '''
 {
   "coastline": [[0.001, 0.001]],
@@ -262,7 +273,7 @@ void main() {
   "mountains": [],
   "deserts": [],
   "wetlands": [],
-  "forests": [[0.0, 0.0, 100]]
+  "forests": [[[-1.0,-1.0],[-1.0,1.0],[1.0,1.0],[1.0,-1.0],[-1.0,-1.0]]]
 }
 ''';
         final index = BiomeFeatureIndex.load(json);
@@ -271,7 +282,9 @@ void main() {
         expect(result, containsAll([Habitat.saltwater, Habitat.forest]));
       });
 
-      test('classifyLocation result is a Set — never empty (always has plains fallback)', () {
+      test(
+          'classifyLocation result is a Set — never empty (always has plains fallback)',
+          () {
         final index = BiomeFeatureIndex.load(kMinimalJson);
         final service = HabitatService.withFeatureIndex(index);
         final result = service.classifyLocation(50.0, 50.0);

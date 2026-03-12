@@ -166,9 +166,9 @@ class _IconPlacement {
     required this.offsetY,
   });
 
-  /// Pre-multiplied pixel offset for MapLibre `icon-offset` (offsetX * 40).
-  double get dx => offsetX * 40;
+  /// Pre-multiplied pixel offset for MapLibre `icon-offset` (offsetX * 80).
+  double get dx => offsetX * 80;
 
-  /// Pre-multiplied pixel offset for MapLibre `icon-offset` (offsetY * 40).
-  double get dy => offsetY * 40;
+  /// Pre-multiplied pixel offset for MapLibre `icon-offset` (offsetY * 80).
+  double get dy => offsetY * 80;
 }

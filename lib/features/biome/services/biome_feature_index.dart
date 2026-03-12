@@ -3,23 +3,21 @@ import 'dart:math';
 
 import 'package:earth_nova/core/models/habitat.dart';
 
-/// A spatial index over biome feature points and regions for fast proximity
+/// A spatial index over biome feature points and polygons for fast habitat
 /// queries.
 ///
 /// Feature types and their Habitat mapping:
-/// - `coastline` → Saltwater (within 5 km)
-/// - `rivers` → Freshwater (within 5 km)
-/// - `lakes` → Freshwater (within 5 km)
-/// - `mountains` → Mountain (within 5 km)
-/// - `deserts` → Desert (centroid + radiusKm)
-/// - `wetlands` → Swamp (centroid + radiusKm)
-/// - `forests` → Forest (centroid + radiusKm)
-/// - (default when nothing matches within 5 km) → Plains
+/// - `coastline` → Saltwater (proximity, within radiusKm)
+/// - `rivers` → Freshwater (proximity, within radiusKm)
+/// - `lakes` → Freshwater (proximity, within radiusKm)
+/// - `mountains` → Mountain (polygon containment — RESOLVE biomes 10-11)
+/// - `deserts` → Desert (polygon containment — RESOLVE biome 13)
+/// - `wetlands` → Swamp (polygon containment — RESOLVE biomes 9, 14)
+/// - `forests` → Forest (polygon containment — RESOLVE biomes 1-6)
+/// - (default when nothing matches) → Plains
 ///
-/// ## Spatial index
-/// Points are bucketed into ~1° grid cells. A proximity query only visits the
-/// 9 grid cells surrounding the query point, keeping look-up cost low even for
-/// tens-of-thousands of stored points.
+/// Point features use a 1°×1° bucket grid for fast neighbour lookups.
+/// Polygon features use a ray casting containment test per ring.
 class BiomeFeatureIndex {
   /// Loads a [BiomeFeatureIndex] from the JSON string produced by
   /// `assets/biome_features.json`.
@@ -36,42 +34,37 @@ class BiomeFeatureIndex {
           .toList();
     }
 
-    // Region features: [[lat, lon, radiusKm], ...]
-    List<(double, double, double)> parseRegions(String key) {
+    // Polygon features: [[[lat, lon], ...], ...]
+    List<List<(double, double)>> parsePolygons(String key) {
       final list = raw[key] as List? ?? [];
-      return list
-          .map((e) => (
-                ((e as List)[0] as num).toDouble(),
-                (e[1] as num).toDouble(),
-                (e[2] as num).toDouble(),
-              ))
-          .toList();
+      return list.map((ring) {
+        final coords = ring as List;
+        return coords.map((e) {
+          final pt = e as List;
+          return ((pt[0] as num).toDouble(), (pt[1] as num).toDouble());
+        }).toList();
+      }).toList();
     }
 
     return BiomeFeatureIndex._(
       coastline: parsePoints('coastline'),
       rivers: parsePoints('rivers'),
       lakes: parsePoints('lakes'),
-      mountains: parsePoints('mountains'),
-      deserts: parseRegions('deserts'),
-      wetlands: parseRegions('wetlands'),
-      forests: parseRegions('forests'),
+      mountains: parsePolygons('mountains'),
+      deserts: parsePolygons('deserts'),
+      wetlands: parsePolygons('wetlands'),
+      forests: parsePolygons('forests'),
     );
   }
 
-  // ── Point features ─────────────────────────────────────────────────────────
-
-  /// Grid index for fast nearest-point lookups.
-  /// Key: "latBucket_lonBucket", value: list of (lat, lon) pairs.
   final Map<String, List<(double, double)>> _coastlineGrid;
   final Map<String, List<(double, double)>> _riverGrid;
   final Map<String, List<(double, double)>> _lakeGrid;
-  final Map<String, List<(double, double)>> _mountainGrid;
 
-  // ── Region features (centroid + radius) ────────────────────────────────────
-  final List<(double, double, double)> _deserts;
-  final List<(double, double, double)> _wetlands;
-  final List<(double, double, double)> _forests;
+  final List<List<(double, double)>> _mountains;
+  final List<List<(double, double)>> _deserts;
+  final List<List<(double, double)>> _wetlands;
+  final List<List<(double, double)>> _forests;
 
   /// Cache: grid-key → computed `Set<Habitat>`, avoids recomputing for the
   /// same 1° tile many times during a session.
@@ -81,14 +74,14 @@ class BiomeFeatureIndex {
     required List<List<double>> coastline,
     required List<List<double>> rivers,
     required List<List<double>> lakes,
-    required List<List<double>> mountains,
-    required List<(double, double, double)> deserts,
-    required List<(double, double, double)> wetlands,
-    required List<(double, double, double)> forests,
+    required List<List<(double, double)>> mountains,
+    required List<List<(double, double)>> deserts,
+    required List<List<(double, double)>> wetlands,
+    required List<List<(double, double)>> forests,
   })  : _coastlineGrid = _buildGrid(coastline),
         _riverGrid = _buildGrid(rivers),
         _lakeGrid = _buildGrid(lakes),
-        _mountainGrid = _buildGrid(mountains),
+        _mountains = mountains,
         _deserts = deserts,
         _wetlands = wetlands,
         _forests = forests;
@@ -113,7 +106,6 @@ class BiomeFeatureIndex {
   Set<Habitat> _compute(double lat, double lon, double radiusKm) {
     final result = <Habitat>{};
 
-    // Point features — check grid neighbours.
     if (_hasNearby(_coastlineGrid, lat, lon, radiusKm)) {
       result.add(Habitat.saltwater);
     }
@@ -121,14 +113,10 @@ class BiomeFeatureIndex {
         _hasNearby(_lakeGrid, lat, lon, radiusKm)) {
       result.add(Habitat.freshwater);
     }
-    if (_hasNearby(_mountainGrid, lat, lon, radiusKm)) {
-      result.add(Habitat.mountain);
-    }
-
-    // Region features — centroid within radiusKm.
-    if (_inAnyRegion(_deserts, lat, lon)) result.add(Habitat.desert);
-    if (_inAnyRegion(_wetlands, lat, lon)) result.add(Habitat.swamp);
-    if (_inAnyRegion(_forests, lat, lon)) result.add(Habitat.forest);
+    if (_inAnyPolygon(_mountains, lat, lon)) result.add(Habitat.mountain);
+    if (_inAnyPolygon(_deserts, lat, lon)) result.add(Habitat.desert);
+    if (_inAnyPolygon(_wetlands, lat, lon)) result.add(Habitat.swamp);
+    if (_inAnyPolygon(_forests, lat, lon)) result.add(Habitat.forest);
 
     if (result.isEmpty) result.add(Habitat.plains);
     return result;
@@ -157,16 +145,35 @@ class BiomeFeatureIndex {
     return false;
   }
 
-  /// Checks whether ([lat],[lon]) falls within any region's centroid+radius.
-  static bool _inAnyRegion(
-    List<(double, double, double)> regions,
+  static bool _inAnyPolygon(
+    List<List<(double, double)>> polygons,
     double lat,
     double lon,
   ) {
-    for (final (rLat, rLon, radiusKm) in regions) {
-      if (_haversineKm(lat, lon, rLat, rLon) <= radiusKm) return true;
+    for (final ring in polygons) {
+      if (_pointInPolygon(lat, lon, ring)) return true;
     }
     return false;
+  }
+
+  // Ray casting algorithm — O(n) per ring where n = vertex count.
+  // Returns true when (lat, lon) is inside the closed polygon ring.
+  static bool _pointInPolygon(
+    double lat,
+    double lon,
+    List<(double, double)> ring,
+  ) {
+    var inside = false;
+    final n = ring.length;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      final (iLat, iLon) = ring[i];
+      final (jLat, jLon) = ring[j];
+      if ((iLon > lon) != (jLon > lon) &&
+          lat < (jLat - iLat) * (lon - iLon) / (jLon - iLon) + iLat) {
+        inside = !inside;
+      }
+    }
+    return inside;
   }
 
   /// Builds a 1°×1° bucket grid from a flat list of [lat, lon] pairs.
