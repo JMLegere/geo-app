@@ -361,6 +361,22 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# Disable gateway JWT verification for all Edge Functions.
+# The Supabase gateway has a known JWT cache invalidation bug
+# (supabase/supabase#42810) causing intermittent 401s with valid tokens.
+# Each function validates the JWT in-code via auth.getUser() instead.
+[functions.enrich-species]
+verify_jwt = false
+
+[functions.enrich-location]
+verify_jwt = false
+
+[functions.validate-encounter]
+verify_jwt = false
+
+[functions.admin-purge-enrichments]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
