@@ -460,6 +460,34 @@ When a feature misbehaves:
 
 ## Repo Hygiene
 
+### Commit Convention
+
+Format: `{emoji} {type}({scope}): {description} (#{issue})`
+
+- Scope is optional. Multiple issues: `(#1, #2, #3)`.
+- Squash-only merges — PR title becomes the commit message.
+
+| Emoji | Type | When |
+|-------|------|------|
+| ✨ | `feat` | New feature |
+| 🐛 | `fix` | Bug fix |
+| 🎨 | `style` | UI/visual changes, formatting |
+| ♻️ | `refactor` | Refactoring, no behavior change |
+| ✅ | `test` | Tests only |
+| 📝 | `docs` | Documentation |
+| 🔧 | `chore` | Tooling, config, build |
+| 🚀 | `perf` | Performance |
+| 🔥 | `remove` | Delete code/files |
+
+**Examples:**
+```
+✨ feat(map): add fog-of-war cell visibility (#88)
+🐛 fix(sync): gate queue enqueue on SQLite success (#129)
+🎨 style(icons): standardize iconography via GameIcons (#84)
+♻️ refactor(persistence): extract upsertItem into repository (#130)
+✅ test(sync): add write queue stale deletion tests (#128)
+```
+
 - **Single docs directory**: All documentation lives in `docs/`. No `doc/`, `documentation/`, or other variants.
 - **No stale research artifacts**: One-off research notes, brainstorm dumps, and superseded designs get consolidated into the relevant design doc or deleted. Don't leave scratch files in the repo.
 - **Generated files stay generated**: Never hand-edit `*.g.dart`, `*.freezed.dart`, or other build_runner outputs.

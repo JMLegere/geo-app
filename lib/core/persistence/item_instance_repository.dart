@@ -72,6 +72,15 @@ class ItemInstanceRepository {
     await _db.insertItemInstance(_toLocal(instance, userId));
   }
 
+  /// Upsert an item instance — insert or replace on conflict.
+  ///
+  /// Preferred over [addItem] in the Supabase hydration path, where the server
+  /// is authoritative and may carry badge/status updates for items that already
+  /// exist locally.
+  Future<void> upsertItem(ItemInstance instance, String userId) async {
+    await _db.upsertItemInstance(_toLocal(instance, userId));
+  }
+
   /// Get all item instances for a user.
   Future<List<ItemInstance>> getItemsByUser(String userId) async {
     final rows = await _db.getItemInstancesByUser(userId);

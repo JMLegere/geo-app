@@ -405,6 +405,14 @@ class AppDatabase extends _$AppDatabase {
     await into(localItemInstanceTable).insert(instance);
   }
 
+  /// Upsert an item instance — insert or replace on conflict.
+  ///
+  /// Used by the Supabase hydration path to apply server-side updates
+  /// (e.g. new badges, status changes) to items that already exist locally.
+  Future<void> upsertItemInstance(LocalItemInstance instance) async {
+    await into(localItemInstanceTable).insertOnConflictUpdate(instance);
+  }
+
   /// Update an existing item instance (e.g. status change).
   Future<bool> updateItemInstance(LocalItemInstance instance) {
     return update(localItemInstanceTable).replace(instance);
@@ -570,9 +578,17 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Delete stale entries older than [cutoff].
+  ///
+  /// Only deletes entries with status 'confirmed' or 'rejected' — never
+  /// deletes 'pending' entries, which may still be awaiting their first
+  /// successful flush.
   Future<int> deleteStaleQueueEntries(DateTime cutoff) {
     return (delete(localWriteQueueTable)
-          ..where((tbl) => tbl.createdAt.isSmallerThanValue(cutoff)))
+          ..where(
+            (tbl) =>
+                tbl.createdAt.isSmallerThanValue(cutoff) &
+                tbl.status.isIn(['confirmed', 'rejected']),
+          ))
         .go();
   }
 

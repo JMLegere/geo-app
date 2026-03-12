@@ -1,6 +1,10 @@
 /// The current phase of a sync operation.
 enum SyncStatusType { idle, syncing, success, error }
 
+/// Sentinel used by [SyncStatus.copyWith] to distinguish "clear to null"
+/// from "leave unchanged" for nullable String fields.
+const _clearString = Object();
+
 /// Immutable snapshot of sync state shown in the UI.
 class SyncStatus {
   const SyncStatus({
@@ -19,19 +23,25 @@ class SyncStatus {
 
   /// Returns a copy with the supplied fields replaced.
   ///
-  /// Note: nullable fields ([lastSyncedAt], [errorMessage]) are NOT clearable
-  /// via copyWith — construct a new [SyncStatus] directly when you need to
-  /// explicitly set them to null.
+  /// To explicitly clear a nullable field to null, pass the [clearError]
+  /// sentinel constant instead of a string value:
+  ///
+  /// ```dart
+  /// state = state.copyWith(errorMessage: clearError);
+  /// ```
   SyncStatus copyWith({
     SyncStatusType? type,
     DateTime? lastSyncedAt,
-    String? errorMessage,
+    Object? errorMessage =
+        _clearString, // sentinel: _clearString = keep current
     int? pendingChanges,
   }) {
     return SyncStatus(
       type: type ?? this.type,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: identical(errorMessage, _clearString)
+          ? this.errorMessage
+          : errorMessage as String?,
       pendingChanges: pendingChanges ?? this.pendingChanges,
     );
   }

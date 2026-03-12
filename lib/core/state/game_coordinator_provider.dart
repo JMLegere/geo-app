@@ -634,6 +634,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 const _uuid = Uuid();
 
 /// Persist an item discovery to SQLite and enqueue for Supabase sync.
+///
+/// The enqueue step only runs when the SQLite write succeeds, so that an
+/// item which failed to persist locally is never queued for server sync.
 Future<void> _persistItemDiscovery({
   required ItemInstance instance,
   required String userId,
@@ -645,6 +648,7 @@ Future<void> _persistItemDiscovery({
     await itemRepo.addItem(instance, userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist item: $e');
+    return; // Do not enqueue — item was not persisted locally.
   }
 
   // 2. Enqueue for Supabase sync (auto-schedules flush).
@@ -685,6 +689,8 @@ Future<void> _persistItemDiscovery({
 ///
 /// Cell properties are globally shared (not per-user), so the SQLite write
 /// has no userId. The write queue entry still needs userId for routing.
+///
+/// The enqueue step only runs when the SQLite write succeeds.
 Future<void> _persistCellProperties({
   required CellProperties properties,
   required CellPropertyRepository cellPropertyRepo,
@@ -696,6 +702,7 @@ Future<void> _persistCellProperties({
     await cellPropertyRepo.upsert(properties);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell properties: $e');
+    return; // Do not enqueue — cell properties were not persisted locally.
   }
 
   // 2. Enqueue for Supabase sync (auto-schedules flush).
@@ -723,6 +730,10 @@ Future<void> _persistCellProperties({
 }
 
 /// Persist a cell visit to SQLite and enqueue for Supabase sync.
+///
+/// The enqueue step only runs when the SQLite write succeeds, preventing
+/// corrupt payloads (e.g. default visitCount=1) from reaching the server
+/// if the local write fails.
 Future<void> _persistCellVisit({
   required String cellId,
   required String userId,
@@ -733,6 +744,7 @@ Future<void> _persistCellVisit({
   int visitCount = 1;
   double distanceWalked = 0.0;
   double restorationLevel = 0.0;
+  bool sqliteSucceeded = false;
 
   // 1. Upsert cell progress in SQLite (create if first visit, update if returning).
   try {
@@ -755,11 +767,14 @@ Future<void> _persistCellVisit({
         lastVisited: now,
       );
     }
+    sqliteSucceeded = true;
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
+    return; // Do not enqueue — payload would contain stale default values.
   }
 
-  // 2. Enqueue for Supabase sync (auto-schedules flush).
+  // 2. Enqueue for Supabase sync only when SQLite write succeeded.
+  if (!sqliteSucceeded) return;
   try {
     final payload = jsonEncode({
       'cell_id': cellId,
@@ -789,6 +804,8 @@ Future<void> _persistCellVisit({
 ///
 /// [lastLat] and [lastLon] are the player's current position, saved so the
 /// next session can restore from their last known location.
+///
+/// The enqueue step only runs when the SQLite write succeeds.
 Future<void> _persistProfileState({
   required String userId,
   required PlayerState playerState,
@@ -833,6 +850,7 @@ Future<void> _persistProfileState({
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist profile: $e');
+    return; // Do not enqueue — profile was not persisted locally.
   }
 
   // 2. Enqueue for Supabase sync (auto-schedules flush).
@@ -986,11 +1004,11 @@ Future<void> hydrateFromSupabase({
       );
 
       try {
-        await itemRepo.addItem(instance, userId);
-      } catch (_) {
-        // Item may already exist locally — that's OK (duplicate PK).
-        // The server data is authoritative but we don't want to crash
-        // on a duplicate insert.
+        // Upsert so that server-side updates (new badges, status changes)
+        // are applied to items that already exist locally.
+        await itemRepo.upsertItem(instance, userId);
+      } catch (e) {
+        debugPrint('[GameCoordinator] failed to upsert hydrated item: $e');
       }
     }
 

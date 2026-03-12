@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
+import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/inventory_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
@@ -157,10 +160,51 @@ class SyncNotifier extends Notifier<SyncStatus> {
           }
 
         case WriteQueueEntityType.cellProgress:
+          // entityId format: '$userId:$cellId' (see _persistCellVisit).
+          // Rollback: remove the local cell progress record so fog state
+          // reverts to unvisited on next render. The cell visit was
+          // rejected by the server — it shouldn't be reflected locally.
+          final colonIdx = entry.entityId.indexOf(':');
+          if (colonIdx > 0) {
+            final uid = entry.entityId.substring(0, colonIdx);
+            final cellId = entry.entityId.substring(colonIdx + 1);
+            try {
+              final cellProgressRepo = ref.read(cellProgressRepositoryProvider);
+              await cellProgressRepo.delete(uid, cellId);
+              // Also reset in-memory fog state so the map reverts to
+              // undetected on the next render cycle.
+              ref
+                  .read(fogProvider.notifier)
+                  .updateCellFogState(cellId, FogState.undetected);
+              debugPrint(
+                '[SyncNotifier] rolled back cell progress: $cellId',
+              );
+            } catch (e) {
+              debugPrint(
+                '[SyncNotifier] failed to rollback cell progress '
+                '${entry.entityId}: $e',
+              );
+            }
+          } else {
+            debugPrint(
+              '[SyncNotifier] rejected cellProgress (malformed entityId): '
+              '${entry.entityId} — ${entry.lastError}',
+            );
+          }
+
         case WriteQueueEntityType.profile:
+          // Profile rollbacks are not safe to do locally — we don't know
+          // which previous values to restore. Log the rejection clearly so
+          // developers can investigate; the user's profile will reconcile
+          // on next full hydration (app restart → hydrateFromSupabase).
+          debugPrint(
+            '[SyncNotifier] rejected profile: ${entry.entityId} — '
+            '${entry.lastError} (will reconcile on next app start)',
+          );
+
         case WriteQueueEntityType.cellProperties:
-          // No local rollback for cell progress, profile, or cell properties
-          // — server reconciliation on next full sync will handle these.
+          // Cell properties are globally shared and geo-derived; rejection
+          // is extremely unlikely. Log only — no rollback needed.
           debugPrint(
             '[SyncNotifier] rejected ${entry.entityType.name}: '
             '${entry.entityId} — ${entry.lastError}',

@@ -50,6 +50,32 @@ void main() {
       expect(updated.errorMessage, 'Network error');
     });
 
+    test('copyWith clears errorMessage when null is passed', () {
+      // #132: copyWith(errorMessage: null) must clear the error, not keep it.
+      final original = SyncStatus(
+        type: SyncStatusType.error,
+        errorMessage: 'Some error',
+      );
+      final updated = original.copyWith(
+        type: SyncStatusType.syncing,
+        errorMessage: null,
+      );
+
+      expect(updated.errorMessage, isNull);
+      expect(updated.type, SyncStatusType.syncing);
+    });
+
+    test('copyWith preserves errorMessage when not specified', () {
+      // Omitting errorMessage from copyWith must keep the existing value.
+      final original = SyncStatus(
+        type: SyncStatusType.error,
+        errorMessage: 'Persistent error',
+      );
+      final updated = original.copyWith(type: SyncStatusType.idle);
+
+      expect(updated.errorMessage, 'Persistent error');
+    });
+
     test('copyWith replaces pendingChanges', () {
       const original = SyncStatus(type: SyncStatusType.idle);
       final updated = original.copyWith(pendingChanges: 5);
