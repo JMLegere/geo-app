@@ -258,6 +258,12 @@ class SupabasePersistence {
 
   // -- Cell Properties ---------------------------------------------------------
 
+  /// Insert cell properties if the cell doesn't already have a row.
+  ///
+  /// Cell properties are globally shared (first discoverer wins).
+  /// Uses `ignoreDuplicates: true` so PostgreSQL emits
+  /// `INSERT … ON CONFLICT DO NOTHING` — no UPDATE is attempted, which
+  /// avoids RLS violations when another user already wrote the row.
   Future<void> upsertCellProperties({
     required String cellId,
     required List<String> habitats,
@@ -276,6 +282,7 @@ class SupabasePersistence {
           'created_by': _client.auth.currentUser!.id,
         },
         onConflict: 'cell_id',
+        ignoreDuplicates: true,
       );
     } catch (e) {
       debugPrint('[SupabasePersistence] upsertCellProperties failed: $e');

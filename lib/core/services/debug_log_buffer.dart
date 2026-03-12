@@ -31,9 +31,7 @@ class DebugLogBuffer {
     while (_lines.length > maxLines) {
       _lines.removeFirst();
     }
-    for (final cb in _listeners) {
-      cb();
-    }
+    _notifyListeners();
   }
 
   static String _pad2(int n) => n.toString().padLeft(2, '0');
@@ -42,8 +40,26 @@ class DebugLogBuffer {
   /// Clear all buffered lines.
   void clear() {
     _lines.clear();
-    for (final cb in _listeners) {
-      cb();
+    _notifyListeners();
+  }
+
+  /// Guard against reentrant and concurrent-modification issues.
+  ///
+  /// A listener callback (e.g. the Riverpod bridge) can trigger widget
+  /// rebuilds that call [addListener]/[removeListener] during iteration,
+  /// or trigger another [debugPrint] → [add] cycle.  Copying the list and
+  /// using a reentrant guard prevents both.
+  bool _notifying = false;
+  void _notifyListeners() {
+    if (_notifying) return; // prevent reentrant calls
+    _notifying = true;
+    try {
+      final snapshot = List<VoidCallback>.of(_listeners);
+      for (final cb in snapshot) {
+        cb();
+      }
+    } finally {
+      _notifying = false;
     }
   }
 
