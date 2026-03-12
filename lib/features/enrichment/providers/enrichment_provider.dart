@@ -19,7 +19,9 @@ final enrichmentServiceProvider = Provider<EnrichmentService>((ref) {
   return EnrichmentService(
     repository: repo,
     supabaseClient: client,
-    onEnriched: (_) => ref.invalidate(enrichmentMapProvider),
+    onEnriched: (_) {
+      if (ref.mounted) ref.invalidate(enrichmentMapProvider);
+    },
   );
 });
 
