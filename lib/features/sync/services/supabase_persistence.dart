@@ -260,7 +260,7 @@ class SupabasePersistence {
 
   Future<void> upsertCellProperties({
     required String cellId,
-    required String habitats,
+    required List<String> habitats,
     required String climate,
     required String continent,
     String? locationId,
@@ -273,7 +273,7 @@ class SupabasePersistence {
           'climate': climate,
           'continent': continent,
           'location_id': locationId,
-          'updated_at': DateTime.now().toIso8601String(),
+          'created_by': _client.auth.currentUser!.id,
         },
         onConflict: 'cell_id',
       );

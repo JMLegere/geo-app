@@ -452,7 +452,7 @@ class QueueProcessor {
         final data = jsonDecode(entry.payload) as Map<String, dynamic>;
         await persistence.upsertCellProperties(
           cellId: data['cell_id'] as String,
-          habitats: data['habitats'] as String,
+          habitats: List<String>.from(data['habitats'] as List<dynamic>),
           climate: data['climate'] as String,
           continent: data['continent'] as String,
           locationId: data['location_id'] as String?,
