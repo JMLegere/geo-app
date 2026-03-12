@@ -1,10 +1,10 @@
 FROM instrumentisto/flutter:3.41 AS build
-ARG GIT_COMMIT=""
+ARG RAILWAY_GIT_COMMIT_SHA=""
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
-RUN SHORT=$(printf '%.7s' "$GIT_COMMIT"); \
+RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     BUILD_TS="β $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \

@@ -293,6 +293,120 @@ void main() {
     });
   });
 
+  group('BiomeFeatureIndex — centroid proximity', () {
+    // A small forest polygon patch centred near (9.99, 19.99) (mean of the
+    // 5 vertices including the repeated closing vertex).
+    // The patch is ~11 km across (0.1° at lat 10°).
+    // Query points:
+    //   near  = (10.0, 20.026) ≈ 4.1 km from centroid → inside 5 km radius
+    //   far   = (10.0, 20.063) ≈ 8.1 km from centroid → outside 5 km radius
+    const kForestPatch = '''
+{
+  "coastline": [],
+  "rivers": [],
+  "lakes": [],
+  "mountains": [],
+  "deserts": [],
+  "wetlands": [],
+  "forests": [[[9.95, 19.95],[9.95, 20.05],[10.05, 20.05],[10.05, 19.95],[9.95, 19.95]]]
+}
+''';
+
+    const kWetlandPatch = '''
+{
+  "coastline": [],
+  "rivers": [],
+  "lakes": [],
+  "mountains": [],
+  "deserts": [],
+  "wetlands": [[[9.95, 19.95],[9.95, 20.05],[10.05, 20.05],[10.05, 19.95],[9.95, 19.95]]],
+  "forests": []
+}
+''';
+
+    test('point strictly inside forest polygon → forest detected (containment)',
+        () {
+      final index = BiomeFeatureIndex.load(kForestPatch);
+      // (10.0, 20.0) is inside the polygon.
+      final result = index.getBiomesNear(10.0, 20.0);
+      expect(result, contains(Habitat.forest));
+    });
+
+    test(
+        'point outside forest polygon but within 5 km of centroid → forest detected (proximity)',
+        () {
+      final index = BiomeFeatureIndex.load(kForestPatch);
+      // (10.0, 20.026) is outside the polygon but ~4.1 km from centroid.
+      final result = index.getBiomesNear(10.0, 20.026);
+      expect(result, contains(Habitat.forest));
+    });
+
+    test(
+        'point far from forest polygon (>5 km) → no forest detected, falls back to plains',
+        () {
+      final index = BiomeFeatureIndex.load(kForestPatch);
+      // (10.0, 20.063) is ~8.1 km from centroid — outside 5 km radius.
+      final result = index.getBiomesNear(10.0, 20.063);
+      expect(result, isNot(contains(Habitat.forest)));
+      expect(result, contains(Habitat.plains));
+    });
+
+    test(
+        'point outside wetland polygon but within 5 km of centroid → swamp detected (proximity)',
+        () {
+      final index = BiomeFeatureIndex.load(kWetlandPatch);
+      // Same geometry — (10.0, 20.026) is ~4.1 km from centroid.
+      final result = index.getBiomesNear(10.0, 20.026);
+      expect(result, contains(Habitat.swamp));
+    });
+
+    test(
+        'point far from wetland polygon (>5 km) → no swamp detected, falls back to plains',
+        () {
+      final index = BiomeFeatureIndex.load(kWetlandPatch);
+      // (10.0, 20.063) is ~8.1 km away.
+      final result = index.getBiomesNear(10.0, 20.063);
+      expect(result, isNot(contains(Habitat.swamp)));
+      expect(result, contains(Habitat.plains));
+    });
+
+    test('empty forest list → no forest, result has plains fallback', () {
+      const json = '''
+{
+  "coastline": [], "rivers": [], "lakes": [],
+  "mountains": [], "deserts": [], "wetlands": [], "forests": []
+}
+''';
+      final index = BiomeFeatureIndex.load(json);
+      final result = index.getBiomesNear(0.0, 0.0);
+      expect(result, equals({Habitat.plains}));
+    });
+
+    test('multiple forest patches — nearest within radius triggers detection',
+        () {
+      // Two patches: one near (−0.01, −0.01) centroid, one near (50, 50).
+      // First patch centroid: mean of 5 vertices = (-0.01, -0.01).
+      // (0.0, 0.026) is ~4.15 km from that centroid — within 5 km.
+      const json = '''
+{
+  "coastline": [], "rivers": [], "lakes": [],
+  "mountains": [], "deserts": [], "wetlands": [],
+  "forests": [
+    [[-0.05,-0.05],[-0.05,0.05],[0.05,0.05],[0.05,-0.05],[-0.05,-0.05]],
+    [[49.95,49.95],[49.95,50.05],[50.05,50.05],[50.05,49.95],[49.95,49.95]]
+  ]
+}
+''';
+      final index = BiomeFeatureIndex.load(json);
+      // ~4.15 km from first patch centroid, outside polygon.
+      final near1 = index.getBiomesNear(0.0, 0.026);
+      expect(near1, contains(Habitat.forest));
+      // Far from both patches.
+      final farAway = index.getBiomesNear(25.0, 25.0);
+      expect(farAway, isNot(contains(Habitat.forest)));
+    });
+  });
+
   // ─────────────────────────────────────────────────────────────
   // Legacy type alias smoke tests
   // ─────────────────────────────────────────────────────────────
