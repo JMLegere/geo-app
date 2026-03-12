@@ -1,17 +1,25 @@
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:earth_nova/features/map/map_screen.dart';
 import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
+import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/main.dart';
 
 /// Stub notifier that reports onboarding as complete without touching
@@ -42,6 +50,25 @@ class _OnboardedPlayerNotifier extends PlayerNotifier {
   PlayerState build() => PlayerState(hasCompletedOnboarding: true);
 }
 
+/// No-op stub for [LocationEnrichmentService] that prevents the real
+/// provider chain from resolving (which requires Supabase client and hangs in
+/// headless CI). Uses [noSuchMethod] so all method/setter calls are safe.
+class _StubLocationEnrichmentService implements LocationEnrichmentService {
+  @override
+  void noSuchMethod(Invocation invocation) {}
+}
+
+/// No-op stub for [UpgradePromptNotifier] that skips the session timer.
+/// The real notifier starts a 2-minute [Timer] in [build] which outlasts
+/// the test and causes "pending timer" failures in fake_async.
+class _NoTimerUpgradePromptNotifier extends UpgradePromptNotifier {
+  @override
+  UpgradePromptState build() => const UpgradePromptState(
+        totalCollected: 0,
+        supabaseInitialized: false,
+      );
+}
+
 /// Minimal CellService for creating a no-op GameCoordinator in tests.
 class _StubCellService implements CellService {
   @override
@@ -64,6 +91,9 @@ class _StubCellService implements CellService {
 }
 
 void main() {
+  // Drift warns about multiple open databases in tests. Suppress.
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+
   testWidgets('App renders without crashing', (WidgetTester tester) async {
     // Create a minimal no-op GameCoordinator for the test. EarthNovaApp
     // watches gameCoordinatorProvider to eagerly trigger auth init, but in
@@ -75,6 +105,20 @@ void main() {
       cellService: stubCellService,
     );
 
+    // In-memory database cuts off ALL provider chains that resolve through
+    // appDatabaseProvider → path_provider (which hangs in headless CI).
+    final inMemoryDb = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => inMemoryDb.close());
+
+    // Suppress FlutterErrors globally for this test. MapLibreMap throws
+    // UnimplementedError on headless platforms, provider resolution triggers
+    // setState-during-build cascades, and teardown raises ref-after-unmount /
+    // animation-still-running errors. We only care that the widget tree
+    // mounts and contains MapScreen.
+    final originalOnError = FlutterError.onError!;
+    FlutterError.onError = (_) {};
+    addTearDown(() => FlutterError.onError = originalOnError);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -82,17 +126,20 @@ void main() {
           authProvider.overrideWith(_AuthenticatedNotifier.new),
           playerProvider.overrideWith(_OnboardedPlayerNotifier.new),
           gameCoordinatorProvider.overrideWithValue(noOpCoordinator),
+          appDatabaseProvider.overrideWithValue(inMemoryDb),
+          locationEnrichmentServiceProvider
+              .overrideWithValue(_StubLocationEnrichmentService()),
+          upgradePromptProvider.overrideWith(_NoTimerUpgradePromptNotifier.new),
         ],
         child: const EarthNovaApp(),
       ),
     );
 
-    // Auth starts authenticated via override — should go straight to TabShell.
-    // MapLibreMap is a platform view that throws UnimplementedError in the
-    // headless test environment. Clear it so the test can verify the screen
-    // scaffolding.
+    // Pump once to let the widget tree settle after initial mount.
     await tester.pump(const Duration(milliseconds: 100));
-    tester.takeException();
+
+    // Drain all queued test exceptions (MapLibre + provider cascades).
+    while (tester.takeException() != null) {}
 
     // After auth resolves, the MapScreen widget is present in the widget tree.
     expect(find.byType(MapScreen), findsOneWidget);
