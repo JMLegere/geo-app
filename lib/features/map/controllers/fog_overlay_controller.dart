@@ -51,6 +51,13 @@ class FogOverlayController {
   /// including out-of-viewport cells has negligible rendering cost.
   final Set<String> _discoveredCellIds = {};
 
+  /// Callback fired the first time a cell is added to [_discoveredCellIds].
+  ///
+  /// Provides the cell ID and the geographic center of the cell so the caller
+  /// can trigger async work (e.g. location enrichment) without knowing the
+  /// cell service.
+  void Function(String cellId, double lat, double lon)? onCellBecameVisible;
+
   // -- Legacy fields kept for backward compatibility during transition --
   // TODO(cleanup): Remove once FogCanvasOverlay is fully deleted.
   List<CellRenderData> _renderData = const [];
@@ -77,7 +84,7 @@ class FogOverlayController {
   Map<String, CellProperties> _cellPropertiesCache = const {};
 
   /// Location nodes cache — set externally when enrichment data is loaded.
-  Map<String, LocationNode> _locationNodesCache = const {};
+  Map<String, LocationNode> _locationNodesCache = {};
 
   /// GeoJSON string for territory border fill (gradient polygons).
   String _borderFillGeoJson =
@@ -125,6 +132,14 @@ class FogOverlayController {
   set locationNodesCache(Map<String, LocationNode> cache) =>
       _locationNodesCache = cache;
 
+  /// Adds a single [LocationNode] to the location nodes cache.
+  ///
+  /// Called when new enrichment data arrives mid-session so newly enriched
+  /// territory borders appear without requiring an app restart.
+  void addLocationNode(LocationNode node) {
+    _locationNodesCache[node.id] = node;
+  }
+
   /// Updates the daily seed used for event resolution.
   set dailySeed(String seed) => _dailySeed = seed;
 
@@ -154,7 +169,13 @@ class FogOverlayController {
 
     // Accumulate — never remove cells from the discovered set.
     // This prevents flickering caused by viewport sampling aliasing.
-    _discoveredCellIds.addAll(visibleCellIds);
+    // Fire onCellBecameVisible for each cell added for the first time.
+    for (final cellId in visibleCellIds) {
+      if (_discoveredCellIds.add(cellId)) {
+        final center = cellService.getCellCenter(cellId);
+        onCellBecameVisible?.call(cellId, center.lat, center.lon);
+      }
+    }
 
     _buildGeoJson(_discoveredCellIds);
     _renderVersion++;
@@ -194,8 +215,14 @@ class FogOverlayController {
       final end = min(i + chunkSize, visibleCellIds.length);
       final chunk = visibleCellIds.sublist(i, end);
       // Accumulate into the persistent set — never remove.
-      _discoveredCellIds.addAll(chunk);
-      addedCount += chunk.length;
+      // Fire onCellBecameVisible for each cell added for the first time.
+      for (final cellId in chunk) {
+        if (_discoveredCellIds.add(cellId)) {
+          addedCount++;
+          final center = cellService.getCellCenter(cellId);
+          onCellBecameVisible?.call(cellId, center.lat, center.lon);
+        }
+      }
 
       // Build GeoJSON from all discovered cells so far.
       _buildGeoJson(_discoveredCellIds);

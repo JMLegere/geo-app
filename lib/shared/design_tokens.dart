@@ -161,6 +161,9 @@ abstract final class Durations {
   /// Auto-dismiss for achievement toasts.
   static const Duration achievementToast = Duration(seconds: 4);
 
+  /// Auto-dismiss for sync status toasts.
+  static const Duration syncToast = Duration(seconds: 2);
+
   /// Player marker pulse cycle.
   static const Duration markerPulse = Duration(seconds: 2);
 

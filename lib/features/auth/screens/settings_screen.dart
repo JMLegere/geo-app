@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/widgets/debug_log_card.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
@@ -189,6 +190,11 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          Spacing.gapXxl,
+
+          // ── Debug Log ──────────────────────────────────────────────────────
+          const DebugLogCard(),
         ],
       ),
     );
