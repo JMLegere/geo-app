@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import 'package:earth_nova/features/auth/models/user_profile.dart';
@@ -127,27 +128,6 @@ class SupabaseAuthService implements AuthService {
   }
 
   @override
-  Future<UserProfile> signInAnonymously() async {
-    try {
-      final response = await _auth.signInAnonymously();
-      final user = response.user;
-      if (user == null) {
-        throw const AuthException(
-          'Anonymous sign-in failed: no user returned.',
-        );
-      }
-      return _profileFrom(user);
-    } on supa.AuthApiException catch (e) {
-      throw AuthException('Anonymous sign-in failed: ${e.message}');
-    } on AuthException {
-      rethrow;
-    } catch (e) {
-      throw AuthException(
-        'Network error. Check your connection and try again.',
-      );
-    }
-  }
-
   @override
   Future<UserProfile> signInWithPhone(String phone) async {
     if (!isValidE164(phone)) {
@@ -257,7 +237,19 @@ class SupabaseAuthService implements AuthService {
     try {
       final session = _auth.currentSession;
       if (session == null) return false;
-      if (session.isExpired) return false;
+      if (session.isExpired) {
+        // Token expired while the app was closed — attempt a refresh
+        // using the stored refresh token before giving up.
+        debugPrint('[Auth] stored session expired — attempting refresh');
+        try {
+          await _auth.refreshSession();
+          final refreshed = _auth.currentSession;
+          return refreshed != null && !refreshed.isExpired;
+        } catch (e) {
+          debugPrint('[Auth] session refresh failed: $e');
+          return false;
+        }
+      }
       return true;
     } catch (_) {
       return false;

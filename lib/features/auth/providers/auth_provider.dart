@@ -22,6 +22,9 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Direct state setter — called by gameCoordinatorProvider for auth
   /// lifecycle events (session restore, stream events).
   void setState(AuthState newState) {
+    debugPrint('[AUTH] ${state.status.name} → ${newState.status.name}'
+        '${newState.user != null ? ' (uid=${newState.user!.id})' : ''}'
+        '${newState.errorMessage != null ? ' error=${newState.errorMessage}' : ''}');
     state = newState;
   }
 
@@ -62,42 +65,6 @@ class AuthNotifier extends Notifier<AuthState> {
     } on AuthException catch (e) {
       if (!ref.mounted) return;
       state = AuthState.otpSent(phone: phone).copyWith(errorMessage: e.message);
-    }
-  }
-
-  /// Bypasses OTP by signing in anonymously via [AuthService].
-  ///
-  /// Creates a real backend auth session (real UUID, real JWT) so all
-  /// persistence — RLS, write queue, server validation — works correctly.
-  /// Requires "Enable Anonymous Sign-Ins" in the Supabase dashboard
-  /// (Authentication → Providers → Anonymous).
-  Future<void> bypassVerification(String phone) async {
-    final service = ref.read(authServiceProvider);
-    if (service == null) return;
-
-    state = AuthState.otpVerifying(phone: phone);
-    try {
-      final user = await service.signInAnonymously();
-
-      debugPrint(
-        '[Auth] bypass: anonymous sign-in OK — '
-        'userId=${user.id}, phone=$phone',
-      );
-
-      if (!ref.mounted) return;
-      state = AuthState.authenticated(user);
-    } on AuthException catch (e) {
-      debugPrint('[Auth] bypass failed: $e');
-      if (!ref.mounted) return;
-      state = AuthState.otpSent(phone: phone).copyWith(
-        errorMessage: e.message,
-      );
-    } catch (e) {
-      debugPrint('[Auth] bypass failed: $e');
-      if (!ref.mounted) return;
-      state = AuthState.otpSent(phone: phone).copyWith(
-        errorMessage: 'Bypass sign-in failed. Check connection and try again.',
-      );
     }
   }
 

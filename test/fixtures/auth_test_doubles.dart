@@ -107,22 +107,6 @@ class FakeAuthService implements AuthService {
   }
 
   @override
-  Future<UserProfile> signInAnonymously() async {
-    await Future<void>.delayed(_delay);
-    if (shouldThrow) throw AuthException(throwMessage);
-    final profile = UserProfile(
-      id: 'anon-${DateTime.now().millisecondsSinceEpoch}',
-      email: '',
-      phoneNumber: null,
-      displayName: 'Beta Tester',
-      createdAt: DateTime.now(),
-    );
-    _currentUser = profile;
-    _authStateController.add(profile);
-    return profile;
-  }
-
-  @override
   Future<UserProfile> signInWithPhone(String phone) async {
     await Future<void>.delayed(_delay);
     if (shouldThrow) throw AuthException(throwMessage);
