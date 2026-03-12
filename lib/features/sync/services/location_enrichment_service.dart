@@ -107,6 +107,7 @@ class LocationEnrichmentService {
     try {
       final response = await client.functions.invoke(
         'enrich-location',
+        headers: _authHeaders(client),
         body: {
           'cell_id': request.cellId,
           'lat': request.lat,
@@ -153,7 +154,9 @@ class LocationEnrichmentService {
         return;
       }
       // 401 = JWT rejected by Edge Function gateway. Refresh the session
-      // and retry once — covers stale tokens after web session restore.
+      // and retry once. The explicit _authHeaders() call on the retry
+      // reads the fresh token directly from auth state, bypassing the
+      // async FunctionsClient header cache race condition.
       if (e.status == 401 && !isRetry) {
         debugPrint('[LocationEnrichment] 401 for ${request.cellId} '
             '— refreshing session and retrying');
@@ -217,6 +220,19 @@ class LocationEnrichmentService {
       _rateLimited = false;
       _scheduleDrain();
     });
+  }
+
+  /// Read the current access token directly from auth state and pass it
+  /// explicitly. This avoids a race condition in supabase-dart where
+  /// [SupabaseClient._handleTokenChanged] updates [FunctionsClient] headers
+  /// asynchronously — meaning [functions.invoke] can read a stale token
+  /// after [auth.refreshSession] completes.
+  Map<String, String> _authHeaders(SupabaseClient client) {
+    final token = client.auth.currentSession?.accessToken;
+    if (token != null) {
+      return {'Authorization': 'Bearer $token'};
+    }
+    return {};
   }
 
   void dispose() {

@@ -39,6 +39,18 @@ class SupabasePersistence {
 
   final SupabaseClient _client;
 
+  /// Read the current access token directly from auth state and pass it
+  /// explicitly. This avoids a race condition in supabase-dart where
+  /// [SupabaseClient._handleTokenChanged] updates [FunctionsClient] headers
+  /// asynchronously — meaning [functions.invoke] can read a stale token.
+  Map<String, String> _authHeaders() {
+    final token = _client.auth.currentSession?.accessToken;
+    if (token != null) {
+      return {'Authorization': 'Bearer $token'};
+    }
+    return {};
+  }
+
   // -- Profile ----------------------------------------------------------------
 
   Future<Map<String, dynamic>?> fetchProfile(String userId) async {
@@ -221,6 +233,7 @@ class SupabasePersistence {
     try {
       final response = await _client.functions.invoke(
         'validate-encounter',
+        headers: _authHeaders(),
         body: {
           'item_id': itemId,
           'user_id': userId,
