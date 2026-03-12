@@ -73,6 +73,17 @@ class EnrichmentService {
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _drainTimer;
   bool _rateLimited = false;
+  bool _disposed = false;
+
+  /// Circuit breaker: set when a 401 retry fails, stops all further
+  /// Edge Function calls to prevent a stampede of refreshSession() calls
+  /// that would hit Supabase auth rate limits and cause logout.
+  bool _authFailed = false;
+
+  /// Deduplicates concurrent refreshSession() calls. If a refresh is already
+  /// in flight, subsequent 401 handlers await the same future instead of
+  /// firing parallel refresh requests.
+  Future<void>? _pendingRefresh;
 
   Future<void> requestEnrichment({
     required String definitionId,
@@ -113,7 +124,9 @@ class EnrichmentService {
   Future<void> _drain() async {
     while (_queue.isNotEmpty &&
         _activeRequests < _maxConcurrent &&
-        !_rateLimited) {
+        !_rateLimited &&
+        !_authFailed &&
+        !_disposed) {
       final request = _queue.removeFirst();
       _activeRequests++;
       _lastRequestTime = DateTime.now();
@@ -135,11 +148,7 @@ class EnrichmentService {
     bool isRetry = false,
   }) async {
     final client = supabaseClient;
-    if (client == null) {
-      debugPrint('[EnrichmentService] _executeRequest: client null, '
-          'skipping ${request.definitionId}');
-      return;
-    }
+    if (client == null || _disposed) return;
 
     debugPrint('[EnrichmentService] invoking enrich-species for '
         '${request.definitionId} (${request.commonName})'
@@ -167,6 +176,8 @@ class EnrichmentService {
         },
       );
 
+      if (_disposed) return;
+
       if (response.data != null) {
         final data = response.data as Map<String, dynamic>;
         if (data.containsKey('error')) {
@@ -192,8 +203,10 @@ class EnrichmentService {
               '${enrichment.animalClass.name}, '
               '${enrichment.foodPreference.name}, '
               '${enrichment.climate.name}');
-          onEnriched?.call(enrichment);
-          onEnrichedHook?.call(enrichment);
+          if (!_disposed) {
+            onEnriched?.call(enrichment);
+            onEnrichedHook?.call(enrichment);
+          }
         }
       }
     } on FunctionException catch (e) {
@@ -201,22 +214,28 @@ class EnrichmentService {
         _handleRateLimit(request);
         return;
       }
-      // 401 = JWT rejected by Edge Function gateway. Refresh the session
-      // and retry once. The explicit _authHeaders() call on the retry
-      // reads the fresh token directly from auth state, bypassing the
-      // async FunctionsClient header cache race condition.
+      // 401 = JWT rejected. Refresh ONCE (deduplicated), retry ONCE.
+      // If retry also fails, trip the circuit breaker to stop the stampede.
       if (e.status == 401 && !isRetry) {
         debugPrint('[EnrichmentService] 401 for ${request.definitionId} '
             '— refreshing session and retrying');
         try {
-          await client.auth.refreshSession();
+          await _deduplicatedRefresh(client);
+          if (_disposed) return;
           await _executeRequest(request, isRetry: true);
           return;
         } catch (refreshErr) {
           debugPrint('[EnrichmentService] refresh + retry failed for '
               '${request.definitionId}: $refreshErr');
+          _tripAuthCircuitBreaker();
           return;
         }
+      }
+      if (e.status == 401 && isRetry) {
+        debugPrint('[EnrichmentService] retry 401 for '
+            '${request.definitionId} — tripping circuit breaker');
+        _tripAuthCircuitBreaker();
+        return;
       }
       debugPrint('[EnrichmentService] function error for '
           '${request.definitionId}: $e');
@@ -226,6 +245,28 @@ class EnrichmentService {
     } finally {
       _inFlight.remove(request.definitionId);
     }
+  }
+
+  /// Deduplicate concurrent refreshSession() calls. Only one refresh runs
+  /// at a time; others await the same future.
+  Future<void> _deduplicatedRefresh(SupabaseClient client) {
+    if (_pendingRefresh != null) return _pendingRefresh!;
+    _pendingRefresh = client.auth.refreshSession().whenComplete(() {
+      _pendingRefresh = null;
+    });
+    return _pendingRefresh!;
+  }
+
+  /// Stop all Edge Function calls. The service is dead until reconstructed
+  /// (which happens on next login when the provider rebuilds).
+  void _tripAuthCircuitBreaker() {
+    if (_authFailed) return;
+    _authFailed = true;
+    final dropped = _queue.length;
+    _queue.clear();
+    _inFlight.clear();
+    debugPrint('[EnrichmentService] auth circuit breaker tripped — '
+        'dropped $dropped queued requests');
   }
 
   void _handleRateLimit(_EnrichmentRequest request) {
@@ -244,6 +285,7 @@ class EnrichmentService {
         '(attempt ${retried.attempt})');
 
     Timer(Duration(milliseconds: backoffMs), () {
+      if (_disposed) return;
       _rateLimited = false;
       _scheduleDrain();
     });
@@ -300,6 +342,7 @@ class EnrichmentService {
   }
 
   void dispose() {
+    _disposed = true;
     _drainTimer?.cancel();
   }
 }

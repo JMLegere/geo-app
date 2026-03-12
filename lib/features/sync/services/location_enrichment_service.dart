@@ -58,6 +58,14 @@ class LocationEnrichmentService {
   bool _rateLimited = false;
   bool _disposed = false;
 
+  /// Circuit breaker: set when a 401 retry fails, stops all further
+  /// Edge Function calls to prevent a stampede of refreshSession() calls
+  /// that would hit Supabase auth rate limits and cause logout.
+  bool _authFailed = false;
+
+  /// Deduplicates concurrent refreshSession() calls.
+  Future<void>? _pendingRefresh;
+
   void requestEnrichment({
     required String cellId,
     required double lat,
@@ -66,6 +74,7 @@ class LocationEnrichmentService {
     if (_disposed) return;
     if (supabaseClient == null) return;
     if (_inFlight.contains(cellId)) return;
+    if (_authFailed) return;
 
     _queue.add(_EnrichRequest(cellId: cellId, lat: lat, lon: lon));
     _inFlight.add(cellId);
@@ -84,7 +93,7 @@ class LocationEnrichmentService {
   }
 
   Future<void> _drain() async {
-    while (_queue.isNotEmpty && !_rateLimited && !_disposed) {
+    while (_queue.isNotEmpty && !_rateLimited && !_disposed && !_authFailed) {
       final request = _queue.removeFirst();
       _lastRequestTime = DateTime.now();
 
@@ -102,7 +111,7 @@ class LocationEnrichmentService {
     bool isRetry = false,
   }) async {
     final client = supabaseClient;
-    if (client == null) return;
+    if (client == null || _disposed) return;
 
     try {
       final response = await client.functions.invoke(
@@ -114,6 +123,8 @@ class LocationEnrichmentService {
           'lon': request.lon,
         },
       );
+
+      if (_disposed) return;
 
       if (response.data != null) {
         final data = response.data as Map<String, dynamic>;
@@ -141,7 +152,9 @@ class LocationEnrichmentService {
             }
 
             await cellPropertyRepo.updateLocationId(request.cellId, locationId);
-            onLocationEnriched?.call(request.cellId, locationId);
+            if (!_disposed) {
+              onLocationEnriched?.call(request.cellId, locationId);
+            }
 
             debugPrint('[LocationEnrichment] enriched ${request.cellId} '
                 '→ $locationId');
@@ -153,22 +166,28 @@ class LocationEnrichmentService {
         _handleRateLimit(request);
         return;
       }
-      // 401 = JWT rejected by Edge Function gateway. Refresh the session
-      // and retry once. The explicit _authHeaders() call on the retry
-      // reads the fresh token directly from auth state, bypassing the
-      // async FunctionsClient header cache race condition.
+      // 401 = JWT rejected. Refresh ONCE (deduplicated), retry ONCE.
+      // If retry also fails, trip the circuit breaker to stop the stampede.
       if (e.status == 401 && !isRetry) {
         debugPrint('[LocationEnrichment] 401 for ${request.cellId} '
             '— refreshing session and retrying');
         try {
-          await client.auth.refreshSession();
+          await _deduplicatedRefresh(client);
+          if (_disposed) return;
           await _executeRequest(request, isRetry: true);
           return;
         } catch (refreshErr) {
           debugPrint('[LocationEnrichment] refresh + retry failed for '
               '${request.cellId}: $refreshErr');
+          _tripAuthCircuitBreaker();
           return;
         }
+      }
+      if (e.status == 401 && isRetry) {
+        debugPrint('[LocationEnrichment] retry 401 for '
+            '${request.cellId} — tripping circuit breaker');
+        _tripAuthCircuitBreaker();
+        return;
       }
       debugPrint('[LocationEnrichment] function error for '
           '${request.cellId}: $e');
@@ -177,6 +196,27 @@ class LocationEnrichmentService {
     } finally {
       _inFlight.remove(request.cellId);
     }
+  }
+
+  /// Deduplicate concurrent refreshSession() calls.
+  Future<void> _deduplicatedRefresh(SupabaseClient client) {
+    if (_pendingRefresh != null) return _pendingRefresh!;
+    _pendingRefresh = client.auth.refreshSession().whenComplete(() {
+      _pendingRefresh = null;
+    });
+    return _pendingRefresh!;
+  }
+
+  /// Stop all Edge Function calls. The service is dead until reconstructed
+  /// (which happens on next login when the provider rebuilds).
+  void _tripAuthCircuitBreaker() {
+    if (_authFailed) return;
+    _authFailed = true;
+    final dropped = _queue.length;
+    _queue.clear();
+    _inFlight.clear();
+    debugPrint('[LocationEnrichment] auth circuit breaker tripped — '
+        'dropped $dropped queued requests');
   }
 
   LocationNode? _parseHierarchyNode(dynamic nodeData) {
