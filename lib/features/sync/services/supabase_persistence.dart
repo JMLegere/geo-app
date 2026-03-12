@@ -266,6 +266,7 @@ class SupabasePersistence {
   /// avoids RLS violations when another user already wrote the row.
   Future<void> upsertCellProperties({
     required String cellId,
+    required String userId,
     required List<String> habitats,
     required String climate,
     required String continent,
@@ -279,7 +280,7 @@ class SupabasePersistence {
           'climate': climate,
           'continent': continent,
           'location_id': locationId,
-          'created_by': _client.auth.currentUser!.id,
+          'created_by': userId,
         },
         onConflict: 'cell_id',
         ignoreDuplicates: true,

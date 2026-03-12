@@ -164,6 +164,12 @@ class QueueProcessor {
     _autoFlushTimer = null;
   }
 
+  /// Remove all pending queue entries for a user.
+  ///
+  /// Call on logout to prevent stale entries from being flushed with a
+  /// different session's credentials (which would trigger RLS violations).
+  Future<void> clearUser(String userId) => _queueRepo.clearUser(userId);
+
   /// Flush pending queue entries to Supabase.
   ///
   /// When [userId] is provided, only flushes entries belonging to that user —
@@ -460,6 +466,7 @@ class QueueProcessor {
               );
         await persistence.upsertCellProperties(
           cellId: data['cell_id'] as String,
+          userId: entry.userId,
           habitats: habitats,
           climate: data['climate'] as String,
           continent: data['continent'] as String,

@@ -547,6 +547,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
+      // Clear write queue for the outgoing user BEFORE resetting state.
+      // Prevents stale entries from being flushed with the next session's
+      // credentials, which would trigger RLS violations on Supabase.
+      final outgoingUserId = lastHydratedUserId;
+      if (outgoingUserId != null) {
+        queueProcessor.clearUser(outgoingUserId);
+      }
+
       coordinator.setCurrentUserId(null);
       lastHydratedUserId = null;
       ref.read(playerProvider.notifier).loadProfile(
