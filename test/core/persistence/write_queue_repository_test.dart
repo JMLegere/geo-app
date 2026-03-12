@@ -125,8 +125,7 @@ void main() {
       final now = DateTime(2026, 3, 7, 12, 0, 0);
       await insertEntryWithTimestamp(db,
           createdAt: now.add(const Duration(seconds: 10)), entityId: 'e-c');
-      await insertEntryWithTimestamp(db,
-          createdAt: now, entityId: 'e-a');
+      await insertEntryWithTimestamp(db, createdAt: now, entityId: 'e-a');
       await insertEntryWithTimestamp(db,
           createdAt: now.add(const Duration(seconds: 5)), entityId: 'e-b');
 
@@ -222,8 +221,8 @@ void main() {
 
       expect(await repo.countPending(), equals(2));
       final pending = await repo.getPending();
-      expect(pending.map((e) => e.entityId).toList(),
-          containsAll(['e-2', 'e-3']));
+      expect(
+          pending.map((e) => e.entityId).toList(), containsAll(['e-2', 'e-3']));
     });
 
     test('deleteEntry on non-existent id is a no-op', () async {
@@ -301,22 +300,33 @@ void main() {
 
     // ── deleteStale ────────────────────────────────────────────────────────
 
-    test('deleteStale removes entries older than cutoff', () async {
+    test(
+        'deleteStale removes old confirmed/rejected entries but not pending '
+        'ones (#128)', () async {
       final oldTime = DateTime(2020, 1, 1);
       final newTime = DateTime(2026, 3, 7);
       final cutoff = DateTime(2023, 1, 1);
 
+      // Old confirmed → deleted.
       await insertEntryWithTimestamp(db,
-          createdAt: oldTime, entityId: 'old-entry');
+          createdAt: oldTime, entityId: 'old-confirmed', status: 'confirmed');
+      // Old rejected → deleted.
+      await insertEntryWithTimestamp(db,
+          createdAt: oldTime, entityId: 'old-rejected', status: 'rejected');
+      // Old pending → preserved.
+      await insertEntryWithTimestamp(db,
+          createdAt: oldTime, entityId: 'old-pending');
+      // Fresh pending → preserved.
       await insertEntryWithTimestamp(db,
           createdAt: newTime, entityId: 'new-entry');
 
       final deleted = await repo.deleteStale(cutoff);
-      expect(deleted, equals(1));
+      expect(deleted, equals(2)); // confirmed + rejected only
 
       final remaining = await repo.getPending();
-      expect(remaining.length, equals(1));
-      expect(remaining.first.entityId, equals('new-entry'));
+      expect(remaining.length, equals(2)); // old-pending + new-entry preserved
+      final ids = remaining.map((e) => e.entityId).toSet();
+      expect(ids, containsAll(['old-pending', 'new-entry']));
     });
 
     test('deleteStale returns 0 when no stale entries', () async {
@@ -327,37 +337,42 @@ void main() {
       expect(deleted, equals(0));
     });
 
-    test('deleteStale removes multiple stale entries', () async {
+    test('deleteStale removes multiple stale confirmed/rejected entries',
+        () async {
       final past = DateTime(2020, 6, 1);
       final cutoff = DateTime(2024, 1, 1);
 
       await insertEntryWithTimestamp(db,
-          createdAt: past, entityId: 'old-1');
+          createdAt: past, entityId: 'old-1', status: 'confirmed');
       await insertEntryWithTimestamp(db,
-          createdAt: past.add(const Duration(days: 1)), entityId: 'old-2');
+          createdAt: past.add(const Duration(days: 1)),
+          entityId: 'old-2',
+          status: 'rejected');
+      await insertEntryWithTimestamp(db,
+          createdAt: past, entityId: 'old-pending-keep'); // pending → kept
       await insertEntryWithTimestamp(db,
           createdAt: DateTime(2026, 1, 1), entityId: 'new-1');
 
       final deleted = await repo.deleteStale(cutoff);
-      expect(deleted, equals(2));
-      expect(await repo.countPending(), equals(1));
+      expect(deleted, equals(2)); // confirmed + rejected only
+      expect(await repo.countPending(), equals(2)); // old-pending + new-1
     });
 
-    test('deleteStale removes both pending and rejected stale entries',
-        () async {
+    test('deleteStale does not delete stale pending entries (#128)', () async {
       final past = DateTime(2020, 1, 1);
       final cutoff = DateTime(2023, 1, 1);
 
       await insertEntryWithTimestamp(db,
           createdAt: past, entityId: 'old-pending');
-      // Mark one as rejected by updating directly.
       await insertEntryWithTimestamp(db,
-          createdAt: past,
-          entityId: 'old-rejected',
-          status: 'rejected');
+          createdAt: past, entityId: 'old-rejected', status: 'rejected');
 
       final deleted = await repo.deleteStale(cutoff);
-      expect(deleted, equals(2));
+      expect(deleted, equals(1)); // Only the rejected entry is deleted.
+
+      final remaining = await repo.getPending();
+      expect(remaining.length, equals(1));
+      expect(remaining.first.entityId, equals('old-pending'));
     });
 
     // ── clearUser ──────────────────────────────────────────────────────────

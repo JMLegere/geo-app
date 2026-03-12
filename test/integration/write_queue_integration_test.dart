@@ -106,7 +106,8 @@ void main() {
       expect(pending.length, equals(3));
 
       // All start as pending.
-      expect(pending.every((e) => e.status == WriteQueueStatus.pending), isTrue);
+      expect(
+          pending.every((e) => e.status == WriteQueueStatus.pending), isTrue);
 
       // IDs are distinct and match what enqueue returned.
       final ids = pending.map((e) => e.id).toList();
@@ -114,12 +115,11 @@ void main() {
 
       // Verify entity types are correct.
       final byId = {for (final e in pending) e.id: e};
-      expect(byId[itemId]!.entityType,
-          equals(WriteQueueEntityType.itemInstance));
-      expect(byId[cellId]!.entityType,
-          equals(WriteQueueEntityType.cellProgress));
-      expect(byId[profileId]!.entityType,
-          equals(WriteQueueEntityType.profile));
+      expect(
+          byId[itemId]!.entityType, equals(WriteQueueEntityType.itemInstance));
+      expect(
+          byId[cellId]!.entityType, equals(WriteQueueEntityType.cellProgress));
+      expect(byId[profileId]!.entityType, equals(WriteQueueEntityType.profile));
 
       // Verify entityId and userId are persisted.
       expect(byId[itemId]!.entityId, equals('item-uuid-abc'));
@@ -157,8 +157,8 @@ void main() {
       expect(rejected.first.id, equals(cellId));
       expect(rejected.first.status, equals(WriteQueueStatus.rejected));
       expect(rejected.first.lastError, equals('server_validation_failed'));
-      expect(rejected.first.entityType,
-          equals(WriteQueueEntityType.cellProgress));
+      expect(
+          rejected.first.entityType, equals(WriteQueueEntityType.cellProgress));
 
       // Profile entry still pending.
       final stillPending = await repo.getPending();
@@ -184,41 +184,83 @@ void main() {
       expect(afterIncrement2.first.status, equals(WriteQueueStatus.pending));
     });
 
-    test('deleteStale cleans up old entries while preserving recent ones',
-        () async {
+    test(
+        'deleteStale removes old confirmed/rejected entries while preserving '
+        'recent and pending ones', () async {
       final past = DateTime(2022, 6, 1);
       final recent = DateTime(2026, 3, 7);
       final cutoff = DateTime(2024, 1, 1);
 
-      // Insert one stale and one fresh entry directly with controlled timestamps.
+      // Stale + confirmed → should be deleted.
       await insertEntryWithTimestamp(
         db,
         createdAt: past,
-        entityId: 'stale-item',
+        entityId: 'stale-confirmed',
         entityType: 'cellProgress',
         payload: '{"cell_id":"stale-cell"}',
+        status: 'confirmed',
       );
 
+      // Stale + rejected → should be deleted.
+      await insertEntryWithTimestamp(
+        db,
+        createdAt: past,
+        entityId: 'stale-rejected',
+        entityType: 'itemInstance',
+        payload: '{}',
+        status: 'rejected',
+      );
+
+      // Stale + PENDING → must NOT be deleted (#128 fix).
+      await insertEntryWithTimestamp(
+        db,
+        createdAt: past,
+        entityId: 'stale-pending',
+        entityType: 'profile',
+        payload: '{"display_name":"Bob"}',
+        status: 'pending',
+      );
+
+      // Fresh + pending → must NOT be deleted.
       await insertEntryWithTimestamp(
         db,
         createdAt: recent,
-        entityId: 'fresh-item',
+        entityId: 'fresh-pending',
         entityType: 'profile',
-        payload: '{"display_name":"Bob"}',
+        payload: '{"display_name":"Alice"}',
       );
 
-      expect(await repo.countPending(), equals(2));
-
-      // Delete entries older than cutoff.
+      // Delete entries older than cutoff with confirmed/rejected status.
       final deleted = await repo.deleteStale(cutoff);
-      expect(deleted, equals(1));
+      expect(deleted, equals(2)); // confirmed + rejected deleted; pending kept
 
-      // Only the fresh entry remains.
+      // Pending entries remain regardless of age.
+      final remaining = await repo.getPending();
+      expect(remaining.length, equals(2));
+      final remainingIds = remaining.map((e) => e.entityId).toSet();
+      expect(remainingIds, containsAll(['stale-pending', 'fresh-pending']));
+    });
+
+    test('deleteStale does not delete pending entries regardless of age',
+        () async {
+      final veryOld = DateTime(2020, 1, 1);
+      final cutoff = DateTime.now();
+
+      await insertEntryWithTimestamp(
+        db,
+        createdAt: veryOld,
+        entityId: 'old-pending',
+        entityType: 'itemInstance',
+        payload: '{}',
+        status: 'pending',
+      );
+
+      final deleted = await repo.deleteStale(cutoff);
+      expect(deleted, equals(0));
+
       final remaining = await repo.getPending();
       expect(remaining.length, equals(1));
-      expect(remaining.first.entityId, equals('fresh-item'));
-      expect(remaining.first.entityType,
-          equals(WriteQueueEntityType.profile));
+      expect(remaining.first.entityId, equals('old-pending'));
     });
 
     test('enqueue stores payload as opaque JSON string (round-trip)', () async {
