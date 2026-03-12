@@ -12,12 +12,15 @@ import 'package:earth_nova/core/models/habitat.dart';
 /// - `lakes` → Freshwater (proximity, within radiusKm)
 /// - `mountains` → Mountain (polygon containment — RESOLVE biomes 10-11)
 /// - `deserts` → Desert (polygon containment — RESOLVE biome 13)
-/// - `wetlands` → Swamp (polygon containment — RESOLVE biomes 9, 14)
-/// - `forests` → Forest (polygon containment — RESOLVE biomes 1-6)
+/// - `wetlands` → Swamp (polygon containment OR centroid proximity within radiusKm)
+/// - `forests` → Forest (polygon containment OR centroid proximity within radiusKm)
 /// - (default when nothing matches) → Plains
 ///
 /// Point features use a 1°×1° bucket grid for fast neighbour lookups.
-/// Polygon features use a ray casting containment test per ring.
+/// Polygon features use ray casting containment. Forest and swamp also build
+/// a centroid grid so cells within [radiusKm] of any patch get the habitat —
+/// this ensures parks and wetland patches influence nearby cells even when the
+/// player is not strictly inside the polygon boundary.
 class BiomeFeatureIndex {
   /// Loads a [BiomeFeatureIndex] from the JSON string produced by
   /// `assets/biome_features.json`.
@@ -46,20 +49,27 @@ class BiomeFeatureIndex {
       }).toList();
     }
 
+    final wetlands = parsePolygons('wetlands');
+    final forests = parsePolygons('forests');
+
     return BiomeFeatureIndex._(
       coastline: parsePoints('coastline'),
       rivers: parsePoints('rivers'),
       lakes: parsePoints('lakes'),
       mountains: parsePolygons('mountains'),
       deserts: parsePolygons('deserts'),
-      wetlands: parsePolygons('wetlands'),
-      forests: parsePolygons('forests'),
+      wetlands: wetlands,
+      forests: forests,
+      wetlandCentroids: _computeCentroids(wetlands),
+      forestCentroids: _computeCentroids(forests),
     );
   }
 
   final Map<String, List<(double, double)>> _coastlineGrid;
   final Map<String, List<(double, double)>> _riverGrid;
   final Map<String, List<(double, double)>> _lakeGrid;
+  final Map<String, List<(double, double)>> _wetlandCentroidGrid;
+  final Map<String, List<(double, double)>> _forestCentroidGrid;
 
   final List<List<(double, double)>> _mountains;
   final List<List<(double, double)>> _deserts;
@@ -78,9 +88,13 @@ class BiomeFeatureIndex {
     required List<List<(double, double)>> deserts,
     required List<List<(double, double)>> wetlands,
     required List<List<(double, double)>> forests,
+    required List<List<double>> wetlandCentroids,
+    required List<List<double>> forestCentroids,
   })  : _coastlineGrid = _buildGrid(coastline),
         _riverGrid = _buildGrid(rivers),
         _lakeGrid = _buildGrid(lakes),
+        _wetlandCentroidGrid = _buildGrid(wetlandCentroids),
+        _forestCentroidGrid = _buildGrid(forestCentroids),
         _mountains = mountains,
         _deserts = deserts,
         _wetlands = wetlands,
@@ -115,8 +129,14 @@ class BiomeFeatureIndex {
     }
     if (_inAnyPolygon(_mountains, lat, lon)) result.add(Habitat.mountain);
     if (_inAnyPolygon(_deserts, lat, lon)) result.add(Habitat.desert);
-    if (_inAnyPolygon(_wetlands, lat, lon)) result.add(Habitat.swamp);
-    if (_inAnyPolygon(_forests, lat, lon)) result.add(Habitat.forest);
+    if (_inAnyPolygon(_wetlands, lat, lon) ||
+        _hasNearby(_wetlandCentroidGrid, lat, lon, radiusKm)) {
+      result.add(Habitat.swamp);
+    }
+    if (_inAnyPolygon(_forests, lat, lon) ||
+        _hasNearby(_forestCentroidGrid, lat, lon, radiusKm)) {
+      result.add(Habitat.forest);
+    }
 
     if (result.isEmpty) result.add(Habitat.plains);
     return result;
@@ -174,6 +194,28 @@ class BiomeFeatureIndex {
       }
     }
     return inside;
+  }
+
+  /// Computes polygon centroids as [lat, lon] pairs.
+  ///
+  /// Each ring's centroid is the mean of its vertices. Used to build proximity
+  /// grids for forest and swamp so cells within [radiusKm] of any patch get
+  /// the habitat even when not strictly inside the polygon boundary.
+  static List<List<double>> _computeCentroids(
+    List<List<(double, double)>> polygons,
+  ) {
+    final centroids = <List<double>>[];
+    for (final ring in polygons) {
+      if (ring.isEmpty) continue;
+      var sumLat = 0.0;
+      var sumLon = 0.0;
+      for (final (lat, lon) in ring) {
+        sumLat += lat;
+        sumLon += lon;
+      }
+      centroids.add([sumLat / ring.length, sumLon / ring.length]);
+    }
+    return centroids;
   }
 
   /// Builds a 1°×1° bucket grid from a flat list of [lat, lon] pairs.
