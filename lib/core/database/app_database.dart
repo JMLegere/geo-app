@@ -357,10 +357,20 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Insert or update cell progress
+  ///
+  /// Targets the `(userId, cellId)` composite unique constraint so that
+  /// rows hydrated from Supabase (which may have a different PK `id`) still
+  /// upsert correctly instead of violating the uniqueness constraint.
   Future<void> upsertCellProgress(LocalCellProgress progress) async {
     await into(localCellProgressTable).insert(
       progress,
-      onConflict: DoUpdate((_) => progress),
+      onConflict: DoUpdate(
+        (_) => progress,
+        target: [
+          localCellProgressTable.userId,
+          localCellProgressTable.cellId,
+        ],
+      ),
     );
   }
 

@@ -126,7 +126,7 @@ class EarthNovaApp extends ConsumerWidget {
   }
 
   Widget _resolveHome(AuthState authState, PlayerState playerState) {
-    return switch (authState.status) {
+    final widget = switch (authState.status) {
       AuthStatus.loading => const LoadingScreen(
           key: ValueKey('loading'),
         ),
@@ -141,5 +141,16 @@ class EarthNovaApp extends ConsumerWidget {
           key: ValueKey('login'),
         ),
     };
+
+    final pageName = switch (authState.status) {
+      AuthStatus.loading => 'LoadingScreen',
+      AuthStatus.otpSent || AuthStatus.otpVerifying => 'OtpVerificationScreen',
+      AuthStatus.authenticated =>
+        playerState.hasCompletedOnboarding ? 'TabShell' : 'OnboardingScreen',
+      AuthStatus.unauthenticated => 'LoginScreen',
+    };
+    debugPrint('[NAV] resolveHome → $pageName');
+
+    return widget;
   }
 }

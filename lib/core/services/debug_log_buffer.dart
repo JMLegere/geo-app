@@ -21,9 +21,13 @@ class DebugLogBuffer {
   /// Number of buffered lines.
   int get length => _lines.length;
 
-  /// Add a line to the buffer. Evicts oldest if at capacity.
+  /// Add a line to the buffer with an HH:mm:ss.SSS timestamp prefix.
+  /// Evicts oldest if at capacity.
   void add(String line) {
-    _lines.addLast(line);
+    final now = DateTime.now();
+    final ts = '${_pad2(now.hour)}:${_pad2(now.minute)}:'
+        '${_pad2(now.second)}.${_pad3(now.millisecond)}';
+    _lines.addLast('[$ts] $line');
     while (_lines.length > maxLines) {
       _lines.removeFirst();
     }
@@ -31,6 +35,9 @@ class DebugLogBuffer {
       cb();
     }
   }
+
+  static String _pad2(int n) => n.toString().padLeft(2, '0');
+  static String _pad3(int n) => n.toString().padLeft(3, '0');
 
   /// Clear all buffered lines.
   void clear() {

@@ -91,7 +91,10 @@ class _TabShellState extends ConsumerState<TabShell>
 
     // Listen for tab changes to control MapLibre visibility on web.
     // On native platforms, MapVisibility is a no-op.
+    const tabNames = ['Map', 'Home', 'Town', 'Pack'];
     ref.listen<int>(tabIndexProvider, (previous, next) {
+      debugPrint('[NAV] tab switch: ${tabNames[previous ?? 0]} → '
+          '${tabNames[next]}');
       if (next == 0) {
         _mapVisibility.revealMapContainer();
       } else if (previous == 0) {
@@ -124,6 +127,7 @@ class _TabShellState extends ConsumerState<TabShell>
               child: _PlayerIdenticonButton(
                 userId: userId,
                 onTap: () {
+                  debugPrint('[ACTION] open settings');
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => const SettingsScreen(),
@@ -161,7 +165,10 @@ class _TabShellState extends ConsumerState<TabShell>
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
-        onTap: (index) => ref.read(tabIndexProvider.notifier).setTab(index),
+        onTap: (index) {
+          debugPrint('[ACTION] tap tab: ${tabNames[index]}');
+          ref.read(tabIndexProvider.notifier).setTab(index);
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.explore),

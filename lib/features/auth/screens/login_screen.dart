@@ -60,6 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
+    debugPrint('[ACTION] sign in attempt');
     setState(() => _localError = null);
     await ref.read(authProvider.notifier).signInWithPhone(phone);
   }

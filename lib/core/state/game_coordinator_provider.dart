@@ -1300,9 +1300,13 @@ Future<void> _requeueUnenrichedSpecies({
     // or have incomplete enrichment (e.g., missing size from older pipeline).
     // Uses faunaById to naturally filter to fauna items only (ItemInstance
     // has no category field — the species data map is the filter).
+    //
+    // Snapshot the items list to avoid ConcurrentModificationError — enrichment
+    // callbacks can mutate inventory while we iterate.
     final unenrichedIds = <String>{};
     final incompleteIds = <String>{};
-    for (final item in inventory.items) {
+    final itemsSnapshot = List<ItemInstance>.of(inventory.items);
+    for (final item in itemsSnapshot) {
       if (!faunaById.containsKey(item.definitionId)) continue;
 
       if (!enrichmentCache.containsKey(item.definitionId)) {
