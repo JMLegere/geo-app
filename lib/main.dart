@@ -157,6 +157,10 @@ class EarthNovaApp extends ConsumerWidget {
           key: const ValueKey('otp'),
           phone: authState.phone!,
         ),
+      // Wait for profile hydration before routing — prevents flashing
+      // OnboardingScreen while loadProfile() hasn't run yet.
+      AuthStatus.authenticated when !playerState.isHydrated =>
+        const LoadingScreen(key: ValueKey('loading')),
       AuthStatus.authenticated => playerState.hasCompletedOnboarding
           ? const TabShell(key: ValueKey('tabshell'))
           : const OnboardingScreen(key: ValueKey('onboarding')),
@@ -168,6 +172,8 @@ class EarthNovaApp extends ConsumerWidget {
     final pageName = switch (authState.status) {
       AuthStatus.loading => 'LoadingScreen',
       AuthStatus.otpSent || AuthStatus.otpVerifying => 'OtpVerificationScreen',
+      AuthStatus.authenticated when !playerState.isHydrated =>
+        'LoadingScreen (hydrating)',
       AuthStatus.authenticated =>
         playerState.hasCompletedOnboarding ? 'TabShell' : 'OnboardingScreen',
       AuthStatus.unauthenticated => 'LoginScreen',

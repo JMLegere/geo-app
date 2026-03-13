@@ -462,6 +462,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         }
       }
 
+      // Signal hydration complete — ensures _resolveHome() in main.dart
+      // shows LoadingScreen until profile data is available (preventing
+      // an OnboardingScreen flash for returning users).
+      ref.read(playerProvider.notifier).markHydrated();
+
       // Capture hydrated profile state so the write-through listener
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
