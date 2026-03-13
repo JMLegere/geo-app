@@ -31,6 +31,7 @@ import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/species/stats_service.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
+import 'package:earth_nova/core/cells/cell_property_resolver.dart';
 import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
@@ -81,7 +82,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final queueProcessor = ref.watch(queueProcessorProvider);
 
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
-  final cellPropertyResolver = ref.watch(cellPropertyResolverProvider);
+  final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
@@ -331,6 +332,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] daily seed fetch failed: $e');
     }).whenComplete(() {
+      if (_providerDisposed) return;
       locationService.start();
       coordinator.start(
         gpsStream: gpsStream,
@@ -541,6 +543,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       debugPrint('[GameCoordinator] hydration chain failed '
           '(starting loop anyway): $e');
     }).whenComplete(() {
+      if (_providerDisposed) return;
       startLoop();
 
       // Start live pedometer stream after game loop is running (native only).
@@ -624,6 +627,44 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       lastLat: currentPos?.lat,
       lastLon: currentPos?.lon,
     );
+  });
+
+  // --- Re-resolve cells when biome data becomes available ---
+  //
+  // cellPropertyResolverProvider returns null while BiomeFeatureIndex is
+  // loading. Once loaded, it transitions to a real CellPropertyResolver.
+  // We listen for this transition to:
+  //   1. Update the coordinator's resolver (so new cells get real habitats)
+  //   2. Re-resolve any cells cached with the {plains} fallback
+  //   3. Persist the corrected cell properties
+  //
+  // Using ref.listen (not ref.watch) avoids rebuilding the entire provider
+  // and restarting the game loop just because biome data loaded.
+
+  ref.listen<CellPropertyResolver?>(cellPropertyResolverProvider,
+      (previous, next) {
+    if (_providerDisposed) return;
+    if (next == null) return;
+
+    coordinator.setCellPropertyResolver(next);
+
+    // Only re-resolve when transitioning from null → non-null (biome loaded).
+    if (previous != null) return;
+
+    final reResolved = coordinator.reResolvePlainsOnlyCells();
+    if (reResolved.isNotEmpty) {
+      debugPrint('[GameCoordinator] biome loaded: re-resolved '
+          '${reResolved.length} plains-only cells');
+      final userId = ref.read(authProvider).user?.id;
+      for (final props in reResolved) {
+        _persistCellProperties(
+          properties: props,
+          cellPropertyRepo: cellPropertyRepo,
+          queueProcessor: queueProcessor,
+          userId: userId,
+        );
+      }
+    }
   });
 
   // --- Cleanup ---

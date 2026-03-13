@@ -14,6 +14,7 @@ import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart
 import 'package:earth_nova/features/sync/services/lifecycle_flush.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/error_boundary.dart';
 import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
@@ -108,14 +109,22 @@ class _TabShellState extends ConsumerState<TabShell>
     return Scaffold(
       body: Stack(
         children: [
-          IndexedStack(
-            index: currentIndex,
-            children: const [
-              MapScreen(),
-              SanctuaryScreen(),
-              TownPlaceholderScreen(),
-              PackScreen(),
-            ],
+          ErrorBoundary(
+            onError: (details) => DefaultErrorFallback(
+              onRetry: () {
+                // Force a full rebuild by toggling tabs.
+                (context as Element).markNeedsBuild();
+              },
+            ),
+            child: IndexedStack(
+              index: currentIndex,
+              children: const [
+                MapScreen(),
+                SanctuaryScreen(),
+                TownPlaceholderScreen(),
+                PackScreen(),
+              ],
+            ),
           ),
           // ── Player identicon — persistent settings trigger ─────────────
           // Shown on tabs without their own AppBar (Map, Town).

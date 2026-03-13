@@ -61,6 +61,7 @@ class LocationService {
   );
 
   bool _isTracking = false;
+  bool _disposed = false;
 
   Stream<SimulatedLocation> get filteredLocationStream =>
       _outputController.stream;
@@ -76,6 +77,7 @@ class LocationService {
   }
 
   void dispose() {
+    _disposed = true;
     stop();
     _outputController.close();
     activeModeNotifier.dispose();
@@ -150,6 +152,7 @@ class LocationService {
 
     webGps.ensurePermission().then((status) {
       _switchingToGps = false;
+      if (_disposed) return;
 
       if (status != GpsPermissionStatus.granted) {
         debugPrint('[LocationService] web GPS denied ($status) — '
@@ -179,6 +182,7 @@ class LocationService {
       activeModeNotifier.value = LocationMode.realGps;
     }).catchError((Object e) {
       _switchingToGps = false;
+      if (_disposed) return;
       debugPrint('[LocationService] web GPS attempt failed: $e — '
           'keeping keyboard mode');
       webGps.dispose();

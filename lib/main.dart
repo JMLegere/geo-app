@@ -78,13 +78,34 @@ Future<void> main() async {
     }
   });
 
+  // Global error handlers — catch framework errors and unhandled zone
+  // exceptions so the user never sees a raw red/blue crash screen.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details);
+    DebugLogBuffer.instance
+        .add('[CRASH] FlutterError: ${details.exceptionAsString()}');
+  };
+
+  // Replace the default error widget (red screen in debug, grey in release)
+  // with a minimal dark container. Individual screens can still use
+  // ErrorBoundary for richer fallback UI.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return const ColoredBox(color: Color(0xFF161620));
+  };
+
   // Run inside a Zone that intercepts all print() output (which includes
-  // debugPrint and MapLogger) and feeds it to the in-app debug log viewer.
-  runZoned(
+  // debugPrint and MapLogger) and feeds it to the in-app debug log viewer,
+  // AND catches any unhandled async exceptions (Future rejections, Timer
+  // callbacks, microtask errors) that would otherwise crash the app.
+  runZonedGuarded(
     () => runApp(UncontrolledProviderScope(
       container: container,
       child: const EarthNovaApp(),
     )),
+    (Object error, StackTrace stack) {
+      DebugLogBuffer.instance.add('[CRASH] Unhandled: $error');
+      debugPrint('[CRASH] Unhandled zone error: $error\n$stack');
+    },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
         DebugLogBuffer.instance.add(line);
