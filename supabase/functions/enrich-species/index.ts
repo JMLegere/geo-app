@@ -130,16 +130,17 @@ ${classConstraint}
     seed = seeds, grains, nuts, kernels (for granivores like sparrows, finches, rodents)
     veg = leaves, roots, grass, plant matter that is NOT fruit/seed/nectar (for herbivores/folivores)
 - climate: one of [${CLIMATES.join(", ")}] (primary habitat climate zone)
-- size: one of [${ANIMAL_SIZES.join(", ")}] — pick based on adult body mass:
-    fine = insects, tiny invertebrates (< 50 g)
-    diminutive = small insects, frogs, mice (50-500 g)
-    tiny = squirrels, rats, small birds (500 g - 4 kg)
-    small = foxes, rabbits, medium dogs (4-25 kg)
-    medium = wolves, large cats, deer (25-150 kg)
-    large = bears, big cats, large ungulates (150-500 kg)
-    huge = rhinos, hippos, small cetaceans (500-2,000 kg)
-    gargantuan = elephants, large cetaceans (2-15 t)
-    colossal = blue whales, colossal marine life (15+ t)
+- size: one of [${ANIMAL_SIZES.join(", ")}] — FIRST estimate the species' typical adult body mass in grams, THEN pick the category whose weight range contains that mass. Use the WEIGHT RANGE, not the example animals:
+    fine (under 50 g): e.g. most insects, hummingbirds, tiny frogs, small geckos
+    diminutive (50 g – 500 g): e.g. sparrows, plovers, starlings, mice, chipmunks, small frogs
+    tiny (500 g – 4 kg): e.g. pigeons, parrots, squirrels, rats, rabbits, small ducks
+    small (4 kg – 25 kg): e.g. foxes, raccoons, eagles, large owls, beavers, house cats
+    medium (25 kg – 150 kg): e.g. wolves, deer, big cats (leopard), humans, kangaroos
+    large (150 kg – 500 kg): e.g. bears, gorillas, lions, tigers, large ungulates (elk)
+    huge (500 kg – 2,000 kg): e.g. moose, rhinos, hippos, giraffes, dolphins
+    gargantuan (2 t – 15 t): e.g. elephants, orcas, large sharks
+    colossal (over 15 t): e.g. blue whales, whale sharks, sperm whales
+    IMPORTANT: A 200 g bird is "diminutive", NOT "tiny" or "small". Always check the weight range first.
 - brawn: integer (physical strength/size, 0-90)
 - wit: integer (intelligence/cunning, 0-90)  
 - speed: integer (speed/agility, 0-90)
