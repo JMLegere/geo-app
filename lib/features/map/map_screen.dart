@@ -180,25 +180,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
 
-    // Wire fog visibility → location enrichment.
-    //
-    // When a cell first becomes visible in the viewport, request admin-border
-    // enrichment for it. The service rate-limits to 1 req/1.2 s and
-    // deduplicates via its _inFlight set, so repeated calls are safe.
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
-    final locationEnrichmentService =
-        ref.read(locationEnrichmentServiceProvider);
-
-    fogOverlayController.onCellBecameVisible = (cellId, lat, lon) {
-      locationEnrichmentService.requestEnrichment(
-        cellId: cellId,
-        lat: lat,
-        lon: lon,
-      );
-    };
-
     // When enrichment completes, fetch the saved LocationNode and push it into
     // the fog overlay cache so territory borders update without an app restart.
+    final locationEnrichmentService =
+        ref.read(locationEnrichmentServiceProvider);
     locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
       if (!mounted) return;
       ref.read(locationNodeRepositoryProvider).get(locationId).then((node) {
@@ -214,7 +199,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
-    ref.read(fogOverlayControllerProvider).onCellBecameVisible = null;
     ref.read(locationEnrichmentServiceProvider).onLocationEnriched = null;
     _rubberBand.dispose();
     _markerPosition.dispose();

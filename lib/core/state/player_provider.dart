@@ -15,6 +15,14 @@ class PlayerState {
   /// Whether the player has completed the onboarding flow.
   final bool hasCompletedOnboarding;
 
+  /// Whether the player profile has been hydrated from persistence.
+  ///
+  /// Starts `false` — set to `true` by [PlayerNotifier.markHydrated] after
+  /// the startup hydration sequence completes. Used by `_resolveHome` in
+  /// `main.dart` to show [LoadingScreen] instead of flashing
+  /// [OnboardingScreen] while the profile is still loading from SQLite.
+  final bool isHydrated;
+
   PlayerState({
     this.currentStreak = 0,
     this.longestStreak = 0,
@@ -23,6 +31,7 @@ class PlayerState {
     this.totalSteps = 0,
     this.lastKnownStepCount = 0,
     this.hasCompletedOnboarding = false,
+    this.isHydrated = false,
   });
 
   PlayerState copyWith({
@@ -33,6 +42,7 @@ class PlayerState {
     int? totalSteps,
     int? lastKnownStepCount,
     bool? hasCompletedOnboarding,
+    bool? isHydrated,
   }) {
     return PlayerState(
       currentStreak: currentStreak ?? this.currentStreak,
@@ -43,6 +53,7 @@ class PlayerState {
       lastKnownStepCount: lastKnownStepCount ?? this.lastKnownStepCount,
       hasCompletedOnboarding:
           hasCompletedOnboarding ?? this.hasCompletedOnboarding,
+      isHydrated: isHydrated ?? this.isHydrated,
     );
   }
 }
@@ -143,6 +154,17 @@ class PlayerNotifier extends Notifier<PlayerState> {
 
   void markOnboardingComplete() {
     state = state.copyWith(hasCompletedOnboarding: true);
+  }
+
+  /// Signals that profile hydration from persistence is complete.
+  ///
+  /// Called by [gameCoordinatorProvider] after the startup hydration
+  /// sequence finishes (regardless of whether a profile was found).
+  /// No-op if already hydrated.
+  void markHydrated() {
+    if (!state.isHydrated) {
+      state = state.copyWith(isHydrated: true);
+    }
   }
 }
 

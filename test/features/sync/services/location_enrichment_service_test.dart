@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
@@ -35,6 +37,76 @@ class MockLocationNodeRepository implements LocationNodeRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
       'MockLocationNodeRepository.${invocation.memberName}');
+}
+
+/// Mock [FunctionsClient] that records `invoke()` calls and returns
+/// configurable responses or throws [FunctionException].
+class MockFunctionsClient implements FunctionsClient {
+  final List<({String functionName, Object? body})> invocations = [];
+
+  /// Called for every `invoke()`. Return a [FunctionResponse] or throw
+  /// [FunctionException] (or any other exception).
+  FunctionResponse Function(String functionName, Object? body)? handler;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #invoke) {
+      final functionName = invocation.positionalArguments[0] as String;
+      final body = invocation.namedArguments[#body];
+      invocations.add((functionName: functionName, body: body));
+
+      if (handler != null) {
+        try {
+          final response = handler!(functionName, body);
+          return Future<FunctionResponse>.value(response);
+        } catch (e) {
+          return Future<FunctionResponse>.error(e);
+        }
+      }
+
+      return Future<FunctionResponse>.value(
+        FunctionResponse(data: null, status: 200),
+      );
+    }
+    throw UnimplementedError('MockFunctionsClient.${invocation.memberName}');
+  }
+}
+
+/// Minimal [GoTrueClient] mock — returns null session, refresh is a no-op.
+class MockGoTrueClient implements GoTrueClient {
+  @override
+  Session? get currentSession => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #refreshSession) {
+      // Return a completed future so _deduplicatedRefresh() works.
+      return Future<AuthResponse>.value(AuthResponse(session: null));
+    }
+    throw UnimplementedError('MockGoTrueClient.${invocation.memberName}');
+  }
+}
+
+/// Wires [MockFunctionsClient] and [MockGoTrueClient] into a
+/// [SupabaseClient] that can be passed to [LocationEnrichmentService].
+class MockSupabaseClient implements SupabaseClient {
+  MockSupabaseClient({
+    required this.mockFunctions,
+    required this.mockAuth,
+  });
+
+  final MockFunctionsClient mockFunctions;
+  final MockGoTrueClient mockAuth;
+
+  @override
+  FunctionsClient get functions => mockFunctions;
+
+  @override
+  GoTrueClient get auth => mockAuth;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('MockSupabaseClient.${invocation.memberName}');
 }
 
 // =============================================================================
@@ -204,6 +276,263 @@ void main() {
       expect(AdminLevel.state.displayName, 'State/Province');
       expect(AdminLevel.city.displayName, 'City');
       expect(AdminLevel.district.displayName, 'District');
+    });
+  });
+
+  group('Batch mode', () {
+    late MockFunctionsClient mockFunctions;
+    late MockSupabaseClient mockClient;
+
+    setUp(() {
+      cellPropertyRepo = MockCellPropertyRepository();
+      locationNodeRepo = MockLocationNodeRepository();
+      mockFunctions = MockFunctionsClient();
+      mockClient = MockSupabaseClient(
+        mockFunctions: mockFunctions,
+        mockAuth: MockGoTrueClient(),
+      );
+    });
+
+    test('sends single batch request for multiple cells', () {
+      fakeAsync((async) {
+        mockFunctions.handler = (name, body) {
+          return FunctionResponse(
+            status: 200,
+            data: {
+              'results': <Map<String, Object?>>[
+                {
+                  'cell_id': 'cell_1',
+                  'status': 'enriched',
+                  'location_id': 'loc_1',
+                  'hierarchy': <Object>[],
+                },
+                {
+                  'cell_id': 'cell_2',
+                  'status': 'enriched',
+                  'location_id': 'loc_2',
+                  'hierarchy': <Object>[],
+                },
+              ],
+              'errors': <Object>[],
+            },
+          );
+        };
+
+        final service = LocationEnrichmentService(
+          cellPropertyRepo: cellPropertyRepo,
+          locationNodeRepo: locationNodeRepo,
+          supabaseClient: mockClient,
+        );
+        addTearDown(service.dispose);
+
+        service.requestEnrichment(cellId: 'cell_1', lat: 45.0, lon: -66.0);
+        service.requestEnrichment(cellId: 'cell_2', lat: 46.0, lon: -67.0);
+
+        // Advance past the drain timer.
+        async.elapse(const Duration(seconds: 2));
+
+        expect(mockFunctions.invocations, hasLength(1));
+        expect(mockFunctions.invocations.first.functionName,
+            'enrich-locations-batch');
+
+        // Verify the batch body contains both cells.
+        final body =
+            mockFunctions.invocations.first.body as Map<String, dynamic>;
+        final cells = body['cells'] as List;
+        expect(cells, hasLength(2));
+      });
+    });
+
+    test('404 triggers fallback to single-request mode', () {
+      fakeAsync((async) {
+        mockFunctions.handler = (name, body) {
+          if (name == 'enrich-locations-batch') {
+            throw const FunctionException(status: 404);
+          }
+          // Single-request fallback.
+          return FunctionResponse(
+            status: 200,
+            data: {
+              'status': 'enriched',
+              'location_id': 'loc_fallback',
+              'hierarchy': <Object>[],
+            },
+          );
+        };
+
+        final service = LocationEnrichmentService(
+          cellPropertyRepo: cellPropertyRepo,
+          locationNodeRepo: locationNodeRepo,
+          supabaseClient: mockClient,
+        );
+        addTearDown(service.dispose);
+
+        service.requestEnrichment(cellId: 'cell_1', lat: 45.0, lon: -66.0);
+
+        // Advance enough for batch attempt + single-request fallback.
+        async.elapse(const Duration(seconds: 5));
+
+        expect(service.batchSupported, isFalse);
+      });
+    });
+
+    test('fallback mode uses single-request _executeRequest()', () {
+      fakeAsync((async) {
+        int batchCallCount = 0;
+        mockFunctions.handler = (name, body) {
+          if (name == 'enrich-locations-batch') {
+            batchCallCount++;
+            throw const FunctionException(status: 404);
+          }
+          // Single-request path returns success.
+          return FunctionResponse(
+            status: 200,
+            data: {
+              'status': 'enriched',
+              'location_id': 'loc_single',
+              'hierarchy': <Object>[],
+            },
+          );
+        };
+
+        final service = LocationEnrichmentService(
+          cellPropertyRepo: cellPropertyRepo,
+          locationNodeRepo: locationNodeRepo,
+          supabaseClient: mockClient,
+        );
+        addTearDown(service.dispose);
+
+        service.requestEnrichment(cellId: 'cell_1', lat: 45.0, lon: -66.0);
+
+        // Advance enough for batch 404 + single-request processing.
+        async.elapse(const Duration(seconds: 5));
+
+        // Batch was attempted exactly once, then fell back.
+        expect(batchCallCount, 1);
+
+        // After fallback, the single-request path ran and enriched the cell.
+        expect(cellPropertyRepo.updateLocationIdCalls, hasLength(1));
+        expect(cellPropertyRepo.updateLocationIdCalls.first.$2, 'loc_single');
+
+        // New requests also use single-request mode.
+        service.requestEnrichment(cellId: 'cell_2', lat: 47.0, lon: -68.0);
+        async.elapse(const Duration(seconds: 3));
+
+        // No additional batch call — still only 1 from the initial attempt.
+        expect(batchCallCount, 1);
+        // But the new cell was enriched via single-request.
+        expect(cellPropertyRepo.updateLocationIdCalls, hasLength(2));
+      });
+    });
+
+    test('batch response processing calls onLocationEnriched for each result',
+        () {
+      fakeAsync((async) {
+        mockFunctions.handler = (name, body) {
+          return FunctionResponse(
+            status: 200,
+            data: {
+              'results': <Map<String, Object?>>[
+                {
+                  'cell_id': 'cell_a',
+                  'status': 'enriched',
+                  'location_id': 'loc_a',
+                  'hierarchy': <Object>[
+                    <String, Object?>{
+                      'id': 'world',
+                      'name': 'World',
+                      'level': 'world',
+                      'parent_id': null,
+                    },
+                  ],
+                },
+                {
+                  'cell_id': 'cell_b',
+                  'status': 'already_enriched',
+                  'location_id': 'loc_b',
+                  'hierarchy': <Object>[],
+                },
+                {
+                  'cell_id': 'cell_c',
+                  'status': 'no_location_data',
+                },
+              ],
+              'errors': <Object>[],
+            },
+          );
+        };
+
+        final enrichedCells = <(String, String)>[];
+
+        final service = LocationEnrichmentService(
+          cellPropertyRepo: cellPropertyRepo,
+          locationNodeRepo: locationNodeRepo,
+          supabaseClient: mockClient,
+          onLocationEnriched: (cellId, locationId) {
+            enrichedCells.add((cellId, locationId));
+          },
+        );
+        addTearDown(service.dispose);
+
+        service.requestEnrichment(cellId: 'cell_a', lat: 45.0, lon: -66.0);
+        service.requestEnrichment(cellId: 'cell_b', lat: 46.0, lon: -67.0);
+        service.requestEnrichment(cellId: 'cell_c', lat: 47.0, lon: -68.0);
+
+        async.elapse(const Duration(seconds: 2));
+
+        // Two enriched results trigger callback (no_location_data does not).
+        expect(enrichedCells, hasLength(2));
+        expect(enrichedCells[0], ('cell_a', 'loc_a'));
+        expect(enrichedCells[1], ('cell_b', 'loc_b'));
+
+        // Hierarchy node from cell_a was persisted.
+        expect(locationNodeRepo.upsertedNodes, hasLength(1));
+        expect(locationNodeRepo.upsertedNodes.first.id, 'world');
+
+        // Both enriched cells updated in cell_properties.
+        expect(cellPropertyRepo.updateLocationIdCalls, hasLength(2));
+      });
+    });
+
+    test('_inFlight is cleaned up after batch processing', () {
+      fakeAsync((async) {
+        mockFunctions.handler = (name, body) {
+          return FunctionResponse(
+            status: 200,
+            data: {
+              'results': <Map<String, Object?>>[
+                {
+                  'cell_id': 'cell_x',
+                  'status': 'enriched',
+                  'location_id': 'loc_x',
+                  'hierarchy': <Object>[],
+                },
+              ],
+              'errors': <Object>[],
+            },
+          );
+        };
+
+        final service = LocationEnrichmentService(
+          cellPropertyRepo: cellPropertyRepo,
+          locationNodeRepo: locationNodeRepo,
+          supabaseClient: mockClient,
+        );
+        addTearDown(service.dispose);
+
+        service.requestEnrichment(cellId: 'cell_x', lat: 45.0, lon: -66.0);
+
+        // Drain completes the batch.
+        async.elapse(const Duration(seconds: 2));
+
+        // cell_x is no longer in-flight — a second request should be accepted.
+        // (If _inFlight wasn't cleaned, this would be silently dropped.)
+        mockFunctions.invocations.clear();
+        service.requestEnrichment(cellId: 'cell_x', lat: 45.0, lon: -66.0);
+        async.elapse(const Duration(seconds: 2));
+
+        expect(mockFunctions.invocations, hasLength(1));
+      });
     });
   });
 }

@@ -164,6 +164,11 @@ const double kRubberBandSpeedMultiplier = 1.0 / 3.6;
 /// Prevents sub-pixel oscillation when effectively arrived.
 const double kRubberBandSnapThresholdMeters = 0.5;
 
+/// Distance threshold in meters for restarting the ticker after GPS jitter.
+/// GPS updates within this distance of the current display position are treated
+/// as jitter and do NOT restart the ticker. Prevents stop/start flapping.
+const double kTickerRestartThresholdMeters = 10.0;
+
 // Logging
 /// Enable debug logging for GPS updates.
 const bool kDebugLogGps = false;
@@ -326,3 +331,15 @@ const double kBorderLineWeightCity = 1.5;
 
 /// Border line weight for district-level boundaries.
 const double kBorderLineWeightDistrict = 1.0;
+
+// Startup Enrichment Throttling
+/// Maximum number of species queued for enrichment on app startup.
+/// Species beyond this cap are deferred to a lazy background drain to avoid
+/// a 200+ second serial call storm at session start (109 species × 4.2s/req).
+const int kStartupEnrichmentCap = 10;
+
+/// Number of deferred enrichment requests to process per background drain tick.
+const int kDeferredEnrichmentBatchSize = 5;
+
+/// Interval in seconds between background enrichment drain ticks.
+const int kDeferredEnrichmentIntervalSeconds = 30;

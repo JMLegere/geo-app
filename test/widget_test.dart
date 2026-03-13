@@ -47,7 +47,8 @@ class _AuthenticatedNotifier extends AuthNotifier {
 /// which is what EarthNovaApp actually checks for routing.
 class _OnboardedPlayerNotifier extends PlayerNotifier {
   @override
-  PlayerState build() => PlayerState(hasCompletedOnboarding: true);
+  PlayerState build() =>
+      PlayerState(hasCompletedOnboarding: true, isHydrated: true);
 }
 
 /// No-op stub for [LocationEnrichmentService] that prevents the real
