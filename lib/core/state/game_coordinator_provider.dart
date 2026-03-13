@@ -50,6 +50,7 @@ import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
+import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
@@ -94,6 +95,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Populated during hydration, updated when new enrichments arrive.
   final enrichmentCache =
       <String, ({int speed, int brawn, int wit, AnimalSize? size})>{};
+
+  // Deferred enrichment queue: species beyond the startup cap of
+  // kStartupEnrichmentCap. Populated by _requeueUnenrichedSpecies, drained
+  // lazily by a Timer.periodic every kDeferredEnrichmentIntervalSeconds.
+  // Cleared on sign-out so stale species don't leak into the next session.
+  final deferredEnrichmentQueue =
+      <({String definitionId, FaunaDefinition fauna, bool force})>[];
+  Timer? deferredDrainTimer;
 
   final coordinator = GameCoordinator(
     fogResolver: fogResolver,
@@ -193,6 +202,25 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         cellProgressRepo: cellProgressRepo,
         queueProcessor: queueProcessor,
+      );
+    }
+
+    // Enrich visited cell + ring-1 Voronoi neighbors.
+    // Service deduplicates via _inFlight set and rate-limits to 1 req/1.2s,
+    // so repeated calls for the same cell are safe.
+    final locationEnrichmentSvc = ref.read(locationEnrichmentServiceProvider);
+    final visitedCenter = cellService.getCellCenter(cellId);
+    locationEnrichmentSvc.requestEnrichment(
+      cellId: cellId,
+      lat: visitedCenter.lat,
+      lon: visitedCenter.lon,
+    );
+    for (final neighborId in cellService.getNeighborIds(cellId)) {
+      final center = cellService.getCellCenter(neighborId);
+      locationEnrichmentSvc.requestEnrichment(
+        cellId: neighborId,
+        lat: center.lat,
+        lon: center.lon,
       );
     }
   };
@@ -526,9 +554,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
       //   - Enrichment requests lost to app restart (in-memory queue)
       //   - New enrichment pipeline deployed after species were discovered
+      // Startup batch capped at kStartupEnrichmentCap; remainder drained
+      // lazily by a Timer.periodic (handle stored in deferredDrainTimer so
+      // ref.onDispose can cancel it).
       _requeueUnenrichedSpecies(
         ref: ref,
         enrichmentCache: enrichmentCache,
+        deferredQueue: deferredEnrichmentQueue,
+        onTimerCreated: (timer) {
+          deferredDrainTimer = timer;
+        },
       );
 
       // Backfill intrinsic affixes for items that were discovered before
@@ -583,6 +618,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       coordinator.setCurrentUserId(null);
       lastHydratedUserId = null;
+      // Cancel and clear deferred enrichment drain so stale species from the
+      // outgoing session don't queue under the next session's credentials.
+      deferredDrainTimer?.cancel();
+      deferredDrainTimer = null;
+      deferredEnrichmentQueue.clear();
       ref.read(playerProvider.notifier).loadProfile(
             cellsObserved: 0,
             totalDistanceKm: 0.0,
@@ -676,6 +716,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   ref.onDispose(() {
     _providerDisposed = true;
+    deferredDrainTimer?.cancel();
     coordinator.dispose();
     queueProcessor.dispose();
     locationService.stop();
@@ -1352,14 +1393,26 @@ Future<void> _backfillAllMissingAffixes({
 /// queue lost), pipeline changes, or new enrichment fields added after initial
 /// enrichment. Waits for species data to load, then compares inventory fauna
 /// against the enrichment cache.
+///
+/// Only [kStartupEnrichmentCap] species are queued immediately. The remainder
+/// are placed in [deferredQueue] and processed by a [Timer.periodic] started
+/// here (handle returned via [onTimerCreated] so the caller can cancel on
+/// dispose). This prevents a 200+ second serial call storm at session start
+/// (e.g. 109 species × 4.2s/req with max 2 concurrent = ~230 seconds).
 Future<void> _requeueUnenrichedSpecies({
   required Ref ref,
   required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
       enrichmentCache,
+  required List<({String definitionId, FaunaDefinition fauna, bool force})>
+      deferredQueue,
+  required void Function(Timer) onTimerCreated,
 }) async {
   try {
     final speciesData = await ref.read(speciesDataProvider.future);
     final inventory = ref.read(inventoryProvider);
+
+    // Capture enrichmentService before any async gap — the provider is a
+    // non-autoDispose singleton, so this instance is valid for the session.
     final enrichmentService = ref.read(enrichmentServiceProvider);
 
     // Build lookup map for fauna definitions by ID.
@@ -1388,12 +1441,20 @@ Future<void> _requeueUnenrichedSpecies({
       }
     }
 
-    final allIds = {...unenrichedIds, ...incompleteIds};
+    if (unenrichedIds.isEmpty && incompleteIds.isEmpty) return;
 
-    // Queue enrichment requests for the gap set.
-    // Incomplete enrichments (have a row but missing size) need force=true
-    // to make the Edge Function delete the stale row and re-enrich.
-    for (final defId in allIds) {
+    // Partition: unenriched first (higher priority — never enriched), then
+    // incomplete (have a DB row but missing size). Startup batch capped at
+    // kStartupEnrichmentCap; remainder deferred for lazy background drain.
+    final partition = partitionEnrichmentCandidates(
+      unenrichedIds: unenrichedIds,
+      incompleteIds: incompleteIds,
+    );
+
+    // Queue the startup batch immediately.
+    // Incomplete enrichments need force=true so the Edge Function deletes the
+    // stale row and re-enriches from scratch.
+    for (final defId in partition.startup) {
       final fauna = faunaById[defId]!;
       enrichmentService.requestEnrichment(
         definitionId: fauna.id,
@@ -1404,15 +1465,75 @@ Future<void> _requeueUnenrichedSpecies({
       );
     }
 
-    if (unenrichedIds.isNotEmpty) {
-      debugPrint('[GameCoordinator] re-queued ${unenrichedIds.length} '
-          'unenriched species for enrichment');
+    // Populate the deferred queue with the remainder.
+    for (final defId in partition.deferred) {
+      final fauna = faunaById[defId]!;
+      deferredQueue.add((
+        definitionId: defId,
+        fauna: fauna,
+        force: incompleteIds.contains(defId),
+      ));
     }
-    if (incompleteIds.isNotEmpty) {
-      debugPrint('[GameCoordinator] re-queued ${incompleteIds.length} '
-          'species with incomplete enrichment (missing size)');
+
+    debugPrint(
+      '[GameCoordinator] enrichment requeue: ${partition.startup.length} '
+      'immediate, ${partition.deferred.length} deferred '
+      '(${unenrichedIds.length} unenriched, '
+      '${incompleteIds.length} incomplete)',
+    );
+
+    // Start the background drain timer only when there are deferred items.
+    // Fires every kDeferredEnrichmentIntervalSeconds, processes
+    // kDeferredEnrichmentBatchSize items per tick, and self-cancels when
+    // the queue is empty.
+    if (deferredQueue.isNotEmpty) {
+      final drainTimer = Timer.periodic(
+        const Duration(seconds: kDeferredEnrichmentIntervalSeconds),
+        (_) {
+          if (deferredQueue.isEmpty) return;
+          final batchSize =
+              deferredQueue.length.clamp(0, kDeferredEnrichmentBatchSize);
+          final batch = deferredQueue.take(batchSize).toList();
+          deferredQueue.removeRange(0, batch.length);
+          for (final entry in batch) {
+            enrichmentService.requestEnrichment(
+              definitionId: entry.definitionId,
+              scientificName: entry.fauna.scientificName,
+              commonName: entry.fauna.displayName,
+              taxonomicClass: entry.fauna.taxonomicClass,
+              force: entry.force,
+            );
+          }
+          debugPrint(
+            '[GameCoordinator] deferred enrichment drain: '
+            '${batch.length} queued, ${deferredQueue.length} remaining',
+          );
+        },
+      );
+      onTimerCreated(drainTimer);
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to re-queue unenriched species: $e');
   }
+}
+
+/// Partitions enrichment candidate IDs into a startup batch and a deferred
+/// remainder.
+///
+/// Priority: [unenrichedIds] first (never enriched = higher priority), then
+/// [incompleteIds] (have a DB row but missing the size field). The startup
+/// batch is capped at [cap] (defaults to [kStartupEnrichmentCap]).
+///
+/// Exposed as a non-private function so it can be unit-tested directly.
+({List<String> startup, List<String> deferred}) partitionEnrichmentCandidates({
+  required Set<String> unenrichedIds,
+  required Set<String> incompleteIds,
+  int cap = kStartupEnrichmentCap,
+}) {
+  // Spread preserves LinkedHashSet insertion order: unenriched first.
+  final allIds = [...unenrichedIds, ...incompleteIds];
+  return (
+    startup: allIds.take(cap).toList(),
+    deferred: allIds.skip(cap).toList(),
+  );
 }
