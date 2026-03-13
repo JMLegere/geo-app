@@ -1,3 +1,0 @@
-/home/jeremy/workspace/geo-app/lib/features/map/providers/discovery_service_provider.dart:/// Seasonal filtering is applied via [seasonServiceProvider] to ensure only
-/home/jeremy/workspace/geo-app/lib/features/map/providers/discovery_service_provider.dart:  final seasonService = ref.watch(seasonServiceProvider);
-/home/jeremy/workspace/geo-app/lib/features/seasonal/providers/season_service_provider.dart:final seasonServiceProvider = Provider<SeasonService>(

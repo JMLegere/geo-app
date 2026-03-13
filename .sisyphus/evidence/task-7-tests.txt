@@ -1,5 +1,0 @@
-00:32 +998: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: FogStateResolver performance resolve() is O(1) per cell
-00:32 +999: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: FogStateResolver performance loadVisitedCells with 500 cells completes in under 2 seconds
-00:32 +1000: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: End-to-end discovery pipeline full pipeline (locate → biome → species → loot) completes in under 50ms
-00:32 +1001: /home/jeremy/workspace/geo-app/test/performance/performance_test.dart: (tearDownAll)
-00:32 +1001: All tests passed!

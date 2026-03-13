@@ -54,3 +54,8 @@ node_modules/
 
 # Agent working memory
 .claude/
+.sisyphus/
+
+# Ephemeral artifacts
+e2e-console-log.txt
+scripts/.cache/

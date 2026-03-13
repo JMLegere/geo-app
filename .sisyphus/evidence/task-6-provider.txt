@@ -1,6 +1,0 @@
-lib/features/auth/providers/auth_provider.dart:13:/// On construction, awaits `supabaseBootstrapProvider.ready` before deciding
-lib/features/auth/providers/auth_provider.dart:47:      final bootstrap = ref.read(supabaseBootstrapProvider);
-lib/features/sync/providers/sync_provider.dart:14:  if (!ref.read(supabaseBootstrapProvider).initialized) return null;
-lib/main.dart:22:      supabaseBootstrapProvider.overrideWithValue(bootstrap),
-lib/core/state/supabase_bootstrap_provider.dart:7:/// Consumers `await ref.read(supabaseBootstrapProvider).ready` before
-lib/core/state/supabase_bootstrap_provider.dart:14:final supabaseBootstrapProvider = Provider<SupabaseBootstrap>((ref) {

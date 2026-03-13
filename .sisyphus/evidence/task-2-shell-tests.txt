@@ -1,8 +1,0 @@
-=== Task 2: TabShell widget tests ===
-00:01 +5: TabShell navigation bar tapping Town tab updates tab index to 2
-00:01 +6: TabShell navigation bar tapping Pack tab updates tab index to 3
-00:01 +7: TabShell navigation bar tapping back to Map tab resets index to 0
-00:01 +8: TabShell navigation bar BottomNavigationBar reflects provider state changes
-00:01 +9: All tests passed!
-
-RESULT: PASS
