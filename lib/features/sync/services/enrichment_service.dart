@@ -188,7 +188,10 @@ class EnrichmentService {
     }
   }
 
-  Future<void> _executeBatch(List<_EnrichmentRequest> batch) async {
+  Future<void> _executeBatch(
+    List<_EnrichmentRequest> batch, {
+    bool isRetry = false,
+  }) async {
     final client = supabaseClient;
     if (client == null || _disposed) return;
 
@@ -286,13 +289,19 @@ class EnrichmentService {
         }
         return;
       }
+      if (e.status == 401 && isRetry) {
+        debugPrint('[EnrichmentService] retry 401 for batch '
+            '— tripping circuit breaker');
+        _tripAuthCircuitBreaker();
+        return;
+      }
       if (e.status == 401) {
         debugPrint('[EnrichmentService] 401 for batch '
             '— refreshing session and retrying');
         try {
           await _deduplicatedRefresh(client);
           if (_disposed) return;
-          await _executeBatch(batch);
+          await _executeBatch(batch, isRetry: true);
           return;
         } catch (refreshErr) {
           debugPrint('[EnrichmentService] refresh + retry failed for '

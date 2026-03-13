@@ -67,6 +67,21 @@ class MockGoTrueClient implements GoTrueClient {
       throw UnimplementedError('MockGoTrueClient.${invocation.memberName}');
 }
 
+/// [GoTrueClient] mock with controllable [refreshSession] behavior.
+class MockGoTrueClientWithRefresh extends MockGoTrueClient {
+  bool refreshShouldFail = false;
+  int refreshCallCount = 0;
+
+  @override
+  Future<AuthResponse> refreshSession([String? refreshToken]) async {
+    refreshCallCount++;
+    if (refreshShouldFail) {
+      throw AuthException('Refresh failed');
+    }
+    return AuthResponse(session: null, user: null);
+  }
+}
+
 /// Minimal mock of [SupabaseClient] that wires mock functions + auth.
 class MockSupabaseClient implements SupabaseClient {
   MockSupabaseClient({required this.mockFunctions, MockGoTrueClient? mockAuth})
@@ -543,6 +558,163 @@ void main() {
       addTearDown(service.dispose);
 
       expect(service.batchSupported, isTrue);
+    });
+
+    test(
+        'batch 401 with failed refresh trips circuit breaker after one attempt',
+        () async {
+      final mockAuth = MockGoTrueClientWithRefresh()..refreshShouldFail = true;
+
+      mockFunctions.onInvoke = (functionName, body) {
+        throw FunctionException(status: 401, details: 'Unauthorized');
+      };
+
+      final client = MockSupabaseClient(
+        mockFunctions: mockFunctions,
+        mockAuth: mockAuth,
+      );
+      final service = EnrichmentService(
+        repository: repository,
+        supabaseClient: client,
+        baseDelayMs: 0,
+        minIntervalMs: 0,
+      );
+      addTearDown(service.dispose);
+
+      await service.requestEnrichment(
+        definitionId: 'sp_1',
+        scientificName: 'Canis lupus',
+        commonName: 'Gray Wolf',
+        taxonomicClass: 'MAMMALIA',
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // Only ONE batch invocation — no infinite loop.
+      expect(mockFunctions.invocations, hasLength(1));
+
+      // Refresh was attempted once.
+      expect(mockAuth.refreshCallCount, 1);
+
+      // Circuit breaker tripped: subsequent requests produce no calls.
+      mockFunctions.invocations.clear();
+      await service.requestEnrichment(
+        definitionId: 'sp_2',
+        scientificName: 'Vulpes vulpes',
+        commonName: 'Red Fox',
+        taxonomicClass: 'MAMMALIA',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(mockFunctions.invocations, isEmpty);
+    });
+
+    test(
+        'batch 401 with persistent auth failure trips circuit breaker '
+        'after exactly one retry', () async {
+      // refreshSession succeeds but token is still invalid (401 persists).
+      final mockAuth = MockGoTrueClientWithRefresh()..refreshShouldFail = false;
+      int invokeCount = 0;
+
+      mockFunctions.onInvoke = (functionName, body) {
+        invokeCount++;
+        throw FunctionException(status: 401, details: 'Unauthorized');
+      };
+
+      final client = MockSupabaseClient(
+        mockFunctions: mockFunctions,
+        mockAuth: mockAuth,
+      );
+      final service = EnrichmentService(
+        repository: repository,
+        supabaseClient: client,
+        baseDelayMs: 0,
+        minIntervalMs: 0,
+      );
+      addTearDown(service.dispose);
+
+      await service.requestEnrichment(
+        definitionId: 'sp_1',
+        scientificName: 'Canis lupus',
+        commonName: 'Gray Wolf',
+        taxonomicClass: 'MAMMALIA',
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      // Exactly 2 invocations: initial attempt + one retry after refresh.
+      expect(invokeCount, 2);
+      // refreshSession was called exactly once.
+      expect(mockAuth.refreshCallCount, 1);
+      // No enrichments persisted.
+      expect(repository.upserted, isEmpty);
+
+      // Circuit breaker tripped — subsequent requests are silently dropped.
+      mockFunctions.invocations.clear();
+      invokeCount = 0;
+      await service.requestEnrichment(
+        definitionId: 'sp_2',
+        scientificName: 'Vulpes vulpes',
+        commonName: 'Red Fox',
+        taxonomicClass: 'MAMMALIA',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // No further invocations — circuit breaker stops the stampede.
+      expect(invokeCount, 0);
+    });
+
+    test('batch 401 with successful refresh retries once and succeeds',
+        () async {
+      final mockAuth = MockGoTrueClientWithRefresh()..refreshShouldFail = false;
+      int callCount = 0;
+
+      mockFunctions.onInvoke = (functionName, body) {
+        callCount++;
+        if (callCount == 1) {
+          throw FunctionException(status: 401, details: 'Unauthorized');
+        }
+        // Second call succeeds.
+        final species = body!['species'] as List;
+        return FunctionResponse(
+          data: makeBatchResponse(
+            results: (species as List<Map<String, dynamic>>)
+                .map(
+                    (s) => makeEnrichmentJson(definitionId: s['definition_id']))
+                .toList(),
+          ),
+          status: 200,
+        );
+      };
+
+      final client = MockSupabaseClient(
+        mockFunctions: mockFunctions,
+        mockAuth: mockAuth,
+      );
+      final service = EnrichmentService(
+        repository: repository,
+        supabaseClient: client,
+        baseDelayMs: 0,
+        minIntervalMs: 0,
+      );
+      addTearDown(service.dispose);
+
+      await service.requestEnrichment(
+        definitionId: 'sp_1',
+        scientificName: 'Canis lupus',
+        commonName: 'Gray Wolf',
+        taxonomicClass: 'MAMMALIA',
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // Two invocations: original 401 + retry after refresh.
+      expect(mockFunctions.invocations, hasLength(2));
+
+      // Refresh was called once.
+      expect(mockAuth.refreshCallCount, 1);
+
+      // Enrichment was stored on the retry.
+      expect(repository.upserted, hasLength(1));
+      expect(repository.upserted.first.definitionId, 'sp_1');
     });
   });
 }

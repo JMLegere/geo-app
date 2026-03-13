@@ -623,6 +623,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// ONLY feeds the rubber-band controller. All game logic (fog, discovery,
   /// stats) runs inside GameCoordinator, triggered by `updatePlayerPosition`.
   void _onRawGpsUpdate(({Geographic position, double accuracy}) update) {
+    if (!mounted) return;
+
     MapLogger.locationUpdate(
       update.position.lat,
       update.position.lon,
@@ -669,6 +671,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// MapLibre controller access which is widget-layer only.
   void _updateFogRendering(double lat, double lon) {
     if (!mounted) return;
+
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
       final MapCamera camera;
@@ -711,6 +714,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// continues rendering without borders until the load completes (same
   /// pattern as cell properties lazy loading).
   Future<void> _loadLocationNodes() async {
+    if (!mounted) return;
+
     try {
       final repo = ref.read(locationNodeRepositoryProvider);
       final nodes = await repo.getAll();
@@ -775,6 +780,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// The map is only shown after auth + hydration complete (sequential boot),
   /// so no hide/reveal hack or safety timeout is needed.
   Future<void> _initFogAndReveal() async {
+    if (!mounted) return;
+
     MapLogger.fogInitStart();
 
     try {
@@ -835,6 +842,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Ensures the marker recalculates its screen position after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
       final currentPos = _markerPosition.value;
       if (currentPos != null) {
         _markerPosition.value = null;
