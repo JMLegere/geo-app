@@ -41,6 +41,7 @@ import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
+import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
@@ -90,6 +91,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   /// The central game logic coordinator. Saved in initState for safe access.
   late final GameCoordinator _gameCoordinator;
+
+  /// Location enrichment service. Saved in initState for safe access in dispose()
+  /// (calling ref.read() in dispose() triggers "Bad state: Using ref" error).
+  late final LocationEnrichmentService _locationEnrichmentService;
 
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
@@ -182,9 +187,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // When enrichment completes, fetch the saved LocationNode and push it into
     // the fog overlay cache so territory borders update without an app restart.
-    final locationEnrichmentService =
-        ref.read(locationEnrichmentServiceProvider);
-    locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
+    // Save reference to field — ref.read() in dispose() is unsafe (Bad state: Using ref).
+    _locationEnrichmentService = ref.read(locationEnrichmentServiceProvider);
+    _locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
       if (!mounted) return;
       ref.read(locationNodeRepositoryProvider).get(locationId).then((node) {
         if (node != null && mounted) {
@@ -199,7 +204,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
-    ref.read(locationEnrichmentServiceProvider).onLocationEnriched = null;
+    _locationEnrichmentService.onLocationEnriched = null;
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
