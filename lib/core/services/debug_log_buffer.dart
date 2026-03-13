@@ -50,7 +50,9 @@ class DebugLogBuffer {
     // reach Supabase before the process dies.
     if (line.contains('[CRASH]')) {
       onCrash?.call();
-    } else if (line.contains('[AUTH]') || line.contains('[Auth]')) {
+    } else if (line.contains('[AUTH]') ||
+        line.contains('[Auth]') ||
+        line.contains('[NAV]')) {
       onAuthEvent?.call();
     }
   }
