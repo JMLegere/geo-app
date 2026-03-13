@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
+import 'package:earth_nova/core/services/log_flush_service.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
@@ -94,6 +97,15 @@ Future<void> main() async {
     return const ColoredBox(color: Color(0xFF161620));
   };
 
+  // 6. Start remote log flush service (Supabase → app_logs table).
+  //    Fire-and-forget every 30s + on app background. Skipped when
+  //    Supabase is not configured (offline-only mode).
+  LogFlushService? logFlushService;
+  if (SupabaseBootstrap.initialized) {
+    logFlushService = LogFlushService(Supabase.instance.client);
+    logFlushService.start();
+  }
+
   // Run inside a Zone that intercepts all print() output (which includes
   // debugPrint and MapLogger) and feeds it to the in-app debug log viewer,
   // AND catches any unhandled async exceptions (Future rejections, Timer
@@ -101,7 +113,10 @@ Future<void> main() async {
   runZonedGuarded(
     () => runApp(UncontrolledProviderScope(
       container: container,
-      child: const EarthNovaApp(),
+      child: _LogFlushObserver(
+        logFlushService: logFlushService,
+        child: const EarthNovaApp(),
+      ),
     )),
     (Object error, StackTrace stack) {
       DebugLogBuffer.instance.add('[CRASH] Unhandled: $error');
@@ -188,4 +203,46 @@ class EarthNovaApp extends ConsumerWidget {
 
     return widget;
   }
+}
+
+/// Invisible widget that observes app lifecycle to flush logs when the app
+/// is backgrounded. Wraps the widget tree so it receives lifecycle events.
+class _LogFlushObserver extends StatefulWidget {
+  const _LogFlushObserver({
+    required this.logFlushService,
+    required this.child,
+  });
+
+  final LogFlushService? logFlushService;
+  final Widget child;
+
+  @override
+  State<_LogFlushObserver> createState() => _LogFlushObserverState();
+}
+
+class _LogFlushObserverState extends State<_LogFlushObserver>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.logFlushService?.stop();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // Fire-and-forget — don't await.
+      widget.logFlushService?.flush();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
