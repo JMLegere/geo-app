@@ -197,6 +197,12 @@ Return only valid JSON, no markdown.`;
   return parsed;
 }
 
+class AllProvidersFailedError extends Error {
+  constructor(count: number, species: string) {
+    super(`All ${count} providers failed for ${species}`);
+  }
+}
+
 async function callLLMWithRotation(
   providers: Provider[],
   scientificName: string,
@@ -215,7 +221,7 @@ async function callLLMWithRotation(
       console.error(`[enrich] ${provider.name} (${provider.model}) failed for ${scientificName}: ${message}`);
     }
   }
-  throw new Error(`All ${providers.length} providers failed for ${scientificName}`);
+  throw new AllProvidersFailedError(providers.length, scientificName);
 }
 
 async function validateAuth(req: Request): Promise<Response | null> {
@@ -337,8 +343,7 @@ serve(async (req: Request) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const isAllProvidersFailed = message.startsWith("All ") && message.includes("providers failed");
-    const statusCode = isAllProvidersFailed ? 502 : ((err as any).statusCode ?? 500);
+    const statusCode = err instanceof AllProvidersFailedError ? 502 : ((err as any).statusCode ?? 500);
     const headers: Record<string, string> = {
       ...CORS_HEADERS,
       "Content-Type": "application/json",

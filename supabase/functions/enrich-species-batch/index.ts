@@ -200,6 +200,12 @@ Return only valid JSON, no markdown.`;
   return parsed;
 }
 
+class AllProvidersFailedError extends Error {
+  constructor(count: number, species: string) {
+    super(`All ${count} providers failed for ${species}`);
+  }
+}
+
 async function callLLMWithRotation(
   providers: Provider[],
   startIndex: number,
@@ -220,7 +226,7 @@ async function callLLMWithRotation(
       // Single failure → rotate to next provider immediately
     }
   }
-  throw new Error(`All ${providers.length} providers failed for ${scientificName}`);
+  throw new AllProvidersFailedError(providers.length, scientificName);
 }
 
 async function validateAuth(req: Request): Promise<Response | null> {
