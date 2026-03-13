@@ -10,6 +10,8 @@ import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 
+enum EnrichmentPriority { high, low }
+
 class _EnrichmentRequest {
   final String definitionId;
   final String scientificName;
@@ -17,6 +19,7 @@ class _EnrichmentRequest {
   final String taxonomicClass;
   final bool force;
   final int attempt;
+  final EnrichmentPriority priority;
 
   _EnrichmentRequest({
     required this.definitionId,
@@ -25,6 +28,7 @@ class _EnrichmentRequest {
     required this.taxonomicClass,
     this.force = false,
     this.attempt = 0,
+    this.priority = EnrichmentPriority.high,
   });
 
   _EnrichmentRequest retry() => _EnrichmentRequest(
@@ -34,6 +38,7 @@ class _EnrichmentRequest {
         taxonomicClass: taxonomicClass,
         force: force,
         attempt: attempt + 1,
+        priority: priority,
       );
 }
 
@@ -44,6 +49,7 @@ class EnrichmentService {
     this.onEnriched,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 4000,
+    @visibleForTesting this.minIntervalMs = _defaultMinIntervalMs,
   }) {
     debugPrint('[EnrichmentService] created — '
         'client ${supabaseClient != null ? "available" : "NULL"}');
@@ -53,6 +59,7 @@ class EnrichmentService {
   final SupabaseClient? supabaseClient;
   final int maxRetries;
   final int baseDelayMs;
+  final int minIntervalMs;
 
   /// Called after each successful enrichment is cached locally.
   /// Provider layer uses this to invalidate [enrichmentMapProvider].
@@ -65,11 +72,13 @@ class EnrichmentService {
   void Function(SpeciesEnrichment enrichment)? onEnrichedHook;
 
   static const _maxConcurrent = 2;
-  static const _minIntervalMs = 4200;
+  static const _defaultMinIntervalMs = 4200;
+  static const _batchSize = 10;
 
   final Queue<_EnrichmentRequest> _queue = Queue();
   final Set<String> _inFlight = {};
   int _activeRequests = 0;
+  bool _batchSupported = true;
   DateTime _lastRequestTime = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _drainTimer;
   bool _rateLimited = false;
@@ -85,12 +94,16 @@ class EnrichmentService {
   /// firing parallel refresh requests.
   Future<void>? _pendingRefresh;
 
+  @visibleForTesting
+  bool get batchSupported => _batchSupported;
+
   Future<void> requestEnrichment({
     required String definitionId,
     required String scientificName,
     required String commonName,
     required String taxonomicClass,
     bool force = false,
+    EnrichmentPriority priority = EnrichmentPriority.high,
   }) async {
     if (supabaseClient == null) {
       debugPrint('[EnrichmentService] skipping $definitionId — '
@@ -105,6 +118,7 @@ class EnrichmentService {
       commonName: commonName,
       taxonomicClass: taxonomicClass,
       force: force,
+      priority: priority,
     ));
     _inFlight.add(definitionId);
     _scheduleDrain();
@@ -116,12 +130,44 @@ class EnrichmentService {
 
     final sinceLastRequest =
         DateTime.now().difference(_lastRequestTime).inMilliseconds;
-    final delay = max(0, _minIntervalMs - sinceLastRequest);
+    final delay = max(0, minIntervalMs - sinceLastRequest);
 
     _drainTimer = Timer(Duration(milliseconds: delay), _drain);
   }
 
   Future<void> _drain() async {
+    if (_batchSupported) {
+      await _drainBatch();
+    } else {
+      await _drainSingle();
+    }
+  }
+
+  Future<void> _drainBatch() async {
+    while (_queue.isNotEmpty &&
+        _activeRequests < _maxConcurrent &&
+        !_rateLimited &&
+        !_authFailed &&
+        !_disposed &&
+        _batchSupported) {
+      // Collect up to _batchSize requests, sorted by priority (high first).
+      final batch = <_EnrichmentRequest>[];
+      while (_queue.isNotEmpty && batch.length < _batchSize) {
+        batch.add(_queue.removeFirst());
+      }
+      // Sort: high priority first.
+      batch.sort((a, b) => a.priority.index.compareTo(b.priority.index));
+
+      _activeRequests++;
+      _lastRequestTime = DateTime.now();
+
+      await _executeBatch(batch);
+      _activeRequests--;
+      _scheduleDrain();
+    }
+  }
+
+  Future<void> _drainSingle() async {
     while (_queue.isNotEmpty &&
         _activeRequests < _maxConcurrent &&
         !_rateLimited &&
@@ -137,8 +183,130 @@ class EnrichmentService {
       });
 
       if (_queue.isNotEmpty && _activeRequests < _maxConcurrent) {
-        await Future<void>.delayed(
-            const Duration(milliseconds: _minIntervalMs));
+        await Future<void>.delayed(Duration(milliseconds: minIntervalMs));
+      }
+    }
+  }
+
+  Future<void> _executeBatch(List<_EnrichmentRequest> batch) async {
+    final client = supabaseClient;
+    if (client == null || _disposed) return;
+
+    final batchIds = batch.map((r) => r.definitionId).toList();
+    debugPrint('[EnrichmentService] invoking enrich-species-batch for '
+        '${batch.length} species: $batchIds');
+
+    try {
+      final speciesList = batch.map((r) {
+        final expectedType = AnimalType.fromTaxonomicClass(r.taxonomicClass);
+        final validClasses = expectedType != null
+            ? AnimalClass.values
+                .where((c) => c.parentType == expectedType)
+                .map((c) => c.name)
+                .toList()
+            : null;
+        return {
+          'definition_id': r.definitionId,
+          'scientific_name': r.scientificName,
+          'common_name': r.commonName,
+          'taxonomic_class': r.taxonomicClass,
+          if (validClasses != null) 'valid_animal_classes': validClasses,
+          if (r.force) 'force': true,
+        };
+      }).toList();
+
+      final response = await client.functions.invoke(
+        'enrich-species-batch',
+        headers: _authHeaders(client),
+        body: {'species': speciesList},
+      );
+
+      if (_disposed) return;
+
+      if (response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+        final results =
+            (data['results'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final errors =
+            (data['errors'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+
+        for (final result in results) {
+          try {
+            final enrichment = SpeciesEnrichment.fromJson(result);
+            final defId = enrichment.definitionId;
+            final request = batch.firstWhere((r) => r.definitionId == defId,
+                orElse: () => batch.first);
+            final expectedType =
+                AnimalType.fromTaxonomicClass(request.taxonomicClass);
+
+            if (expectedType != null &&
+                enrichment.animalClass.parentType != expectedType) {
+              debugPrint('[EnrichmentService] rejected $defId: '
+                  'animalClass ${enrichment.animalClass.name} '
+                  'does not match expected type ${expectedType.name}');
+              continue;
+            }
+
+            await repository.upsertEnrichment(enrichment);
+            debugPrint('[EnrichmentService] enriched $defId: '
+                '${enrichment.animalClass.name}, '
+                '${enrichment.foodPreference.name}, '
+                '${enrichment.climate.name}');
+            if (!_disposed) {
+              onEnriched?.call(enrichment);
+              onEnrichedHook?.call(enrichment);
+            }
+          } catch (e) {
+            debugPrint(
+                '[EnrichmentService] failed to process batch result: $e');
+          }
+        }
+
+        for (final error in errors) {
+          debugPrint('[EnrichmentService] batch error for '
+              '${error['definition_id']}: ${error['error']}');
+        }
+      }
+    } on FunctionException catch (e) {
+      if (e.status == 404) {
+        debugPrint('[EnrichmentService] batch endpoint not found (404) — '
+            'falling back to single-request mode');
+        _batchSupported = false;
+        // Re-queue all batch items for single-request processing.
+        for (final request in batch.reversed) {
+          _queue.addFirst(request);
+        }
+        _scheduleDrain();
+        return;
+      }
+      if (e.status == 429) {
+        // Rate limited — re-queue all with retry.
+        for (final request in batch) {
+          _handleRateLimit(request);
+        }
+        return;
+      }
+      if (e.status == 401) {
+        debugPrint('[EnrichmentService] 401 for batch '
+            '— refreshing session and retrying');
+        try {
+          await _deduplicatedRefresh(client);
+          if (_disposed) return;
+          await _executeBatch(batch);
+          return;
+        } catch (refreshErr) {
+          debugPrint('[EnrichmentService] refresh + retry failed for '
+              'batch: $refreshErr');
+          _tripAuthCircuitBreaker();
+          return;
+        }
+      }
+      debugPrint('[EnrichmentService] function error for batch: $e');
+    } catch (e) {
+      debugPrint('[EnrichmentService] failed for batch: $e');
+    } finally {
+      for (final request in batch) {
+        _inFlight.remove(request.definitionId);
       }
     }
   }
