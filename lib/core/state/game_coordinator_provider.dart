@@ -53,6 +53,7 @@ import 'package:earth_nova/features/steps/providers/step_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
+import 'package:earth_nova/features/sync/services/enrichment_service.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 import 'package:earth_nova/shared/constants.dart';
@@ -1462,6 +1463,7 @@ Future<void> _requeueUnenrichedSpecies({
         commonName: fauna.displayName,
         taxonomicClass: fauna.taxonomicClass,
         force: incompleteIds.contains(defId),
+        priority: EnrichmentPriority.low,
       );
     }
 
@@ -1502,6 +1504,7 @@ Future<void> _requeueUnenrichedSpecies({
               commonName: entry.fauna.displayName,
               taxonomicClass: entry.fauna.taxonomicClass,
               force: entry.force,
+              priority: EnrichmentPriority.low,
             );
           }
           debugPrint(
