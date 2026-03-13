@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
+import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
@@ -133,6 +134,11 @@ class EarthNovaApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Eagerly create GameCoordinator so hydration starts immediately on auth.
+    // Without this, the provider is only accessed by MapScreen (inside TabShell),
+    // which is gated behind isHydrated — causing a deadlock.
+    ref.read(gameCoordinatorProvider);
+
     final authState = ref.watch(authProvider);
     final playerState = ref.watch(playerProvider);
 
