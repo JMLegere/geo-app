@@ -20,6 +20,10 @@ class DebugLogBuffer {
   /// trigger an immediate flush before the process dies.
   VoidCallback? onCrash;
 
+  /// Called when an [AUTH] line is added. Wired by [LogFlushService] to
+  /// capture sign-in attempts/failures before the 30s timer.
+  VoidCallback? onAuthEvent;
+
   /// All buffered lines (oldest first).
   List<String> get lines => _lines.toList(growable: false);
 
@@ -46,6 +50,8 @@ class DebugLogBuffer {
     // reach Supabase before the process dies.
     if (line.contains('[CRASH]')) {
       onCrash?.call();
+    } else if (line.contains('[AUTH]') || line.contains('[Auth]')) {
+      onAuthEvent?.call();
     }
   }
 

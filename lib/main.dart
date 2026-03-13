@@ -108,6 +108,9 @@ Future<void> main() async {
     DebugLogBuffer.instance.onCrash = () {
       logFlushService!.flush();
     };
+    DebugLogBuffer.instance.onAuthEvent = () {
+      logFlushService!.flush();
+    };
   }
 
   // Run inside a Zone that intercepts all print() output (which includes
