@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:earth_nova/features/map/utils/map_logger.dart';
@@ -50,6 +51,9 @@ class RubberBandController {
   /// Whether the controller has received at least one target position.
   bool _initialized = false;
 
+  /// Whether the ticker is currently paused (at target).
+  bool _tickerPaused = false;
+
   Duration _lastTickTime = Duration.zero;
 
   RubberBandController({
@@ -78,28 +82,59 @@ class RubberBandController {
   double get targetLon => _targetLon;
 
   /// Whether display has arrived at the target (within snap threshold).
-  bool get isAtTarget => _initialized && _distanceMeters(_displayLat, _displayLon, _targetLat, _targetLon) < snapThresholdMeters;
+  bool get isAtTarget =>
+      _initialized &&
+      _distanceMeters(_displayLat, _displayLon, _targetLat, _targetLon) <
+          snapThresholdMeters;
+
+  /// Whether the ticker is currently paused (for testing).
+  @visibleForTesting
+  bool get isTickerPaused => _tickerPaused;
 
   /// Sets the target position. On the first call, display snaps to target
   /// and the ticker starts. Subsequent calls smoothly interpolate.
+  ///
+  /// If the new target is within [kTickerRestartThresholdMeters] of the current
+  /// display position (GPS jitter), the ticker remains paused and the target is
+  /// updated silently. If the new target is farther away (genuine movement),
+  /// the ticker restarts.
   void setTarget(double lat, double lon) {
-    _targetLat = lat;
-    _targetLon = lon;
-
     if (!_initialized) {
+      _targetLat = lat;
+      _targetLon = lon;
       _displayLat = lat;
       _displayLon = lon;
       _initialized = true;
       _lastTickTime = Duration.zero;
+      _tickerPaused = false;
       _ticker.start();
       MapLogger.rubberBandInitialized(lat, lon);
       // Emit initial position immediately.
       onDisplayUpdate(_displayLat, _displayLon);
+    } else if (_tickerPaused) {
+      // Ticker is paused (at target). Check if new target is genuine movement.
+      final distM = _distanceMeters(_displayLat, _displayLon, lat, lon);
+      if (distM >= kTickerRestartThresholdMeters) {
+        // Genuine movement — restart ticker.
+        _targetLat = lat;
+        _targetLon = lon;
+        _tickerPaused = false;
+        _lastTickTime = Duration.zero;
+        _ticker.start();
+      } else {
+        // GPS jitter — stay paused, just update target silently.
+        _targetLat = lat;
+        _targetLon = lon;
+      }
+    } else {
+      // Ticker is running — just update target, interpolation continues.
+      _targetLat = lat;
+      _targetLon = lon;
     }
   }
 
   void _onTick(Duration elapsed) {
-    if (!_initialized) return;
+    if (!_initialized || _tickerPaused) return;
 
     // Compute delta time in seconds.
     final dt = _lastTickTime == Duration.zero
@@ -110,7 +145,8 @@ class RubberBandController {
     // Clamp dt to prevent huge jumps on tab-switch resume.
     final clampedDt = dt.clamp(0.0, 0.1); // Max 100ms step
 
-    final distM = _distanceMeters(_displayLat, _displayLon, _targetLat, _targetLon);
+    final distM =
+        _distanceMeters(_displayLat, _displayLon, _targetLat, _targetLon);
 
     // Snap if close enough — prevents sub-pixel oscillation.
     if (distM < snapThresholdMeters) {
@@ -136,6 +172,15 @@ class RubberBandController {
           distanceM: distM,
           skipped: true,
         );
+      }
+      // Pause ticker to save CPU/battery when stationary.
+      if (!_tickerPaused) {
+        _tickerPaused = true;
+        _ticker.stop();
+        MapLogger.rubberBandInitialized(
+          _displayLat,
+          _displayLon,
+        ); // Reuse for debug output
       }
       return;
     }
@@ -177,7 +222,10 @@ class RubberBandController {
   static const double _earthRadiusM = 6371000.0;
 
   static double _distanceMeters(
-    double lat1, double lon1, double lat2, double lon2,
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
   ) {
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);

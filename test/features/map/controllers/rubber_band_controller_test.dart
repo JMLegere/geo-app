@@ -254,5 +254,84 @@ void main() {
 
       rb.dispose();
     });
+
+    // -----------------------------------------------------------------------
+    // Ticker pause/restart (GPS jitter hysteresis)
+    // -----------------------------------------------------------------------
+
+    test('ticker pauses when reaching target', () {
+      final rb = createController();
+
+      rb.setTarget(45.0, -66.0);
+      rb.setTarget(45.0001, -66.0); // ~11m north
+
+      // Simulate frames until convergence.
+      for (int i = 1; i <= 120; i++) {
+        vsync.tick(Duration(milliseconds: i * 16));
+      }
+
+      expect(rb.isAtTarget, isTrue);
+      expect(rb.isTickerPaused, isTrue);
+
+      rb.dispose();
+    });
+
+    test('GPS jitter (<10m) does not restart paused ticker', () {
+      final rb = createController();
+
+      rb.setTarget(45.0, -66.0);
+      rb.setTarget(45.0001, -66.0); // ~11m north
+
+      // Simulate frames until convergence and pause.
+      for (int i = 1; i <= 120; i++) {
+        vsync.tick(Duration(milliseconds: i * 16));
+      }
+
+      expect(rb.isTickerPaused, isTrue);
+      updates.clear();
+
+      // GPS jitter: move target by ~5m (within 10m threshold).
+      // From (45.0001, -66.0) to (45.00005, -66.0) is ~5.5m
+      rb.setTarget(45.00005, -66.0);
+
+      // Ticker should still be paused.
+      expect(rb.isTickerPaused, isTrue);
+
+      // Tick a few times — no updates should be emitted.
+      vsync.tick(const Duration(milliseconds: 16));
+      vsync.tick(const Duration(milliseconds: 32));
+
+      expect(updates, isEmpty);
+
+      rb.dispose();
+    });
+
+    test('genuine movement (>10m) restarts paused ticker', () {
+      final rb = createController();
+
+      rb.setTarget(45.0, -66.0);
+      rb.setTarget(45.0001, -66.0); // ~11m north
+
+      // Simulate frames until convergence and pause.
+      for (int i = 1; i <= 120; i++) {
+        vsync.tick(Duration(milliseconds: i * 16));
+      }
+
+      expect(rb.isTickerPaused, isTrue);
+      updates.clear();
+
+      // Genuine movement: move target by ~111m (exceeds 10m threshold).
+      rb.setTarget(45.001, -66.0);
+
+      // Ticker should have restarted.
+      expect(rb.isTickerPaused, isFalse);
+
+      // Tick once — display should move toward new target.
+      vsync.tick(const Duration(milliseconds: 16));
+
+      expect(updates.isNotEmpty, isTrue);
+
+      rb.dispose();
+    });
   });
 }
