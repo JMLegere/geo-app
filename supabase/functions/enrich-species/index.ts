@@ -20,6 +20,22 @@ const ANIMAL_SIZES = [
   "fine", "diminutive", "tiny", "small", "medium", "large", "huge", "gargantuan", "colossal",
 ];
 
+interface Provider {
+  name: string;
+  url: string;
+  keyEnv: string;
+  model: string;
+}
+
+const PROVIDERS: Provider[] = [
+  { name: "groq", url: "https://api.groq.com/openai/v1/chat/completions", keyEnv: "GROQ_API_KEY", model: "llama-3.3-70b-versatile" },
+  { name: "zen-gpt5nano", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "gpt-5-nano" },
+  { name: "zen-bigpickle", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "big-pickle" },
+  { name: "zen-minimax", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "minimax-m2.5-free" },
+  { name: "zen-mimo", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "mimo-v2-flash-free" },
+  { name: "zen-nemotron", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "nemotron-3-super-free" },
+];
+
 interface EnrichRequest {
   definition_id: string;
   scientific_name: string;
@@ -77,13 +93,28 @@ function isValidEnrichment(
   return true;
 }
 
+function extractJSON(raw: string): string {
+  let cleaned = raw.trim();
+  const fenceMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fenceMatch) {
+    cleaned = fenceMatch[1].trim();
+  }
+  if (cleaned.charCodeAt(0) === 0xFEFF) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned;
+}
+
 async function callLLM(
-  apiKey: string,
+  provider: Provider,
   scientificName: string,
   commonName: string,
   taxonomicClass: string,
   validAnimalClasses?: string[],
 ): Promise<EnrichmentResponse> {
+  const apiKey = Deno.env.get(provider.keyEnv);
+  if (!apiKey) throw new Error(`${provider.name} API key not set (${provider.keyEnv})`);
+
   const classConstraint = validAnimalClasses?.length
     ? `CRITICAL: You MUST pick animal_class from ONLY these: [${validAnimalClasses.join(", ")}]`
     : `- animal_class: one of [${ANIMAL_CLASSES.join(", ")}]`;
@@ -121,7 +152,7 @@ Taxonomic class: ${taxonomicClass}
 Return only valid JSON, no markdown.`;
 
   const response = await fetch(
-    "https://api.groq.com/openai/v1/chat/completions",
+    provider.url,
     {
       method: "POST",
       headers: {
@@ -129,7 +160,7 @@ Return only valid JSON, no markdown.`;
         "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: provider.model,
         messages: [
           {
             role: "system",
@@ -145,7 +176,7 @@ Return only valid JSON, no markdown.`;
 
   if (!response.ok) {
     const errBody = await response.text();
-    const err = new Error(`Groq API error ${response.status}: ${errBody}`);
+    const err = new Error(`${provider.name} API error ${response.status}: ${errBody}`);
     (err as any).statusCode = response.status;
     if (response.status === 429) {
       (err as any).retryAfter = response.headers.get("retry-after") ?? "60";
@@ -155,15 +186,36 @@ Return only valid JSON, no markdown.`;
 
   const body = await response.json();
   const text = body?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty Groq response");
+  if (!text) throw new Error(`Empty response from ${provider.name}`);
 
-  const parsed = JSON.parse(text);
+  const parsed = JSON.parse(extractJSON(text));
   if (!isValidEnrichment(parsed, validAnimalClasses)) {
     throw new Error(
-      `Invalid enrichment from Groq for ${taxonomicClass}: ${JSON.stringify(parsed)}`,
+      `Invalid enrichment from ${provider.name} for ${taxonomicClass}: ${JSON.stringify(parsed)}`,
     );
   }
   return parsed;
+}
+
+async function callLLMWithRotation(
+  providers: Provider[],
+  scientificName: string,
+  commonName: string,
+  taxonomicClass: string,
+  validAnimalClasses?: string[],
+): Promise<EnrichmentResponse> {
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i];
+    try {
+      const result = await callLLM(provider, scientificName, commonName, taxonomicClass, validAnimalClasses);
+      console.log(`[enrich] ${scientificName} enriched via ${provider.name} (${provider.model})`);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[enrich] ${provider.name} (${provider.model}) failed for ${scientificName}: ${message}`);
+    }
+  }
+  throw new Error(`All ${providers.length} providers failed for ${scientificName}`);
 }
 
 async function validateAuth(req: Request): Promise<Response | null> {
@@ -220,17 +272,16 @@ serve(async (req: Request) => {
       (c) => ANIMAL_CLASSES.includes(c),
     );
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const groqKey = Deno.env.get("GROQ_API_KEY");
-
-    if (!groqKey) {
+    const availableProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+    if (availableProviders.length === 0) {
       return new Response(
-        JSON.stringify({ error: "GROQ_API_KEY not configured" }),
+        JSON.stringify({ error: "No AI provider API keys configured" }),
         { status: 503, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
     // Force re-enrichment: delete existing row so the LLM re-classifies.
@@ -256,7 +307,7 @@ serve(async (req: Request) => {
       });
     }
 
-    const enrichment = await callLLM(groqKey, scientific_name, common_name, taxonomic_class, sanitizedClasses);
+    const enrichment = await callLLMWithRotation(availableProviders, scientific_name, common_name, taxonomic_class, sanitizedClasses);
 
     const row: Omit<EnrichmentRow, "enriched_at"> = {
       definition_id,
@@ -286,7 +337,8 @@ serve(async (req: Request) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const statusCode = (err as any).statusCode ?? 500;
+    const isAllProvidersFailed = message.startsWith("All ") && message.includes("providers failed");
+    const statusCode = isAllProvidersFailed ? 502 : ((err as any).statusCode ?? 500);
     const headers: Record<string, string> = {
       ...CORS_HEADERS,
       "Content-Type": "application/json",
