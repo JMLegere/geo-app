@@ -13,6 +13,7 @@ class DebugLogBuffer {
   static const int maxLines = 500;
 
   final _lines = Queue<String>();
+  final _pending = <String>[];
   final _listeners = <VoidCallback>[];
 
   /// All buffered lines (oldest first).
@@ -27,15 +28,30 @@ class DebugLogBuffer {
     final now = DateTime.now();
     final ts = '${_pad2(now.hour)}:${_pad2(now.minute)}:'
         '${_pad2(now.second)}.${_pad3(now.millisecond)}';
-    _lines.addLast('[$ts] $line');
+    final formatted = '[$ts] $line';
+    _lines.addLast(formatted);
     while (_lines.length > maxLines) {
       _lines.removeFirst();
+    }
+    if (_pending.length < 2000) {
+      _pending.add(formatted);
     }
     _notifyListeners();
   }
 
   static String _pad2(int n) => n.toString().padLeft(2, '0');
   static String _pad3(int n) => n.toString().padLeft(3, '0');
+
+  /// Drain pending lines for remote flush.
+  ///
+  /// Returns accumulated lines since last drain and clears the pending list.
+  /// The ring buffer ([_lines]) is unaffected — in-app viewer keeps working.
+  List<String> drainPending() {
+    if (_pending.isEmpty) return const [];
+    final drained = List<String>.of(_pending);
+    _pending.clear();
+    return drained;
+  }
 
   /// Clear all buffered lines.
   void clear() {
