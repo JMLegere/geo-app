@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
+import 'package:earth_nova/core/services/device_fingerprint.dart';
 
 /// Periodically flushes [DebugLogBuffer] pending lines to the Supabase
 /// `app_logs` table.
@@ -22,9 +23,18 @@ class LogFlushService {
 
   final SupabaseClient _client;
   final String _sessionId = const Uuid().v4();
+  late final String _deviceId = _computeDeviceId();
 
   Timer? _timer;
   bool _flushing = false;
+
+  static String _computeDeviceId() {
+    try {
+      return getDeviceFingerprint();
+    } catch (_) {
+      return 'unknown';
+    }
+  }
 
   /// Start the periodic 30-second flush timer.
   void start() {
@@ -59,6 +69,7 @@ class LogFlushService {
         'lines': lines.join('\n'),
         'app_version': _appVersion,
         'platform': _platform,
+        'device_id': _deviceId,
       };
 
       await _client.from('app_logs').insert(data);
