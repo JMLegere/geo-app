@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:earth_nova/shared/design_tokens.dart';
 
-/// Clean branded splash screen shown while game data loads. No Riverpod.
-///
-/// Dark background, centred "EarthNova" wordmark with subtle fade-in.
-/// No 3D, no CustomPainter — flat and clean.
+const _globeFrames = ['\u{1F30D}', '\u{1F30E}', '\u{1F30F}'];
+
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
 
@@ -14,32 +12,58 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _fadeCtrl;
-  late final Animation<double> _titleFade;
-  late final Animation<double> _subtitleFade;
+    with TickerProviderStateMixin {
+  late final AnimationController _entranceCtrl;
+  late final AnimationController _revolveCtrl;
+
+  late final Animation<double> _globeScale;
+  late final Animation<double> _globeOpacity;
+  late final Animation<double> _titleOpacity;
+  late final Animation<double> _subtitleOpacity;
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(
+
+    _entranceCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1200),
     );
-    _titleFade = CurvedAnimation(
-      parent: _fadeCtrl,
-      curve: const Interval(0.0, 0.6, curve: AppCurves.fadeIn),
+
+    _revolveCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
+
+    _globeScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceCtrl,
+        curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
+      ),
     );
-    _subtitleFade = CurvedAnimation(
-      parent: _fadeCtrl,
-      curve: const Interval(0.35, 1.0, curve: AppCurves.fadeIn),
+
+    _globeOpacity = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.0, 0.25, curve: AppCurves.fadeIn),
     );
-    _fadeCtrl.forward();
+
+    _titleOpacity = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.3, 0.7, curve: AppCurves.fadeIn),
+    );
+
+    _subtitleOpacity = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.55, 1.0, curve: AppCurves.fadeIn),
+    );
+
+    _entranceCtrl.forward();
   }
 
   @override
   void dispose() {
-    _fadeCtrl.dispose();
+    _entranceCtrl.dispose();
+    _revolveCtrl.dispose();
     super.dispose();
   }
 
@@ -47,6 +71,7 @@ class _LoadingScreenState extends State<LoadingScreen>
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+
     return Scaffold(
       backgroundColor: cs.surface,
       body: Center(
@@ -54,7 +79,26 @@ class _LoadingScreenState extends State<LoadingScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             FadeTransition(
-              opacity: _titleFade,
+              opacity: _globeOpacity,
+              child: ScaleTransition(
+                scale: _globeScale,
+                child: AnimatedBuilder(
+                  animation: _revolveCtrl,
+                  builder: (_, __) {
+                    final frame = (_revolveCtrl.value * _globeFrames.length)
+                        .floor()
+                        .clamp(0, _globeFrames.length - 1);
+                    return Text(
+                      _globeFrames[frame],
+                      style: const TextStyle(fontSize: 64),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: Spacing.xxl),
+            FadeTransition(
+              opacity: _titleOpacity,
               child: Text(
                 'EarthNova',
                 style: tt.displaySmall?.copyWith(
@@ -66,7 +110,7 @@ class _LoadingScreenState extends State<LoadingScreen>
             ),
             const SizedBox(height: Spacing.lg),
             FadeTransition(
-              opacity: _subtitleFade,
+              opacity: _subtitleOpacity,
               child: Text(
                 'Loading your world\u2026',
                 style: tt.bodyMedium?.copyWith(

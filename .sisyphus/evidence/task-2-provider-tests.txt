@@ -1,8 +1,0 @@
-=== Task 2: Tab index provider tests ===
-00:00 +5: TabIndexNotifier out-of-range index 4 is rejected
-00:00 +6: TabIndexNotifier persists to SharedPreferences
-00:00 +7: TabIndexNotifier restores persisted value on new container build
-00:00 +8: TabIndexNotifier ignores persisted value outside valid range
-00:00 +9: All tests passed!
-
-RESULT: PASS
