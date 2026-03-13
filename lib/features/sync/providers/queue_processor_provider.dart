@@ -25,5 +25,7 @@ final queueProcessorProvider = Provider<QueueProcessor>((ref) {
     }
   };
 
+  ref.onDispose(processor.dispose);
+
   return processor;
 });

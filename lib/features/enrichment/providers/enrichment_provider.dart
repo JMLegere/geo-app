@@ -16,13 +16,17 @@ final enrichmentServiceProvider = Provider<EnrichmentService>((ref) {
   // Use supabaseClientProvider from sync/ — the single allowed Supabase entry
   // point for features outside of sync/ and supabase_auth_service.dart.
   final client = ref.watch(supabaseClientProvider);
-  return EnrichmentService(
+  final service = EnrichmentService(
     repository: repo,
     supabaseClient: client,
     onEnriched: (_) {
       if (ref.mounted) ref.invalidate(enrichmentMapProvider);
     },
   );
+
+  ref.onDispose(service.dispose);
+
+  return service;
 });
 
 /// Loads all cached enrichments from SQLite.
