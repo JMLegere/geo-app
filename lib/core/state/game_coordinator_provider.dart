@@ -127,10 +127,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     return enrichmentCache[definitionId];
   };
 
-  // Wire enrichment hook so the startup requeue path (Path B) also updates
-  // the in-memory cache and backfills intrinsic affixes — matching what the
-  // in-session discovery path (Path A) already does.
-  ref.read(enrichmentServiceProvider).onEnrichedHook = (enrichment) {
+  // Enrichment hook callback — shared between initial wiring and re-wiring
+  // after auth cycle (logout → re-login). Updates the in-memory cache and
+  // backfills intrinsic affixes for items whose enrichment arrived via the
+  // startup requeue path (Path B), matching what the in-session discovery
+  // path (Path A) already does.
+  void enrichmentHook(SpeciesEnrichment enrichment) {
     if (_providerDisposed) return;
     debugPrint('[GameCoordinator] onEnrichedHook: backfilling affixes for '
         '${enrichment.definitionId}');
@@ -154,7 +156,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         debugPrint('[GameCoordinator] onEnrichedHook backfill failed: $e');
       });
     }
-  };
+  }
+
+  ref.read(enrichmentServiceProvider).onEnrichedHook = enrichmentHook;
 
   // --- Wire auto-flush callback → post-flush badge/rejection processing ---
 
@@ -606,6 +610,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     if (authState.status == AuthStatus.authenticated && userId != null) {
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
+
+      // Invalidate zombie enrichment service — after auth cycle, the old
+      // service may have _authFailed = true (circuit breaker tripped).
+      // Invalidation disposes the old service and creates a fresh one on
+      // next read. Re-wire the onEnrichedHook on the new instance.
+      ref.invalidate(enrichmentServiceProvider);
+      ref.read(enrichmentServiceProvider).onEnrichedHook = enrichmentHook;
+
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
