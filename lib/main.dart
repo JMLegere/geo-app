@@ -104,6 +104,10 @@ Future<void> main() async {
   if (SupabaseBootstrap.initialized) {
     logFlushService = LogFlushService(Supabase.instance.client);
     logFlushService.start();
+    // Flush immediately on crash so logs reach Supabase before the process dies.
+    DebugLogBuffer.instance.onCrash = () {
+      logFlushService!.flush();
+    };
   }
 
   // Run inside a Zone that intercepts all print() output (which includes

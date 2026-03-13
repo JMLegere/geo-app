@@ -16,6 +16,10 @@ class DebugLogBuffer {
   final _pending = <String>[];
   final _listeners = <VoidCallback>[];
 
+  /// Called when a [CRASH] line is added. Wired by [LogFlushService] to
+  /// trigger an immediate flush before the process dies.
+  VoidCallback? onCrash;
+
   /// All buffered lines (oldest first).
   List<String> get lines => _lines.toList(growable: false);
 
@@ -37,6 +41,12 @@ class DebugLogBuffer {
       _pending.add(formatted);
     }
     _notifyListeners();
+
+    // Trigger immediate flush when a crash line is detected so logs
+    // reach Supabase before the process dies.
+    if (line.contains('[CRASH]')) {
+      onCrash?.call();
+    }
   }
 
   static String _pad2(int n) => n.toString().padLeft(2, '0');
