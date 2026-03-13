@@ -98,7 +98,10 @@ class _SyncToastOverlayState extends ConsumerState<SyncToastOverlay>
       _lastMessage = toastState.message ?? '';
     });
     _controller.forward(from: 0);
-    _dismissTimer = Timer(Durations.syncToast, _beginDismiss);
+    _dismissTimer = Timer(Durations.syncToast, () {
+      if (!mounted) return;
+      _beginDismiss();
+    });
   }
 
   /// Starts the exit animation, then clears provider state once complete.

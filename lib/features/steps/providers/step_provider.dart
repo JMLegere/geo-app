@@ -84,12 +84,14 @@ class StepNotifier extends Notifier<StepState> {
   late final StepService _stepService;
   StreamSubscription<int>? _liveSub;
   int? _lastStreamValue;
+  bool _disposed = false;
 
   @override
   StepState build() {
     _stepService = ref.read(stepServiceProvider);
 
     ref.onDispose(() {
+      _disposed = true;
       _liveSub?.cancel();
       _stepService.dispose();
     });
@@ -152,6 +154,7 @@ class StepNotifier extends Notifier<StepState> {
   void startLiveStream() {
     _stepService.start();
     _liveSub = _stepService.stepCountStream.listen((int osSteps) {
+      if (_disposed) return;
       final prev = _lastStreamValue ?? osSteps;
       final increment = (osSteps - prev).clamp(0, osSteps);
       _lastStreamValue = osSteps;
