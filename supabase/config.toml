@@ -377,6 +377,12 @@ verify_jwt = false
 [functions.admin-purge-enrichments]
 verify_jwt = false
 
+[functions.enrich-species-batch]
+verify_jwt = false
+
+[functions.enrich-locations-batch]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
