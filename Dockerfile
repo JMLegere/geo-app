@@ -9,7 +9,8 @@ RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmYWN6Y3NycGZjYmlqb2FlY2tiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzE3ODYsImV4cCI6MjA4ODE0Nzc4Nn0.hyjp1NRiteavWfBnch1LpRARtiN5lvpP0PztbRwqPJ8 \
-    "--dart-define=BUILD_TIMESTAMP=$BUILD_TS"
+    "--dart-define=BUILD_TIMESTAMP=$BUILD_TS" \
+    "--dart-define=APP_VERSION=$BUILD_TS"
 
 FROM nginx:alpine
 COPY --from=build /app/build/web /usr/share/nginx/html
