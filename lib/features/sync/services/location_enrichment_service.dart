@@ -50,6 +50,8 @@ class LocationEnrichmentService {
 
   // Nominatim: 1 req/sec. Keep interval above that.
   static const _minIntervalMs = 1200;
+  static const _batchSize = 10;
+  static const _batchIntervalMs = 15000;
 
   final Queue<_EnrichRequest> _queue = Queue();
   final Set<String> _inFlight = {};
@@ -62,9 +64,13 @@ class LocationEnrichmentService {
   /// Edge Function calls to prevent a stampede of refreshSession() calls
   /// that would hit Supabase auth rate limits and cause logout.
   bool _authFailed = false;
+  bool _batchSupported = true;
 
   /// Deduplicates concurrent refreshSession() calls.
   Future<void>? _pendingRefresh;
+
+  @visibleForTesting
+  bool get batchSupported => _batchSupported;
 
   void requestEnrichment({
     required String cellId,
@@ -94,14 +100,164 @@ class LocationEnrichmentService {
 
   Future<void> _drain() async {
     while (_queue.isNotEmpty && !_rateLimited && !_disposed && !_authFailed) {
-      final request = _queue.removeFirst();
-      _lastRequestTime = DateTime.now();
+      if (_batchSupported) {
+        final batch = <_EnrichRequest>[];
+        while (batch.length < _batchSize && _queue.isNotEmpty) {
+          batch.add(_queue.removeFirst());
+        }
+        _lastRequestTime = DateTime.now();
+        await _executeBatch(batch);
 
-      await _executeRequest(request);
+        // If 404 fallback was triggered, continue with single-request mode.
+        if (!_batchSupported) continue;
 
-      if (_queue.isNotEmpty) {
-        await Future<void>.delayed(
-            const Duration(milliseconds: _minIntervalMs));
+        if (_queue.isNotEmpty) {
+          await Future<void>.delayed(
+              const Duration(milliseconds: _batchIntervalMs));
+        }
+      } else {
+        final request = _queue.removeFirst();
+        _lastRequestTime = DateTime.now();
+
+        await _executeRequest(request);
+
+        if (_queue.isNotEmpty) {
+          await Future<void>.delayed(
+              const Duration(milliseconds: _minIntervalMs));
+        }
+      }
+    }
+  }
+
+  Future<void> _executeBatch(
+    List<_EnrichRequest> batch, {
+    bool isRetry = false,
+  }) async {
+    final client = supabaseClient;
+    if (client == null || _disposed) return;
+
+    final cellIds = batch.map((r) => r.cellId).toSet();
+
+    try {
+      final cellPayloads = <Map<String, Object>>[];
+      for (final r in batch) {
+        cellPayloads.add({
+          'cell_id': r.cellId,
+          'lat': r.lat,
+          'lon': r.lon,
+        });
+      }
+
+      final response = await client.functions.invoke(
+        'enrich-locations-batch',
+        headers: _authHeaders(client),
+        body: {'cells': cellPayloads},
+      );
+
+      if (_disposed) return;
+
+      if (response.data != null) {
+        final data = response.data as Map<String, dynamic>;
+
+        // Process successful results.
+        final results = data['results'] as List<dynamic>?;
+        if (results != null) {
+          for (final result in results) {
+            final resultMap = result as Map<String, dynamic>;
+            final cellId = resultMap['cell_id'] as String;
+            final status = resultMap['status'] as String?;
+            final locationId = resultMap['location_id'] as String?;
+
+            if ((status == 'enriched' || status == 'already_enriched') &&
+                locationId != null) {
+              final hierarchy = resultMap['hierarchy'] as List<dynamic>?;
+              if (hierarchy != null) {
+                for (final nodeData in hierarchy) {
+                  final node = _parseHierarchyNode(nodeData);
+                  if (node != null) {
+                    await locationNodeRepo.upsert(node);
+                  }
+                }
+              }
+
+              await cellPropertyRepo.updateLocationId(cellId, locationId);
+              if (!_disposed) {
+                onLocationEnriched?.call(cellId, locationId);
+              }
+
+              debugPrint('[LocationEnrichment] batch enriched $cellId '
+                  '→ $locationId');
+            }
+          }
+        }
+
+        // Log per-cell errors.
+        final errors = data['errors'] as List<dynamic>?;
+        if (errors != null) {
+          for (final error in errors) {
+            final errorMap = error as Map<String, dynamic>;
+            debugPrint('[LocationEnrichment] batch error for '
+                '${errorMap['cell_id']}: ${errorMap['error']}');
+          }
+        }
+      }
+    } on FunctionException catch (e) {
+      if (e.status == 404) {
+        debugPrint('[LocationEnrichment] batch endpoint not found (404) '
+            '— falling back to single-request mode');
+        _batchSupported = false;
+        for (final request in batch.reversed) {
+          _queue.addFirst(request);
+        }
+        return;
+      }
+      if (e.status == 429) {
+        _rateLimited = true;
+        for (final request in batch.reversed) {
+          if (request.attempt >= maxRetries) {
+            debugPrint(
+                '[LocationEnrichment] max retries for ${request.cellId}');
+            continue;
+          }
+          _queue.addFirst(request.retry());
+        }
+        final backoffMs = baseDelayMs * pow(2, batch.first.attempt).toInt();
+        debugPrint('[LocationEnrichment] batch rate limited, '
+            'backing off ${backoffMs}ms');
+        Timer(Duration(milliseconds: backoffMs), () {
+          if (_disposed) return;
+          _rateLimited = false;
+          _scheduleDrain();
+        });
+        return;
+      }
+      if (e.status == 401 && !isRetry) {
+        debugPrint('[LocationEnrichment] batch 401 '
+            '— refreshing session and retrying');
+        try {
+          await _deduplicatedRefresh(client);
+          if (_disposed) return;
+          await _executeBatch(batch, isRetry: true);
+          return;
+        } catch (refreshErr) {
+          debugPrint('[LocationEnrichment] batch refresh + retry '
+              'failed: $refreshErr');
+          _tripAuthCircuitBreaker();
+          return;
+        }
+      }
+      if (e.status == 401 && isRetry) {
+        debugPrint('[LocationEnrichment] batch retry 401 '
+            '— tripping circuit breaker');
+        _tripAuthCircuitBreaker();
+        return;
+      }
+      debugPrint('[LocationEnrichment] batch function error: $e');
+    } catch (e) {
+      debugPrint('[LocationEnrichment] batch failed: $e');
+    } finally {
+      for (final id in cellIds) {
+        _inFlight.remove(id);
       }
     }
   }
