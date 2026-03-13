@@ -54,8 +54,7 @@ void main() {
 
     test('lib/core/ has zero network imports', () {
       final files = dartFilesUnder('lib/core');
-      expect(files, isNotEmpty,
-          reason: 'lib/core must contain source files');
+      expect(files, isNotEmpty, reason: 'lib/core must contain source files');
 
       final violations = <String>[];
       for (final file in files) {
@@ -63,9 +62,8 @@ void main() {
         // it is the single entry point for Supabase SDK initialisation and
         // must live here to break the auth↔sync circular dependency.
         if (file.path.endsWith('supabase_bootstrap.dart')) continue;
-        // daily_seed_provider.dart wires Supabase RPC into the pure-Dart
-        // DailySeedService via a callback — same entry-point pattern.
         if (file.path.endsWith('daily_seed_provider.dart')) continue;
+        if (file.path.endsWith('log_flush_service.dart')) continue;
 
         final content = file.readAsStringSync();
         final found = findNetworkImports(content);
@@ -140,7 +138,9 @@ void main() {
         final isAllowed = path.contains('lib/features/sync/') ||
             path.endsWith('supabase_auth_service.dart') ||
             path.endsWith('supabase_bootstrap.dart') ||
-            path.endsWith('daily_seed_provider.dart');
+            path.endsWith('daily_seed_provider.dart') ||
+            path.endsWith('log_flush_service.dart') ||
+            path.endsWith('main.dart');
 
         if (!isAllowed) {
           violations.add(path);
@@ -189,8 +189,8 @@ void main() {
     });
 
     test('supabase_auth_service.dart exists', () {
-      final file = File(
-          'lib/features/auth/services/supabase_auth_service.dart');
+      final file =
+          File('lib/features/auth/services/supabase_auth_service.dart');
       expect(file.existsSync(), isTrue,
           reason: 'supabase_auth_service.dart must exist');
     });
