@@ -266,8 +266,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
         id: _adminBoundaryFillLayerId,
         sourceId: _adminBoundaryFillSrcId,
         paint: {
-          'fill-color': ['get', 'color'],
-          'fill-opacity': ['get', 'opacity'],
+          'fill-color': [
+            'coalesce',
+            ['get', 'color'],
+            '#888888'
+          ],
+          'fill-opacity': [
+            'coalesce',
+            ['get', 'opacity'],
+            0.0
+          ],
         },
       ));
 
@@ -281,8 +289,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
         id: _adminBoundaryLinesLayerId,
         sourceId: _adminBoundaryLinesSrcId,
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': ['get', 'line_weight'],
+          'line-color': [
+            'coalesce',
+            ['get', 'color'],
+            '#888888'
+          ],
+          'line-width': [
+            'coalesce',
+            ['get', 'line_weight'],
+            1.0
+          ],
           'line-dasharray': [6.0, 3.0],
           'line-opacity': 0.7,
         },
