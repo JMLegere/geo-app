@@ -934,6 +934,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _markMapReady();
 
       MapLogger.fogInitComplete();
+
+      // Trigger an initial admin boundary request for the current player
+      // position so borders load even for returning players who won't visit
+      // any new cells (onCellVisited alone is insufficient for 145+ cell users).
+      final playerPos = ref.read(locationProvider).currentPosition;
+      if (playerPos != null && mounted) {
+        _adminBoundaryService?.requestBoundaries(
+          playerPos.lat.toDouble(),
+          playerPos.lon.toDouble(),
+        );
+      }
     } catch (e, stack) {
       MapLogger.fogInitFailed(e, stack);
       // On error, still mark ready so the base map is usable.
