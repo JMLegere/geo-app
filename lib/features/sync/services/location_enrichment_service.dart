@@ -389,6 +389,7 @@ class LocationEnrichmentService {
         adminLevel: AdminLevel.fromString(level),
         parentId: parentId,
         colorHex: null,
+        geometryJson: null,
       );
     } catch (e) {
       debugPrint('[LocationEnrichment] failed to parse node: $e');

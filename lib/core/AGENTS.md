@@ -56,11 +56,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
   - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `size` (nullable text — `AnimalSize` enum name), `artUrl` (nullable), `enrichedAt`
   - `LocalWriteQueueTable`: `id` (int, autoIncrement PK), `entityType`, `entityId`, `operation`, `payload`, `userId`, `status` (default 'pending'), `attempts` (default 0), `lastError` (nullable), `createdAt`, `updatedAt`
   - `LocalCellPropertiesTable`: `cellId` (text PK), `habitatsJson` (text), `climate` (text), `continent` (text), `locationId` (text nullable), `createdAt` (datetime). Globally shared (no userId).
-  - `LocalLocationNodeTable`: `id` (text PK), `name` (text), `adminLevel` (text), `parentId` (text nullable), `osmId` (text nullable), `geometryJson` (text nullable), `createdAt` (datetime)
+  - `LocalLocationNodeTable`: `id` (text PK), `name` (text), `adminLevel` (text), `parentId` (text nullable), `osmId` (text nullable), `colorHex` (text nullable), `geometryJson` (text nullable), `createdAt` (datetime)
 - Write queue query methods: `enqueueEntry`, `getPendingEntries`, `getRejectedEntries`, `countPendingEntries`, `confirmEntry`, `rejectEntry`, `incrementEntryAttempts`
 - Cell property query methods: `getCellProperties(cellId)`, `upsertCellProperties(companion)`, `getAllCellProperties()`, `getLocationNode(id)`, `upsertLocationNode(companion)`, `getLocationNodeByOsmId(osmId)`, `getLocationNodeChildren(parentId)`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
-- `schemaVersion = 12`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 LocalLocationNodeTable osmId nullable (table recreation for SQLite).
+- `schemaVersion = 13`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 LocalLocationNodeTable osmId nullable (table recreation for SQLite), v12→v13 `geometry_json` column added to `LocalLocationNodeTable` via `m.addColumn`.
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
@@ -162,7 +162,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `Habitat`: enum (forest, plains, freshwater, saltwater, swamp, mountain, desert).
 - `CellProperties`: `cellId`, `habitats: Set<Habitat>`, `climate: Climate`, `continent: Continent`, `locationId: String?`, `createdAt`. Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` for persistence.
 - `CellEvent`: `type: CellEventType`, `cellId`, `dailySeed`. Rotating daily event. `CellEventType` enum: migration, nestingSite. Not persisted — deterministic from seed + cellId.
-- `LocationNode`: `id`, `name`, `adminLevel: AdminLevel`, `parentId`, `osmId`, `geometry`. `AdminLevel` enum: world, continent, country, state, city, district. 6-level location hierarchy.
+- `LocationNode`: `id`, `name`, `adminLevel: AdminLevel`, `parentId`, `osmId`, `colorHex: String?`, `geometryJson: String?`. `AdminLevel` enum: world, continent, country, state, city, district. 6-level location hierarchy. `geometryJson` = GeoJSON polygon (Polygon or MultiPolygon), null until fetched via `resolve-admin-boundaries` Edge Function.
 - `DiscoveryEvent`: *(existing)* — added `cellEventType: CellEventType?` nullable field indicating which cell event triggered the encounter (null = normal).
 - `AnimalSize`: enum (fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal). Each value has `minGrams` and `maxGrams` (metric). `rangeSpan` = maxGrams - minGrams + 1. `fromString(String)` parser (case-insensitive). 9 size categories from fine (1–49g) to colossal (15M–247M g). Colossal max = 130% of ~190t blue whale record.
 - `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `size: AnimalSize?`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `size` and `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.

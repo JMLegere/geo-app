@@ -10,6 +10,7 @@ import 'package:earth_nova/features/map/models/cell_render_data.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
+import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
 /// Computes fog GeoJSON for MapLibre native fill layers.
@@ -94,6 +95,14 @@ class FogOverlayController {
   String _borderLinesGeoJson =
       TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
 
+  /// GeoJSON string for admin boundary polygon fills (event-driven, NOT 10Hz).
+  String _adminBoundaryFillGeoJson =
+      AdminBoundaryGeoJsonBuilder.emptyFeatureCollection;
+
+  /// GeoJSON string for admin boundary polygon outlines (event-driven, NOT 10Hz).
+  String _adminBoundaryLinesGeoJson =
+      AdminBoundaryGeoJsonBuilder.emptyFeatureCollection;
+
   /// Current daily seed for event resolution.
   String _dailySeed = '';
 
@@ -124,6 +133,12 @@ class FogOverlayController {
   /// GeoJSON for territory border lines (admin boundary edges).
   String get borderLinesGeoJson => _borderLinesGeoJson;
 
+  /// GeoJSON for admin boundary polygon fills (event-driven).
+  String get adminBoundaryFillGeoJson => _adminBoundaryFillGeoJson;
+
+  /// GeoJSON for admin boundary polygon outlines (event-driven).
+  String get adminBoundaryLinesGeoJson => _adminBoundaryLinesGeoJson;
+
   /// Updates the cell properties cache snapshot from GameCoordinator.
   set cellPropertiesCache(Map<String, CellProperties> cache) =>
       _cellPropertiesCache = cache;
@@ -138,6 +153,17 @@ class FogOverlayController {
   /// territory borders appear without requiring an app restart.
   void addLocationNode(LocationNode node) {
     _locationNodesCache[node.id] = node;
+  }
+
+  /// Rebuilds admin boundary GeoJSON from the given location nodes.
+  ///
+  /// Called EVENT-DRIVEN when [AdminBoundaryService.onBoundariesResolved]
+  /// fires — NOT from the 10Hz [_buildGeoJson] loop.
+  void updateAdminBoundaries(Map<String, LocationNode> nodes) {
+    _adminBoundaryFillGeoJson =
+        AdminBoundaryGeoJsonBuilder.buildBoundaryFills(nodes);
+    _adminBoundaryLinesGeoJson =
+        AdminBoundaryGeoJsonBuilder.buildBoundaryLines(nodes);
   }
 
   /// Updates the daily seed used for event resolution.

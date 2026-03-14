@@ -71,6 +71,7 @@ LocationNode _makeNode({
     adminLevel: adminLevel,
     parentId: parentId,
     colorHex: colorHex,
+    geometryJson: null,
   );
 }
 

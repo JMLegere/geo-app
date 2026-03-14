@@ -3563,6 +3563,12 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
   late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
       'color_hex', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _geometryJsonMeta =
+      const VerificationMeta('geometryJson');
+  @override
+  late final GeneratedColumn<String> geometryJson = GeneratedColumn<String>(
+      'geometry_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -3572,8 +3578,16 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, osmId, name, adminLevel, parentId, colorHex, createdAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        osmId,
+        name,
+        adminLevel,
+        parentId,
+        colorHex,
+        geometryJson,
+        createdAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3615,6 +3629,12 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
       context.handle(_colorHexMeta,
           colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta));
     }
+    if (data.containsKey('geometry_json')) {
+      context.handle(
+          _geometryJsonMeta,
+          geometryJson.isAcceptableOrUnknown(
+              data['geometry_json']!, _geometryJsonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -3640,6 +3660,8 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
           .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
       colorHex: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}color_hex']),
+      geometryJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}geometry_json']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -3659,6 +3681,7 @@ class LocalLocationNode extends DataClass
   final String adminLevel;
   final String? parentId;
   final String? colorHex;
+  final String? geometryJson;
   final DateTime createdAt;
   const LocalLocationNode(
       {required this.id,
@@ -3667,6 +3690,7 @@ class LocalLocationNode extends DataClass
       required this.adminLevel,
       this.parentId,
       this.colorHex,
+      this.geometryJson,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3682,6 +3706,9 @@ class LocalLocationNode extends DataClass
     }
     if (!nullToAbsent || colorHex != null) {
       map['color_hex'] = Variable<String>(colorHex);
+    }
+    if (!nullToAbsent || geometryJson != null) {
+      map['geometry_json'] = Variable<String>(geometryJson);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -3700,6 +3727,9 @@ class LocalLocationNode extends DataClass
       colorHex: colorHex == null && nullToAbsent
           ? const Value.absent()
           : Value(colorHex),
+      geometryJson: geometryJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(geometryJson),
       createdAt: Value(createdAt),
     );
   }
@@ -3714,6 +3744,7 @@ class LocalLocationNode extends DataClass
       adminLevel: serializer.fromJson<String>(json['adminLevel']),
       parentId: serializer.fromJson<String?>(json['parentId']),
       colorHex: serializer.fromJson<String?>(json['colorHex']),
+      geometryJson: serializer.fromJson<String?>(json['geometryJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3727,6 +3758,7 @@ class LocalLocationNode extends DataClass
       'adminLevel': serializer.toJson<String>(adminLevel),
       'parentId': serializer.toJson<String?>(parentId),
       'colorHex': serializer.toJson<String?>(colorHex),
+      'geometryJson': serializer.toJson<String?>(geometryJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3738,6 +3770,7 @@ class LocalLocationNode extends DataClass
           String? adminLevel,
           Value<String?> parentId = const Value.absent(),
           Value<String?> colorHex = const Value.absent(),
+          Value<String?> geometryJson = const Value.absent(),
           DateTime? createdAt}) =>
       LocalLocationNode(
         id: id ?? this.id,
@@ -3746,6 +3779,8 @@ class LocalLocationNode extends DataClass
         adminLevel: adminLevel ?? this.adminLevel,
         parentId: parentId.present ? parentId.value : this.parentId,
         colorHex: colorHex.present ? colorHex.value : this.colorHex,
+        geometryJson:
+            geometryJson.present ? geometryJson.value : this.geometryJson,
         createdAt: createdAt ?? this.createdAt,
       );
   LocalLocationNode copyWithCompanion(LocalLocationNodeTableCompanion data) {
@@ -3757,6 +3792,9 @@ class LocalLocationNode extends DataClass
           data.adminLevel.present ? data.adminLevel.value : this.adminLevel,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      geometryJson: data.geometryJson.present
+          ? data.geometryJson.value
+          : this.geometryJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3770,14 +3808,15 @@ class LocalLocationNode extends DataClass
           ..write('adminLevel: $adminLevel, ')
           ..write('parentId: $parentId, ')
           ..write('colorHex: $colorHex, ')
+          ..write('geometryJson: $geometryJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, osmId, name, adminLevel, parentId, colorHex, createdAt);
+  int get hashCode => Object.hash(
+      id, osmId, name, adminLevel, parentId, colorHex, geometryJson, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3788,6 +3827,7 @@ class LocalLocationNode extends DataClass
           other.adminLevel == this.adminLevel &&
           other.parentId == this.parentId &&
           other.colorHex == this.colorHex &&
+          other.geometryJson == this.geometryJson &&
           other.createdAt == this.createdAt);
 }
 
@@ -3799,6 +3839,7 @@ class LocalLocationNodeTableCompanion
   final Value<String> adminLevel;
   final Value<String?> parentId;
   final Value<String?> colorHex;
+  final Value<String?> geometryJson;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const LocalLocationNodeTableCompanion({
@@ -3808,6 +3849,7 @@ class LocalLocationNodeTableCompanion
     this.adminLevel = const Value.absent(),
     this.parentId = const Value.absent(),
     this.colorHex = const Value.absent(),
+    this.geometryJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3818,6 +3860,7 @@ class LocalLocationNodeTableCompanion
     required String adminLevel,
     this.parentId = const Value.absent(),
     this.colorHex = const Value.absent(),
+    this.geometryJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -3830,6 +3873,7 @@ class LocalLocationNodeTableCompanion
     Expression<String>? adminLevel,
     Expression<String>? parentId,
     Expression<String>? colorHex,
+    Expression<String>? geometryJson,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -3840,6 +3884,7 @@ class LocalLocationNodeTableCompanion
       if (adminLevel != null) 'admin_level': adminLevel,
       if (parentId != null) 'parent_id': parentId,
       if (colorHex != null) 'color_hex': colorHex,
+      if (geometryJson != null) 'geometry_json': geometryJson,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3852,6 +3897,7 @@ class LocalLocationNodeTableCompanion
       Value<String>? adminLevel,
       Value<String?>? parentId,
       Value<String?>? colorHex,
+      Value<String?>? geometryJson,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return LocalLocationNodeTableCompanion(
@@ -3861,6 +3907,7 @@ class LocalLocationNodeTableCompanion
       adminLevel: adminLevel ?? this.adminLevel,
       parentId: parentId ?? this.parentId,
       colorHex: colorHex ?? this.colorHex,
+      geometryJson: geometryJson ?? this.geometryJson,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3887,6 +3934,9 @@ class LocalLocationNodeTableCompanion
     if (colorHex.present) {
       map['color_hex'] = Variable<String>(colorHex.value);
     }
+    if (geometryJson.present) {
+      map['geometry_json'] = Variable<String>(geometryJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3905,6 +3955,7 @@ class LocalLocationNodeTableCompanion
           ..write('adminLevel: $adminLevel, ')
           ..write('parentId: $parentId, ')
           ..write('colorHex: $colorHex, ')
+          ..write('geometryJson: $geometryJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5622,6 +5673,7 @@ typedef $$LocalLocationNodeTableTableCreateCompanionBuilder
   required String adminLevel,
   Value<String?> parentId,
   Value<String?> colorHex,
+  Value<String?> geometryJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -5633,6 +5685,7 @@ typedef $$LocalLocationNodeTableTableUpdateCompanionBuilder
   Value<String> adminLevel,
   Value<String?> parentId,
   Value<String?> colorHex,
+  Value<String?> geometryJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -5663,6 +5716,9 @@ class $$LocalLocationNodeTableTableFilterComposer
 
   ColumnFilters<String> get colorHex => $composableBuilder(
       column: $table.colorHex, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get geometryJson => $composableBuilder(
+      column: $table.geometryJson, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -5695,6 +5751,10 @@ class $$LocalLocationNodeTableTableOrderingComposer
   ColumnOrderings<String> get colorHex => $composableBuilder(
       column: $table.colorHex, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get geometryJson => $composableBuilder(
+      column: $table.geometryJson,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -5725,6 +5785,9 @@ class $$LocalLocationNodeTableTableAnnotationComposer
 
   GeneratedColumn<String> get colorHex =>
       $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<String> get geometryJson => $composableBuilder(
+      column: $table.geometryJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5767,6 +5830,7 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             Value<String> adminLevel = const Value.absent(),
             Value<String?> parentId = const Value.absent(),
             Value<String?> colorHex = const Value.absent(),
+            Value<String?> geometryJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5777,6 +5841,7 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             adminLevel: adminLevel,
             parentId: parentId,
             colorHex: colorHex,
+            geometryJson: geometryJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -5787,6 +5852,7 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             required String adminLevel,
             Value<String?> parentId = const Value.absent(),
             Value<String?> colorHex = const Value.absent(),
+            Value<String?> geometryJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5797,6 +5863,7 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             adminLevel: adminLevel,
             parentId: parentId,
             colorHex: colorHex,
+            geometryJson: geometryJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
