@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/location_provider.dart';
@@ -44,6 +45,7 @@ class _DPadControlsState extends ConsumerState<DPadControls> {
   }
 
   void _step(double dLatSign, double dLonSign) {
+    HapticFeedback.selectionClick();
     final currentLat =
         ref.read(locationProvider).currentPosition?.lat ?? 45.9636;
     final metersPerDegLat = _earthRadius * (pi / 180.0);

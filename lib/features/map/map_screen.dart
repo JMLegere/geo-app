@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
 
@@ -28,6 +30,7 @@ import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/game_icons.dart';
@@ -115,6 +118,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
+
+  /// Screen position of an in-progress long press, for the visual ring indicator.
+  /// Null when no long press is active.
+  Offset? _longPressPoint;
 
   /// Whether to show the "moving too fast" exploration-disabled banner.
   /// Set `true` when exploration is blocked (marker cell ≠ GPS cell),
@@ -393,7 +400,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               3
             ],
             0,
-            0.15,
+            0.5,
             1,
             0.04,
             2,
@@ -1064,34 +1071,80 @@ class _MapScreenState extends ConsumerState<MapScreen>
             Container(color: const Color(0xFF161620)),
 
             // ── Layer 1: MapLibre base map + native fog fill layers ────────────
-            MapLibreMap(
-              options: MapOptions(
-                initStyle: 'https://tiles.openfreemap.org/styles/positron',
-                initZoom: kDefaultZoom,
-                initCenter: Position(kDefaultMapLon, kDefaultMapLat),
-                minZoom: kMinZoom,
-                maxZoom: kMaxZoom,
-                attribution: false,
-                nativeLogo: false,
-                // Disable pitch (tilt) — we never use it, and it's a 2D game.
-                // This also disables MapLibre's built-in KeyboardHandler (which
-                // requires allEnabled=true). Without this, arrow keys are
-                // processed by BOTH our KeyboardLocationService AND MapLibre's
-                // native pan handler, causing rapid oscillation when opposing
-                // keys are held or jitter during normal movement.
-                gestures: const MapGestures.all(pitch: false),
+            // Wrapped in GestureDetector so long-press works on all platforms.
+            // MapLibre's MapEventLongClick is unreliable on web (no native
+            // "long click" concept in browsers). The Flutter GestureDetector
+            // fires onLongPressDown immediately (0 ms) for instant haptic
+            // feedback, and onLongPressStart when the hold completes (~500 ms).
+            // MercatorProjection converts screen coords → geo for cell lookup.
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onLongPressDown: (details) {
+                HapticFeedback.selectionClick();
+                setState(() => _longPressPoint = details.localPosition);
+              },
+              onLongPressStart: (details) {
+                HapticFeedback.mediumImpact();
+                setState(() => _longPressPoint = null);
+                final mapState = ref.read(mapStateProvider);
+                final cameraLat = mapState.cameraLat ?? kDefaultMapLat;
+                final cameraLon = mapState.cameraLon ?? kDefaultMapLon;
+                final size = MediaQuery.sizeOf(context);
+                final geo = MercatorProjection.screenToGeo(
+                  screenPoint: details.localPosition,
+                  cameraLat: cameraLat,
+                  cameraLon: cameraLon,
+                  zoom: _currentZoom,
+                  viewportSize: size,
+                );
+                final cellService = ref.read(cellServiceProvider);
+                final cellId = cellService.getCellId(geo.lat, geo.lon);
+                _onCellTapped(cellId);
+              },
+              onLongPressCancel: () {
+                setState(() => _longPressPoint = null);
+              },
+              child: MapLibreMap(
+                options: MapOptions(
+                  initStyle: 'https://tiles.openfreemap.org/styles/positron',
+                  initZoom: kDefaultZoom,
+                  initCenter: Position(kDefaultMapLon, kDefaultMapLat),
+                  minZoom: kMinZoom,
+                  maxZoom: kMaxZoom,
+                  attribution: false,
+                  nativeLogo: false,
+                  // Disable pitch (tilt) — we never use it, and it's a 2D game.
+                  // This also disables MapLibre's built-in KeyboardHandler (which
+                  // requires allEnabled=true). Without this, arrow keys are
+                  // processed by BOTH our KeyboardLocationService AND MapLibre's
+                  // native pan handler, causing rapid oscillation when opposing
+                  // keys are held or jitter during normal movement.
+                  gestures: const MapGestures.all(pitch: false),
+                ),
+                onMapCreated: _onMapCreated,
+                onStyleLoaded: _onStyleLoaded,
+                onEvent: _onMapEvent,
+                children: [
+                  // ── Layer 2: Player marker (geo-anchored to display position) ─
+                  // PlayerMarkerLayer uses ValueListenableBuilder internally so
+                  // only it rebuilds on each 60fps rubber-band update — the rest
+                  // of MapScreen stays stable.
+                  PlayerMarkerLayer(position: _markerPosition),
+                ],
               ),
-              onMapCreated: _onMapCreated,
-              onStyleLoaded: _onStyleLoaded,
-              onEvent: _onMapEvent,
-              children: [
-                // ── Layer 2: Player marker (geo-anchored to display position) ─
-                // PlayerMarkerLayer uses ValueListenableBuilder internally so
-                // only it rebuilds on each 60fps rubber-band update — the rest
-                // of MapScreen stays stable.
-                PlayerMarkerLayer(position: _markerPosition),
-              ],
             ),
+
+            // ── Layer 1.5: Long press ring indicator ──────────────────────────
+            // Appears immediately on finger-down, grows over kLongPressTimeout.
+            // IgnorePointer so it never captures map touches.
+            if (_longPressPoint != null)
+              Positioned(
+                left: _longPressPoint!.dx - 32,
+                top: _longPressPoint!.dy - 32,
+                child: IgnorePointer(
+                  child: _LongPressRing(key: ValueKey(_longPressPoint)),
+                ),
+              ),
 
             // ── Layer 3: Status bar ────────────────────────────────────────────
             const Positioned(
@@ -1310,6 +1363,66 @@ class _ExplorationDisabledBanner extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Expanding ring shown when the user begins a long press on the map.
+///
+/// Provides immediate visual confirmation (< 10 ms after first touch) that the
+/// hold gesture was registered. Animates from a tiny dot to a full 64-px ring
+/// over [kLongPressTimeout] (500 ms) — matching the long press confirm threshold
+/// so the ring fills just as the bottom sheet opens.
+///
+/// The widget is placed under [IgnorePointer] so it never captures touches.
+class _LongPressRing extends StatefulWidget {
+  const _LongPressRing({super.key});
+
+  @override
+  State<_LongPressRing> createState() => _LongPressRingState();
+}
+
+class _LongPressRingState extends State<_LongPressRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // 500 ms matches Flutter's default kLongPressTimeout.
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        final t = Curves.easeOut.transform(_ctrl.value);
+        return Opacity(
+          opacity: (0.9 - 0.3 * _ctrl.value).clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: t,
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 3.0),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
