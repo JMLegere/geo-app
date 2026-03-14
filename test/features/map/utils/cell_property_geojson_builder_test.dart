@@ -328,20 +328,6 @@ void main() {
   });
 
   group('MapIconRenderer', () {
-    test('habitatIconId follows naming convention', () {
-      expect(
-        MapIconRenderer.habitatIconId('forest'),
-        'habitat-forest',
-      );
-    });
-
-    test('climateIconId follows naming convention', () {
-      expect(
-        MapIconRenderer.climateIconId('tropic'),
-        'climate-tropic',
-      );
-    });
-
     test('eventIconId follows naming convention', () {
       expect(
         MapIconRenderer.eventIconId('migration'),
