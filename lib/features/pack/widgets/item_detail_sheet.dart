@@ -50,44 +50,75 @@ class ItemDetailSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return SafeArea(
-      top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.xxxl)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drag handle
-              Padding(
-                padding: EdgeInsets.only(top: Spacing.md, bottom: Spacing.xs),
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: cs.onSurface.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      maxChildSize: 0.85,
+      minChildSize: 0.3,
+      expand: false,
+      builder: (context, scrollController) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            decoration: BoxDecoration(
+              color: cs.surfaceContainer,
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(Radii.xxxl)),
+            ),
+            child: SingleChildScrollView(
+              controller: scrollController,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Drag handle + close button
+                  Padding(
+                    padding:
+                        EdgeInsets.only(top: Spacing.md, bottom: Spacing.xs),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Spacer for alignment
+                        SizedBox(width: 40),
+                        // Drag handle indicator
+                        Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: cs.onSurface.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        // Close button
+                        SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: IconButton(
+                            icon: Icon(Icons.close, size: 20),
+                            color: cs.onSurface,
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
 
-              // Content
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  Spacing.lg,
-                  Spacing.sm,
-                  Spacing.lg,
-                  Spacing.xxl,
-                ),
-                child: _ItemDetailContent(item: item, definition: definition),
+                  // Content
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      Spacing.lg,
+                      Spacing.sm,
+                      Spacing.lg,
+                      Spacing.xxl,
+                    ),
+                    child:
+                        _ItemDetailContent(item: item, definition: definition),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
