@@ -18,6 +18,7 @@ import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart'
 import 'package:earth_nova/features/map/map_screen.dart';
 import 'package:earth_nova/features/onboarding/providers/onboarding_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/main.dart';
@@ -130,6 +131,7 @@ void main() {
           appDatabaseProvider.overrideWithValue(inMemoryDb),
           locationEnrichmentServiceProvider
               .overrideWithValue(_StubLocationEnrichmentService()),
+          adminBoundaryServiceProvider.overrideWithValue(null),
           upgradePromptProvider.overrideWith(_NoTimerUpgradePromptNotifier.new),
         ],
         child: const EarthNovaApp(),
