@@ -88,13 +88,20 @@ Future<void> main() async {
     FlutterError.dumpErrorToConsole(details);
     DebugLogBuffer.instance
         .add('[CRASH] FlutterError: ${details.exceptionAsString()}');
+    // Capture full stack trace — the one-liner above tells us WHAT,
+    // the stack tells us WHERE.
+    final stack = details.stack;
+    if (stack != null) {
+      final frames = stack.toString().split('\n').take(15).join('\n');
+      DebugLogBuffer.instance.add('[CRASH-STACK]\n$frames');
+    }
   };
 
   // Replace the default error widget (red screen in debug, grey in release)
-  // with a minimal dark container. Individual screens can still use
-  // ErrorBoundary for richer fallback UI.
+  // with a recovery-friendly fallback. Shows error summary + back button
+  // so the user isn't stranded on a blank screen.
   ErrorWidget.builder = (FlutterErrorDetails details) {
-    return const ColoredBox(color: Color(0xFF161620));
+    return _GlobalErrorFallback(details: details);
   };
 
   // 6. Start remote log flush service (Supabase → app_logs table).
@@ -127,6 +134,8 @@ Future<void> main() async {
     )),
     (Object error, StackTrace stack) {
       DebugLogBuffer.instance.add('[CRASH] Unhandled: $error');
+      final frames = stack.toString().split('\n').take(15).join('\n');
+      DebugLogBuffer.instance.add('[CRASH-STACK]\n$frames');
       debugPrint('[CRASH] Unhandled zone error: $error\n$stack');
     },
     zoneSpecification: ZoneSpecification(
@@ -252,4 +261,67 @@ class _LogFlushObserverState extends State<_LogFlushObserver>
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Recovery-friendly error widget that replaces the default red/blue crash
+/// screen. Shows a brief error summary and a back button so the user isn't
+/// stranded. Used by [ErrorWidget.builder] — renders outside the normal
+/// widget tree, so it cannot use Theme or any inherited widget.
+class _GlobalErrorFallback extends StatelessWidget {
+  const _GlobalErrorFallback({required this.details});
+
+  final FlutterErrorDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF161620),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('⚠️', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 16),
+              const Text(
+                'Something went wrong',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                details.exceptionAsString().length > 120
+                    ? '${details.exceptionAsString().substring(0, 120)}…'
+                    : details.exceptionAsString(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF9E9EB0),
+                  decoration: TextDecoration.none,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Your progress is safe. Tap back or switch tabs.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF7A7A8E),
+                  decoration: TextDecoration.none,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

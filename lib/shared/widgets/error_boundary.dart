@@ -49,8 +49,9 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
     _previousOnError = FlutterError.onError;
 
     FlutterError.onError = (FlutterErrorDetails details) {
-      // Always dump to console so developers can diagnose the issue.
-      FlutterError.dumpErrorToConsole(details);
+      // Chain to the previous handler (main.dart's crash logger) FIRST
+      // so stack traces reach DebugLogBuffer before we swap UI.
+      _previousOnError?.call(details);
 
       // Schedule state update — cannot call setState during build.
       if (mounted) {

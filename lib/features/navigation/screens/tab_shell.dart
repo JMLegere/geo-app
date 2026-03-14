@@ -109,22 +109,38 @@ class _TabShellState extends ConsumerState<TabShell>
     return Scaffold(
       body: Stack(
         children: [
-          ErrorBoundary(
-            onError: (details) => DefaultErrorFallback(
-              onRetry: () {
-                // Force a full rebuild by toggling tabs.
-                (context as Element).markNeedsBuild();
-              },
-            ),
-            child: IndexedStack(
-              index: currentIndex,
-              children: const [
-                MapScreen(),
-                SanctuaryScreen(),
-                TownPlaceholderScreen(),
-                PackScreen(),
-              ],
-            ),
+          // Each tab is independently wrapped in an ErrorBoundary so a
+          // crash in one tab (e.g., a corrupted species card in Pack)
+          // doesn't take out the entire app. The user can switch to a
+          // healthy tab while the broken one shows the recovery fallback.
+          IndexedStack(
+            index: currentIndex,
+            children: [
+              ErrorBoundary(
+                onError: (details) => DefaultErrorFallback(
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                ),
+                child: const MapScreen(),
+              ),
+              ErrorBoundary(
+                onError: (details) => DefaultErrorFallback(
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                ),
+                child: const SanctuaryScreen(),
+              ),
+              ErrorBoundary(
+                onError: (details) => DefaultErrorFallback(
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                ),
+                child: const TownPlaceholderScreen(),
+              ),
+              ErrorBoundary(
+                onError: (details) => DefaultErrorFallback(
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                ),
+                child: const PackScreen(),
+              ),
+            ],
           ),
           // ── Player identicon — persistent settings trigger ─────────────
           // Shown on tabs without their own AppBar (Map, Town).
