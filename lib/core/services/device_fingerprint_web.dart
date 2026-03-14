@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:js_interop';
 
 import 'package:crypto/crypto.dart';
 import 'package:web/web.dart' as web;

@@ -62,10 +62,11 @@ class LogFlushService {
       final lines = DebugLogBuffer.instance.drainPending();
       if (lines.isEmpty) return;
 
-      final userId = _client.auth.currentUser?.id;
+      final user = _client.auth.currentUser;
       final data = <String, dynamic>{
         'session_id': _sessionId,
-        'user_id': userId,
+        'user_id': user?.id,
+        'phone_number': user?.userMetadata?['phone_number'] as String?,
         'lines': lines.join('\n'),
         'app_version': _appVersion,
         'platform': _platform,

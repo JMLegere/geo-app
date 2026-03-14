@@ -237,6 +237,21 @@ class SupabaseAuthService implements AuthService {
     try {
       final session = _auth.currentSession;
       if (session == null) return false;
+
+      // Reject anonymous sessions — anonymous auth is disabled, so any
+      // cached anonymous session is stale. Sign out to clear local storage
+      // and force the user to the login screen.
+      final user = _auth.currentUser;
+      if (user != null) {
+        final isAnonymous = user.userMetadata?['is_anonymous'] == true ||
+            (user.appMetadata['provider'] == 'anonymous');
+        if (isAnonymous) {
+          debugPrint('[Auth] anonymous session detected — signing out');
+          await _auth.signOut();
+          return false;
+        }
+      }
+
       if (session.isExpired) {
         // Token expired while the app was closed — attempt a refresh
         // using the stored refresh token before giving up.
