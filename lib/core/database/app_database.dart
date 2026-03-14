@@ -192,6 +192,8 @@ class LocalLocationNodeTable extends Table {
   TextColumn get adminLevel => text()(); // AdminLevel enum name
   TextColumn get parentId => text().nullable()(); // FK → parent node
   TextColumn get colorHex => text().nullable()(); // hex from flag, or null
+  TextColumn get geometryJson =>
+      text().nullable()(); // GeoJSON polygon, null if not fetched
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -241,7 +243,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? createDatabaseConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration {
@@ -332,6 +334,11 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('DROP TABLE local_location_node_table');
           await customStatement(
               'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
+        }
+        if (from < 13) {
+          // Add geometryJson column for storing GeoJSON polygon boundaries.
+          await m.addColumn(
+              localLocationNodeTable, localLocationNodeTable.geometryJson);
         }
       },
     );

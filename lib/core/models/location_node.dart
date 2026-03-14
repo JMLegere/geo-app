@@ -124,8 +124,7 @@ class LocationNode {
       adminLevel: AdminLevel.fromString(row.adminLevel),
       parentId: row.parentId,
       colorHex: row.colorHex,
-      geometryJson:
-          null, // geometryJson column will be added in a future migration
+      geometryJson: row.geometryJson,
     );
   }
 
@@ -137,6 +136,7 @@ class LocationNode {
       adminLevel: adminLevel.name,
       parentId: parentId,
       colorHex: colorHex,
+      geometryJson: geometryJson,
       createdAt: DateTime.now(),
     );
   }
@@ -149,6 +149,7 @@ class LocationNode {
       adminLevel: Value(adminLevel.name),
       parentId: Value(parentId),
       colorHex: Value(colorHex),
+      geometryJson: Value(geometryJson),
     );
   }
 
