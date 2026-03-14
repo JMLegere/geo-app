@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
+import 'package:earth_nova/core/models/location_node.dart';
+import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
@@ -53,6 +57,46 @@ class CellInfoSheet extends ConsumerStatefulWidget {
 class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
   /// Rapid-tap guard: disabled while an exploration action is in flight.
   bool _isExploring = false;
+
+  /// Async-loaded cell data for habitat chips + territory breadcrumb.
+  CellProperties? _cellProps;
+  List<String>? _territoryBreadcrumb;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCellData();
+  }
+
+  Future<void> _loadCellData() async {
+    final cellPropRepo = ref.read(cellPropertyRepositoryProvider);
+    final locationNodeRepo = ref.read(locationNodeRepositoryProvider);
+
+    final props = await cellPropRepo.get(widget.cellId);
+    if (!mounted) return;
+
+    List<String>? breadcrumb;
+    if (props?.locationId != null) {
+      final names = <String>[];
+      String? currentId = props!.locationId;
+      while (currentId != null) {
+        final node = await locationNodeRepo.get(currentId);
+        if (node == null) break;
+        if (node.adminLevel != AdminLevel.world &&
+            node.adminLevel != AdminLevel.continent) {
+          names.add(node.name);
+        }
+        currentId = node.parentId;
+      }
+      breadcrumb = names.reversed.toList();
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _cellProps = props;
+      _territoryBreadcrumb = breadcrumb;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,6 +186,60 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
                 ],
               ],
             ),
+
+            // ── Territory breadcrumb ───────────────────────────────────────
+            if (_territoryBreadcrumb != null) ...[
+              Spacing.gapSm,
+              Text(
+                _territoryBreadcrumb!.isNotEmpty
+                    ? _territoryBreadcrumb!.join(' · ')
+                    : 'Territory unknown',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ] else if (_cellProps != null) ...[
+              Spacing.gapSm,
+              Text(
+                'Territory unknown',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
+
+            // ── Habitat chips ──────────────────────────────────────────────
+            if (_cellProps != null) ...[
+              Spacing.gapSm,
+              Wrap(
+                spacing: Spacing.sm,
+                runSpacing: Spacing.xxs,
+                children: _cellProps!.habitats.map((habitat) {
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _parseHex(habitat.colorHex),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        habitat.displayName,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ],
 
             Spacing.gapMd,
 
@@ -260,6 +358,9 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
       ],
     );
   }
+
+  static Color _parseHex(String hex) =>
+      Color(int.parse(hex.substring(1), radix: 16) + 0xFF000000);
 
   Future<void> _onExplore() async {
     // Rapid-tap guard: disable immediately so double-taps cannot double-spend.

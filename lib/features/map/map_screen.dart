@@ -8,8 +8,7 @@ import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
-import 'package:earth_nova/core/models/climate.dart';
-import 'package:earth_nova/core/models/habitat.dart';
+
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
@@ -27,6 +26,7 @@ import 'package:earth_nova/features/map/providers/fog_overlay_controller_provide
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
@@ -157,6 +157,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _adminBoundaryFillLayerId = 'admin-boundary-fill';
   static const _adminBoundaryLinesSrcId = 'admin-boundary-lines-src';
   static const _adminBoundaryLinesLayerId = 'admin-boundary-lines';
+
+  // -- MapLibre source/layer IDs for habitat fill --
+  static const _habitatFillSrcId = 'habitat-fill-src';
+  static const _habitatFillLayerId = 'habitat-fill';
 
   // -- MapLibre source/layer IDs for territory borders --
   static const _borderFillSrcId = 'territory-border-fill-src';
@@ -304,6 +308,29 @@ class _MapScreenState extends ConsumerState<MapScreen>
         },
       ));
 
+      // Habitat fill: subtle radial gradient tint per revealed cell.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _habitatFillSrcId,
+            data: HabitatFillGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _habitatFillLayerId,
+        sourceId: _habitatFillSrcId,
+        paint: {
+          'fill-color': [
+            'coalesce',
+            ['get', 'color'],
+            '#888888'
+          ],
+          'fill-opacity': [
+            'coalesce',
+            ['get', 'opacity'],
+            0.0
+          ],
+        },
+      ));
+
       // Base fog: opaque world polygon (holes punched for revealed cells).
       await controller.addSource(
         GeoJsonSource(id: _fogBaseSrcId, data: FogGeoJsonBuilder.fullWorldFog),
@@ -425,54 +452,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
   ///
   /// Called once during [_initFogLayers]. Each emoji is rendered to PNG via
   /// [MapIconRenderer] and registered with `addImage()`. The SymbolLayer
-  /// references these by ID (e.g., "habitat-forest", "climate-tropic").
+  /// references these by ID (e.g., "event-migration", "event-unknown").
+  /// Habitat/climate icons removed — habitat fills handle communication now.
   Future<void> _registerIconImages(MapController controller) async {
     if (_iconImagesRegistered) return;
 
-    final totalIcons = Habitat.values.length +
-        Climate.values.length +
-        CellEventType.values.length +
-        1; // +1 for unknown
+    final totalIcons = CellEventType.values.length + 1; // +1 for unknown
     MapLogger.iconRegistrationStarted(totalIcons);
 
     var succeeded = 0;
     var failed = 0;
-
-    // Habitat icons (7).
-    for (final habitat in Habitat.values) {
-      try {
-        final bytes =
-            await MapIconRenderer.renderEmoji(GameIcons.habitat(habitat));
-        await controller.addImage(
-          MapIconRenderer.habitatIconId(habitat.name),
-          bytes,
-        );
-        succeeded++;
-        MapLogger.iconRegistered(MapIconRenderer.habitatIconId(habitat.name));
-      } catch (e) {
-        failed++;
-        MapLogger.iconRegistrationFailed(
-            MapIconRenderer.habitatIconId(habitat.name), e);
-      }
-    }
-
-    // Climate icons (4).
-    for (final climate in Climate.values) {
-      try {
-        final bytes =
-            await MapIconRenderer.renderEmoji(GameIcons.climate(climate));
-        await controller.addImage(
-          MapIconRenderer.climateIconId(climate.name),
-          bytes,
-        );
-        succeeded++;
-        MapLogger.iconRegistered(MapIconRenderer.climateIconId(climate.name));
-      } catch (e) {
-        failed++;
-        MapLogger.iconRegistrationFailed(
-            MapIconRenderer.climateIconId(climate.name), e);
-      }
-    }
 
     // Event icons (2 + unknown).
     for (final eventType in CellEventType.values) {
@@ -532,6 +521,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         controller.updateGeoJsonSource(
           id: _adminBoundaryLinesSrcId,
           data: fogOverlayController.adminBoundaryLinesGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _habitatFillSrcId,
+          data: fogOverlayController.habitatFillGeoJson,
         ),
         controller.updateGeoJsonSource(
           id: _fogBaseSrcId,

@@ -51,12 +51,9 @@ abstract final class MapIconRenderer {
   }
 
   /// Pre-defined icon IDs used by [CellPropertyGeoJsonBuilder] and
-  /// registered in map_screen's `_initCellPropertyLayers()`.
+  /// registered in map_screen's `_registerIconImages()`.
   ///
-  /// Format: `"habitat-{name}"`, `"climate-{name}"`, `"event-{name}"`,
-  /// `"event-unknown"`.
-  static String habitatIconId(String habitatName) => 'habitat-$habitatName';
-  static String climateIconId(String climateName) => 'climate-$climateName';
+  /// Format: `"event-{name}"`, `"event-unknown"`.
   static String eventIconId(String eventTypeName) => 'event-$eventTypeName';
   static const String eventUnknownId = 'event-unknown';
 }
