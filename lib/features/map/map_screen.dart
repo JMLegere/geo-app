@@ -27,6 +27,7 @@ import 'package:earth_nova/features/map/providers/fog_overlay_controller_provide
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
@@ -157,6 +158,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _adminBoundaryFillLayerId = 'admin-boundary-fill';
   static const _adminBoundaryLinesSrcId = 'admin-boundary-lines-src';
   static const _adminBoundaryLinesLayerId = 'admin-boundary-lines';
+
+  // -- MapLibre source/layer IDs for habitat fill --
+  static const _habitatFillSrcId = 'habitat-fill-src';
+  static const _habitatFillLayerId = 'habitat-fill';
 
   // -- MapLibre source/layer IDs for territory borders --
   static const _borderFillSrcId = 'territory-border-fill-src';
@@ -301,6 +306,29 @@ class _MapScreenState extends ConsumerState<MapScreen>
           ],
           'line-dasharray': [6.0, 3.0],
           'line-opacity': 0.7,
+        },
+      ));
+
+      // Habitat fill: subtle radial gradient tint per revealed cell.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _habitatFillSrcId,
+            data: HabitatFillGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _habitatFillLayerId,
+        sourceId: _habitatFillSrcId,
+        paint: {
+          'fill-color': [
+            'coalesce',
+            ['get', 'color'],
+            '#888888'
+          ],
+          'fill-opacity': [
+            'coalesce',
+            ['get', 'opacity'],
+            0.0
+          ],
         },
       ));
 
@@ -532,6 +560,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
         controller.updateGeoJsonSource(
           id: _adminBoundaryLinesSrcId,
           data: fogOverlayController.adminBoundaryLinesGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _habitatFillSrcId,
+          data: fogOverlayController.habitatFillGeoJson,
         ),
         controller.updateGeoJsonSource(
           id: _fogBaseSrcId,

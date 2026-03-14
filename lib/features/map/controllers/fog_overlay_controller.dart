@@ -11,6 +11,7 @@ import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
 /// Computes fog GeoJSON for MapLibre native fill layers.
@@ -81,6 +82,9 @@ class FogOverlayController {
   /// GeoJSON string for cell property icon Point features.
   String _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
 
+  /// GeoJSON string for habitat fill gradient rings per revealed cell.
+  String _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
+
   /// Cell properties cache — set externally from GameCoordinator.
   Map<String, CellProperties> _cellPropertiesCache = const {};
 
@@ -126,6 +130,9 @@ class FogOverlayController {
 
   /// GeoJSON for cell property icon Points (habitat, climate, event icons).
   String get cellIconsGeoJson => _cellIconsGeoJson;
+
+  /// GeoJSON for habitat fill gradient rings per revealed cell.
+  String get habitatFillGeoJson => _habitatFillGeoJson;
 
   /// GeoJSON for territory border gradient fill (Stellaris-style).
   String get borderFillGeoJson => _borderFillGeoJson;
@@ -328,6 +335,17 @@ class FogOverlayController {
       _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
       _borderLinesGeoJson =
           TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+    }
+
+    // Build habitat fill gradient rings for revealed cells.
+    if (_cellPropertiesCache.isNotEmpty) {
+      _habitatFillGeoJson = HabitatFillGeoJsonBuilder.buildHabitatFills(
+        cellProperties: _cellPropertiesCache,
+        cellStates: cellStates,
+        getCellBoundary: cellService.getCellBoundary,
+      );
+    } else {
+      _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
     }
 
     // Keep legacy renderData empty — no longer needed for Canvas painting.
