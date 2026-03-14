@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Floating action buttons for the map screen.
 ///
@@ -96,7 +97,10 @@ class _ControlButton extends StatelessWidget {
         color: cs.surfaceContainerHigh,
         shadowColor: cs.shadow.withValues(alpha: 0.4),
         child: InkWell(
-          onTap: onPressed,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onPressed();
+          },
           borderRadius: BorderRadius.circular(28),
           child: SizedBox(
             width: 56,
