@@ -12,11 +12,13 @@ import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 ///
 /// | Cell state                      | Shows                                          |
 /// |---------------------------------|------------------------------------------------|
-/// | Current cell                    | Full property grid (habitat + climate + event)  |
-/// | Adjacent cell (observed/hidden) | Event icon only (if event present)              |
-/// | Unvisited with event            | "?" icon (Witcher 3 style)                      |
-/// | Visited cell (not adjacent)     | Full property grid permanently                  |
-/// | Stale cell (seed changed)       | Permanent facts stay, "?" replaces event slot   |
+/// | Current cell with event         | Event icon only (centered)                      |
+/// | Current cell without event      | No icons                                        |
+/// | Visited cell with event         | Event icon only (centered)                      |
+/// | Visited cell without event      | No icons                                        |
+/// | Adjacent cell with event        | "?" icon (Witcher 3 style)                      |
+/// | Adjacent cell without event     | No icons                                        |
+/// | Unvisited non-adjacent          | No icons                                        |
 ///
 /// All coordinates are `[longitude, latitude]` (GeoJSON convention).
 class CellPropertyGeoJsonBuilder {
@@ -99,36 +101,20 @@ class CellPropertyGeoJsonBuilder {
   }) {
     final icons = <_IconPlacement>[];
 
-    // Full property grid: current cell OR visited cell (including hidden).
+    // Current or visited cell: show event icon only (centered) if present.
     final showFullGrid = isCurrent || isVisited;
 
-    if (showFullGrid && props.habitats.isNotEmpty) {
-      // Primary habitat icon (top-left of grid).
-      final primaryHabitat = props.habitats.first;
-      icons.add(_IconPlacement(
-        iconId: MapIconRenderer.habitatIconId(primaryHabitat.name),
-        offsetX: -0.5,
-        offsetY: -0.5,
-      ));
-
-      // Climate icon (top-right).
-      icons.add(_IconPlacement(
-        iconId: MapIconRenderer.climateIconId(props.climate.name),
-        offsetX: 0.5,
-        offsetY: -0.5,
-      ));
-
-      // Event icon (bottom-center) if present.
+    if (showFullGrid) {
+      // Event icon (centered) if present.
       if (event != null) {
         icons.add(_IconPlacement(
           iconId: MapIconRenderer.eventIconId(event.type.name),
           offsetX: 0.0,
-          offsetY: 0.5,
+          offsetY: 0.0,
         ));
       }
     } else if (isAdjacent) {
-      // Adjacent but not visited: show event icon only if event present.
-      // Otherwise show "?" for cells with events.
+      // Adjacent but not visited: show "?" icon if event present.
       if (event != null) {
         icons.add(_IconPlacement(
           iconId: MapIconRenderer.eventUnknownId,

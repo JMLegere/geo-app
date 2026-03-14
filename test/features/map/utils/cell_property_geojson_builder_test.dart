@@ -115,7 +115,7 @@ void main() {
       expect(_features(json), isEmpty);
     });
 
-    test('current cell shows full property grid (habitat + climate)', () {
+    test('current cell without event shows no icons', () {
       const cellId = 'cell_45_10';
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
@@ -133,16 +133,8 @@ void main() {
       );
 
       final features = _features(json);
-      // Should have at least habitat + climate icons.
-      expect(features.length, greaterThanOrEqualTo(2));
-
-      final iconIds = features
-          .map((f) => (f as Map)['properties']['icon'] as String)
-          .toSet();
-      expect(iconIds,
-          contains(MapIconRenderer.habitatIconId(Habitat.forest.name)));
-      expect(iconIds,
-          contains(MapIconRenderer.climateIconId(Climate.temperate.name)));
+      // No event, so no icons.
+      expect(features, isEmpty);
     });
 
     test('current cell shows event icon when event present', () {
@@ -161,16 +153,19 @@ void main() {
       );
 
       final features = _features(json);
-      // 3 icons: habitat + climate + event.
-      expect(features.length, 3);
+      // Only 1 icon: event (centered).
+      expect(features.length, 1);
 
-      final iconIds = features
-          .map((f) => (f as Map)['properties']['icon'] as String)
-          .toList();
-      expect(iconIds, contains(MapIconRenderer.eventIconId(event.type.name)));
+      final iconId = (features.first as Map)['properties']['icon'] as String;
+      expect(iconId, MapIconRenderer.eventIconId(event.type.name));
+
+      // Event icon should be centered (offset 0, 0).
+      final offset = (features.first as Map)['properties']['offset'] as List;
+      expect(offset[0], 0.0);
+      expect(offset[1], 0.0);
     });
 
-    test('visited non-adjacent cell shows full property grid', () {
+    test('visited non-adjacent cell without event shows no icons', () {
       const cellId = 'cell_45_10';
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
@@ -185,8 +180,8 @@ void main() {
       );
 
       final features = _features(json);
-      // Visited shows full grid: habitat + climate.
-      expect(features.length, greaterThanOrEqualTo(2));
+      // Visited but no event: no icons.
+      expect(features, isEmpty);
     });
 
     test('adjacent unvisited cell with event shows unknown icon', () {
@@ -247,7 +242,7 @@ void main() {
 
     test('icon features have correct GeoJSON Point coordinates', () {
       const cellId = 'cell_45_10';
-      final seedNoEvent = _findSeedWithoutEvent(cellId);
+      final seedWithEvent = _findSeedWithEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
         cellStates: {cellId: FogState.observed},
@@ -255,7 +250,7 @@ void main() {
         currentCellId: cellId,
         adjacentCellIds: {},
         visitedCellIds: {cellId},
-        dailySeed: seedNoEvent,
+        dailySeed: seedWithEvent,
         getCellCenter: _center,
       );
 
@@ -297,10 +292,18 @@ void main() {
       }
     });
 
-    test('multiple cells produce multiple features', () {
-      final seedNoEvent1 = _findSeedWithoutEvent('cell_45_10');
-      // Use same seed for both — one might still have event.
-      final seed = seedNoEvent1;
+    test('multiple cells with events produce multiple features', () {
+      // Find a seed where both cells have events.
+      String? goodSeed;
+      for (var i = 0; i < 200; i++) {
+        final seed = 'test_seed_$i';
+        if (EventResolver.resolve(seed, 'cell_45_10') != null &&
+            EventResolver.resolve(seed, 'cell_46_11') != null) {
+          goodSeed = seed;
+          break;
+        }
+      }
+      expect(goodSeed, isNotNull);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
         cellStates: {
@@ -314,13 +317,13 @@ void main() {
         currentCellId: 'cell_45_10',
         adjacentCellIds: {},
         visitedCellIds: {'cell_45_10', 'cell_46_11'},
-        dailySeed: seed,
+        dailySeed: goodSeed!,
         getCellCenter: _center,
       );
 
       final features = _features(json);
-      // Both cells should produce at least habitat + climate icons each.
-      expect(features.length, greaterThanOrEqualTo(4));
+      // Both cells have events, so 2 features (1 per cell).
+      expect(features.length, 2);
     });
   });
 
