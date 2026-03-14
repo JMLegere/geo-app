@@ -192,6 +192,27 @@ GameIcons emoji → MapIconRenderer.renderEmoji() → PNG bytes
 
 ---
 
+## Admin Boundary Polygon Layers
+
+7th and 8th MapLibre layers — GeoJSON fill + line layers rendering resolved admin boundaries fetched from Nominatim.
+
+**Source/Layer IDs:**
+- `admin-boundary-fill-src` / `admin-boundary-fill` — FillLayer with boundary polygon fill
+- `admin-boundary-lines-src` / `admin-boundary-lines` — LineLayer outlining the boundary
+
+**Layer ordering:** Rendered BELOW fog layers — boundaries are visible through fog.
+
+**GeoJSON builder:** `AdminBoundaryGeoJsonBuilder` — builds FeatureCollections from `LocationNode.geometryJson` strings.
+
+**Data flow (event-driven, NOT 10Hz):**
+1. `AdminBoundaryService.requestBoundaries(locationNodeId)` triggers fetch via `resolve-admin-boundaries` Edge Function
+2. `AdminBoundaryService.onBoundariesResolved` stream fires when geometry arrives
+3. `FogOverlayController.updateAdminBoundaries()` rebuilds GeoJSON and calls `setGeoJsonSource()`
+
+**Anti-pattern:** Never rebuild admin boundary GeoJSON in the 10Hz render loop. Boundaries only change on cell enrichment events.
+
+---
+
 ## Rubber-Band Controller
 
 Smooth 60fps interpolation decouples display position from raw GPS:
