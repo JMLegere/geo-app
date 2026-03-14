@@ -40,9 +40,12 @@ import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
+import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
+import 'package:earth_nova/features/sync/services/admin_boundary_service.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
+import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 
@@ -149,6 +152,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _cellIconsSrcId = 'cell-icons-src';
   static const _cellIconsLayerId = 'cell-icons';
 
+  // -- MapLibre source/layer IDs for admin boundary polygons --
+  static const _adminBoundaryFillSrcId = 'admin-boundary-fill-src';
+  static const _adminBoundaryFillLayerId = 'admin-boundary-fill';
+  static const _adminBoundaryLinesSrcId = 'admin-boundary-lines-src';
+  static const _adminBoundaryLinesLayerId = 'admin-boundary-lines';
+
   // -- MapLibre source/layer IDs for territory borders --
   static const _borderFillSrcId = 'territory-border-fill-src';
   static const _borderFillLayerId = 'territory-border-fill';
@@ -157,6 +166,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   /// Whether the cell property icon images have been registered with MapLibre.
   bool _iconImagesRegistered = false;
+
+  /// Admin boundary service — may be null when Supabase is not configured.
+  AdminBoundaryService? _adminBoundaryService;
 
   /// Cached location nodes — loaded once, refreshed when enrichment completes.
   Map<String, LocationNode> _locationNodesMap = {};
@@ -198,6 +210,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
       }).catchError((Object e) {
         debugPrint('[MapScreen] failed to load location node $locationId: $e');
       });
+
+      // Trigger admin boundary fetch when enrichment resolves — the district
+      // locationId may have changed, so requestBoundaries will check and fetch
+      // polygon data if needed (deduplicates internally by location).
+      final cellService = ref.read(cellServiceProvider);
+      final center = cellService.getCellCenter(cellId);
+      _adminBoundaryService?.requestBoundaries(center.lat, center.lon);
+    };
+
+    // Wire admin boundary service — fetch polygons on district change.
+    _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
+    _adminBoundaryService?.onBoundariesResolved = (nodeIds) {
+      if (!mounted) return;
+      _rebuildAdminBoundaryGeoJson();
     };
   }
 
@@ -205,6 +231,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
     _locationEnrichmentService.onLocationEnriched = null;
+    _adminBoundaryService?.onBoundariesResolved = null;
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
@@ -228,6 +255,39 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || _fogLayersInitialized) return;
 
     try {
+      // Admin boundary fills: polygon fills for admin regions.
+      // Added BEFORE fog layers so they render below the fog.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _adminBoundaryFillSrcId,
+            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _adminBoundaryFillLayerId,
+        sourceId: _adminBoundaryFillSrcId,
+        paint: {
+          'fill-color': ['get', 'color'],
+          'fill-opacity': ['get', 'opacity'],
+        },
+      ));
+
+      // Admin boundary lines: outlines for admin regions.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _adminBoundaryLinesSrcId,
+            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(LineLayer(
+        id: _adminBoundaryLinesLayerId,
+        sourceId: _adminBoundaryLinesSrcId,
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['get', 'line_weight'],
+          'line-dasharray': [6.0, 3.0],
+          'line-opacity': 0.7,
+        },
+      ));
+
       // Base fog: opaque world polygon (holes punched for revealed cells).
       await controller.addSource(
         GeoJsonSource(id: _fogBaseSrcId, data: FogGeoJsonBuilder.fullWorldFog),
@@ -449,6 +509,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapLogger.fogUpdateStarted();
     try {
       await Future.wait([
+        controller.updateGeoJsonSource(
+          id: _adminBoundaryFillSrcId,
+          data: fogOverlayController.adminBoundaryFillGeoJson,
+        ),
+        controller.updateGeoJsonSource(
+          id: _adminBoundaryLinesSrcId,
+          data: fogOverlayController.adminBoundaryLinesGeoJson,
+        ),
         controller.updateGeoJsonSource(
           id: _fogBaseSrcId,
           data: fogOverlayController.baseFogGeoJson,
@@ -729,6 +797,27 @@ class _MapScreenState extends ConsumerState<MapScreen>
       MapLogger.locationNodesLoaded(_locationNodesMap.length);
     } catch (e) {
       MapLogger.locationNodesLoadError(e);
+    }
+  }
+
+  /// Rebuilds admin boundary GeoJSON from the repository and pushes to map.
+  ///
+  /// Called EVENT-DRIVEN when [AdminBoundaryService.onBoundariesResolved] fires.
+  /// Loads all location nodes from the repository, feeds them to the fog
+  /// overlay controller, then schedules a fog source update on the next frame.
+  Future<void> _rebuildAdminBoundaryGeoJson() async {
+    if (!mounted) return;
+
+    try {
+      final repo = ref.read(locationNodeRepositoryProvider);
+      final nodes = await repo.getAll();
+      if (!mounted) return;
+
+      final nodesMap = <String, LocationNode>{for (final n in nodes) n.id: n};
+      ref.read(fogOverlayControllerProvider).updateAdminBoundaries(nodesMap);
+      _updateFogSources();
+    } catch (e) {
+      debugPrint('[MapScreen] _rebuildAdminBoundaryGeoJson failed: $e');
     }
   }
 
