@@ -2,6 +2,8 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:earth_nova/core/services/crash_log_persistence.dart';
+
 /// Ring buffer that captures debugPrint output for in-app viewing.
 ///
 /// Singleton by necessity — debugPrint override requires a global target.
@@ -49,6 +51,9 @@ class DebugLogBuffer {
     // Trigger immediate flush when a crash line is detected so logs
     // reach Supabase before the process dies.
     if (line.contains('[CRASH]')) {
+      // Synchronous localStorage write — survives page refresh even if
+      // the async Supabase flush gets cancelled by the browser.
+      CrashLogPersistence.persist(_pending);
       onCrash?.call();
     } else if (line.contains('[AUTH]') ||
         line.contains('[Auth]') ||

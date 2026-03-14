@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/core/services/crash_log_persistence.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/device_fingerprint.dart';
 
@@ -37,12 +38,44 @@ class LogFlushService {
   }
 
   /// Start the periodic 30-second flush timer.
+  ///
+  /// Also recovers any crash logs from a previous session that were
+  /// persisted to localStorage but never made it to Supabase.
   void start() {
     _timer?.cancel();
     _timer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => flush(),
     );
+    // Recover crash context from a previous session (web only).
+    _recoverCrashLogs();
+  }
+
+  /// Flush crash logs that were persisted to localStorage in a previous
+  /// session. These are lines that made it to the synchronous localStorage
+  /// write but not to the async Supabase flush (e.g., user refreshed the
+  /// page after seeing the error screen).
+  Future<void> _recoverCrashLogs() async {
+    try {
+      final recovered = CrashLogPersistence.recover();
+      if (recovered == null || recovered.isEmpty) return;
+
+      final user = _client.auth.currentUser;
+      final data = <String, dynamic>{
+        'session_id': _sessionId,
+        'user_id': user?.id,
+        'phone_number': user?.userMetadata?['phone_number'] as String?,
+        'lines': '[RECOVERED-CRASH] ${recovered.join('\n')}',
+        'app_version': _appVersion,
+        'platform': _platform,
+        'device_id': _deviceId,
+      };
+
+      await _client.from('app_logs').insert(data);
+      CrashLogPersistence.clear();
+    } catch (_) {
+      // Silent — don't block startup for recovery failures.
+    }
   }
 
   /// Stop the periodic flush timer.
