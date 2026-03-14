@@ -70,6 +70,10 @@ class LocationNode {
   /// Null if no color is available
   final String? colorHex;
 
+  /// Simplified GeoJSON polygon string for the boundary
+  /// Null if geometry has not been fetched from Nominatim
+  final String? geometryJson;
+
   const LocationNode({
     required this.id,
     required this.osmId,
@@ -77,6 +81,7 @@ class LocationNode {
     required this.adminLevel,
     required this.parentId,
     required this.colorHex,
+    required this.geometryJson,
   });
 
   LocationNode copyWith({
@@ -86,6 +91,7 @@ class LocationNode {
     AdminLevel? adminLevel,
     String? parentId,
     String? colorHex,
+    String? Function()? geometryJson,
   }) {
     return LocationNode(
       id: id ?? this.id,
@@ -94,6 +100,7 @@ class LocationNode {
       adminLevel: adminLevel ?? this.adminLevel,
       parentId: parentId ?? this.parentId,
       colorHex: colorHex ?? this.colorHex,
+      geometryJson: geometryJson != null ? geometryJson() : this.geometryJson,
     );
   }
 
@@ -105,6 +112,7 @@ class LocationNode {
       'adminLevel': adminLevel.name,
       'parentId': parentId,
       'colorHex': colorHex,
+      'geometryJson': geometryJson,
     };
   }
 
@@ -116,6 +124,8 @@ class LocationNode {
       adminLevel: AdminLevel.fromString(row.adminLevel),
       parentId: row.parentId,
       colorHex: row.colorHex,
+      geometryJson:
+          null, // geometryJson column will be added in a future migration
     );
   }
 
@@ -150,6 +160,7 @@ class LocationNode {
       adminLevel: AdminLevel.fromString(json['adminLevel'] as String),
       parentId: json['parentId'] as String?,
       colorHex: json['colorHex'] as String?,
+      geometryJson: json['geometryJson'] as String?,
     );
   }
 
@@ -163,17 +174,27 @@ class LocationNode {
         other.name == name &&
         other.adminLevel == adminLevel &&
         other.parentId == parentId &&
-        other.colorHex == colorHex;
+        other.colorHex == colorHex &&
+        other.geometryJson == geometryJson;
   }
 
   @override
   int get hashCode {
-    return Object.hash(id, osmId, name, adminLevel, parentId, colorHex);
+    return Object.hash(
+      id,
+      osmId,
+      name,
+      adminLevel,
+      parentId,
+      colorHex,
+      geometryJson,
+    );
   }
 
   @override
   String toString() {
     return 'LocationNode(id: $id, osmId: $osmId, name: $name, '
-        'adminLevel: $adminLevel, parentId: $parentId, colorHex: $colorHex)';
+        'adminLevel: $adminLevel, parentId: $parentId, colorHex: $colorHex, '
+        'geometryJson: $geometryJson)';
   }
 }
