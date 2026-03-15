@@ -112,31 +112,9 @@ void main() {
         expect(sink.flushCallCount, equals(0));
       });
 
-      test('triggers auto-flush when batch reaches maxBatchSize (100)', () {
-        // Use SpyEventSink so super.flush() clears _pending (Supabase
-        // error is caught internally — queue is cleared before insert).
-        final sink = SpyEventSink();
-
-        for (var i = 0; i < 100; i++) {
-          sink.add(_makeEvent('event_$i'));
-        }
-
-        // Auto-flush should have been called once at event #100.
-        expect(sink.flushCallCount, equals(1));
-      });
-
-      test('triggers multiple auto-flushes for 200+ events', () {
-        // SpyEventSink calls super.flush() which clears _pending before
-        // the (failing) Supabase insert, so the 101st event starts fresh.
-        final sink = SpyEventSink();
-
-        for (var i = 0; i < 200; i++) {
-          sink.add(_makeEvent('event_$i'));
-        }
-
-        // Two batches of 100.
-        expect(sink.flushCallCount, equals(2));
-      });
+      // Auto-flush on batch size removed — 30s timer handles flushing.
+      // sessionStorage as primary buffer makes count-based auto-flush
+      // unnecessary (events persist regardless of flush timing).
 
       test('does not trigger auto-flush at 99 events', () {
         final sink = TestableEventSink();
