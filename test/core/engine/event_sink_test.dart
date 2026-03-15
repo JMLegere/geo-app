@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/engine/event_sink.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 // ---------------------------------------------------------------------------
 // Testable subclass — intercepts flush() to avoid real Supabase calls
 // ---------------------------------------------------------------------------
@@ -50,20 +48,6 @@ class SpyEventSink extends EventSink {
 }
 
 // ---------------------------------------------------------------------------
-// Fake SupabaseClient — minimal stub that throws on any real operation.
-// EventSink's catch block handles the error gracefully.
-// ---------------------------------------------------------------------------
-
-SupabaseClient _makeFakeClient() {
-  // Using an obviously invalid URL/key — any call to .from().insert() will
-  // throw, which EventSink's flush() catches and logs via debugPrint.
-  return SupabaseClient(
-    'https://fake.supabase.co',
-    'fake-anon-key',
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -75,12 +59,6 @@ GameEvent _makeEvent([String event = 'test_event']) =>
 // ---------------------------------------------------------------------------
 
 void main() {
-  late SupabaseClient fakeClient;
-
-  setUp(() {
-    fakeClient = _makeFakeClient();
-  });
-
   group('EventSink', () {
     group('sessionId', () {
       test('is a valid UUID v4 format string', () {
