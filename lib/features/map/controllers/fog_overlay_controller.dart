@@ -110,6 +110,17 @@ class FogOverlayController {
   /// Current daily seed for event resolution.
   String _dailySeed = '';
 
+  // -- Dirty flags: track which source groups changed since last consume. --
+  bool _fogDirty = false;
+  bool _iconsDirty = false;
+  bool _borderDirty = false;
+  bool _adminDirty = false;
+  bool _habitatDirty = false;
+
+  /// Cached visible cell IDs from the last [_buildGeoJson] call.
+  /// Used by [_rebuildTerritoryBorders] so it doesn't need fog resolution.
+  Set<String> _lastVisibleCellIds = const {};
+
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
 
@@ -146,13 +157,61 @@ class FogOverlayController {
   /// GeoJSON for admin boundary polygon outlines (event-driven).
   String get adminBoundaryLinesGeoJson => _adminBoundaryLinesGeoJson;
 
+  // -- Per-group dirty flag consumers. Each returns the current flag and
+  //    clears it atomically. Non-fog groups stay dirty until consumed,
+  //    enabling staggered updates across frames. --
+
+  /// Returns `true` if fog layers (base + mid + border outlines) changed.
+  bool consumeFogDirty() {
+    final v = _fogDirty;
+    _fogDirty = false;
+    return v;
+  }
+
+  /// Returns `true` if cell property icons changed.
+  bool consumeIconsDirty() {
+    final v = _iconsDirty;
+    _iconsDirty = false;
+    return v;
+  }
+
+  /// Returns `true` if territory border fill/lines changed.
+  bool consumeBorderDirty() {
+    final v = _borderDirty;
+    _borderDirty = false;
+    return v;
+  }
+
+  /// Returns `true` if admin boundary fill/lines changed.
+  bool consumeAdminDirty() {
+    final v = _adminDirty;
+    _adminDirty = false;
+    return v;
+  }
+
+  /// Returns `true` if habitat fill gradient rings changed.
+  bool consumeHabitatDirty() {
+    final v = _habitatDirty;
+    _habitatDirty = false;
+    return v;
+  }
+
   /// Updates the cell properties cache snapshot from GameCoordinator.
-  set cellPropertiesCache(Map<String, CellProperties> cache) =>
-      _cellPropertiesCache = cache;
+  ///
+  /// Triggers a territory border rebuild when cell properties change
+  /// (new cells enriched → border geometry may change).
+  set cellPropertiesCache(Map<String, CellProperties> cache) {
+    _cellPropertiesCache = cache;
+    _rebuildTerritoryBorders();
+  }
 
   /// Updates the location nodes cache from the database.
-  set locationNodesCache(Map<String, LocationNode> cache) =>
-      _locationNodesCache = cache;
+  ///
+  /// Triggers a territory border rebuild when location nodes change.
+  set locationNodesCache(Map<String, LocationNode> cache) {
+    _locationNodesCache = cache;
+    _rebuildTerritoryBorders();
+  }
 
   /// Adds a single [LocationNode] to the location nodes cache.
   ///
@@ -171,6 +230,7 @@ class FogOverlayController {
         AdminBoundaryGeoJsonBuilder.buildBoundaryFills(nodes);
     _adminBoundaryLinesGeoJson =
         AdminBoundaryGeoJsonBuilder.buildBoundaryLines(nodes);
+    _adminDirty = true;
   }
 
   /// Updates the daily seed used for event resolution.
@@ -276,7 +336,12 @@ class FogOverlayController {
 
   int _asyncUpdateGeneration = 0;
 
-  /// Builds all 3 GeoJSON strings from the given set of visible cell IDs.
+  /// Builds all GeoJSON strings from the given set of visible cell IDs.
+  ///
+  /// Sets dirty flags for each source group that was rebuilt so that
+  /// [_updateFogSources] only pushes changed sources to MapLibre.
+  /// Territory borders are NOT rebuilt here — they are event-driven
+  /// via [_rebuildTerritoryBorders] (triggered by setter changes).
   void _buildGeoJson(Iterable<String> cellIds) {
     final cellStates = <String, FogState>{};
     for (final cellId in cellIds) {
@@ -285,6 +350,10 @@ class FogOverlayController {
       cellStates[cellId] = state;
     }
 
+    // Cache visible cell IDs for territory border rebuilds.
+    _lastVisibleCellIds = cellStates.keys.toSet();
+
+    // Fog layers (base + mid + border outlines).
     _baseFogGeoJson = FogGeoJsonBuilder.buildBaseFog(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
@@ -299,6 +368,7 @@ class FogOverlayController {
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
     );
+    _fogDirty = true;
 
     // Build cell property icons (habitat, climate, event).
     if (_cellPropertiesCache.isNotEmpty && _dailySeed.isNotEmpty) {
@@ -314,28 +384,7 @@ class FogOverlayController {
     } else {
       _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
     }
-
-    // Build territory border overlays.
-    if (_locationNodesCache.isNotEmpty && _cellPropertiesCache.isNotEmpty) {
-      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
-        cellProperties: _cellPropertiesCache,
-        locationNodes: _locationNodesCache,
-        visibleCellIds: cellStates.keys.toSet(),
-        getNeighborIds: cellService.getNeighborIds,
-        getBoundary: cellService.getCellBoundary,
-      );
-      _borderLinesGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
-        cellProperties: _cellPropertiesCache,
-        locationNodes: _locationNodesCache,
-        visibleCellIds: cellStates.keys.toSet(),
-        getNeighborIds: cellService.getNeighborIds,
-        getBoundary: cellService.getCellBoundary,
-      );
-    } else {
-      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
-      _borderLinesGeoJson =
-          TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
-    }
+    _iconsDirty = true;
 
     // Build habitat fill gradient rings for revealed cells.
     if (_cellPropertiesCache.isNotEmpty) {
@@ -347,9 +396,38 @@ class FogOverlayController {
     } else {
       _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
     }
+    _habitatDirty = true;
 
     // Keep legacy renderData empty — no longer needed for Canvas painting.
     _renderData = const [];
+  }
+
+  /// Rebuilds territory border GeoJSON from cached data.
+  ///
+  /// Called EVENT-DRIVEN from [locationNodesCache] and [cellPropertiesCache]
+  /// setters — NOT from the 10 Hz [_buildGeoJson] loop.
+  void _rebuildTerritoryBorders() {
+    if (_locationNodesCache.isNotEmpty && _cellPropertiesCache.isNotEmpty) {
+      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
+        cellProperties: _cellPropertiesCache,
+        locationNodes: _locationNodesCache,
+        visibleCellIds: _lastVisibleCellIds,
+        getNeighborIds: cellService.getNeighborIds,
+        getBoundary: cellService.getCellBoundary,
+      );
+      _borderLinesGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
+        cellProperties: _cellPropertiesCache,
+        locationNodes: _locationNodesCache,
+        visibleCellIds: _lastVisibleCellIds,
+        getNeighborIds: cellService.getNeighborIds,
+        getBoundary: cellService.getCellBoundary,
+      );
+    } else {
+      _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+      _borderLinesGeoJson =
+          TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
+    }
+    _borderDirty = true;
   }
 
   /// Discovers cell IDs visible in the current viewport via grid sampling.
