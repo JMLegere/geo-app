@@ -37,6 +37,9 @@ class TabShell extends ConsumerStatefulWidget {
 
 class _TabShellState extends ConsumerState<TabShell>
     with WidgetsBindingObserver, ObservableLifecycle<TabShell> {
+  @override
+  String get observabilityName => 'TabShell';
+
   late final MapVisibility _mapVisibility;
   late final LifecycleFlush _lifecycleFlush;
 

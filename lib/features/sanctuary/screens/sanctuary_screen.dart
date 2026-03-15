@@ -29,6 +29,9 @@ class SanctuaryScreen extends ConsumerStatefulWidget {
 
 class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen>
     with SingleTickerProviderStateMixin, ObservableLifecycle<SanctuaryScreen> {
+  @override
+  String get observabilityName => 'SanctuaryScreen';
+
   late final TabController _tabController;
 
   @override
