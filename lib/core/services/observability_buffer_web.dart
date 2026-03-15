@@ -79,6 +79,8 @@ class ObservabilityBuffer {
     } catch (_) {}
   }
 
+  int _flushedCount = 0;
+
   Future<void> flush() async {
     if (_flushing) return;
 
@@ -87,37 +89,29 @@ class ObservabilityBuffer {
       final raw = web.window.localStorage.getItem(_key);
       if (raw == null || raw.isEmpty) return;
       entries = (jsonDecode(raw) as List<dynamic>).cast<String>();
-      if (entries.isEmpty) return;
-      web.window.localStorage.removeItem(_key);
+      // Only flush entries we haven't flushed yet.
+      final unflushed = entries.skip(_flushedCount).toList();
+      if (unflushed.isEmpty) return;
     } catch (_) {
       return;
     }
 
     _flushing = true;
     try {
+      final unflushed = entries.skip(_flushedCount).toList();
       final rows =
-          entries.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
+          unflushed.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
       await _flusher(rows).timeout(const Duration(seconds: 5), onTimeout: () {
         debugPrint('[Observability] flush timed out (${rows.length} entries)');
-        _restore(entries);
       });
+      // Mark these as flushed — but DON'T remove from localStorage.
+      // The flight recorder keeps everything (2MB cap evicts oldest).
+      _flushedCount = entries.length;
     } catch (e) {
       debugPrint('[Observability] flush failed: $e');
-      _restore(entries);
     } finally {
       _flushing = false;
     }
-  }
-
-  void _restore(List<String> entries) {
-    try {
-      final raw = web.window.localStorage.getItem(_key);
-      final existing = raw != null
-          ? (jsonDecode(raw) as List<dynamic>).cast<String>()
-          : <String>[];
-      existing.insertAll(0, entries);
-      web.window.localStorage.setItem(_key, jsonEncode(existing));
-    } catch (_) {}
   }
 
   List<Map<String, dynamic>> recover() {
