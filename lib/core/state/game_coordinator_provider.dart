@@ -111,14 +111,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     final recovered = obs.recover();
     if (recovered.isNotEmpty) {
       debugPrint('[Observability] recovering ${recovered.length} entries');
+      // Replay to debug console so entries are visible locally.
       for (final row in recovered) {
+        final cat = row['category'] ?? '';
+        final evt = row['event'] ?? '';
+        final data = row['data'];
+        final ts = row['created_at'] ?? '';
+        debugPrint(
+            '[RECOVERED] [$ts] $cat/$evt ${data is Map ? data['msg'] ?? data['action'] ?? data : ''}');
         row['session_id'] = 'recovered:${row['session_id'] ?? 'unknown'}';
       }
       supabaseClient
           .from('app_events')
           .insert(recovered)
           .catchError((Object e) {
-        debugPrint('[Observability] recovery failed: $e');
+        debugPrint('[Observability] recovery flush failed: $e');
       });
     }
   }
