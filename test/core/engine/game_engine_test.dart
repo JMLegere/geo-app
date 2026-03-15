@@ -5,7 +5,7 @@ import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
-import 'package:earth_nova/core/engine/event_sink.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
@@ -63,7 +63,7 @@ class _MockCellService implements CellService {
 
 GameEngine _makeEngine({
   bool isRealGps = false,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) {
   final cells = _MockCellService();
   return GameEngine(
@@ -71,7 +71,7 @@ GameEngine _makeEngine({
     statsService: const StatsService(),
     cellService: cells,
     isRealGps: isRealGps,
-    eventSink: eventSink,
+    obs: obs,
   );
 }
 
@@ -265,13 +265,13 @@ void main() {
         expect(engine.coordinator.currentUserId, isNull);
       });
 
-      test('AppBackgrounded flushes EventSink', () async {
+      test('AppBackgrounded flushes ObservabilityBuffer', () async {
         var flushCount = 0;
-        final sink = EventSink(
+        final sink = ObservabilityBuffer(
           flusher: (rows) async => flushCount++,
         );
 
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
         // Add an event so flush has something to send.
@@ -378,7 +378,7 @@ void main() {
     group('error firewall', () {
       test('callback error emits crash event instead of propagating', () {
         final sink = _ThrowOnceSink();
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
         final events = <GameEvent>[];
@@ -401,7 +401,7 @@ void main() {
 
       test('crash event context matches the handler that threw', () {
         final sink = _ThrowOnceSink();
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
         final events = <GameEvent>[];
@@ -415,7 +415,7 @@ void main() {
 
       test('engine continues working after a caught error', () {
         final sink = _ThrowOnceSink();
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
         final events = <GameEvent>[];
@@ -452,69 +452,67 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // EventSink integration
+    // ObservabilityBuffer integration
     // -----------------------------------------------------------------------
-    group('EventSink', () {
-      test('events are forwarded to EventSink', () async {
-        final sinkEvents = <GameEvent>[];
-        final sink = _CapturingSink(sinkEvents);
+    group('ObservabilityBuffer', () {
+      test('events are forwarded to ObservabilityBuffer', () async {
+        final sink = _CapturingSink();
 
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
         engine.coordinator.onCellVisited?.call('cell_99');
 
-        expect(sinkEvents, hasLength(1));
-        expect(sinkEvents.first.event, 'cell_visited');
+        expect(sink.captured, hasLength(1));
+        expect(sink.captured.first.$1, 'cell_visited');
       });
 
-      test('coordinator does not double-emit to EventSink', () async {
-        final sinkEvents = <GameEvent>[];
-        final sink = _CapturingSink(sinkEvents);
+      test('coordinator does not double-emit to ObservabilityBuffer', () async {
+        final sink = _CapturingSink();
 
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
-        // The coordinator has eventSink=null, so it won't emit.
+        // The coordinator has obs=null, so it won't emit.
         // Only the engine's callback handler emits.
-        expect(engine.coordinator.eventSink, isNull);
+        expect(engine.coordinator.obs, isNull);
 
         engine.coordinator.onGpsErrorChanged?.call(GpsError.none);
 
         // Exactly 1 event (from engine), not 2 (engine + coordinator).
-        expect(sinkEvents, hasLength(1));
+        expect(sink.captured, hasLength(1));
       });
     });
   });
 }
 
 // ---------------------------------------------------------------------------
-// _ThrowOnceSink — throws on first add() to test error firewall
+// _ThrowOnceSink — throws on first event() to test error firewall
 // ---------------------------------------------------------------------------
-class _ThrowOnceSink extends EventSink {
+class _ThrowOnceSink extends ObservabilityBuffer {
   int _callCount = 0;
 
   _ThrowOnceSink() : super(flusher: (_) async {});
 
   @override
-  void add(GameEvent event) {
+  void event(String name, [Map<String, dynamic> data = const {}]) {
     _callCount++;
     if (_callCount == 1) throw Exception('sink boom');
-    super.add(event);
+    super.event(name, data);
   }
 }
 
 // ---------------------------------------------------------------------------
-// _CapturingSink — captures events without network flushing
+// _CapturingSink — ObservabilityBuffer that tracks event() calls
 // ---------------------------------------------------------------------------
-class _CapturingSink extends EventSink {
-  final List<GameEvent> captured;
+class _CapturingSink extends ObservabilityBuffer {
+  final List<(String, Map<String, dynamic>)> captured = [];
 
-  _CapturingSink(this.captured) : super(flusher: (_) async {});
+  _CapturingSink() : super(flusher: (_) async {});
 
   @override
-  void add(GameEvent event) {
-    captured.add(event);
-    super.add(event);
+  void event(String name, [Map<String, dynamic> data = const {}]) {
+    captured.add((name, data));
+    super.event(name, data);
   }
 }

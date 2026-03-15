@@ -4,7 +4,7 @@ import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
-import 'package:earth_nova/core/engine/event_sink.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
@@ -20,11 +20,11 @@ import 'package:earth_nova/core/species/stats_service.dart';
 /// 1. Creates a coordinator (composition, not inheritance)
 /// 2. Wires all callbacks to emit [GameEvent]s
 /// 3. Routes [EngineInput] commands to coordinator methods
-/// 4. Owns [EventSink] emission (coordinator gets no eventSink to avoid
+/// 4. Owns [ObservabilityBuffer] emission (coordinator gets no obs to avoid
 ///    double-emission)
 class GameEngine {
   final GameCoordinator _coordinator;
-  final EventSink? _eventSink;
+  final ObservabilityBuffer? _obs;
   final StreamController<GameEvent> _controller =
       StreamController<GameEvent>.broadcast(sync: true);
 
@@ -33,14 +33,14 @@ class GameEngine {
     required StatsService statsService,
     required CellService cellService,
     bool isRealGps = false,
-    EventSink? eventSink,
-  })  : _eventSink = eventSink,
+    ObservabilityBuffer? obs,
+  })  : _obs = obs,
         _coordinator = GameCoordinator(
           fogResolver: fogResolver,
           statsService: statsService,
           cellService: cellService,
           isRealGps: isRealGps,
-          // eventSink intentionally null — engine owns all event emission.
+          // obs intentionally null — engine owns all event emission.
         ) {
     _wireCallbacks();
   }
@@ -76,7 +76,7 @@ class GameEngine {
         case CellTapped():
           break; // future: cell interaction
         case AppBackgrounded():
-          _eventSink?.flush();
+          _obs?.flush();
         case AppResumed():
           break; // future: refresh seed
       }
@@ -103,7 +103,7 @@ class GameEngine {
   /// Permanently releases all resources.
   void dispose() {
     _coordinator.dispose();
-    _eventSink?.flush();
+    _obs?.flush();
     _controller.close();
   }
 
@@ -213,7 +213,7 @@ class GameEngine {
     if (!_controller.isClosed) {
       _controller.add(event);
     }
-    _eventSink?.add(event);
+    _obs?.event(event.event, event.data);
   }
 
   /// Emits a crash event when a callback handler or send() throws.

@@ -119,73 +119,59 @@
   <script src="flutter_bootstrap.js" async="" crossorigin="anonymous"></script>
 
   <script>
-    // Capture JS errors outside Dart's runZonedGuarded — MapLibre crashes,
-    // WebGL context loss, unhandled promise rejections. Stored in
-    // sessionStorage and flushed to app_logs by LogFlushService.
     (function() {
-      var key = 'earthnova_js_errors';
-      function push(msg) {
+      var OBS_KEY = 'earthnova_obs';
+      var BEACON_URL = 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/beacon-events';
+      var MAX_BYTES = 2097152;
+
+      function push(category, event, msg) {
         try {
-          var arr = JSON.parse(sessionStorage.getItem(key) || '[]');
-          arr.push('[' + new Date().toISOString() + '] ' + msg);
-          if (arr.length > 50) arr = arr.slice(-50);
-          sessionStorage.setItem(key, JSON.stringify(arr));
+          var sid = localStorage.getItem('earthnova_session_id') || 'unknown';
+          var did = localStorage.getItem('earthnova_device_id') || 'unknown';
+          var entry = JSON.stringify({
+            session_id: sid, device_id: did, user_id: null,
+            category: category, event: event,
+            data: { msg: msg },
+            created_at: new Date().toISOString()
+          });
+          var arr = JSON.parse(localStorage.getItem(OBS_KEY) || '[]');
+          arr.push(entry);
+          var s = JSON.stringify(arr);
+          while (s.length > MAX_BYTES && arr.length > 1) { arr.shift(); s = JSON.stringify(arr); }
+          localStorage.setItem(OBS_KEY, s);
         } catch(_) {}
       }
 
       window.onerror = function(msg, src, line, col, err) {
-        var detail = '[JS-ERROR] ' + msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0);
+        var detail = msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0);
         if (err && err.stack) detail += '\n' + err.stack.split('\n').slice(0, 5).join('\n');
-        push(detail);
+        push('js', 'js_error', detail);
       };
 
       window.onunhandledrejection = function(e) {
-        push('[JS-REJECTION] ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'));
+        push('js', 'js_rejection', e.reason ? (e.reason.message || String(e.reason)) : 'unknown');
       };
 
-      // WebGL context loss — fires when GPU memory is reclaimed
-      document.addEventListener('webglcontextlost', function(e) {
-        push('[WEBGL-LOST] context lost');
+      document.addEventListener('webglcontextlost', function() {
+        push('js', 'webgl_context_lost', 'context lost');
       }, true);
 
-      document.addEventListener('webglcontextrestored', function(e) {
-        push('[WEBGL-RESTORED] context restored');
+      document.addEventListener('webglcontextrestored', function() {
+        push('js', 'webgl_context_restored', 'context restored');
       }, true);
-      var BEACON_URL = 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/beacon-events';
-      var EVENTS_KEY = 'earthnova_events';
 
       function sendBeacon() {
         try {
-          var pending = sessionStorage.getItem(EVENTS_KEY);
-          var jsErr = sessionStorage.getItem(key);
-          if (!pending && !jsErr) return;
-
+          var raw = localStorage.getItem(OBS_KEY);
+          if (!raw) return;
+          var arr = JSON.parse(raw);
           var events = [];
-
-          if (pending) {
-            var rows = JSON.parse(pending);
-            for (var i = 0; i < rows.length; i++) {
-              try { events.push(JSON.parse(rows[i])); } catch(_) {}
-            }
+          for (var i = 0; i < arr.length; i++) {
+            try { events.push(JSON.parse(arr[i])); } catch(_) {}
           }
-
-          if (jsErr) {
-            var sid = sessionStorage.getItem('earthnova_session_id') || 'unknown';
-            var did = sessionStorage.getItem('earthnova_device_id') || 'unknown';
-            var errors = JSON.parse(jsErr);
-            for (var j = 0; j < errors.length; j++) {
-              events.push({
-                session_id: sid, device_id: did,
-                category: 'system', event: 'js_error',
-                data: { message: errors[j] }, created_at: new Date().toISOString()
-              });
-            }
-          }
-
           if (events.length > 0 && events.length <= 50) {
             navigator.sendBeacon(BEACON_URL, JSON.stringify(events));
-            sessionStorage.removeItem(EVENTS_KEY);
-            sessionStorage.removeItem(key);
+            localStorage.removeItem(OBS_KEY);
           }
         } catch(_) {}
       }

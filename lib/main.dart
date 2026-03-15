@@ -7,10 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
-import 'package:earth_nova/core/engine/event_sink.dart';
-import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
-import 'package:earth_nova/core/services/log_flush_service.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
@@ -107,21 +105,21 @@ Future<void> main() async {
     return _GlobalErrorFallback(details: details);
   };
 
-  // 6. Start remote log flush service (Supabase → app_logs table).
-  //    Fire-and-forget every 30s + on app background. Skipped when
-  //    Supabase is not configured (offline-only mode).
-  LogFlushService? logFlushService;
-  if (SupabaseBootstrap.initialized) {
-    logFlushService = LogFlushService(Supabase.instance.client);
-    logFlushService.start();
-    // Flush immediately on crash so logs reach Supabase before the process dies.
-    DebugLogBuffer.instance.onCrash = () {
-      logFlushService!.flush();
-    };
-    DebugLogBuffer.instance.onAuthEvent = () {
-      logFlushService!.flush();
-    };
-  }
+  // 6. Mirror debug logs to ObservabilityBuffer every 5s.
+  Timer.periodic(const Duration(seconds: 5), (_) {
+    final pending = DebugLogBuffer.instance.drainPending();
+    for (final line in pending) {
+      ObservabilityBuffer.instance?.log(line);
+    }
+  });
+
+  // Flush ObservabilityBuffer on crash/auth events for immediate delivery.
+  DebugLogBuffer.instance.onCrash = () {
+    ObservabilityBuffer.instance?.flush();
+  };
+  DebugLogBuffer.instance.onAuthEvent = () {
+    ObservabilityBuffer.instance?.flush();
+  };
 
   // Run inside a Zone that intercepts all print() output (which includes
   // debugPrint and MapLogger) and feeds it to the in-app debug log viewer,
@@ -130,9 +128,8 @@ Future<void> main() async {
   runZonedGuarded(
     () => runApp(UncontrolledProviderScope(
       container: container,
-      child: _LogFlushObserver(
-        logFlushService: logFlushService,
-        child: const EarthNovaApp(),
+      child: const _ObservabilityLifecycleObserver(
+        child: EarthNovaApp(),
       ),
     )),
     (Object error, StackTrace stack) {
@@ -143,11 +140,11 @@ Future<void> main() async {
 
       // Emit structured crash event + emergency flush so the last events
       // before the blank screen are captured in app_events.
-      EventSink.instance?.add(GameEvent.system('crash', {
+      ObservabilityBuffer.instance?.event('crash', {
         'error': error.toString(),
         'stack_trace': frames,
-      }));
-      EventSink.instance?.flush();
+      });
+      ObservabilityBuffer.instance?.flush();
     },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
@@ -169,11 +166,11 @@ Future<void> main() async {
       if (totalMs > 16) {
         debugPrint(
             '[FRAME-PERF] slow frame: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
-        EventSink.instance?.add(GameEvent.performance('long_frame', {
+        ObservabilityBuffer.instance?.event('long_frame', {
           'build_ms': buildMs,
           'raster_ms': rasterMs,
           'total_ms': totalMs,
-        }));
+        });
       }
     }
   });
@@ -185,9 +182,9 @@ Future<void> main() async {
     final gap = DateTime.now().difference(lastFrameTime);
     if (gap.inSeconds >= 3) {
       debugPrint('[RENDER-STALL] no frames for ${gap.inSeconds}s');
-      EventSink.instance?.add(GameEvent.system('rendering_stalled', {
+      ObservabilityBuffer.instance?.event('rendering_stalled', {
         'gap_seconds': gap.inSeconds,
-      }));
+      });
     }
   });
 }
@@ -266,23 +263,20 @@ class EarthNovaApp extends ConsumerWidget {
   }
 }
 
-/// Invisible widget that observes app lifecycle to flush logs when the app
-/// is backgrounded. Wraps the widget tree so it receives lifecycle events.
-class _LogFlushObserver extends StatefulWidget {
-  const _LogFlushObserver({
-    required this.logFlushService,
-    required this.child,
-  });
+/// Invisible widget that observes app lifecycle to flush ObservabilityBuffer
+/// when the app is backgrounded. Wraps the widget tree.
+class _ObservabilityLifecycleObserver extends StatefulWidget {
+  const _ObservabilityLifecycleObserver({required this.child});
 
-  final LogFlushService? logFlushService;
   final Widget child;
 
   @override
-  State<_LogFlushObserver> createState() => _LogFlushObserverState();
+  State<_ObservabilityLifecycleObserver> createState() =>
+      _ObservabilityLifecycleObserverState();
 }
 
-class _LogFlushObserverState extends State<_LogFlushObserver>
-    with WidgetsBindingObserver {
+class _ObservabilityLifecycleObserverState
+    extends State<_ObservabilityLifecycleObserver> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -292,15 +286,14 @@ class _LogFlushObserverState extends State<_LogFlushObserver>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.logFlushService?.stop();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      // Fire-and-forget — don't await.
-      widget.logFlushService?.flush();
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      ObservabilityBuffer.instance?.flush();
     }
   }
 
