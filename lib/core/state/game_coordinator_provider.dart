@@ -7,9 +7,11 @@ import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/event_sink.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
+import 'package:earth_nova/core/engine/main_thread_engine_runner.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/models/affix.dart';
@@ -826,7 +828,28 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     locationService.stop();
   });
 
+  // Store engine reference for engineRunnerProvider.
+  ref.onDispose(() => _latestEngine = null);
+  _latestEngine = engine;
+
   return coordinator;
+});
+
+GameEngine? _latestEngine;
+
+/// Exposes the [EngineRunner] for UI-layer event consumption.
+///
+/// Reads [gameCoordinatorProvider] to ensure the engine is created, then
+/// wraps it in a [MainThreadEngineRunner]. Widgets use this to call
+/// `engineRunner.send(PositionUpdate(...))` and subscribe to events.
+final engineRunnerProvider = Provider<EngineRunner>((ref) {
+  ref.watch(gameCoordinatorProvider);
+  final engine = _latestEngine;
+  if (engine == null) {
+    throw StateError(
+        'engineRunnerProvider read before gameCoordinatorProvider');
+  }
+  return MainThreadEngineRunner(engine);
 });
 
 // =============================================================================

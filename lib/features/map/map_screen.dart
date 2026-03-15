@@ -8,6 +8,8 @@ import 'package:maplibre/maplibre.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
+import 'package:earth_nova/core/engine/engine_input.dart';
+import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
 
@@ -97,6 +99,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   /// The central game logic coordinator. Saved in initState for safe access.
   late final GameCoordinator _gameCoordinator;
+
+  /// Engine runner for sending inputs (PositionUpdate) to the game engine.
+  late final EngineRunner _engineRunner;
 
   /// Location enrichment service. Saved in initState for safe access in dispose()
   /// (calling ref.read() in dispose() triggers "Bad state: Using ref" error).
@@ -198,6 +203,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // Read GameCoordinator — it's already started by the provider.
     _gameCoordinator = ref.read(gameCoordinatorProvider);
+    _engineRunner = ref.read(engineRunnerProvider);
 
     // Wire exploration-disabled banner.
     _gameCoordinator.onExplorationDisabledChanged = (disabled) {
@@ -742,9 +748,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final cameraController = ref.read(cameraControllerProvider);
     cameraController.onLocationUpdate(lat, lon);
 
-    // 3. Feed player position to GameCoordinator (60 fps — coordinator
+    // 3. Feed player position to engine via EngineRunner (60 fps — coordinator
     //    throttles internally to ~10 Hz for game logic).
-    _gameCoordinator.updatePlayerPosition(lat, lon);
+    _engineRunner.send(PositionUpdate(lat, lon, 0));
 
     // 4. Fog rendering (~10 Hz, throttled locally).
     _renderFrame++;
