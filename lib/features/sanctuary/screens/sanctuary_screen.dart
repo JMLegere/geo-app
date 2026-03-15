@@ -1,3 +1,4 @@
+import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,7 +28,7 @@ class SanctuaryScreen extends ConsumerStatefulWidget {
 }
 
 class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, ObservableLifecycle<SanctuaryScreen> {
   late final TabController _tabController;
 
   @override

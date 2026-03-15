@@ -1,3 +1,4 @@
+import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,7 +36,7 @@ class TabShell extends ConsumerStatefulWidget {
 }
 
 class _TabShellState extends ConsumerState<TabShell>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, ObservableLifecycle<TabShell> {
   late final MapVisibility _mapVisibility;
   late final LifecycleFlush _lifecycleFlush;
 

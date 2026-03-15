@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -94,7 +95,7 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, ObservableLifecycle<MapScreen> {
   MapController? _mapController;
 
   /// The central game logic coordinator. Saved in initState for safe access.
