@@ -117,9 +117,12 @@ void main() {
     // setState-during-build cascades, and teardown raises ref-after-unmount /
     // animation-still-running errors. We only care that the widget tree
     // mounts and contains MapScreen.
+    //
+    // ErrorBoundary in TabShell overrides FlutterError.onError during initState,
+    // so we must save BEFORE pumpWidget and restore AFTER to satisfy the test
+    // framework's assertion that onError is properly unwound.
     final originalOnError = FlutterError.onError!;
     FlutterError.onError = (_) {};
-    addTearDown(() => FlutterError.onError = originalOnError);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -146,5 +149,9 @@ void main() {
 
     // After auth resolves, the MapScreen widget is present in the widget tree.
     expect(find.byType(MapScreen), findsOneWidget);
+
+    // Restore FlutterError.onError AFTER all assertions. This must happen
+    // before the test framework's teardown checks the handler state.
+    FlutterError.onError = originalOnError;
   });
 }
