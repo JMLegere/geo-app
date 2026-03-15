@@ -105,8 +105,8 @@ Future<void> main() async {
     return _GlobalErrorFallback(details: details);
   };
 
-  // 6. Mirror debug logs to ObservabilityBuffer every 5s.
-  Timer.periodic(const Duration(seconds: 5), (_) {
+  // 6. Mirror debug logs to ObservabilityBuffer every 1s.
+  Timer.periodic(const Duration(seconds: 1), (_) {
     final pending = DebugLogBuffer.instance.drainPending();
     for (final line in pending) {
       ObservabilityBuffer.instance?.log(line);
