@@ -160,6 +160,48 @@
         push('js', 'webgl_context_restored', 'context restored');
       }, true);
 
+      // WebGL + CanvasKit health monitor — polls every 2s.
+      // Detects context loss, GL errors, WASM heap growth, canvas death.
+      var _lastHealthy = true;
+      setInterval(function() {
+        try {
+          var canvas = document.querySelector('canvas');
+          if (!canvas) { if (_lastHealthy) { push('js', 'health', 'canvas element missing'); _lastHealthy = false; } return; }
+
+          var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+          if (!gl) { if (_lastHealthy) { push('js', 'health', 'no WebGL context'); _lastHealthy = false; } return; }
+
+          var lost = gl.isContextLost();
+          var err = gl.getError();
+          var wasmHeap = 0;
+          try { wasmHeap = window.flutterCanvasKit && window.flutterCanvasKit.HEAPU8 ? window.flutterCanvasKit.HEAPU8.buffer.byteLength : 0; } catch(_) {}
+
+          if (lost || err !== 0) {
+            var msg = 'contextLost=' + lost + ' glError=' + err + ' wasmHeap=' + wasmHeap + ' canvas=' + canvas.width + 'x' + canvas.height;
+            push('js', 'webgl_unhealthy', msg);
+            _lastHealthy = false;
+          } else if (!_lastHealthy) {
+            push('js', 'webgl_recovered', 'context healthy again');
+            _lastHealthy = true;
+          }
+        } catch(_) {}
+      }, 2000);
+
+      // Apply iOS 18 flat-shading crash fix (WebKit bug #289601).
+      setTimeout(function() {
+        try {
+          var canvas = document.querySelector('canvas');
+          if (!canvas) return;
+          var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+          if (!gl) return;
+          var epv = gl.getExtension('WEBGL_provoking_vertex');
+          if (epv) {
+            epv.provokingVertexWEBGL(epv.FIRST_VERTEX_CONVENTION_WEBGL);
+            push('js', 'ios_fix', 'WEBGL_provoking_vertex applied');
+          }
+        } catch(_) {}
+      }, 3000);
+
       function sendBeacon() {
         try {
           var raw = localStorage.getItem(OBS_KEY);
