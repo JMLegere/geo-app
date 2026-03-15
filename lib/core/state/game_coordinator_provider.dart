@@ -8,9 +8,8 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
-import 'package:earth_nova/core/engine/event_sink.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
-import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/engine/main_thread_engine_runner.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
@@ -101,14 +100,24 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   // Create EventSink when Supabase is configured for structured event telemetry.
   final supabaseClient = ref.read(supabaseClientProvider);
-  EventSink? eventSink;
+  ObservabilityBuffer? obs;
   if (supabaseClient != null) {
-    eventSink = EventSink(
+    obs = ObservabilityBuffer(
       flusher: (rows) => supabaseClient.from('app_events').insert(rows),
-      userIdResolver: () => supabaseClient.auth.currentUser?.id,
     );
-    eventSink.start();
-    EventSink.instance = eventSink;
+    obs.start();
+    ObservabilityBuffer.instance = obs;
+    // Recover previous session data from localStorage (survives jetsam kills).
+    final recovered = obs.recover();
+    if (recovered.isNotEmpty) {
+      debugPrint('[Observability] recovering ${recovered.length} entries');
+      supabaseClient
+          .from('app_events')
+          .insert(recovered)
+          .catchError((Object e) {
+        debugPrint('[Observability] recovery failed: $e');
+      });
+    }
   }
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
@@ -134,7 +143,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     statsService: const StatsService(),
     cellService: cellService,
     isRealGps: locationService.mode == LocationMode.realGps,
-    eventSink: eventSink,
+    obs: obs,
   );
   final coordinator = engine.coordinator;
 
@@ -244,7 +253,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         cellProgressRepo: cellProgressRepo,
         queueProcessor: queueProcessor,
-        eventSink: eventSink,
+        obs: obs,
       );
     }
 
@@ -289,7 +298,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       cellPropertyRepo: cellPropertyRepo,
       queueProcessor: queueProcessor,
       userId: ref.read(authProvider).user?.id,
-      eventSink: eventSink,
+      obs: obs,
     );
   };
 
@@ -326,7 +335,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
-        eventSink: eventSink,
+        obs: obs,
       );
     }
 
@@ -410,10 +419,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // against a dead ref.
     if (_providerDisposed) return;
 
-    eventSink?.add(GameEvent.state('game_loop_started', {
+    obs?.event('game_loop_started', {
       'user_id': coordinator.currentUserId,
       'daily_seed': dailySeedService.currentSeed,
-    }));
+    });
 
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
@@ -491,7 +500,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             cellPropertyRepo: cellPropertyRepo,
             queueProcessor: queueProcessor,
             userId: ref.read(authProvider).user?.id,
-            eventSink: eventSink,
+            obs: obs,
           );
         }
       }
@@ -563,14 +572,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
 
-      eventSink?.add(GameEvent.state('sqlite_hydration_complete', {
+      obs?.event('sqlite_hydration_complete', {
         'user_id': userId,
         'item_count': items.length,
         'cell_count': cellRows.length,
         'has_profile': profile != null,
         'enrichment_count': enrichments.length,
         'cell_property_count': cellProperties.length,
-      }));
+      });
 
       // 4. Hydrate step counter (all platforms).
       // Must run AFTER profile hydration so totalSteps is already loaded.
@@ -602,9 +611,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     //
     // The game loop MUST start even if hydration fails (e.g. Ref disposed
     // due to provider rebuild race).
-    eventSink?.add(GameEvent.state('hydration_started', {
+    obs?.event('hydration_started', {
       'user_id': userId,
-    }));
+    });
 
     final hydrationStopwatch = Stopwatch()..start();
 
@@ -625,13 +634,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       hydrationStopwatch.stop();
       final inventory = ref.read(inventoryProvider);
-      eventSink?.add(GameEvent.state('hydration_complete', {
+      obs?.event('hydration_complete', {
         'user_id': userId,
         'duration_ms': hydrationStopwatch.elapsedMilliseconds,
         'item_count': inventory.items.length,
         'enrichment_count': enrichmentCache.length,
         'source': 'sqlite',
-      }));
+      });
 
       // Start game loop immediately with cached data.
       if (_providerDisposed) return;
@@ -653,13 +662,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         enrichmentRepo: enrichmentRepo,
-        eventSink: eventSink,
+        obs: obs,
       ).then((_) {
         if (_providerDisposed) return;
 
-        eventSink?.add(GameEvent.state('background_sync_complete', {
+        obs?.event('background_sync_complete', {
           'user_id': userId,
-        }));
+        });
 
         // Re-queue enrichment for any fauna in inventory that lacks it.
         // Runs after background sync so enrichment cache includes any
@@ -692,10 +701,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         );
       }).catchError((Object e) {
         debugPrint('[GameCoordinator] background Supabase sync failed: $e');
-        eventSink?.add(GameEvent.system('network_error', {
+        obs?.event('network_error', {
           'context': 'background_supabase_sync',
           'error': e.toString(),
-        }));
+        });
       });
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] SQLite hydration failed '
@@ -718,10 +727,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   void handleAuthState(AuthState authState) {
     final userId = authState.user?.id;
 
-    eventSink?.add(GameEvent.state('auth_state_changed', {
+    obs?.event('auth_state_changed', {
       'status': authState.status.name,
       'user_id': userId,
-    }));
+    });
 
     if (authState.status == AuthStatus.authenticated && userId != null) {
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
@@ -800,7 +809,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       queueProcessor: queueProcessor,
       lastLat: currentPos?.lat,
       lastLon: currentPos?.lon,
-      eventSink: eventSink,
+      obs: obs,
     );
   });
 
@@ -837,7 +846,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           cellPropertyRepo: cellPropertyRepo,
           queueProcessor: queueProcessor,
           userId: userId,
-          eventSink: eventSink,
+          obs: obs,
         );
       }
     }
@@ -848,9 +857,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   ref.onDispose(() {
     _providerDisposed = true;
     deferredDrainTimer?.cancel();
-    eventSink?.stop(); // Cancel periodic flush timer.
-    engine
-        .dispose(); // coordinator.dispose() + eventSink.flush() + stream close.
+    obs?.stop(); // Cancel periodic flush timer.
+    engine.dispose(); // coordinator.dispose() + obs.flush() + stream close.
     queueProcessor.dispose();
     locationService.stop();
   });
@@ -894,18 +902,18 @@ Future<void> _persistItemDiscovery({
   required String userId,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
     await itemRepo.addItem(instance, userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist item: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'persist_item',
       'entity_id': instance.id,
       'error': e.toString(),
-    }));
+    });
     return; // Do not enqueue — item was not persisted locally.
   }
 
@@ -940,11 +948,11 @@ Future<void> _persistItemDiscovery({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue item: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'enqueue_item',
       'entity_id': instance.id,
       'error': e.toString(),
-    }));
+    });
   }
 }
 
@@ -959,18 +967,18 @@ Future<void> _persistCellProperties({
   required CellPropertyRepository cellPropertyRepo,
   required QueueProcessor queueProcessor,
   required String? userId,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
     await cellPropertyRepo.upsert(properties);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell properties: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'persist_cell_properties',
       'entity_id': properties.cellId,
       'error': e.toString(),
-    }));
+    });
     return; // Do not enqueue — cell properties were not persisted locally.
   }
 
@@ -994,11 +1002,11 @@ Future<void> _persistCellProperties({
       );
     } catch (e) {
       debugPrint('[GameCoordinator] failed to enqueue cell properties: $e');
-      eventSink?.add(GameEvent.system('persistence_error', {
+      obs?.event('persistence_error', {
         'operation': 'enqueue_cell_properties',
         'entity_id': properties.cellId,
         'error': e.toString(),
-      }));
+      });
     }
   }
 }
@@ -1013,7 +1021,7 @@ Future<void> _persistCellVisit({
   required String userId,
   required CellProgressRepository cellProgressRepo,
   required QueueProcessor queueProcessor,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) async {
   final now = DateTime.now();
   int visitCount = 1;
@@ -1042,11 +1050,11 @@ Future<void> _persistCellVisit({
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'persist_cell_visit',
       'entity_id': cellId,
       'error': e.toString(),
-    }));
+    });
     return; // Do not enqueue — payload would contain stale default values.
   }
 
@@ -1070,11 +1078,11 @@ Future<void> _persistCellVisit({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue cell visit: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'enqueue_cell_visit',
       'entity_id': cellId,
       'error': e.toString(),
-    }));
+    });
   }
 }
 
@@ -1094,7 +1102,7 @@ Future<void> _persistProfileState({
   required QueueProcessor queueProcessor,
   double? lastLat,
   double? lastLon,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) async {
   final season = Season.fromDate(DateTime.now());
 
@@ -1132,11 +1140,11 @@ Future<void> _persistProfileState({
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist profile: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'persist_profile',
       'entity_id': userId,
       'error': e.toString(),
-    }));
+    });
     return; // Do not enqueue — profile was not persisted locally.
   }
 
@@ -1164,11 +1172,11 @@ Future<void> _persistProfileState({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
-    eventSink?.add(GameEvent.system('persistence_error', {
+    obs?.event('persistence_error', {
       'operation': 'enqueue_profile',
       'entity_id': userId,
       'error': e.toString(),
-    }));
+    });
   }
 }
 
@@ -1190,7 +1198,7 @@ Future<void> hydrateFromSupabase({
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
   required EnrichmentRepository enrichmentRepo,
-  EventSink? eventSink,
+  ObservabilityBuffer? obs,
 }) async {
   if (persistence == null) {
     debugPrint('[GameCoordinator] Supabase not configured — skipping '
@@ -1361,11 +1369,11 @@ Future<void> hydrateFromSupabase({
     // Network error, Supabase down, etc. — continue with SQLite-only.
     debugPrint('[GameCoordinator] Supabase hydration failed (continuing '
         'with local data): $e');
-    eventSink?.add(GameEvent.system('network_error', {
+    obs?.event('network_error', {
       'operation': 'hydrate_from_supabase',
       'user_id': userId,
       'error': e.toString(),
-    }));
+    });
   }
 }
 

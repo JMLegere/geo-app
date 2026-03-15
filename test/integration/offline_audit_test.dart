@@ -63,7 +63,6 @@ void main() {
         // must live here to break the auth↔sync circular dependency.
         if (file.path.endsWith('supabase_bootstrap.dart')) continue;
         if (file.path.endsWith('daily_seed_provider.dart')) continue;
-        if (file.path.endsWith('log_flush_service.dart')) continue;
 
         final content = file.readAsStringSync();
         final found = findNetworkImports(content);
@@ -139,7 +138,6 @@ void main() {
             path.endsWith('supabase_auth_service.dart') ||
             path.endsWith('supabase_bootstrap.dart') ||
             path.endsWith('daily_seed_provider.dart') ||
-            path.endsWith('log_flush_service.dart') ||
             path.endsWith('main.dart');
 
         if (!isAllowed) {

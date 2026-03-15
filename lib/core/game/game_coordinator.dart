@@ -5,8 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/cells/cell_property_resolver.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/engine/event_sink.dart';
-import 'package:earth_nova/core/engine/game_event.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
@@ -75,9 +74,9 @@ class GameCoordinator {
   final CellService _cellService;
   CellPropertyResolver? _cellPropertyResolver;
 
-  /// Optional structured event sink for analytics/telemetry.
+  /// Optional observability buffer for analytics/telemetry.
   /// When set, game events are emitted alongside existing callbacks.
-  final EventSink? eventSink;
+  final ObservabilityBuffer? obs;
 
   /// Exposes the stats service for retroactive affix rolling by the
   /// provider layer (e.g. when enrichment arrives after discovery).
@@ -286,7 +285,7 @@ class GameCoordinator {
     required StatsService statsService,
     required CellService cellService,
     this.isRealGps = false,
-    this.eventSink,
+    this.obs,
   })  : _fogResolver = fogResolver,
         _statsService = statsService,
         _cellService = cellService;
@@ -313,9 +312,9 @@ class GameCoordinator {
     _fogCellSubscription = _fogResolver.onVisitedCellAdded.listen((event) {
       onCellVisited?.call(event.cellId);
 
-      eventSink?.add(GameEvent.state('cell_visited', {
+      obs?.event('cell_visited', {
         'cell_id': event.cellId,
-      }));
+      });
     });
 
     _checkGpsPermission();
@@ -382,10 +381,10 @@ class GameCoordinator {
         onGpsErrorChanged?.call(GpsError.none);
       }
 
-      eventSink?.add(GameEvent.system('gps_error_changed', {
+      obs?.event('gps_error_changed', {
         'error': (isLowAccuracy ? GpsError.lowAccuracy : GpsError.none).name,
         'accuracy': update.accuracy,
-      }));
+      });
     }
   }
 
@@ -456,7 +455,7 @@ class GameCoordinator {
     );
     onItemDiscovered?.call(event, instance);
 
-    eventSink?.add(GameEvent.state('species_discovered', {
+    obs?.event('species_discovered', {
       'item_id': instance.id,
       'definition_id': instance.definitionId,
       'display_name': instance.displayName,
@@ -466,7 +465,7 @@ class GameCoordinator {
       'has_enrichment': enriched != null,
       'affix_count': affixes.length,
       'daily_seed': event.dailySeed,
-    }));
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -492,9 +491,9 @@ class GameCoordinator {
           _explorationDisabled = true;
           onExplorationDisabledChanged?.call(true);
 
-          eventSink?.add(GameEvent.system('exploration_disabled_changed', {
+          obs?.event('exploration_disabled_changed', {
             'disabled': true,
-          }));
+          });
         }
 
         // Still push position for UI (camera, marker), but skip fog/discovery.
@@ -510,9 +509,9 @@ class GameCoordinator {
         _explorationDisabled = false;
         onExplorationDisabledChanged?.call(false);
 
-        eventSink?.add(GameEvent.system('exploration_disabled_changed', {
+        obs?.event('exploration_disabled_changed', {
           'disabled': false,
-        }));
+        });
       }
     }
 
@@ -560,12 +559,12 @@ class GameCoordinator {
       _cellPropertiesCache[cellId] = properties;
       onCellPropertiesResolved?.call(properties);
 
-      eventSink?.add(GameEvent.state('cell_properties_resolved', {
+      obs?.event('cell_properties_resolved', {
         'cell_id': properties.cellId,
         'habitats': properties.habitats.map((h) => h.name).toList(),
         'climate': properties.climate.name,
         'continent': properties.continent.name,
-      }));
+      });
     }
   }
 
