@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
@@ -7,9 +8,19 @@ import 'package:earth_nova/features/biome/services/biome_service.dart';
 ///
 /// Uses [rootBundle] so it works in both the full app and in widget tests
 /// (when the test framework sets up the asset bundle).
-final biomeFeatureIndexProvider = FutureProvider<BiomeFeatureIndex>((ref) async {
-  final jsonString =
-      await rootBundle.loadString('assets/biome_features.json');
+///
+/// On web, loading is deferred by 10 seconds to avoid a ~45 MB memory spike
+/// during boot (the 28 MB JSON expands to ~45 MB in-memory). This prevents
+/// WKWebView crashes on memory-constrained devices (e.g. iPhone 13 Mini).
+/// The map is interactive within ~5 s; biome data loads in the background
+/// after. [cellPropertyResolverProvider] returns `null` until the index is
+/// ready, so cells visited before biome loads simply skip habitat resolution.
+final biomeFeatureIndexProvider =
+    FutureProvider<BiomeFeatureIndex>((ref) async {
+  if (kIsWeb) {
+    await Future<void>.delayed(const Duration(seconds: 10));
+  }
+  final jsonString = await rootBundle.loadString('assets/biome_features.json');
   return BiomeFeatureIndex.load(jsonString);
 });
 
