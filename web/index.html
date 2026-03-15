@@ -151,6 +151,49 @@
       document.addEventListener('webglcontextrestored', function(e) {
         push('[WEBGL-RESTORED] context restored');
       }, true);
+      var BEACON_URL = 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/beacon-events';
+      var EVENTS_KEY = 'earthnova_events';
+
+      function sendBeacon() {
+        try {
+          var pending = sessionStorage.getItem(EVENTS_KEY);
+          var jsErr = sessionStorage.getItem(key);
+          if (!pending && !jsErr) return;
+
+          var events = [];
+
+          if (pending) {
+            var rows = JSON.parse(pending);
+            for (var i = 0; i < rows.length; i++) {
+              try { events.push(JSON.parse(rows[i])); } catch(_) {}
+            }
+          }
+
+          if (jsErr) {
+            var sid = sessionStorage.getItem('earthnova_session_id') || 'unknown';
+            var did = sessionStorage.getItem('earthnova_device_id') || 'unknown';
+            var errors = JSON.parse(jsErr);
+            for (var j = 0; j < errors.length; j++) {
+              events.push({
+                session_id: sid, device_id: did,
+                category: 'system', event: 'js_error',
+                data: { message: errors[j] }, created_at: new Date().toISOString()
+              });
+            }
+          }
+
+          if (events.length > 0 && events.length <= 50) {
+            navigator.sendBeacon(BEACON_URL, JSON.stringify(events));
+            sessionStorage.removeItem(EVENTS_KEY);
+            sessionStorage.removeItem(key);
+          }
+        } catch(_) {}
+      }
+
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') sendBeacon();
+      });
+      document.addEventListener('pagehide', sendBeacon);
     })();
   </script>
 
