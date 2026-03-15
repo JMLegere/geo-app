@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 
 import 'connection.dart';
@@ -226,6 +228,38 @@ class LocalPlayerProfileTable extends Table {
 }
 
 // ============================================================================
+// WRITE SERIALIZER
+// ============================================================================
+
+/// Serializes async write operations to prevent concurrent IndexedDB
+/// persistence on web. Without this, two overlapping Drift writes
+/// produce `ConstraintError: Index key is not unique`.
+class _WriteSerializer {
+  Future<void>? _inFlight;
+
+  Future<T> run<T>(Future<T> Function() action) async {
+    while (_inFlight != null) {
+      try {
+        await _inFlight;
+      } catch (_) {
+        // Previous write failed — proceed anyway.
+      }
+    }
+    final completer = Completer<void>();
+    _inFlight = completer.future;
+    try {
+      final result = await action();
+      // Yield to let IndexedDB persistence complete before next write.
+      await Future.delayed(Duration.zero);
+      return result;
+    } finally {
+      _inFlight = null;
+      completer.complete();
+    }
+  }
+}
+
+// ============================================================================
 // DATABASE CLASS
 // ============================================================================
 
@@ -241,6 +275,8 @@ class LocalPlayerProfileTable extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? createDatabaseConnection());
+
+  final _writer = _WriteSerializer();
 
   @override
   int get schemaVersion => 13;
@@ -368,26 +404,24 @@ class AppDatabase extends _$AppDatabase {
   /// Targets the `(userId, cellId)` composite unique constraint so that
   /// rows hydrated from Supabase (which may have a different PK `id`) still
   /// upsert correctly instead of violating the uniqueness constraint.
-  Future<void> upsertCellProgress(LocalCellProgress progress) async {
-    await into(localCellProgressTable).insert(
-      progress,
-      onConflict: DoUpdate(
-        (_) => progress,
-        target: [
-          localCellProgressTable.userId,
-          localCellProgressTable.cellId,
-        ],
-      ),
-    );
-  }
+  Future<void> upsertCellProgress(LocalCellProgress progress) =>
+      _writer.run(() => into(localCellProgressTable).insert(
+            progress,
+            onConflict: DoUpdate(
+              (_) => progress,
+              target: [
+                localCellProgressTable.userId,
+                localCellProgressTable.cellId,
+              ],
+            ),
+          ));
 
   /// Delete cell progress
-  Future<int> deleteCellProgress(String userId, String cellId) {
-    return (delete(localCellProgressTable)
-          ..where(
-              (tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
-        .go();
-  }
+  Future<int> deleteCellProgress(String userId, String cellId) =>
+      _writer.run(() => (delete(localCellProgressTable)
+            ..where(
+                (tbl) => tbl.userId.equals(userId) & tbl.cellId.equals(cellId)))
+          .go());
 
   // ========================================================================
   // ITEM INSTANCE QUERIES
@@ -418,35 +452,29 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Insert a new item instance.
-  Future<void> insertItemInstance(LocalItemInstance instance) async {
-    await into(localItemInstanceTable).insert(instance);
-  }
+  Future<void> insertItemInstance(LocalItemInstance instance) =>
+      _writer.run(() => into(localItemInstanceTable).insert(instance));
 
   /// Upsert an item instance — insert or replace on conflict.
   ///
   /// Used by the Supabase hydration path to apply server-side updates
   /// (e.g. new badges, status changes) to items that already exist locally.
-  Future<void> upsertItemInstance(LocalItemInstance instance) async {
-    await into(localItemInstanceTable).insertOnConflictUpdate(instance);
-  }
+  Future<void> upsertItemInstance(LocalItemInstance instance) => _writer
+      .run(() => into(localItemInstanceTable).insertOnConflictUpdate(instance));
 
   /// Update an existing item instance (e.g. status change).
-  Future<bool> updateItemInstance(LocalItemInstance instance) {
-    return update(localItemInstanceTable).replace(instance);
-  }
+  Future<bool> updateItemInstance(LocalItemInstance instance) =>
+      _writer.run(() => update(localItemInstanceTable).replace(instance));
 
   /// Delete an item instance by ID.
-  Future<int> deleteItemInstance(String id) {
-    return (delete(localItemInstanceTable)..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<int> deleteItemInstance(String id) => _writer.run(() =>
+      (delete(localItemInstanceTable)..where((tbl) => tbl.id.equals(id))).go());
 
   /// Delete all item instances for a user.
-  Future<int> clearUserItemInstances(String userId) {
-    return (delete(localItemInstanceTable)
-          ..where((tbl) => tbl.userId.equals(userId)))
-        .go();
-  }
+  Future<int> clearUserItemInstances(String userId) =>
+      _writer.run(() => (delete(localItemInstanceTable)
+            ..where((tbl) => tbl.userId.equals(userId)))
+          .go());
 
   // ========================================================================
   // SPECIES ENRICHMENT QUERIES
@@ -462,26 +490,27 @@ class AppDatabase extends _$AppDatabase {
     return select(localSpeciesEnrichmentTable).get();
   }
 
-  Future<void> upsertEnrichment(LocalSpeciesEnrichment enrichment) async {
-    // Use a companion for the DoUpdate clause so nullable columns (e.g. artUrl)
-    // are explicitly set to NULL rather than skipped when the value is null.
-    final companion = LocalSpeciesEnrichmentTableCompanion(
-      definitionId: Value(enrichment.definitionId),
-      animalClass: Value(enrichment.animalClass),
-      foodPreference: Value(enrichment.foodPreference),
-      climate: Value(enrichment.climate),
-      brawn: Value(enrichment.brawn),
-      wit: Value(enrichment.wit),
-      speed: Value(enrichment.speed),
-      size: Value(enrichment.size),
-      artUrl: Value(enrichment.artUrl),
-      enrichedAt: Value(enrichment.enrichedAt),
-    );
-    await into(localSpeciesEnrichmentTable).insert(
-      enrichment,
-      onConflict: DoUpdate((_) => companion),
-    );
-  }
+  Future<void> upsertEnrichment(LocalSpeciesEnrichment enrichment) =>
+      _writer.run(() {
+        // Use a companion for the DoUpdate clause so nullable columns (e.g. artUrl)
+        // are explicitly set to NULL rather than skipped when the value is null.
+        final companion = LocalSpeciesEnrichmentTableCompanion(
+          definitionId: Value(enrichment.definitionId),
+          animalClass: Value(enrichment.animalClass),
+          foodPreference: Value(enrichment.foodPreference),
+          climate: Value(enrichment.climate),
+          brawn: Value(enrichment.brawn),
+          wit: Value(enrichment.wit),
+          speed: Value(enrichment.speed),
+          size: Value(enrichment.size),
+          artUrl: Value(enrichment.artUrl),
+          enrichedAt: Value(enrichment.enrichedAt),
+        );
+        return into(localSpeciesEnrichmentTable).insert(
+          enrichment,
+          onConflict: DoUpdate((_) => companion),
+        );
+      });
 
   Future<List<LocalSpeciesEnrichment>> getEnrichmentsSince(DateTime since) {
     return (select(localSpeciesEnrichmentTable)
@@ -501,28 +530,24 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Insert or update player profile
-  Future<void> upsertPlayerProfile(LocalPlayerProfile profile) async {
-    await into(localPlayerProfileTable).insert(
-      profile,
-      onConflict: DoUpdate((_) => profile),
-    );
-  }
+  Future<void> upsertPlayerProfile(LocalPlayerProfile profile) =>
+      _writer.run(() => into(localPlayerProfileTable).insert(
+            profile,
+            onConflict: DoUpdate((_) => profile),
+          ));
 
   /// Delete player profile
-  Future<int> deletePlayerProfile(String userId) {
-    return (delete(localPlayerProfileTable)
-          ..where((tbl) => tbl.id.equals(userId)))
-        .go();
-  }
+  Future<int> deletePlayerProfile(String userId) => _writer.run(() =>
+      (delete(localPlayerProfileTable)..where((tbl) => tbl.id.equals(userId)))
+          .go());
 
   // ========================================================================
   // WRITE QUEUE QUERIES
   // ========================================================================
 
   /// Insert a new write queue entry.
-  Future<int> insertWriteQueueEntry(LocalWriteQueueTableCompanion entry) {
-    return into(localWriteQueueTable).insert(entry);
-  }
+  Future<int> insertWriteQueueEntry(LocalWriteQueueTableCompanion entry) =>
+      _writer.run(() => into(localWriteQueueTable).insert(entry));
 
   /// Get all pending queue entries, oldest first.
   ///
@@ -564,15 +589,12 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Update a queue entry's status and error info.
-  Future<bool> updateQueueEntry(LocalWriteQueueEntry entry) {
-    return update(localWriteQueueTable).replace(entry);
-  }
+  Future<bool> updateQueueEntry(LocalWriteQueueEntry entry) =>
+      _writer.run(() => update(localWriteQueueTable).replace(entry));
 
   /// Delete a queue entry by ID (after server confirmation).
-  Future<int> deleteQueueEntry(int id) {
-    return (delete(localWriteQueueTable)..where((tbl) => tbl.id.equals(id)))
-        .go();
-  }
+  Future<int> deleteQueueEntry(int id) => _writer.run(() =>
+      (delete(localWriteQueueTable)..where((tbl) => tbl.id.equals(id))).go());
 
   /// Get a single queue entry by ID.
   Future<LocalWriteQueueEntry?> getQueueEntryById(int id) {
@@ -599,22 +621,19 @@ class AppDatabase extends _$AppDatabase {
   /// Only deletes entries with status 'confirmed' or 'rejected' — never
   /// deletes 'pending' entries, which may still be awaiting their first
   /// successful flush.
-  Future<int> deleteStaleQueueEntries(DateTime cutoff) {
-    return (delete(localWriteQueueTable)
-          ..where(
-            (tbl) =>
-                tbl.createdAt.isSmallerThanValue(cutoff) &
-                tbl.status.isIn(['confirmed', 'rejected']),
-          ))
-        .go();
-  }
+  Future<int> deleteStaleQueueEntries(DateTime cutoff) =>
+      _writer.run(() => (delete(localWriteQueueTable)
+            ..where(
+              (tbl) =>
+                  tbl.createdAt.isSmallerThanValue(cutoff) &
+                  tbl.status.isIn(['confirmed', 'rejected']),
+            ))
+          .go());
 
   /// Delete all queue entries for a user.
-  Future<int> clearUserQueueEntries(String userId) {
-    return (delete(localWriteQueueTable)
-          ..where((tbl) => tbl.userId.equals(userId)))
-        .go();
-  }
+  Future<int> clearUserQueueEntries(String userId) => _writer.run(() =>
+      (delete(localWriteQueueTable)..where((tbl) => tbl.userId.equals(userId)))
+          .go());
 
   // ========================================================================
   // CELL PROPERTIES QUERIES
@@ -630,21 +649,19 @@ class AppDatabase extends _$AppDatabase {
     return select(localCellPropertiesTable).get();
   }
 
-  Future<void> upsertCellProperties(LocalCellProperties properties) async {
-    await into(localCellPropertiesTable).insert(
-      properties,
-      onConflict: DoUpdate((_) => properties),
-    );
-  }
+  Future<void> upsertCellProperties(LocalCellProperties properties) =>
+      _writer.run(() => into(localCellPropertiesTable).insert(
+            properties,
+            onConflict: DoUpdate((_) => properties),
+          ));
 
   Future<void> updateCellPropertiesLocationId(
-      String cellId, String locationId) async {
-    await (update(localCellPropertiesTable)
-          ..where((tbl) => tbl.cellId.equals(cellId)))
-        .write(LocalCellPropertiesTableCompanion(
-      locationId: Value(locationId),
-    ));
-  }
+          String cellId, String locationId) =>
+      _writer.run(() => (update(localCellPropertiesTable)
+                ..where((tbl) => tbl.cellId.equals(cellId)))
+              .write(LocalCellPropertiesTableCompanion(
+            locationId: Value(locationId),
+          )));
 
   // ========================================================================
   // LOCATION NODE QUERIES
@@ -661,12 +678,11 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
-  Future<void> upsertLocationNode(LocalLocationNode node) async {
-    await into(localLocationNodeTable).insert(
-      node,
-      onConflict: DoUpdate((_) => node),
-    );
-  }
+  Future<void> upsertLocationNode(LocalLocationNode node) =>
+      _writer.run(() => into(localLocationNodeTable).insert(
+            node,
+            onConflict: DoUpdate((_) => node),
+          ));
 
   Future<List<LocalLocationNode>> getLocationNodeChildren(String parentId) {
     return (select(localLocationNodeTable)
