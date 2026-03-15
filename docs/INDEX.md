@@ -15,7 +15,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **Build/deploy/infra** | `tech-stack.md` | — |
 | **Auth/login work** | `auth-prerequisites.md` + `state.md` | Feature AGENTS.md |
 | **Planning / what to build next** | `roadmap.md` + `game-design.md` | `architecture.md` (dependency graph) |
-| **Architecture / design jam** | `current-architecture.md` + `ideal-architecture.md` | `roadmap.md` (Technical Roadmap section) |
+| **Architecture / design jam** | `engine-architecture.md` + `current-architecture.md` | `ideal-architecture.md`, `roadmap.md` (Technical Roadmap section) |
 | **Item system / inventory** | `item-system-design.md` | `ideal-architecture.md` (server-authoritative context) |
 | **Species stats / art / crowdsourcing** | `species-community-system.md` | `item-system-design.md` (item model context) |
 | **Cell properties / events / borders** | `cell-properties-design.md` | `data-model.md` (persistence) + `game-loop.md` (integration) |
@@ -30,7 +30,8 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | `roadmap.md` | ~510 | Nested hierarchy: 15 initiatives → ~35 projects → ~120 issues, priority matrix, technical roadmap | Initiative added/completed, priority shift, new project scoped |
 | `architecture.md` | ~115 | System topology, layer boundaries, feature dependency graph, glossary | New feature added without updating graph |
 | `current-architecture.md` | ~220 | How the system works today — data flow, state, persistence, feature coupling | Architecture changes, for design jam reference |
-| `ideal-architecture.md` | ~370 | Server-authoritative target architecture, item model, GameCoordinator, daily seed, write queue | Product direction changes, new technical requirements |
+| `engine-architecture.md` | ~380 | Event-driven engine target: observability, performance (10ms), resilience. GameEngine, event model, message bus, migration phases | Architecture direction changes, new event types, engine boundary shifts |
+| `ideal-architecture.md` | ~370 | Server-authoritative design decisions, item model, daily seed, write queue (design decisions still apply; execution architecture superseded by engine-architecture.md) | Product direction changes, new technical requirements |
 | `item-system-design.md` | ~345 | Item instance model (PoE/CryptoKitty), affixes, breeding, bundles, schema, migration plan | Item model design changes, new affix/breeding rules |
 | `species-community-system.md` | ~450 | Crowdsourced species identity: triangle stat picker, running median, art voting, badges, species card UI | Community system design changes, voting/art rules |
 | `game-loop.md` | ~113 | GPS-to-render pipeline, tick rates, event flow, streak rules | Pipeline stage added/changed |

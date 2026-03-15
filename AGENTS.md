@@ -448,6 +448,23 @@ When a feature misbehaves:
 4. **Check constraints** — verify no scope ceiling violations
 5. **Verify reversibility** — ensure any fix can be toggled off
 
+### Supabase App Logs
+
+App logs are written to the `app_logs` table in Supabase (project ref: `bfaczcsrpfcbijoaeckb`). Query via the Management API:
+
+```bash
+TOKEN=$(cat ~/.supabase/access-token)
+curl -s "https://api.supabase.com/v1/projects/bfaczcsrpfcbijoaeckb/database/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT * FROM app_logs ORDER BY created_at DESC LIMIT 100"}'
+```
+
+Edge function logs (enrich-species, validate-encounter, etc.) are accessible via the Railway production logs:
+```bash
+railway logs --tail 100
+```
+
 ### High-signal log points
 
 - GPS updates: accuracy, timestamp, tile coordinate
