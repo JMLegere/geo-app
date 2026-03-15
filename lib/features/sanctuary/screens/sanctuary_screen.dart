@@ -61,7 +61,7 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen>
   }
 
   Widget _buildIdenticonAction(BuildContext context) {
-    final userId = ref.watch(authProvider).user?.id;
+    final userId = ref.watch(authProvider.select((a) => a.user?.id));
     return IconButton(
       icon: IdenticonAvatar(seed: userId ?? 'anonymous', size: 28),
       tooltip: 'Settings',
