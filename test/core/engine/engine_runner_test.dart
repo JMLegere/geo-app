@@ -4,6 +4,7 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
+import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/engine/main_thread_engine_runner.dart';
@@ -148,11 +149,12 @@ void main() {
         final events = <GameEvent>[];
         runner.events.listen(events.add);
 
-        runner.send(const PositionUpdate(45.0, -66.0, 5.0));
+        // Trigger GPS error callback which emits an event (unlike
+        // PositionUpdate which is suppressed as 10Hz noise).
+        runner.engine.coordinator.onGpsErrorChanged?.call(GpsError.lowAccuracy);
 
-        // PositionUpdate triggers onPlayerLocationUpdate callback → event.
         expect(events, isNotEmpty);
-        expect(events.first.event, 'player_location_updated');
+        expect(events.first.event, 'gps_error_changed');
       });
     });
 

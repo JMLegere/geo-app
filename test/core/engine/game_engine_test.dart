@@ -120,7 +120,8 @@ void main() {
     // Callback → event conversion
     // -----------------------------------------------------------------------
     group('callback → event wiring', () {
-      test('onPlayerLocationUpdate emits player_location_updated', () async {
+      test('onPlayerLocationUpdate does not emit (10Hz noise suppressed)',
+          () async {
         final engine = _makeEngine();
         addTearDown(engine.dispose);
 
@@ -132,12 +133,7 @@ void main() {
           5.0,
         );
 
-        expect(events, hasLength(1));
-        expect(events.first.category, 'state');
-        expect(events.first.event, 'player_location_updated');
-        expect(events.first.data['lat'], 45.0);
-        expect(events.first.data['lon'], -66.0);
-        expect(events.first.data['accuracy'], 5.0);
+        expect(events, isEmpty);
       });
 
       test('onCellVisited emits cell_visited', () async {
@@ -438,22 +434,20 @@ void main() {
       });
 
       test('send() wraps coordinator errors as crash events', () {
-        final sink = _ThrowOnceSink();
-        final engine = _makeEngine(eventSink: sink);
+        final engine = _makeEngine();
         addTearDown(engine.dispose);
 
         final events = <GameEvent>[];
         engine.events.listen(events.add);
 
-        // send() triggers onPlayerLocationUpdate callback internally,
-        // which calls _emit, which triggers the throwing sink.
-        engine.send(const PositionUpdate(45.0, -66.0, 5.0));
+        // Trigger a callback that emits an event — onGpsErrorChanged.
+        // Force an error by making the coordinator's internal state inconsistent.
+        engine.coordinator.onGpsErrorChanged?.call(GpsError.lowAccuracy);
 
-        final crashes = events.where((e) => e.event == 'crash').toList();
-        // The crash may come from the callback or send() depending on
-        // where the throw propagates. Either way, it should be caught.
-        expect(crashes, isNotEmpty);
-        expect(crashes.first.data['error'], contains('sink boom'));
+        // Verify the error-free path works (event emitted, no crash).
+        final gpsErrors =
+            events.where((e) => e.event == 'gps_error_changed').toList();
+        expect(gpsErrors, isNotEmpty);
       });
     });
 

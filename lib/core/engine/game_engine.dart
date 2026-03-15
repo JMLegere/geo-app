@@ -139,17 +139,9 @@ class GameEngine {
   // ---------------------------------------------------------------------------
 
   void _wireCallbacks() {
-    _coordinator.onPlayerLocationUpdate = (position, accuracy) {
-      try {
-        _emit(GameEvent.state('player_location_updated', {
-          'lat': position.lat,
-          'lon': position.lon,
-          'accuracy': accuracy,
-        }));
-      } catch (e, stack) {
-        _emitCrash(e, stack, 'onPlayerLocationUpdate');
-      }
-    };
+    // onPlayerLocationUpdate fires at ~10Hz — too noisy for structured events.
+    // Position data is in locationProvider; no event needed.
+    _coordinator.onPlayerLocationUpdate = (position, accuracy) {};
 
     _coordinator.onCellVisited = (cellId) {
       try {
