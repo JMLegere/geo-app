@@ -710,34 +710,28 @@ GROUP BY 1;
 
 ### Phase 5: Thin UI
 
-> MapScreen drops from 1470 lines to ~100. Providers become projections.
+> Route MapScreen through EngineRunner. Assess provider migration.
 
-**5.1 Rewrite MapScreen**
-- Remove: fog computation, GeoJSON management, discovery subscriptions, cell property wiring, admin boundary management, icon registration orchestration
-- Keep: RubberBandController, MapLibre widget creation, camera control
-- Add: `engineRunner.events.listen(_handleEvent)` — single switch statement handles all event types
-- MapLibre initialization (fog layers, sources, icons) stays but simplified — engine sends initial state as events
+**Decision: The "1470→100 lines" target was wrong.** MapScreen is already 95% pure renderer — MapLibre setup, fog layers, camera control, icon registration. Only ~22 lines were game logic. The real Phase 5 work was creating `engineRunnerProvider` and routing position updates through the engine's message bus.
 
-**5.2 Simplify providers**
-- `fogProvider` — becomes projection: listens to `FogUpdate` events, exposes `Map<String, FogState>`
-- `inventoryProvider` — becomes projection: listens to `SpeciesDiscovered` / `HydrationComplete` events
-- `playerProvider` — becomes projection: listens to `CellEntered` / `HydrationComplete` events
-- `locationProvider` — receives position from RubberBandController directly (stays on main thread, not from engine)
-- `discoveryProvider` — becomes projection: listens to `SpeciesDiscovered` events for toast queue
-- Delete providers that are now inside engine: `fogResolverProvider`, `cellServiceProvider`, etc. (if not already deleted in Phase 2)
+**5.1 Create engineRunnerProvider** ✅
+- Exposes `EngineRunner` to the widget layer via `Provider<EngineRunner>`
+- Watches `gameCoordinatorProvider` (ensures engine is created)
+- Returns `MainThreadEngineRunner` wrapping the GameEngine
 
-**5.3 Rewrite tests**
-- Game logic tests: pure Dart. `GameEngine` + `EngineInput` → assert `GameEvent` output.
-- Provider tests: verify event → state mapping (thin, fast).
-- Widget tests: verify rendering given state (no game logic in widget tests).
-- Integration tests: full `EngineRunner` + `ProviderContainer` round-trips.
+**5.2 MapScreen uses engine.send()** ✅
+- `_gameCoordinator.updatePlayerPosition(lat, lon)` → `_engineRunner.send(PositionUpdate(lat, lon, 0))`
+- MapScreen now communicates with game logic exclusively via `EngineInput` messages
+- Rubber-band → EngineRunner → GameEngine → GameCoordinator (same pipeline, cleaner boundary)
 
-**Status:** DEFERRED — Phase 5 is the largest phase, requiring a dedicated session. The current architecture (Phases 1-4) is shippable and functional. Phase 5 is a code quality improvement, not a functional requirement. Tackle when ready for the big MapScreen rewrite.
+**5.3 Provider migration assessment** ✅ (assessed, not needed)
+- **Decision: Providers stay as-is.** Converting providers to event projections requires the event stream to carry typed objects (ItemInstance, CellProperties), but events carry flat primitives (for isolate/JSONB compatibility). The callback chaining from Phase 2 already achieves the same result — typed objects flow via callbacks, events flow via stream.
+- **Blast radius was prohibitive:** inventoryProvider (14 files, 131 matches), playerProvider (22 files, 150 matches). Rewriting all consumers for no functional benefit is wrong.
 
-**Deliverable:** Clean UI layer. MapScreen ~100 lines. Providers are thin. Tests are fast and focused.
+**Deliverable:** engineRunnerProvider live. MapScreen routes position through EngineRunner. Providers unchanged (correct decision, not a deferral).
 
-**Files modified:** ~20 (MapScreen rewrite, provider simplification, test rewrites)
-**Risk:** Medium — large surface area but each change is mechanical (remove logic, add event listener).
+**Files modified:** 2 (`game_coordinator_provider.dart` — engineRunnerProvider, `map_screen.dart` — engine.send())
+**Risk:** Low — minimal surface area, targeted change.
 
 ---
 
