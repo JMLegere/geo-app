@@ -8,7 +8,7 @@ import 'package:earth_nova/shared/game_icons.dart';
 /// Wraps major screens to gracefully degrade on unexpected widget errors:
 /// ```dart
 /// ErrorBoundary(
-///   onError: (details) => const _ErrorFallback(),
+///   onError: (details, reset) => DefaultErrorFallback(onRetry: reset),
 ///   child: MyComplexScreen(),
 /// )
 /// ```
@@ -17,9 +17,14 @@ import 'package:earth_nova/shared/game_icons.dart';
 /// mounted. Errors are logged via [FlutterError.dumpErrorToConsole] before
 /// switching to the fallback widget — raw exceptions are never shown to users.
 ///
+/// The [onError] callback receives both the error details and a [reset]
+/// callback that clears the error state and re-renders the child subtree.
+///
 /// **Limitation**: Only one ErrorBoundary per active route should intercept
-/// errors this way, since [FlutterError.onError] is global. For most apps,
-/// wrapping the top-level route is sufficient.
+/// errors this way, since [FlutterError.onError] is global. Multiple
+/// boundaries mounted simultaneously (e.g. in an IndexedStack) will ALL
+/// catch the same error, causing a cascade. Wrap the IndexedStack, not
+/// each child.
 class ErrorBoundary extends StatefulWidget {
   const ErrorBoundary({
     required this.child,
@@ -33,7 +38,11 @@ class ErrorBoundary extends StatefulWidget {
   /// Called with error details when the subtree throws a build error.
   /// Should return a friendly fallback widget (no stack traces, no raw
   /// exception messages).
-  final Widget Function(FlutterErrorDetails details) onError;
+  ///
+  /// The [reset] callback clears the error and re-renders the child subtree.
+  /// Pass it to a "Try Again" button in your fallback widget.
+  final Widget Function(FlutterErrorDetails details, VoidCallback reset)
+      onError;
 
   @override
   State<ErrorBoundary> createState() => _ErrorBoundaryState();
@@ -78,7 +87,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   Widget build(BuildContext context) {
     final details = _errorDetails;
     if (details != null) {
-      return widget.onError(details);
+      return widget.onError(details, reset);
     }
     return widget.child;
   }

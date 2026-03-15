@@ -1062,7 +1062,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final fogResolver = ref.read(fogResolverProvider);
 
     return ErrorBoundary(
-      onError: (_) => _MapErrorFallback(),
+      onError: (_, __) => _MapErrorFallback(),
       child: Scaffold(
         body: Stack(
           children: [

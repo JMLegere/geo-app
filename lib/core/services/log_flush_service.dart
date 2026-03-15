@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import 'package:earth_nova/core/services/crash_log_persistence.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/device_fingerprint.dart';
+import 'package:earth_nova/core/services/js_error_drain.dart' as js;
 
 /// Periodically flushes [DebugLogBuffer] pending lines to the Supabase
 /// `app_logs` table.
@@ -93,6 +94,14 @@ class LogFlushService {
     _flushing = true;
     try {
       final lines = DebugLogBuffer.instance.drainPending();
+
+      // Collect JS-level errors captured outside Dart's zone (MapLibre
+      // crashes, WebGL context loss, unhandled promise rejections).
+      final jsErrors = js.drainJsErrors();
+      if (jsErrors.isNotEmpty) {
+        lines.addAll(jsErrors);
+      }
+
       if (lines.isEmpty) return;
 
       final user = _client.auth.currentUser;

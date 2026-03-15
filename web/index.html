@@ -118,5 +118,38 @@
   -->
   <script src="flutter_bootstrap.js" async=""></script>
 
+  <script>
+    // Capture JS errors outside Dart's runZonedGuarded — MapLibre crashes,
+    // WebGL context loss, unhandled promise rejections. Stored in
+    // sessionStorage and flushed to app_logs by LogFlushService.
+    (function() {
+      var key = 'earthnova_js_errors';
+      function push(msg) {
+        try {
+          var arr = JSON.parse(sessionStorage.getItem(key) || '[]');
+          arr.push('[' + new Date().toISOString() + '] ' + msg);
+          if (arr.length > 50) arr = arr.slice(-50);
+          sessionStorage.setItem(key, JSON.stringify(arr));
+        } catch(_) {}
+      }
+
+      window.onerror = function(msg, src, line, col, err) {
+        push('[JS-ERROR] ' + msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0));
+      };
+
+      window.onunhandledrejection = function(e) {
+        push('[JS-REJECTION] ' + (e.reason ? (e.reason.message || e.reason) : 'unknown'));
+      };
+
+      // WebGL context loss — fires when GPU memory is reclaimed
+      document.addEventListener('webglcontextlost', function(e) {
+        push('[WEBGL-LOST] context lost');
+      }, true);
+
+      document.addEventListener('webglcontextrestored', function(e) {
+        push('[WEBGL-RESTORED] context restored');
+      }, true);
+    })();
+  </script>
 
 </body></html>

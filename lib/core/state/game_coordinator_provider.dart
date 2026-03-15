@@ -7,6 +7,9 @@ import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/engine/event_sink.dart';
+import 'package:earth_nova/core/engine/game_engine.dart';
+import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/game/game_coordinator.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/models/affix.dart';
@@ -59,7 +62,7 @@ import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 import 'package:earth_nova/shared/constants.dart';
 
-/// Bridges [GameCoordinator] (core, pure Dart) with feature-layer services.
+/// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
 ///
 /// This is the ONE justified exception to the "core/ does not import features/"
 /// rule — it's the central orchestrator wiring layer that connects the pure
@@ -67,13 +70,19 @@ import 'package:earth_nova/shared/constants.dart';
 ///
 /// ## Wiring responsibilities
 ///
-/// 1. Creates GameCoordinator with core dependencies (fogResolver, statsService)
+/// 1. Creates [GameEngine] which wraps [GameCoordinator] with event stream I/O
 /// 2. Maps LocationService.filteredLocationStream (SimulatedLocation) → core stream type
-/// 3. Wires output callbacks → Riverpod notifiers (location, player, inventory, discovery)
+/// 3. Chains engine event callbacks with Riverpod notifier mutations
 /// 4. Wires write paths: SQLite persistence + write queue for Supabase sync
 /// 5. Hydrates inventory, cell progress, and profile from SQLite on startup
 /// 6. Starts the game loop
-/// 7. Disposes on provider invalidation
+/// 7. Disposes engine + resources on provider invalidation
+///
+/// ## Transitional callback chaining
+///
+/// [GameEngine] wires coordinator callbacks to emit [GameEvent]s. This provider
+/// chains those handlers with its own Riverpod/persistence logic so BOTH event
+/// emission and state mutations fire on each callback.
 final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final fogResolver = ref.watch(fogResolverProvider);
   final cellService = ref.watch(cellServiceProvider);
@@ -87,6 +96,17 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
+
+  // Create EventSink when Supabase is configured for structured event telemetry.
+  final supabaseClient = ref.read(supabaseClientProvider);
+  EventSink? eventSink;
+  if (supabaseClient != null) {
+    eventSink = EventSink(
+      flusher: (rows) => supabaseClient.from('app_events').insert(rows),
+      userIdResolver: () => supabaseClient.auth.currentUser?.id,
+    );
+    eventSink.start();
+  }
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
   // startLoop() from calling ref.read() on a dead provider reference.
@@ -106,12 +126,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       <({String definitionId, FaunaDefinition fauna, bool force})>[];
   Timer? deferredDrainTimer;
 
-  final coordinator = GameCoordinator(
+  final engine = GameEngine(
     fogResolver: fogResolver,
     statsService: const StatsService(),
     cellService: cellService,
     isRealGps: locationService.mode == LocationMode.realGps,
+    eventSink: eventSink,
   );
+  final coordinator = engine.coordinator;
 
   // Wire cell property resolver for geo-derived cell properties.
   coordinator.setCellPropertyResolver(cellPropertyResolver);
@@ -177,14 +199,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     await ref.read(syncProvider.notifier).refreshPendingCount();
   };
 
-  // --- Wire output callbacks → Riverpod notifiers ---
+  // --- Chain engine event emission with provider logic ---
+  //
+  // GameEngine wired callbacks in its constructor to emit GameEvents to its
+  // stream + EventSink. We save those handlers and chain with provider logic
+  // so BOTH event emission and Riverpod state mutations fire on each callback.
+  // Engine handler fires first (event emission), then provider logic follows.
 
+  final engineOnLocation = coordinator.onPlayerLocationUpdate;
   coordinator.onPlayerLocationUpdate = (Geographic position, double accuracy) {
+    engineOnLocation?.call(position, accuracy);
     if (_providerDisposed) return;
     ref.read(locationProvider.notifier).updateLocation(position, accuracy);
   };
 
+  final engineOnGpsError = coordinator.onGpsErrorChanged;
   coordinator.onGpsErrorChanged = (GpsError error) {
+    engineOnGpsError?.call(error);
     if (_providerDisposed) return;
     final locationError = switch (error) {
       GpsError.none => LocationError.none,
@@ -196,7 +227,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     ref.read(locationProvider.notifier).setError(locationError);
   };
 
+  final engineOnCellVisited = coordinator.onCellVisited;
   coordinator.onCellVisited = (String cellId) {
+    engineOnCellVisited?.call(cellId);
     if (_providerDisposed) return;
     ref.read(playerProvider.notifier).incrementCellsObserved();
 
@@ -208,6 +241,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         cellProgressRepo: cellProgressRepo,
         queueProcessor: queueProcessor,
+        eventSink: eventSink,
       );
     }
 
@@ -240,7 +274,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     );
   };
 
+  final engineOnCellProps = coordinator.onCellPropertiesResolved;
   coordinator.onCellPropertiesResolved = (CellProperties properties) {
+    engineOnCellProps?.call(properties);
     if (_providerDisposed) return;
     // Persist cell properties to SQLite + enqueue for Supabase sync.
     // Cell properties are global (not per-user), so no userId needed for
@@ -250,10 +286,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       cellPropertyRepo: cellPropertyRepo,
       queueProcessor: queueProcessor,
       userId: ref.read(authProvider).user?.id,
+      eventSink: eventSink,
     );
   };
 
+  final engineOnDiscovery = coordinator.onItemDiscovered;
   coordinator.onItemDiscovered = (event, instance) {
+    engineOnDiscovery?.call(event, instance);
     if (_providerDisposed) return;
     // First-discovery badge (★):
     // - When Supabase IS configured: server-validated after write queue
@@ -284,6 +323,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         userId: userId,
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
+        eventSink: eventSink,
       );
     }
 
@@ -367,6 +407,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // against a dead ref.
     if (_providerDisposed) return;
 
+    eventSink?.add(GameEvent.state('game_loop_started', {
+      'user_id': coordinator.currentUserId,
+      'daily_seed': dailySeedService.currentSeed,
+    }));
+
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
     dailySeedService.fetchSeed().then((_) {
@@ -443,6 +488,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             cellPropertyRepo: cellPropertyRepo,
             queueProcessor: queueProcessor,
             userId: ref.read(authProvider).user?.id,
+            eventSink: eventSink,
           );
         }
       }
@@ -514,6 +560,15 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
 
+      eventSink?.add(GameEvent.state('sqlite_hydration_complete', {
+        'user_id': userId,
+        'item_count': items.length,
+        'cell_count': cellRows.length,
+        'has_profile': profile != null,
+        'enrichment_count': enrichments.length,
+        'cell_property_count': cellProperties.length,
+      }));
+
       // 4. Hydrate step counter (all platforms).
       // Must run AFTER profile hydration so totalSteps is already loaded.
       // Computes login delta: max(pedometerDelta, daysSince × kMinDailyStepGrant).
@@ -543,6 +598,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // due to provider rebuild race). Without .catchError, a rejected Future
     // from rehydrateData() would prevent startLoop() from ever firing,
     // leaving the map with zero GPS processing.
+    eventSink?.add(GameEvent.state('hydration_started', {
+      'user_id': userId,
+    }));
+
+    final hydrationStopwatch = Stopwatch()..start();
+
     hydrateFromSupabase(
       userId: userId,
       persistence: ref.read(supabasePersistenceProvider),
@@ -550,6 +611,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       cellProgressRepo: cellProgressRepo,
       itemRepo: itemRepo,
       enrichmentRepo: enrichmentRepo,
+      eventSink: eventSink,
     ).then((_) => rehydrateData(userId)).then((_) async {
       // Restore last known position before starting the game loop.
       // This ensures the map and keyboard service start at the player's
@@ -594,6 +656,15 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         queueProcessor: queueProcessor,
         userId: userId,
       );
+
+      hydrationStopwatch.stop();
+      final inventory = ref.read(inventoryProvider);
+      eventSink?.add(GameEvent.state('hydration_complete', {
+        'user_id': userId,
+        'duration_ms': hydrationStopwatch.elapsedMilliseconds,
+        'item_count': inventory.items.length,
+        'enrichment_count': enrichmentCache.length,
+      }));
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] hydration chain failed '
           '(starting loop anyway): $e');
@@ -617,6 +688,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   void handleAuthState(AuthState authState) {
     final userId = authState.user?.id;
+
+    eventSink?.add(GameEvent.state('auth_state_changed', {
+      'status': authState.status.name,
+      'user_id': userId,
+    }));
+
     if (authState.status == AuthStatus.authenticated && userId != null) {
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
@@ -694,6 +771,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       queueProcessor: queueProcessor,
       lastLat: currentPos?.lat,
       lastLon: currentPos?.lon,
+      eventSink: eventSink,
     );
   });
 
@@ -730,6 +808,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           cellPropertyRepo: cellPropertyRepo,
           queueProcessor: queueProcessor,
           userId: userId,
+          eventSink: eventSink,
         );
       }
     }
@@ -740,7 +819,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   ref.onDispose(() {
     _providerDisposed = true;
     deferredDrainTimer?.cancel();
-    coordinator.dispose();
+    eventSink?.stop(); // Cancel periodic flush timer.
+    engine
+        .dispose(); // coordinator.dispose() + eventSink.flush() + stream close.
     queueProcessor.dispose();
     locationService.stop();
   });
@@ -763,12 +844,18 @@ Future<void> _persistItemDiscovery({
   required String userId,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
+  EventSink? eventSink,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
     await itemRepo.addItem(instance, userId);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist item: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'persist_item',
+      'entity_id': instance.id,
+      'error': e.toString(),
+    }));
     return; // Do not enqueue — item was not persisted locally.
   }
 
@@ -803,6 +890,11 @@ Future<void> _persistItemDiscovery({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue item: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'enqueue_item',
+      'entity_id': instance.id,
+      'error': e.toString(),
+    }));
   }
 }
 
@@ -817,12 +909,18 @@ Future<void> _persistCellProperties({
   required CellPropertyRepository cellPropertyRepo,
   required QueueProcessor queueProcessor,
   required String? userId,
+  EventSink? eventSink,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
     await cellPropertyRepo.upsert(properties);
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell properties: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'persist_cell_properties',
+      'entity_id': properties.cellId,
+      'error': e.toString(),
+    }));
     return; // Do not enqueue — cell properties were not persisted locally.
   }
 
@@ -846,6 +944,11 @@ Future<void> _persistCellProperties({
       );
     } catch (e) {
       debugPrint('[GameCoordinator] failed to enqueue cell properties: $e');
+      eventSink?.add(GameEvent.system('persistence_error', {
+        'operation': 'enqueue_cell_properties',
+        'entity_id': properties.cellId,
+        'error': e.toString(),
+      }));
     }
   }
 }
@@ -860,6 +963,7 @@ Future<void> _persistCellVisit({
   required String userId,
   required CellProgressRepository cellProgressRepo,
   required QueueProcessor queueProcessor,
+  EventSink? eventSink,
 }) async {
   final now = DateTime.now();
   int visitCount = 1;
@@ -888,6 +992,11 @@ Future<void> _persistCellVisit({
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'persist_cell_visit',
+      'entity_id': cellId,
+      'error': e.toString(),
+    }));
     return; // Do not enqueue — payload would contain stale default values.
   }
 
@@ -911,6 +1020,11 @@ Future<void> _persistCellVisit({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue cell visit: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'enqueue_cell_visit',
+      'entity_id': cellId,
+      'error': e.toString(),
+    }));
   }
 }
 
@@ -930,6 +1044,7 @@ Future<void> _persistProfileState({
   required QueueProcessor queueProcessor,
   double? lastLat,
   double? lastLon,
+  EventSink? eventSink,
 }) async {
   final season = Season.fromDate(DateTime.now());
 
@@ -967,6 +1082,11 @@ Future<void> _persistProfileState({
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist profile: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'persist_profile',
+      'entity_id': userId,
+      'error': e.toString(),
+    }));
     return; // Do not enqueue — profile was not persisted locally.
   }
 
@@ -994,6 +1114,11 @@ Future<void> _persistProfileState({
     );
   } catch (e) {
     debugPrint('[GameCoordinator] failed to enqueue profile: $e');
+    eventSink?.add(GameEvent.system('persistence_error', {
+      'operation': 'enqueue_profile',
+      'entity_id': userId,
+      'error': e.toString(),
+    }));
   }
 }
 
@@ -1015,6 +1140,7 @@ Future<void> hydrateFromSupabase({
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
   required EnrichmentRepository enrichmentRepo,
+  EventSink? eventSink,
 }) async {
   if (persistence == null) {
     debugPrint('[GameCoordinator] Supabase not configured — skipping '
@@ -1185,6 +1311,11 @@ Future<void> hydrateFromSupabase({
     // Network error, Supabase down, etc. — continue with SQLite-only.
     debugPrint('[GameCoordinator] Supabase hydration failed (continuing '
         'with local data): $e');
+    eventSink?.add(GameEvent.system('network_error', {
+      'operation': 'hydrate_from_supabase',
+      'user_id': userId,
+      'error': e.toString(),
+    }));
   }
 }
 

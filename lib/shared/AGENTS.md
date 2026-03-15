@@ -98,7 +98,9 @@ Error boundary widget that catches Flutter framework errors and displays fallbac
 
 **Public API:** `ErrorBoundary`, `DefaultErrorFallback`.
 
-**Convention:** Wrap major screens at the route level. Only one ErrorBoundary per active route.
+**`onError` signature:** `Widget Function(FlutterErrorDetails details, VoidCallback reset)` — the `reset` callback clears the error and re-renders the child subtree. Pass it to a "Try Again" button.
+
+**Convention:** Wrap major screens at the route level. Only one ErrorBoundary per active route. Never nest multiple boundaries in an IndexedStack — `FlutterError.onError` is global, so all boundaries catch the same error (cascade bug).
 
 ### widgets/empty_state_widget.dart
 
@@ -151,6 +153,6 @@ Import constants by name: `import 'package:earth_nova/shared/constants.dart';`. 
 
 **HabitatGradient.tile() returns BoxDecoration:** Access the gradient via `.gradient` if you need to combine with other decoration properties.
 
-**Error Boundary Scope:** Only one `ErrorBoundary` per route. Don't nest multiple boundaries — `FlutterError.onError` is global.
+**Error Boundary Scope:** Only one `ErrorBoundary` per route. Don't nest multiple boundaries (especially in IndexedStack) — `FlutterError.onError` is global, causing all boundaries to catch the same error.
 
 **Habitat Colors:** Use `HabitatColors.of(habitat)` for full palette, not `Habitat.colorHex` (legacy).

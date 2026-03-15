@@ -96,7 +96,12 @@ class AdminBoundaryService {
           continue;
         }
 
-        final geometryStr = jsonEncode(geometryJsonRaw);
+        // geometryJsonRaw arrives as a Map when the Edge Function fetches
+        // from Nominatim (fresh), but as a String when it serves a cache hit
+        // from the text-typed geometry_json column. Only encode Maps.
+        final geometryStr = geometryJsonRaw is String
+            ? geometryJsonRaw
+            : jsonEncode(geometryJsonRaw);
 
         // Try to find an existing node by osm_id to preserve its canonical ID.
         LocationNode? existing;

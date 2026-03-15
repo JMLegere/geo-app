@@ -258,13 +258,19 @@ serve(async (req: Request) => {
             console.error(`Cache check error for ${admin_level}:`, error);
           }
           uncached.push({ admin_level, zoom, nodeId });
-        } else if (data?.geometry_json) {
+        } else         if (data?.geometry_json) {
           console.log(`Cache HIT: ${admin_level} (${nodeId})`);
+          // geometry_json column is text — parse it back to an object so
+          // the response always returns geometry as a JSON object, not a
+          // double-encoded string.
+          const geom = typeof data.geometry_json === "string"
+            ? JSON.parse(data.geometry_json)
+            : data.geometry_json;
           boundaries.push({
             admin_level,
             name: data.name,
             osm_id: data.osm_id,
-            geometry_json: data.geometry_json as Record<string, unknown>,
+            geometry_json: geom,
           });
         } else {
           console.log(`Cache MISS: ${admin_level} (${nodeId})`);
