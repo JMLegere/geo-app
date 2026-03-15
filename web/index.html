@@ -29,7 +29,7 @@
 
   <title>Fog of World</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
   <link href="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.css" rel="stylesheet">
   
   
@@ -116,7 +116,7 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async=""></script>
+  <script src="flutter_bootstrap.js" async="" crossorigin="anonymous"></script>
 
   <script>
     // Capture JS errors outside Dart's runZonedGuarded — MapLibre crashes,
@@ -134,7 +134,9 @@
       }
 
       window.onerror = function(msg, src, line, col, err) {
-        push('[JS-ERROR] ' + msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0));
+        var detail = '[JS-ERROR] ' + msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0);
+        if (err && err.stack) detail += '\n' + err.stack.split('\n').slice(0, 5).join('\n');
+        push(detail);
       };
 
       window.onunhandledrejection = function(e) {
