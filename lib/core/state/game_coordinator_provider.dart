@@ -111,6 +111,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     final recovered = obs.recover();
     if (recovered.isNotEmpty) {
       debugPrint('[Observability] recovering ${recovered.length} entries');
+      // Tag each entry so recovered data is distinguishable from live data.
+      for (final row in recovered) {
+        row['session_id'] = 'recovered:${row['session_id'] ?? 'unknown'}';
+      }
       supabaseClient
           .from('app_events')
           .insert(recovered)
