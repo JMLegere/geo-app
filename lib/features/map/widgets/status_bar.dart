@@ -41,7 +41,11 @@ class StatusBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(playerProvider);
+    final cellsObserved =
+        ref.watch(playerProvider.select((p) => p.cellsObserved));
+    final totalSteps = ref.watch(playerProvider.select((p) => p.totalSteps));
+    final currentStreak =
+        ref.watch(playerProvider.select((p) => p.currentStreak));
     final topPadding = MediaQuery.of(context).padding.top;
 
     return FrostedGlassContainer(
@@ -54,12 +58,9 @@ class StatusBar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _StatPill(
-              icon: GameIcons.cellsExplored,
-              value: '${player.cellsObserved} cells'),
-          _StatPill(
-              icon: GameIcons.steps, value: formatSteps(player.totalSteps)),
-          _StatPill(
-              icon: GameIcons.streak, value: '${player.currentStreak} days'),
+              icon: GameIcons.cellsExplored, value: '$cellsObserved cells'),
+          _StatPill(icon: GameIcons.steps, value: formatSteps(totalSteps)),
+          _StatPill(icon: GameIcons.streak, value: '$currentStreak days'),
         ],
       ),
     );

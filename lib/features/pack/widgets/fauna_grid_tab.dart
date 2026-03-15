@@ -18,8 +18,8 @@ class FaunaGridTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(packProvider);
-    final items = state.itemsByCategory[ItemCategory.fauna] ?? const [];
+    final items = ref.watch(packProvider
+        .select((p) => p.itemsByCategory[ItemCategory.fauna] ?? const []));
 
     if (items.isEmpty) {
       return EmptyStateWidget(

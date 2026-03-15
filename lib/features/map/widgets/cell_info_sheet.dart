@@ -100,12 +100,11 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final playerState = ref.watch(playerProvider);
+    final totalSteps = ref.watch(playerProvider.select((p) => p.totalSteps));
     final fogResolver = ref.read(fogResolverProvider);
     final seedService = ref.read(dailySeedServiceProvider);
 
     final isWeb = widget.isWebPlatformOverride ?? kIsWeb;
-    final totalSteps = playerState.totalSteps;
     final isVisited = fogResolver.visitedCellIds.contains(widget.cellId);
     final isCurrentCell = fogResolver.currentCellId == widget.cellId;
     final isFrontier = fogResolver.explorationFrontier.contains(widget.cellId);
@@ -267,7 +266,7 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
 
             // ── Action area ───────────────────────────────────────────────
             // Web: no step spending UI.
-            if (!isWeb) _buildExploreAction(context, playerState, fogResolver),
+            if (!isWeb) _buildExploreAction(context, totalSteps, fogResolver),
           ],
         ),
       ),
@@ -276,13 +275,13 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
 
   Widget _buildExploreAction(
     BuildContext context,
-    PlayerState playerState,
+    int totalSteps,
     FogStateResolver fogResolver,
   ) {
     final isVisited = fogResolver.visitedCellIds.contains(widget.cellId);
     final isCurrentCell = fogResolver.currentCellId == widget.cellId;
     final isFrontier = fogResolver.explorationFrontier.contains(widget.cellId);
-    final hasEnoughSteps = playerState.totalSteps >= kStepCostPerCell;
+    final hasEnoughSteps = totalSteps >= kStepCostPerCell;
 
     // Conditions where we show a disabled/non-explore button:
     if (isCurrentCell) {

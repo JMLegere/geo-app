@@ -394,12 +394,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     (SimulatedLocation loc) => (position: loc.position, accuracy: loc.accuracy),
   );
 
-  // --- Hydrate all state then start game loop ---
+  // --- Hydrate from SQLite then start game loop ---
   //
-  // CRITICAL: loadItems() replaces inventory state, so the game loop must NOT
-  // start until hydration completes. Otherwise a discovery that fires during
-  // the race window would be wiped by loadItems(). We start the loop inside
-  // the hydration callback (or immediately when no auth / on error).
+  // Phase 1: Read SQLite cache (fast: ~200ms) → hydrate providers → start loop.
+  // Phase 2: Fetch from Supabase in background → write to SQLite for next launch.
+  // loadItems() replaces inventory state, so it MUST complete before startLoop().
+  // The Supabase fetch is non-blocking — data picked up on next app launch.
 
   final dailySeedService = ref.read(dailySeedServiceProvider);
 
@@ -592,29 +592,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   }
 
   void hydrateAndStart(String userId) {
-    // CRITICAL: On web, IndexedDB-backed SQLite may lose data between
-    // sessions. Fetch from Supabase first to populate the local cache,
-    // then run the existing SQLite hydration path.
+    // Phase 1: Read local SQLite cache first (fast: ~200ms).
+    // Gets the user to the map immediately with cached data.
+    //
+    // Phase 2: Fetch from Supabase in background → write to SQLite.
+    // Data will be picked up on next app launch. Don't re-hydrate
+    // providers — avoids race with in-flight discoveries.
     //
     // The game loop MUST start even if hydration fails (e.g. Ref disposed
-    // due to provider rebuild race). Without .catchError, a rejected Future
-    // from rehydrateData() would prevent startLoop() from ever firing,
-    // leaving the map with zero GPS processing.
+    // due to provider rebuild race).
     eventSink?.add(GameEvent.state('hydration_started', {
       'user_id': userId,
     }));
 
     final hydrationStopwatch = Stopwatch()..start();
 
-    hydrateFromSupabase(
-      userId: userId,
-      persistence: ref.read(supabasePersistenceProvider),
-      profileRepo: profileRepo,
-      cellProgressRepo: cellProgressRepo,
-      itemRepo: itemRepo,
-      enrichmentRepo: enrichmentRepo,
-      eventSink: eventSink,
-    ).then((_) => rehydrateData(userId)).then((_) async {
+    // Phase 1: SQLite → providers → markHydrated() → startLoop().
+    rehydrateData(userId).then((_) async {
       // Restore last known position before starting the game loop.
       // This ensures the map and keyboard service start at the player's
       // previous location instead of the hardcoded Fredericton default.
@@ -628,37 +622,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             '${profile.lastLat}, ${profile.lastLon}');
       }
 
-      // Re-queue enrichment for any fauna in inventory that lacks it.
-      // Runs async after game loop starts — non-blocking. Covers:
-      //   - Enrichment requests dropped by daily rate limit (Groq 14.4k/day)
-      //   - Enrichment requests lost to app restart (in-memory queue)
-      //   - New enrichment pipeline deployed after species were discovered
-      // Startup batch capped at kStartupEnrichmentCap; remainder drained
-      // lazily by a Timer.periodic (handle stored in deferredDrainTimer so
-      // ref.onDispose can cancel it).
-      _requeueUnenrichedSpecies(
-        ref: ref,
-        enrichmentCache: enrichmentCache,
-        deferredQueue: deferredEnrichmentQueue,
-        onTimerCreated: (timer) {
-          deferredDrainTimer = timer;
-        },
-      );
-
-      // Backfill intrinsic affixes for items that were discovered before
-      // enrichment was available. This is the primary safety net — runs
-      // on every startup after both inventory and enrichment cache are
-      // populated. Catches ALL edge cases: items from before this fix,
-      // missed onEnriched callbacks, race conditions, etc.
-      _backfillAllMissingAffixes(
-        ref: ref,
-        enrichmentCache: enrichmentCache,
-        statsService: coordinator.statsService,
-        itemRepo: itemRepo,
-        queueProcessor: queueProcessor,
-        userId: userId,
-      );
-
       hydrationStopwatch.stop();
       final inventory = ref.read(inventoryProvider);
       eventSink?.add(GameEvent.state('hydration_complete', {
@@ -666,11 +629,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'duration_ms': hydrationStopwatch.elapsedMilliseconds,
         'item_count': inventory.items.length,
         'enrichment_count': enrichmentCache.length,
+        'source': 'sqlite',
       }));
-    }).catchError((Object e) {
-      debugPrint('[GameCoordinator] hydration chain failed '
-          '(starting loop anyway): $e');
-    }).whenComplete(() {
+
+      // Start game loop immediately with cached data.
       if (_providerDisposed) return;
       startLoop();
 
@@ -678,6 +640,70 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // Must be after hydrate() so _lastStreamValue is set as the baseline.
       if (!kIsWeb) {
         ref.read(stepProvider.notifier).startLiveStream();
+      }
+
+      // Phase 2: Fetch from Supabase in background → write to SQLite.
+      // Non-blocking. If it fails, cached data is still valid.
+      if (_providerDisposed) return;
+      hydrateFromSupabase(
+        userId: userId,
+        persistence: ref.read(supabasePersistenceProvider),
+        profileRepo: profileRepo,
+        cellProgressRepo: cellProgressRepo,
+        itemRepo: itemRepo,
+        enrichmentRepo: enrichmentRepo,
+        eventSink: eventSink,
+      ).then((_) {
+        if (_providerDisposed) return;
+
+        eventSink?.add(GameEvent.state('background_sync_complete', {
+          'user_id': userId,
+        }));
+
+        // Re-queue enrichment for any fauna in inventory that lacks it.
+        // Runs after background sync so enrichment cache includes any
+        // freshly-fetched enrichments from Supabase. Covers:
+        //   - Enrichment requests dropped by daily rate limit
+        //   - Enrichment requests lost to app restart (in-memory queue)
+        //   - New enrichment pipeline deployed after species were discovered
+        // Startup batch capped at kStartupEnrichmentCap; remainder drained
+        // lazily by a Timer.periodic (handle stored in deferredDrainTimer
+        // so ref.onDispose can cancel it).
+        _requeueUnenrichedSpecies(
+          ref: ref,
+          enrichmentCache: enrichmentCache,
+          deferredQueue: deferredEnrichmentQueue,
+          onTimerCreated: (timer) {
+            deferredDrainTimer = timer;
+          },
+        );
+
+        // Backfill intrinsic affixes for items that were discovered before
+        // enrichment was available. Primary safety net — catches all edge
+        // cases: items from before this fix, missed callbacks, races, etc.
+        _backfillAllMissingAffixes(
+          ref: ref,
+          enrichmentCache: enrichmentCache,
+          statsService: coordinator.statsService,
+          itemRepo: itemRepo,
+          queueProcessor: queueProcessor,
+          userId: userId,
+        );
+      }).catchError((Object e) {
+        debugPrint('[GameCoordinator] background Supabase sync failed: $e');
+        eventSink?.add(GameEvent.system('network_error', {
+          'context': 'background_supabase_sync',
+          'error': e.toString(),
+        }));
+      });
+    }).catchError((Object e) {
+      debugPrint('[GameCoordinator] SQLite hydration failed '
+          '(starting loop anyway): $e');
+      if (!_providerDisposed) {
+        startLoop();
+        if (!kIsWeb) {
+          ref.read(stepProvider.notifier).startLiveStream();
+        }
       }
     });
   }

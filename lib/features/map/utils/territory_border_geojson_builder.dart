@@ -443,25 +443,39 @@ class TerritoryBorderGeoJsonBuilder {
 
   /// Finds the shared edge (2 vertices) between two Voronoi cell boundaries.
   ///
-  /// Two cells share an edge if they have exactly 2 vertices in common
-  /// (within a small epsilon for floating-point comparison).
+  /// Uses a hash-set lookup (O(P+Q)) instead of brute-force O(P×Q).
+  /// Vertex coordinates are quantized to 6 decimal places (~0.11 m) for
+  /// stable hashing while tolerating floating-point rounding.
   static (Geographic, Geographic)? _findSharedEdge(
     List<Geographic> boundaryA,
     List<Geographic> boundaryB,
   ) {
-    const epsilon = 1e-9;
-    final shared = <Geographic>[];
+    // Build hash set from the shorter boundary.
+    final (indexed, probe) = boundaryA.length <= boundaryB.length
+        ? (boundaryA, boundaryB)
+        : (boundaryB, boundaryA);
 
-    for (final a in boundaryA) {
-      for (final b in boundaryB) {
-        if ((a.lat - b.lat).abs() < epsilon &&
-            (a.lon - b.lon).abs() < epsilon) {
-          shared.add(a);
-          if (shared.length == 2) return (shared[0], shared[1]);
-        }
-      }
+    final index = <int, Geographic>{};
+    for (final v in indexed) {
+      index[_vertexHash(v.lat, v.lon)] = v;
     }
 
+    final shared = <Geographic>[];
+    for (final v in probe) {
+      final match = index[_vertexHash(v.lat, v.lon)];
+      if (match != null) {
+        shared.add(match);
+        if (shared.length == 2) return (shared[0], shared[1]);
+      }
+    }
     return null;
+  }
+
+  /// Quantizes a coordinate to 6 decimal places and returns a hash.
+  static int _vertexHash(double lat, double lon) {
+    final qLat = (lat * 1e6).round();
+    final qLon = (lon * 1e6).round();
+    return qLat * 360000001 +
+        qLon; // large prime-ish multiplier avoids collisions
   }
 }

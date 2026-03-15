@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
@@ -145,6 +146,19 @@ Future<void> main() async {
       },
     ),
   );
+
+  // Log frames that exceed the 16ms (60fps) threshold for performance monitoring.
+  SchedulerBinding.instance.addTimingsCallback((List<FrameTiming> timings) {
+    for (final timing in timings) {
+      final buildMs = timing.buildDuration.inMilliseconds;
+      final rasterMs = timing.rasterDuration.inMilliseconds;
+      final totalMs = buildMs + rasterMs;
+      if (totalMs > 16) {
+        debugPrint(
+            '[FRAME-PERF] slow frame: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
+      }
+    }
+  });
 }
 
 /// Root widget — routes declaratively through the full auth flow based on

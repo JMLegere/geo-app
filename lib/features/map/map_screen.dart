@@ -513,59 +513,111 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _iconImagesRegistered = true;
   }
 
-  /// Updates the fog GeoJSON sources with new data from the controller.
+  /// Updates MapLibre GeoJSON sources that have changed since the last call.
   ///
-  /// All three sources are dispatched simultaneously via [Future.wait] to
-  /// prevent a single-frame flash where the base fog has holes punched but
-  /// the mid fog fill hasn't been applied yet.
+  /// Fog layers (base + mid + border outlines) update ATOMICALLY to avoid a
+  /// single-frame flash where the base fog has holes punched but the mid fog
+  /// fill hasn't been applied yet.
+  ///
+  /// Non-fog sources (admin, habitat, territory borders, icons) update ONE
+  /// group per call — staggered across frames. Each group stays dirty until
+  /// consumed, so nothing is lost.
   Future<void> _updateFogSources() async {
     final controller = _mapController;
     if (controller == null || !_fogLayersInitialized) return;
 
-    final fogOverlayController = ref.read(fogOverlayControllerProvider);
+    final fogCtrl = ref.read(fogOverlayControllerProvider);
 
+    // Consume fog flag unconditionally — fog is the primary layer.
+    final fogDirty = fogCtrl.consumeFogDirty();
+
+    // Peek at non-fog flags: consume ONE per frame (staggered).
+    // Unconsumed flags stay dirty for the next frame.
+    final adminDirty = fogCtrl.consumeAdminDirty();
+    final habitatDirty = !adminDirty && fogCtrl.consumeHabitatDirty();
+    final borderDirty =
+        !adminDirty && !habitatDirty && fogCtrl.consumeBorderDirty();
+    final iconsDirty = !adminDirty &&
+        !habitatDirty &&
+        !borderDirty &&
+        fogCtrl.consumeIconsDirty();
+
+    // Nothing changed — skip entirely.
+    if (!fogDirty &&
+        !adminDirty &&
+        !habitatDirty &&
+        !borderDirty &&
+        !iconsDirty) {
+      return;
+    }
+
+    final sw = Stopwatch()..start();
     MapLogger.fogUpdateStarted();
+
     try {
-      await Future.wait([
-        controller.updateGeoJsonSource(
-          id: _adminBoundaryFillSrcId,
-          data: fogOverlayController.adminBoundaryFillGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _adminBoundaryLinesSrcId,
-          data: fogOverlayController.adminBoundaryLinesGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _habitatFillSrcId,
-          data: fogOverlayController.habitatFillGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _fogBaseSrcId,
-          data: fogOverlayController.baseFogGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _fogMidSrcId,
-          data: fogOverlayController.midFogGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _fogBorderSrcId,
-          data: fogOverlayController.cellBorderGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _borderFillSrcId,
-          data: fogOverlayController.borderFillGeoJson,
-        ),
-        controller.updateGeoJsonSource(
-          id: _borderLinesSrcId,
-          data: fogOverlayController.borderLinesGeoJson,
-        ),
-        if (_iconImagesRegistered)
+      // Fog layers update atomically (avoid flash from base holes without
+      // mid fill).
+      if (fogDirty) {
+        await Future.wait([
           controller.updateGeoJsonSource(
-            id: _cellIconsSrcId,
-            data: fogOverlayController.cellIconsGeoJson,
+            id: _fogBaseSrcId,
+            data: fogCtrl.baseFogGeoJson,
           ),
-      ]);
+          controller.updateGeoJsonSource(
+            id: _fogMidSrcId,
+            data: fogCtrl.midFogGeoJson,
+          ),
+          controller.updateGeoJsonSource(
+            id: _fogBorderSrcId,
+            data: fogCtrl.cellBorderGeoJson,
+          ),
+        ]);
+      }
+
+      // Non-fog: at most ONE group per call.
+      if (adminDirty) {
+        await Future.wait([
+          controller.updateGeoJsonSource(
+            id: _adminBoundaryFillSrcId,
+            data: fogCtrl.adminBoundaryFillGeoJson,
+          ),
+          controller.updateGeoJsonSource(
+            id: _adminBoundaryLinesSrcId,
+            data: fogCtrl.adminBoundaryLinesGeoJson,
+          ),
+        ]);
+      } else if (habitatDirty) {
+        await controller.updateGeoJsonSource(
+          id: _habitatFillSrcId,
+          data: fogCtrl.habitatFillGeoJson,
+        );
+      } else if (borderDirty) {
+        await Future.wait([
+          controller.updateGeoJsonSource(
+            id: _borderFillSrcId,
+            data: fogCtrl.borderFillGeoJson,
+          ),
+          controller.updateGeoJsonSource(
+            id: _borderLinesSrcId,
+            data: fogCtrl.borderLinesGeoJson,
+          ),
+        ]);
+      } else if (iconsDirty && _iconImagesRegistered) {
+        await controller.updateGeoJsonSource(
+          id: _cellIconsSrcId,
+          data: fogCtrl.cellIconsGeoJson,
+        );
+      }
+
+      sw.stop();
       MapLogger.fogUpdateCompleted();
+
+      // Log slow frames for performance debugging.
+      if (sw.elapsedMilliseconds > 10) {
+        debugPrint('[FOG-PERF] source update took ${sw.elapsedMilliseconds}ms '
+            '(fog=$fogDirty, admin=$adminDirty, habitat=$habitatDirty, '
+            'border=$borderDirty, icons=$iconsDirty)');
+      }
     } catch (e, stack) {
       MapLogger.fogUpdateError(e, stack);
     }
@@ -769,6 +821,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
+      final sw = Stopwatch()..start();
+
       final MapCamera camera;
       try {
         camera = _mapController!.getCamera();
@@ -800,6 +854,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
       );
       ref.read(mapStateProvider.notifier).updateCameraPosition(lat, lon);
       _updateFogSources();
+
+      sw.stop();
+      if (sw.elapsedMilliseconds > 10) {
+        debugPrint('[FOG-PERF] render took ${sw.elapsedMilliseconds}ms');
+      }
     }
   }
 
