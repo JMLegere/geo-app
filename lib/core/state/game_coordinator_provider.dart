@@ -108,6 +108,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       userIdResolver: () => supabaseClient.auth.currentUser?.id,
     );
     eventSink.start();
+    EventSink.instance = eventSink;
   }
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and

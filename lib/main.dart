@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
+import 'package:earth_nova/core/engine/event_sink.dart';
+import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/log_flush_service.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
@@ -138,6 +140,14 @@ Future<void> main() async {
       final frames = stack.toString().split('\n').take(15).join('\n');
       DebugLogBuffer.instance.add('[CRASH-STACK]\n$frames');
       debugPrint('[CRASH] Unhandled zone error: $error\n$stack');
+
+      // Emit structured crash event + emergency flush so the last events
+      // before the blank screen are captured in app_events.
+      EventSink.instance?.add(GameEvent.system('crash', {
+        'error': error.toString(),
+        'stack_trace': frames,
+      }));
+      EventSink.instance?.flush();
     },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
@@ -147,8 +157,11 @@ Future<void> main() async {
     ),
   );
 
-  // Log frames that exceed the 16ms (60fps) threshold for performance monitoring.
+  // Frame performance monitoring + rendering watchdog.
+  var lastFrameTime = DateTime.now();
+
   SchedulerBinding.instance.addTimingsCallback((List<FrameTiming> timings) {
+    lastFrameTime = DateTime.now();
     for (final timing in timings) {
       final buildMs = timing.buildDuration.inMilliseconds;
       final rasterMs = timing.rasterDuration.inMilliseconds;
@@ -156,7 +169,25 @@ Future<void> main() async {
       if (totalMs > 16) {
         debugPrint(
             '[FRAME-PERF] slow frame: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
+        EventSink.instance?.add(GameEvent.performance('long_frame', {
+          'build_ms': buildMs,
+          'raster_ms': rasterMs,
+          'total_ms': totalMs,
+        }));
       }
+    }
+  });
+
+  // Rendering watchdog: if no frames paint for 3+ seconds, the UI is dead
+  // but the Dart VM is alive. This detects the "blank screen" condition
+  // where rendering stops without a crash or tab kill.
+  Timer.periodic(const Duration(seconds: 3), (_) {
+    final gap = DateTime.now().difference(lastFrameTime);
+    if (gap.inSeconds >= 3) {
+      debugPrint('[RENDER-STALL] no frames for ${gap.inSeconds}s');
+      EventSink.instance?.add(GameEvent.system('rendering_stalled', {
+        'gap_seconds': gap.inSeconds,
+      }));
     }
   });
 }

@@ -36,6 +36,10 @@ class EventSink {
     }
   }
 
+  /// Global reference for code outside Riverpod (e.g. frame timing in main.dart).
+  /// Set by gameCoordinatorProvider when EventSink is created.
+  static EventSink? instance;
+
   String get sessionId => _sessionId;
 
   void start() {
