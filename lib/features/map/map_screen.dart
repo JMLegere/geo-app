@@ -96,6 +96,9 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen>
     with TickerProviderStateMixin, ObservableLifecycle<MapScreen> {
+  @override
+  String get observabilityName => 'MapScreen';
+
   MapController? _mapController;
 
   /// The central game logic coordinator. Saved in initState for safe access.
