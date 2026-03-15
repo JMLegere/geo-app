@@ -57,8 +57,11 @@ class AdminBoundaryGeoJsonBuilder {
 
     for (final node in nodes.values) {
       if (!_renderableLevels.contains(node.adminLevel)) continue;
-      final geomJson = node.geometryJson;
-      if (geomJson == null) continue;
+      final rawGeom = node.geometryJson;
+      if (rawGeom == null) continue;
+      // Unwrap double-encoded geometry (legacy data stored as JSON-of-JSON).
+      final geomJson =
+          rawGeom.startsWith('"') ? jsonDecode(rawGeom) as String : rawGeom;
 
       if (!first) features.write(',');
       first = false;
@@ -107,7 +110,10 @@ class AdminBoundaryGeoJsonBuilder {
       final geomJson = node.geometryJson;
       if (geomJson == null) continue;
 
-      final geom = jsonDecode(geomJson) as Map<String, dynamic>;
+      final decoded = jsonDecode(geomJson);
+      // Guard against double-encoded geometry (stored as JSON string of JSON).
+      final geom = (decoded is String ? jsonDecode(decoded) : decoded)
+          as Map<String, dynamic>;
       final type = geom['type'] as String;
       final coords = geom['coordinates'] as List<dynamic>;
 
