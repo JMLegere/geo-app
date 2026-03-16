@@ -118,13 +118,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         final data = row['data'];
         final ts = row['created_at'] ?? '';
         debugPrint(
-            '[RECOVERED] [$ts] $cat/$evt ${data is Map ? data['msg'] ?? data['action'] ?? data : ''}');
+          '[RECOVERED] [$ts] $cat/$evt ${data is Map ? data['msg'] ?? data['action'] ?? data : ''}',
+        );
         row['session_id'] = 'recovered:${row['session_id'] ?? 'unknown'}';
       }
-      supabaseClient
-          .from('app_events')
-          .insert(recovered)
-          .catchError((Object e) {
+      supabaseClient.from('app_events').insert(recovered).catchError((
+        Object e,
+      ) {
         debugPrint('[Observability] recovery flush failed: $e');
       });
     }
@@ -164,8 +164,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // pre-resolved properties and detect cell events (Migration, Nesting Site).
   // Set as a mutable field to avoid circular provider dependency — the
   // callback is only invoked at event time (never during construction).
-  discoveryService.cellPropertiesLookup =
-      (cellId) => coordinator.cellPropertiesCache[cellId];
+  discoveryService.cellPropertiesLookup = (cellId) =>
+      coordinator.cellPropertiesCache[cellId];
 
   // Wire synchronous enrichment lookup for stat rolling.
   coordinator.enrichedStatsLookup = (definitionId) {
@@ -179,8 +179,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // path (Path A) already does.
   void enrichmentHook(SpeciesEnrichment enrichment) {
     if (_providerDisposed) return;
-    debugPrint('[GameCoordinator] onEnrichedHook: backfilling affixes for '
-        '${enrichment.definitionId}');
+    debugPrint(
+      '[GameCoordinator] onEnrichedHook: backfilling affixes for '
+      '${enrichment.definitionId}',
+    );
     enrichmentCache[enrichment.definitionId] = (
       speed: enrichment.speed,
       brawn: enrichment.brawn,
@@ -363,34 +365,35 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             taxonomicClass: fauna.taxonomicClass,
           )
           .then((_) async {
-        final enrichment = await enrichmentRepo.getEnrichment(fauna.id);
-        if (enrichment != null) {
-          final stats = (
-            speed: enrichment.speed,
-            brawn: enrichment.brawn,
-            wit: enrichment.wit,
-            size: enrichment.size,
-          );
-          enrichmentCache[fauna.id] = stats;
+            final enrichment = await enrichmentRepo.getEnrichment(fauna.id);
+            if (enrichment != null) {
+              final stats = (
+                speed: enrichment.speed,
+                brawn: enrichment.brawn,
+                wit: enrichment.wit,
+                size: enrichment.size,
+              );
+              enrichmentCache[fauna.id] = stats;
 
-          // Retroactively roll intrinsic affixes for any existing items
-          // of this species that were discovered before enrichment arrived.
-          final userId = ref.read(authProvider).user?.id;
-          if (userId != null) {
-            await _backfillIntrinsicAffixes(
-              definitionId: fauna.id,
-              enrichedStats: stats,
-              ref: ref,
-              statsService: coordinator.statsService,
-              itemRepo: itemRepo,
-              queueProcessor: queueProcessor,
-              userId: userId,
-            );
-          }
-        }
-      }).catchError((Object e) {
-        debugPrint('[GameCoordinator] enrichment request failed: $e');
-      });
+              // Retroactively roll intrinsic affixes for any existing items
+              // of this species that were discovered before enrichment arrived.
+              final userId = ref.read(authProvider).user?.id;
+              if (userId != null) {
+                await _backfillIntrinsicAffixes(
+                  definitionId: fauna.id,
+                  enrichedStats: stats,
+                  ref: ref,
+                  statsService: coordinator.statsService,
+                  itemRepo: itemRepo,
+                  queueProcessor: queueProcessor,
+                  userId: userId,
+                );
+              }
+            }
+          })
+          .catchError((Object e) {
+            debugPrint('[GameCoordinator] enrichment request failed: $e');
+          });
     }
   };
 
@@ -436,19 +439,25 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
-    dailySeedService.fetchSeed().then((_) {
-      debugPrint('[GameCoordinator] daily seed ready: '
-          '${dailySeedService.currentSeed}');
-    }).catchError((Object e) {
-      debugPrint('[GameCoordinator] daily seed fetch failed: $e');
-    }).whenComplete(() {
-      if (_providerDisposed) return;
-      locationService.start();
-      coordinator.start(
-        gpsStream: gpsStream,
-        discoveryStream: discoveryService.onDiscovery,
-      );
-    });
+    dailySeedService
+        .fetchSeed()
+        .then((_) {
+          debugPrint(
+            '[GameCoordinator] daily seed ready: '
+            '${dailySeedService.currentSeed}',
+          );
+        })
+        .catchError((Object e) {
+          debugPrint('[GameCoordinator] daily seed fetch failed: $e');
+        })
+        .whenComplete(() {
+          if (_providerDisposed) return;
+          locationService.start();
+          coordinator.start(
+            gpsStream: gpsStream,
+            discoveryStream: discoveryService.onDiscovery,
+          );
+        });
   }
 
   // Track last persisted profile to avoid re-persisting hydrated state.
@@ -483,8 +492,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       // 0a. Populate enrichment cache for synchronous stat lookups.
       for (final e in enrichments) {
-        enrichmentCache[e.definitionId] =
-            (speed: e.speed, brawn: e.brawn, wit: e.wit, size: e.size);
+        enrichmentCache[e.definitionId] = (
+          speed: e.speed,
+          brawn: e.brawn,
+          wit: e.wit,
+          size: e.size,
+        );
       }
 
       // 0b. Pre-populate cell properties cache from SQLite.
@@ -502,8 +515,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // resolver is available, re-resolve them to get accurate habitats.
       final reResolved = coordinator.reResolvePlainsOnlyCells();
       if (reResolved.isNotEmpty) {
-        debugPrint('[GameCoordinator] re-resolved ${reResolved.length} '
-            'plains-only cells with real biome data');
+        debugPrint(
+          '[GameCoordinator] re-resolved ${reResolved.length} '
+          'plains-only cells with real biome data',
+        );
         for (final props in reResolved) {
           _persistCellProperties(
             properties: props,
@@ -551,7 +566,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       final currentOnboarding = ref.read(playerProvider).hasCompletedOnboarding;
 
       if (profile != null) {
-        ref.read(playerProvider.notifier).loadProfile(
+        ref
+            .read(playerProvider.notifier)
+            .loadProfile(
               cellsObserved: cellsObserved,
               totalDistanceKm: profile.totalDistanceKm,
               currentStreak: profile.currentStreak,
@@ -564,7 +581,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       } else {
         // No profile row yet — still hydrate cellsObserved from cell progress.
         if (cellsObserved > 0) {
-          ref.read(playerProvider.notifier).loadProfile(
+          ref
+              .read(playerProvider.notifier)
+              .loadProfile(
                 cellsObserved: cellsObserved,
                 totalDistanceKm: 0.0,
                 currentStreak: 0,
@@ -621,111 +640,122 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     //
     // The game loop MUST start even if hydration fails (e.g. Ref disposed
     // due to provider rebuild race).
-    obs?.event('hydration_started', {
-      'user_id': userId,
-    });
+    obs?.event('hydration_started', {'user_id': userId});
 
     final hydrationStopwatch = Stopwatch()..start();
 
     // Phase 1: SQLite → providers → markHydrated() → startLoop().
-    rehydrateData(userId).then((_) async {
-      // Restore last known position before starting the game loop.
-      // This ensures the map and keyboard service start at the player's
-      // previous location instead of the hardcoded Fredericton default.
-      final profile = await profileRepo.read(userId);
-      if (profile?.lastLat != null && profile?.lastLon != null) {
-        locationService.setInitialPosition(
-          profile!.lastLat!,
-          profile.lastLon!,
-        );
-        debugPrint('[GameCoordinator] restored position: '
-            '${profile.lastLat}, ${profile.lastLon}');
-      }
+    rehydrateData(userId)
+        .then((_) async {
+          // Restore last known position before starting the game loop.
+          // This ensures the map and keyboard service start at the player's
+          // previous location instead of the hardcoded Fredericton default.
+          final profile = await profileRepo.read(userId);
+          if (profile?.lastLat != null && profile?.lastLon != null) {
+            locationService.setInitialPosition(
+              profile!.lastLat!,
+              profile.lastLon!,
+            );
+            debugPrint(
+              '[GameCoordinator] restored position: '
+              '${profile.lastLat}, ${profile.lastLon}',
+            );
+          }
 
-      hydrationStopwatch.stop();
-      final inventory = ref.read(inventoryProvider);
-      obs?.event('hydration_complete', {
-        'user_id': userId,
-        'duration_ms': hydrationStopwatch.elapsedMilliseconds,
-        'item_count': inventory.items.length,
-        'enrichment_count': enrichmentCache.length,
-        'source': 'sqlite',
-      });
+          hydrationStopwatch.stop();
+          final inventory = ref.read(inventoryProvider);
+          obs?.event('hydration_complete', {
+            'user_id': userId,
+            'duration_ms': hydrationStopwatch.elapsedMilliseconds,
+            'item_count': inventory.items.length,
+            'enrichment_count': enrichmentCache.length,
+            'source': 'sqlite',
+          });
 
-      // Start game loop immediately with cached data.
-      if (_providerDisposed) return;
-      startLoop();
+          // Start game loop immediately with cached data.
+          if (_providerDisposed) return;
+          startLoop();
 
-      // Start live pedometer stream after game loop is running (native only).
-      // Must be after hydrate() so _lastStreamValue is set as the baseline.
-      if (!kIsWeb) {
-        ref.read(stepProvider.notifier).startLiveStream();
-      }
+          // Start live pedometer stream after game loop is running (native only).
+          // Must be after hydrate() so _lastStreamValue is set as the baseline.
+          if (!kIsWeb) {
+            ref.read(stepProvider.notifier).startLiveStream();
+          }
 
-      // Phase 2: Fetch from Supabase in background → write to SQLite.
-      // Non-blocking. If it fails, cached data is still valid.
-      if (_providerDisposed) return;
-      hydrateFromSupabase(
-        userId: userId,
-        persistence: ref.read(supabasePersistenceProvider),
-        profileRepo: profileRepo,
-        cellProgressRepo: cellProgressRepo,
-        itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
-        obs: obs,
-      ).then((_) {
-        if (_providerDisposed) return;
+          // Phase 2: Fetch from Supabase in background → write to SQLite.
+          // Non-blocking. If it fails, cached data is still valid.
+          if (_providerDisposed) return;
+          hydrateFromSupabase(
+                userId: userId,
+                persistence: ref.read(supabasePersistenceProvider),
+                profileRepo: profileRepo,
+                cellProgressRepo: cellProgressRepo,
+                itemRepo: itemRepo,
+                enrichmentRepo: enrichmentRepo,
+                obs: obs,
+              )
+              .then((_) {
+                if (_providerDisposed) return;
 
-        obs?.event('background_sync_complete', {
-          'user_id': userId,
+                obs?.event('background_sync_complete', {'user_id': userId});
+
+                // Re-queue enrichment for any fauna in inventory that lacks it.
+                // Runs after background sync so enrichment cache includes any
+                // freshly-fetched enrichments from Supabase. Covers:
+                //   - Enrichment requests dropped by daily rate limit
+                //   - Enrichment requests lost to app restart (in-memory queue)
+                //   - New enrichment pipeline deployed after species were discovered
+                // Startup batch capped at kStartupEnrichmentCap; remainder drained
+                // lazily by a Timer.periodic (handle stored in deferredDrainTimer
+                // so ref.onDispose can cancel it).
+                _requeueUnenrichedSpecies(
+                  ref: ref,
+                  enrichmentCache: enrichmentCache,
+                  deferredQueue: deferredEnrichmentQueue,
+                  onTimerCreated: (timer) {
+                    deferredDrainTimer = timer;
+                  },
+                );
+
+                // Backfill intrinsic affixes for items that were discovered before
+                // enrichment was available. Primary safety net — catches all edge
+                // cases: items from before this fix, missed callbacks, races, etc.
+                _backfillAllMissingAffixes(
+                  ref: ref,
+                  enrichmentCache: enrichmentCache,
+                  statsService: coordinator.statsService,
+                  itemRepo: itemRepo,
+                  queueProcessor: queueProcessor,
+                  userId: userId,
+                );
+              })
+              .catchError((Object e) {
+                debugPrint(
+                  '[GameCoordinator] background Supabase sync failed: $e',
+                );
+                obs?.event('network_error', {
+                  'context': 'background_supabase_sync',
+                  'error': e.toString(),
+                });
+              });
+        })
+        .catchError((Object e) {
+          debugPrint(
+            '[GameCoordinator] SQLite hydration failed '
+            '(starting loop anyway): $e',
+          );
+          if (!_providerDisposed) {
+            // Mark hydrated even on failure so _resolveHome() progresses past
+            // LoadingScreen. Without this, the app is stuck on "Loading your
+            // world" forever when SQLite tables are missing (e.g. after
+            // corruption auto-reset drops tables without recreation).
+            ref.read(playerProvider.notifier).markHydrated();
+            startLoop();
+            if (!kIsWeb) {
+              ref.read(stepProvider.notifier).startLiveStream();
+            }
+          }
         });
-
-        // Re-queue enrichment for any fauna in inventory that lacks it.
-        // Runs after background sync so enrichment cache includes any
-        // freshly-fetched enrichments from Supabase. Covers:
-        //   - Enrichment requests dropped by daily rate limit
-        //   - Enrichment requests lost to app restart (in-memory queue)
-        //   - New enrichment pipeline deployed after species were discovered
-        // Startup batch capped at kStartupEnrichmentCap; remainder drained
-        // lazily by a Timer.periodic (handle stored in deferredDrainTimer
-        // so ref.onDispose can cancel it).
-        _requeueUnenrichedSpecies(
-          ref: ref,
-          enrichmentCache: enrichmentCache,
-          deferredQueue: deferredEnrichmentQueue,
-          onTimerCreated: (timer) {
-            deferredDrainTimer = timer;
-          },
-        );
-
-        // Backfill intrinsic affixes for items that were discovered before
-        // enrichment was available. Primary safety net — catches all edge
-        // cases: items from before this fix, missed callbacks, races, etc.
-        _backfillAllMissingAffixes(
-          ref: ref,
-          enrichmentCache: enrichmentCache,
-          statsService: coordinator.statsService,
-          itemRepo: itemRepo,
-          queueProcessor: queueProcessor,
-          userId: userId,
-        );
-      }).catchError((Object e) {
-        debugPrint('[GameCoordinator] background Supabase sync failed: $e');
-        obs?.event('network_error', {
-          'context': 'background_supabase_sync',
-          'error': e.toString(),
-        });
-      });
-    }).catchError((Object e) {
-      debugPrint('[GameCoordinator] SQLite hydration failed '
-          '(starting loop anyway): $e');
-      if (!_providerDisposed) {
-        startLoop();
-        if (!kIsWeb) {
-          ref.read(stepProvider.notifier).startLiveStream();
-        }
-      }
-    });
   }
 
   // --- Auth state handler ---
@@ -771,7 +801,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       deferredDrainTimer?.cancel();
       deferredDrainTimer = null;
       deferredEnrichmentQueue.clear();
-      ref.read(playerProvider.notifier).loadProfile(
+      ref
+          .read(playerProvider.notifier)
+          .loadProfile(
             cellsObserved: 0,
             totalDistanceKm: 0.0,
             currentStreak: 0,
@@ -835,8 +867,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // Using ref.listen (not ref.watch) avoids rebuilding the entire provider
   // and restarting the game loop just because biome data loaded.
 
-  ref.listen<CellPropertyResolver?>(cellPropertyResolverProvider,
-      (previous, next) {
+  ref.listen<CellPropertyResolver?>(cellPropertyResolverProvider, (
+    previous,
+    next,
+  ) {
     if (_providerDisposed) return;
     if (next == null) return;
 
@@ -847,8 +881,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     final reResolved = coordinator.reResolvePlainsOnlyCells();
     if (reResolved.isNotEmpty) {
-      debugPrint('[GameCoordinator] biome loaded: re-resolved '
-          '${reResolved.length} plains-only cells');
+      debugPrint(
+        '[GameCoordinator] biome loaded: re-resolved '
+        '${reResolved.length} plains-only cells',
+      );
       final userId = ref.read(authProvider).user?.id;
       for (final props in reResolved) {
         _persistCellProperties(
@@ -892,7 +928,8 @@ final engineRunnerProvider = Provider<EngineRunner>((ref) {
   final engine = _latestEngine;
   if (engine == null) {
     throw StateError(
-        'engineRunnerProvider read before gameCoordinatorProvider');
+      'engineRunnerProvider read before gameCoordinatorProvider',
+    );
   }
   return MainThreadEngineRunner(engine);
 });
@@ -1211,8 +1248,10 @@ Future<void> hydrateFromSupabase({
   ObservabilityBuffer? obs,
 }) async {
   if (persistence == null) {
-    debugPrint('[GameCoordinator] Supabase not configured — skipping '
-        'server hydration');
+    debugPrint(
+      '[GameCoordinator] Supabase not configured — skipping '
+      'server hydration',
+    );
     return;
   }
 
@@ -1251,16 +1290,18 @@ Future<void> hydrateFromSupabase({
     for (final row in cellRows) {
       final cellId = row['cell_id'] as String;
       final id = row['id'] as String? ?? '${userId}_$cellId';
-      final fogState =
-          FogState.fromString(row['fog_state'] as String? ?? 'observed');
+      final fogState = FogState.fromString(
+        row['fog_state'] as String? ?? 'observed',
+      );
       final visitCount = row['visit_count'] as int? ?? 1;
       final distanceWalked =
           (row['distance_walked'] as num?)?.toDouble() ?? 0.0;
       final restorationLevel =
           (row['restoration_level'] as num?)?.toDouble() ?? 0.0;
       final lastVisitedStr = row['last_visited'] as String?;
-      final lastVisited =
-          lastVisitedStr != null ? DateTime.tryParse(lastVisitedStr) : null;
+      final lastVisited = lastVisitedStr != null
+          ? DateTime.tryParse(lastVisitedStr)
+          : null;
 
       await cellProgressRepo.create(
         id: id,
@@ -1296,22 +1337,27 @@ Future<void> hydrateFromSupabase({
                 orElse: () => IucnStatus.leastConcern,
               )
             : null,
-        habitats:
-            ItemInstance.habitatsFromJson(row['habitats_json'] as String?),
-        continents:
-            ItemInstance.continentsFromJson(row['continents_json'] as String?),
+        habitats: ItemInstance.habitatsFromJson(
+          row['habitats_json'] as String?,
+        ),
+        continents: ItemInstance.continentsFromJson(
+          row['continents_json'] as String?,
+        ),
         taxonomicClass: row['taxonomic_class'] as String?,
-        affixes:
-            ItemInstance.affixesFromJson(row['affixes'] as String? ?? '[]'),
-        badges:
-            ItemInstance.badgesFromJson(row['badges_json'] as String? ?? '[]'),
+        affixes: ItemInstance.affixesFromJson(
+          row['affixes'] as String? ?? '[]',
+        ),
+        badges: ItemInstance.badgesFromJson(
+          row['badges_json'] as String? ?? '[]',
+        ),
         acquiredAt: acquiredAt,
         acquiredInCellId: row['acquired_in_cell_id'] as String?,
         dailySeed: row['daily_seed'] as String?,
         parentAId: row['parent_a_id'] as String?,
         parentBId: row['parent_b_id'] as String?,
-        status:
-            ItemInstanceStatus.fromString(row['status'] as String? ?? 'active'),
+        status: ItemInstanceStatus.fromString(
+          row['status'] as String? ?? 'active',
+        ),
       );
 
       try {
@@ -1370,15 +1416,19 @@ Future<void> hydrateFromSupabase({
       }
     }
 
-    debugPrint('[GameCoordinator] Supabase hydration complete: '
-        'profile=${profileMap != null}, '
-        'cells=${cellRows.length}, '
-        'items=${itemRows.length}, '
-        'enrichments=${enrichmentRows.length}');
+    debugPrint(
+      '[GameCoordinator] Supabase hydration complete: '
+      'profile=${profileMap != null}, '
+      'cells=${cellRows.length}, '
+      'items=${itemRows.length}, '
+      'enrichments=${enrichmentRows.length}',
+    );
   } catch (e) {
     // Network error, Supabase down, etc. — continue with SQLite-only.
-    debugPrint('[GameCoordinator] Supabase hydration failed (continuing '
-        'with local data): $e');
+    debugPrint(
+      '[GameCoordinator] Supabase hydration failed (continuing '
+      'with local data): $e',
+    );
     obs?.event('network_error', {
       'operation': 'hydrate_from_supabase',
       'user_id': userId,
@@ -1397,9 +1447,10 @@ bool _needsIntrinsicBackfill(
   ItemInstance item,
   ({int speed, int brawn, int wit, AnimalSize? size}) enrichedStats,
 ) {
-  final intrinsic = item.affixes
-      .cast<Affix?>()
-      .firstWhere((a) => a!.type == AffixType.intrinsic, orElse: () => null);
+  final intrinsic = item.affixes.cast<Affix?>().firstWhere(
+    (a) => a!.type == AffixType.intrinsic,
+    orElse: () => null,
+  );
 
   // No intrinsic affix at all — needs full backfill.
   if (intrinsic == null) return true;
@@ -1460,8 +1511,9 @@ Future<void> _rollAndPersistIntrinsicAffix({
 
   // Replace existing intrinsic affix if present (e.g., re-enrichment added
   // size to a previously stats-only affix), otherwise prepend new one.
-  final existingIntrinsic =
-      item.affixes.any((a) => a.type == AffixType.intrinsic);
+  final existingIntrinsic = item.affixes.any(
+    (a) => a.type == AffixType.intrinsic,
+  );
   final List<Affix> newAffixes;
   if (existingIntrinsic) {
     newAffixes = item.affixes
@@ -1471,9 +1523,7 @@ Future<void> _rollAndPersistIntrinsicAffix({
     newAffixes = [finalAffix, ...item.affixes];
   }
 
-  final updated = item.copyWith(
-    affixes: newAffixes,
-  );
+  final updated = item.copyWith(affixes: newAffixes);
 
   // 1. Update in-memory inventory.
   ref.read(inventoryProvider.notifier).updateItem(updated);
@@ -1482,8 +1532,10 @@ Future<void> _rollAndPersistIntrinsicAffix({
   try {
     await itemRepo.updateItem(updated, userId);
   } catch (e) {
-    debugPrint('[GameCoordinator] failed to persist backfilled item '
-        '${item.id}: $e');
+    debugPrint(
+      '[GameCoordinator] failed to persist backfilled item '
+      '${item.id}: $e',
+    );
   }
 
   // 3. Enqueue for Supabase sync.
@@ -1516,8 +1568,10 @@ Future<void> _rollAndPersistIntrinsicAffix({
       userId: userId,
     );
   } catch (e) {
-    debugPrint('[GameCoordinator] failed to enqueue backfilled item '
-        '${item.id}: $e');
+    debugPrint(
+      '[GameCoordinator] failed to enqueue backfilled item '
+      '${item.id}: $e',
+    );
   }
 }
 
@@ -1535,15 +1589,19 @@ Future<void> _backfillIntrinsicAffixes({
 }) async {
   final inventory = ref.read(inventoryProvider);
   final itemsToFix = inventory.items
-      .where((item) =>
-          item.definitionId == definitionId &&
-          _needsIntrinsicBackfill(item, enrichedStats))
+      .where(
+        (item) =>
+            item.definitionId == definitionId &&
+            _needsIntrinsicBackfill(item, enrichedStats),
+      )
       .toList();
 
   if (itemsToFix.isEmpty) return;
 
-  debugPrint('[GameCoordinator] backfilling intrinsic affixes for '
-      '${itemsToFix.length} items of $definitionId');
+  debugPrint(
+    '[GameCoordinator] backfilling intrinsic affixes for '
+    '${itemsToFix.length} items of $definitionId',
+  );
 
   for (final item in itemsToFix) {
     await _rollAndPersistIntrinsicAffix(
@@ -1570,7 +1628,7 @@ Future<void> _backfillIntrinsicAffixes({
 Future<void> _backfillAllMissingAffixes({
   required Ref ref,
   required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
-      enrichmentCache,
+  enrichmentCache,
   required StatsService statsService,
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
@@ -1579,15 +1637,22 @@ Future<void> _backfillAllMissingAffixes({
   try {
     final inventory = ref.read(inventoryProvider);
     final itemsToFix = inventory.items
-        .where((item) =>
-            enrichmentCache.containsKey(item.definitionId) &&
-            _needsIntrinsicBackfill(item, enrichmentCache[item.definitionId]!))
+        .where(
+          (item) =>
+              enrichmentCache.containsKey(item.definitionId) &&
+              _needsIntrinsicBackfill(
+                item,
+                enrichmentCache[item.definitionId]!,
+              ),
+        )
         .toList();
 
     if (itemsToFix.isEmpty) return;
 
-    debugPrint('[GameCoordinator] startup backfill: ${itemsToFix.length} '
-        'items need intrinsic affix update');
+    debugPrint(
+      '[GameCoordinator] startup backfill: ${itemsToFix.length} '
+      'items need intrinsic affix update',
+    );
 
     for (final item in itemsToFix) {
       await _rollAndPersistIntrinsicAffix(
@@ -1601,8 +1666,10 @@ Future<void> _backfillAllMissingAffixes({
       );
     }
 
-    debugPrint('[GameCoordinator] startup backfill complete: '
-        '${itemsToFix.length} items fixed');
+    debugPrint(
+      '[GameCoordinator] startup backfill complete: '
+      '${itemsToFix.length} items fixed',
+    );
   } catch (e) {
     debugPrint('[GameCoordinator] startup backfill failed: $e');
   }
@@ -1624,9 +1691,9 @@ Future<void> _backfillAllMissingAffixes({
 Future<void> _requeueUnenrichedSpecies({
   required Ref ref,
   required Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>
-      enrichmentCache,
+  enrichmentCache,
   required List<({String definitionId, FaunaDefinition fauna, bool force})>
-      deferredQueue,
+  deferredQueue,
   required void Function(Timer) onTimerCreated,
 }) async {
   try {
@@ -1714,8 +1781,10 @@ Future<void> _requeueUnenrichedSpecies({
         const Duration(seconds: kDeferredEnrichmentIntervalSeconds),
         (_) {
           if (deferredQueue.isEmpty) return;
-          final batchSize =
-              deferredQueue.length.clamp(0, kDeferredEnrichmentBatchSize);
+          final batchSize = deferredQueue.length.clamp(
+            0,
+            kDeferredEnrichmentBatchSize,
+          );
           final batch = deferredQueue.take(batchSize).toList();
           deferredQueue.removeRange(0, batch.length);
           for (final entry in batch) {
