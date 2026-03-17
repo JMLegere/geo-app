@@ -24,7 +24,7 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
-import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -33,9 +33,9 @@ import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
-import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/features/items/services/stats_service.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
-import 'package:earth_nova/features/enrichment/providers/enrichment_provider.dart';
+import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 
 // ---------------------------------------------------------------------------

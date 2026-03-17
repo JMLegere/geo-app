@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 
@@ -127,7 +127,7 @@ class PackNotifier extends Notifier<PackState> {
   @override
   PackState build() {
     // Listen to inventory changes — regroup items by category.
-    ref.listen(inventoryProvider, (_, next) {
+    ref.listen(itemsProvider, (_, next) {
       _updateFromInventory(next);
     });
 
@@ -137,7 +137,7 @@ class PackNotifier extends Notifier<PackState> {
     });
 
     // Initial state from current inventory.
-    final inventory = ref.read(inventoryProvider);
+    final inventory = ref.read(itemsProvider);
     final playerStats = ref.read(playerProvider);
 
     return PackState(
@@ -146,7 +146,7 @@ class PackNotifier extends Notifier<PackState> {
     );
   }
 
-  void _updateFromInventory(InventoryState inventory) {
+  void _updateFromInventory(ItemsState inventory) {
     state = state.copyWith(
       itemsByCategory: _groupByCategory(inventory.items),
     );

@@ -4,7 +4,7 @@ import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/species/species_data_loader.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
-import 'package:earth_nova/features/enrichment/providers/enrichment_provider.dart';
+import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // SpeciesService provider (real IUCN dataset — 32,752 species)
@@ -110,7 +110,7 @@ class DiscoveryState {
 /// Wire up by subscribing to `DiscoveryService.onDiscovery` and calling
 /// [showDiscovery] for each incoming [DiscoveryEvent].
 ///
-/// Pattern matches `InventoryNotifier` — uses `Notifier` + `NotifierProvider`.
+/// Pattern matches `ItemsNotifier` — uses `Notifier` + `NotifierProvider`.
 class DiscoveryNotifier extends Notifier<DiscoveryState> {
   @override
   DiscoveryState build() => const DiscoveryState();

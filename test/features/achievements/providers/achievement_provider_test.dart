@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/achievements/models/achievement.dart';
 import 'package:earth_nova/features/achievements/models/achievement_state.dart';
@@ -93,9 +93,9 @@ void main() {
       expect(state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
     });
 
-    test('checkAchievements updates species progress from inventoryProvider',
+    test('checkAchievements updates species progress from itemsProvider',
         () {
-      final inventory = container.read(inventoryProvider.notifier);
+      final inventory = container.read(itemsProvider.notifier);
       for (int i = 1; i <= 5; i++) {
         inventory.addItem(ItemInstance(
           id: 'item_$i',

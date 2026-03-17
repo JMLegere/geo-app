@@ -226,7 +226,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (20 providers):
+**Public API** (21 providers):
+- `tabIndexProvider`: `NotifierProvider<TabIndexNotifier, int>` — selected tab index (0=Map, 1=Home, 2=Town, 3=Pack). Persists to SharedPreferences.
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed

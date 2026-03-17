@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/cells/event_resolver.dart';
+import 'package:earth_nova/features/world/services/event_resolver.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
@@ -14,9 +14,9 @@ import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/services/daily_seed_service.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart';
 import 'package:earth_nova/core/species/species_service.dart';
-import 'package:earth_nova/features/biome/services/biome_service.dart';
+import 'package:earth_nova/features/world/services/biome_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
-import 'package:earth_nova/features/seasonal/services/season_service.dart';
+import 'package:earth_nova/features/calendar/services/season_service.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Listens to fog events and emits [DiscoveryEvent]s when a player enters a

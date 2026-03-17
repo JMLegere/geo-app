@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_cache.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/cells/h3_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 
 /// Lightweight mock CellService for LRU eviction tests.
 /// Generates unique cell IDs from coordinates without FFI.
@@ -58,7 +58,7 @@ void main() {
   late CellCache cache;
 
   setUp(() {
-    cache = CellCache(H3CellService());
+    cache = CellCache(LazyVoronoiCellService());
   });
 
   group('CellCache', () {
@@ -111,13 +111,13 @@ void main() {
 
     // Test 14: Cache delegates to underlying service correctly
     test('cache delegates getCellId to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       expect(cached.getCellId(lat, lon), equals(direct.getCellId(lat, lon)));
     });
 
     test('cache delegates getCellCenter to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       final cellId = direct.getCellId(lat, lon);
       final directCenter = direct.getCellCenter(cellId);
@@ -127,7 +127,7 @@ void main() {
     });
 
     test('cache delegates getCellBoundary to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       final cellId = direct.getCellId(lat, lon);
       final directBoundary = direct.getCellBoundary(cellId);
@@ -136,7 +136,7 @@ void main() {
     });
 
     test('cache delegates getNeighborIds to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       final cellId = direct.getCellId(lat, lon);
       final directNeighbors = direct.getNeighborIds(cellId);
@@ -145,13 +145,13 @@ void main() {
     });
 
     test('cellEdgeLengthMeters delegates to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       expect(cached.cellEdgeLengthMeters, equals(direct.cellEdgeLengthMeters));
     });
 
     test('systemName delegates to underlying service', () {
-      final direct = H3CellService();
+      final direct = LazyVoronoiCellService();
       final cached = CellCache(direct);
       expect(cached.systemName, equals(direct.systemName));
     });

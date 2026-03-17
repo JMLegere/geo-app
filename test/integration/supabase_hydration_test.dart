@@ -26,7 +26,7 @@ import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
-import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/persistence_consumer.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 
 // ---------------------------------------------------------------------------

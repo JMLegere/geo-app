@@ -91,28 +91,6 @@ const int kVoronoiGlobalSeed = 42;
 /// Grid radius for local Delaunay triangulation (radius=3 → 7×7 = 49 seeds).
 const int kVoronoiNeighborRadius = 3;
 
-// Legacy Voronoi Cell Grid (fixed bounding box — used by VoronoiCellService)
-/// Voronoi grid minimum latitude.
-const double kVoronoiMinLat = 37.5;
-
-/// Voronoi grid maximum latitude.
-const double kVoronoiMaxLat = 38.0;
-
-/// Voronoi grid minimum longitude.
-const double kVoronoiMinLon = -122.7;
-
-/// Voronoi grid maximum longitude.
-const double kVoronoiMaxLon = -122.2;
-
-/// Voronoi grid row count.
-const int kVoronoiGridRows = 40;
-
-/// Voronoi grid column count.
-const int kVoronoiGridCols = 40;
-
-/// Voronoi grid seed for deterministic cell placement.
-const int kVoronoiSeed = 42;
-
 // Map & Location
 /// Minimum map zoom level. Set to 10 to prevent extreme zoom-out which
 /// causes rendering issues and is not useful for walking-speed exploration.

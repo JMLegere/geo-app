@@ -83,11 +83,10 @@ void main() {
       'lib/features/discovery',
       'lib/features/pack',
       'lib/features/sanctuary',
-      'lib/features/seasonal',
-      'lib/features/restoration',
+      'lib/features/calendar',
       'lib/features/caretaking',
       'lib/features/location',
-      'lib/features/biome',
+      'lib/features/world',
     ];
 
     for (final dir in offlineFeatureDirs) {

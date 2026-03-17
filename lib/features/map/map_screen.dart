@@ -11,7 +11,7 @@ import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
-import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
 
 import 'package:earth_nova/core/models/location_node.dart';

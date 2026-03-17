@@ -19,7 +19,7 @@ import 'package:earth_nova/features/auth/screens/otp_verification_screen.dart';
 import 'package:earth_nova/features/auth/services/auth_service.dart';
 import 'package:earth_nova/features/auth/services/mock_auth_service.dart';
 import 'package:earth_nova/features/auth/services/supabase_auth_service.dart';
-import 'package:earth_nova/features/navigation/screens/tab_shell.dart';
+import 'package:earth_nova/shared/widgets/tab_shell.dart';
 import 'package:earth_nova/features/onboarding/screens/onboarding_screen.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 
@@ -14,15 +14,15 @@ import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart'
 /// Mutable mock inventory notifier. [setCount] updates state so tests can
 /// verify reactive rebuilds of [upgradePromptProvider].
 ///
-/// Extends the concrete `InventoryNotifier` class so it satisfies the type
-/// constraint of `inventoryProvider.overrideWith`.
-class _MockInventoryNotifier extends InventoryNotifier {
+/// Extends the concrete `ItemsNotifier` class so it satisfies the type
+/// constraint of `itemsProvider.overrideWith`.
+class _MockItemsNotifier extends ItemsNotifier {
   final int _initialCount;
 
-  _MockInventoryNotifier(this._initialCount);
+  _MockItemsNotifier(this._initialCount);
 
   @override
-  InventoryState build() => InventoryState(
+  ItemsState build() => ItemsState(
         items: List.generate(
           _initialCount,
           (i) => ItemInstance(
@@ -37,7 +37,7 @@ class _MockInventoryNotifier extends InventoryNotifier {
       );
 
   void setCount(int count) {
-    state = InventoryState(
+    state = ItemsState(
       items: List.generate(
         count,
         (i) => ItemInstance(
@@ -67,8 +67,8 @@ ProviderContainer _makeContainer({
 }) {
   final container = ProviderContainer(
     overrides: [
-      inventoryProvider.overrideWith(
-        () => _MockInventoryNotifier(collectionCount),
+      itemsProvider.overrideWith(
+        () => _MockItemsNotifier(collectionCount),
       ),
       supabaseBootstrapProvider.overrideWithValue(supabaseInitialized),
     ],
@@ -229,7 +229,7 @@ void main() {
       expect(container.read(upgradePromptProvider).hasBeenShown, isTrue);
 
       // Simulate more items being collected — triggers reactive rebuild.
-      (container.read(inventoryProvider.notifier) as _MockInventoryNotifier)
+      (container.read(itemsProvider.notifier) as _MockItemsNotifier)
           .setCount(8);
 
       // After rebuild, hasBeenShown must still be true.

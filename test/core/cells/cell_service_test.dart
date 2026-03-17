@@ -2,13 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/cells/h3_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 
-/// Tests the [CellService] interface contract via the H3 implementation.
-///
-/// These tests are written against the abstract interface — if H3CellService
-/// is swapped for a Voronoi implementation, most tests should still pass
-/// (with the exception of H3-specific counts like "exactly 6 neighbors").
+/// Tests the [CellService] interface contract via the LazyVoronoiCellService
+/// implementation.
 void main() {
   late CellService service;
 
@@ -17,10 +14,10 @@ void main() {
   const double lon = -122.4268;
 
   setUp(() {
-    service = H3CellService();
+    service = LazyVoronoiCellService();
   });
 
-  group('CellService contract — H3 implementation', () {
+  group('CellService contract — LazyVoronoi implementation', () {
     // Test 1: getCellId is deterministic
     test('getCellId is deterministic (same lat/lon → same ID, 100 iterations)',
         () {
@@ -48,14 +45,12 @@ void main() {
       expect(roundTripId, equals(cellId));
     });
 
-    // Test 4: getCellBoundary returns ≥6 vertices, all close to center
-    test(
-        'getCellBoundary returns ≥6 vertices for H3, all within 500m of center',
-        () {
+    // Test 4: getCellBoundary returns ≥4 vertices, all close to center
+    test('getCellBoundary returns ≥4 vertices, all within 500m of center', () {
       final cellId = service.getCellId(lat, lon);
       final boundary = service.getCellBoundary(cellId);
-      expect(boundary.length, greaterThanOrEqualTo(6),
-          reason: 'H3 hexagon should have at least 6 boundary vertices');
+      expect(boundary.length, greaterThanOrEqualTo(4),
+          reason: 'Voronoi polygon should have at least 4 boundary vertices');
 
       final center = service.getCellCenter(cellId);
       for (final vertex in boundary) {
@@ -66,13 +61,11 @@ void main() {
       }
     });
 
-    // Test 5: getNeighborIds returns exactly 6 for H3
-    test(
-        'getNeighborIds returns exactly 6 IDs (not including the cell itself)',
-        () {
+    // Test 5: getNeighborIds returns ≥3 neighbors (Voronoi cells have variable counts)
+    test('getNeighborIds returns ≥3 IDs (not including the cell itself)', () {
       final cellId = service.getCellId(lat, lon);
       final neighbors = service.getNeighborIds(cellId);
-      expect(neighbors.length, equals(6));
+      expect(neighbors.length, greaterThanOrEqualTo(3));
       expect(neighbors, isNot(contains(cellId)),
           reason: 'Center cell must not be in neighbor list');
     });
@@ -85,19 +78,20 @@ void main() {
       expect(ring.first, equals(cellId));
     });
 
-    // Test 7: getCellsInRing(k=1) returns 7 cells
-    test('getCellsInRing(k=1) returns 7 cells (center + 6 neighbors)', () {
+    // Test 7: getCellsInRing(k=1) returns center + neighbors
+    test('getCellsInRing(k=1) returns center + ≥3 neighbors', () {
       final cellId = service.getCellId(lat, lon);
       final ring = service.getCellsInRing(cellId, 1);
-      expect(ring.length, equals(7));
+      expect(ring.length, greaterThanOrEqualTo(4));
       expect(ring, contains(cellId));
     });
 
-    // Test 8: getCellsInRing(k=2) returns 19 cells
-    test('getCellsInRing(k=2) returns 19 cells', () {
+    // Test 8: getCellsInRing(k=2) returns more cells than k=1
+    test('getCellsInRing(k=2) returns more cells than k=1', () {
       final cellId = service.getCellId(lat, lon);
-      final ring = service.getCellsInRing(cellId, 2);
-      expect(ring.length, equals(19));
+      final ring1 = service.getCellsInRing(cellId, 1);
+      final ring2 = service.getCellsInRing(cellId, 2);
+      expect(ring2.length, greaterThan(ring1.length));
     });
 
     // Test 9: getCellsAroundLocation equivalent to getCellId + getCellsInRing
@@ -111,14 +105,15 @@ void main() {
       expect(viaConvenience.toSet(), equals(viaRing.toSet()));
     });
 
-    // Test 10: cellEdgeLengthMeters ≈ 174 ± 50
-    test('cellEdgeLengthMeters is approximately 174m (±50)', () {
-      expect(service.cellEdgeLengthMeters, closeTo(174.0, 50.0));
+    // Test 10: cellEdgeLengthMeters in plausible range for walking-scale cells
+    test('cellEdgeLengthMeters is in walking-scale range (50–500m)', () {
+      expect(service.cellEdgeLengthMeters, greaterThan(50));
+      expect(service.cellEdgeLengthMeters, lessThan(500));
     });
 
     // Test 11: systemName
-    test('systemName is "H3 (res 9)"', () {
-      expect(service.systemName, equals('H3 (res 9)'));
+    test('systemName identifies the implementation', () {
+      expect(service.systemName, isNotEmpty);
     });
   });
 }

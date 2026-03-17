@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
-import 'package:earth_nova/features/biome/providers/habitat_service_provider.dart';
+import 'package:earth_nova/features/world/providers/habitat_service_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/discovery/services/discovery_service.dart';
-import 'package:earth_nova/features/seasonal/providers/season_service_provider.dart';
+import 'package:earth_nova/features/calendar/providers/season_service_provider.dart';
 
 /// Provides the [DiscoveryService] that emits species encounters.
 ///

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:earth_nova/core/cells/cell_property_resolver.dart';
+import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart' as legacy;
 

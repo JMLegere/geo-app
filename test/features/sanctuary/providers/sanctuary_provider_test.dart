@@ -7,7 +7,7 @@ import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/species/species_service.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
@@ -69,7 +69,7 @@ final _testSpecies = [
 
 /// Add a species to inventory by definition ID.
 void _addSpecies(ProviderContainer container, FaunaDefinition species) {
-  container.read(inventoryProvider.notifier).addItem(ItemInstance(
+  container.read(itemsProvider.notifier).addItem(ItemInstance(
         id: 'test_${species.id}',
         definitionId: species.id,
         displayName: 'Test Species',

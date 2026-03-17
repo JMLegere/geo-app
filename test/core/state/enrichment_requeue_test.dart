@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/enrichment_consumer.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 void main() {

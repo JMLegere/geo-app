@@ -11,7 +11,7 @@
 /// with a different userId).
 ///
 /// This mirrors the hydration path in `gameCoordinatorProvider`:
-///   1. itemRepo.getItemsByUser(userId) → inventoryProvider.loadItems()
+///   1. itemRepo.getItemsByUser(userId) → itemsProvider.loadItems()
 ///   2. cellProgressRepo.readByUser(userId) → fogResolver.loadVisitedCells()
 ///   3. profileRepo.read(userId) → playerProvider.loadProfile()
 ///
@@ -33,7 +33,7 @@ import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/profile_repository_provider.dart';
@@ -153,7 +153,7 @@ Future<void> _hydrateForUser(ProviderContainer container, String userId) async {
 
   // 1. Hydrate inventory.
   if (items.isNotEmpty) {
-    container.read(inventoryProvider.notifier).loadItems(items);
+    container.read(itemsProvider.notifier).loadItems(items);
   }
 
   // 2. Count observed cells (same logic as gameCoordinatorProvider).
@@ -193,7 +193,7 @@ Future<void> _hydrateAll(ProviderContainer container) async {
 
   // 1. Hydrate inventory.
   if (items.isNotEmpty) {
-    container.read(inventoryProvider.notifier).loadItems(items);
+    container.read(itemsProvider.notifier).loadItems(items);
   }
 
   // 2. Count observed cells (same logic as gameCoordinatorProvider).
@@ -246,7 +246,7 @@ void main() {
         () async {
       await _hydrateAll(container);
 
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       final player = container.read(playerProvider);
 
       expect(inventory.totalItems, equals(0));
@@ -264,7 +264,7 @@ void main() {
 
       await _hydrateAll(container);
 
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       expect(inventory.totalItems, equals(3));
       expect(inventory.hasDefinition('fauna_vulpes_vulpes'), isTrue);
       expect(inventory.hasDefinition('fauna_panthera_leo'), isTrue);
@@ -333,7 +333,7 @@ void main() {
 
       await _hydrateAll(container);
 
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       final player = container.read(playerProvider);
 
       expect(inventory.totalItems, equals(2));
@@ -366,7 +366,7 @@ void main() {
 
       await _hydrateAll(container);
 
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       expect(inventory.totalItems, equals(1));
       expect(inventory.hasDefinition('fauna_vulpes_vulpes'), isTrue);
       expect(inventory.hasDefinition('fauna_ailurus_fulgens'), isFalse,
@@ -389,7 +389,7 @@ void main() {
       await _hydrateAll(container);
 
       // Verify session 1.
-      expect(container.read(inventoryProvider).totalItems, equals(2));
+      expect(container.read(itemsProvider).totalItems, equals(2));
       expect(container.read(playerProvider).currentStreak, equals(4));
 
       // Session 2: new container (simulating app restart), same DB.
@@ -398,7 +398,7 @@ void main() {
       addTearDown(container2.dispose);
 
       // Before hydration — state should be fresh/empty.
-      expect(container2.read(inventoryProvider).totalItems, equals(0));
+      expect(container2.read(itemsProvider).totalItems, equals(0));
       expect(container2.read(playerProvider).cellsObserved, equals(0));
 
       // Hydrate from the same DB.
@@ -411,7 +411,7 @@ void main() {
       final profile = await profileRepo2.read(_userId);
 
       if (items.isNotEmpty) {
-        container2.read(inventoryProvider.notifier).loadItems(items);
+        container2.read(itemsProvider.notifier).loadItems(items);
       }
 
       final cellsObserved = cellRows.where((row) {
@@ -429,7 +429,7 @@ void main() {
       }
 
       // All data restored from previous session.
-      final inventory = container2.read(inventoryProvider);
+      final inventory = container2.read(itemsProvider);
       final player = container2.read(playerProvider);
 
       expect(inventory.totalItems, equals(2));
@@ -465,7 +465,7 @@ void main() {
       // 2. Hydrate — simulates app startup.
       await _hydrateAll(container);
 
-      final inventoryBefore = container.read(inventoryProvider);
+      final inventoryBefore = container.read(itemsProvider);
       final playerBefore = container.read(playerProvider);
 
       expect(inventoryBefore.totalItems, equals(2));
@@ -478,7 +478,7 @@ void main() {
       // so providers that watch authProvider are not invalidated.)
       // We verify that reading inventory/player after the "upgrade" still
       // returns the same hydrated data.
-      final inventoryAfter = container.read(inventoryProvider);
+      final inventoryAfter = container.read(itemsProvider);
       final playerAfter = container.read(playerProvider);
 
       expect(inventoryAfter.totalItems, equals(inventoryBefore.totalItems));
@@ -538,7 +538,7 @@ void main() {
       // Initial hydration as User A.
       await _hydrateForUser(container, _userId);
 
-      expect(container.read(inventoryProvider).totalItems, equals(2));
+      expect(container.read(itemsProvider).totalItems, equals(2));
       expect(container.read(playerProvider).cellsObserved, equals(1));
       expect(container.read(playerProvider).currentStreak, equals(5));
 
@@ -546,7 +546,7 @@ void main() {
       // linking to a different account).
       await _hydrateForUser(container, _userId2);
 
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       final player = container.read(playerProvider);
 
       expect(inventory.totalItems, equals(1));
@@ -569,12 +569,12 @@ void main() {
 
       // Hydrate once.
       await _hydrateForUser(container, _userId);
-      final inventoryBefore = container.read(inventoryProvider);
+      final inventoryBefore = container.read(itemsProvider);
       final playerBefore = container.read(playerProvider);
 
       // Re-hydrate same user — state should be identical.
       await _hydrateForUser(container, _userId);
-      final inventoryAfter = container.read(inventoryProvider);
+      final inventoryAfter = container.read(itemsProvider);
       final playerAfter = container.read(playerProvider);
 
       expect(inventoryAfter.totalItems, equals(inventoryBefore.totalItems));
@@ -599,7 +599,7 @@ void main() {
 
       // Hydrate as User A.
       await _hydrateForUser(container, _userId);
-      expect(container.read(inventoryProvider).totalItems, equals(1));
+      expect(container.read(itemsProvider).totalItems, equals(1));
       expect(container.read(playerProvider).currentStreak, equals(8));
       expect(container.read(playerProvider).cellsObserved, equals(1));
 
@@ -613,7 +613,7 @@ void main() {
       // but the previous user's items should NOT carry over. In production,
       // gameCoordinatorProvider.rehydrateData() calls loadItems() which
       // replaces the full list. Here we verify the contract.
-      final inventory = container.read(inventoryProvider);
+      final inventory = container.read(itemsProvider);
       final player = container.read(playerProvider);
 
       // NOTE: With our current _hydrateForUser helper, if no items exist for

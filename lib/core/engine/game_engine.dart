@@ -7,10 +7,10 @@ import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
-import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
-import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/features/items/services/stats_service.dart';
 
 /// Adapter that wraps [GameCoordinator] and converts its callback-based
 /// output into a single [GameEvent] stream.

@@ -9,7 +9,7 @@ import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
-import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
@@ -19,7 +19,7 @@ import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/features/items/services/stats_service.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — minimal deterministic grid
