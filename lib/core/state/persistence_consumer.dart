@@ -375,7 +375,6 @@ Future<void> persistProfileState({
 /// - Supabase not configured ([persistence] is null) → no-op
 /// - Network errors → logs and continues (SQLite-only fallback)
 /// - Empty server data → no-op (fresh account)
-@visibleForTesting
 Future<void> hydrateFromSupabase({
   required String userId,
   required SupabasePersistence? persistence,
