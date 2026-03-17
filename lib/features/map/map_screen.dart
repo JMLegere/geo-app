@@ -18,6 +18,8 @@ import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/core/state/location_node_repository_provider.dart';
@@ -1105,6 +1107,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onCellTapped(String cellId) {
     debugPrint('[TAP] Cell tapped: $cellId');
     ref.read(cellSelectionProvider.notifier).select(cellId);
+
+    final fogState = ref.read(fogProvider)[cellId];
+    ObservabilityBuffer.instance?.event('cell_tapped', {
+      'cell_id': cellId,
+      if (fogState != null) 'fog_state': fogState.name,
+    });
 
     showModalBottomSheet<void>(
       context: context,

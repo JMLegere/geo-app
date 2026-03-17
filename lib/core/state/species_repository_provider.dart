@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
 
@@ -9,7 +10,13 @@ import 'package:earth_nova/core/species/species_repository.dart';
 /// connection is ready. Automatically disposes the DB on provider teardown.
 final speciesRepositoryProvider =
     FutureProvider<SpeciesRepository>((ref) async {
+  final sw = Stopwatch()..start();
   final repo = await SpeciesRepository.fromAssets();
+  sw.stop();
+  ObservabilityBuffer.instance?.event('asset_loaded', {
+    'asset': 'species.db',
+    'duration_ms': sw.elapsedMilliseconds,
+  });
   ref.onDispose(repo.dispose);
   return repo;
 });

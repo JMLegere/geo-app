@@ -227,6 +227,36 @@ class LocalPlayerProfileTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Local cache of observability events for offline session reconstruction.
+/// Events are also flushed to Supabase `app_events` table remotely.
+/// Retention: 10,000 rows max (oldest evicted on overflow).
+@DataClassName('LocalAppEvent')
+class LocalAppEventsTable extends Table {
+  /// UUID v4.
+  TextColumn get id => text()();
+
+  /// Session UUID (one per app launch).
+  TextColumn get sessionId => text()();
+
+  /// Supabase user ID (nullable — events fire before auth).
+  TextColumn get userId => text().nullable()();
+
+  /// Event category: event, log, js, ui.
+  TextColumn get category => text()();
+
+  /// Event name (e.g. 'cell_visited', 'session_started').
+  TextColumn get event => text()();
+
+  /// JSON-encoded event payload.
+  TextColumn get dataJson => text().withDefault(const Constant('{}'))();
+
+  /// When the event occurred (UTC).
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // ============================================================================
 // WRITE SERIALIZER
 // ============================================================================
@@ -271,6 +301,7 @@ class _WriteSerializer {
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
   LocalLocationNodeTable,
+  LocalAppEventsTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
@@ -279,7 +310,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -375,6 +406,9 @@ class AppDatabase extends _$AppDatabase {
           // Add geometryJson column for storing GeoJSON polygon boundaries.
           await m.addColumn(
               localLocationNodeTable, localLocationNodeTable.geometryJson);
+        }
+        if (from < 14) {
+          await m.createTable(localAppEventsTable);
         }
       },
     );
@@ -692,5 +726,50 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<LocalLocationNode>> getAllLocationNodes() {
     return select(localLocationNodeTable).get();
+  }
+
+  // =========================================================================
+  // App Events (observability)
+  // =========================================================================
+
+  /// Insert a batch of events. Used by ObservabilityBuffer for local persistence.
+  Future<void> insertAppEvents(
+      List<LocalAppEventsTableCompanion> events) async {
+    await _writer.run(() async {
+      await batch((b) {
+        b.insertAll(localAppEventsTable, events);
+      });
+    });
+  }
+
+  /// Read events for a session (for offline debugging/reconstruction).
+  Future<List<LocalAppEvent>> getEventsBySession(String sessionId) async {
+    return (select(localAppEventsTable)
+          ..where((e) => e.sessionId.equals(sessionId))
+          ..orderBy([(e) => OrderingTerm.asc(e.createdAt)]))
+        .get();
+  }
+
+  /// Count total local events.
+  Future<int> countAppEvents() async {
+    final count = countAll();
+    final query = selectOnly(localAppEventsTable)..addColumns([count]);
+    final result = await query.getSingle();
+    return result.read(count)!;
+  }
+
+  /// Delete oldest events when count exceeds cap.
+  Future<void> trimAppEvents({int maxRows = 10000}) async {
+    await _writer.run(() async {
+      final total = await countAppEvents();
+      if (total <= maxRows) return;
+      final excess = total - maxRows;
+      // Delete oldest N rows
+      await customStatement(
+        'DELETE FROM local_app_events_table WHERE id IN '
+        '(SELECT id FROM local_app_events_table ORDER BY created_at ASC LIMIT ?)',
+        [excess],
+      );
+    });
   }
 }

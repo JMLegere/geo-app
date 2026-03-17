@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/features/world/services/event_resolver.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
@@ -232,6 +233,8 @@ class DiscoveryService {
     CellEventType? eventType;
     List<FaunaDefinition> species;
 
+    final rollSw = Stopwatch()..start();
+
     if (cellEvent != null) {
       eventType = cellEvent.type;
       switch (cellEvent.type) {
@@ -270,6 +273,15 @@ class DiscoveryService {
         habitats: habitats,
         continent: continent,
       );
+    }
+
+    rollSw.stop();
+    if (rollSw.elapsedMilliseconds > 5) {
+      ObservabilityBuffer.instance?.event('species_roll', {
+        'duration_ms': rollSw.elapsedMilliseconds,
+        'result_count': species.length,
+        'cell_id': event.cellId,
+      });
     }
 
     // Filter by current season when a SeasonService is wired in.

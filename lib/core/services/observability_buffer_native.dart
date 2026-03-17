@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/device_fingerprint.dart';
 
 typedef RemoteFlusher = Future<void> Function(List<Map<String, dynamic>> rows);
@@ -21,6 +23,7 @@ class ObservabilityBuffer {
   final List<Map<String, dynamic>> _buffer = [];
   Timer? _timer;
   bool _flushing = false;
+  AppDatabase? _db;
 
   static String _safeDeviceId() {
     try {
@@ -28,6 +31,10 @@ class ObservabilityBuffer {
     } catch (_) {
       return 'unknown';
     }
+  }
+
+  void setDatabase(AppDatabase db) {
+    _db = db;
   }
 
   void start() {
@@ -57,6 +64,27 @@ class ObservabilityBuffer {
       'created_at': DateTime.now().toUtc().toIso8601String(),
     };
     _buffer.add(row);
+
+    // Persist locally for offline reconstruction
+    _persistLocally(row);
+  }
+
+  void _persistLocally(Map<String, dynamic> row) {
+    final db = _db;
+    if (db == null) return;
+    db.insertAppEvents([
+      LocalAppEventsTableCompanion.insert(
+        id: const Uuid().v4(),
+        sessionId: row['session_id'] as String,
+        userId: Value(row['user_id'] as String?),
+        category: row['category'] as String,
+        event: row['event'] as String,
+        dataJson: Value(jsonEncode(row['data'])),
+        createdAt: Value(DateTime.now().toUtc()),
+      ),
+    ]).catchError((Object e) {
+      debugPrint('[Observability] local persist failed: $e');
+    });
   }
 
   Future<void> flush() async {

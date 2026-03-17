@@ -33,6 +33,7 @@ import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/features/items/services/stats_service.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
@@ -110,8 +111,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     obs = ObservabilityBuffer(
       flusher: (rows) => supabaseClient.from('app_events').insert(rows),
     );
+    obs.setDatabase(ref.read(appDatabaseProvider));
     obs.start();
     ObservabilityBuffer.instance = obs;
+
+    // Trim old local events (10K cap)
+    ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
+      debugPrint('[Observability] trim failed: $e');
+    });
     // Recover previous session data from localStorage (survives jetsam kills).
     final recovered = obs.recover();
     if (recovered.isNotEmpty) {
@@ -363,6 +370,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
         obs: obs,
+        cellProgressRepo: cellProgressRepo,
       );
     }
 
@@ -798,12 +806,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   void handleAuthState(AuthState authState) {
     final userId = authState.user?.id;
 
-    obs?.event('auth_state_changed', {
-      'status': authState.status.name,
-      'user_id': userId,
-    });
-
     if (authState.status == AuthStatus.authenticated && userId != null) {
+      obs?.event('auth_restored', {'user_id': userId});
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
 
@@ -817,6 +821,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
+      obs?.event('auth_expired', {'previous_user_id': lastHydratedUserId});
       // Clear write queue for the outgoing user BEFORE resetting state.
       // Prevents stale entries from being flushed with the next session's
       // credentials, which would trigger RLS violations on Supabase.

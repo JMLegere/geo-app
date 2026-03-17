@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schema version is 13', () {
-      expect(db.schemaVersion, 13);
+    test('schema version is 14', () {
+      expect(db.schemaVersion, 14);
     });
 
     test('LocalPlayerProfileTable has totalSteps column', () async {

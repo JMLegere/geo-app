@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/location_node.dart';
@@ -245,6 +246,8 @@ class FogOverlayController {
     required double zoom,
     required Size viewportSize,
   }) {
+    final sw = Stopwatch()..start();
+
     final visibleCellIds = _findVisibleCells(
       cameraLat: cameraLat,
       cameraLon: cameraLon,
@@ -264,6 +267,15 @@ class FogOverlayController {
 
     _buildGeoJson(_discoveredCellIds);
     _renderVersion++;
+
+    sw.stop();
+    if (sw.elapsedMilliseconds > 8) {
+      ObservabilityBuffer.instance?.event('fog_computed', {
+        'duration_ms': sw.elapsedMilliseconds,
+        'cell_count': _discoveredCellIds.length,
+        'dirty': _fogDirty,
+      });
+    }
   }
 
   /// Non-blocking version of [update] for initial map load.
