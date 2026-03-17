@@ -188,6 +188,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       '[GameCoordinator] onEnrichedHook: backfilling affixes for '
       '${enrichment.definitionId}',
     );
+    obs?.event('enrichment_complete', {
+      'definition_id': enrichment.definitionId,
+      'animal_class': enrichment.animalClass.name,
+    });
     enrichmentCache[enrichment.definitionId] = (
       speed: enrichment.speed,
       brawn: enrichment.brawn,
@@ -216,6 +220,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   queueProcessor.onAutoFlushComplete = (summary) async {
     if (_providerDisposed) return;
+    obs?.event('sync_flushed', {
+      'confirmed': summary.confirmed,
+      'rejected': summary.rejected,
+      'retried': summary.retried,
+      'stale_deleted': summary.staleDeleted,
+    });
     if (summary.hasRejections) {
       await ref.read(syncProvider.notifier).processRejections();
     }
@@ -443,11 +453,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
-    dailySeedService.fetchSeed().then((_) {
+    final previousSeedValue = dailySeedService.currentSeed?.seed;
+    dailySeedService.fetchSeed().then((newSeedState) {
       debugPrint(
         '[GameCoordinator] daily seed ready: '
         '${dailySeedService.currentSeed}',
       );
+      // Emit seed_rotated only when the seed actually changed.
+      if (previousSeedValue != null && previousSeedValue != newSeedState.seed) {
+        obs?.event('seed_rotated', {
+          'seed_date': newSeedState.seedDate,
+          'is_server_seed': newSeedState.isServerSeed,
+        });
+      }
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] daily seed fetch failed: $e');
     }).whenComplete(() {

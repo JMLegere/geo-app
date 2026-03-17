@@ -1326,7 +1326,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 bottom: 80,
                 child: DebugHud(
                   mapState: mapState,
-                  visibleCells: fogOverlayController.renderData.length,
+                  visibleCells: fogOverlayController.visibleCellCount,
                   visitedCells: fogResolver.visitedCellIds.length,
                   cameraMode: cameraMode,
                 ),
