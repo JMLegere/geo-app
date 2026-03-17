@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
-
 import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
@@ -47,9 +45,9 @@ class SpeciesService {
 
   /// Default constructor — builds in-memory indices from a full species list.
   ///
-  /// Only used directly in tests (inline fixtures). Production code uses
+  /// Used directly in tests (inline fixtures) and as a production fallback
+  /// for the "not loaded yet" state. Production code prefers
   /// [SpeciesService.fromCache].
-  @visibleForTesting
   SpeciesService(this._allRecords)
       : _cache = null,
         _enrichments = const {} {

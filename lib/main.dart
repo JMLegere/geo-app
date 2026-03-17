@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
-
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';

@@ -6,9 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
-import 'package:earth_nova/core/models/animal_class.dart';
-import 'package:earth_nova/core/models/climate.dart';
-import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
