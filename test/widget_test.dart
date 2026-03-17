@@ -21,6 +21,8 @@ import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
+import 'package:earth_nova/core/species/species_cache.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 import 'package:earth_nova/main.dart';
 
 /// Stub notifier that reports onboarding as complete without touching
@@ -136,6 +138,7 @@ void main() {
               .overrideWithValue(_StubLocationEnrichmentService()),
           adminBoundaryServiceProvider.overrideWithValue(null),
           upgradePromptProvider.overrideWith(_NoTimerUpgradePromptNotifier.new),
+          speciesCacheProvider.overrideWithValue(SpeciesCache.empty()),
         ],
         child: const EarthNovaApp(),
       ),
