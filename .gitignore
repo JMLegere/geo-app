@@ -1,61 +1,143 @@
-# Flutter
+# ============================================================================
+# EarthNova — Flutter / Dart / Supabase
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Dart & Flutter
+# ---------------------------------------------------------------------------
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 build/
+.pub-cache/
+.pub/
 
-# Dart
+# Dart compiled JS (dart2js)
 *.dart.js
 *.dart.js.deps
 *.dart.js.map
 *.dart.precompiled.js
 
-# IDE
-.vscode/
-.idea/
-*.iml
-*.swp
-
-# macOS
-.DS_Store
-
-# .NET / Mono (legacy from Unity era)
-.dotnet/
-.local/
-
-# Generated platform plugin registrants
+# Flutter generated plugin registrants (per-platform gitignores handle these
+# too, but belt-and-suspenders for monorepo root)
 **/generated_plugin_registrant.cc
 **/generated_plugin_registrant.h
 **/generated_plugins.cmake
 **/GeneratedPluginRegistrant.swift
 **/GeneratedPluginRegistrant.java
 
-# H3 FFI shared library (keep in repo for test, but not platform builds)
-# libh3.so is needed at project root for LD_LIBRARY_PATH=. flutter test
+# Coverage
+coverage/
 
-# Environment secrets
+# ---------------------------------------------------------------------------
+# IDE & Editors
+# ---------------------------------------------------------------------------
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Vim / Emacs / others
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# ---------------------------------------------------------------------------
+# OS
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+._*
+
+# ---------------------------------------------------------------------------
+# Environment & Secrets
+# ---------------------------------------------------------------------------
 .env
 .env.*
+!.env.example
 
-# Supabase local state
+# Keystore / signing (Android sub-gitignore also covers these)
+*.keystore
+*.jks
+key.properties
+
+# ---------------------------------------------------------------------------
+# SQLite & Databases
+# ---------------------------------------------------------------------------
+# Runtime databases (local dev)
+*.db
+!assets/species.db
+
+# SQLite WAL/SHM (ephemeral, never commit)
+*.db-shm
+*.db-wal
+*.db-journal
+
+# ---------------------------------------------------------------------------
+# Supabase
+# ---------------------------------------------------------------------------
 supabase/.branches/
 supabase/.temp/
 
-# Node modules (playwright E2E tooling)
+# ---------------------------------------------------------------------------
+# Terraform / Infrastructure
+# ---------------------------------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# ---------------------------------------------------------------------------
+# Node.js (E2E / scripting tooling)
+# ---------------------------------------------------------------------------
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# Screenshots and logs (ephemeral agent artifacts)
-/*.png
-/*.log
+# ---------------------------------------------------------------------------
+# Python (scripts/)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.pyc
+.venv/
+venv/
 
-# SQLite database (local dev)
-*.db
-
-# Agent working memory
+# ---------------------------------------------------------------------------
+# Agent / AI Working Memory
+# ---------------------------------------------------------------------------
 .claude/
 .sisyphus/
 
-# Ephemeral artifacts
+# ---------------------------------------------------------------------------
+# Ephemeral Artifacts
+# ---------------------------------------------------------------------------
+# Screenshots and logs from agent runs
+/*.png
+/*.jpeg
+/*.log
 e2e-console-log.txt
 scripts/.cache/
+
+# Crash logs
+crash_log.*
+*.stacktrace
+
+# ---------------------------------------------------------------------------
+# Native Build Artifacts (not covered by platform sub-gitignores)
+# ---------------------------------------------------------------------------
+*.apk
+*.aab
+*.ipa
+*.app
+*.dSYM/
+*.dSYM.zip
