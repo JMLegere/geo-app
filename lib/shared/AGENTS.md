@@ -110,6 +110,16 @@ Reusable empty-state placeholder with emoji, title, subtitle, and optional CTA b
 
 **Usage:** Journal screens, sanctuary screens, any list that can be empty.
 
+### widgets/tab_shell.dart
+
+4-tab `IndexedStack` shell (Map | Home | Town | Pack). Moved from `features/navigation/`. Renders persistent tab bar with `NavigationBar` + lazy tab initialization.
+
+**Note:** Tab state (selected index) lives in `core/state/tab_index_provider.dart` — shell reads/writes via `tabIndexProvider`.
+
+### widgets/town_placeholder_screen.dart
+
+Placeholder screen for the Town tab (not yet implemented). Moved from `features/navigation/`.
+
 ---
 
 ## Dependency Rules

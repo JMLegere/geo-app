@@ -6,8 +6,7 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 
 - `DiscoveryService` (in map/providers/) — watches fogResolver, speciesService, habitatService, cellService, seasonService. Subscribes to fog state changes, emits discovery events.
 - `DiscoveryNotifier` — manages notification queue and recent history
-- `speciesDataProvider` — `FutureProvider<List<FaunaDefinition>>`, loads 32,752 IUCN records from `assets/species_data.json` via `rootBundle`
-- `speciesServiceProvider` — `Provider<SpeciesService>`, watches speciesDataProvider and enrichmentMapProvider. Merges AI enrichments (animalClass, foodPreference, climate) into FaunaDefinition at load time. Returns empty SpeciesService([]) during loading/error, full dataset with enrichments when ready.
+- `speciesServiceProvider` — `Provider<SpeciesService>`, watches `speciesCacheProvider` and `enrichmentMapProvider`. Returns `SpeciesService.fromCache()` when cache is loaded (with merged enrichments), otherwise empty `SpeciesService` (no encounters until loaded).
 
 ## Encounter Flow
 
@@ -51,20 +50,19 @@ Same as achievements:
 
 ## Species Service Provider
 
-Three providers in `discovery_provider.dart`:
+Two providers in `discovery_provider.dart`:
 
-- `speciesDataProvider` (`FutureProvider`): Loads full IUCN dataset asynchronously from bundled JSON asset. Parsed by `SpeciesDataLoader.fromJsonString()`.
-- `enrichmentMapProvider` (`FutureProvider`): Loads all cached enrichments from SQLite via `enrichmentRepositoryProvider`. Returns `Map<String, SpeciesEnrichment>` keyed by scientificName.
-- `speciesServiceProvider` (`Provider`): Watches `speciesDataProvider` and `enrichmentMapProvider`, provides `SpeciesService` with the full dataset merged with AI enrichments. Empty fallback during loading/error — no encounters fire until asset is ready.
+- `enrichmentMapProvider` (`FutureProvider`): Loads all cached enrichments from SQLite via `enrichmentRepositoryProvider`. Returns `Map<String, SpeciesEnrichment>` keyed by definitionId.
+- `speciesServiceProvider` (`Provider`): Watches `speciesCacheProvider` and `enrichmentMapProvider`. Returns `SpeciesService.fromCache()` with merged enrichments when cache is loaded; empty `SpeciesService` otherwise.
 
 ## Gotchas
 
 - DiscoveryService lives in map/providers/ (not discovery/), because it depends on 5 map-related providers
 - Species encounters are deterministic: same cellId always yields same species. This is by design.
-- `speciesServiceProvider` is async-aware via `speciesDataProvider` FutureProvider — returns empty service during loading, full service when ready
+- `speciesServiceProvider` returns empty service until `speciesCacheProvider` is populated — no encounters fire until SQLite DB loads
 - Season affects which species appear (80% year-round, 10% summer-only, 10% winter-only)
 - Encounter slots per cell: 1 (kEncounterSlotsPerCell)
-- Tests must override `speciesServiceProvider` (not `speciesDataProvider`) to inject test fixtures
+- Tests must override `speciesServiceProvider` to inject test fixtures
 - `cellPropertiesLookup` is nullable — DiscoveryService works without it (falls through to normal encounters)
 - Cell events REPLACE base encounters (not additive). If migration has no valid species, falls back to normal roll.
 - `FaunaDefinition.climate` is nullable (AI-enriched) — migration prefers climate mismatch but falls back to full pool

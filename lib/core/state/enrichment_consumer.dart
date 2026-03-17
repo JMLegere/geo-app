@@ -16,7 +16,7 @@ import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/features/items/services/stats_service.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
-import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 import 'package:earth_nova/features/sync/services/enrichment_service.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/shared/constants.dart';
@@ -281,7 +281,8 @@ Future<void> requeueUnenrichedSpecies({
   required void Function(Timer) onTimerCreated,
 }) async {
   try {
-    final speciesData = await ref.read(speciesDataProvider.future);
+    final speciesRepo = await ref.read(speciesRepositoryProvider.future);
+    final speciesData = await speciesRepo.getAll();
     final inventory = ref.read(itemsProvider);
 
     // Capture enrichmentService before any async gap — the provider is a

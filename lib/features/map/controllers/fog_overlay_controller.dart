@@ -3,10 +3,10 @@ import 'dart:ui';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/location_node.dart';
-import 'package:earth_nova/features/map/models/cell_render_data.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
@@ -59,13 +59,6 @@ class FogOverlayController {
   /// can trigger async work (e.g. location enrichment) without knowing the
   /// cell service.
   void Function(String cellId, double lat, double lon)? onCellBecameVisible;
-
-  // -- Legacy fields kept for backward compatibility during transition --
-  // TODO(cleanup): Remove once FogCanvasOverlay is fully deleted.
-  List<CellRenderData> _renderData = const [];
-  double lastCameraLat = 0;
-  double lastCameraLon = 0;
-  double lastZoom = 0;
 
   /// GeoJSON string for the base fog layer (world polygon with holes).
   String _baseFogGeoJson = FogGeoJsonBuilder.fullWorldFog;
@@ -124,8 +117,8 @@ class FogOverlayController {
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
 
-  /// Legacy render data — kept during transition.
-  List<CellRenderData> get renderData => _renderData;
+  /// Number of cells currently discovered via viewport sampling.
+  int get visibleCellCount => _discoveredCellIds.length;
 
   /// GeoJSON for the opaque base fog (world polygon with holes).
   String get baseFogGeoJson => _baseFogGeoJson;
@@ -253,6 +246,8 @@ class FogOverlayController {
     required double zoom,
     required Size viewportSize,
   }) {
+    final sw = Stopwatch()..start();
+
     final visibleCellIds = _findVisibleCells(
       cameraLat: cameraLat,
       cameraLon: cameraLon,
@@ -273,9 +268,14 @@ class FogOverlayController {
     _buildGeoJson(_discoveredCellIds);
     _renderVersion++;
 
-    lastCameraLat = cameraLat;
-    lastCameraLon = cameraLon;
-    lastZoom = zoom;
+    sw.stop();
+    if (sw.elapsedMilliseconds > 8) {
+      ObservabilityBuffer.instance?.event('fog_computed', {
+        'duration_ms': sw.elapsedMilliseconds,
+        'cell_count': _discoveredCellIds.length,
+        'dirty': _fogDirty,
+      });
+    }
   }
 
   /// Non-blocking version of [update] for initial map load.
@@ -326,10 +326,6 @@ class FogOverlayController {
         await Future<void>.delayed(Duration.zero);
       }
     }
-
-    lastCameraLat = cameraLat;
-    lastCameraLon = cameraLon;
-    lastZoom = zoom;
 
     return addedCount;
   }
@@ -397,9 +393,6 @@ class FogOverlayController {
       _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
     }
     _habitatDirty = true;
-
-    // Keep legacy renderData empty — no longer needed for Canvas painting.
-    _renderData = const [];
   }
 
   /// Rebuilds territory border GeoJSON from cached data.

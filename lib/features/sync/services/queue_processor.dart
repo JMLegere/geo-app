@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/write_queue_repository.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
@@ -220,6 +221,8 @@ class QueueProcessor {
     var rejected = 0;
     final firstBadgeItemIds = <String>[];
 
+    final flushSw = Stopwatch()..start();
+
     for (final entry in pending) {
       final result = await _processEntry(entry, persistence);
 
@@ -248,6 +251,13 @@ class QueueProcessor {
           }
       }
     }
+
+    flushSw.stop();
+    ObservabilityBuffer.instance?.event('api_call', {
+      'duration_ms': flushSw.elapsedMilliseconds,
+      'operation': 'write_queue_flush',
+      'entry_count': pending.length,
+    });
 
     return FlushSummary(
       confirmed: confirmed,

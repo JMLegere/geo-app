@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:earth_nova/features/auth/screens/settings_screen.dart';
@@ -73,6 +74,7 @@ class _PackScreenState extends ConsumerState<PackScreen>
       icon: IdenticonAvatar(seed: userId ?? 'anonymous', size: 28),
       tooltip: 'Settings',
       onPressed: () {
+        ObservabilityBuffer.instance?.event('settings_opened');
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const SettingsScreen(),

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -281,6 +282,13 @@ class _ObservabilityLifecycleObserverState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Emit session_started after the first frame, by which time
+    // ObservabilityBuffer has been initialized by gameCoordinatorProvider.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ObservabilityBuffer.instance?.event('session_started', {
+        'platform': defaultTargetPlatform.name,
+      });
+    });
   }
 
   @override
@@ -293,6 +301,9 @@ class _ObservabilityLifecycleObserverState
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
+      ObservabilityBuffer.instance?.event('session_ended', {
+        'reason': 'background',
+      });
       ObservabilityBuffer.instance?.flush();
     }
   }

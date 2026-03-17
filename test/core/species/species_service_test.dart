@@ -1,265 +1,36 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
-import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 
 import '../../fixtures/species_fixture.dart';
 
+List<FaunaDefinition> _parseFixture(String json) {
+  final list = jsonDecode(json) as List;
+  final records = <FaunaDefinition>[];
+  for (final e in list) {
+    try {
+      records.add(FaunaDefinition.fromJson(e as Map<String, dynamic>));
+    } on ArgumentError {
+      // Skip records with unknown habitats, continents, or IUCN statuses.
+    }
+  }
+  return records;
+}
+
 void main() {
-  late List records;
+  late List<FaunaDefinition> records;
   late SpeciesService service;
 
   setUp(() {
-    records = SpeciesDataLoader.fromJsonString(kSpeciesFixtureJson);
-    service = SpeciesService(records.cast());
-  });
-
-  // ---------------------------------------------------------------------------
-  // SpeciesDataLoader.fromJsonString (preserved from original)
-  // ---------------------------------------------------------------------------
-
-  group('SpeciesDataLoader.fromJsonString', () {
-    test('parses valid JSON and returns non-empty list', () {
-      expect(records.isNotEmpty, isTrue);
-    });
-
-    test('parses exactly 50 valid species from fixture (excludes unknowns)',
-        () {
-      expect(records.length, equals(50));
-    });
-
-    test('silently skips records with unknown habitat', () {
-      const jsonWithUnknown = '''[
-        {
-          "commonName": "Mystery Beast",
-          "scientificName": "Unknownus maximus",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Europe"],
-          "habitats": ["Unknown"],
-          "iucnStatus": "Least Concern"
-        },
-        {
-          "commonName": "Red Fox",
-          "scientificName": "Vulpes vulpes",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Europe"],
-          "habitats": ["Forest"],
-          "iucnStatus": "Least Concern"
-        }
-      ]''';
-
-      final result = SpeciesDataLoader.fromJsonString(jsonWithUnknown);
-      expect(result.length, equals(1));
-      expect(result.first.scientificName, equals('Vulpes vulpes'));
-    });
-
-    test('silently skips records with unknown continent', () {
-      const jsonWithUnknown = '''[
-        {
-          "commonName": "Mystery Beast",
-          "scientificName": "Unknownus continentus",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Unknown"],
-          "habitats": ["Forest"],
-          "iucnStatus": "Least Concern"
-        },
-        {
-          "commonName": "Wolf",
-          "scientificName": "Canis lupus",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Europe"],
-          "habitats": ["Forest"],
-          "iucnStatus": "Least Concern"
-        }
-      ]''';
-
-      final result = SpeciesDataLoader.fromJsonString(jsonWithUnknown);
-      expect(result.length, equals(1));
-      expect(result.first.scientificName, equals('Canis lupus'));
-    });
-
-    test('silently skips records with unknown IUCN status', () {
-      const jsonWithUnknown = '''[
-        {
-          "commonName": "Mystery Beast",
-          "scientificName": "Unknownus status",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Europe"],
-          "habitats": ["Forest"],
-          "iucnStatus": "Data Deficient"
-        },
-        {
-          "commonName": "Wolf",
-          "scientificName": "Canis lupus",
-          "taxonomicClass": "Mammalia",
-          "continents": ["Europe"],
-          "habitats": ["Forest"],
-          "iucnStatus": "Least Concern"
-        }
-      ]''';
-
-      final result = SpeciesDataLoader.fromJsonString(jsonWithUnknown);
-      expect(result.length, equals(1));
-    });
-
-    test('returns empty list for empty JSON array', () {
-      final result = SpeciesDataLoader.fromJsonString('[]');
-      expect(result, isEmpty);
-    });
-
-    test('parsed records cover all 7 habitats', () {
-      final allHabitats = <Habitat>{};
-      for (final r in records) {
-        allHabitats.addAll(r.habitats as List<Habitat>);
-      }
-      expect(allHabitats.length, equals(7),
-          reason: 'Fixture should cover all 7 habitat types');
-    });
-
-    test('parsed records cover all 6 continents', () {
-      final allContinents = <Continent>{};
-      for (final r in records) {
-        allContinents.addAll(r.continents as List<Continent>);
-      }
-      expect(allContinents.length, equals(6),
-          reason: 'Fixture should cover all 6 continents');
-    });
-
-    test('parsed records cover all 6 IUCN statuses', () {
-      final allStatuses = <IucnStatus>{};
-      for (final r in records) {
-        allStatuses.add(r.rarity as IucnStatus);
-      }
-      expect(allStatuses.length, equals(6),
-          reason: 'Fixture should cover all 6 IUCN statuses');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // SpeciesDataLoader filters (preserved from original)
-  // ---------------------------------------------------------------------------
-
-  group('SpeciesDataLoader.forHabitat', () {
-    test('filters to only species with the given habitat', () {
-      final forestSpecies =
-          SpeciesDataLoader.forHabitat(records.cast(), Habitat.forest);
-
-      expect(forestSpecies.isNotEmpty, isTrue);
-      for (final s in forestSpecies) {
-        expect(s.habitats, contains(Habitat.forest),
-            reason: '${s.scientificName} lacks forest habitat');
-      }
-    });
-
-    test('returns non-empty lists for all 7 habitats', () {
-      for (final habitat in Habitat.values) {
-        final result = SpeciesDataLoader.forHabitat(records.cast(), habitat);
-        expect(result.isNotEmpty, isTrue,
-            reason: 'No species found for habitat ${habitat.name}');
-      }
-    });
-
-    test('returns empty list for non-matching habitat when all excluded', () {
-      const smallJson = '''[
-        {
-          "commonName": "Shark",
-          "scientificName": "Carcharodon carcharias",
-          "taxonomicClass": "Chondrichthyes",
-          "continents": ["Oceania"],
-          "habitats": ["Saltwater"],
-          "iucnStatus": "Vulnerable"
-        }
-      ]''';
-      final result = SpeciesDataLoader.fromJsonString(smallJson);
-      final desertSpecies =
-          SpeciesDataLoader.forHabitat(result, Habitat.desert);
-      expect(desertSpecies, isEmpty);
-    });
-  });
-
-  group('SpeciesDataLoader.forContinent', () {
-    test('filters to only species with the given continent', () {
-      final africaSpecies =
-          SpeciesDataLoader.forContinent(records.cast(), Continent.africa);
-
-      expect(africaSpecies.isNotEmpty, isTrue);
-      for (final s in africaSpecies) {
-        expect(s.continents, contains(Continent.africa),
-            reason: '${s.scientificName} lacks Africa continent');
-      }
-    });
-
-    test('returns non-empty lists for all 6 continents', () {
-      for (final continent in Continent.values) {
-        final result =
-            SpeciesDataLoader.forContinent(records.cast(), continent);
-        expect(result.isNotEmpty, isTrue,
-            reason: 'No species found for continent ${continent.name}');
-      }
-    });
-  });
-
-  group('SpeciesDataLoader.forHabitatAndContinent', () {
-    test('filters correctly by both habitat and continent', () {
-      final result = SpeciesDataLoader.forHabitatAndContinent(
-        records.cast(),
-        Habitat.forest,
-        Continent.europe,
-      );
-
-      expect(result.isNotEmpty, isTrue);
-      for (final s in result) {
-        expect(s.habitats, contains(Habitat.forest),
-            reason: '${s.scientificName} lacks forest habitat');
-        expect(s.continents, contains(Continent.europe),
-            reason: '${s.scientificName} lacks Europe continent');
-      }
-    });
-
-    test('returns empty list for non-matching combination', () {
-      final result = SpeciesDataLoader.forHabitatAndContinent(
-        records.cast(),
-        Habitat.desert,
-        Continent.oceania,
-      );
-      expect(result, isEmpty);
-    });
-
-    test('result is subset of forHabitat result', () {
-      final habitatOnly =
-          SpeciesDataLoader.forHabitat(records.cast(), Habitat.forest);
-      final both = SpeciesDataLoader.forHabitatAndContinent(
-        records.cast(),
-        Habitat.forest,
-        Continent.asia,
-      );
-
-      for (final s in both) {
-        expect(habitatOnly, contains(s),
-            reason:
-                '${s.scientificName} in forHabitatAndContinent but not forHabitat');
-      }
-    });
-
-    test('result is subset of forContinent result', () {
-      final continentOnly =
-          SpeciesDataLoader.forContinent(records.cast(), Continent.asia);
-      final both = SpeciesDataLoader.forHabitatAndContinent(
-        records.cast(),
-        Habitat.forest,
-        Continent.asia,
-      );
-
-      for (final s in both) {
-        expect(continentOnly, contains(s),
-            reason:
-                '${s.scientificName} in forHabitatAndContinent but not forContinent');
-      }
-    });
+    records = _parseFixture(kSpeciesFixtureJson);
+    service = SpeciesService(records);
   });
 
   // ---------------------------------------------------------------------------
@@ -505,7 +276,7 @@ void main() {
     test('indices are built on construction — getPoolForArea works immediately',
         () {
       // Construct a fresh service and call immediately.
-      final freshService = SpeciesService(records.cast());
+      final freshService = SpeciesService(records);
       final pool = freshService.getPoolForArea(
         habitats: {Habitat.mountain},
         continent: Continent.asia,

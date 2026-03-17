@@ -1,3 +1,4 @@
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -100,6 +101,10 @@ class _TabShellState extends ConsumerState<TabShell>
     ref.listen<int>(tabIndexProvider, (previous, next) {
       debugPrint('[NAV] tab switch: ${tabNames[previous ?? 0]} → '
           '${tabNames[next]}');
+      ObservabilityBuffer.instance?.event('tab_switched', {
+        'from_tab': previous ?? 0,
+        'to_tab': next,
+      });
       if (next == 0) {
         _mapVisibility.revealMapContainer();
       } else if (previous == 0) {

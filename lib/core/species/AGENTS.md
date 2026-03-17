@@ -36,9 +36,9 @@ Generic weighted random selection:
 - `rollMultiple(baseSeed, n)` → `"${baseSeed}_$attempt"` for each roll. maxAttempts = n * 10 to avoid infinite loops.
 - Weights are additive: item with weight 100000 (LC) is 100000× more likely than weight 1 (EX)
 
-## SpeciesDataLoader
+## SpeciesRepository
 
-`fromJsonString(json)` → `List<FaunaDefinition>`. Silently skips records with unknown habitats/continents/IUCN statuses (logs warning). This is intentional — allows partial dataset updates without breaking the app.
+`getCandidates({habitats, continent})` → `List<FaunaDefinition>` (SQL query). `getAll()` → full dataset. Silently skips rows with unknown habitats/continents/IUCN statuses. Open via `SpeciesRepository.fromAssets()` (Flutter) or inject a `Database` for tests. Source of truth: `assets/species.db` (pre-compiled; source JSON: `assets/species_data.json`).
 
 ## ContinentResolver
 
@@ -61,21 +61,9 @@ Generic weighted random selection:
 
 3^x progression. Higher weight = MORE common (not rarer).
 
-## StatsService
+## Moved Out of species/
 
-Deterministic stat and weight rolling for item instances. Pure Dart, SHA-256 only (no `dart:math`).
-
-**Public API**:
-- `rollIntrinsicAffix(scientificName, instanceSeed, {enrichedStats})` → `Affix` with `{speed, brawn, wit}` values. Base stats from enrichment (sum=90) get ±30 per-instance variance, clamped to [1, 100].
-- `rollWeightGrams(AnimalSize size, String instanceSeed)` → `int` (grams). Uses `SHA-256("weight:$instanceSeed")` → first 4 bytes → BigInt mod rangeSpan + minGrams. Domain-separated seed prefix `kWeightSeedPrefix = 'weight:'`.
-
-**Conventions**:
-- Seed format for stats: `"$scientificName:$instanceSeed"` — changing this breaks all existing stat rolls
-- Seed format for weight: `"weight:$instanceSeed"` — domain-separated from stats to ensure independence
-- Weight is an integer number of **grams** within the `AnimalSize` band's `[minGrams, maxGrams]` range
-- Each instance gets a unique weight — seeded by instance UUID, no daily seed involved
-- Without enrichment, `rollIntrinsicAffix` uses fallback base stats (30, 30, 30)
-- Without size, weight is not rolled (omitted from affix values map)
+- `StatsService` → `features/items/services/stats_service.dart`. See `features/items/AGENTS.md`.
 
 ## Gotchas
 

@@ -11,7 +11,7 @@ This feature has a unique structure (different from other features):
 ```
 lib/features/map/
 ├── controllers/        # Pure logic controllers (NOT Riverpod)
-├── layers/             # Fog rendering layer (Canvas compositing)
+├── layers/             # (empty — Canvas fog system deleted; GeoJSON system is in controllers/)
 ├── models/             # Screen-space projection models
 ├── providers/          # Riverpod NotifierProviders (camera state, mode)
 ├── utils/              # GeoJSON builders, Mercator projection, icon rendering
@@ -38,25 +38,6 @@ Pure logic controllers with callback injection. **NOT Riverpod Notifiers.** Plai
 - They take callbacks in constructor (e.g., `onCameraMove`, `onZoomChanged`)
 - This makes them testable without Riverpod
 - This is the INTENDED pattern for map-related logic
-
-### layers/
-
-Fog rendering layer. Canvas compositing technique.
-
-**2 classes:**
-
-- **FogCanvasOverlay**: CustomPaint widget wrapper. Rebuilds when fog state changes.
-- **FogCanvasPainter**: CustomPainter implementation. Renders fog via Canvas compositing.
-
-**Canvas compositing technique:**
-```dart
-canvas.saveLayer() → fill with fog color → punch holes with BlendMode.dstOut → canvas.restore()
-```
-
-**FogState density values (fog opacity):**
-- Undetected: 1.0, Unexplored: 1.0, Concealed: 0.95, Hidden: 0.5, Observed: 0.0
-- Unexplored cells are pre-rendered in mid-fog at concealed density (0.95) behind the opaque base layer
-- When a cell transitions to concealed, the base-fog hole is punched, revealing the pre-rendered polygon
 
 ### models/
 
@@ -316,9 +297,9 @@ The following issues were resolved in the service injection refactoring:
 
 ### Fog Rendering
 
-- **Repaint trigger:** Only on fog state change (not every frame)
-- **Blend mode:** `BlendMode.dstOut` for punching holes in fog layer
-- **Opacity:** Derived from FogState density values
+- **System:** 3-layer GeoJSON (base fog world polygon + mid-fog semi-transparent fills + border outlines)
+- **Update trigger:** Only on fog state change or camera move (not every frame)
+- **Opacity:** Derived from FogState density values (Undetected/Unexplored: 1.0, Concealed: 0.95, Hidden: 0.5, Observed: 0.0)
 
 ### Mercator Projection
 
@@ -343,8 +324,7 @@ The following issues were resolved in the service injection refactoring:
 
 - Controllers: `*Controller` (e.g., `CameraController`)
 - Notifiers: `*Notifier` (e.g., `MapStateNotifier`)
-- Painters: `*Painter` (e.g., `FogCanvasPainter`)
-- Overlays: `*Overlay` (e.g., `FogCanvasOverlay`)
+- Overlays: `*Overlay` (e.g., widget-based overlays on the map)
 
 ### Callback Naming
 

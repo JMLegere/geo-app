@@ -24,8 +24,8 @@ import 'package:earth_nova/features/calendar/providers/season_service_provider.d
 /// time via getter callbacks instead of `ref.watch()`. This is critical
 /// because both depend on FutureProviders:
 ///
-/// - `speciesServiceProvider` depends on `speciesDataProvider` (FutureProvider
-///   that async-loads 32,752 IUCN records).
+/// - `speciesServiceProvider` depends on `speciesCacheProvider` (backed by
+///   the SQLite species repository — empty until the DB is loaded).
 /// - `habitatServiceProvider` depends on `biomeFeatureIndexProvider`
 ///   (FutureProvider that async-loads biome feature data from bundled JSON).
 ///

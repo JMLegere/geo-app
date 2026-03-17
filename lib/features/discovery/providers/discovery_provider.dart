@@ -1,64 +1,35 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // SpeciesService provider (real IUCN dataset — 32,752 species)
 // ---------------------------------------------------------------------------
 
-/// Asynchronously loads [FaunaDefinition] records from the bundled IUCN JSON.
+/// Provides a [SpeciesService] backed by the SQLite species repository.
 ///
-/// Uses [rootBundle] so it works in the full app and in widget tests (when the
-/// test framework sets up the asset bundle). Records with unknown habitats,
-/// continents, or IUCN statuses are silently skipped.
-final speciesDataProvider = FutureProvider<List<FaunaDefinition>>((ref) async {
-  final jsonString = await rootBundle.loadString('assets/species_data.json');
-  return SpeciesDataLoader.fromJsonString(jsonString);
-});
-
-/// Provides a [SpeciesService] backed by the full IUCN species dataset.
+/// Returns a cache-backed service when [speciesCacheProvider] is loaded, or an
+/// empty [SpeciesService] (no encounters) while the repository is initialising.
 ///
-/// - **Loading** — falls back to an empty [SpeciesService] until the asset is
-///   ready. No encounters will fire during this brief window.
-/// - **Error** — same empty fallback if the asset fails to load.
-/// - **Ready** — uses the full 32,752-species dataset.
-///
-/// Pattern matches [habitatServiceProvider] in biome/.
+/// - **Cache ready** — uses [SpeciesService.fromCache] with merged enrichments.
+/// - **Loading** — empty [SpeciesService] so the app stays alive until loaded.
 final speciesServiceProvider = Provider<SpeciesService>((ref) {
-  final dataAsync = ref.watch(speciesDataProvider);
+  final cache = ref.watch(speciesCacheProvider);
   final enrichmentMapAsync = ref.watch(enrichmentMapProvider);
-  return dataAsync.when(
-    data: (records) {
-      final enrichmentMap = enrichmentMapAsync.asData?.value ?? {};
-      final enrichedRecords = records.map((def) {
-        final enrichment = enrichmentMap[def.id];
-        if (enrichment != null) {
-          return FaunaDefinition(
-            id: def.id,
-            displayName: def.displayName,
-            scientificName: def.scientificName,
-            taxonomicClass: def.taxonomicClass,
-            rarity: def.rarity!,
-            habitats: def.habitats,
-            continents: def.continents,
-            seasonRestriction: def.seasonRestriction,
-            contextTags: def.contextTags,
-            animalClass: enrichment.animalClass,
-            foodPreference: enrichment.foodPreference,
-            climate: enrichment.climate,
-          );
-        }
-        return def;
-      }).toList();
-      return SpeciesService(enrichedRecords);
-    },
-    loading: () => SpeciesService(const []),
-    error: (_, __) => SpeciesService(const []),
-  );
+  final enrichments = enrichmentMapAsync.asData?.value ?? {};
+
+  if (!cache.isEmpty) {
+    return SpeciesService.fromCache(
+      cache: cache,
+      enrichments: enrichments,
+    );
+  }
+
+  // Cache not ready yet — empty service (no encounters until loaded)
+  return SpeciesService(const []);
 });
 
 // ---------------------------------------------------------------------------

@@ -41,8 +41,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `achievementServiceProvider` | achievements | `Provider<AchievementService>` | none (pure service) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
-| `speciesDataProvider` | discovery | `FutureProvider<List<FaunaDefinition>>` | async asset load (rootBundle) |
-| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesDataProvider, enrichmentMapProvider. Merges AI enrichments into FaunaDefinition. Empty fallback during loading/error |
+| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesCacheProvider, enrichmentMapProvider. Cache-backed with merged enrichments. Empty service until SQLite DB loads |
 | `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
@@ -122,7 +121,7 @@ itemInstanceRepositoryProvider ──→ syncProvider (read, for rollback)
 enrichmentRepositoryProvider ──→ enrichmentServiceProvider
 enrichmentRepositoryProvider ──→ enrichmentMapProvider
 
-speciesDataProvider ──→ speciesServiceProvider
+speciesCacheProvider ──→ speciesServiceProvider
 enrichmentMapProvider ──→ speciesServiceProvider (merge)
 speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ packProvider

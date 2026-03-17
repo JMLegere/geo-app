@@ -33,6 +33,7 @@ import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/features/items/services/stats_service.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
@@ -63,7 +64,10 @@ import 'package:earth_nova/features/sync/services/enrichment_service.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/enrichment_consumer.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
 ///
@@ -107,8 +111,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     obs = ObservabilityBuffer(
       flusher: (rows) => supabaseClient.from('app_events').insert(rows),
     );
+    obs.setDatabase(ref.read(appDatabaseProvider));
     obs.start();
     ObservabilityBuffer.instance = obs;
+
+    // Trim old local events (10K cap)
+    ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
+      debugPrint('[Observability] trim failed: $e');
+    });
     // Recover previous session data from localStorage (survives jetsam kills).
     final recovered = obs.recover();
     if (recovered.isNotEmpty) {
@@ -185,6 +195,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       '[GameCoordinator] onEnrichedHook: backfilling affixes for '
       '${enrichment.definitionId}',
     );
+    obs?.event('enrichment_complete', {
+      'definition_id': enrichment.definitionId,
+      'animal_class': enrichment.animalClass.name,
+    });
     enrichmentCache[enrichment.definitionId] = (
       speed: enrichment.speed,
       brawn: enrichment.brawn,
@@ -213,6 +227,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   queueProcessor.onAutoFlushComplete = (summary) async {
     if (_providerDisposed) return;
+    obs?.event('sync_flushed', {
+      'confirmed': summary.confirmed,
+      'rejected': summary.rejected,
+      'retried': summary.retried,
+      'stale_deleted': summary.staleDeleted,
+    });
     if (summary.hasRejections) {
       await ref.read(syncProvider.notifier).processRejections();
     }
@@ -350,6 +370,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
         obs: obs,
+        cellProgressRepo: cellProgressRepo,
       );
     }
 
@@ -440,11 +461,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Fetch daily seed before starting the game loop so encounters
     // have the seed available from the first cell visit.
-    dailySeedService.fetchSeed().then((_) {
+    final previousSeedValue = dailySeedService.currentSeed?.seed;
+    dailySeedService.fetchSeed().then((newSeedState) {
       debugPrint(
         '[GameCoordinator] daily seed ready: '
         '${dailySeedService.currentSeed}',
       );
+      // Emit seed_rotated only when the seed actually changed.
+      if (previousSeedValue != null && previousSeedValue != newSeedState.seed) {
+        obs?.event('seed_rotated', {
+          'seed_date': newSeedState.seedDate,
+          'is_server_seed': newSeedState.isServerSeed,
+        });
+      }
     }).catchError((Object e) {
       debugPrint('[GameCoordinator] daily seed fetch failed: $e');
     }).whenComplete(() {
@@ -639,6 +668,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Phase 1: SQLite → providers → markHydrated() → startLoop().
     rehydrateData(userId).then((_) async {
+      // Warm species cache for cells already in the cell properties cache.
+      // Uses the habitats/continent from the first resolved cell property;
+      // subsequent warm-ups fire automatically when the player moves.
+      final speciesCache = ref.read(speciesCacheProvider);
+      if (!speciesCache.isEmpty) {
+        final cachedProps = coordinator.cellPropertiesCache.values;
+        if (cachedProps.isNotEmpty) {
+          final first = cachedProps.first;
+          speciesCache.warmUp(
+            habitats: first.habitats,
+            continent: first.continent,
+          );
+        } else {
+          // No cached cells yet — warm default habitats for a common area.
+          speciesCache.warmUp(
+            habitats: {Habitat.forest, Habitat.plains},
+            continent: Continent.northAmerica,
+          );
+        }
+      }
+
       // Restore last known position before starting the game loop.
       // This ensures the map and keyboard service start at the player's
       // previous location instead of the hardcoded Fredericton default.
@@ -756,12 +806,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   void handleAuthState(AuthState authState) {
     final userId = authState.user?.id;
 
-    obs?.event('auth_state_changed', {
-      'status': authState.status.name,
-      'user_id': userId,
-    });
-
     if (authState.status == AuthStatus.authenticated && userId != null) {
+      obs?.event('auth_restored', {'user_id': userId});
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
 
@@ -775,6 +821,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
+      obs?.event('auth_expired', {'previous_user_id': lastHydratedUserId});
       // Clear write queue for the outgoing user BEFORE resetting state.
       // Prevents stale entries from being flushed with the next session's
       // credentials, which would trigger RLS violations on Supabase.

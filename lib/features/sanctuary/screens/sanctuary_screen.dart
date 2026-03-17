@@ -2,6 +2,7 @@ import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/features/achievements/widgets/achievement_list_view.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/settings_screen.dart';
@@ -70,6 +71,7 @@ class _SanctuaryScreenState extends ConsumerState<SanctuaryScreen>
       icon: IdenticonAvatar(seed: userId ?? 'anonymous', size: 28),
       tooltip: 'Settings',
       onPressed: () {
+        ObservabilityBuffer.instance?.event('settings_opened');
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const SettingsScreen(),

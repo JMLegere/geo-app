@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -8,7 +9,9 @@ import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/species/loot_table.dart';
+import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Full species service with deterministic per-cell encounter logic.
@@ -30,21 +33,84 @@ import 'package:earth_nova/shared/constants.dart';
 class SpeciesService {
   final List<FaunaDefinition> _allRecords;
 
-  /// Pre-built indices for fast lookup.
+  /// Cache-backed mode: set when constructed via [SpeciesService.fromCache].
+  final SpeciesCache? _cache;
+
+  /// Enrichments map for cache mode (definitionId → SpeciesEnrichment).
+  final Map<String, SpeciesEnrichment> _enrichments;
+
+  /// Pre-built indices for fast lookup (list mode only).
   late final Map<Habitat, List<FaunaDefinition>> _byHabitat;
   late final Map<Continent, List<FaunaDefinition>> _byContinent;
   late final Map<(Habitat, Continent), List<FaunaDefinition>>
       _byHabitatAndContinent;
 
-  SpeciesService(this._allRecords) {
+  /// Default constructor — builds in-memory indices from a full species list.
+  ///
+  /// Only used directly in tests (inline fixtures). Production code uses
+  /// [SpeciesService.fromCache].
+  @visibleForTesting
+  SpeciesService(this._allRecords)
+      : _cache = null,
+        _enrichments = const {} {
     _buildIndices();
   }
 
+  /// Cache-backed constructor — uses [SpeciesCache] for sync DB-backed access.
+  ///
+  /// Does NOT build in-memory indices; [SpeciesCache.getCandidatesSync] handles
+  /// all filtering. [enrichments] are merged on-the-fly in [_getPool].
+  SpeciesService.fromCache({
+    required SpeciesCache cache,
+    Map<String, SpeciesEnrichment> enrichments = const {},
+  })  : _cache = cache,
+        _enrichments = enrichments,
+        _allRecords = const [] {
+    // No index build — cache handles filtering.
+    _byHabitat = const {};
+    _byContinent = const {};
+    _byHabitatAndContinent = const {};
+  }
+
   /// All loaded species records.
+  ///
+  /// Only valid in list mode. In cache mode this is always empty — use
+  /// [SpeciesCache] directly to query the full dataset.
   List<FaunaDefinition> get all => _allRecords;
 
   /// Total number of species in the dataset.
-  int get totalSpecies => _allRecords.length;
+  int get totalSpecies => _cache?.totalSpeciesCount ?? _allRecords.length;
+
+  // ── Cache-mode helpers ────────────────────────────────────────────────────
+
+  /// Returns species candidates for (habitats, continent) from the cache,
+  /// merging any available enrichment data into each [FaunaDefinition].
+  ///
+  /// Only called when [_cache] is non-null (cache mode). The result is the
+  /// union of all species matching any of the provided [habitats] × [continent].
+  List<FaunaDefinition> _getPool(Set<Habitat> habitats, Continent continent) {
+    final raw =
+        _cache!.getCandidatesSync(habitats: habitats, continent: continent);
+    if (_enrichments.isEmpty) return raw;
+    return raw.map((def) {
+      final e = _enrichments[def.id];
+      if (e == null) return def;
+      return FaunaDefinition(
+        id: def.id,
+        displayName: def.displayName,
+        scientificName: def.scientificName,
+        taxonomicClass: def.taxonomicClass,
+        rarity: def.rarity!,
+        habitats: def.habitats,
+        continents: def.continents,
+        seasonRestriction: def.seasonRestriction,
+        contextTags: def.contextTags,
+        animalClass: e.animalClass,
+        foodPreference: e.foodPreference,
+        climate: e.climate,
+      );
+    }).toList();
+  }
 
   /// Get species available in a specific cell.
   ///
@@ -73,8 +139,12 @@ class SpeciesService {
     int encounterSlots = kEncounterSlotsPerCell,
   }) {
     final pool = <FaunaDefinition>{};
-    for (final habitat in habitats) {
-      pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+    if (_cache != null) {
+      pool.addAll(_getPool(habitats, continent));
+    } else {
+      for (final habitat in habitats) {
+        pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+      }
     }
     if (pool.isEmpty) return [];
 
@@ -92,6 +162,9 @@ class SpeciesService {
     required Set<Habitat> habitats,
     required Continent continent,
   }) {
+    if (_cache != null) {
+      return _getPool(habitats, continent);
+    }
     final pool = <FaunaDefinition>{};
     for (final habitat in habitats) {
       pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
@@ -137,8 +210,12 @@ class SpeciesService {
 
     // 2. Build pool from habitats × sourceContinent.
     final pool = <FaunaDefinition>{};
-    for (final habitat in habitats) {
-      pool.addAll(_byHabitatAndContinent[(habitat, sourceContinent)] ?? []);
+    if (_cache != null) {
+      pool.addAll(_getPool(habitats, sourceContinent));
+    } else {
+      for (final habitat in habitats) {
+        pool.addAll(_byHabitatAndContinent[(habitat, sourceContinent)] ?? []);
+      }
     }
     if (pool.isEmpty) return [];
 
@@ -175,8 +252,12 @@ class SpeciesService {
   }) {
     // 1. Build the normal species pool (same as getSpeciesForCell).
     final pool = <FaunaDefinition>{};
-    for (final habitat in habitats) {
-      pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+    if (_cache != null) {
+      pool.addAll(_getPool(habitats, continent));
+    } else {
+      for (final habitat in habitats) {
+        pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+      }
     }
 
     // 2. Filter to EN/CR/EX only.
@@ -209,7 +290,7 @@ class SpeciesService {
   ///
   /// Only includes tiers that have at least one species in [pool].
   /// Species without a rarity are silently excluded (should not happen in
-  /// practice — [SpeciesDataLoader] skips records with unknown IUCN status).
+  /// practice — the species repository skips records with unknown IUCN status).
   Map<IucnStatus, List<FaunaDefinition>> _groupByRarity(
       Iterable<FaunaDefinition> pool) {
     final result = <IucnStatus, List<FaunaDefinition>>{};

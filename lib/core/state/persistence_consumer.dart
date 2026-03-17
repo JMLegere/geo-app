@@ -37,10 +37,19 @@ Future<void> persistItemDiscovery({
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
   ObservabilityBuffer? obs,
+  CellProgressRepository? cellProgressRepo,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
+    final sw = Stopwatch()..start();
     await itemRepo.addItem(instance, userId);
+    sw.stop();
+    if (sw.elapsedMilliseconds > 50) {
+      obs?.event('sqlite_slow', {
+        'operation': 'persist_item',
+        'duration_ms': sw.elapsedMilliseconds,
+      });
+    }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist item: $e');
     obs?.event('persistence_error', {
@@ -49,6 +58,32 @@ Future<void> persistItemDiscovery({
       'error': e.toString(),
     });
     return; // Do not enqueue — item was not persisted locally.
+  }
+
+  // 1b. Recompute restoration level if cell ID is known.
+  final cellId = instance.acquiredInCellId;
+  if (cellId != null && cellProgressRepo != null) {
+    try {
+      final cellItems = await itemRepo.getItemsByCell(userId, cellId);
+      final uniqueCount = cellItems.map((i) => i.definitionId).toSet().length;
+      final newLevel = (uniqueCount.clamp(0, 3) / 3.0);
+      final existing = await cellProgressRepo.read(userId, cellId);
+      final oldLevel = existing?.restorationLevel ?? 0.0;
+      if ((newLevel - oldLevel).abs() > 0.001) {
+        await cellProgressRepo.update(
+          userId: userId,
+          cellId: cellId,
+          restorationLevel: newLevel,
+        );
+        obs?.event('cell_restored', {
+          'cell_id': cellId,
+          'restoration_level': newLevel,
+          'unique_species': uniqueCount,
+        });
+      }
+    } catch (e) {
+      debugPrint('[GameCoordinator] failed to update restoration level: $e');
+    }
   }
 
   // 2. Enqueue for Supabase sync (auto-schedules flush).
@@ -163,6 +198,7 @@ Future<void> persistCellVisit({
   double restorationLevel = 0.0;
   // 1. Upsert cell progress in SQLite (create if first visit, update if returning).
   try {
+    final sw = Stopwatch()..start();
     final existing = await cellProgressRepo.read(userId, cellId);
     if (existing != null) {
       // Returning visit — increment visit count. Use current DB values for payload.
@@ -181,6 +217,13 @@ Future<void> persistCellVisit({
         visitCount: 1,
         lastVisited: now,
       );
+    }
+    sw.stop();
+    if (sw.elapsedMilliseconds > 50) {
+      obs?.event('sqlite_slow', {
+        'operation': 'persist_cell_visit',
+        'duration_ms': sw.elapsedMilliseconds,
+      });
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist cell visit: $e');
@@ -242,6 +285,7 @@ Future<void> persistProfileState({
 
   // 1. Persist to SQLite.
   try {
+    final sw = Stopwatch()..start();
     final existing = await profileRepo.read(userId);
     if (existing != null) {
       await profileRepo.update(
@@ -271,6 +315,13 @@ Future<void> persistProfileState({
         totalSteps: playerState.totalSteps,
         lastKnownStepCount: playerState.lastKnownStepCount,
       );
+    }
+    sw.stop();
+    if (sw.elapsedMilliseconds > 50) {
+      obs?.event('sqlite_slow', {
+        'operation': 'persist_profile',
+        'duration_ms': sw.elapsedMilliseconds,
+      });
     }
   } catch (e) {
     debugPrint('[GameCoordinator] failed to persist profile: $e');
