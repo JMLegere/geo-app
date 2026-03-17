@@ -1,10 +1,10 @@
 /// Integration test: inventory hydration from SQLite.
 ///
 /// Verifies the hydration pipeline that runs on app startup:
-///   SQLite → ItemInstanceRepository → InventoryNotifier.loadItems()
+///   SQLite → ItemInstanceRepository → ItemsNotifier.loadItems()
 ///
 /// The real wiring lives in `gameCoordinatorProvider`, which calls
-/// `itemRepo.getItemsByUser(userId)` then seeds `inventoryProvider` and
+/// `itemRepo.getItemsByUser(userId)` then seeds `itemsProvider` and
 /// `discoveryService.markCollected()` before starting the game loop.
 ///
 /// These tests exercise the same data path end-to-end (in-memory DB →
@@ -22,7 +22,7 @@ import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ void main() {
     });
   });
 
-  group('Hydration — InventoryNotifier.loadItems()', () {
+  group('Hydration — ItemsNotifier.loadItems()', () {
     late AppDatabase db;
     late ProviderContainer container;
 
@@ -197,10 +197,10 @@ void main() {
       //   itemRepo.getItemsByUser(userId) → inventoryNotifier.loadItems(items)
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
-      container.read(inventoryProvider.notifier).loadItems(items);
+      container.read(itemsProvider.notifier).loadItems(items);
 
       // Verify inventory state.
-      final state = container.read(inventoryProvider);
+      final state = container.read(itemsProvider);
       expect(state.totalItems, equals(3));
       expect(
         state.uniqueDefinitionIds,
@@ -210,14 +210,14 @@ void main() {
 
     test('loadItems replaces (not appends to) existing inventory', () async {
       // Pre-populate inventory with a stale item.
-      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+      container.read(itemsProvider.notifier).addItem(ItemInstance(
             id: 'stale-item',
             definitionId: 'fauna_stale_species',
             displayName: 'Test Species',
             category: ItemCategory.fauna,
             acquiredAt: DateTime(2026, 1, 1),
           ));
-      expect(container.read(inventoryProvider).totalItems, equals(1));
+      expect(container.read(itemsProvider).totalItems, equals(1));
 
       // Seed different items in DB.
       await seedItem(db,
@@ -228,9 +228,9 @@ void main() {
       // Hydrate — should REPLACE, not append.
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
-      container.read(inventoryProvider.notifier).loadItems(items);
+      container.read(itemsProvider.notifier).loadItems(items);
 
-      final state = container.read(inventoryProvider);
+      final state = container.read(itemsProvider);
       expect(state.totalItems, equals(2),
           reason: 'loadItems replaces, not appends');
       expect(state.hasDefinition('fauna_stale_species'), isFalse,
@@ -245,9 +245,9 @@ void main() {
       expect(items, isEmpty);
 
       // loadItems with empty list → resets to empty.
-      container.read(inventoryProvider.notifier).loadItems(items);
+      container.read(itemsProvider.notifier).loadItems(items);
 
-      final state = container.read(inventoryProvider);
+      final state = container.read(itemsProvider);
       expect(state.totalItems, equals(0));
     });
   });
@@ -268,14 +268,14 @@ void main() {
     test('discovery added before hydration is preserved when DB is empty',
         () async {
       // Simulate a discovery arriving BEFORE hydration (race window).
-      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+      container.read(itemsProvider.notifier).addItem(ItemInstance(
             id: 'race-item',
             definitionId: 'fauna_race_species',
             displayName: 'Test Species',
             category: ItemCategory.fauna,
             acquiredAt: DateTime.now(),
           ));
-      expect(container.read(inventoryProvider).totalItems, equals(1));
+      expect(container.read(itemsProvider).totalItems, equals(1));
 
       // Now hydration runs — DB is empty, so loadItems([]) would wipe it.
       // The real gameCoordinatorProvider guards this with:
@@ -284,13 +284,13 @@ void main() {
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
       if (items.isNotEmpty) {
-        container.read(inventoryProvider.notifier).loadItems(items);
+        container.read(itemsProvider.notifier).loadItems(items);
       }
 
       // Race item survives because empty DB skips loadItems.
-      expect(container.read(inventoryProvider).totalItems, equals(1));
+      expect(container.read(itemsProvider).totalItems, equals(1));
       expect(
-          container.read(inventoryProvider).hasDefinition('fauna_race_species'),
+          container.read(itemsProvider).hasDefinition('fauna_race_species'),
           isTrue);
     });
 
@@ -303,7 +303,7 @@ void main() {
       // replaces the entire inventory — the race-window item is lost.
 
       // Simulate: discovery fires first.
-      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+      container.read(itemsProvider.notifier).addItem(ItemInstance(
             id: 'race-item',
             definitionId: 'fauna_race_species',
             displayName: 'Test Species',
@@ -316,10 +316,10 @@ void main() {
           id: 'db-item', userId: 'user-1', definitionId: 'fauna_vulpes_vulpes');
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
-      container.read(inventoryProvider.notifier).loadItems(items);
+      container.read(itemsProvider.notifier).loadItems(items);
 
       // Race item is gone — loadItems replaces everything.
-      final state = container.read(inventoryProvider);
+      final state = container.read(itemsProvider);
       expect(state.totalItems, equals(1));
       expect(state.hasDefinition('fauna_race_species'), isFalse,
           reason: 'loadItems wipes pre-hydration items');
@@ -334,11 +334,11 @@ void main() {
       // Hydrate.
       final repo = container.read(itemInstanceRepositoryProvider);
       final items = await repo.getItemsByUser('user-1');
-      container.read(inventoryProvider.notifier).loadItems(items);
-      expect(container.read(inventoryProvider).totalItems, equals(1));
+      container.read(itemsProvider.notifier).loadItems(items);
+      expect(container.read(itemsProvider).totalItems, equals(1));
 
       // New discovery arrives AFTER hydration — safe.
-      container.read(inventoryProvider.notifier).addItem(ItemInstance(
+      container.read(itemsProvider.notifier).addItem(ItemInstance(
             id: 'new-item',
             definitionId: 'fauna_panthera_leo',
             displayName: 'Test Species',
@@ -346,7 +346,7 @@ void main() {
             acquiredAt: DateTime.now(),
           ));
 
-      final state = container.read(inventoryProvider);
+      final state = container.read(itemsProvider);
       expect(state.totalItems, equals(2));
       expect(state.hasDefinition('fauna_vulpes_vulpes'), isTrue);
       expect(state.hasDefinition('fauna_panthera_leo'), isTrue);
@@ -382,7 +382,7 @@ void main() {
         acquiredAt: DateTime(2026, 3, 1),
         acquiredInCellId: 'cell-7',
       );
-      container.read(inventoryProvider.notifier).addItem(newItem);
+      container.read(itemsProvider.notifier).addItem(newItem);
       await repo.addItem(newItem, 'user-1');
 
       // Simulate app restart: new container, same DB.
@@ -395,8 +395,8 @@ void main() {
       final persisted = await repo2.getItemsByUser('user-1');
       expect(persisted.length, equals(1));
 
-      container2.read(inventoryProvider.notifier).loadItems(persisted);
-      final state = container2.read(inventoryProvider);
+      container2.read(itemsProvider.notifier).loadItems(persisted);
+      final state = container2.read(itemsProvider);
       expect(state.totalItems, equals(1));
       expect(state.items.first.id, equals('discovered-1'));
       expect(state.items.first.definitionId, equals('fauna_vulpes_vulpes'));
@@ -418,10 +418,10 @@ void main() {
           category: ItemCategory.fauna,
           acquiredAt: DateTime(2026, 3, 1),
         );
-        container.read(inventoryProvider.notifier).addItem(item);
+        container.read(itemsProvider.notifier).addItem(item);
         await repo.addItem(item, 'user-1');
       }
-      expect(container.read(inventoryProvider).totalItems, equals(2));
+      expect(container.read(itemsProvider).totalItems, equals(2));
 
       // Session 2: re-hydrate, discover 1 more.
       container.dispose();
@@ -430,8 +430,8 @@ void main() {
 
       final repo2 = container2.read(itemInstanceRepositoryProvider);
       final persisted = await repo2.getItemsByUser('user-1');
-      container2.read(inventoryProvider.notifier).loadItems(persisted);
-      expect(container2.read(inventoryProvider).totalItems, equals(2));
+      container2.read(itemsProvider.notifier).loadItems(persisted);
+      expect(container2.read(itemsProvider).totalItems, equals(2));
 
       final newItem = ItemInstance(
         id: 'session2-0',
@@ -440,10 +440,10 @@ void main() {
         category: ItemCategory.fauna,
         acquiredAt: DateTime(2026, 3, 2),
       );
-      container2.read(inventoryProvider.notifier).addItem(newItem);
+      container2.read(itemsProvider.notifier).addItem(newItem);
       await repo2.addItem(newItem, 'user-1');
 
-      expect(container2.read(inventoryProvider).totalItems, equals(3));
+      expect(container2.read(itemsProvider).totalItems, equals(3));
 
       // Verify DB has all 3.
       final allItems = await repo2.getItemsByUser('user-1');

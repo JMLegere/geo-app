@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -18,10 +18,10 @@ import 'package:earth_nova/shared/constants.dart';
 /// false. Retained for structural compatibility pending full removal in
 /// Task 18.
 ///
-/// Note: [shouldShow] is false on first build because [inventoryProvider]
-/// initializes with an empty [InventoryState] (`totalItems == 0`). The
+/// Note: [shouldShow] is false on first build because [itemsProvider]
+/// initializes with an empty [ItemsState] (`totalItems == 0`). The
 /// prompt becomes eligible only after the discovery flow hydrates the
-/// inventory by adding items via [InventoryNotifier.addItem].
+/// inventory by adding items via [ItemsNotifier.addItem].
 class UpgradePromptState {
   const UpgradePromptState({
     required this.totalCollected,
@@ -107,7 +107,7 @@ class UpgradePromptState {
 /// false. Retained for structural compatibility pending full removal in
 /// Task 18.
 ///
-/// Watches [inventoryProvider] so state recomputes automatically whenever
+/// Watches [itemsProvider] so state recomputes automatically whenever
 /// inventory changes. Reads [supabaseBootstrapProvider] once — the
 /// initialized flag is stable after app startup and does not change at runtime.
 ///
@@ -123,7 +123,7 @@ class UpgradePromptState {
 class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   @override
   UpgradePromptState build() {
-    final totalCollected = ref.watch(inventoryProvider).totalItems;
+    final totalCollected = ref.watch(itemsProvider).totalItems;
     // supabaseBootstrapProvider returns bool directly — stable after app startup.
     final supabaseInitialized = ref.read(supabaseBootstrapProvider);
 
@@ -141,7 +141,7 @@ class UpgradePromptNotifier extends Notifier<UpgradePromptState> {
   }
 
   /// Session-level flag. Stored as an instance field so that reactive rebuilds
-  /// triggered by [inventoryProvider] do not reset it —
+  /// triggered by [itemsProvider] do not reset it —
   /// [build] reads [_hasBeenShown] directly rather than inspecting [state].
   bool _hasBeenShown = false;
 

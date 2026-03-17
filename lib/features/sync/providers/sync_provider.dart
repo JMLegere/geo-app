@@ -6,7 +6,7 @@ import 'package:earth_nova/core/models/write_queue_entry.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/core/state/write_queue_repository_provider.dart';
@@ -146,7 +146,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
       switch (entry.entityType) {
         case WriteQueueEntityType.itemInstance:
           // Remove from in-memory inventory.
-          ref.read(inventoryProvider.notifier).removeItem(entry.entityId);
+          ref.read(itemsProvider.notifier).removeItem(entry.entityId);
 
           // Remove from SQLite.
           try {
@@ -226,7 +226,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
   /// Apply server-awarded first-discovery badges to in-memory inventory.
   Future<void> applyFirstBadges(List<String> itemIds) async {
     final itemRepo = ref.read(itemInstanceRepositoryProvider);
-    final inventory = ref.read(inventoryProvider.notifier);
+    final inventory = ref.read(itemsProvider.notifier);
 
     for (final itemId in itemIds) {
       try {

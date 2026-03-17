@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 
-import 'package:earth_nova/core/cells/event_resolver.dart';
+import 'package:earth_nova/features/world/services/event_resolver.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';

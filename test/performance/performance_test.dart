@@ -11,14 +11,14 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/species/species_data_loader.dart';
 import 'package:earth_nova/core/species/species_service.dart';
-import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
-import 'package:earth_nova/features/biome/services/biome_service.dart';
+import 'package:earth_nova/features/world/services/biome_feature_index.dart';
+import 'package:earth_nova/features/world/services/biome_service.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Helper: times a synchronous [fn] and returns the elapsed Duration.
@@ -269,32 +269,24 @@ void main() {
   });
 
   // =========================================================================
-  // 5. VoronoiCellService — cell resolution and neighbor map
+  // 5. LazyVoronoiCellService — cell resolution and neighbor map
   // =========================================================================
 
-  group('VoronoiCellService performance (40×40 = 1600 cells)', () {
-    late VoronoiCellService cellService;
+  group('LazyVoronoiCellService performance', () {
+    late LazyVoronoiCellService cellService;
+    // Use a fixed cell count for iteration bounds (1600 cells in a 40×40 grid).
+    const cellCount = 1600;
 
     setUpAll(() {
-      cellService = VoronoiCellService(
-        minLat: kVoronoiMinLat,
-        maxLat: kVoronoiMaxLat,
-        minLon: kVoronoiMinLon,
-        maxLon: kVoronoiMaxLon,
-        gridRows: kVoronoiGridRows,
-        gridCols: kVoronoiGridCols,
-        seed: kVoronoiSeed,
-      );
+      cellService = LazyVoronoiCellService();
     });
 
     test('getCellId resolves in under 1ms per call', () {
       final sw = Stopwatch()..start();
       const iterations = 1000;
       for (var i = 0; i < iterations; i++) {
-        final lat =
-            kVoronoiMinLat + (kVoronoiMaxLat - kVoronoiMinLat) * (i % 40) / 40;
-        final lon = kVoronoiMinLon +
-            (kVoronoiMaxLon - kVoronoiMinLon) * (i ~/ 40 % 40) / 40;
+        final lat = 45.9 + (i % 40) * 0.002;
+        final lon = -66.6 + (i ~/ 40 % 40) * 0.002;
         cellService.getCellId(lat, lon);
       }
       sw.stop();
@@ -302,24 +294,17 @@ void main() {
       final avgUs = sw.elapsedMicroseconds / iterations;
       expect(avgUs, lessThan(1000),
           reason: 'getCellId averaged ${avgUs.toStringAsFixed(1)}µs over '
-              '${cellService.cellCount} cells');
+              '$cellCount cells');
     });
 
     test('neighbor map builds in under 2 seconds', () {
-      // Force a fresh service to time the neighbor map build from scratch.
-      final freshService = VoronoiCellService(
-        minLat: kVoronoiMinLat,
-        maxLat: kVoronoiMaxLat,
-        minLon: kVoronoiMinLon,
-        maxLon: kVoronoiMaxLon,
-        gridRows: kVoronoiGridRows,
-        gridCols: kVoronoiGridCols,
-        seed: kVoronoiSeed,
-      );
+      // Force a fresh service to time the neighbor computation from scratch.
+      final freshService = LazyVoronoiCellService();
+      final seedCellId = freshService.getCellId(45.9, -66.6);
 
       final elapsed = timeSync(() {
-        // Trigger neighbor map build.
-        freshService.getNeighborIds('0');
+        // Trigger neighbor computation.
+        freshService.getNeighborIds(seedCellId);
       });
 
       expect(elapsed.inMilliseconds, lessThan(2000),
@@ -327,13 +312,19 @@ void main() {
     });
 
     test('getNeighborIds is O(1) after initial build', () {
-      // Ensure neighbor map is built.
-      cellService.getNeighborIds('0');
+      // Resolve a set of cell IDs to use as lookup targets.
+      final cellIds = List.generate(
+        cellCount,
+        (i) => cellService.getCellId(
+            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
+      );
+      // Warm up the cache.
+      cellService.getNeighborIds(cellIds.first);
 
       final sw = Stopwatch()..start();
       const iterations = 10000;
       for (var i = 0; i < iterations; i++) {
-        cellService.getNeighborIds((i % cellService.cellCount).toString());
+        cellService.getNeighborIds(cellIds[i % cellCount]);
       }
       sw.stop();
 
@@ -344,13 +335,19 @@ void main() {
     });
 
     test('getCellsInRing(k=2) completes in under 1ms', () {
-      // Ensure neighbor map is built.
-      cellService.getNeighborIds('0');
+      // Resolve a set of cell IDs to use as lookup targets.
+      final cellIds = List.generate(
+        cellCount,
+        (i) => cellService.getCellId(
+            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
+      );
+      // Warm up the cache.
+      cellService.getNeighborIds(cellIds.first);
 
       final sw = Stopwatch()..start();
       const iterations = 100;
       for (var i = 0; i < iterations; i++) {
-        cellService.getCellsInRing((i % cellService.cellCount).toString(), 2);
+        cellService.getCellsInRing(cellIds[i % cellCount], 2);
       }
       sw.stop();
 
@@ -365,19 +362,12 @@ void main() {
   // =========================================================================
 
   group('FogStateResolver performance', () {
-    late VoronoiCellService cellService;
+    late LazyVoronoiCellService cellService;
     late FogStateResolver resolver;
+    const cellCount = 1600;
 
     setUp(() {
-      cellService = VoronoiCellService(
-        minLat: kVoronoiMinLat,
-        maxLat: kVoronoiMaxLat,
-        minLon: kVoronoiMinLon,
-        maxLon: kVoronoiMaxLon,
-        gridRows: kVoronoiGridRows,
-        gridCols: kVoronoiGridCols,
-        seed: kVoronoiSeed,
-      );
+      cellService = LazyVoronoiCellService();
       resolver = FogStateResolver(cellService);
     });
 
@@ -389,10 +379,8 @@ void main() {
       final sw = Stopwatch()..start();
       const updates = 100;
       for (var i = 0; i < updates; i++) {
-        final lat =
-            kVoronoiMinLat + (kVoronoiMaxLat - kVoronoiMinLat) * (i % 10) / 10;
-        final lon = kVoronoiMinLon +
-            (kVoronoiMaxLon - kVoronoiMinLon) * (i ~/ 10 % 10) / 10;
+        final lat = 45.9 + (i % 10) * 0.002;
+        final lon = -66.6 + (i ~/ 10 % 10) * 0.002;
         resolver.onLocationUpdate(lat, lon);
       }
       sw.stop();
@@ -406,10 +394,17 @@ void main() {
       // Seed some visited cells and frontier.
       resolver.onLocationUpdate(kDefaultMapLat, kDefaultMapLon);
 
+      // Resolve a set of cell IDs to use as lookup targets.
+      final cellIds = List.generate(
+        cellCount,
+        (i) => cellService.getCellId(
+            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
+      );
+
       final sw = Stopwatch()..start();
       const iterations = 10000;
       for (var i = 0; i < iterations; i++) {
-        resolver.resolve((i % cellService.cellCount).toString());
+        resolver.resolve(cellIds[i % cellCount]);
       }
       sw.stop();
 
@@ -420,7 +415,14 @@ void main() {
 
     test('loadVisitedCells with 500 cells completes in under 2 seconds', () {
       // Simulate a player who has visited 500 cells (heavy user).
-      final visited = Set<String>.from(List.generate(500, (i) => i.toString()));
+      // Build IDs directly using v_{row}_{col} format (25×20 grid around
+      // Fredericton) to guarantee exactly 500 unique cell IDs.
+      const baseRow = 22950; // (45.9 / 0.002).floor()
+      const baseCol = -33300; // (-66.6 / 0.002).floor()
+      final visited = Set<String>.from(List.generate(
+        500,
+        (i) => 'v_${baseRow + i % 25}_${baseCol + i ~/ 25}',
+      ));
 
       final elapsed = timeSync(() {
         resolver.loadVisitedCells(visited);
@@ -440,31 +442,22 @@ void main() {
     test(
         'full pipeline (locate → biome → species → loot) completes in under 50ms',
         () {
-      final cellService = VoronoiCellService(
-        minLat: kVoronoiMinLat,
-        maxLat: kVoronoiMaxLat,
-        minLon: kVoronoiMinLon,
-        maxLon: kVoronoiMaxLon,
-        gridRows: kVoronoiGridRows,
-        gridCols: kVoronoiGridCols,
-        seed: kVoronoiSeed,
-      );
+      final cellService = LazyVoronoiCellService();
       final biomeIndex = BiomeFeatureIndex.load(biomeJson);
       final habitatService = HabitatService.withFeatureIndex(biomeIndex);
       final records = SpeciesDataLoader.fromJsonString(speciesJson);
       final speciesService = SpeciesService(records);
 
-      // Warm up Voronoi neighbor map.
-      cellService.getNeighborIds('0');
+      // Warm up Voronoi neighbor cache.
+      final warmupId = cellService.getCellId(45.9, -66.6);
+      cellService.getNeighborIds(warmupId);
 
       // Simulate the exact sequence that fires on each new cell entry.
       final sw = Stopwatch()..start();
       const iterations = 100;
       for (var i = 0; i < iterations; i++) {
-        final lat =
-            kVoronoiMinLat + (kVoronoiMaxLat - kVoronoiMinLat) * (i % 10) / 10;
-        final lon = kVoronoiMinLon +
-            (kVoronoiMaxLon - kVoronoiMinLon) * (i ~/ 10 % 10) / 10;
+        final lat = 45.9 + (i % 10) * 0.002;
+        final lon = -66.6 + (i ~/ 10 % 10) * 0.002;
 
         // 1. Resolve cell ID from GPS coordinates.
         final cellId = cellService.getCellId(lat, lon);

@@ -7,7 +7,7 @@ library;
 
 import 'dart:convert';
 
-import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
@@ -33,15 +33,7 @@ SpeciesService buildSpeciesServiceFromFixture() {
   return SpeciesService(records);
 }
 
-VoronoiCellService makeSmallCellService() => VoronoiCellService(
-      minLat: 37.60,
-      maxLat: 37.90,
-      minLon: -122.55,
-      maxLon: -122.20,
-      gridRows: 5,
-      gridCols: 5,
-      seed: 42,
-    );
+LazyVoronoiCellService makeSmallCellService() => LazyVoronoiCellService();
 
 const double kCentLat = 37.75;
 const double kCentLon = -122.375;
@@ -88,7 +80,9 @@ void main() {
       expect(statuses, contains(IucnStatus.criticallyEndangered));
     });
 
-    test('species ID is derived from scientificName (stable, lowercase, fauna_ prefix)', () {
+    test(
+        'species ID is derived from scientificName (stable, lowercase, fauna_ prefix)',
+        () {
       for (final s in speciesService.all) {
         final expectedId =
             'fauna_${s.scientificName.toLowerCase().replaceAll(' ', '_')}';
@@ -104,8 +98,7 @@ void main() {
     });
 
     test('forContinent returns only species with that continent', () {
-      final naSpecies =
-          speciesService.forContinent(Continent.northAmerica);
+      final naSpecies = speciesService.forContinent(Continent.northAmerica);
       for (final s in naSpecies) {
         expect(s.continents, contains(Continent.northAmerica));
       }
@@ -138,11 +131,12 @@ void main() {
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
       );
-      expect(r1.map((s) => s.id).toList(),
-          equals(r2.map((s) => s.id).toList()));
+      expect(
+          r1.map((s) => s.id).toList(), equals(r2.map((s) => s.id).toList()));
     });
 
-    test('getSpeciesForCell returns different results for different cellIds', () {
+    test('getSpeciesForCell returns different results for different cellIds',
+        () {
       // With 50 species and a seeded loot table, different cells should
       // usually produce different results. This is probabilistic but
       // extremely unlikely to fail with the fixture data.
@@ -163,7 +157,8 @@ void main() {
       expect(r1.isNotEmpty || r2.isNotEmpty, isTrue);
     });
 
-    test('getPoolForArea returns species valid for habitat+continent combo', () {
+    test('getPoolForArea returns species valid for habitat+continent combo',
+        () {
       final pool = speciesService.getPoolForArea(
         habitats: {Habitat.forest},
         continent: Continent.northAmerica,
@@ -189,7 +184,7 @@ void main() {
   });
 
   group('Offline Discovery Chain (GPS → Fog → Species → Discovery)', () {
-    late VoronoiCellService cellService;
+    late LazyVoronoiCellService cellService;
     late FogStateResolver fogResolver;
     late SpeciesService speciesService;
     late DiscoveryService discoveryService;
@@ -243,7 +238,9 @@ void main() {
       }
     });
 
-    test('re-discovering the same species has isNew = false after markCollected', () {
+    test(
+        're-discovering the same species has isNew = false after markCollected',
+        () {
       fogResolver.onLocationUpdate(kCentLat, kCentLon);
       if (capturedEvents.isEmpty) return; // skip if no species for this cell
 

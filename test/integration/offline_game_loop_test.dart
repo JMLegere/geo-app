@@ -13,7 +13,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
-import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
@@ -23,7 +23,7 @@ import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
 import 'package:earth_nova/features/caretaking/services/caretaking_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/features/discovery/services/discovery_service.dart';
-import 'package:earth_nova/features/restoration/services/restoration_service.dart';
+import 'package:earth_nova/features/world/services/restoration_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fixtures/species_fixture.dart';
@@ -40,15 +40,7 @@ SpeciesService buildSpeciesService() {
   return SpeciesService(records);
 }
 
-VoronoiCellService makeSmallCellService() => VoronoiCellService(
-      minLat: 37.60,
-      maxLat: 37.90,
-      minLon: -122.55,
-      maxLon: -122.20,
-      gridRows: 5,
-      gridCols: 5,
-      seed: 42,
-    );
+LazyVoronoiCellService makeSmallCellService() => LazyVoronoiCellService();
 
 AppDatabase makeDb() => AppDatabase(NativeDatabase.memory());
 
@@ -62,7 +54,7 @@ const double kStartLon = -122.375;
 
 /// Holds references to all services created for a single game session.
 class GameSession {
-  final VoronoiCellService cellService;
+  final LazyVoronoiCellService cellService;
   final FogStateResolver fogResolver;
   final SpeciesService speciesService;
   final DiscoveryService discoveryService;

@@ -21,7 +21,7 @@ import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/supabase_bootstrap_provider.dart';
 import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart';
 import 'package:earth_nova/features/auth/widgets/save_progress_banner.dart';
@@ -34,13 +34,13 @@ import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
 // ---------------------------------------------------------------------------
 
 /// Mock inventory notifier with mutable count for reactive testing.
-class _MockInventoryNotifier extends InventoryNotifier {
-  _MockInventoryNotifier(this._initialCount);
+class _MockItemsNotifier extends ItemsNotifier {
+  _MockItemsNotifier(this._initialCount);
 
   final int _initialCount;
 
   @override
-  InventoryState build() => InventoryState(
+  ItemsState build() => ItemsState(
         items: List.generate(
           _initialCount,
           (i) => ItemInstance(
@@ -55,7 +55,7 @@ class _MockInventoryNotifier extends InventoryNotifier {
       );
 
   void setCount(int count) {
-    state = InventoryState(
+    state = ItemsState(
       items: List.generate(
         count,
         (i) => ItemInstance(
@@ -82,7 +82,7 @@ class _IntegrationUpgradePromptNotifier extends UpgradePromptNotifier {
 
   @override
   UpgradePromptState build() {
-    final totalCollected = ref.watch(inventoryProvider).totalItems;
+    final totalCollected = ref.watch(itemsProvider).totalItems;
     // supabaseBootstrapProvider returns bool directly.
     final supabaseInitialized = ref.read(supabaseBootstrapProvider);
 
@@ -112,8 +112,8 @@ ProviderContainer _makeContainer({
 }) {
   final container = ProviderContainer(
     overrides: [
-      inventoryProvider.overrideWith(
-        () => _MockInventoryNotifier(collectionCount),
+      itemsProvider.overrideWith(
+        () => _MockItemsNotifier(collectionCount),
       ),
       supabaseBootstrapProvider.overrideWithValue(supabaseInitialized),
       upgradePromptProvider.overrideWith(
@@ -145,8 +145,8 @@ Future<ProviderContainer> _pumpSanctuaryScreen(
 }) async {
   final container = ProviderContainer(
     overrides: [
-      inventoryProvider.overrideWith(
-        () => _MockInventoryNotifier(collectionCount),
+      itemsProvider.overrideWith(
+        () => _MockItemsNotifier(collectionCount),
       ),
       supabaseBootstrapProvider.overrideWithValue(supabaseInitialized),
       speciesServiceProvider.overrideWith(
@@ -177,8 +177,8 @@ Future<ProviderContainer> _pumpPackScreen(
 }) async {
   final container = ProviderContainer(
     overrides: [
-      inventoryProvider.overrideWith(
-        () => _MockInventoryNotifier(collectionCount),
+      itemsProvider.overrideWith(
+        () => _MockItemsNotifier(collectionCount),
       ),
       supabaseBootstrapProvider.overrideWithValue(supabaseInitialized),
       speciesServiceProvider.overrideWith(
@@ -277,7 +277,7 @@ void main() {
       expect(container.read(upgradePromptProvider).hasBeenShown, isTrue);
 
       // Simulate more species collected — triggers reactive rebuild.
-      (container.read(inventoryProvider.notifier) as _MockInventoryNotifier)
+      (container.read(itemsProvider.notifier) as _MockItemsNotifier)
           .setCount(10);
 
       final state = container.read(upgradePromptProvider);

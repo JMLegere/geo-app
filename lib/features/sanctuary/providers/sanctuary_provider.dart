@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 
@@ -97,7 +97,7 @@ class SanctuaryNotifier extends Notifier<SanctuaryState> {
     final speciesService = ref.watch(speciesServiceProvider);
 
     // Listen to inventory changes to re-group species.
-    ref.listen(inventoryProvider, (_, next) {
+    ref.listen(itemsProvider, (_, next) {
       _updateFromInventory(next);
     });
 
@@ -107,7 +107,7 @@ class SanctuaryNotifier extends Notifier<SanctuaryState> {
     });
 
     // Read inventory + player for initial state (listen handles ongoing).
-    final inventoryState = ref.read(inventoryProvider);
+    final inventoryState = ref.read(itemsProvider);
     final playerState = ref.read(playerProvider);
 
     return _buildState(
@@ -122,7 +122,7 @@ class SanctuaryNotifier extends Notifier<SanctuaryState> {
     state = state.copyWith(activeTab: tab);
   }
 
-  void _updateFromInventory(InventoryState inventoryState) {
+  void _updateFromInventory(ItemsState inventoryState) {
     final speciesService = ref.read(speciesServiceProvider);
     final newState = _buildState(
       allSpecies: speciesService.all,

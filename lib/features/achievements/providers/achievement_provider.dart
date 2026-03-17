@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/state/inventory_provider.dart';
+import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/achievements/models/achievement.dart';
 import 'package:earth_nova/features/achievements/models/achievement_state.dart';
 import 'package:earth_nova/features/achievements/services/achievement_service.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
-import 'package:earth_nova/features/restoration/providers/restoration_provider.dart';
+import 'package:earth_nova/features/world/providers/restoration_provider.dart';
 
 // ---------------------------------------------------------------------------
 // AchievementNotification state + notifier
@@ -107,14 +107,14 @@ class AchievementNotifier extends Notifier<AchievementsState> {
   /// Re-evaluates all achievements using current provider state.
   ///
   /// Builds an [AchievementContext] from [playerProvider],
-  /// [inventoryProvider], and [restorationProvider], then calls the pure
+  /// [itemsProvider], and [restorationProvider], then calls the pure
   /// service to compute new progress. Any newly unlocked achievements trigger
   /// a toast notification via [achievementNotificationProvider].
   ///
   /// Pass [now] in tests to keep timestamps deterministic.
   void checkAchievements({DateTime? now}) {
     final playerState = ref.read(playerProvider);
-    final inventoryState = ref.read(inventoryProvider);
+    final inventoryState = ref.read(itemsProvider);
     final restorationState = ref.read(restorationProvider);
     final speciesService = ref.read(speciesServiceProvider);
 

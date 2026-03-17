@@ -1,6 +1,6 @@
 import 'package:geobase/geobase.dart' show Geographic;
 
-import 'package:earth_nova/core/cells/event_resolver.dart';
+import 'package:earth_nova/features/world/services/event_resolver.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/fog_state.dart';

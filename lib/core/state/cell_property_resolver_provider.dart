@@ -1,11 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/core/cells/cell_property_resolver.dart';
+import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
 import 'package:earth_nova/core/cells/country_resolver.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart';
 import 'package:earth_nova/core/state/country_resolver_provider.dart';
-import 'package:earth_nova/features/biome/providers/habitat_service_provider.dart';
-import 'package:earth_nova/features/biome/services/biome_feature_index.dart';
+import 'package:earth_nova/features/world/providers/habitat_service_provider.dart';
+import 'package:earth_nova/features/world/services/biome_feature_index.dart';
 
 /// Default [ContinentLookup] used while [CountryResolver] asset is loading.
 ///

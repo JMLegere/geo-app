@@ -4,7 +4,7 @@
 /// to prove the fog system is completely network-independent.
 library;
 
-import 'package:earth_nova/core/cells/voronoi_cell_service.dart';
+import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
@@ -15,18 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 // Test helpers
 // ---------------------------------------------------------------------------
 
-/// A small Voronoi grid centred on the SF Bay Area.
-/// 5×5 = 25 cells — small enough for fast tests, realistic enough to be
-/// meaningful. The seed is fixed so the cell layout is deterministic.
-VoronoiCellService makeSmallCellService() => VoronoiCellService(
-      minLat: 37.60,
-      maxLat: 37.90,
-      minLon: -122.55,
-      maxLon: -122.20,
-      gridRows: 5,
-      gridCols: 5,
-      seed: 42,
-    );
+/// LazyVoronoiCellService centred on the SF Bay Area for fog integration tests.
+LazyVoronoiCellService makeSmallCellService() => LazyVoronoiCellService();
 
 /// Centre of the bounding box — guaranteed to be inside some cell.
 const double kCentLat = 37.75;
@@ -38,7 +28,7 @@ const double kCentLon = -122.375;
 
 void main() {
   group('Offline Fog System', () {
-    late VoronoiCellService cellService;
+    late LazyVoronoiCellService cellService;
     late FogStateResolver resolver;
 
     setUp(() {
@@ -48,19 +38,12 @@ void main() {
 
     tearDown(() => resolver.dispose());
 
-    // ── VoronoiCellService basic sanity ─────────────────────────────────
+    // ── LazyVoronoiCellService basic sanity ──────────────────────────────
 
-    test('VoronoiCellService creates correct cell count', () {
-      expect(cellService.cellCount, equals(25)); // 5×5
-    });
-
-    test('getCellId returns valid cell ID string', () {
+    test('getCellId returns valid v_{row}_{col} cell ID string', () {
       final id = cellService.getCellId(kCentLat, kCentLon);
-      expect(int.tryParse(id), isNotNull,
-          reason: 'Cell IDs should be numeric strings');
-      final idx = int.parse(id);
-      expect(idx, greaterThanOrEqualTo(0));
-      expect(idx, lessThan(25));
+      expect(id, startsWith('v_'),
+          reason: 'LazyVoronoi cell IDs have v_{row}_{col} format');
     });
 
     test('getCellId is deterministic for same coordinates', () {
@@ -91,13 +74,12 @@ void main() {
 
     // ── FogStateResolver: initial state ──────────────────────────────────
 
-    test('all cells start as undetected before any location update', () {
-      // No update yet — every cell should resolve to undetected or unexplored
-      // (unexplored if within 50 km detection radius, but with no player
-      // position recorded yet, distanceToCell → infinity → undetected).
-      for (int i = 0; i < cellService.cellCount; i++) {
-        expect(resolver.resolve(i.toString()), equals(FogState.undetected));
-      }
+    test('arbitrary cell resolves as undetected before any location update',
+        () {
+      // No update yet — a cell far from any player position should be undetected.
+      final farCellId =
+          cellService.getCellId(0.0, 0.0); // equator/prime meridian
+      expect(resolver.resolve(farCellId), equals(FogState.undetected));
     });
 
     test('currentCellId is null before any location update', () {
@@ -143,15 +125,16 @@ void main() {
       }
     });
 
-    test('non-adjacent cells resolve as unexplored within detection radius', () {
+    test('non-adjacent cells resolve as unexplored within detection radius',
+        () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final currentId = resolver.currentCellId!;
       final neighbors = resolver.currentNeighborIds;
 
-      // Find a cell that is NOT current and NOT a direct neighbor
-      // but IS within the detection radius.
-      for (int i = 0; i < cellService.cellCount; i++) {
-        final id = i.toString();
+      // Use ring-2 cells (2 hops away) to find cells not in the direct neighbor
+      // set but still within the detection radius.
+      final ring2 = cellService.getCellsInRing(currentId, 2);
+      for (final id in ring2) {
         if (id == currentId) continue;
         if (neighbors.contains(id)) continue;
 
@@ -187,7 +170,8 @@ void main() {
       expect(stateAfterLeaving, isNot(equals(FogState.observed)),
           reason: 'Cell must not remain "observed" after player leaves');
       // Adjacent to new current cell → concealed; this is correct per priority table.
-      expect(stateAfterLeaving, anyOf(equals(FogState.concealed), equals(FogState.hidden)));
+      expect(stateAfterLeaving,
+          anyOf(equals(FogState.concealed), equals(FogState.hidden)));
     });
 
     test('visited cell resolves as hidden when player moves 2 cells away', () {
@@ -222,7 +206,8 @@ void main() {
 
     // ── FogStateResolver: frontier cells are unexplored ──────────────────
 
-    test('frontier cells not adjacent to current cell resolve as unexplored', () {
+    test('frontier cells not adjacent to current cell resolve as unexplored',
+        () {
       // After visiting ONE cell, all frontier cells are also neighbors of that
       // cell (and therefore resolve as concealed, not unexplored). To expose
       // true unexplored frontier cells we need at least 2 visited cells so
@@ -314,7 +299,9 @@ void main() {
       var prevId = resolver.currentCellId!;
 
       // Walk through neighbors greedily until we have 3+ visited cells.
-      for (int step = 0; step < 5 && resolver.visitedCellIds.length < 3; step++) {
+      for (int step = 0;
+          step < 5 && resolver.visitedCellIds.length < 3;
+          step++) {
         final neighbors = cellService.getNeighborIds(prevId);
         final unvisited = neighbors
             .where((n) => !resolver.visitedCellIds.contains(n))
@@ -366,8 +353,7 @@ void main() {
 
       resolver2.loadVisitedCells(visited);
 
-      expect(events, isEmpty,
-          reason: 'loadVisitedCells must not emit events');
+      expect(events, isEmpty, reason: 'loadVisitedCells must not emit events');
     });
 
     // ── FogState ordering / values ────────────────────────────────────────

@@ -4,12 +4,12 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
-import 'package:earth_nova/core/game/game_coordinator.dart';
+import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/engine/main_thread_engine_runner.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
-import 'package:earth_nova/core/species/stats_service.dart';
+import 'package:earth_nova/features/items/services/stats_service.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — minimal deterministic grid
