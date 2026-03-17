@@ -33,6 +33,9 @@ class ObservabilityBuffer {
     }
   }
 
+  /// No-op on web — local SQLite event persistence is native-only.
+  void setDatabase(dynamic db) {}
+
   void start() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 30), (_) => flush());
