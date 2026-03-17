@@ -99,8 +99,8 @@ When `gameCoordinatorProvider` initializes (first access from MapScreen):
 gameCoordinatorProvider.build()
   → read(authProvider)
     ├─ userId available → hydrateAndStart(userId)
-    │   → itemRepo.getItemsByUser(userId)
-    │     → inventoryProvider.loadItems(items)
+     │   → itemRepo.getItemsByUser(userId)
+     │     → itemsProvider.loadItems(items)
     │     → discoveryService.markCollected() per item
     │     → startLoop() [locationService.start() + coordinator.start()]
     └─ auth still loading → ref.listen(authProvider)
@@ -108,7 +108,7 @@ gameCoordinatorProvider.build()
         └─ unauthenticated → startLoop() without hydration
 ```
 
-**Critical**: `loadItems()` replaces inventory state entirely. Game loop must start AFTER hydration to prevent race condition where discoveries are wiped.
+**Critical**: `loadItems()` replaces items state entirely. Game loop must start AFTER hydration to prevent race condition where discoveries are wiped.
 
 ## Glossary
 

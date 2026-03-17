@@ -56,7 +56,7 @@ All domain models, database schema, and persistence contracts.
 
 All models are immutable with manual `toJson()`/`fromJson()`. No code generation (no freezed).
 
-### Species JSON Format (assets/species_data.json)
+### Species Data Format (assets/species.db)
 
 32,752 records. Each entry:
 
@@ -71,7 +71,7 @@ All models are immutable with manual `toJson()`/`fromJson()`. No code generation
 }
 ```
 
-Loaded at startup by `SpeciesDataLoader`. Parsed into `List<FaunaDefinition>`.
+Loaded from pre-compiled `assets/species.db` via `SpeciesRepository`. Queried on demand, cached in `SpeciesCache`.
 
 ### ESA WorldCover → Habitat Mapping
 
@@ -269,7 +269,7 @@ Game event (discovery, cell visit, profile update)
 - `SyncValidationRejectedException` — thrown by `validateEncounter()` → permanent rejection
 - `SyncRejectedException` — caught by QueueProcessor → marks entry rejected → triggers rollback
 
-**Rollback:** Rejected item instances are removed from in-memory `InventoryNotifier` and deleted from SQLite. Cell progress and profile rejections are logged only (server reconciliation on next full sync).
+**Rollback:** Rejected item instances are removed from in-memory `ItemsNotifier` and deleted from SQLite. Cell progress and profile rejections are logged only (server reconciliation on next full sync).
 
 ### Startup Hydration
 
@@ -278,15 +278,15 @@ On app start, `gameCoordinatorProvider` hydrates inventory from SQLite before st
 ```
 Auth settles (userId available)
   → itemInstanceRepositoryProvider.getItemsByUser(userId)
-    → inventoryProvider.notifier.loadItems(items)
+    → itemsProvider.notifier.loadItems(items)
     → discoveryService.markCollected() for each item
       → startLoop()
 ```
 
-**Race condition prevention**: `loadItems()` replaces inventory state entirely. The game loop must NOT start until hydration completes — a discovery during the race window would be wiped by the subsequent `loadItems()` call.
+**Race condition prevention**: `loadItems()` replaces items state entirely. The game loop must NOT start until hydration completes — a discovery during the race window would be wiped by the subsequent `loadItems()` call.
 
 **Full hydration** (Phase 3):
-1. Load items from SQLite via `ItemInstanceRepository` → seed `InventoryNotifier`
+1. Load items from SQLite via `ItemInstanceRepository` → seed `ItemsNotifier`
 2. Load cell progress from SQLite via `CellProgressRepository` → count observed cells → seed `PlayerNotifier.cellsObserved`
 3. Load player profile from SQLite via `ProfileRepository` → seed `PlayerNotifier` (streaks, distance)
 4. Mark collected items in `DiscoveryService`
