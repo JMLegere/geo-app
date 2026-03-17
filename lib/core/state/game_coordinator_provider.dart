@@ -63,7 +63,10 @@ import 'package:earth_nova/features/sync/services/enrichment_service.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/enrichment_consumer.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
 ///
@@ -639,6 +642,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Phase 1: SQLite → providers → markHydrated() → startLoop().
     rehydrateData(userId).then((_) async {
+      // Warm species cache for cells already in the cell properties cache.
+      // Uses the habitats/continent from the first resolved cell property;
+      // subsequent warm-ups fire automatically when the player moves.
+      final speciesCache = ref.read(speciesCacheProvider);
+      if (!speciesCache.isEmpty) {
+        final cachedProps = coordinator.cellPropertiesCache.values;
+        if (cachedProps.isNotEmpty) {
+          final first = cachedProps.first;
+          speciesCache.warmUp(
+            habitats: first.habitats,
+            continent: first.continent,
+          );
+        } else {
+          // No cached cells yet — warm default habitats for a common area.
+          speciesCache.warmUp(
+            habitats: {Habitat.forest, Habitat.plains},
+            continent: Continent.northAmerica,
+          );
+        }
+      }
+
       // Restore last known position before starting the game loop.
       // This ensures the map and keyboard service start at the player's
       // previous location instead of the hardcoded Fredericton default.

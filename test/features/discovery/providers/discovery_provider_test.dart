@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/continent.dart';
@@ -5,7 +7,6 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
-import 'package:earth_nova/core/species/species_data_loader.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 
@@ -290,7 +291,12 @@ void main() {
         overrides: [
           speciesServiceProvider.overrideWithValue(
             SpeciesService(
-                SpeciesDataLoader.fromJsonString(kSpeciesFixtureJson)),
+              (jsonDecode(kSpeciesFixtureJson) as List)
+                  .map((e) =>
+                      FaunaDefinition.fromJson(e as Map<String, dynamic>))
+                  .where((d) => d.rarity != null)
+                  .toList(),
+            ),
           ),
         ],
       );

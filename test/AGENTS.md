@@ -58,7 +58,7 @@ Defined per-file (not shared). Each test file has its own factories.
 | `offline_fog_test.dart` | Fog state transitions through all 5 states |
 | `offline_discovery_test.dart` | Species encounter events: roll → emit → collect |
 | `offline_audit_test.dart` | Data consistency: no orphaned records, all FK valid |
-| `offline_hydration_test.dart` | Inventory hydration: SQLite → repo → InventoryNotifier, race safety, restart persistence |
+| `offline_hydration_test.dart` | Items hydration: SQLite → repo → ItemsNotifier, race safety, restart persistence |
 | `enrichment_merge_test.dart` | Enrichment merge into species service, graceful degradation without enrichments |
 | `write_queue_integration_test.dart` | Write queue: enqueue → read → confirm → reject → increment → stale cleanup |
 
@@ -87,13 +87,20 @@ Defined per-file (not shared). Each test file has its own factories.
 | `test/core/cells/country_resolver_test.dart` | 44 | Country→continent resolution, bbox filter, ray-casting, fallback |
 | `test/core/cells/event_resolver_test.dart` | 11 | Deterministic event assignment, ~12% rate, equal weights |
 | `test/core/cells/cell_property_resolver_test.dart` | 10 | Habitat+climate+continent integration, mock lookups |
-| `test/core/game/game_coordinator_test.dart` | 9 (cell group) | Cell property resolution in game tick, cache, callbacks |
+| `test/core/engine/game_coordinator_test.dart` | 9 (cell group) | Cell property resolution in game tick, cache, callbacks |
 | `test/core/species/species_service_test.dart` | ~19 (event group) | Migration species, nesting site, climate preference, empty pools |
 | `test/features/discovery/services/discovery_service_test.dart` | 7 (event group) | cellPropertiesLookup integration, event→encounter replacement |
 | `test/features/sync/services/location_enrichment_service_test.dart` | 12 | Null client no-op, dedup, callback wiring, dispose safety, AdminLevel parsing |
 | `test/features/map/utils/cell_property_geojson_builder_test.dart` | 16 | Icon visibility rules, GeoJSON Point features, offsets, fog filtering, icon ID naming |
 | `test/features/map/utils/territory_border_geojson_builder_test.dart` | 19 | Border fill BFS, border lines shared-edge detection, admin level stacking, color generation, unmapped neighbor handling |
 
+## Items Tests
+
+| File | Tests | What it covers |
+|------|-------|---------------|
+| `test/features/items/providers/items_provider_test.dart` | — | `ItemsNotifier` (formerly `InventoryNotifier`) hydration, state transitions |
+| `test/features/items/services/stats_service_test.dart` | — | `StatsService` stat rolling, weight rolling (moved from `test/core/species/`) |
+
 ## Coverage Gaps
 
-No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback), `features/map/utils/map_icon_renderer.dart` (requires Flutter Canvas — widget test needed).
+No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback), `features/map/utils/map_icon_renderer.dart` (requires Flutter Canvas — widget test needed), `features/world/`, `features/calendar/`.

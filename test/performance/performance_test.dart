@@ -11,11 +11,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/species/species_data_loader.dart';
+import 'package:earth_nova/core/species/species_repository.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/features/world/services/biome_feature_index.dart';
 import 'package:earth_nova/features/world/services/biome_service.dart';
@@ -29,36 +30,44 @@ Duration timeSync(void Function() fn) {
   return sw.elapsed;
 }
 
+/// Helper: opens the species SQLite DB directly from the assets directory.
+SpeciesRepository _openSpeciesDb() {
+  final db = sqlite3.open('assets/species.db', mode: OpenMode.readOnly);
+  return SpeciesRepository(db);
+}
+
 void main() {
   // ── Shared state loaded once ──────────────────────────────────────────────
 
-  late String speciesJson;
   late String biomeJson;
 
   setUpAll(() {
-    speciesJson = File('assets/species_data.json').readAsStringSync();
     biomeJson = File('assets/biome_features.json').readAsStringSync();
   });
 
   // =========================================================================
-  // 1. Species Data Loading — 33k records from 6 MB JSON
+  // 1. Species Data Loading — 33k records from SQLite DB
   // =========================================================================
 
   group('Species data loading (33k records)', () {
-    test('parses 33k species JSON in under 5 seconds', () {
+    test('loads 33k species from SQLite in under 5 seconds', () async {
+      final repo = _openSpeciesDb();
       late List records;
-      final elapsed = timeSync(() {
-        records = SpeciesDataLoader.fromJsonString(speciesJson);
-      });
+      final sw = Stopwatch()..start();
+      records = await repo.getAll();
+      sw.stop();
+      repo.dispose();
 
       expect(records.length, greaterThanOrEqualTo(30000),
           reason: 'Full dataset should have 30k+ records');
-      expect(elapsed.inMilliseconds, lessThan(5000),
-          reason: 'Parsing 33k species took ${elapsed.inMilliseconds}ms');
+      expect(sw.elapsedMilliseconds, lessThan(5000),
+          reason: 'Loading 33k species took ${sw.elapsedMilliseconds}ms');
     });
 
-    test('builds SpeciesService indices in under 3 seconds', () {
-      final records = SpeciesDataLoader.fromJsonString(speciesJson);
+    test('builds SpeciesService indices in under 3 seconds', () async {
+      final repo = _openSpeciesDb();
+      final records = await repo.getAll();
+      repo.dispose();
 
       late SpeciesService service;
       final elapsed = timeSync(() {
@@ -78,8 +87,10 @@ void main() {
   group('Species lookup performance', () {
     late SpeciesService service;
 
-    setUpAll(() {
-      final records = SpeciesDataLoader.fromJsonString(speciesJson);
+    setUpAll(() async {
+      final repo = _openSpeciesDb();
+      final records = await repo.getAll();
+      repo.dispose();
       service = SpeciesService(records);
     });
 
@@ -439,14 +450,22 @@ void main() {
   // =========================================================================
 
   group('End-to-end discovery pipeline', () {
+    late SpeciesService endToEndSpeciesService;
+
+    setUpAll(() async {
+      final repo = _openSpeciesDb();
+      final records = await repo.getAll();
+      repo.dispose();
+      endToEndSpeciesService = SpeciesService(records);
+    });
+
     test(
         'full pipeline (locate → biome → species → loot) completes in under 50ms',
         () {
       final cellService = LazyVoronoiCellService();
       final biomeIndex = BiomeFeatureIndex.load(biomeJson);
       final habitatService = HabitatService.withFeatureIndex(biomeIndex);
-      final records = SpeciesDataLoader.fromJsonString(speciesJson);
-      final speciesService = SpeciesService(records);
+      final speciesService = endToEndSpeciesService;
 
       // Warm up Voronoi neighbor cache.
       final warmupId = cellService.getCellId(45.9, -66.6);

@@ -8,25 +8,22 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 ### cells/
 
-**Purpose**: Cell geometry, spatial queries, and cell property resolution. Abstracts H3 and Voronoi implementations behind a common interface.
+**Purpose**: Cell geometry and spatial queries. Abstracts Voronoi implementation behind a common interface.
 
 **Public API**:
 - `CellService` interface: `getCellId(lat, lon)`, `getCellCenter(cellId)`, `getCellBoundary(cellId)`, `getNeighborIds(cellId)`, `getCellsInRing(cellId, k)`, `getCellsAroundLocation(lat, lon, k)`, `cellEdgeLengthMeters`, `systemName`
 - `LazyVoronoiCellService`: Infinite-world Voronoi with lazy seed materialization. Cell IDs: `"v_{row}_{col}"`. ~180m median diameter.
-- `H3CellService`: H3 hexagons at resolution 9 (~174m edge length). Cell IDs: hex BigInt strings.
 - `CellCache`: Decorator that memoizes center/boundary/neighbor/ring lookups. Does NOT cache `getCellId()`.
-- `CellPropertyResolver`: Synchronous cell property resolution — `resolve(cellId, lat, lon)` → `CellProperties`. Uses `HabitatLookup` + `ContinentLookup` interfaces.
-- `EventResolver`: Static `resolve(dailySeed, cellId)` → `CellEvent?`. Deterministic via SHA-256, ~12% hit rate.
 - `CountryResolver`: `resolve(lat, lon)` → `Continent`. Ray-casting against bundled Natural Earth 1:110m country polygons. Implements `ContinentLookup`.
 
 **Conventions**:
-- Cell IDs are opaque strings (H3 uses hex strings, Voronoi uses `"v_{row}_{col}"`)
+- Cell IDs are opaque strings. Voronoi uses `"v_{row}_{col}"`.
 - `getCellBoundary()` returns ordered polygon vertices, does NOT repeat first vertex
 - `getCellsInRing(cellId, k: 0)` returns a list containing only `cellId`
-- `getCellsInRing(cellId, k: 1)` returns the 6 immediate neighbors (H3) or nearest Voronoi cells
+- `getCellsInRing(cellId, k: 1)` returns nearest Voronoi cells
 - Strategy pattern: inject via `cellServiceProvider` (currently `CellCache(LazyVoronoiCellService(...))`)
-- `CellPropertyResolver.resolve()` is synchronous — safe to call in game tick
 - `CountryResolver.load(jsonString)` factory — loaded by `countryResolverProvider` (FutureProvider)
+- `CellPropertyResolver` and `EventResolver` moved to `features/world/`
 
 ---
 
@@ -110,9 +107,9 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 ---
 
-### game/
+### engine/
 
-**Purpose**: Central game logic coordinator. Pure Dart — no Flutter, no Riverpod dependency.
+**Purpose**: Central game logic coordinator. Pure Dart — no Flutter, no Riverpod dependency. (Formerly `game/`.)
 
 **Public API**:
 - `GameCoordinator`: `start(gpsStream, discoveryStream)`, `stop()`, `dispose()`, `updatePlayerPosition(lat, lon)`, `onRawGpsUpdate` stream
@@ -128,7 +125,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - Output via callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) — wired by `gameCoordinatorProvider`.
 - `onRawGpsUpdate` uses broadcast StreamController with `sync: true`.
 - `GpsError` and `GpsPermissionResult` mirror feature-layer enums to avoid core→features dependency.
-- Discovery processing: rolls intrinsic affix via StatsService, creates ItemInstance with UUID. When enrichment includes `AnimalSize`, also rolls `weightGrams` via `StatsService.rollWeightGrams()` and adds `size` + `weightGrams` to intrinsic affix values map.
+- Discovery processing: rolls intrinsic affix via `StatsService` (now in `features/items/services/`), creates ItemInstance with UUID. When enrichment includes `AnimalSize`, also rolls `weightGrams` via `StatsService.rollWeightGrams()` and adds `size` + `weightGrams` to intrinsic affix values map.
 - `enrichedStatsLookup` callback type: `({int speed, int brawn, int wit, AnimalSize? size})? Function(String definitionId)?`
 
 ---
@@ -209,16 +206,19 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Public API**:
 - `SpeciesService`: `getSpeciesForCell(cellId, habitats, continent, {required dailySeed, encounterSlots})`, `rollMultiple(LootTable, int n, String seed)`, `getSpeciesForMigration(habitats, nativeContinent, nativeClimate, dailySeed, cellId)`, `getSpeciesForNestingSite(habitats, continent, dailySeed, cellId)`
 - `LootTable<T>`: Generic weighted random selection. `add(T item, int weight)`, `roll(String seed)`.
-- `SpeciesDataLoader`: `loadSpeciesData()` returns `Future<List<FaunaDefinition>>` from `assets/species_data.json`.
+- `SpeciesRepository`: SQLite-backed species store. `getCandidates(habitats, continent)`, `getAll()`, `count()`. Primary data path.
+- `SpeciesCache`: In-memory cache over `SpeciesRepository`. Used by `SpeciesService.fromCache()`.
 - `ContinentResolver`: `getContinent(Geographic)` uses bounding boxes. Africa split at 20°E.
+
+**Note**: `StatsService` moved to `features/items/services/`. See `features/items/AGENTS.md`.
 
 **Conventions**:
 - **Species encounters are deterministic by daily seed + cell ID.** Same cell + same day = same species. Different day = different species. Seed format: `"${dailySeed}_${cellId}"`.
 - `rollMultiple(table, n, seed)` uses `"${baseSeed}_$attempt"` for uniqueness across rolls
 - `maxAttempts = n * 10` to avoid infinite loops on small tables
-- `SpeciesDataLoader` silently skips records with unknown habitats or continents (logs warning, continues)
+- `SpeciesRepository` silently skips rows with unknown habitats, continents, or IUCN statuses
 - `ContinentResolver` bounding boxes: Africa split at 20°E (west=Africa, east=Africa), Europe/Asia split at 60°E
-- Species data is 33k IUCN records in `assets/species_data.json`
+- Species data is 33k IUCN records in `assets/species.db` (pre-compiled SQLite; source JSON at `assets/species_data.json`)
 
 ---
 
@@ -231,8 +231,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
 - `playerProvider`: `NotifierProvider<PlayerNotifier, PlayerState>` — streaks, distance, cells observed
-- `inventoryProvider`: `NotifierProvider<InventoryNotifier, InventoryState>` — item instances by status
 - `seasonProvider`: `NotifierProvider<SeasonNotifier, Season>` — current season
+- **Note**: `inventoryProvider`/`InventoryNotifier`/`InventoryState` renamed to `itemsProvider`/`ItemsNotifier`/`ItemsState` and moved to `features/items/providers/` — see `features/items/AGENTS.md`
 - `fogResolverProvider`: `Provider<FogStateResolver>` — singleton fog computation (watches cellServiceProvider)
 - `cellServiceProvider`: `Provider<CellService>` — singleton CellCache(LazyVoronoiCellService)
 - `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
@@ -279,12 +279,12 @@ species/  (depends on: models/, cells/)
   ↓
 services/  (depends on: models/, shared/)
   ↓
-game/  (depends on: fog/, models/, species/, cells/)
+engine/  (depends on: fog/, models/, species/, cells/)
   ↓
-state/  (depends on: models/, persistence/, fog/, game/, services/, cells/, riverpod)
+state/  (depends on: models/, persistence/, fog/, engine/, services/, cells/, riverpod)
 ```
 
-External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells), `drift` (ORM), `riverpod` (state).
+External dependencies: `geobase` (Geographic type), `drift` (ORM), `riverpod` (state).
 
 ---
 
@@ -340,7 +340,7 @@ External dependencies: `geobase` (Geographic type), `h3_flutter_plus` (H3 cells)
 - `CellPropertyResolver.resolve()` is **synchronous and instant** — safe to call in the ~10Hz game tick
 - Cell properties are globally shared (not per-user) — no userId in SQLite table or cache
 - `CountryResolver` loaded async (FutureProvider) — `cellPropertyResolverProvider` falls back to legacy `ContinentResolver` during loading
-- `HabitatService implements HabitatLookup` — bridged in features/biome/. Falls back to `DefaultHabitatLookup` (returns plains) during loading.
+- `HabitatService implements HabitatLookup` — bridged in features/world/. Falls back to `DefaultHabitatLookup` (returns plains) during loading.
 - Events (migration, nesting site) are NOT persisted — deterministic from dailySeed + cellId, recomputable
 - `cellPropertiesLookup` on DiscoveryService is a mutable callback field, wired by gameCoordinatorProvider after construction. Avoids circular dependency.
 

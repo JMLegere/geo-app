@@ -41,6 +41,7 @@ dependencies:
   web: ^1.1.1
   shared_preferences: ^2.3.0
   uuid: ^4.5.3
+  sqlite3: ^2.4.0
 
 dev_dependencies:
   flutter_test:
