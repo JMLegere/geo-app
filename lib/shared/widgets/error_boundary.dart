@@ -62,9 +62,14 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       // so stack traces reach DebugLogBuffer before we swap UI.
       _previousOnError?.call(details);
 
-      // Schedule state update — cannot call setState during build.
+      // Schedule state update via post-frame callback — calling setState
+      // directly here crashes if the error fires during a build phase.
       if (mounted) {
-        setState(() => _errorDetails = details);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() => _errorDetails = details);
+          }
+        });
       }
     };
   }
