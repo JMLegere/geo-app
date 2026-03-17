@@ -87,18 +87,50 @@ class ObservabilityBuffer {
     });
   }
 
+  /// Max entries per flush. Larger batches are chunked to avoid timeouts.
+  static const int _maxBatchSize = 50;
+
+  /// Max consecutive failures before dropping the batch (prevents infinite retry).
+  int _consecutiveFailures = 0;
+  static const int _maxRetries = 3;
+
   Future<void> flush() async {
     if (_flushing || _buffer.isEmpty) return;
     _flushing = true;
     try {
-      final batch = List<Map<String, dynamic>>.of(_buffer);
-      _buffer.clear();
+      // Chunk to avoid timeout on large batches.
+      final batch = _buffer.length <= _maxBatchSize
+          ? List<Map<String, dynamic>>.of(_buffer)
+          : List<Map<String, dynamic>>.of(_buffer.take(_maxBatchSize).toList());
+      _buffer.removeRange(0, batch.length);
+
       await _flusher(batch).timeout(const Duration(seconds: 5), onTimeout: () {
-        debugPrint('[Observability] flush timed out (${batch.length} entries)');
-        _buffer.insertAll(0, batch);
+        throw TimeoutException('flush timed out (${batch.length} entries)',
+            const Duration(seconds: 5));
       });
+      _consecutiveFailures = 0;
+    } on TimeoutException {
+      _consecutiveFailures++;
+      if (_consecutiveFailures >= _maxRetries) {
+        debugPrint(
+            '[Observability] flush failed $_consecutiveFailures times — dropping ${_buffer.length} entries');
+        _buffer.clear();
+        _consecutiveFailures = 0;
+      } else {
+        debugPrint(
+            '[Observability] flush timed out (attempt $_consecutiveFailures/$_maxRetries)');
+      }
     } catch (e) {
-      debugPrint('[Observability] flush failed: $e');
+      _consecutiveFailures++;
+      if (_consecutiveFailures >= _maxRetries) {
+        debugPrint(
+            '[Observability] flush failed $_consecutiveFailures times — dropping buffer');
+        _buffer.clear();
+        _consecutiveFailures = 0;
+      } else {
+        debugPrint(
+            '[Observability] flush failed (attempt $_consecutiveFailures/$_maxRetries): $e');
+      }
     } finally {
       _flushing = false;
     }
