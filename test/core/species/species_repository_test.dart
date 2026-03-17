@@ -2,6 +2,7 @@ import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
+import 'package:earth_nova/core/species/species_repository_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -10,7 +11,7 @@ import 'package:sqlite3/sqlite3.dart';
 /// Tests run from the project root (flutter test), so the relative path works.
 SpeciesRepository openRealDb() {
   final db = sqlite3.open('assets/species.db', mode: OpenMode.readOnly);
-  return SpeciesRepository(db);
+  return NativeSpeciesRepository(db);
 }
 
 void main() {

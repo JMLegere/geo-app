@@ -17,6 +17,7 @@ import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
+import 'package:earth_nova/core/species/species_repository_native.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/features/world/services/biome_feature_index.dart';
 import 'package:earth_nova/features/world/services/biome_service.dart';
@@ -33,7 +34,7 @@ Duration timeSync(void Function() fn) {
 /// Helper: opens the species SQLite DB directly from the assets directory.
 SpeciesRepository _openSpeciesDb() {
   final db = sqlite3.open('assets/species.db', mode: OpenMode.readOnly);
-  return SpeciesRepository(db);
+  return NativeSpeciesRepository(db);
 }
 
 void main() {
