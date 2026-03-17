@@ -44,42 +44,34 @@ QueryExecutor createDatabaseConnection() {
         check.dispose();
         if (status != 'ok') {
           debugPrint('[connection_web] database corrupt ($status) — wiping');
-          sqlite3.open('/earthnova.db')
-            ..execute('PRAGMA journal_mode=DELETE')
-            ..dispose();
-          // Drop all tables and reset schema version so Drift runs onCreate
-          // on the next open, which recreates all tables fresh.
-          try {
-            final f = sqlite3.open('/earthnova.db');
-            f.execute('DROP TABLE IF EXISTS local_cell_progress_table');
-            f.execute('DROP TABLE IF EXISTS local_item_instance_table');
-            f.execute('DROP TABLE IF EXISTS local_player_profile_table');
-            f.execute('DROP TABLE IF EXISTS local_species_enrichment_table');
-            f.execute('DROP TABLE IF EXISTS local_write_queue_table');
-            f.execute('DROP TABLE IF EXISTS local_cell_properties_table');
-            f.execute('DROP TABLE IF EXISTS local_location_node_table');
-            f.execute('PRAGMA user_version = 0');
-            f.dispose();
-          } catch (_) {}
+          _wipeDatabase(sqlite3);
         }
       } catch (e) {
         debugPrint('[connection_web] integrity check failed ($e) — wiping');
-        try {
-          final f = sqlite3.open('/earthnova.db');
-          f.execute('DROP TABLE IF EXISTS local_cell_progress_table');
-          f.execute('DROP TABLE IF EXISTS local_item_instance_table');
-          f.execute('DROP TABLE IF EXISTS local_player_profile_table');
-          f.execute('DROP TABLE IF EXISTS local_species_enrichment_table');
-          f.execute('DROP TABLE IF EXISTS local_write_queue_table');
-          f.execute('DROP TABLE IF EXISTS local_cell_properties_table');
-          f.execute('DROP TABLE IF EXISTS local_location_node_table');
-          f.execute('PRAGMA user_version = 0');
-          f.dispose();
-        } catch (_) {}
+        _wipeDatabase(sqlite3);
       }
 
       final db = WasmDatabase(sqlite3: sqlite3, path: '/earthnova.db');
       return DatabaseConnection(db);
     }),
   );
+}
+
+void _wipeDatabase(CommonSqlite3 sqlite3) {
+  try {
+    final f = sqlite3.open('/earthnova.db');
+    f.execute('PRAGMA journal_mode=DELETE');
+    f.execute('DROP TABLE IF EXISTS local_cell_progress_table');
+    f.execute('DROP TABLE IF EXISTS local_item_instance_table');
+    f.execute('DROP TABLE IF EXISTS local_player_profile_table');
+    f.execute('DROP TABLE IF EXISTS local_species_enrichment_table');
+    f.execute('DROP TABLE IF EXISTS local_write_queue_table');
+    f.execute('DROP TABLE IF EXISTS local_cell_properties_table');
+    f.execute('DROP TABLE IF EXISTS local_location_node_table');
+    f.execute('DROP TABLE IF EXISTS local_app_events_table');
+    // Also drop Drift's internal tracking tables
+    f.execute('DROP TABLE IF EXISTS _drift_database_version');
+    f.execute('PRAGMA user_version = 0');
+    f.dispose();
+  } catch (_) {}
 }

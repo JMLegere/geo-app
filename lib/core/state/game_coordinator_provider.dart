@@ -105,14 +105,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // Recover previous session data from localStorage (survives jetsam kills).
     final recovered = obs.recover();
     if (recovered.isNotEmpty) {
-      debugPrint('[Observability] recovering ${recovered.length} entries');
+      print('[Observability] recovering ${recovered.length} entries');
       // Replay to debug console so entries are visible locally.
       for (final row in recovered) {
         final cat = row['category'] ?? '';
         final evt = row['event'] ?? '';
         final data = row['data'];
         final ts = row['created_at'] ?? '';
-        debugPrint(
+        print(
           '[RECOVERED] [$ts] $cat/$evt ${data is Map ? data['msg'] ?? data['action'] ?? data : ''}',
         );
         row['session_id'] = 'recovered:${row['session_id'] ?? 'unknown'}';
