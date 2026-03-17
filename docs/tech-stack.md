@@ -116,6 +116,6 @@ Both jobs use `subosito/flutter-action@v2` with Flutter `3.x` channel, `mise` fo
 
 | Asset | Path | Notes |
 |-------|------|-------|
-| Species data | `assets/species_data.json` | 32,752 IUCN records, ~6 MB |
+| Species data | `assets/species.db` | 32,752 IUCN records, pre-compiled SQLite |
 | Fog shader | `shaders/fog.frag` | Fragment shader for fog overlay |
 | App icon | `assets/icon/app_icon.png` | Adaptive icon, dark bg `#0D1B2A` |

@@ -12,10 +12,10 @@
 | Map | `maplibre` by josxha v0.1.2 (NOT `maplibre_gl`) |
 | Persistence | Drift 2.14.0 (SQLite) — local cache + write queue. Supabase = source of truth |
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
-| Cell system | Voronoi (with H3 fallback via `h3_flutter_plus`) |
-| Species data | 32,752 real IUCN records in `assets/species_data.json` (6 MB) |
-| Tests | 1694 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 83 info-level issues |
+| Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
+| Species data | 32,752 real IUCN records in pre-compiled `assets/species.db` (SQLite) |
+| Tests | 1807 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | 131 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
 
@@ -35,48 +35,61 @@ flutter analyze
 
 ## Architecture Overview
 
+> **Target architecture:** See `docs/target-architecture.md` for the definitive design doc (5 pillars, hardware budgets, migration phases).
+
 ```
 lib/
 ├── main.dart                   # ProviderScope → EarthNovaApp → TabShell
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
-│   ├── cells/                  # Spatial indexing (CellService interface + impls)
+│   ├── cells/                  # Spatial indexing (LazyVoronoi, CellCache)
 │   ├── config/                 # SupabaseConfig (env vars)
-│   ├── database/               # Drift ORM (4 tables)
+│   ├── database/               # Drift ORM (5 tables, schema v14)
+│   ├── engine/                 # GameEngine + GameCoordinator (event-driven game loop)
 │   ├── fog/                    # FogStateResolver (computed visibility)
-│   ├── game/                   # GameCoordinator (pure Dart game loop)
-│   ├── models/                 # 19 immutable value objects
-│   ├── persistence/            # Repository pattern (4 repos)
-│   ├── species/                # Loot table, species loader, continent resolver
-│   └── state/                  # Riverpod providers (fog, location, player, inventory, season)
+│   ├── models/                 # 24 immutable value objects
+│   ├── persistence/            # Repository pattern (7 repos)
+│   ├── services/               # DailySeedService, ObservabilityBuffer, DebugLogBuffer
+│   ├── species/                # SpeciesRepository (SQLite), LootTable, SpeciesCache
+│   └── state/                  # Riverpod providers, PersistenceConsumer, EnrichmentConsumer
 ├── features/                   # Feature modules (UI + feature-specific logic)
-│   ├── achievements/           # 🏆 Achievement tracking + toast notifications
+│   ├── achievements/           # 🏆 Milestone tracking + toast notifications
 │   ├── auth/                   # 🔐 Mock auth (swappable to Supabase)
-│   ├── biome/                  # 🌿 ESA land cover → habitat mapping
+│   ├── calendar/               # 📅 Seasons, time-of-day (← was seasonal/)
 │   ├── caretaking/             # 🌱 Daily visit streaks
-│   ├── discovery/              # 🔬 Species encounter events (model in core/models/)
-│   ├── enrichment/             # 🧬 AI enrichment providers (classification pipeline)
-│   ├── location/               # 📍 GPS, simulation, filtering (services only)
-│   ├── map/                    # 🗺️ Map rendering, fog overlay, camera (pure renderer)
-│   ├── navigation/             # 🧭 4-tab shell (Map | Home | Town | Pack)
-│   ├── pack/                   # 🎒 Collection viewer with filters (renamed from journal)
-│   ├── restoration/            # 🏗️ Cell restoration progress
-│   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat (Home tab)
-│   ├── seasonal/               # ❄️ Summer/winter species availability
-│   └── sync/                   # ☁️ Offline-first sync to Supabase
+│   ├── discovery/              # 🔬 Species encounter events
+│   ├── items/                  # 📦 Item creation, inventory, lifecycle
+│   ├── location/               # 📍 GPS, simulation, filtering
+│   ├── map/                    # 🗺️ Map rendering, fog overlay, camera
+│   ├── onboarding/             # 🚀 First-run welcome flow
+│   ├── pack/                   # 🎒 Collection viewer with filters
+│   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
+│   ├── steps/                  # 👣 Pedometer, step-based exploration
+│   ├── sync/                   # ☁️ Offline-first sync, enrichment
+│   └── world/                  # 🌍 Terrain, cell state, restoration (shared state)
 ├── shared/
-│   └── constants.dart          # All game-balance constants (kDetectionRadiusMeters, etc.)
+│   └── constants.dart          # All game-balance constants
 ```
 
-**See also:** `lib/core/AGENTS.md`, `lib/core/game/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/enrichment/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
+### Feature Roles
+
+| Role | Features | What they do |
+|------|----------|-------------|
+| **Inputs** | `location/`, `world/`, `calendar/`, `steps/` | Real-world data that feeds the game loop |
+| **Domain** | `items/` | Item definitions, instances, inventory, lifecycle |
+| **Experiences** | `map/`, `discovery/`, `pack/`, `sanctuary/`, `achievements/`, `caretaking/` | What the player sees and interacts with |
+| **Infrastructure** | `auth/`, `sync/`, `onboarding/` | Identity, persistence, first-run |
+
+**See also:** `lib/core/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/world/AGENTS.md`, `lib/features/calendar/AGENTS.md`, `lib/features/items/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | ~205 (lib/) + 124 (test/) |
-| Total lines | ~34,000 |
-| Largest file | `app_database.g.dart` (1,989 lines — generated) |
+| Dart source files | ~227 (lib/) + 132 (test/) |
+| Total lines | ~38,500 |
+| Largest file | `app_database.g.dart` (~2,300 lines — generated) |
 | Largest feature | `map/` (25 files) |
+| Features | 14 (4 inputs, 1 domain, 6 experiences, 3 infrastructure) |
 
 ---
 
@@ -88,7 +101,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 2. **Deterministic species encounters** — Species for a cell are seeded by `SHA-256(dailySeed + "_" + cellId)`. Same cell + same day = same species. Different day = different species. The daily seed rotates at midnight GMT via server RPC (`ensure_daily_seed()`). Offline fallback: static seed (`offline_no_rotation`) — species don't rotate but encounters still work. Stale seed (>24h server seed) pauses discoveries until refreshed.
 
-3. **Voronoi cells** — The cell system uses Voronoi tessellation (not H3). `CellService` is an abstract interface; H3 exists as a fallback.
+3. **Voronoi cells** — The cell system uses Voronoi tessellation exclusively (`LazyVoronoiCellService`). H3CellService has been deleted. `CellService` remains an abstract interface.
 
 4. **IUCN rarity = loot weights** — 6 IUCN statuses map to 3^x weights: Least Concern (243), Near Threatened (81), Vulnerable (27), Endangered (9), Critically Endangered (3), Extinct (1).
 
@@ -418,6 +431,8 @@ Additional directories:
 | Item | Location | Impact |
 |------|----------|--------|
 | MapLogger has mutable static variables | `lib/features/map/utils/map_logger.dart` | Violates "no global state" constraint |
+| `widget_test.dart` accepts ErrorBoundary fallback as passing | `test/widget_test.dart` | MapLibre doesn't render on headless CI — real map tests require device/emulator |
+| `game_coordinator_provider.dart` still 952 lines | `lib/core/state/game_coordinator_provider.dart` | Remaining code is genuine wiring, not incidental complexity |
 
 ---
 
@@ -447,6 +462,8 @@ When a feature misbehaves:
 3. **Isolate the system** — disable unrelated features to narrow scope
 4. **Check constraints** — verify no scope ceiling violations
 5. **Verify reversibility** — ensure any fix can be toggled off
+
+> **Observability architecture** — the target architecture defines 5 pillars including an Observe pillar (ObservabilityBuffer, DebugLogBuffer, structured log channels). See `docs/target-architecture.md` for the full observability design.
 
 ### Supabase App Logs
 
@@ -551,14 +568,15 @@ Per-directory files providing module-specific patterns, gotchas, and anti-patter
 AGENTS.md files (12 total):
 ├── ./AGENTS.md                              # Root — quick ref, design decisions, forbidden patterns
 ├── lib/core/AGENTS.md                       # Domain models, providers, persistence internals
-├── lib/core/cells/AGENTS.md                 # Voronoi/H3 cell system, CellCache
-├── lib/core/game/AGENTS.md                  # GameCoordinator, dual-position model, game tick
+├── lib/core/cells/AGENTS.md                 # Voronoi cell system, CellCache
 ├── lib/core/species/AGENTS.md               # LootTable, IUCN weights, ContinentResolver
 ├── lib/features/map/AGENTS.md               # Fog overlay, camera, GeoJSON layers
-├── lib/features/navigation/AGENTS.md        # TabShell, tab index provider, web MapVisibility
 ├── lib/features/location/AGENTS.md          # GPS stream, simulation, filtering
 ├── lib/features/discovery/AGENTS.md         # Encounter flow, dual notifier pattern
 ├── lib/features/achievements/AGENTS.md      # Achievement evaluation, toast notifications
+├── lib/features/world/AGENTS.md             # Terrain, cell state, restoration
+├── lib/features/calendar/AGENTS.md          # Seasons, time-of-day
+├── lib/features/items/AGENTS.md             # Item definitions, instances, inventory
 ├── lib/shared/AGENTS.md                     # Constants, shared utilities
 └── test/AGENTS.md                           # Test fixtures, mock patterns, integration suites
 ```

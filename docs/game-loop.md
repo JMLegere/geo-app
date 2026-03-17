@@ -52,7 +52,7 @@ fogResolver.onVisitedCellAdded (sync stream)
     → creates ItemInstance with UUID + dailySeed
     → onItemDiscovered callback
       → discoveryProvider.notifier.showDiscovery()
-      → inventoryProvider.notifier.addItem()
+      → itemsProvider.notifier.addItem()
       → DiscoveryNotificationOverlay toast
 ```
 
