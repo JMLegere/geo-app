@@ -693,6 +693,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         ref.read(stepProvider.notifier).startLiveStream();
       }
 
+      // Track whether SQLite was empty so we know to refresh providers
+      // after Supabase hydration (cold start = fresh browser / cleared storage).
+      final wasEmptyCache = ref.read(itemsProvider).items.isEmpty;
+
       // Phase 2: Fetch from Supabase in background → write to SQLite.
       // Non-blocking. If it fails, cached data is still valid.
       if (_providerDisposed) return;
@@ -704,10 +708,29 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         itemRepo: itemRepo,
         enrichmentRepo: enrichmentRepo,
         obs: obs,
-      ).then((_) {
+      ).then((_) async {
         if (_providerDisposed) return;
 
         obs.event('background_sync_complete', {'user_id': userId});
+
+        // On cold start (empty SQLite), Supabase sync wrote data to SQLite
+        // but providers are still empty. Re-hydrate providers from the
+        // now-populated SQLite cache. Safe because no discoveries can be
+        // in-flight on an empty inventory.
+        if (wasEmptyCache) {
+          debugPrint(
+            '[GameCoordinator] cold start detected — refreshing providers '
+            'from Supabase-hydrated SQLite',
+          );
+          try {
+            await rehydrateData(userId);
+            obs.event('cold_start_rehydration', {'user_id': userId});
+          } catch (e) {
+            debugPrint(
+              '[GameCoordinator] cold start rehydration failed: $e',
+            );
+          }
+        }
 
         // Re-queue enrichment for any fauna in inventory that lacks it.
         // Runs after background sync so enrichment cache includes any
