@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:drift/wasm.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sqlite3/wasm.dart';
 
 /// Cache-busting version for the sqlite3.wasm file.
 ///
@@ -11,41 +12,61 @@ import 'package:flutter/foundation.dart';
 /// pointer even after the fix was deployed.
 const _wasmVersion = '2.9.4';
 
-/// Creates a persistent SQLite database for web via Drift's built-in
-/// [WasmDatabase.open].
+/// Creates a persistent SQLite database for web.
 ///
-/// Drift probes browser capabilities and picks the best storage backend:
-///   OPFS (shared locks) > OPFS (simple) > IndexedDB (shared worker)
-///   > IndexedDB (unsafe) > in-memory.
+/// Strategy: try Drift's [WasmDatabase.open] first (web worker + OPFS).
+/// If that hangs or fails (known issue without COOP/COEP headers — Drift
+/// #3242), fall back to direct WASM loading with IndexedDB persistence.
 ///
-/// Requires two files in the `web/` directory:
-///   - `sqlite3.wasm` — from https://github.com/simolus3/sqlite3.dart/releases
-///   - `drift_worker.js` — from https://github.com/simolus3/drift/releases
-///
-/// Supabase is the source of truth — local data loss is acceptable,
-/// so we let Drift handle storage, corruption, and fallbacks instead
-/// of writing custom integrity checks.
+/// Supabase is the source of truth — local data loss is acceptable.
 QueryExecutor createDatabaseConnection() {
   return DatabaseConnection.delayed(
     Future(() async {
-      final result = await WasmDatabase.open(
-        databaseName: 'earthnova',
-        sqlite3Uri: Uri.parse('sqlite3.wasm?v=$_wasmVersion'),
-        driftWorkerUri: Uri.parse('drift_worker.js'),
-      );
+      // ── Attempt 1: WasmDatabase.open (worker + OPFS) ──────────────
+      debugPrint('[connection_web] attempting WasmDatabase.open (worker)…');
+      try {
+        final result = await WasmDatabase.open(
+          databaseName: 'earthnova',
+          sqlite3Uri: Uri.parse('sqlite3.wasm?v=$_wasmVersion'),
+          driftWorkerUri: Uri.parse('drift_worker.js'),
+        ).timeout(const Duration(seconds: 8));
 
-      if (result.missingFeatures.isNotEmpty) {
         debugPrint(
-          '[connection_web] using ${result.chosenImplementation} '
-          '(missing: ${result.missingFeatures})',
+          '[connection_web] storage: ${result.chosenImplementation}'
+          '${result.missingFeatures.isNotEmpty ? ' (missing: ${result.missingFeatures})' : ''}',
         );
-      } else {
+
+        return result.resolvedExecutor;
+      } catch (e) {
         debugPrint(
-          '[connection_web] storage: ${result.chosenImplementation}',
+          '[connection_web] WasmDatabase.open failed ($e) '
+          '— falling back to direct IndexedDB',
         );
       }
 
-      return result.resolvedExecutor;
+      // ── Attempt 2: Direct WASM + IndexedDB (no worker) ───────────
+      debugPrint('[connection_web] loading sqlite3.wasm directly…');
+      final sqlite3 = await WasmSqlite3.loadFromUrl(
+        Uri.parse('sqlite3.wasm?v=$_wasmVersion'),
+      );
+
+      try {
+        final fs = await IndexedDbFileSystem.open(dbName: 'earthnova_db');
+        sqlite3.registerVirtualFileSystem(fs, makeDefault: true);
+      } catch (e) {
+        debugPrint(
+          '[connection_web] IndexedDB unavailable ($e) '
+          '— falling back to in-memory',
+        );
+        sqlite3.registerVirtualFileSystem(
+          InMemoryFileSystem(),
+          makeDefault: true,
+        );
+      }
+
+      return DatabaseConnection(
+        WasmDatabase(sqlite3: sqlite3, path: '/earthnova.db'),
+      );
     }),
   );
 }
