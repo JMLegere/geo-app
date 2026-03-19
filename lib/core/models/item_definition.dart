@@ -108,6 +108,12 @@ class FaunaDefinition extends ItemDefinition {
   /// Null until enriched or computed.
   final Climate? climate;
 
+  /// 96x96 chibi icon URL. Null until AI enrichment completes.
+  final String? iconUrl;
+
+  /// 512x512 watercolor illustration URL. Null until AI enrichment completes.
+  final String? artUrl;
+
   FaunaDefinition({
     required super.id,
     required super.displayName,
@@ -122,6 +128,8 @@ class FaunaDefinition extends ItemDefinition {
     this.animalClass,
     this.foodPreference,
     this.climate,
+    this.iconUrl,
+    this.artUrl,
   })  : animalType = AnimalType.fromTaxonomicClass(taxonomicClass),
         super(category: ItemCategory.fauna);
 
@@ -155,6 +163,8 @@ class FaunaDefinition extends ItemDefinition {
       climate: json['climate'] != null
           ? Climate.fromString(json['climate'] as String)
           : null,
+      iconUrl: json['icon_url'] as String?,
+      artUrl: json['art_url'] as String?,
     );
   }
 
@@ -168,6 +178,8 @@ class FaunaDefinition extends ItemDefinition {
         if (animalClass != null) 'animalClass': animalClass!.name,
         if (foodPreference != null) 'foodPreference': foodPreference!.name,
         if (climate != null) 'climate': climate!.name,
+        if (iconUrl != null) 'icon_url': iconUrl,
+        if (artUrl != null) 'art_url': artUrl,
       };
 
   /// Fauna always has a scientific name — narrow the nullable base type.
@@ -175,8 +187,7 @@ class FaunaDefinition extends ItemDefinition {
   String get scientificName => super.scientificName!;
 
   @override
-  String toString() =>
-      'FaunaDefinition(id: $id, displayName: $displayName, '
+  String toString() => 'FaunaDefinition(id: $id, displayName: $displayName, '
       'scientificName: $scientificName, rarity: $rarity)';
 }
 
@@ -303,7 +314,8 @@ class FoodDefinition extends ItemDefinition {
   }) : super(category: ItemCategory.food);
 
   @override
-  String toString() => 'FoodDefinition(id: $id, foodType: $foodType, "$displayName")';
+  String toString() =>
+      'FoodDefinition(id: $id, foodType: $foodType, "$displayName")';
 }
 
 // ---------------------------------------------------------------------------

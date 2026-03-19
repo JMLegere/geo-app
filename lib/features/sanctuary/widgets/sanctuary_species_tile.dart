@@ -3,8 +3,10 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 import 'package:earth_nova/shared/widgets/habitat_gradient.dart';
+import 'package:earth_nova/shared/widgets/species_art_image.dart';
 
 /// Compact card displaying a collected species inside a habitat section.
 ///
@@ -42,47 +44,53 @@ class SanctuarySpeciesTile extends StatelessWidget {
         ),
         boxShadow: Shadows.soft,
       ),
-      child: Stack(
+      child: Row(
         children: [
+          // Species icon
+          SpeciesArtImage(
+            artUrl: species.iconUrl,
+            fallbackEmoji: GameIcons.fauna(species),
+            size: 36,
+            borderRadius: Radii.borderMd,
+          ),
+          SizedBox(width: Spacing.sm),
           // Species names
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                species.displayName,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  letterSpacing: -0.1,
-                  height: 1.2,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  species.displayName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    letterSpacing: -0.1,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                species.scientificName,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontStyle: FontStyle.italic,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  letterSpacing: 0.1,
-                  height: 1.3,
+                const SizedBox(height: 3),
+                Text(
+                  species.scientificName,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 0.1,
+                    height: 1.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
-
-          // IUCN rarity badge — top right corner
-          Positioned(
-            top: 0,
-            right: 0,
-            child: RarityBadge(status: species.rarity!),
-          ),
+          SizedBox(width: Spacing.xs),
+          // IUCN rarity badge
+          RarityBadge(status: species.rarity!),
         ],
       ),
     );

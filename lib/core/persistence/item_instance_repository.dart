@@ -33,6 +33,8 @@ class ItemInstanceRepository {
       acquiredInCellId: instance.acquiredInCellId,
       dailySeed: instance.dailySeed,
       status: instance.status.name,
+      iconUrl: instance.iconUrl,
+      artUrl: instance.artUrl,
     );
   }
 
@@ -64,6 +66,8 @@ class ItemInstanceRepository {
       acquiredInCellId: local.acquiredInCellId,
       dailySeed: local.dailySeed,
       status: ItemInstanceStatus.fromString(local.status),
+      iconUrl: local.iconUrl,
+      artUrl: local.artUrl,
     );
   }
 

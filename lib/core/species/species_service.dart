@@ -106,6 +106,8 @@ class SpeciesService {
         animalClass: e.animalClass,
         foodPreference: e.foodPreference,
         climate: e.climate,
+        iconUrl: e.iconUrl,
+        artUrl: e.artUrl,
       );
     }).toList();
   }

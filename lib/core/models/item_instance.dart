@@ -79,6 +79,12 @@ class ItemInstance {
   /// Stored as a JSON array in the database.
   final Set<String> badges;
 
+  /// Instance-level icon override. Null = use species default.
+  final String? iconUrl;
+
+  /// Instance-level illustration override. Null = use species default.
+  final String? artUrl;
+
   /// Null for wild-caught. Set for bred offspring.
   final String? parentAId;
 
@@ -109,6 +115,8 @@ class ItemInstance {
     this.taxonomicClass,
     this.affixes = const [],
     this.badges = const {},
+    this.iconUrl,
+    this.artUrl,
     this.parentAId,
     this.parentBId,
     required this.acquiredAt,
@@ -142,6 +150,8 @@ class ItemInstance {
     String? taxonomicClass,
     List<Affix>? affixes,
     Set<String>? badges,
+    String? iconUrl,
+    String? artUrl,
     String? parentAId,
     String? parentBId,
     DateTime? acquiredAt,
@@ -161,6 +171,8 @@ class ItemInstance {
       taxonomicClass: taxonomicClass ?? this.taxonomicClass,
       affixes: affixes ?? this.affixes,
       badges: badges ?? this.badges,
+      iconUrl: iconUrl ?? this.iconUrl,
+      artUrl: artUrl ?? this.artUrl,
       parentAId: parentAId ?? this.parentAId,
       parentBId: parentBId ?? this.parentBId,
       acquiredAt: acquiredAt ?? this.acquiredAt,

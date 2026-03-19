@@ -6,6 +6,7 @@ import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/habitat_gradient.dart';
+import 'package:earth_nova/shared/widgets/species_art_image.dart';
 import 'package:earth_nova/shared/widgets/prismatic_border.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
@@ -103,10 +104,11 @@ class ItemSlotWidget extends StatelessWidget {
                 children: [
                   // Creature / habitat icon centred
                   Center(
-                    child: Text(
-                      _resolveEmoji(def),
-                      style: const TextStyle(fontSize: 22),
-                      textAlign: TextAlign.center,
+                    child: SpeciesArtImage(
+                      artUrl: item.iconUrl ?? def?.iconUrl,
+                      fallbackEmoji: _resolveEmoji(def),
+                      size: 44,
+                      borderRadius: Radii.borderMd,
                     ),
                   ),
                   // Rarity badge top-right
