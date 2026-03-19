@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/features/sync/services/observable_http_client.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
@@ -25,7 +26,9 @@ import 'package:earth_nova/shared/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SupabaseBootstrap.initialize();
+  await SupabaseBootstrap.initialize(
+    httpClient: ObservableHttpClient(),
+  );
 
   // 1. Create the appropriate AuthService based on Supabase availability.
   final AuthService authService =
@@ -104,12 +107,12 @@ Future<void> main() async {
     return _GlobalErrorFallback(details: details);
   };
 
-  // 6. Mirror debug logs to ObservabilityBuffer every 1s.
+  // 6. Drain DebugLogBuffer pending lines periodically so the ring buffer
+  //    doesn't grow unbounded.  We intentionally do NOT mirror these to
+  //    ObservabilityBuffer — debugPrint output is high-volume text noise
+  //    that drowns structured events in the app_events table.
   Timer.periodic(const Duration(seconds: 1), (_) {
-    final pending = DebugLogBuffer.instance.drainPending();
-    for (final line in pending) {
-      ObservabilityBuffer.instance?.log(line);
-    }
+    DebugLogBuffer.instance.drainPending();
   });
 
   // Flush ObservabilityBuffer on crash/auth events for immediate delivery.

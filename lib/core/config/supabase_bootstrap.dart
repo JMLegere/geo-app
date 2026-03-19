@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/config/supabase_config.dart';
@@ -20,9 +21,12 @@ class SupabaseBootstrap {
 
   /// Initializes the Supabase SDK.
   ///
+  /// [httpClient] is an optional HTTP client injected by the caller (e.g.
+  /// [ObservableHttpClient] for observability).
+  ///
   /// Returns `true` on success, `false` when credentials are absent or
   /// initialization fails. Never throws.
-  static Future<bool> initialize() async {
+  static Future<bool> initialize({Client? httpClient}) async {
     if (SupabaseConfig.projectUrl.isEmpty) {
       debugPrint('[SupabaseBootstrap] no credentials — skipping init');
       return false;
@@ -32,6 +36,7 @@ class SupabaseBootstrap {
       await Supabase.initialize(
         url: SupabaseConfig.projectUrl,
         anonKey: SupabaseConfig.anonKey,
+        httpClient: httpClient,
       );
       _initialized = true;
       return true;

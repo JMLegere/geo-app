@@ -102,27 +102,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
       debugPrint('[Observability] trim failed: $e');
     });
-    // Recover previous session data from localStorage (survives jetsam kills).
-    final recovered = obs.recover();
-    if (recovered.isNotEmpty) {
-      print('[Observability] recovering ${recovered.length} entries');
-      // Replay to debug console so entries are visible locally.
-      for (final row in recovered) {
-        final cat = row['category'] ?? '';
-        final evt = row['event'] ?? '';
-        final data = row['data'];
-        final ts = row['created_at'] ?? '';
-        print(
-          '[RECOVERED] [$ts] $cat/$evt ${data is Map ? data['msg'] ?? data['action'] ?? data : ''}',
-        );
-        row['session_id'] = 'recovered:${row['session_id'] ?? 'unknown'}';
-      }
-      supabaseClient.from('app_events').insert(recovered).catchError((
-        Object e,
-      ) {
-        debugPrint('[Observability] recovery flush failed: $e');
-      });
-    }
+    // Discard previous session data from localStorage.
+    // Events were already flushed to Supabase during the previous session
+    // (every 30s).  Re-inserting them created duplicates (41% of all events)
+    // and a recursive nesting problem where recovered debug_log entries
+    // were re-captured and re-recovered on each restart.
+    obs.recover(); // clears localStorage, discards entries
   }
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
