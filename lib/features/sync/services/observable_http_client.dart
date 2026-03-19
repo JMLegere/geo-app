@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 
 import 'package:earth_nova/core/services/observability_buffer.dart';
@@ -33,19 +34,27 @@ class ObservableHttpClient extends BaseClient {
       'target': target,
     });
 
+    debugPrint('[API] → ${request.method} $operation $target');
+
     final sw = Stopwatch()..start();
     try {
       final response = await _inner.send(request);
       sw.stop();
 
+      final status = response.statusCode < 400 ? 'ok' : 'error';
       ObservabilityBuffer.instance?.event('api_response', {
         'method': request.method,
         'operation': operation,
         'target': target,
         'status_code': response.statusCode,
         'duration_ms': sw.elapsedMilliseconds,
-        'status': response.statusCode < 400 ? 'ok' : 'error',
+        'status': status,
       });
+
+      debugPrint(
+        '[API] ← ${response.statusCode} $operation $target '
+        '${sw.elapsedMilliseconds}ms',
+      );
 
       return response;
     } catch (e) {
@@ -59,6 +68,11 @@ class ObservableHttpClient extends BaseClient {
         'status': 'error',
         'error': '$e',
       });
+
+      debugPrint(
+        '[API] ← ERR $operation $target '
+        '${sw.elapsedMilliseconds}ms $e',
+      );
 
       rethrow;
     }

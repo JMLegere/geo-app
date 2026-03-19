@@ -106,9 +106,15 @@ class DebugLogBuffer {
       onAuthEvent?.call();
     }
 
+    // Always-pass tags bypass severity filtering so they appear in
+    // the in-app debug viewer regardless of minLevel.
+    final alwaysPass = line.contains('[API]');
+
     // Filter by level — drop lines below minLevel.
-    final level = LogLevel.classify(line);
-    if (level.index < minLevel.index) return;
+    if (!alwaysPass) {
+      final level = LogLevel.classify(line);
+      if (level.index < minLevel.index) return;
+    }
 
     final now = DateTime.now();
     final ts = '${_pad2(now.hour)}:${_pad2(now.minute)}:'
