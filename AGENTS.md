@@ -430,7 +430,6 @@ Additional directories:
 
 | Item | Location | Impact |
 |------|----------|--------|
-| MapLogger has mutable static variables | `lib/features/map/utils/map_logger.dart` | Violates "no global state" constraint |
 | `widget_test.dart` accepts ErrorBoundary fallback as passing | `test/widget_test.dart` | MapLibre doesn't render on headless CI — real map tests require device/emulator |
 | `game_coordinator_provider.dart` still 952 lines | `lib/core/state/game_coordinator_provider.dart` | Remaining code is genuine wiring, not incidental complexity |
 

@@ -87,28 +87,24 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
 
-  // Create EventSink when Supabase is configured for structured event telemetry.
+  // Structured event telemetry — always created so events are captured in dev
+  // mode too.  When Supabase is configured the flusher writes to app_events;
+  // otherwise a no-op flusher keeps the 30 s timer harmless and events still
+  // persist to local SQLite via _persistLocally().
   final supabaseClient = ref.read(supabaseClientProvider);
-  ObservabilityBuffer? obs;
-  if (supabaseClient != null) {
-    obs = ObservabilityBuffer(
-      flusher: (rows) => supabaseClient.from('app_events').insert(rows),
-    );
-    obs.setDatabase(ref.read(appDatabaseProvider));
-    obs.start();
-    ObservabilityBuffer.instance = obs;
+  final obs = ObservabilityBuffer(
+    flusher: supabaseClient != null
+        ? (rows) => supabaseClient.from('app_events').insert(rows)
+        : (_) async {},
+  );
+  obs.setDatabase(ref.read(appDatabaseProvider));
+  obs.start();
+  ObservabilityBuffer.instance = obs;
 
-    // Trim old local events (10K cap)
-    ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
-      debugPrint('[Observability] trim failed: $e');
-    });
-    // Discard previous session data from localStorage.
-    // Events were already flushed to Supabase during the previous session
-    // (every 30s).  Re-inserting them created duplicates (41% of all events)
-    // and a recursive nesting problem where recovered debug_log entries
-    // were re-captured and re-recovered on each restart.
-    obs.recover(); // clears localStorage, discards entries
-  }
+  // Trim old local events (10K cap)
+  ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
+    debugPrint('[Observability] trim failed: $e');
+  });
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
   // startLoop() from calling ref.read() on a dead provider reference.
@@ -163,7 +159,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       '[GameCoordinator] onEnrichedHook: backfilling affixes for '
       '${enrichment.definitionId}',
     );
-    obs?.event('enrichment_complete', {
+    obs.event('enrichment_complete', {
       'definition_id': enrichment.definitionId,
       'animal_class': enrichment.animalClass.name,
     });
@@ -195,7 +191,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   queueProcessor.onAutoFlushComplete = (summary) async {
     if (_providerDisposed) return;
-    obs?.event('sync_flushed', {
+    obs.event('sync_flushed', {
       'confirmed': summary.confirmed,
       'rejected': summary.rejected,
       'retried': summary.retried,
@@ -422,7 +418,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     // against a dead ref.
     if (_providerDisposed) return;
 
-    obs?.event('game_loop_started', {
+    obs.event('game_loop_started', {
       'user_id': coordinator.currentUserId,
       'daily_seed': dailySeedService.currentSeed,
     });
@@ -437,7 +433,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       );
       // Emit seed_rotated only when the seed actually changed.
       if (previousSeedValue != null && previousSeedValue != newSeedState.seed) {
-        obs?.event('seed_rotated', {
+        obs.event('seed_rotated', {
           'seed_date': newSeedState.seedDate,
           'is_server_seed': newSeedState.isServerSeed,
         });
@@ -591,7 +587,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // doesn't redundantly persist the data we just loaded from SQLite.
       lastPersistedProfile = ref.read(playerProvider);
 
-      obs?.event('sqlite_hydration_complete', {
+      obs.event('sqlite_hydration_complete', {
         'user_id': userId,
         'item_count': items.length,
         'cell_count': cellRows.length,
@@ -635,7 +631,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     //
     // The game loop MUST start even if hydration fails (e.g. Ref disposed
     // due to provider rebuild race).
-    obs?.event('hydration_started', {'user_id': userId});
+    obs.event('hydration_started', {'user_id': userId});
 
     final hydrationStopwatch = Stopwatch()..start();
 
@@ -679,7 +675,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       hydrationStopwatch.stop();
       final inventory = ref.read(itemsProvider);
-      obs?.event('hydration_complete', {
+      obs.event('hydration_complete', {
         'user_id': userId,
         'duration_ms': hydrationStopwatch.elapsedMilliseconds,
         'item_count': inventory.items.length,
@@ -711,7 +707,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       ).then((_) {
         if (_providerDisposed) return;
 
-        obs?.event('background_sync_complete', {'user_id': userId});
+        obs.event('background_sync_complete', {'user_id': userId});
 
         // Re-queue enrichment for any fauna in inventory that lacks it.
         // Runs after background sync so enrichment cache includes any
@@ -746,7 +742,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         debugPrint(
           '[GameCoordinator] background Supabase sync failed: $e',
         );
-        obs?.event('network_error', {
+        obs.event('network_error', {
           'context': 'background_supabase_sync',
           'error': e.toString(),
         });
@@ -780,7 +776,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     final userId = authState.user?.id;
 
     if (authState.status == AuthStatus.authenticated && userId != null) {
-      obs?.event('auth_restored', {'user_id': userId});
+      obs.event('auth_restored', {'user_id': userId});
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
 
@@ -794,7 +790,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
-      obs?.event('auth_expired', {'previous_user_id': lastHydratedUserId});
+      obs.event('auth_expired', {'previous_user_id': lastHydratedUserId});
       // Clear write queue for the outgoing user BEFORE resetting state.
       // Prevents stale entries from being flushed with the next session's
       // credentials, which would trigger RLS violations on Supabase.
@@ -910,7 +906,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   ref.onDispose(() {
     _providerDisposed = true;
     deferredDrainTimer?.cancel();
-    obs?.stop(); // Cancel periodic flush timer.
+    obs.stop(); // Cancel periodic flush timer.
     engine.dispose(); // coordinator.dispose() + obs.flush() + stream close.
     queueProcessor.dispose();
     locationService.stop();

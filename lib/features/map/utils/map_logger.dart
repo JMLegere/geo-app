@@ -2,6 +2,35 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
 
+/// Resettable counters for map subsystem logging.
+///
+/// Call [reset] at session boundaries or in tests to zero all counters.
+class MapLoggerStats {
+  int tickCount = 0;
+  int cameraCount = 0;
+  int fogUpdateCount = 0;
+  int locationCount = 0;
+  int errorCount = 0;
+  int displayUpdateCount = 0;
+  int iconRegCount = 0;
+  int tickLogInterval = 60;
+  int cameraLogInterval = 60;
+  final initStopwatch = Stopwatch();
+
+  void reset() {
+    tickCount = 0;
+    cameraCount = 0;
+    fogUpdateCount = 0;
+    locationCount = 0;
+    errorCount = 0;
+    displayUpdateCount = 0;
+    iconRegCount = 0;
+    tickLogInterval = 60;
+    cameraLogInterval = 60;
+    initStopwatch.reset();
+  }
+}
+
 /// Centralized logger for the map subsystem.
 ///
 /// Logs to both `debugPrint` (visible in Flutter console / browser DevTools)
@@ -15,16 +44,8 @@ import 'package:flutter/foundation.dart';
 class MapLogger {
   MapLogger._();
 
-  /// How often to log periodic events (every N calls). Set to 1 for full
-  /// verbosity during debugging, higher to reduce noise.
-  static int tickLogInterval = 60; // Log every 60th tick (~1/sec at 60fps)
-  static int cameraLogInterval = 60; // Log every 60th camera move
-
-  static int _tickCount = 0;
-  static int _cameraCount = 0;
-  static int _fogUpdateCount = 0;
-  static int _locationCount = 0;
-  static int _errorCount = 0;
+  /// Mutable counters extracted into a resettable object.
+  static final stats = MapLoggerStats();
 
   // -- Rubber-band ticker --
 
@@ -36,12 +57,12 @@ class MapLogger {
     required double distanceM,
     required bool skipped,
   }) {
-    _tickCount++;
-    if (_tickCount % tickLogInterval != 0) return;
+    stats.tickCount++;
+    if (stats.tickCount % stats.tickLogInterval != 0) return;
     final tag = skipped ? 'SKIP' : 'MOVE';
     _log(
       'RUBBER',
-      '[$tag] #$_tickCount  dist=${distanceM.toStringAsFixed(1)}m  '
+      '[$tag] #${stats.tickCount}  dist=${distanceM.toStringAsFixed(1)}m  '
           'display=(${displayLat.toStringAsFixed(6)}, ${displayLon.toStringAsFixed(6)})  '
           'target=(${targetLat.toStringAsFixed(6)}, ${targetLon.toStringAsFixed(6)})',
     );
@@ -61,10 +82,10 @@ class MapLogger {
   // -- Camera --
 
   static void cameraMove(double lat, double lon, {double? zoom}) {
-    _cameraCount++;
-    if (_cameraCount % cameraLogInterval != 0) return;
+    stats.cameraCount++;
+    if (stats.cameraCount % stats.cameraLogInterval != 0) return;
     final zoomStr = zoom != null ? '  z=${zoom.toStringAsFixed(2)}' : '';
-    _log('CAMERA', 'moveCamera #$_cameraCount  → ($lat, $lon)$zoomStr');
+    _log('CAMERA', 'moveCamera #${stats.cameraCount}  → ($lat, $lon)$zoomStr');
   }
 
   static void zoomChanged(double oldZoom, double newZoom, String reason) {
@@ -74,10 +95,10 @@ class MapLogger {
 
   static void cameraMoveError(
       double lat, double lon, Object error, StackTrace stack) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'CAMERA',
-      '❌ ERROR #$_errorCount on moveCamera($lat, $lon): $error',
+      '❌ ERROR #${stats.errorCount} on moveCamera($lat, $lon): $error',
       isError: true,
     );
     _log('CAMERA', 'Stack: $stack', isError: true);
@@ -86,21 +107,21 @@ class MapLogger {
   // -- Fog sources --
 
   static void fogUpdateStarted() {
-    _fogUpdateCount++;
-    if (_fogUpdateCount % 10 != 0 && _fogUpdateCount > 1) return;
-    _log('FOG', 'updateFogSources #$_fogUpdateCount started');
+    stats.fogUpdateCount++;
+    if (stats.fogUpdateCount % 10 != 0 && stats.fogUpdateCount > 1) return;
+    _log('FOG', 'updateFogSources #${stats.fogUpdateCount} started');
   }
 
   static void fogUpdateCompleted() {
-    if (_fogUpdateCount % 10 != 0 && _fogUpdateCount > 1) return;
-    _log('FOG', 'updateFogSources #$_fogUpdateCount completed');
+    if (stats.fogUpdateCount % 10 != 0 && stats.fogUpdateCount > 1) return;
+    _log('FOG', 'updateFogSources #${stats.fogUpdateCount} completed');
   }
 
   static void fogUpdateError(Object error, StackTrace stack) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'FOG',
-      '❌ ERROR #$_errorCount on updateFogSources: $error',
+      '❌ ERROR #${stats.errorCount} on updateFogSources: $error',
       isError: true,
     );
     _log('FOG', 'Stack: $stack', isError: true);
@@ -111,10 +132,10 @@ class MapLogger {
   }
 
   static void fogLayersInitError(Object error, StackTrace stack) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'FOG',
-      '❌ ERROR #$_errorCount initializing fog layers: $error',
+      '❌ ERROR #${stats.errorCount} initializing fog layers: $error',
       isError: true,
     );
     _log('FOG', 'Stack: $stack', isError: true);
@@ -123,9 +144,9 @@ class MapLogger {
   // -- Location --
 
   static void locationUpdate(double lat, double lon, {required String source}) {
-    _locationCount++;
-    if (_locationCount % 5 != 0 && _locationCount > 1) return;
-    _log('LOC', '#$_locationCount from $source → ($lat, $lon)');
+    stats.locationCount++;
+    if (stats.locationCount % 5 != 0 && stats.locationCount > 1) return;
+    _log('LOC', '#${stats.locationCount} from $source → ($lat, $lon)');
   }
 
   // -- Key presses --
@@ -144,24 +165,20 @@ class MapLogger {
 
   // -- Display position callback --
 
-  static int _displayUpdateCount = 0;
-
   static void displayPositionUpdate(double lat, double lon) {
-    _displayUpdateCount++;
-    if (_displayUpdateCount % 60 != 0) return;
+    stats.displayUpdateCount++;
+    if (stats.displayUpdateCount % 60 != 0) return;
     _log(
       'DISPLAY',
-      '#$_displayUpdateCount setState + camera → ($lat, $lon)',
+      '#${stats.displayUpdateCount} setState + camera → ($lat, $lon)',
     );
   }
 
   // -- Fog initialization timeline --
 
-  static final _initStopwatch = Stopwatch();
-
   /// Call at the very start of the fog init sequence.
   static void fogInitStart() {
-    _initStopwatch
+    stats.initStopwatch
       ..reset()
       ..start();
     _log('FOG-INIT', 'T+0ms — _initFogAndReveal() started');
@@ -170,26 +187,26 @@ class MapLogger {
   /// Call after _initFogLayers() completes.
   static void fogInitLayersReady() {
     _log('FOG-INIT',
-        'T+${_initStopwatch.elapsedMilliseconds}ms — _initFogLayers() done (sources+layers added to map)');
+        'T+${stats.initStopwatch.elapsedMilliseconds}ms — _initFogLayers() done (sources+layers added to map)');
   }
 
   /// Call after fogOverlayController.updateAsync() completes.
   static void fogInitDataComputed() {
     _log('FOG-INIT',
-        'T+${_initStopwatch.elapsedMilliseconds}ms — updateAsync() done (fog GeoJSON computed)');
+        'T+${stats.initStopwatch.elapsedMilliseconds}ms — updateAsync() done (fog GeoJSON computed)');
   }
 
   /// Call after _updateFogSources() completes.
   static void fogInitSourcesApplied() {
     _log('FOG-INIT',
-        'T+${_initStopwatch.elapsedMilliseconds}ms — _updateFogSources() done (GeoJSON pushed to MapLibre)');
+        'T+${stats.initStopwatch.elapsedMilliseconds}ms — _updateFogSources() done (GeoJSON pushed to MapLibre)');
   }
 
   /// Call when markReady + _fogReady = true.
   static void fogInitComplete() {
-    _initStopwatch.stop();
+    stats.initStopwatch.stop();
     _log('FOG-INIT',
-        'T+${_initStopwatch.elapsedMilliseconds}ms — COMPLETE: markReady() + _fogReady=true → cover fading out');
+        'T+${stats.initStopwatch.elapsedMilliseconds}ms — COMPLETE: markReady() + _fogReady=true → cover fading out');
   }
 
   /// Call when the cover widget rebuilds (to track when AnimatedOpacity kicks in).
@@ -211,20 +228,20 @@ class MapLogger {
   // -- Crash prevention --
 
   static void fogInitTimeout(int timeoutMs) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'FOG-INIT',
-      '⚠️ TIMEOUT #$_errorCount — _initFogAndReveal() did not complete within ${timeoutMs}ms. '
+      '⚠️ TIMEOUT #${stats.errorCount} — _initFogAndReveal() did not complete within ${timeoutMs}ms. '
           'Forcing markReady() + revealMapContainer() to show base map without fog.',
       isError: true,
     );
   }
 
   static void fogInitFailed(Object error, StackTrace stack) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'FOG-INIT',
-      '⚠️ ERROR #$_errorCount — _initFogAndReveal() failed: $error. '
+      '⚠️ ERROR #${stats.errorCount} — _initFogAndReveal() failed: $error. '
           'Forcing markReady() + revealMapContainer() to show base map without fog.',
       isError: true,
     );
@@ -232,7 +249,7 @@ class MapLogger {
   }
 
   static void getCameraError(String callsite, Object error) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'CAMERA',
       '⚠️ getCamera() failed at $callsite: $error — skipping update',
@@ -246,7 +263,7 @@ class MapLogger {
   }
 
   static void revealFailed(int attempts) {
-    _errorCount++;
+    stats.errorCount++;
     _log(
       'MAP',
       '❌ revealMapContainer: failed after $attempts retries — '
@@ -257,19 +274,17 @@ class MapLogger {
 
   // -- Icon registration --
 
-  static int _iconRegCount = 0;
-
   static void iconRegistrationStarted(int totalIcons) {
     _log('ICONS', 'Starting registration of $totalIcons icon images');
   }
 
   static void iconRegistered(String id) {
-    _iconRegCount++;
-    _log('ICONS', '✓ Registered icon image: $id ($_iconRegCount total)');
+    stats.iconRegCount++;
+    _log('ICONS', '✓ Registered icon image: $id (${stats.iconRegCount} total)');
   }
 
   static void iconRegistrationFailed(String id, Object error) {
-    _errorCount++;
+    stats.errorCount++;
     _log('ICONS', '❌ Failed to register icon image "$id": $error',
         isError: true);
   }
@@ -286,7 +301,7 @@ class MapLogger {
   }
 
   static void locationNodesLoadError(Object error) {
-    _errorCount++;
+    stats.errorCount++;
     _log('MAP', '❌ Failed to load location nodes: $error', isError: true);
   }
 
@@ -295,9 +310,9 @@ class MapLogger {
   static void printSummary() {
     _log(
         'SUMMARY',
-        'ticks=$_tickCount  camera=$_cameraCount  '
-            'fog=$_fogUpdateCount  loc=$_locationCount  '
-            'icons=$_iconRegCount  errors=$_errorCount');
+        'ticks=${stats.tickCount}  camera=${stats.cameraCount}  '
+            'fog=${stats.fogUpdateCount}  loc=${stats.locationCount}  '
+            'icons=${stats.iconRegCount}  errors=${stats.errorCount}');
   }
 
   // -- Internal --
