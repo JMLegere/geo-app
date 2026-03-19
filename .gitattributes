@@ -8,8 +8,10 @@
 *.dll filter=lfs diff=lfs merge=lfs -text
 *.a filter=lfs diff=lfs merge=lfs -text
 
-# WebAssembly
-*.wasm filter=lfs diff=lfs merge=lfs -text
+# WebAssembly — NOT tracked by LFS.
+# sqlite3.wasm (~730KB) must be served as a static file on web deploys.
+# Platforms without git-lfs (e.g. Railway) check out LFS pointers instead
+# of real binaries, causing WASM CompileError at runtime.
 
 # Large data assets
 assets/biome_features.json filter=lfs diff=lfs merge=lfs -text
