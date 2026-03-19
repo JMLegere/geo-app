@@ -617,6 +617,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     } catch (e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');
+      // Rethrow so hydrateAndStart's .catchError handles it in one place.
+      // Without this, the .then() block runs (because the error was
+      // swallowed), hits the same missing-table problem at profileRepo.read,
+      // and produces confusing cascading error logs.
+      rethrow;
     }
   }
 
