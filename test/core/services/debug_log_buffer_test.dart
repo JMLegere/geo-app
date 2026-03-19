@@ -127,6 +127,14 @@ void main() {
       expect(buf.lines.length, 1);
     });
 
+    test('[API] lines bypass minLevel filter', () {
+      final buf = DebugLogBuffer.instance;
+      buf.minLevel = LogLevel.error; // strictest filter
+      buf.add('[API] → POST upsert profiles');
+      buf.add('[API] ← 200 upsert profiles 45ms');
+      expect(buf.lines.length, 2);
+    });
+
     test('drainPending returns accumulated lines and clears pending', () {
       final buf = DebugLogBuffer.instance;
       buf.add('retry 1');
