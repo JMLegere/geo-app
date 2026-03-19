@@ -168,7 +168,10 @@ void main() {
 
         if (!hasHttp) continue;
 
-        if (!path.contains('lib/features/sync/')) {
+        // Allowed: sync/ (network layer) and supabase_bootstrap.dart
+        // (needs package:http for injectable Client parameter).
+        if (!path.contains('lib/features/sync/') &&
+            !path.endsWith('supabase_bootstrap.dart')) {
           violations.add(path);
         }
       }
