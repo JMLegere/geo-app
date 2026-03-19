@@ -293,6 +293,22 @@ class _WriteSerializer {
 // DATABASE CLASS
 // ============================================================================
 
+/// SQL table names for all application tables.
+///
+/// Used by connection files to verify schema integrity after opening the
+/// database. Kept here (next to the @DriftDatabase annotation) so it stays
+/// in sync when tables are added or removed.
+const kExpectedTableNames = [
+  'local_cell_progress_table',
+  'local_item_instance_table',
+  'local_player_profile_table',
+  'local_species_enrichment_table',
+  'local_write_queue_table',
+  'local_cell_properties_table',
+  'local_location_node_table',
+  'local_app_events_table',
+];
+
 @DriftDatabase(tables: [
   LocalCellProgressTable,
   LocalItemInstanceTable,

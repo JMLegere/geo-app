@@ -93,8 +93,7 @@ void main() {
       expect(state.achievements[AchievementId.firstSteps]!.isUnlocked, isTrue);
     });
 
-    test('checkAchievements updates species progress from itemsProvider',
-        () {
+    test('checkAchievements updates species progress from itemsProvider', () {
       final inventory = container.read(itemsProvider.notifier);
       for (int i = 1; i <= 5; i++) {
         inventory.addItem(ItemInstance(
