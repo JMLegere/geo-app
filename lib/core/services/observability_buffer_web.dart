@@ -20,7 +20,21 @@ class ObservabilityBuffer {
   final RemoteFlusher _flusher;
   final String sessionId = const Uuid().v4();
   late final String deviceId = _safeDeviceId();
-  String? userId;
+  String? _userId;
+
+  static final _uuidPattern = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  String? get userId => _userId;
+  set userId(String? value) {
+    if (value != null && !_uuidPattern.hasMatch(value)) {
+      debugPrint('[Observability] invalid userId ignored: $value');
+      return;
+    }
+    _userId = value;
+  }
 
   Timer? _timer;
   bool _flushing = false;
@@ -92,16 +106,16 @@ class ObservabilityBuffer {
       final raw = web.window.localStorage.getItem(_key);
       if (raw == null || raw.isEmpty) return;
       entries = (jsonDecode(raw) as List<dynamic>).cast<String>();
-      // Only flush entries we haven't flushed yet.
-      final unflushed = entries.skip(_flushedCount).toList();
-      if (unflushed.isEmpty) return;
     } catch (_) {
       return;
     }
 
+    // Only flush entries we haven't flushed yet.
+    final unflushed = entries.skip(_flushedCount).toList();
+    if (unflushed.isEmpty) return;
+
     _flushing = true;
     try {
-      final unflushed = entries.skip(_flushedCount).toList();
       final rows =
           unflushed.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
       await _flusher(rows).timeout(const Duration(seconds: 5), onTimeout: () {
@@ -117,15 +131,9 @@ class ObservabilityBuffer {
     }
   }
 
-  List<Map<String, dynamic>> recover() {
-    try {
-      final raw = web.window.localStorage.getItem(_key);
-      if (raw == null || raw.isEmpty) return const [];
-      final entries = (jsonDecode(raw) as List<dynamic>).cast<String>();
-      web.window.localStorage.removeItem(_key);
-      return entries.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
-    } catch (_) {
-      return const [];
-    }
-  }
+  /// No-op — web events in localStorage were already flushed to Supabase
+  /// every 30 s.  Re-ingesting them on restart caused 41 % duplicate rows
+  /// and recursive nesting of debug_log entries.  The localStorage flight
+  /// recorder is retained for manual crash forensics (2 MB cap, not cleared).
+  List<Map<String, dynamic>> recover() => const [];
 }

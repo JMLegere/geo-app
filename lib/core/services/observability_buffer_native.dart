@@ -18,7 +18,21 @@ class ObservabilityBuffer {
   final RemoteFlusher _flusher;
   final String sessionId = const Uuid().v4();
   late final String deviceId = _safeDeviceId();
-  String? userId;
+  String? _userId;
+
+  static final _uuidPattern = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  String? get userId => _userId;
+  set userId(String? value) {
+    if (value != null && !_uuidPattern.hasMatch(value)) {
+      debugPrint('[Observability] invalid userId ignored: $value');
+      return;
+    }
+    _userId = value;
+  }
 
   final List<Map<String, dynamic>> _buffer = [];
   Timer? _timer;
@@ -136,5 +150,8 @@ class ObservabilityBuffer {
     }
   }
 
+  /// No-op — native events are persisted to SQLite via [_persistLocally] on
+  /// every [_add] call.  Query [AppDatabase.getEventsBySession] for session
+  /// replay.  Re-ingesting recovered events caused duplicate rows (41 %).
   List<Map<String, dynamic>> recover() => const [];
 }
