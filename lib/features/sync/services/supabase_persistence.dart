@@ -263,7 +263,9 @@ class SupabasePersistence {
     } on SyncValidationRejectedException {
       rethrow;
     } catch (e) {
-      if (e is SyncException) rethrow;
+      if (e is SyncException) {
+        rethrow;
+      }
       debugPrint('[SupabasePersistence] validateEncounter failed: $e');
       throw SyncException('Failed to validate encounter.', cause: e);
     }
