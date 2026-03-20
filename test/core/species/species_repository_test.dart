@@ -1,29 +1,58 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/native.dart';
+import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/species/drift_species_repository.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
-import 'package:earth_nova/core/species/species_repository_native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqlite3/sqlite3.dart';
 
-/// Opens the real assets/species.db read-only.
+/// Opens a DriftSpeciesRepository seeded from assets/species_data.json.
 ///
 /// Tests run from the project root (flutter test), so the relative path works.
-SpeciesRepository openRealDb() {
-  final db = sqlite3.open('assets/species.db', mode: OpenMode.readOnly);
-  return NativeSpeciesRepository(db);
+Future<(SpeciesRepository, AppDatabase)> openRealDb() async {
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  final db = AppDatabase(NativeDatabase.memory());
+  final jsonStr = File('assets/species_data.json').readAsStringSync();
+  final data = jsonDecode(jsonStr) as List;
+  await db.batch((b) {
+    for (final item in data) {
+      final m = item as Map<String, dynamic>;
+      final sciName = m['scientificName'] as String;
+      final defId = 'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
+      b.insert(
+        db.localSpeciesTable,
+        LocalSpeciesTableCompanion.insert(
+          definitionId: defId,
+          scientificName: sciName,
+          commonName: m['commonName'] as String,
+          taxonomicClass: m['taxonomicClass'] as String,
+          iucnStatus: m['iucnStatus'] as String,
+          habitatsJson: jsonEncode(m['habitats']),
+          continentsJson: jsonEncode(m['continents']),
+        ),
+      );
+    }
+  });
+  return (DriftSpeciesRepository(db), db);
 }
 
 void main() {
   group('SpeciesRepository', () {
     late SpeciesRepository repo;
+    late AppDatabase db;
 
-    setUp(() {
-      repo = openRealDb();
+    setUp(() async {
+      (repo, db) = await openRealDb();
     });
 
-    tearDown(() {
+    tearDown(() async {
       repo.dispose();
+      await db.close();
     });
 
     // ── count() ─────────────────────────────────────────────────────────────
@@ -144,16 +173,18 @@ void main() {
 
   group('SpeciesCache', () {
     late SpeciesRepository repo;
+    late AppDatabase db;
     late SpeciesCache cache;
 
-    setUp(() {
-      repo = openRealDb();
+    setUp(() async {
+      (repo, db) = await openRealDb();
       cache = SpeciesCache(repo);
     });
 
-    tearDown(() {
+    tearDown(() async {
       cache.clear();
       repo.dispose();
+      await db.close();
     });
 
     test('getCandidatesSync returns empty list before warmUp', () {

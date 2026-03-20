@@ -321,4 +321,23 @@ class SupabasePersistence {
       throw SyncException('Failed to load enrichments.', cause: e);
     }
   }
+
+  /// Fetches species rows with enrichment data updated since [since].
+  /// Used for delta-sync: pulls classification + art URLs from the
+  /// server-side `species` table into the local Drift table.
+  Future<List<Map<String, dynamic>>> fetchSpeciesUpdates({
+    required DateTime since,
+  }) async {
+    try {
+      final response = await _client
+          .from('species')
+          .select()
+          .not('enriched_at', 'is', null)
+          .gt('enriched_at', since.toIso8601String());
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchSpeciesUpdates failed: $e');
+      throw SyncException('Failed to load species updates.', cause: e);
+    }
+  }
 }

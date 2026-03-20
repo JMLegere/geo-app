@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
-import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // SpeciesService provider (real IUCN dataset — 32,752 species)
@@ -17,13 +16,11 @@ import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 /// - **Loading** — empty [SpeciesService] so the app stays alive until loaded.
 final speciesServiceProvider = Provider<SpeciesService>((ref) {
   final cache = ref.watch(speciesCacheProvider);
-  final enrichmentMapAsync = ref.watch(enrichmentMapProvider);
-  final enrichments = enrichmentMapAsync.asData?.value ?? {};
 
   if (!cache.isEmpty) {
     return SpeciesService.fromCache(
       cache: cache,
-      enrichments: enrichments,
+      enrichments: const {}, // Bridge: enrichment merge is now a no-op (FaunaDefinition has stats built in)
     );
   }
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
@@ -356,7 +357,10 @@ const kExpectedTableNames = [
   LocalAppEventsTable,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor])
+  /// Optional loader for species data JSON. Null in tests (manual seeding).
+  final Future<String> Function()? _speciesDataLoader;
+
+  AppDatabase([QueryExecutor? executor, this._speciesDataLoader])
       : super(executor ?? createDatabaseConnection());
 
   final _writer = _WriteSerializer();
@@ -474,6 +478,40 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 17) {
           await m.createTable(localSpeciesTable);
+        }
+      },
+      beforeOpen: (details) async {
+        if (_speciesDataLoader != null) {
+          final count = await localSpeciesTable.count().getSingle();
+          if (count == 0) {
+            final sw = Stopwatch()..start();
+            final jsonStr = await _speciesDataLoader!();
+            final data = jsonDecode(jsonStr) as List;
+            await batch((b) {
+              for (final item in data) {
+                final m = item as Map<String, dynamic>;
+                final sciName = m['scientificName'] as String;
+                final defId =
+                    'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
+                b.insert(
+                  localSpeciesTable,
+                  LocalSpeciesTableCompanion.insert(
+                    definitionId: defId,
+                    scientificName: sciName,
+                    commonName: m['commonName'] as String,
+                    taxonomicClass: m['taxonomicClass'] as String,
+                    iucnStatus: m['iucnStatus'] as String,
+                    habitatsJson: jsonEncode(m['habitats']),
+                    continentsJson: jsonEncode(m['continents']),
+                  ),
+                );
+              }
+            });
+            sw.stop();
+            // ignore: avoid_print
+            print(
+                '[AppDatabase] seeded ${data.length} species in ${sw.elapsedMilliseconds}ms');
+          }
         }
       },
     );

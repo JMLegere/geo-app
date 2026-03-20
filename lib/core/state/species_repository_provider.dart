@@ -1,35 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/state/app_database_provider.dart';
+import 'package:earth_nova/core/species/drift_species_repository.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
 
-/// Async provider that opens [SpeciesRepository] from `assets/species.db`.
+/// Singleton repository provider for species data.
 ///
-/// Resolves once the DB bytes have been written to a temp file and the
-/// connection is ready. Automatically disposes the DB on provider teardown.
-final speciesRepositoryProvider =
-    FutureProvider<SpeciesRepository>((ref) async {
-  final sw = Stopwatch()..start();
-  final repo = await SpeciesRepository.fromAssets();
-  sw.stop();
-  ObservabilityBuffer.instance?.event('asset_loaded', {
-    'asset': 'species.db',
-    'duration_ms': sw.elapsedMilliseconds,
-  });
-  ref.onDispose(repo.dispose);
-  return repo;
+/// Backed by [DriftSpeciesRepository] which queries [LocalSpeciesTable]
+/// in the main [AppDatabase]. Synchronous — no asset loading needed.
+final speciesRepositoryProvider = Provider<SpeciesRepository>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  return DriftSpeciesRepository(db);
 });
 
 /// Sync provider for [SpeciesCache], backed by [speciesRepositoryProvider].
 ///
-/// Returns [SpeciesCache.empty()] while the repository is still loading
-/// (AsyncLoading or AsyncError state), so callers never receive null.
-/// Once the repository resolves the provider rebuilds with a real cache.
+/// Always returns a real cache — the repository is synchronously available.
 final speciesCacheProvider = Provider<SpeciesCache>((ref) {
-  return ref.watch(speciesRepositoryProvider).when(
-        data: (repo) => SpeciesCache(repo),
-        loading: SpeciesCache.empty,
-        error: (_, __) => SpeciesCache.empty(),
-      );
+  final repo = ref.watch(speciesRepositoryProvider);
+  return SpeciesCache(repo);
 });
