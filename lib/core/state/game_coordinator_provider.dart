@@ -176,9 +176,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       };
 
       obs.event('app_startup', diagnostics);
-      Future<void>.delayed(const Duration(seconds: 10), () {
-        debugPrint('[Startup] $diagnostics');
-      });
+      debugPrint('[Startup] $diagnostics');
     } catch (e) {
       debugPrint('[Observability] startup diagnostics failed: $e');
     }
