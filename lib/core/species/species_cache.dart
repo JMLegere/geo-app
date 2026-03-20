@@ -19,6 +19,9 @@ class SpeciesCache {
   /// Candidates cache: cache-key → species list.
   final Map<String, List<FaunaDefinition>> _cache = {};
 
+  /// Id cache: definitionId → FaunaDefinition for sync lookup.
+  final Map<String, FaunaDefinition> _byId = {};
+
   int? _totalCount;
 
   /// Creates a [SpeciesCache] backed by [repo].
@@ -48,6 +51,9 @@ class SpeciesCache {
       continent: continent,
     );
     _cache[key] = candidates;
+    for (final def in candidates) {
+      _byId[def.id] = def;
+    }
   }
 
   /// Sync lookup — returns cached candidates or an empty list if not warmed.
@@ -62,6 +68,9 @@ class SpeciesCache {
     if (habitats.isEmpty) return const [];
     return _cache[_cacheKey(habitats, continent)] ?? const [];
   }
+
+  /// Sync lookup by definition ID — returns null if not cached.
+  FaunaDefinition? getByIdSync(String id) => _byId[id];
 
   /// Total species count — returns 0 until [loadTotalCount] has been called.
   int get totalSpeciesCount => _totalCount ?? 0;
@@ -81,6 +90,7 @@ class SpeciesCache {
   /// Call on sign-out or when the app receives a low-memory warning.
   void clear() {
     _cache.clear();
+    _byId.clear();
     _totalCount = null;
   }
 

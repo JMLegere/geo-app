@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/affix.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
@@ -27,14 +26,12 @@ class SpeciesCard extends StatelessWidget {
   const SpeciesCard({
     required this.item,
     this.definition,
-    this.enrichment,
     this.animate = true,
     super.key,
   });
 
   final ItemInstance item;
   final FaunaDefinition? definition;
-  final SpeciesEnrichment? enrichment;
   final bool animate;
 
   // ── Derived values ────────────────────────────────────────────────────────
@@ -59,12 +56,12 @@ class SpeciesCard extends StatelessWidget {
 
   String? get _artUrl => item.artUrl ?? definition?.artUrl;
 
-  // Stats from enrichment → instance intrinsic affix → 0
-  int get _brawn => enrichment?.brawn ?? (intrinsic?['brawn'] as int?) ?? 0;
+  // Stats from definition → instance intrinsic affix → 0
+  int get _brawn => (definition?.brawn) ?? (intrinsic?['brawn'] as int?) ?? 0;
 
-  int get _wit => enrichment?.wit ?? (intrinsic?['wit'] as int?) ?? 0;
+  int get _wit => (definition?.wit) ?? (intrinsic?['wit'] as int?) ?? 0;
 
-  int get _speed => enrichment?.speed ?? (intrinsic?['speed'] as int?) ?? 0;
+  int get _speed => (definition?.speed) ?? (intrinsic?['speed'] as int?) ?? 0;
 
   Map<String, dynamic>? get intrinsic => item.affixes
       .where((a) => a.type == AffixType.intrinsic)
@@ -73,11 +70,10 @@ class SpeciesCard extends StatelessWidget {
 
   int? get _weightGrams => intrinsic?['weightGrams'] as int?;
 
-  FoodType? get _foodPreference =>
-      enrichment?.foodPreference ?? definition?.foodPreference;
+  FoodType? get _foodPreference => definition?.foodPreference;
 
   String get _fallbackEmoji {
-    final cls = enrichment?.animalClass ?? definition?.animalClass;
+    final cls = definition?.animalClass;
     if (cls != null) return GameIcons.animalClass(cls);
     if (definition != null) return GameIcons.fauna(definition!);
     return GameIcons.category(item.category);
@@ -147,7 +143,7 @@ class SpeciesCard extends StatelessWidget {
       primaryHabitat: _primaryHabitat!,
       habitats: _habitats,
       definitionId: definition?.id ?? item.definitionId,
-      animalClass: enrichment?.animalClass ?? definition?.animalClass,
+      animalClass: definition?.animalClass,
       animalType: definition?.animalType,
     );
   }
@@ -212,8 +208,7 @@ class SpeciesCard extends StatelessWidget {
 
     // Animal type + class
     final typeLabel = definition?.animalType?.name;
-    final classLabel =
-        (enrichment?.animalClass ?? definition?.animalClass)?.displayName;
+    final classLabel = definition?.animalClass?.displayName;
     if (typeLabel != null || classLabel != null) {
       rows.add(_MetadataRow(
         label: _fallbackEmoji,
@@ -226,7 +221,7 @@ class SpeciesCard extends StatelessWidget {
     }
 
     // Climate + season
-    final climate = enrichment?.climate ?? definition?.climate;
+    final climate = definition?.climate;
     final season = definition?.seasonRestriction;
     if (climate != null || season != null) {
       final seasonText = season != null

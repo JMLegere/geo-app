@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/features/pack/widgets/species_card.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_rarity_frame.dart';
@@ -15,17 +14,12 @@ import 'package:earth_nova/features/pack/widgets/species_card_rarity_frame.dart'
 ///   context,
 ///   item: instance,
 ///   definition: definition,
-///   enrichmentMap: enrichmentMap,
 /// );
 /// ```
-///
-/// [enrichmentMap] — a Map used to look up
-/// the species-level enrichment (stats, art URLs, etc.). Can be null.
 void showSpeciesCardModal(
   BuildContext context, {
   required ItemInstance item,
   FaunaDefinition? definition,
-  Map<String, SpeciesEnrichment>? enrichmentMap,
 }) {
   showGeneralDialog<void>(
     context: context,
@@ -37,7 +31,6 @@ void showSpeciesCardModal(
       return _SpeciesCardDialog(
         item: item,
         definition: definition,
-        enrichmentMap: enrichmentMap,
         animation: animation,
       );
     },
@@ -61,13 +54,11 @@ class _SpeciesCardDialog extends StatelessWidget {
   const _SpeciesCardDialog({
     required this.item,
     required this.definition,
-    required this.enrichmentMap,
     required this.animation,
   });
 
   final ItemInstance item;
   final FaunaDefinition? definition;
-  final Map<String, SpeciesEnrichment>? enrichmentMap;
   final Animation<double> animation;
 
   /// Responsive card width as fraction of screen.
@@ -93,9 +84,6 @@ class _SpeciesCardDialog extends StatelessWidget {
     final cardWidth = _cardWidth(context);
     // 2:3 aspect ratio (width : height)
     final cardHeight = cardWidth * 1.5;
-
-    // Look up enrichment for this species synchronously
-    final enrichment = enrichmentMap?[item.definitionId];
 
     return Center(
       child: Material(
@@ -129,7 +117,6 @@ class _SpeciesCardDialog extends StatelessWidget {
                 child: SpeciesCard(
                   item: item,
                   definition: definition,
-                  enrichment: enrichment,
                   animate: true,
                 ),
               ),

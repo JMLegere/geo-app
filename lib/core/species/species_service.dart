@@ -7,7 +7,6 @@ import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/species/loot_table.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/shared/constants.dart';
@@ -34,9 +33,6 @@ class SpeciesService {
   /// Cache-backed mode: set when constructed via [SpeciesService.fromCache].
   final SpeciesCache? _cache;
 
-  /// Enrichments map for cache mode (definitionId → SpeciesEnrichment).
-  final Map<String, SpeciesEnrichment> _enrichments;
-
   /// Pre-built indices for fast lookup (list mode only).
   late final Map<Habitat, List<FaunaDefinition>> _byHabitat;
   late final Map<Continent, List<FaunaDefinition>> _byContinent;
@@ -48,21 +44,17 @@ class SpeciesService {
   /// Used directly in tests (inline fixtures) and as a production fallback
   /// for the "not loaded yet" state. Production code prefers
   /// [SpeciesService.fromCache].
-  SpeciesService(this._allRecords)
-      : _cache = null,
-        _enrichments = const {} {
+  SpeciesService(this._allRecords) : _cache = null {
     _buildIndices();
   }
 
   /// Cache-backed constructor — uses [SpeciesCache] for sync DB-backed access.
   ///
   /// Does NOT build in-memory indices; [SpeciesCache.getCandidatesSync] handles
-  /// all filtering. [enrichments] are merged on-the-fly in [_getPool].
+  /// all filtering.
   SpeciesService.fromCache({
     required SpeciesCache cache,
-    Map<String, SpeciesEnrichment> enrichments = const {},
   })  : _cache = cache,
-        _enrichments = enrichments,
         _allRecords = const [] {
     // No index build — cache handles filtering.
     _byHabitat = const {};
@@ -81,35 +73,12 @@ class SpeciesService {
 
   // ── Cache-mode helpers ────────────────────────────────────────────────────
 
-  /// Returns species candidates for (habitats, continent) from the cache,
-  /// merging any available enrichment data into each [FaunaDefinition].
+  /// Returns species candidates for (habitats, continent) from the cache.
   ///
   /// Only called when [_cache] is non-null (cache mode). The result is the
   /// union of all species matching any of the provided [habitats] × [continent].
   List<FaunaDefinition> _getPool(Set<Habitat> habitats, Continent continent) {
-    final raw =
-        _cache!.getCandidatesSync(habitats: habitats, continent: continent);
-    if (_enrichments.isEmpty) return raw;
-    return raw.map((def) {
-      final e = _enrichments[def.id];
-      if (e == null) return def;
-      return FaunaDefinition(
-        id: def.id,
-        displayName: def.displayName,
-        scientificName: def.scientificName,
-        taxonomicClass: def.taxonomicClass,
-        rarity: def.rarity!,
-        habitats: def.habitats,
-        continents: def.continents,
-        seasonRestriction: def.seasonRestriction,
-        contextTags: def.contextTags,
-        animalClass: e.animalClass,
-        foodPreference: e.foodPreference,
-        climate: e.climate,
-        iconUrl: e.iconUrl,
-        artUrl: e.artUrl,
-      );
-    }).toList();
+    return _cache!.getCandidatesSync(habitats: habitats, continent: continent);
   }
 
   /// Get species available in a specific cell.

@@ -114,25 +114,8 @@ class LocalItemInstanceTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Local cache of species enrichment data (AI-enriched classification).
-/// Global — one row per definition_id, shared across all users.
-@DataClassName('LocalSpeciesEnrichment')
-class LocalSpeciesEnrichmentTable extends Table {
-  TextColumn get definitionId => text()();
-  TextColumn get animalClass => text()();
-  TextColumn get foodPreference => text()();
-  TextColumn get climate => text()();
-  IntColumn get brawn => integer()();
-  IntColumn get wit => integer()();
-  IntColumn get speed => integer()();
-  TextColumn get size => text().nullable()();
-  TextColumn get artUrl => text().nullable()();
-  TextColumn get iconUrl => text().nullable()();
-  DateTimeColumn get enrichedAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {definitionId};
-}
+// LocalSpeciesEnrichmentTable removed in v18 — data migrated to LocalSpeciesTable.
+// Old migration steps (v3, v9, v15) use customStatement() to reference the table by name.
 
 /// Unified species table — IUCN base data + AI enrichment.
 /// Replaces both species.db (bundled asset) and LocalSpeciesEnrichmentTable.
@@ -338,7 +321,6 @@ const kExpectedTableNames = [
   'local_cell_progress_table',
   'local_item_instance_table',
   'local_player_profile_table',
-  'local_species_enrichment_table',
   'local_write_queue_table',
   'local_cell_properties_table',
   'local_location_node_table',
@@ -349,7 +331,6 @@ const kExpectedTableNames = [
   LocalCellProgressTable,
   LocalItemInstanceTable,
   LocalPlayerProfileTable,
-  LocalSpeciesEnrichmentTable,
   LocalSpeciesTable,
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
@@ -366,7 +347,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration {
@@ -380,7 +361,20 @@ class AppDatabase extends _$AppDatabase {
           await m.deleteTable('local_collected_species_table');
         }
         if (from < 3) {
-          await m.createTable(localSpeciesEnrichmentTable);
+          // Old enrichment table — created here, migrated + dropped in v18.
+          await customStatement('''
+            CREATE TABLE IF NOT EXISTS local_species_enrichment_table (
+              definition_id TEXT NOT NULL PRIMARY KEY,
+              animal_class TEXT NOT NULL,
+              food_preference TEXT NOT NULL,
+              climate TEXT NOT NULL,
+              brawn INTEGER NOT NULL,
+              wit INTEGER NOT NULL,
+              speed INTEGER NOT NULL,
+              art_url TEXT,
+              enriched_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+            )
+          ''');
         }
         if (from < 4) {
           await m.createTable(localWriteQueueTable);
@@ -420,8 +414,8 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 9) {
           // Add size column to species enrichment (AnimalSize enum name).
-          await m.addColumn(
-              localSpeciesEnrichmentTable, localSpeciesEnrichmentTable.size);
+          await customStatement(
+              'ALTER TABLE local_species_enrichment_table ADD COLUMN size TEXT');
         }
         if (from < 10) {
           // Add step tracking columns to player profile.
@@ -467,8 +461,8 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(localAppEventsTable);
         }
         if (from < 15) {
-          await m.addColumn(
-              localSpeciesEnrichmentTable, localSpeciesEnrichmentTable.iconUrl);
+          await customStatement(
+              'ALTER TABLE local_species_enrichment_table ADD COLUMN icon_url TEXT');
         }
         if (from < 16) {
           await m.addColumn(
@@ -478,6 +472,31 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 17) {
           await m.createTable(localSpeciesTable);
+        }
+        if (from < 18) {
+          // Migrate enrichment data from old table → LocalSpeciesTable, then drop.
+          // Guard: old table only exists for upgrades from v3-v17 (not fresh installs).
+          final tables = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
+          ).get();
+          if (tables.isNotEmpty) {
+            await customStatement('''
+              UPDATE local_species_table SET
+                animal_class   = (SELECT animal_class   FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                food_preference = (SELECT food_preference FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                climate        = (SELECT climate        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                brawn          = (SELECT brawn          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                wit            = (SELECT wit            FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                speed          = (SELECT speed          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                size           = (SELECT size           FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                icon_url       = (SELECT icon_url       FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                art_url        = (SELECT art_url        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                enriched_at    = (SELECT enriched_at    FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id)
+              WHERE definition_id IN (SELECT definition_id FROM local_species_enrichment_table)
+            ''');
+            await customStatement(
+                'DROP TABLE IF EXISTS local_species_enrichment_table');
+          }
         }
       },
       beforeOpen: (details) async {
@@ -612,48 +631,6 @@ class AppDatabase extends _$AppDatabase {
       _writer.run(() => (delete(localItemInstanceTable)
             ..where((tbl) => tbl.userId.equals(userId)))
           .go());
-
-  // ========================================================================
-  // SPECIES ENRICHMENT QUERIES
-  // ========================================================================
-
-  Future<LocalSpeciesEnrichment?> getEnrichment(String definitionId) {
-    return (select(localSpeciesEnrichmentTable)
-          ..where((tbl) => tbl.definitionId.equals(definitionId)))
-        .getSingleOrNull();
-  }
-
-  Future<List<LocalSpeciesEnrichment>> getAllEnrichments() {
-    return select(localSpeciesEnrichmentTable).get();
-  }
-
-  Future<void> upsertEnrichment(LocalSpeciesEnrichment enrichment) =>
-      _writer.run(() {
-        // Use a companion for the DoUpdate clause so nullable columns (e.g. artUrl)
-        // are explicitly set to NULL rather than skipped when the value is null.
-        final companion = LocalSpeciesEnrichmentTableCompanion(
-          definitionId: Value(enrichment.definitionId),
-          animalClass: Value(enrichment.animalClass),
-          foodPreference: Value(enrichment.foodPreference),
-          climate: Value(enrichment.climate),
-          brawn: Value(enrichment.brawn),
-          wit: Value(enrichment.wit),
-          speed: Value(enrichment.speed),
-          size: Value(enrichment.size),
-          artUrl: Value(enrichment.artUrl),
-          enrichedAt: Value(enrichment.enrichedAt),
-        );
-        return into(localSpeciesEnrichmentTable).insert(
-          enrichment,
-          onConflict: DoUpdate((_) => companion),
-        );
-      });
-
-  Future<List<LocalSpeciesEnrichment>> getEnrichmentsSince(DateTime since) {
-    return (select(localSpeciesEnrichmentTable)
-          ..where((tbl) => tbl.enrichedAt.isBiggerOrEqualValue(since)))
-        .get();
-  }
 
   /// Update enrichment columns on a LocalSpeciesTable row.
   /// Used by species delta-sync from Supabase.
