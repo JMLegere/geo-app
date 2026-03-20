@@ -2,16 +2,18 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/models/item_category.dart';
+import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/features/pack/providers/pack_provider.dart';
-import 'package:earth_nova/features/pack/widgets/item_detail_sheet.dart';
 import 'package:earth_nova/features/pack/widgets/item_slot_widget.dart';
+import 'package:earth_nova/features/pack/widgets/species_card_modal.dart';
+import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
-/// 4-column Pokémon-PC-box grid of all fauna [ItemInstance]s the player owns.
+/// 6-column grid of all fauna ItemInstances the player owns.
 ///
-/// Reads from [packProvider]. Tapping a slot opens [ItemDetailSheet].
+/// Reads from [packProvider]. Tapping a slot opens the species card modal.
 /// Shows [EmptyStateWidget] when the player has no fauna yet.
 class FaunaGridTab extends ConsumerWidget {
   const FaunaGridTab({super.key});
@@ -20,6 +22,14 @@ class FaunaGridTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(packProvider
         .select((p) => p.itemsByCategory[ItemCategory.fauna] ?? const []));
+
+    // Resolve the enrichment map synchronously so it can be passed to the
+    // modal. When loading/errored, pass null — SpeciesCard degrades gracefully.
+    final enrichmentMap = ref.watch(enrichmentMapProvider).when(
+          data: (map) => map,
+          loading: () => <String, SpeciesEnrichment>{},
+          error: (_, __) => <String, SpeciesEnrichment>{},
+        );
 
     if (items.isEmpty) {
       return EmptyStateWidget(
@@ -46,10 +56,11 @@ class FaunaGridTab extends ConsumerWidget {
         return ItemSlotWidget(
           item: item,
           definition: definition,
-          onTap: () => showItemDetailSheet(
+          onTap: () => showSpeciesCardModal(
             context,
             item: item,
             definition: definition,
+            enrichmentMap: enrichmentMap,
           ),
         );
       },

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 
 void main() {
-  group('Database Migration v10 - Step Tracking Columns', () {
+  group('Database Migration v16 - Step Tracking + Species Art', () {
     late AppDatabase db;
 
     setUp(() {
