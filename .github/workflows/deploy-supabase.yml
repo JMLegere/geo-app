@@ -11,6 +11,7 @@ on:
 
 env:
   PROJECT_REF: bfaczcsrpfcbijoaeckb
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
 jobs:
   deploy:
@@ -25,6 +26,45 @@ jobs:
           # For workflow_run, we need to fetch the head commit
           ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
+      - name: Fix missing migration history (016, 017 applied manually)
+        run: |
+          echo "Checking existing migration history on remote..."
+          HISTORY=$(curl -s -X POST \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version"}' \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); [print(r['version']) for r in data]")
+
+          echo "Remote migration history:"
+          echo "$HISTORY"
+
+          # Insert 016 if not present
+          if echo "$HISTORY" | grep -q "^016_app_events$"; then
+            echo "Migration 016 already recorded."
+          else
+            echo "Recording migration 016..."
+            curl -s -X POST \
+              "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"query": "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('\''016_app_events'\'', '\''app_events'\'') ON CONFLICT (version) DO NOTHING"}'
+            echo "Migration 016 recorded."
+          fi
+
+          # Insert 017 if not present
+          if echo "$HISTORY" | grep -q "^017_app_events_retention$"; then
+            echo "Migration 017 already recorded."
+          else
+            echo "Recording migration 017..."
+            curl -s -X POST \
+              "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d '{"query": "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('\''017_app_events_retention'\'', '\''app_events_retention'\'') ON CONFLICT (version) DO NOTHING"}'
+            echo "Migration 017 recorded."
+          fi
+
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -32,7 +72,7 @@ jobs:
 
       - name: Link Supabase project
         run: |
-          supabase link --project-ref ${{ env.PROJECT_REF }}
+          supabase link --project-ref $PROJECT_REF
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -65,12 +105,15 @@ jobs:
       - name: Deploy Edge Functions
         if: ${{ steps.changes.outputs.changed == 'true' || github.event_name == 'workflow_dispatch' }}
         run: |
-          supabase functions deploy validate-encounter --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-species --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy admin-purge-enrichments --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-location --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-species-batch --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-locations-batch --project-ref ${{ env.PROJECT_REF }}
+          supabase functions deploy validate-encounter --project-ref $PROJECT_REF
+          supabase functions deploy enrich-species --project-ref $PROJECT_REF
+          supabase functions deploy admin-purge-enrichments --project-ref $PROJECT_REF
+          supabase functions deploy enrich-location --project-ref $PROJECT_REF
+          supabase functions deploy enrich-species-batch --project-ref $PROJECT_REF
+          supabase functions deploy enrich-locations-batch --project-ref $PROJECT_REF
+          # Deploy new art generation functions
+          supabase functions deploy generate-species-art --project-ref $PROJECT_REF
+          supabase functions deploy generate-species-art-batch --project-ref $PROJECT_REF
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -79,4 +122,4 @@ jobs:
           echo "✅ Supabase deployment complete"
           echo "  - Migrations: pushed"
           echo "  - Edge Functions: deployed"
-          echo "  - Project: ${{ env.PROJECT_REF }}"
+          echo "  - Project: $PROJECT_REF"

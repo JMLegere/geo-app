@@ -19,6 +19,7 @@ class SpeciesEnrichment {
     required this.speed,
     this.size,
     this.artUrl,
+    this.iconUrl,
     required this.enrichedAt,
   }) {
     if (brawn + wit + speed != 90) {
@@ -37,6 +38,7 @@ class SpeciesEnrichment {
   final int speed;
   final AnimalSize? size;
   final String? artUrl;
+  final String? iconUrl;
   final DateTime enrichedAt;
 
   factory SpeciesEnrichment.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,7 @@ class SpeciesEnrichment {
       speed: json['speed'] as int,
       size: sizeStr != null ? AnimalSize.fromString(sizeStr) : null,
       artUrl: json['art_url'] as String?,
+      iconUrl: json['icon_url'] as String?,
       enrichedAt: DateTime.parse(json['enriched_at'] as String),
     );
   }
@@ -65,6 +68,7 @@ class SpeciesEnrichment {
         'speed': speed,
         'size': size?.name,
         'art_url': artUrl,
+        'icon_url': iconUrl,
         'enriched_at': enrichedAt.toIso8601String(),
       };
 
@@ -79,6 +83,7 @@ class SpeciesEnrichment {
       speed: row.speed,
       size: row.size != null ? AnimalSize.fromString(row.size!) : null,
       artUrl: row.artUrl,
+      iconUrl: row.iconUrl,
       enrichedAt: row.enrichedAt,
     );
   }
@@ -94,6 +99,7 @@ class SpeciesEnrichment {
       speed: speed,
       size: size?.name,
       artUrl: artUrl,
+      iconUrl: iconUrl,
       enrichedAt: enrichedAt,
     );
   }
@@ -109,6 +115,7 @@ class SpeciesEnrichment {
       speed: Value(speed),
       size: Value(size?.name),
       artUrl: Value(artUrl),
+      iconUrl: Value(iconUrl),
       enrichedAt: Value(enrichedAt),
     );
   }
@@ -123,6 +130,7 @@ class SpeciesEnrichment {
     int? speed,
     AnimalSize? size,
     String? artUrl,
+    String? iconUrl,
     DateTime? enrichedAt,
   }) {
     return SpeciesEnrichment(
@@ -135,6 +143,7 @@ class SpeciesEnrichment {
       speed: speed ?? this.speed,
       size: size ?? this.size,
       artUrl: artUrl ?? this.artUrl,
+      iconUrl: iconUrl ?? this.iconUrl,
       enrichedAt: enrichedAt ?? this.enrichedAt,
     );
   }

@@ -55,6 +55,7 @@ interface EnrichmentRow {
   speed: number;
   size: string;
   art_url: string | null;
+  icon_url: string | null;
   enriched_at: string;
 }
 
@@ -326,6 +327,7 @@ serve(async (req: Request) => {
       speed: enrichment.speed,
       size: enrichment.size,
       art_url: existing ? (existing as EnrichmentRow).art_url : null,
+      icon_url: existing ? (existing as EnrichmentRow).icon_url : null,
     };
 
     // Upsert: inserts new row or updates existing row missing size.

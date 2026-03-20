@@ -647,6 +647,17 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
   late final GeneratedColumn<String> taxonomicClass = GeneratedColumn<String>(
       'taxonomic_class', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconUrlMeta =
+      const VerificationMeta('iconUrl');
+  @override
+  late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
+      'icon_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artUrlMeta = const VerificationMeta('artUrl');
+  @override
+  late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
+      'art_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -666,7 +677,9 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
         rarityName,
         habitatsJson,
         continentsJson,
-        taxonomicClass
+        taxonomicClass,
+        iconUrl,
+        artUrl
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -783,6 +796,14 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           taxonomicClass.isAcceptableOrUnknown(
               data['taxonomic_class']!, _taxonomicClassMeta));
     }
+    if (data.containsKey('icon_url')) {
+      context.handle(_iconUrlMeta,
+          iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta));
+    }
+    if (data.containsKey('art_url')) {
+      context.handle(_artUrlMeta,
+          artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
+    }
     return context;
   }
 
@@ -828,6 +849,10 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           DriftSqlType.string, data['${effectivePrefix}continents_json'])!,
       taxonomicClass: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}taxonomic_class']),
+      iconUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_url']),
+      artUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
     );
   }
 
@@ -892,6 +917,12 @@ class LocalItemInstance extends DataClass
 
   /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
   final String? taxonomicClass;
+
+  /// Instance-level icon override URL. Null = use species default from enrichment.
+  final String? iconUrl;
+
+  /// Instance-level illustration override URL. Null = use species default from enrichment.
+  final String? artUrl;
   const LocalItemInstance(
       {required this.id,
       required this.userId,
@@ -910,7 +941,9 @@ class LocalItemInstance extends DataClass
       this.rarityName,
       required this.habitatsJson,
       required this.continentsJson,
-      this.taxonomicClass});
+      this.taxonomicClass,
+      this.iconUrl,
+      this.artUrl});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -945,6 +978,12 @@ class LocalItemInstance extends DataClass
     map['continents_json'] = Variable<String>(continentsJson);
     if (!nullToAbsent || taxonomicClass != null) {
       map['taxonomic_class'] = Variable<String>(taxonomicClass);
+    }
+    if (!nullToAbsent || iconUrl != null) {
+      map['icon_url'] = Variable<String>(iconUrl);
+    }
+    if (!nullToAbsent || artUrl != null) {
+      map['art_url'] = Variable<String>(artUrl);
     }
     return map;
   }
@@ -983,6 +1022,11 @@ class LocalItemInstance extends DataClass
       taxonomicClass: taxonomicClass == null && nullToAbsent
           ? const Value.absent()
           : Value(taxonomicClass),
+      iconUrl: iconUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrl),
+      artUrl:
+          artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
     );
   }
 
@@ -1008,6 +1052,8 @@ class LocalItemInstance extends DataClass
       habitatsJson: serializer.fromJson<String>(json['habitatsJson']),
       continentsJson: serializer.fromJson<String>(json['continentsJson']),
       taxonomicClass: serializer.fromJson<String?>(json['taxonomicClass']),
+      iconUrl: serializer.fromJson<String?>(json['iconUrl']),
+      artUrl: serializer.fromJson<String?>(json['artUrl']),
     );
   }
   @override
@@ -1032,6 +1078,8 @@ class LocalItemInstance extends DataClass
       'habitatsJson': serializer.toJson<String>(habitatsJson),
       'continentsJson': serializer.toJson<String>(continentsJson),
       'taxonomicClass': serializer.toJson<String?>(taxonomicClass),
+      'iconUrl': serializer.toJson<String?>(iconUrl),
+      'artUrl': serializer.toJson<String?>(artUrl),
     };
   }
 
@@ -1053,7 +1101,9 @@ class LocalItemInstance extends DataClass
           Value<String?> rarityName = const Value.absent(),
           String? habitatsJson,
           String? continentsJson,
-          Value<String?> taxonomicClass = const Value.absent()}) =>
+          Value<String?> taxonomicClass = const Value.absent(),
+          Value<String?> iconUrl = const Value.absent(),
+          Value<String?> artUrl = const Value.absent()}) =>
       LocalItemInstance(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -1077,6 +1127,8 @@ class LocalItemInstance extends DataClass
         continentsJson: continentsJson ?? this.continentsJson,
         taxonomicClass:
             taxonomicClass.present ? taxonomicClass.value : this.taxonomicClass,
+        iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
+        artUrl: artUrl.present ? artUrl.value : this.artUrl,
       );
   LocalItemInstance copyWithCompanion(LocalItemInstanceTableCompanion data) {
     return LocalItemInstance(
@@ -1116,6 +1168,8 @@ class LocalItemInstance extends DataClass
       taxonomicClass: data.taxonomicClass.present
           ? data.taxonomicClass.value
           : this.taxonomicClass,
+      iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
+      artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
     );
   }
 
@@ -1139,7 +1193,9 @@ class LocalItemInstance extends DataClass
           ..write('rarityName: $rarityName, ')
           ..write('habitatsJson: $habitatsJson, ')
           ..write('continentsJson: $continentsJson, ')
-          ..write('taxonomicClass: $taxonomicClass')
+          ..write('taxonomicClass: $taxonomicClass, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('artUrl: $artUrl')
           ..write(')'))
         .toString();
   }
@@ -1163,7 +1219,9 @@ class LocalItemInstance extends DataClass
       rarityName,
       habitatsJson,
       continentsJson,
-      taxonomicClass);
+      taxonomicClass,
+      iconUrl,
+      artUrl);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1185,7 +1243,9 @@ class LocalItemInstance extends DataClass
           other.rarityName == this.rarityName &&
           other.habitatsJson == this.habitatsJson &&
           other.continentsJson == this.continentsJson &&
-          other.taxonomicClass == this.taxonomicClass);
+          other.taxonomicClass == this.taxonomicClass &&
+          other.iconUrl == this.iconUrl &&
+          other.artUrl == this.artUrl);
 }
 
 class LocalItemInstanceTableCompanion
@@ -1208,6 +1268,8 @@ class LocalItemInstanceTableCompanion
   final Value<String> habitatsJson;
   final Value<String> continentsJson;
   final Value<String?> taxonomicClass;
+  final Value<String?> iconUrl;
+  final Value<String?> artUrl;
   final Value<int> rowid;
   const LocalItemInstanceTableCompanion({
     this.id = const Value.absent(),
@@ -1228,6 +1290,8 @@ class LocalItemInstanceTableCompanion
     this.habitatsJson = const Value.absent(),
     this.continentsJson = const Value.absent(),
     this.taxonomicClass = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.artUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalItemInstanceTableCompanion.insert({
@@ -1249,6 +1313,8 @@ class LocalItemInstanceTableCompanion
     this.habitatsJson = const Value.absent(),
     this.continentsJson = const Value.absent(),
     this.taxonomicClass = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.artUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
@@ -1273,6 +1339,8 @@ class LocalItemInstanceTableCompanion
     Expression<String>? habitatsJson,
     Expression<String>? continentsJson,
     Expression<String>? taxonomicClass,
+    Expression<String>? iconUrl,
+    Expression<String>? artUrl,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1294,6 +1362,8 @@ class LocalItemInstanceTableCompanion
       if (habitatsJson != null) 'habitats_json': habitatsJson,
       if (continentsJson != null) 'continents_json': continentsJson,
       if (taxonomicClass != null) 'taxonomic_class': taxonomicClass,
+      if (iconUrl != null) 'icon_url': iconUrl,
+      if (artUrl != null) 'art_url': artUrl,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1317,6 +1387,8 @@ class LocalItemInstanceTableCompanion
       Value<String>? habitatsJson,
       Value<String>? continentsJson,
       Value<String?>? taxonomicClass,
+      Value<String?>? iconUrl,
+      Value<String?>? artUrl,
       Value<int>? rowid}) {
     return LocalItemInstanceTableCompanion(
       id: id ?? this.id,
@@ -1337,6 +1409,8 @@ class LocalItemInstanceTableCompanion
       habitatsJson: habitatsJson ?? this.habitatsJson,
       continentsJson: continentsJson ?? this.continentsJson,
       taxonomicClass: taxonomicClass ?? this.taxonomicClass,
+      iconUrl: iconUrl ?? this.iconUrl,
+      artUrl: artUrl ?? this.artUrl,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1398,6 +1472,12 @@ class LocalItemInstanceTableCompanion
     if (taxonomicClass.present) {
       map['taxonomic_class'] = Variable<String>(taxonomicClass.value);
     }
+    if (iconUrl.present) {
+      map['icon_url'] = Variable<String>(iconUrl.value);
+    }
+    if (artUrl.present) {
+      map['art_url'] = Variable<String>(artUrl.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1425,6 +1505,8 @@ class LocalItemInstanceTableCompanion
           ..write('habitatsJson: $habitatsJson, ')
           ..write('continentsJson: $continentsJson, ')
           ..write('taxonomicClass: $taxonomicClass, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('artUrl: $artUrl, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2151,6 +2233,12 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
   late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
       'art_url', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconUrlMeta =
+      const VerificationMeta('iconUrl');
+  @override
+  late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
+      'icon_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _enrichedAtMeta =
       const VerificationMeta('enrichedAt');
   @override
@@ -2170,6 +2258,7 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
         speed,
         size,
         artUrl,
+        iconUrl,
         enrichedAt
       ];
   @override
@@ -2239,6 +2328,10 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
       context.handle(_artUrlMeta,
           artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
     }
+    if (data.containsKey('icon_url')) {
+      context.handle(_iconUrlMeta,
+          iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta));
+    }
     if (data.containsKey('enriched_at')) {
       context.handle(
           _enrichedAtMeta,
@@ -2272,6 +2365,8 @@ class $LocalSpeciesEnrichmentTableTable extends LocalSpeciesEnrichmentTable
           .read(DriftSqlType.string, data['${effectivePrefix}size']),
       artUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
+      iconUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_url']),
       enrichedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}enriched_at'])!,
     );
@@ -2294,6 +2389,7 @@ class LocalSpeciesEnrichment extends DataClass
   final int speed;
   final String? size;
   final String? artUrl;
+  final String? iconUrl;
   final DateTime enrichedAt;
   const LocalSpeciesEnrichment(
       {required this.definitionId,
@@ -2305,6 +2401,7 @@ class LocalSpeciesEnrichment extends DataClass
       required this.speed,
       this.size,
       this.artUrl,
+      this.iconUrl,
       required this.enrichedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2322,6 +2419,9 @@ class LocalSpeciesEnrichment extends DataClass
     if (!nullToAbsent || artUrl != null) {
       map['art_url'] = Variable<String>(artUrl);
     }
+    if (!nullToAbsent || iconUrl != null) {
+      map['icon_url'] = Variable<String>(iconUrl);
+    }
     map['enriched_at'] = Variable<DateTime>(enrichedAt);
     return map;
   }
@@ -2338,6 +2438,9 @@ class LocalSpeciesEnrichment extends DataClass
       size: size == null && nullToAbsent ? const Value.absent() : Value(size),
       artUrl:
           artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
+      iconUrl: iconUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrl),
       enrichedAt: Value(enrichedAt),
     );
   }
@@ -2355,6 +2458,7 @@ class LocalSpeciesEnrichment extends DataClass
       speed: serializer.fromJson<int>(json['speed']),
       size: serializer.fromJson<String?>(json['size']),
       artUrl: serializer.fromJson<String?>(json['artUrl']),
+      iconUrl: serializer.fromJson<String?>(json['iconUrl']),
       enrichedAt: serializer.fromJson<DateTime>(json['enrichedAt']),
     );
   }
@@ -2371,6 +2475,7 @@ class LocalSpeciesEnrichment extends DataClass
       'speed': serializer.toJson<int>(speed),
       'size': serializer.toJson<String?>(size),
       'artUrl': serializer.toJson<String?>(artUrl),
+      'iconUrl': serializer.toJson<String?>(iconUrl),
       'enrichedAt': serializer.toJson<DateTime>(enrichedAt),
     };
   }
@@ -2385,6 +2490,7 @@ class LocalSpeciesEnrichment extends DataClass
           int? speed,
           Value<String?> size = const Value.absent(),
           Value<String?> artUrl = const Value.absent(),
+          Value<String?> iconUrl = const Value.absent(),
           DateTime? enrichedAt}) =>
       LocalSpeciesEnrichment(
         definitionId: definitionId ?? this.definitionId,
@@ -2396,6 +2502,7 @@ class LocalSpeciesEnrichment extends DataClass
         speed: speed ?? this.speed,
         size: size.present ? size.value : this.size,
         artUrl: artUrl.present ? artUrl.value : this.artUrl,
+        iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
         enrichedAt: enrichedAt ?? this.enrichedAt,
       );
   LocalSpeciesEnrichment copyWithCompanion(
@@ -2415,6 +2522,7 @@ class LocalSpeciesEnrichment extends DataClass
       speed: data.speed.present ? data.speed.value : this.speed,
       size: data.size.present ? data.size.value : this.size,
       artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
+      iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
       enrichedAt:
           data.enrichedAt.present ? data.enrichedAt.value : this.enrichedAt,
     );
@@ -2432,6 +2540,7 @@ class LocalSpeciesEnrichment extends DataClass
           ..write('speed: $speed, ')
           ..write('size: $size, ')
           ..write('artUrl: $artUrl, ')
+          ..write('iconUrl: $iconUrl, ')
           ..write('enrichedAt: $enrichedAt')
           ..write(')'))
         .toString();
@@ -2439,7 +2548,7 @@ class LocalSpeciesEnrichment extends DataClass
 
   @override
   int get hashCode => Object.hash(definitionId, animalClass, foodPreference,
-      climate, brawn, wit, speed, size, artUrl, enrichedAt);
+      climate, brawn, wit, speed, size, artUrl, iconUrl, enrichedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2453,6 +2562,7 @@ class LocalSpeciesEnrichment extends DataClass
           other.speed == this.speed &&
           other.size == this.size &&
           other.artUrl == this.artUrl &&
+          other.iconUrl == this.iconUrl &&
           other.enrichedAt == this.enrichedAt);
 }
 
@@ -2467,6 +2577,7 @@ class LocalSpeciesEnrichmentTableCompanion
   final Value<int> speed;
   final Value<String?> size;
   final Value<String?> artUrl;
+  final Value<String?> iconUrl;
   final Value<DateTime> enrichedAt;
   final Value<int> rowid;
   const LocalSpeciesEnrichmentTableCompanion({
@@ -2479,6 +2590,7 @@ class LocalSpeciesEnrichmentTableCompanion
     this.speed = const Value.absent(),
     this.size = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.iconUrl = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2492,6 +2604,7 @@ class LocalSpeciesEnrichmentTableCompanion
     required int speed,
     this.size = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.iconUrl = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : definitionId = Value(definitionId),
@@ -2511,6 +2624,7 @@ class LocalSpeciesEnrichmentTableCompanion
     Expression<int>? speed,
     Expression<String>? size,
     Expression<String>? artUrl,
+    Expression<String>? iconUrl,
     Expression<DateTime>? enrichedAt,
     Expression<int>? rowid,
   }) {
@@ -2524,6 +2638,7 @@ class LocalSpeciesEnrichmentTableCompanion
       if (speed != null) 'speed': speed,
       if (size != null) 'size': size,
       if (artUrl != null) 'art_url': artUrl,
+      if (iconUrl != null) 'icon_url': iconUrl,
       if (enrichedAt != null) 'enriched_at': enrichedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2539,6 +2654,7 @@ class LocalSpeciesEnrichmentTableCompanion
       Value<int>? speed,
       Value<String?>? size,
       Value<String?>? artUrl,
+      Value<String?>? iconUrl,
       Value<DateTime>? enrichedAt,
       Value<int>? rowid}) {
     return LocalSpeciesEnrichmentTableCompanion(
@@ -2551,6 +2667,7 @@ class LocalSpeciesEnrichmentTableCompanion
       speed: speed ?? this.speed,
       size: size ?? this.size,
       artUrl: artUrl ?? this.artUrl,
+      iconUrl: iconUrl ?? this.iconUrl,
       enrichedAt: enrichedAt ?? this.enrichedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2586,6 +2703,9 @@ class LocalSpeciesEnrichmentTableCompanion
     if (artUrl.present) {
       map['art_url'] = Variable<String>(artUrl.value);
     }
+    if (iconUrl.present) {
+      map['icon_url'] = Variable<String>(iconUrl.value);
+    }
     if (enrichedAt.present) {
       map['enriched_at'] = Variable<DateTime>(enrichedAt.value);
     }
@@ -2607,6 +2727,7 @@ class LocalSpeciesEnrichmentTableCompanion
           ..write('speed: $speed, ')
           ..write('size: $size, ')
           ..write('artUrl: $artUrl, ')
+          ..write('iconUrl: $iconUrl, ')
           ..write('enrichedAt: $enrichedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4670,6 +4791,8 @@ typedef $$LocalItemInstanceTableTableCreateCompanionBuilder
   Value<String> habitatsJson,
   Value<String> continentsJson,
   Value<String?> taxonomicClass,
+  Value<String?> iconUrl,
+  Value<String?> artUrl,
   Value<int> rowid,
 });
 typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
@@ -4692,6 +4815,8 @@ typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
   Value<String> habitatsJson,
   Value<String> continentsJson,
   Value<String?> taxonomicClass,
+  Value<String?> iconUrl,
+  Value<String?> artUrl,
   Value<int> rowid,
 });
 
@@ -4761,6 +4886,12 @@ class $$LocalItemInstanceTableTableFilterComposer
   ColumnFilters<String> get taxonomicClass => $composableBuilder(
       column: $table.taxonomicClass,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artUrl => $composableBuilder(
+      column: $table.artUrl, builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalItemInstanceTableTableOrderingComposer
@@ -4832,6 +4963,12 @@ class $$LocalItemInstanceTableTableOrderingComposer
   ColumnOrderings<String> get taxonomicClass => $composableBuilder(
       column: $table.taxonomicClass,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artUrl => $composableBuilder(
+      column: $table.artUrl, builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalItemInstanceTableTableAnnotationComposer
@@ -4896,6 +5033,12 @@ class $$LocalItemInstanceTableTableAnnotationComposer
 
   GeneratedColumn<String> get taxonomicClass => $composableBuilder(
       column: $table.taxonomicClass, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrl =>
+      $composableBuilder(column: $table.iconUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get artUrl =>
+      $composableBuilder(column: $table.artUrl, builder: (column) => column);
 }
 
 class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
@@ -4947,6 +5090,8 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String> habitatsJson = const Value.absent(),
             Value<String> continentsJson = const Value.absent(),
             Value<String?> taxonomicClass = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
+            Value<String?> artUrl = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion(
@@ -4968,6 +5113,8 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             habitatsJson: habitatsJson,
             continentsJson: continentsJson,
             taxonomicClass: taxonomicClass,
+            iconUrl: iconUrl,
+            artUrl: artUrl,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4989,6 +5136,8 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String> habitatsJson = const Value.absent(),
             Value<String> continentsJson = const Value.absent(),
             Value<String?> taxonomicClass = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
+            Value<String?> artUrl = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion.insert(
@@ -5010,6 +5159,8 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             habitatsJson: habitatsJson,
             continentsJson: continentsJson,
             taxonomicClass: taxonomicClass,
+            iconUrl: iconUrl,
+            artUrl: artUrl,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -5356,6 +5507,7 @@ typedef $$LocalSpeciesEnrichmentTableTableCreateCompanionBuilder
   required int speed,
   Value<String?> size,
   Value<String?> artUrl,
+  Value<String?> iconUrl,
   Value<DateTime> enrichedAt,
   Value<int> rowid,
 });
@@ -5370,6 +5522,7 @@ typedef $$LocalSpeciesEnrichmentTableTableUpdateCompanionBuilder
   Value<int> speed,
   Value<String?> size,
   Value<String?> artUrl,
+  Value<String?> iconUrl,
   Value<DateTime> enrichedAt,
   Value<int> rowid,
 });
@@ -5410,6 +5563,9 @@ class $$LocalSpeciesEnrichmentTableTableFilterComposer
 
   ColumnFilters<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnFilters(column));
@@ -5453,6 +5609,9 @@ class $$LocalSpeciesEnrichmentTableTableOrderingComposer
   ColumnOrderings<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -5492,6 +5651,9 @@ class $$LocalSpeciesEnrichmentTableTableAnnotationComposer
 
   GeneratedColumn<String> get artUrl =>
       $composableBuilder(column: $table.artUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrl =>
+      $composableBuilder(column: $table.iconUrl, builder: (column) => column);
 
   GeneratedColumn<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => column);
@@ -5537,6 +5699,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             Value<int> speed = const Value.absent(),
             Value<String?> size = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
             Value<DateTime> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5550,6 +5713,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             speed: speed,
             size: size,
             artUrl: artUrl,
+            iconUrl: iconUrl,
             enrichedAt: enrichedAt,
             rowid: rowid,
           ),
@@ -5563,6 +5727,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             required int speed,
             Value<String?> size = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
             Value<DateTime> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -5576,6 +5741,7 @@ class $$LocalSpeciesEnrichmentTableTableTableManager extends RootTableManager<
             speed: speed,
             size: size,
             artUrl: artUrl,
+            iconUrl: iconUrl,
             enrichedAt: enrichedAt,
             rowid: rowid,
           ),

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 
 void main() {
-  group('Database Migration v10 - Step Tracking Columns', () {
+  group('Database Migration v16 - Step Tracking + Species Art', () {
     late AppDatabase db;
 
     setUp(() {
@@ -15,8 +15,8 @@ void main() {
       await db.close();
     });
 
-    test('schema version is 14', () {
-      expect(db.schemaVersion, 14);
+    test('schema version is 16', () {
+      expect(db.schemaVersion, 16);
     });
 
     test('LocalPlayerProfileTable has totalSteps column', () async {

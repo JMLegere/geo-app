@@ -103,6 +103,12 @@ class LocalItemInstanceTable extends Table {
   /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
   TextColumn get taxonomicClass => text().nullable()();
 
+  /// Instance-level icon override URL. Null = use species default from enrichment.
+  TextColumn get iconUrl => text().nullable()();
+
+  /// Instance-level illustration override URL. Null = use species default from enrichment.
+  TextColumn get artUrl => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -120,6 +126,7 @@ class LocalSpeciesEnrichmentTable extends Table {
   IntColumn get speed => integer()();
   TextColumn get size => text().nullable()();
   TextColumn get artUrl => text().nullable()();
+  TextColumn get iconUrl => text().nullable()();
   DateTimeColumn get enrichedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -326,7 +333,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration {
@@ -425,6 +432,16 @@ class AppDatabase extends _$AppDatabase {
         }
         if (from < 14) {
           await m.createTable(localAppEventsTable);
+        }
+        if (from < 15) {
+          await m.addColumn(
+              localSpeciesEnrichmentTable, localSpeciesEnrichmentTable.iconUrl);
+        }
+        if (from < 16) {
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.iconUrl);
+          await m.addColumn(
+              localItemInstanceTable, localItemInstanceTable.artUrl);
         }
       },
     );

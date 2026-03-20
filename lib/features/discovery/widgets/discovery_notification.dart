@@ -10,6 +10,7 @@ import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/frosted_glass_container.dart';
+import 'package:earth_nova/shared/widgets/species_art_image.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 
 /// Maximum number of stacked cards rendered simultaneously.
@@ -238,7 +239,7 @@ class _DiscoveryCard extends StatelessWidget {
       isNotification: true,
       child: Row(
         children: [
-          // Species icon placeholder
+          // Species icon
           Container(
             width: ComponentSizes.notificationIcon,
             height: ComponentSizes.notificationIcon,
@@ -246,12 +247,11 @@ class _DiscoveryCard extends StatelessWidget {
               color: rarityColor.withValues(alpha: Opacities.badgeBackground),
               borderRadius: Radii.borderLg,
             ),
-            child: Center(
-              child: Text(
-                _iconForItem(item),
-                style: const TextStyle(
-                    fontSize: ComponentSizes.notificationIconSize),
-              ),
+            child: SpeciesArtImage(
+              artUrl: item is FaunaDefinition ? item.iconUrl : null,
+              fallbackEmoji: _iconForItem(item),
+              size: ComponentSizes.notificationIcon,
+              borderRadius: Radii.borderLg,
             ),
           ),
           Spacing.gapHMd,
