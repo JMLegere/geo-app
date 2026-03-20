@@ -201,6 +201,7 @@ interface SpeciesRow {
   icon_url: string | null;
   art_url: string | null;
   enriched_at: string | null;
+  habitats_json: string | null;
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -331,22 +332,52 @@ async function callLLMWithRotation(
 
 // ── Art Generation ────────────────────────────────────────────────────────────
 
+function parseFirstHabitat(json: string | null | undefined): string | null {
+  if (!json) return null;
+  try {
+    const arr = JSON.parse(json);
+    return Array.isArray(arr) && arr.length > 0 ? String(arr[0]).toLowerCase() : null;
+  } catch { return null; }
+}
+
 function buildArtPrompt(
   commonName: string,
   scientificName: string,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null },
+  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null },
 ): string {
   if (assetType === "icon") {
-    return `Generate an image: Cute chibi-style character icon of a ${commonName} (${scientificName}). Simple, adorable, round proportions, expressive eyes, clean outline. Transparent background, centered, facing slightly left. Style: Pokemon PC box sprite, soft colors, no text, no shadows, no ground. 96x96 pixels.`;
+    return `Tiny sprite character of a ${commonName} (${scientificName}).
+Pokémon PC box style miniature portrait — recognizable from silhouette
+alone. Slightly rounded, softened proportions inspired by plushie
+aesthetics: big expressive eyes, gentle curves, approachable even if
+the real animal is intimidating.
+
+Front-facing or slight 3/4 view, grounded at bottom of frame. Warm
+soft shading with 3-4 color tones, smooth anti-aliased edges.
+Simplified detail but clearly identifiable species — a tiny portrait
+with personality, not a blob.
+
+Transparent background. No text, no shadows on ground, no effects.`;
   }
 
-  let poseDirection = "natural resting pose, alert but relaxed";
+  let pose = "natural resting pose, calm and content";
   if (enrichment?.brawn != null && enrichment?.wit != null && enrichment?.speed != null) {
     const max = Math.max(enrichment.brawn, enrichment.wit, enrichment.speed);
-    if (enrichment.brawn === max) poseDirection = "powerful stance, grounded, imposing";
-    else if (enrichment.speed === max) poseDirection = "dynamic motion, leaping, wind-swept, mid-stride";
-    else if (enrichment.wit === max) poseDirection = "alert and observant, clever posture, head tilted";
+    if (enrichment.brawn === max) pose = "powerful but gentle stance, grounded, quietly imposing";
+    else if (enrichment.speed === max) pose = "light on its feet, mid-stride or leaping, wind-swept";
+    else if (enrichment.wit === max) pose = "wry and confident, relaxed knowing posture, slight smirk";
+  }
+
+  let habitatAtmosphere = "Soft natural outdoor setting";
+  switch (enrichment?.habitat) {
+    case "forest": habitatAtmosphere = "Dappled green light filtering through a forest canopy"; break;
+    case "plains": habitatAtmosphere = "Open golden grassland with warm horizon light"; break;
+    case "freshwater": habitatAtmosphere = "Misty riverbank with soft teal reflections"; break;
+    case "saltwater": habitatAtmosphere = "Coastal scene with ocean spray and deep blue atmosphere"; break;
+    case "swamp": habitatAtmosphere = "Lush wetland with filtered olive-green light"; break;
+    case "mountain": habitatAtmosphere = "Rocky alpine scene with cool slate-grey mist"; break;
+    case "desert": habitatAtmosphere = "Warm amber haze over dry sandy terrain"; break;
   }
 
   let climateLighting = "Soft natural daylight, gentle warmth";
@@ -356,7 +387,29 @@ function buildArtPrompt(
     case "frigid": climateLighting = "Cold blue-white arctic light, stark contrast"; break;
   }
 
-  return `Generate an image: Professional Pokemon TCG-style watercolor illustration of a ${commonName} (${scientificName}). Pose: ${poseDirection}. Composition: Full body, 3/4 view, slightly off-center, breathing room. Background: Soft atmospheric natural scene, impressionistic, not competing with subject. ${climateLighting}. Style: Watercolor with visible brushstrokes, soft edges, translucent layers, luminous quality. Moderate saturation. Soft diffused lighting. No text, no labels, no borders, no card frame. 512x512 pixels.`;
+  return `Watercolor illustration of a ${commonName} (${scientificName}) in the style of
+Mitsuhiro Arita's classic Pokémon TCG card art — nostalgic warmth,
+luminous brushwork, painterly soft light.
+
+The creature has gently softened, approachable proportions — rounded
+forms, expressive eyes, plushie-like warmth. Even fierce animals feel
+inviting and endearing, like a cozy nature documentary.
+
+Pose: ${pose}. Setting: ${habitatAtmosphere}. ${climateLighting}.
+Composition: Full body, 3/4 view, slightly off-center with breathing
+room. The creature is in a natural everyday moment — resting, foraging,
+curious — not battling or aggressive.
+
+Technique: Traditional watercolor — visible brushstrokes, translucent
+wet-on-wet layers, soft edges, organic paint bleeds, luminous washes
+that let light through. Warm moderate saturation. Soft diffused lighting
+with gentle highlights.
+
+Avoid: Dead center framing, plastic or digitally over-rendered look,
+hard edges, flat lighting, oversaturated colors, muddy color mixing,
+harsh black shadows.
+
+No text, no labels, no borders, no card frame.`;
 }
 
 // Rotates through IMAGE_PROVIDERS; returns { url, provider } on success,
@@ -368,7 +421,7 @@ async function generateAndUploadArt(
   scientificName: string,
   commonName: string,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null },
+  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null },
   logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
 ): Promise<{ url: string; provider: string } | "rate_limited" | null> {
   const fileName = assetType === "icon" ? `${definitionId}_icon.webp` : `${definitionId}.webp`;
@@ -597,7 +650,7 @@ serve(async (req: Request) => {
       if (uniqueIds.length > 0) {
         const { data: needsArt, error: artErr } = await supabase
           .from("species")
-          .select("definition_id, scientific_name, common_name, animal_class, climate, brawn, wit, speed, icon_url, art_url, enriched_at")
+          .select("definition_id, scientific_name, common_name, animal_class, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
           .not("animal_class", "is", null)
           .in("definition_id", uniqueIds)
           .or("icon_url.is.null,art_url.is.null")
@@ -621,6 +674,7 @@ serve(async (req: Request) => {
             brawn: species.brawn,
             wit: species.wit,
             speed: species.speed,
+            habitat: parseFirstHabitat(species.habitats_json),
           };
 
           // Generate icon if missing

@@ -109,6 +109,8 @@ class ItemSlotWidget extends StatelessWidget {
                       fallbackEmoji: _resolveEmoji(def),
                       size: 44,
                       borderRadius: Radii.borderMd,
+                      animate: true,
+                      animationSeed: item.definitionId.hashCode,
                     ),
                   ),
                   // Rarity badge top-right

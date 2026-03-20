@@ -58,10 +58,10 @@ The illustration prompt incorporates species stats and traits to drive pose, moo
 
 | Dominant Stat | Pose Direction | Mood |
 |---------------|---------------|------|
-| Brawn (highest) | Powerful stance, grounded, imposing, flexed | Strength, confidence |
-| Speed (highest) | Dynamic motion, leaping, wind-swept, mid-stride | Energy, agility |
-| Wit (highest) | Alert eyes, clever posture, observant, head tilted | Intelligence, cunning |
-| Balanced | Natural resting pose, alert but relaxed | Harmony |
+| Brawn (highest) | Powerful but gentle stance, grounded, quietly imposing | Strength, warmth |
+| Speed (highest) | Light on its feet, mid-stride or leaping, wind-swept | Energy, agility |
+| Wit (highest) | Wry and confident, relaxed knowing posture, slight smirk | Intelligence, charm |
+| Balanced | Natural resting pose, calm and content | Harmony |
 
 Habitat and climate also influence the illustration's ambient lighting and environment cues (see Prompt Templates below).
 
@@ -214,10 +214,13 @@ Bars are 6px tall, pill-shaped, with subtle inner glow. Emoji icon left, number 
 Shared `SpeciesArtImage` widget used by all surfaces:
 
 ```dart
-class SpeciesArtImage extends StatelessWidget {
+class SpeciesArtImage extends StatefulWidget {
   final String? artUrl;       // icon_url or art_url from enrichment
   final String fallbackEmoji; // from GameIcons.fauna()
   final double size;
+  final BorderRadius? borderRadius;
+  final bool animate;         // enable idle breathing animation (default false)
+  final int animationSeed;    // phase-offset so sprites don't breathe in sync
 }
 ```
 
@@ -226,6 +229,13 @@ class SpeciesArtImage extends StatelessWidget {
 - `artUrl` null → emoji Text widget (current behavior)
 - Network error → emoji fallback
 - Loading → emoji (no spinner — instant fallback, art replaces when cached)
+
+**Idle animation** (when `animate: true` and `artUrl` is non-null):
+- Sinusoidal breathing: `scaleY: 1.0 - 0.05 * sin(t * 2π)`, `translateY: size * 0.02 * sin(t * 2π)`
+- `Alignment.bottomCenter` so feet stay grounded
+- Phase offset derived from `animationSeed.hashCode` — each sprite breathes at a different point in the cycle
+- Duration: `Durations.spriteIdle` (1800ms)
+- Wrapped in `RepaintBoundary` to isolate repaints
 
 Flutter's default image cache (1000 images, 100MB) is sufficient. Icons are ~5–15KB, illustrations ~30–80KB. 438 species × 50KB = ~22MB.
 
@@ -292,48 +302,91 @@ After `enrich-species` classification succeeds:
 
 **Recommendation:** Gemini Imagen 3. Free tier covers backfill in ~2 days. New discoveries (~5-20/day) well within limits.
 
+### Art Pillars
+
+Three visual pillars define EarthNova's art identity:
+
+- **Pokemon TCG** → composition, framing, creature-as-hero
+- **PuffPals** → softened proportions, plushie warmth, big eyes, approachable
+- **Watercolor** → visible brushstrokes, wet-on-wet, luminous washes, organic imperfection
+
 ### Prompt Templates
 
 **Icon prompt:**
 ```
-Cute chibi-style character icon of a {common_name} ({scientific_name}).
-Simple, adorable, round proportions, expressive eyes, clean outline.
-Transparent background, centered, facing slightly left.
-Style: Pokemon PC box sprite, soft colors, no text, no shadows, no ground.
-96x96 pixels.
+Tiny sprite character of a {name} ({scientific}).
+Pokémon PC box style miniature portrait — recognizable from silhouette
+alone. Slightly rounded, softened proportions inspired by plushie
+aesthetics: big expressive eyes, gentle curves, approachable even if
+the real animal is intimidating.
+
+Front-facing or slight 3/4 view, grounded at bottom of frame. Warm
+soft shading with 3-4 color tones, smooth anti-aliased edges.
+Simplified detail but clearly identifiable species — a tiny portrait
+with personality, not a blob.
+
+Transparent background. No text, no shadows on ground, no effects.
 ```
 
 **Illustration prompt:**
 ```
-Professional Pokemon TCG-style watercolor illustration of a {common_name}
-({scientific_name}).
+Watercolor illustration of a {name} ({scientific}) in the style of
+Mitsuhiro Arita's classic Pokémon TCG card art — nostalgic warmth,
+luminous brushwork, painterly soft light.
 
-Pose: {pose_direction} — {pose_description}.
-Composition: Full body, 3/4 view, slightly off-center, breathing room.
-Background: Soft atmospheric {habitat} scene, impressionistic, not competing
-with subject. {climate_lighting}.
+The creature has gently softened, approachable proportions — rounded
+forms, expressive eyes, plushie-like warmth. Even fierce animals feel
+inviting and endearing, like a cozy nature documentary.
 
-Style: Watercolor with visible brushstrokes, soft edges, translucent layers,
-luminous quality. Moderate saturation. Soft diffused lighting.
+Pose: {pose}. Setting: {habitat_atmosphere}. {climate_lighting}.
+Composition: Full body, 3/4 view, slightly off-center with breathing
+room. The creature is in a natural everyday moment — resting, foraging,
+curious — not battling or aggressive.
+
+Technique: Traditional watercolor — visible brushstrokes, translucent
+wet-on-wet layers, soft edges, organic paint bleeds, luminous washes
+that let light through. Warm moderate saturation. Soft diffused lighting
+with gentle highlights.
+
+Avoid: Dead center framing, plastic or digitally over-rendered look,
+hard edges, flat lighting, oversaturated colors, muddy color mixing,
+harsh black shadows.
+
 No text, no labels, no borders, no card frame.
-512x512 pixels.
 ```
 
-Where `pose_direction` and `climate_lighting` are derived from enrichment:
+Note: Dimension constraints (96×96, 512×512) are controlled via API parameters, not prompt text.
 
-```
-pose_direction:
-  brawn dominant → "powerful stance, grounded, imposing"
-  speed dominant → "dynamic motion, leaping, wind-swept, mid-stride"
-  wit dominant   → "alert and observant, clever posture, head tilted"
-  balanced       → "natural resting pose, alert but relaxed"
+### Pose Mappings (dominant stat)
 
-climate_lighting:
-  tropic    → "Warm golden tropical light, lush greens"
-  temperate → "Soft natural daylight, gentle warmth"
-  boreal    → "Cool crisp northern light, muted tones"
-  frigid    → "Cold blue-white arctic light, stark contrast"
-```
+| Dominant Stat | Pose |
+|---------------|------|
+| Brawn | "powerful but gentle stance, grounded, quietly imposing" |
+| Speed | "light on its feet, mid-stride or leaping, wind-swept" |
+| Wit | "wry and confident, relaxed knowing posture, slight smirk" |
+| Balanced | "natural resting pose, calm and content" |
+
+### Habitat Atmosphere (from `habitats_json` first entry)
+
+| Habitat | Atmosphere |
+|---------|-----------|
+| forest | Dappled green light filtering through a forest canopy |
+| plains | Open golden grassland with warm horizon light |
+| freshwater | Misty riverbank with soft teal reflections |
+| saltwater | Coastal scene with ocean spray and deep blue atmosphere |
+| swamp | Lush wetland with filtered olive-green light |
+| mountain | Rocky alpine scene with cool slate-grey mist |
+| desert | Warm amber haze over dry sandy terrain |
+| *(default)* | Soft natural outdoor setting |
+
+### Climate Lighting
+
+| Climate | Lighting |
+|---------|---------|
+| tropic | Warm golden tropical light, lush greens |
+| temperate | Soft natural daylight, gentle warmth |
+| boreal | Cool crisp northern light, muted tones |
+| frigid | Cold blue-white arctic light, stark contrast |
 
 **Prompt tuning:** First batch of ~10 species should be manually reviewed before running the full backfill. Expect 2-3 iterations on wording.
 

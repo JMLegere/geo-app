@@ -172,6 +172,9 @@ abstract final class Durations {
   /// One complete revolution of the HSV spectrum around the card edge.
   /// Slow and hypnotic — 3.5 s keeps it magical without being distracting.
   static const Duration prismaticCycle = Duration(milliseconds: 3500);
+
+  /// Full cycle for the sprite idle breathing animation.
+  static const Duration spriteIdle = Duration(milliseconds: 1800);
 }
 
 /// Standard animation curves.
