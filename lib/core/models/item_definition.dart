@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import 'animal_class.dart';
@@ -114,6 +116,21 @@ class FaunaDefinition extends ItemDefinition {
   /// 512x512 watercolor illustration URL. Null until AI enrichment completes.
   final String? artUrl;
 
+  /// Base stat: physical strength (0-90). Null until enriched.
+  final int? brawn;
+
+  /// Base stat: intelligence/cunning (0-90). Null until enriched.
+  final int? wit;
+
+  /// Base stat: speed/agility (0-90). Null until enriched.
+  final int? speed;
+
+  /// Animal size category name (e.g. "medium", "large"). Null until enriched.
+  final String? size;
+
+  /// When this species was AI-enriched. Null until enriched.
+  final DateTime? enrichedAt;
+
   FaunaDefinition({
     required super.id,
     required super.displayName,
@@ -130,6 +147,11 @@ class FaunaDefinition extends ItemDefinition {
     this.climate,
     this.iconUrl,
     this.artUrl,
+    this.brawn,
+    this.wit,
+    this.speed,
+    this.size,
+    this.enrichedAt,
   })  : animalType = AnimalType.fromTaxonomicClass(taxonomicClass),
         super(category: ItemCategory.fauna);
 
@@ -165,6 +187,13 @@ class FaunaDefinition extends ItemDefinition {
           : null,
       iconUrl: json['icon_url'] as String?,
       artUrl: json['art_url'] as String?,
+      brawn: json['brawn'] as int?,
+      wit: json['wit'] as int?,
+      speed: json['speed'] as int?,
+      size: json['size'] as String?,
+      enrichedAt: json['enriched_at'] != null
+          ? DateTime.tryParse(json['enriched_at'] as String)
+          : null,
     );
   }
 
@@ -180,6 +209,11 @@ class FaunaDefinition extends ItemDefinition {
         if (climate != null) 'climate': climate!.name,
         if (iconUrl != null) 'icon_url': iconUrl,
         if (artUrl != null) 'art_url': artUrl,
+        if (brawn != null) 'brawn': brawn,
+        if (wit != null) 'wit': wit,
+        if (speed != null) 'speed': speed,
+        if (size != null) 'size': size,
+        if (enrichedAt != null) 'enriched_at': enrichedAt!.toIso8601String(),
       };
 
   /// Fauna always has a scientific name — narrow the nullable base type.
@@ -189,6 +223,40 @@ class FaunaDefinition extends ItemDefinition {
   @override
   String toString() => 'FaunaDefinition(id: $id, displayName: $displayName, '
       'scientificName: $scientificName, rarity: $rarity)';
+
+  /// Construct from a Drift `LocalSpecies` data class row.
+  factory FaunaDefinition.fromDrift(dynamic row) {
+    final habitats =
+        (jsonDecode(row.habitatsJson as String) as List).cast<String>();
+    final continents =
+        (jsonDecode(row.continentsJson as String) as List).cast<String>();
+    return FaunaDefinition(
+      id: row.definitionId as String,
+      displayName: row.commonName as String,
+      scientificName: row.scientificName as String,
+      taxonomicClass: row.taxonomicClass as String,
+      rarity: IucnStatus.fromIucnString(row.iucnStatus as String),
+      habitats:
+          habitats.map((h) => Habitat.fromString(h.toLowerCase())).toList(),
+      continents: continents.map((c) => Continent.fromDataString(c)).toList(),
+      animalClass: row.animalClass != null
+          ? AnimalClass.fromString(row.animalClass as String)
+          : null,
+      foodPreference: row.foodPreference != null
+          ? FoodType.fromString(row.foodPreference as String)
+          : null,
+      climate: row.climate != null
+          ? Climate.fromString(row.climate as String)
+          : null,
+      iconUrl: row.iconUrl as String?,
+      artUrl: row.artUrl as String?,
+      brawn: row.brawn as int?,
+      wit: row.wit as int?,
+      speed: row.speed as int?,
+      size: row.size as String?,
+      enrichedAt: row.enrichedAt as DateTime?,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
