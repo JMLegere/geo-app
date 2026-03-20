@@ -14,7 +14,9 @@ import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
+import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
@@ -375,6 +377,7 @@ Future<void> hydrateFromSupabase({
   required ProfileRepository profileRepo,
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
+  AppDatabase? db,
   ObservabilityBuffer? obs,
 }) async {
   if (persistence == null) {
@@ -496,11 +499,68 @@ Future<void> hydrateFromSupabase({
       }
     }
 
+    // 4. Species enrichment delta-sync → LocalSpeciesTable.
+    // Pulls classification + art URLs from the server `species` table
+    // for any species enriched since our last sync.
+    int speciesSynced = 0;
+    if (db == null) {
+      debugPrint('[GameCoordinator] no AppDatabase — skipping species sync');
+    } else
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final lastSyncStr = prefs.getString('lastEnrichmentSync');
+        final lastSync = lastSyncStr != null
+            ? DateTime.tryParse(lastSyncStr) ?? DateTime(2020)
+            : DateTime(2020);
+
+        final sw = Stopwatch()..start();
+        final speciesUpdates =
+            await persistence.fetchSpeciesUpdates(since: lastSync);
+        sw.stop();
+
+        if (speciesUpdates.isNotEmpty) {
+          for (final row in speciesUpdates) {
+            await db.updateSpeciesEnrichment(
+              definitionId: row['definition_id'] as String,
+              animalClass: row['animal_class'] as String?,
+              foodPreference: row['food_preference'] as String?,
+              climate: row['climate'] as String?,
+              brawn: row['brawn'] as int?,
+              wit: row['wit'] as int?,
+              speed: row['speed'] as int?,
+              size: row['size'] as String?,
+              iconUrl: row['icon_url'] as String?,
+              artUrl: row['art_url'] as String?,
+              enrichedAt: row['enriched_at'] != null
+                  ? DateTime.parse(row['enriched_at'] as String)
+                  : null,
+            );
+            speciesSynced++;
+          }
+          await prefs.setString(
+            'lastEnrichmentSync',
+            DateTime.now().toIso8601String(),
+          );
+        }
+
+        obs?.event('species_delta_sync', {
+          'count': speciesSynced,
+          'duration_ms': sw.elapsedMilliseconds,
+          'since': lastSyncStr ?? 'never',
+        });
+      } catch (e) {
+        debugPrint('[GameCoordinator] species delta-sync failed: $e');
+        obs?.event('species_delta_sync_error', {
+          'error': e.toString(),
+        });
+      }
+
     debugPrint(
       '[GameCoordinator] Supabase hydration complete: '
       'profile=${profileMap != null}, '
       'cells=${cellRows.length}, '
-      'items=${itemRows.length}',
+      'items=${itemRows.length}, '
+      'speciesSynced=$speciesSynced',
     );
   } catch (e) {
     // Network error, Supabase down, etc. — continue with SQLite-only.
