@@ -374,19 +374,7 @@ verify_jwt = false
 [functions.validate-encounter]
 verify_jwt = false
 
-[functions.admin-purge-enrichments]
-verify_jwt = false
-
-[functions.enrich-species-batch]
-verify_jwt = false
-
 [functions.enrich-locations-batch]
-verify_jwt = false
-
-[functions.generate-species-art]
-verify_jwt = false
-
-[functions.generate-species-art-batch]
 verify_jwt = false
 
 [functions.process-enrichment-queue]

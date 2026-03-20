@@ -18,7 +18,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `supabaseBootstrapProvider` | `Provider<SupabaseBootstrap>` | singleton | pre-initialized in main() |
 | `appDatabaseProvider` | `Provider<AppDatabase>` | singleton | none. Disposes on shutdown via `ref.onDispose` |
 | `itemInstanceRepositoryProvider` | `Provider<ItemInstanceRepository>` | singleton | watches: appDatabaseProvider |
-| `enrichmentRepositoryProvider` | `Provider<EnrichmentRepository>` | singleton | watches: appDatabaseProvider |
+| `speciesRepositoryProvider` | `Provider<SpeciesRepository>` | singleton | watches: appDatabaseProvider. Sync provider backed by `DriftSpeciesRepository`. |
 | `writeQueueRepositoryProvider` | `Provider<WriteQueueRepository>` | singleton | watches: appDatabaseProvider |
 | `cellProgressRepositoryProvider` | `Provider<CellProgressRepository>` | singleton | watches: appDatabaseProvider |
 | `profileRepositoryProvider` | `Provider<ProfileRepository>` | singleton | watches: appDatabaseProvider |
@@ -41,7 +41,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `achievementServiceProvider` | achievements | `Provider<AchievementService>` | none (pure service) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
 | `discoveryProvider` | discovery | `NotifierProvider<DiscoveryNotifier, DiscoveryState>` | none (notification queue) |
-| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesCacheProvider, enrichmentMapProvider. Cache-backed with merged enrichments. Empty service until SQLite DB loads |
+| `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesCacheProvider. Cache-backed. Empty service until Drift DB loads. Enrichment fields come from `LocalSpeciesTable` — no separate enrichment merge. |
 | `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
 | `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
@@ -50,9 +50,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence, queueProcessorProvider. reads: writeQueueRepositoryProvider, itemsProvider, itemInstanceRepositoryProvider |
 | `queueProcessorProvider` | sync | `Provider<QueueProcessor>` | watches: writeQueueRepositoryProvider, supabasePersistenceProvider |
 | `supabaseClientProvider` | sync | `Provider<SupabaseClient?>` | reads: supabaseBootstrapProvider. Returns null when Supabase not configured |
-| `enrichmentServiceProvider` | enrichment | `Provider<EnrichmentService>` | watches: enrichmentRepositoryProvider, supabaseClientProvider. Non-nullable — handles null supabaseClient internally |
 | `locationEnrichmentServiceProvider` | sync | `Provider<LocationEnrichmentService>` | watches: cellPropertyRepositoryProvider, locationNodeRepositoryProvider, supabaseClientProvider. Async location hierarchy enrichment via Nominatim Edge Function. Rate-limited 1 req/1.2s. |
-| `enrichmentMapProvider` | enrichment | `FutureProvider<Map<String, SpeciesEnrichment>>` | watches: enrichmentServiceProvider. All cached enrichments keyed by definitionId |
 | `habitatServiceProvider` | biome | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
 | `biomeFeatureIndexProvider` | biome | `FutureProvider<BiomeFeatureIndex>` | async asset load |
 | `seasonServiceProvider` | seasonal | `Provider<SeasonService>` | none |
@@ -73,7 +71,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 ```
 supabaseBootstrapProvider ──→ authProvider ──→ upgradePromptProvider
                           ──→ supabasePersistenceProvider ──→ syncProvider
-                          ──→ supabaseClientProvider ──→ enrichmentServiceProvider
+                          ──→ supabaseClientProvider ──→ locationEnrichmentServiceProvider
 
 itemsProvider ──→ upgradePromptProvider (watch)
 
@@ -88,14 +86,13 @@ writeQueueRepositoryProvider ──→ gameCoordinatorProvider (persist to write
 cellProgressRepositoryProvider ──→ gameCoordinatorProvider (persist cell visits)
 profileRepositoryProvider ──→ gameCoordinatorProvider (persist profile)
 authProvider ──→ gameCoordinatorProvider (read + listen for hydration)
-enrichmentServiceProvider ──→ gameCoordinatorProvider (fire-and-forget enrichment on discovery)
 dailySeedServiceProvider ──→ gameCoordinatorProvider (read, fetches seed on startup)
 dailySeedServiceProvider ──→ discoveryServiceProvider (stale seed guard)
 supabaseClientProvider ──→ dailySeedServiceProvider (Supabase RPC callback)
 playerProvider ──→ gameCoordinatorProvider (listen for profile write-through)
 
 appDatabaseProvider ──→ itemInstanceRepositoryProvider
-appDatabaseProvider ──→ enrichmentRepositoryProvider
+appDatabaseProvider ──→ speciesRepositoryProvider
 appDatabaseProvider ──→ writeQueueRepositoryProvider
 appDatabaseProvider ──→ cellProgressRepositoryProvider
 appDatabaseProvider ──→ profileRepositoryProvider
@@ -118,11 +115,7 @@ writeQueueRepositoryProvider ──→ syncProvider (read, for rollback)
 itemsProvider ──→ syncProvider (read, for rollback)
 itemInstanceRepositoryProvider ──→ syncProvider (read, for rollback)
 
-enrichmentRepositoryProvider ──→ enrichmentServiceProvider
-enrichmentRepositoryProvider ──→ enrichmentMapProvider
-
 speciesCacheProvider ──→ speciesServiceProvider
-enrichmentMapProvider ──→ speciesServiceProvider (merge)
 speciesServiceProvider ──→ discoveryServiceProvider
                        ──→ packProvider
                        ──→ sanctuaryProvider

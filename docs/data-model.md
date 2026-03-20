@@ -27,7 +27,7 @@ All domain models, database schema, and persistence contracts.
 | Class | Fields | Equality | Notes |
 |-------|--------|----------|-------|
 | `ItemDefinition` (sealed) | Base class for all item types | — | 7 subclasses: FaunaDefinition, FloraDefinition, MineralDefinition, FossilDefinition, ArtifactDefinition, FoodDefinition, OrbDefinition |
-| `FaunaDefinition` | scientificName, commonName, taxonomicClass, continents, habitats, iucnStatus, animalType, animalClass, foodPreference, climate | `scientificName` only | 32,752 IUCN records + AI enrichment fields |
+| `FaunaDefinition` | scientificName, commonName, taxonomicClass, continents, habitats, iucnStatus, animalType, animalClass, foodPreference, climate, brawn, wit, speed, size: AnimalSize?, enrichedAt: DateTime? | `scientificName` only | 32,752 IUCN records. Enrichment fields populated server-side by `process-enrichment-queue`. |
 | `FloraDefinition` | plantType | — | Stub (no dataset yet) |
 | `MineralDefinition` | crystalSystem, hardness | — | Stub (no dataset yet) |
 | `FossilDefinition` | era, fossilType | — | Stub (no dataset yet) |
@@ -36,7 +36,6 @@ All domain models, database schema, and persistence contracts.
 | `OrbDefinition` | dimension: `OrbDimension`, variant: String | — | Predefined (3 dimensions: habitat, class, climate; ~46 total types) |
 | `ItemInstance` | id (UUID), definitionId, category, affixes: `List<Affix>`, parentAId, parentBId, dailySeed, status, createdAt | all fields | Unique item with rolled stats |
 | `Affix` | type (prefix/suffix), key, value | all fields | Flexible key-value stats |
-| `SpeciesEnrichment` | definitionId (PK), animalClass: AnimalClass, foodPreference: FoodType, climate: Climate, brawn: int, wit: int, speed: int, artUrl: String?, enrichedAt: DateTime | definitionId | AI-enriched species data from Gemini Flash. All fields required except artUrl. Validates brawn+wit+speed=90 at runtime. |
 | `ItemCategory` | enum: fauna, flora, mineral, fossil, artifact, food, orb | — | Item type classification (7 categories) |
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellProperties` | cellId, habitats: Set\<Habitat\>, climate: Climate, continent: Continent, locationId: String?, createdAt | cellId | Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` |
@@ -56,7 +55,7 @@ All domain models, database schema, and persistence contracts.
 
 All models are immutable with manual `toJson()`/`fromJson()`. No code generation (no freezed).
 
-### Species Data Format (assets/species.db)
+### Species Data Format (assets/species_data.json → LocalSpeciesTable)
 
 32,752 records. Each entry:
 
@@ -71,7 +70,9 @@ All models are immutable with manual `toJson()`/`fromJson()`. No code generation
 }
 ```
 
-Loaded from pre-compiled `assets/species.db` via `SpeciesRepository`. Queried on demand, cached in `SpeciesCache`.
+Seeded from `assets/species_data.json` into Drift `LocalSpeciesTable` at first run. `assets/species.db` has been deleted. Queried on demand via `DriftSpeciesRepository`, cached in `SpeciesCache`.
+
+Supabase `species` table (32,752 rows, global/shared) mirrors IUCN data plus AI-enriched columns (`animal_class`, `food_preference`, `climate`, `brawn`, `wit`, `speed`, `size`, `art_url`, `enriched_at`). RLS: all authenticated users can read; only service_role can write (via `process-enrichment-queue` Edge Function).
 
 ### ESA WorldCover → Habitat Mapping
 
@@ -95,7 +96,7 @@ Loaded from pre-compiled `assets/species.db` via `SpeciesRepository`. Queried on
 
 ## Database Schema (Drift SQLite)
 
-Schema version: **12** (v10→v11 adds `LocalCellPropertiesTable` + `LocalLocationNodeTable`, v11→v12 makes `LocalLocationNodeTable.osmId` nullable via table recreation).
+Schema version: **18** (v10→v11 adds `LocalCellPropertiesTable` + `LocalLocationNodeTable`, v11→v12 osmId nullable, v12→v13 `geometry_json`, v13→v18 drops `LocalSpeciesEnrichmentTable` + adds `LocalSpeciesTable`).
 
 ### LocalCellProgressTable
 
@@ -142,19 +143,28 @@ Unique constraint: `{userId, cellId}`
 | `createdAt` | datetime | — | |
 | `updatedAt` | datetime | — | |
 
-### LocalSpeciesEnrichmentTable
+### LocalSpeciesTable
 
 | Column | Type | Default | Notes |
 |--------|------|---------|-------|
-| `definitionId` | text PK | — | Matches ItemDefinition.id (e.g., "fauna_vulpes_vulpes") |
-| `animalClass` | text | — | AnimalClass enum name (required) |
-| `foodPreference` | text | — | FoodType enum name (required) |
-| `climate` | text | — | Climate enum name (required) |
-| `brawn` | int | — | Brawn stat (required, brawn+wit+speed=90) |
-| `wit` | int | — | Wit stat (required) |
-| `speed` | int | — | Speed stat (required) |
-| `artUrl` | text | nullable | AI-generated watercolor URL (deferred) |
-| `enrichedAt` | datetime | now() | When enrichment was performed |
+| `definitionId` | text PK | — | Matches `FaunaDefinition.id` (scientificName) |
+| `commonName` | text | — | |
+| `scientificName` | text | — | |
+| `taxonomicClass` | text | — | IUCN class string (e.g., "Mammalia") |
+| `continentsJson` | text | — | JSON array of continent name strings |
+| `habitatsJson` | text | — | JSON array of habitat name strings |
+| `iucnStatus` | text | — | IUCN status string |
+| `animalClass` | text | nullable | AI-enriched AnimalClass enum name |
+| `foodPreference` | text | nullable | AI-enriched FoodType enum name |
+| `climate` | text | nullable | AI-enriched Climate enum name |
+| `brawn` | int | nullable | AI-enriched stat (brawn+wit+speed=90) |
+| `wit` | int | nullable | AI-enriched stat |
+| `speed` | int | nullable | AI-enriched stat |
+| `size` | text | nullable | AI-enriched AnimalSize enum name |
+| `artUrl` | text | nullable | AI-generated watercolor URL |
+| `enrichedAt` | datetime | nullable | When backend enrichment ran |
+
+32,752 rows seeded from `assets/species_data.json`. Enrichment columns populated async by backend `process-enrichment-queue`. Replaces `LocalSpeciesEnrichmentTable` (dropped in schema v18).
 
 ### LocalWriteQueueTable
 
@@ -204,7 +214,6 @@ Cell properties are **globally shared** (not per-user). No userId column.
 | `ProfileRepository` | LocalPlayerProfile | `create`, `read(userId)`, `update`, `updateCurrentStreak`, `addDistance`, `getAllProfiles` |
 | `CellProgressRepository` | LocalCellProgress | `create`, `read(userId, cellId)`, `readByUser`, `updateFogState`, `addDistance`, `getCellsByFogState`, `incrementVisitCount` |
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `deleteItem(id)`, `readByStatus(userId, status)` |
-| `EnrichmentRepository` | LocalSpeciesEnrichment | `getEnrichment(definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List)`, `getEnrichmentsSince(DateTime)` |
 | `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
 | `CellPropertyRepository` | LocalCellProperties | `get(cellId)`, `upsert(CellProperties)`, `updateLocationId(cellId, locationId)`, `getAll()` |
 | `LocationNodeRepository` | LocalLocationNode | `get(id)`, `getByOsmId(osmId)`, `upsert(LocationNode)`, `getChildren(parentId)` |
@@ -227,9 +236,9 @@ When `SUPABASE_URL` is empty, `SupabasePersistence` is null. App runs offline-on
 
 ### Supabase Tables
 
-**species_enrichment** (global, shared):
-- `scientific_name` (text PK), `animal_class`, `food_preference`, `climate`, `brawn`, `wit`, `speed`, `enriched_at`
-- RLS: All authenticated users can read. Only service_role can write (via Edge Function).
+**species** (global, shared):
+- `scientific_name` (text PK), `common_name`, `taxonomic_class`, `continents`, `habitats`, `iucn_status`, `animal_class` (nullable), `food_preference` (nullable), `climate` (nullable), `brawn` (nullable int), `wit` (nullable int), `speed` (nullable int), `size` (nullable text), `art_url` (nullable), `enriched_at` (nullable timestamptz)
+- 32,752 rows. RLS: All authenticated users can read. Only service_role can write (via `process-enrichment-queue` Edge Function).
 
 **item_instances** (per-user):
 - `id` (UUID PK), `user_id`, `definition_id`, `category_name`, `affixes_json`, `parent_a_id`, `parent_b_id`, `daily_seed`, `status`, `created_at`
