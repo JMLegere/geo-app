@@ -181,12 +181,12 @@ async function callLLMWithRotation(
   scientificName: string,
   commonName: string,
   taxonomicClass: string,
-): Promise<EnrichmentResponse> {
+): Promise<{ result: EnrichmentResponse; providerName: string }> {
   for (const provider of providers) {
     try {
       const result = await callLLM(provider, scientificName, commonName, taxonomicClass);
       console.log(`[classify] ${scientificName} classified via ${provider.name} (${provider.model})`);
-      return result;
+      return { result, providerName: provider.name };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`[classify] ${provider.name} failed for ${scientificName}: ${message}`);
@@ -314,6 +314,8 @@ async function generateAndUploadArt(
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
+  const workerStartMs = Date.now();
+
   // Auth: accept service role key only (called by pg_cron, not users)
   const authHeader = req.headers.get("authorization");
   if (authHeader) {
@@ -330,6 +332,28 @@ serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
+
+  // -- Observability helper --------------------------------------------------
+  async function logEvent(
+    eventType: string,
+    definitionId: string | null,
+    extra: Record<string, unknown> = {},
+  ) {
+    try {
+      await supabase.from('enrichment_events').insert({
+        event_type: eventType,
+        definition_id: definitionId,
+        provider_name: extra.provider_name ?? null,
+        asset_type: extra.asset_type ?? null,
+        duration_ms: extra.duration_ms ?? null,
+        error_message: extra.error_message ?? null,
+        metadata: extra.metadata ?? null,
+      });
+    } catch (e) {
+      // Don't let logging failures break the pipeline
+      console.error(`[log] failed to write event: ${e}`);
+    }
+  }
 
   const errors: string[] = [];
   let classified = 0;
@@ -365,13 +389,15 @@ serve(async (req: Request) => {
         if (speciesErr) throw new Error(`Failed to query species: ${speciesErr.message}`);
 
         for (const species of (needsClassification ?? []) as SpeciesRow[]) {
+          const startMs = Date.now();
           try {
-            const enrichment = await callLLMWithRotation(
+            const { result: enrichment, providerName } = await callLLMWithRotation(
               availableProviders,
               species.scientific_name,
               species.common_name,
               species.taxonomic_class,
             );
+            const durationMs = Date.now() - startMs;
 
             const { error: updateErr } = await supabase
               .from("species")
@@ -391,10 +417,18 @@ serve(async (req: Request) => {
 
             classified++;
             console.log(`[pass1] classified ${species.scientific_name} → ${enrichment.animal_class}`);
+            await logEvent('classification_success', species.definition_id, {
+              provider_name: providerName,
+              duration_ms: durationMs,
+            });
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             errors.push(`Pass 1 classify ${species.definition_id}: ${message}`);
             console.error(`[pass1] error for ${species.definition_id}: ${message}`);
+            await logEvent('classification_error', species.definition_id, {
+              error_message: message,
+              duration_ms: Date.now() - startMs,
+            });
           }
 
           // Rate limiting: 1s between LLM calls
@@ -451,6 +485,7 @@ serve(async (req: Request) => {
 
           // Generate icon if missing
           if (!species.icon_url) {
+            const iconStartMs = Date.now();
             const result = await generateAndUploadArt(
               supabase, supabaseUrl, geminiKey,
               species.definition_id, species.scientific_name, species.common_name,
@@ -459,14 +494,33 @@ serve(async (req: Request) => {
             if (result === "rate_limited") {
               rateLimited = true;
               errors.push("Pass 2 stopped: Gemini rate limit hit");
+              await logEvent('rate_limited', species.definition_id, {
+                asset_type: 'icon',
+                provider_name: 'gemini',
+              });
               break;
             }
-            if (result) icons++;
+            if (result) {
+              icons++;
+              await logEvent('art_success', species.definition_id, {
+                asset_type: 'icon',
+                duration_ms: Date.now() - iconStartMs,
+                provider_name: 'gemini',
+              });
+            } else if (result === null) {
+              await logEvent('art_error', species.definition_id, {
+                asset_type: 'icon',
+                error_message: 'All retries exhausted',
+                duration_ms: Date.now() - iconStartMs,
+                provider_name: 'gemini',
+              });
+            }
             await new Promise(r => setTimeout(r, 7000));
           }
 
           // Generate illustration if missing (and not rate-limited)
           if (!rateLimited && !species.art_url) {
+            const illustrationStartMs = Date.now();
             const result = await generateAndUploadArt(
               supabase, supabaseUrl, geminiKey,
               species.definition_id, species.scientific_name, species.common_name,
@@ -475,9 +529,27 @@ serve(async (req: Request) => {
             if (result === "rate_limited") {
               rateLimited = true;
               errors.push("Pass 2 stopped: Gemini rate limit hit");
+              await logEvent('rate_limited', species.definition_id, {
+                asset_type: 'illustration',
+                provider_name: 'gemini',
+              });
               break;
             }
-            if (result) illustrations++;
+            if (result) {
+              illustrations++;
+              await logEvent('art_success', species.definition_id, {
+                asset_type: 'illustration',
+                duration_ms: Date.now() - illustrationStartMs,
+                provider_name: 'gemini',
+              });
+            } else if (result === null) {
+              await logEvent('art_error', species.definition_id, {
+                asset_type: 'illustration',
+                error_message: 'All retries exhausted',
+                duration_ms: Date.now() - illustrationStartMs,
+                provider_name: 'gemini',
+              });
+            }
             await new Promise(r => setTimeout(r, 7000));
           }
         }
@@ -491,6 +563,11 @@ serve(async (req: Request) => {
 
   const result = { classified, icons, illustrations, errors };
   console.log(`[worker] done — classified=${classified} icons=${icons} illustrations=${illustrations} errors=${errors.length}`);
+
+  await logEvent('worker_run', null, {
+    metadata: { classified, icons, illustrations, errors: errors.length },
+    duration_ms: Date.now() - workerStartMs,
+  });
 
   return new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json" },

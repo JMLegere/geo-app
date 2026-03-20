@@ -90,6 +90,27 @@ jobs:
           insert_version "019_species_table" "species_table"
           echo "Migration 019 applied and recorded."
 
+          # Apply 020: drop old species_enrichment table
+          echo "Applying migration 020..."
+          run_sql "DROP TABLE IF EXISTS species_enrichment"
+          insert_version "020_drop_species_enrichment" "drop_species_enrichment"
+          echo "Migration 020 applied."
+
+          # Apply 021: enrichment observability + pg_cron
+          echo "Applying migration 021 (enrichment_events + pg_cron)..."
+          run_sql "CREATE EXTENSION IF NOT EXISTS pg_cron"
+          run_sql "CREATE EXTENSION IF NOT EXISTS pg_net"
+          run_sql "CREATE TABLE IF NOT EXISTS enrichment_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), event_type TEXT NOT NULL, definition_id TEXT, provider_name TEXT, asset_type TEXT, duration_ms INTEGER, error_message TEXT, metadata JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_type ON enrichment_events (event_type)"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_created ON enrichment_events (created_at)"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_definition ON enrichment_events (definition_id) WHERE definition_id IS NOT NULL"
+          run_sql "ALTER TABLE enrichment_events ENABLE ROW LEVEL SECURITY"
+          run_sql "GRANT ALL ON enrichment_events TO service_role"
+          run_sql "SELECT cron.schedule('process-enrichment-queue', '0 * * * *', \$\$SELECT net.http_post(url := 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/process-enrichment-queue', headers := '{\"Content-Type\": \"application/json\"}'::jsonb, body := '{}'::jsonb);\$\$)"
+          run_sql "NOTIFY pgrst, 'reload schema'"
+          insert_version "021_enrichment_observability" "enrichment_observability"
+          echo "Migration 021 applied (enrichment_events table + pg_cron)."
+
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:

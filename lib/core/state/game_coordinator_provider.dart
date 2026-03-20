@@ -131,7 +131,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final speciesCacheForStats = ref.read(speciesCacheProvider);
   coordinator.enrichedStatsLookup = (definitionId) {
     final def = speciesCacheForStats.getByIdSync(definitionId);
-    if (def == null || def.brawn == null) return null;
+    if (def == null) {
+      obs.event('enrichment_cache_miss', {'definition_id': definitionId});
+      return null;
+    }
+    if (def.brawn == null) {
+      obs.event('enrichment_not_ready', {'definition_id': definitionId});
+      return null;
+    }
     return (
       speed: def.speed!,
       brawn: def.brawn!,
@@ -600,6 +607,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        db: ref.read(appDatabaseProvider),
         obs: obs,
       ).then((_) async {
         if (_providerDisposed) return;
