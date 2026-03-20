@@ -608,11 +608,25 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         db: ref.read(appDatabaseProvider),
+        speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
       ).then((_) async {
         if (_providerDisposed) return;
 
         obs.event('background_sync_complete', {'user_id': userId});
+
+        // Re-warm species cache after delta-sync (art URLs may have changed).
+        final speciesCacheAfterSync = ref.read(speciesCacheProvider);
+        if (!speciesCacheAfterSync.isEmpty) {
+          final cachedProps = coordinator.cellPropertiesCache.values;
+          if (cachedProps.isNotEmpty) {
+            final first = cachedProps.first;
+            await speciesCacheAfterSync.warmUp(
+              habitats: first.habitats,
+              continent: first.continent,
+            );
+          }
+        }
 
         // On cold start (empty SQLite), Supabase sync wrote data to SQLite
         // but providers are still empty. Re-hydrate providers from the

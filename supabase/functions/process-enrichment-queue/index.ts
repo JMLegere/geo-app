@@ -412,9 +412,9 @@ async function generateAndUploadArt(
         const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
         const durationMs = Date.now() - startMs;
 
-        // Update species row
+        // Update species row — bump enriched_at so client delta-sync picks up art changes
         const column = assetType === "icon" ? "icon_url" : "art_url";
-        await supabase.from("species").update({ [column]: url }).eq("definition_id", definitionId);
+        await supabase.from("species").update({ [column]: url, enriched_at: new Date().toISOString() }).eq("definition_id", definitionId);
 
         console.log(`[art] ${assetType} generated for ${definitionId} via ${provider.name}: ${url}`);
         if (logEvent) await logEvent('art_success', definitionId, { asset_type: assetType, provider_name: provider.name, duration_ms: durationMs });
