@@ -16,6 +16,7 @@ import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
@@ -378,6 +379,7 @@ Future<void> hydrateFromSupabase({
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
   AppDatabase? db,
+  SpeciesCache? speciesCache,
   ObservabilityBuffer? obs,
 }) async {
   if (persistence == null) {
@@ -540,6 +542,14 @@ Future<void> hydrateFromSupabase({
           await prefs.setString(
             'lastEnrichmentSync',
             DateTime.now().toIso8601String(),
+          );
+        }
+
+        // Invalidate species cache so next warmUp() re-reads art URLs from Drift.
+        if (speciesSynced > 0 && speciesCache != null) {
+          speciesCache.clear();
+          debugPrint(
+            '[GameCoordinator] species cache invalidated after syncing $speciesSynced species',
           );
         }
 
