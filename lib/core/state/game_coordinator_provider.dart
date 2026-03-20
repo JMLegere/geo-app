@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' as io show Platform;
 
+import 'package:drift/drift.dart' show countAll;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
@@ -97,6 +99,85 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   obs.setDatabase(ref.read(appDatabaseProvider));
   obs.start();
   ObservabilityBuffer.instance = obs;
+
+  // ── Startup diagnostics ──────────────────────────────────────────────────
+  // Log comprehensive device/app/session info on every cold start.
+  // Useful for debugging user-reported issues — never know what helps.
+  () async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final speciesCount = await (db.selectOnly(db.localSpeciesTable)
+            ..addColumns([countAll()]))
+          .map((r) => r.read(countAll())!)
+          .getSingle();
+      final itemCount = await (db.selectOnly(db.localItemInstanceTable)
+            ..addColumns([countAll()]))
+          .map((r) => r.read(countAll())!)
+          .getSingle();
+      final cellCount = await (db.selectOnly(db.localCellProgressTable)
+            ..addColumns([countAll()]))
+          .map((r) => r.read(countAll())!)
+          .getSingle();
+      final enrichedCount = await (db.selectOnly(db.localSpeciesTable)
+            ..addColumns([countAll()])
+            ..where(db.localSpeciesTable.animalClass.isNotNull()))
+          .map((r) => r.read(countAll())!)
+          .getSingle();
+      final withArtCount = await (db.selectOnly(db.localSpeciesTable)
+            ..addColumns([countAll()])
+            ..where(db.localSpeciesTable.iconUrl.isNotNull()))
+          .map((r) => r.read(countAll())!)
+          .getSingle();
+
+      // Platform info — dart:io not available on web
+      String platformOs = 'web';
+      String platformVersion = 'browser';
+      String platformLocale = 'unknown';
+      String dartVersion = 'unknown';
+      if (!kIsWeb) {
+        try {
+          platformOs = io.Platform.operatingSystem;
+          platformVersion = io.Platform.operatingSystemVersion;
+          platformLocale = io.Platform.localeName;
+          dartVersion = io.Platform.version.split(' ').first;
+        } catch (_) {}
+      }
+
+      obs.event('app_startup', {
+        // Session
+        'session_id': obs.sessionId,
+        'device_id': obs.deviceId,
+
+        // App
+        'app_version': '0.1.0+1',
+        'schema_version': db.schemaVersion,
+        'dart_version': dartVersion,
+
+        // Platform
+        'platform_os': platformOs,
+        'platform_version': platformVersion,
+        'platform_locale': platformLocale,
+        'is_web': kIsWeb,
+        'is_debug': kDebugMode,
+
+        // Database
+        'species_total': speciesCount,
+        'species_enriched': enrichedCount,
+        'species_with_art': withArtCount,
+        'item_instances': itemCount,
+        'cells_visited': cellCount,
+
+        // Config
+        'supabase_configured': supabaseClient != null,
+        'location_mode': locationService.mode.name,
+
+        // Timing
+        'startup_ts': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('[Observability] startup diagnostics failed: $e');
+    }
+  }();
 
   // Trim old local events (10K cap)
   ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
