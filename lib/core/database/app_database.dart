@@ -133,6 +133,34 @@ class LocalSpeciesEnrichmentTable extends Table {
   Set<Column> get primaryKey => {definitionId};
 }
 
+/// Unified species table — IUCN base data + AI enrichment.
+/// Replaces both species.db (bundled asset) and LocalSpeciesEnrichmentTable.
+/// Seeded from assets/species_data.json on first run.
+@DataClassName('LocalSpecies')
+class LocalSpeciesTable extends Table {
+  TextColumn get definitionId => text()();
+  TextColumn get scientificName => text()();
+  TextColumn get commonName => text()();
+  TextColumn get taxonomicClass => text()();
+  TextColumn get iucnStatus => text()();
+  TextColumn get habitatsJson => text()();
+  TextColumn get continentsJson => text()();
+  // Enrichment (nullable until AI-classified):
+  TextColumn get animalClass => text().nullable()();
+  TextColumn get foodPreference => text().nullable()();
+  TextColumn get climate => text().nullable()();
+  IntColumn get brawn => integer().nullable()();
+  IntColumn get wit => integer().nullable()();
+  IntColumn get speed => integer().nullable()();
+  TextColumn get size => text().nullable()();
+  TextColumn get iconUrl => text().nullable()();
+  TextColumn get artUrl => text().nullable()();
+  DateTimeColumn get enrichedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {definitionId};
+}
+
 /// Local write queue for offline-first sync to Supabase.
 /// Each row is a pending write operation (item discovery, cell visit, profile
 /// update) that will be flushed to the server by [QueueProcessor].
@@ -321,6 +349,7 @@ const kExpectedTableNames = [
   LocalItemInstanceTable,
   LocalPlayerProfileTable,
   LocalSpeciesEnrichmentTable,
+  LocalSpeciesTable,
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
   LocalLocationNodeTable,
@@ -333,7 +362,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -442,6 +471,9 @@ class AppDatabase extends _$AppDatabase {
               localItemInstanceTable, localItemInstanceTable.iconUrl);
           await m.addColumn(
               localItemInstanceTable, localItemInstanceTable.artUrl);
+        }
+        if (from < 17) {
+          await m.createTable(localSpeciesTable);
         }
       },
     );
@@ -583,6 +615,39 @@ class AppDatabase extends _$AppDatabase {
     return (select(localSpeciesEnrichmentTable)
           ..where((tbl) => tbl.enrichedAt.isBiggerOrEqualValue(since)))
         .get();
+  }
+
+  /// Update enrichment columns on a LocalSpeciesTable row.
+  /// Used by species delta-sync from Supabase.
+  Future<void> updateSpeciesEnrichment({
+    required String definitionId,
+    String? animalClass,
+    String? foodPreference,
+    String? climate,
+    int? brawn,
+    int? wit,
+    int? speed,
+    String? size,
+    String? iconUrl,
+    String? artUrl,
+    DateTime? enrichedAt,
+  }) {
+    return (update(localSpeciesTable)
+          ..where((t) => t.definitionId.equals(definitionId)))
+        .write(LocalSpeciesTableCompanion(
+      animalClass:
+          animalClass != null ? Value(animalClass) : const Value.absent(),
+      foodPreference:
+          foodPreference != null ? Value(foodPreference) : const Value.absent(),
+      climate: climate != null ? Value(climate) : const Value.absent(),
+      brawn: brawn != null ? Value(brawn) : const Value.absent(),
+      wit: wit != null ? Value(wit) : const Value.absent(),
+      speed: speed != null ? Value(speed) : const Value.absent(),
+      size: size != null ? Value(size) : const Value.absent(),
+      iconUrl: iconUrl != null ? Value(iconUrl) : const Value.absent(),
+      artUrl: artUrl != null ? Value(artUrl) : const Value.absent(),
+      enrichedAt: enrichedAt != null ? Value(enrichedAt) : const Value.absent(),
+    ));
   }
 
   // ========================================================================

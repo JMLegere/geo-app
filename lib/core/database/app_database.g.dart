@@ -2735,6 +2735,830 @@ class LocalSpeciesEnrichmentTableCompanion
   }
 }
 
+class $LocalSpeciesTableTable extends LocalSpeciesTable
+    with TableInfo<$LocalSpeciesTableTable, LocalSpecies> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalSpeciesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _definitionIdMeta =
+      const VerificationMeta('definitionId');
+  @override
+  late final GeneratedColumn<String> definitionId = GeneratedColumn<String>(
+      'definition_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _scientificNameMeta =
+      const VerificationMeta('scientificName');
+  @override
+  late final GeneratedColumn<String> scientificName = GeneratedColumn<String>(
+      'scientific_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _commonNameMeta =
+      const VerificationMeta('commonName');
+  @override
+  late final GeneratedColumn<String> commonName = GeneratedColumn<String>(
+      'common_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _taxonomicClassMeta =
+      const VerificationMeta('taxonomicClass');
+  @override
+  late final GeneratedColumn<String> taxonomicClass = GeneratedColumn<String>(
+      'taxonomic_class', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _iucnStatusMeta =
+      const VerificationMeta('iucnStatus');
+  @override
+  late final GeneratedColumn<String> iucnStatus = GeneratedColumn<String>(
+      'iucn_status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _habitatsJsonMeta =
+      const VerificationMeta('habitatsJson');
+  @override
+  late final GeneratedColumn<String> habitatsJson = GeneratedColumn<String>(
+      'habitats_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _continentsJsonMeta =
+      const VerificationMeta('continentsJson');
+  @override
+  late final GeneratedColumn<String> continentsJson = GeneratedColumn<String>(
+      'continents_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _animalClassMeta =
+      const VerificationMeta('animalClass');
+  @override
+  late final GeneratedColumn<String> animalClass = GeneratedColumn<String>(
+      'animal_class', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _foodPreferenceMeta =
+      const VerificationMeta('foodPreference');
+  @override
+  late final GeneratedColumn<String> foodPreference = GeneratedColumn<String>(
+      'food_preference', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _climateMeta =
+      const VerificationMeta('climate');
+  @override
+  late final GeneratedColumn<String> climate = GeneratedColumn<String>(
+      'climate', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _brawnMeta = const VerificationMeta('brawn');
+  @override
+  late final GeneratedColumn<int> brawn = GeneratedColumn<int>(
+      'brawn', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _witMeta = const VerificationMeta('wit');
+  @override
+  late final GeneratedColumn<int> wit = GeneratedColumn<int>(
+      'wit', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<int> speed = GeneratedColumn<int>(
+      'speed', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<String> size = GeneratedColumn<String>(
+      'size', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconUrlMeta =
+      const VerificationMeta('iconUrl');
+  @override
+  late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
+      'icon_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artUrlMeta = const VerificationMeta('artUrl');
+  @override
+  late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
+      'art_url', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _enrichedAtMeta =
+      const VerificationMeta('enrichedAt');
+  @override
+  late final GeneratedColumn<DateTime> enrichedAt = GeneratedColumn<DateTime>(
+      'enriched_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        definitionId,
+        scientificName,
+        commonName,
+        taxonomicClass,
+        iucnStatus,
+        habitatsJson,
+        continentsJson,
+        animalClass,
+        foodPreference,
+        climate,
+        brawn,
+        wit,
+        speed,
+        size,
+        iconUrl,
+        artUrl,
+        enrichedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_species_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalSpecies> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('definition_id')) {
+      context.handle(
+          _definitionIdMeta,
+          definitionId.isAcceptableOrUnknown(
+              data['definition_id']!, _definitionIdMeta));
+    } else if (isInserting) {
+      context.missing(_definitionIdMeta);
+    }
+    if (data.containsKey('scientific_name')) {
+      context.handle(
+          _scientificNameMeta,
+          scientificName.isAcceptableOrUnknown(
+              data['scientific_name']!, _scientificNameMeta));
+    } else if (isInserting) {
+      context.missing(_scientificNameMeta);
+    }
+    if (data.containsKey('common_name')) {
+      context.handle(
+          _commonNameMeta,
+          commonName.isAcceptableOrUnknown(
+              data['common_name']!, _commonNameMeta));
+    } else if (isInserting) {
+      context.missing(_commonNameMeta);
+    }
+    if (data.containsKey('taxonomic_class')) {
+      context.handle(
+          _taxonomicClassMeta,
+          taxonomicClass.isAcceptableOrUnknown(
+              data['taxonomic_class']!, _taxonomicClassMeta));
+    } else if (isInserting) {
+      context.missing(_taxonomicClassMeta);
+    }
+    if (data.containsKey('iucn_status')) {
+      context.handle(
+          _iucnStatusMeta,
+          iucnStatus.isAcceptableOrUnknown(
+              data['iucn_status']!, _iucnStatusMeta));
+    } else if (isInserting) {
+      context.missing(_iucnStatusMeta);
+    }
+    if (data.containsKey('habitats_json')) {
+      context.handle(
+          _habitatsJsonMeta,
+          habitatsJson.isAcceptableOrUnknown(
+              data['habitats_json']!, _habitatsJsonMeta));
+    } else if (isInserting) {
+      context.missing(_habitatsJsonMeta);
+    }
+    if (data.containsKey('continents_json')) {
+      context.handle(
+          _continentsJsonMeta,
+          continentsJson.isAcceptableOrUnknown(
+              data['continents_json']!, _continentsJsonMeta));
+    } else if (isInserting) {
+      context.missing(_continentsJsonMeta);
+    }
+    if (data.containsKey('animal_class')) {
+      context.handle(
+          _animalClassMeta,
+          animalClass.isAcceptableOrUnknown(
+              data['animal_class']!, _animalClassMeta));
+    }
+    if (data.containsKey('food_preference')) {
+      context.handle(
+          _foodPreferenceMeta,
+          foodPreference.isAcceptableOrUnknown(
+              data['food_preference']!, _foodPreferenceMeta));
+    }
+    if (data.containsKey('climate')) {
+      context.handle(_climateMeta,
+          climate.isAcceptableOrUnknown(data['climate']!, _climateMeta));
+    }
+    if (data.containsKey('brawn')) {
+      context.handle(
+          _brawnMeta, brawn.isAcceptableOrUnknown(data['brawn']!, _brawnMeta));
+    }
+    if (data.containsKey('wit')) {
+      context.handle(
+          _witMeta, wit.isAcceptableOrUnknown(data['wit']!, _witMeta));
+    }
+    if (data.containsKey('speed')) {
+      context.handle(
+          _speedMeta, speed.isAcceptableOrUnknown(data['speed']!, _speedMeta));
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+          _sizeMeta, size.isAcceptableOrUnknown(data['size']!, _sizeMeta));
+    }
+    if (data.containsKey('icon_url')) {
+      context.handle(_iconUrlMeta,
+          iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta));
+    }
+    if (data.containsKey('art_url')) {
+      context.handle(_artUrlMeta,
+          artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
+    }
+    if (data.containsKey('enriched_at')) {
+      context.handle(
+          _enrichedAtMeta,
+          enrichedAt.isAcceptableOrUnknown(
+              data['enriched_at']!, _enrichedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {definitionId};
+  @override
+  LocalSpecies map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalSpecies(
+      definitionId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}definition_id'])!,
+      scientificName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}scientific_name'])!,
+      commonName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}common_name'])!,
+      taxonomicClass: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}taxonomic_class'])!,
+      iucnStatus: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}iucn_status'])!,
+      habitatsJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}habitats_json'])!,
+      continentsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}continents_json'])!,
+      animalClass: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}animal_class']),
+      foodPreference: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}food_preference']),
+      climate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}climate']),
+      brawn: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}brawn']),
+      wit: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}wit']),
+      speed: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}speed']),
+      size: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}size']),
+      iconUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_url']),
+      artUrl: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
+      enrichedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}enriched_at']),
+    );
+  }
+
+  @override
+  $LocalSpeciesTableTable createAlias(String alias) {
+    return $LocalSpeciesTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
+  final String definitionId;
+  final String scientificName;
+  final String commonName;
+  final String taxonomicClass;
+  final String iucnStatus;
+  final String habitatsJson;
+  final String continentsJson;
+  final String? animalClass;
+  final String? foodPreference;
+  final String? climate;
+  final int? brawn;
+  final int? wit;
+  final int? speed;
+  final String? size;
+  final String? iconUrl;
+  final String? artUrl;
+  final DateTime? enrichedAt;
+  const LocalSpecies(
+      {required this.definitionId,
+      required this.scientificName,
+      required this.commonName,
+      required this.taxonomicClass,
+      required this.iucnStatus,
+      required this.habitatsJson,
+      required this.continentsJson,
+      this.animalClass,
+      this.foodPreference,
+      this.climate,
+      this.brawn,
+      this.wit,
+      this.speed,
+      this.size,
+      this.iconUrl,
+      this.artUrl,
+      this.enrichedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['definition_id'] = Variable<String>(definitionId);
+    map['scientific_name'] = Variable<String>(scientificName);
+    map['common_name'] = Variable<String>(commonName);
+    map['taxonomic_class'] = Variable<String>(taxonomicClass);
+    map['iucn_status'] = Variable<String>(iucnStatus);
+    map['habitats_json'] = Variable<String>(habitatsJson);
+    map['continents_json'] = Variable<String>(continentsJson);
+    if (!nullToAbsent || animalClass != null) {
+      map['animal_class'] = Variable<String>(animalClass);
+    }
+    if (!nullToAbsent || foodPreference != null) {
+      map['food_preference'] = Variable<String>(foodPreference);
+    }
+    if (!nullToAbsent || climate != null) {
+      map['climate'] = Variable<String>(climate);
+    }
+    if (!nullToAbsent || brawn != null) {
+      map['brawn'] = Variable<int>(brawn);
+    }
+    if (!nullToAbsent || wit != null) {
+      map['wit'] = Variable<int>(wit);
+    }
+    if (!nullToAbsent || speed != null) {
+      map['speed'] = Variable<int>(speed);
+    }
+    if (!nullToAbsent || size != null) {
+      map['size'] = Variable<String>(size);
+    }
+    if (!nullToAbsent || iconUrl != null) {
+      map['icon_url'] = Variable<String>(iconUrl);
+    }
+    if (!nullToAbsent || artUrl != null) {
+      map['art_url'] = Variable<String>(artUrl);
+    }
+    if (!nullToAbsent || enrichedAt != null) {
+      map['enriched_at'] = Variable<DateTime>(enrichedAt);
+    }
+    return map;
+  }
+
+  LocalSpeciesTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalSpeciesTableCompanion(
+      definitionId: Value(definitionId),
+      scientificName: Value(scientificName),
+      commonName: Value(commonName),
+      taxonomicClass: Value(taxonomicClass),
+      iucnStatus: Value(iucnStatus),
+      habitatsJson: Value(habitatsJson),
+      continentsJson: Value(continentsJson),
+      animalClass: animalClass == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animalClass),
+      foodPreference: foodPreference == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foodPreference),
+      climate: climate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(climate),
+      brawn:
+          brawn == null && nullToAbsent ? const Value.absent() : Value(brawn),
+      wit: wit == null && nullToAbsent ? const Value.absent() : Value(wit),
+      speed:
+          speed == null && nullToAbsent ? const Value.absent() : Value(speed),
+      size: size == null && nullToAbsent ? const Value.absent() : Value(size),
+      iconUrl: iconUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrl),
+      artUrl:
+          artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
+      enrichedAt: enrichedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(enrichedAt),
+    );
+  }
+
+  factory LocalSpecies.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalSpecies(
+      definitionId: serializer.fromJson<String>(json['definitionId']),
+      scientificName: serializer.fromJson<String>(json['scientificName']),
+      commonName: serializer.fromJson<String>(json['commonName']),
+      taxonomicClass: serializer.fromJson<String>(json['taxonomicClass']),
+      iucnStatus: serializer.fromJson<String>(json['iucnStatus']),
+      habitatsJson: serializer.fromJson<String>(json['habitatsJson']),
+      continentsJson: serializer.fromJson<String>(json['continentsJson']),
+      animalClass: serializer.fromJson<String?>(json['animalClass']),
+      foodPreference: serializer.fromJson<String?>(json['foodPreference']),
+      climate: serializer.fromJson<String?>(json['climate']),
+      brawn: serializer.fromJson<int?>(json['brawn']),
+      wit: serializer.fromJson<int?>(json['wit']),
+      speed: serializer.fromJson<int?>(json['speed']),
+      size: serializer.fromJson<String?>(json['size']),
+      iconUrl: serializer.fromJson<String?>(json['iconUrl']),
+      artUrl: serializer.fromJson<String?>(json['artUrl']),
+      enrichedAt: serializer.fromJson<DateTime?>(json['enrichedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'definitionId': serializer.toJson<String>(definitionId),
+      'scientificName': serializer.toJson<String>(scientificName),
+      'commonName': serializer.toJson<String>(commonName),
+      'taxonomicClass': serializer.toJson<String>(taxonomicClass),
+      'iucnStatus': serializer.toJson<String>(iucnStatus),
+      'habitatsJson': serializer.toJson<String>(habitatsJson),
+      'continentsJson': serializer.toJson<String>(continentsJson),
+      'animalClass': serializer.toJson<String?>(animalClass),
+      'foodPreference': serializer.toJson<String?>(foodPreference),
+      'climate': serializer.toJson<String?>(climate),
+      'brawn': serializer.toJson<int?>(brawn),
+      'wit': serializer.toJson<int?>(wit),
+      'speed': serializer.toJson<int?>(speed),
+      'size': serializer.toJson<String?>(size),
+      'iconUrl': serializer.toJson<String?>(iconUrl),
+      'artUrl': serializer.toJson<String?>(artUrl),
+      'enrichedAt': serializer.toJson<DateTime?>(enrichedAt),
+    };
+  }
+
+  LocalSpecies copyWith(
+          {String? definitionId,
+          String? scientificName,
+          String? commonName,
+          String? taxonomicClass,
+          String? iucnStatus,
+          String? habitatsJson,
+          String? continentsJson,
+          Value<String?> animalClass = const Value.absent(),
+          Value<String?> foodPreference = const Value.absent(),
+          Value<String?> climate = const Value.absent(),
+          Value<int?> brawn = const Value.absent(),
+          Value<int?> wit = const Value.absent(),
+          Value<int?> speed = const Value.absent(),
+          Value<String?> size = const Value.absent(),
+          Value<String?> iconUrl = const Value.absent(),
+          Value<String?> artUrl = const Value.absent(),
+          Value<DateTime?> enrichedAt = const Value.absent()}) =>
+      LocalSpecies(
+        definitionId: definitionId ?? this.definitionId,
+        scientificName: scientificName ?? this.scientificName,
+        commonName: commonName ?? this.commonName,
+        taxonomicClass: taxonomicClass ?? this.taxonomicClass,
+        iucnStatus: iucnStatus ?? this.iucnStatus,
+        habitatsJson: habitatsJson ?? this.habitatsJson,
+        continentsJson: continentsJson ?? this.continentsJson,
+        animalClass: animalClass.present ? animalClass.value : this.animalClass,
+        foodPreference:
+            foodPreference.present ? foodPreference.value : this.foodPreference,
+        climate: climate.present ? climate.value : this.climate,
+        brawn: brawn.present ? brawn.value : this.brawn,
+        wit: wit.present ? wit.value : this.wit,
+        speed: speed.present ? speed.value : this.speed,
+        size: size.present ? size.value : this.size,
+        iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
+        artUrl: artUrl.present ? artUrl.value : this.artUrl,
+        enrichedAt: enrichedAt.present ? enrichedAt.value : this.enrichedAt,
+      );
+  LocalSpecies copyWithCompanion(LocalSpeciesTableCompanion data) {
+    return LocalSpecies(
+      definitionId: data.definitionId.present
+          ? data.definitionId.value
+          : this.definitionId,
+      scientificName: data.scientificName.present
+          ? data.scientificName.value
+          : this.scientificName,
+      commonName:
+          data.commonName.present ? data.commonName.value : this.commonName,
+      taxonomicClass: data.taxonomicClass.present
+          ? data.taxonomicClass.value
+          : this.taxonomicClass,
+      iucnStatus:
+          data.iucnStatus.present ? data.iucnStatus.value : this.iucnStatus,
+      habitatsJson: data.habitatsJson.present
+          ? data.habitatsJson.value
+          : this.habitatsJson,
+      continentsJson: data.continentsJson.present
+          ? data.continentsJson.value
+          : this.continentsJson,
+      animalClass:
+          data.animalClass.present ? data.animalClass.value : this.animalClass,
+      foodPreference: data.foodPreference.present
+          ? data.foodPreference.value
+          : this.foodPreference,
+      climate: data.climate.present ? data.climate.value : this.climate,
+      brawn: data.brawn.present ? data.brawn.value : this.brawn,
+      wit: data.wit.present ? data.wit.value : this.wit,
+      speed: data.speed.present ? data.speed.value : this.speed,
+      size: data.size.present ? data.size.value : this.size,
+      iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
+      artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
+      enrichedAt:
+          data.enrichedAt.present ? data.enrichedAt.value : this.enrichedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalSpecies(')
+          ..write('definitionId: $definitionId, ')
+          ..write('scientificName: $scientificName, ')
+          ..write('commonName: $commonName, ')
+          ..write('taxonomicClass: $taxonomicClass, ')
+          ..write('iucnStatus: $iucnStatus, ')
+          ..write('habitatsJson: $habitatsJson, ')
+          ..write('continentsJson: $continentsJson, ')
+          ..write('animalClass: $animalClass, ')
+          ..write('foodPreference: $foodPreference, ')
+          ..write('climate: $climate, ')
+          ..write('brawn: $brawn, ')
+          ..write('wit: $wit, ')
+          ..write('speed: $speed, ')
+          ..write('size: $size, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('artUrl: $artUrl, ')
+          ..write('enrichedAt: $enrichedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      definitionId,
+      scientificName,
+      commonName,
+      taxonomicClass,
+      iucnStatus,
+      habitatsJson,
+      continentsJson,
+      animalClass,
+      foodPreference,
+      climate,
+      brawn,
+      wit,
+      speed,
+      size,
+      iconUrl,
+      artUrl,
+      enrichedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalSpecies &&
+          other.definitionId == this.definitionId &&
+          other.scientificName == this.scientificName &&
+          other.commonName == this.commonName &&
+          other.taxonomicClass == this.taxonomicClass &&
+          other.iucnStatus == this.iucnStatus &&
+          other.habitatsJson == this.habitatsJson &&
+          other.continentsJson == this.continentsJson &&
+          other.animalClass == this.animalClass &&
+          other.foodPreference == this.foodPreference &&
+          other.climate == this.climate &&
+          other.brawn == this.brawn &&
+          other.wit == this.wit &&
+          other.speed == this.speed &&
+          other.size == this.size &&
+          other.iconUrl == this.iconUrl &&
+          other.artUrl == this.artUrl &&
+          other.enrichedAt == this.enrichedAt);
+}
+
+class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
+  final Value<String> definitionId;
+  final Value<String> scientificName;
+  final Value<String> commonName;
+  final Value<String> taxonomicClass;
+  final Value<String> iucnStatus;
+  final Value<String> habitatsJson;
+  final Value<String> continentsJson;
+  final Value<String?> animalClass;
+  final Value<String?> foodPreference;
+  final Value<String?> climate;
+  final Value<int?> brawn;
+  final Value<int?> wit;
+  final Value<int?> speed;
+  final Value<String?> size;
+  final Value<String?> iconUrl;
+  final Value<String?> artUrl;
+  final Value<DateTime?> enrichedAt;
+  final Value<int> rowid;
+  const LocalSpeciesTableCompanion({
+    this.definitionId = const Value.absent(),
+    this.scientificName = const Value.absent(),
+    this.commonName = const Value.absent(),
+    this.taxonomicClass = const Value.absent(),
+    this.iucnStatus = const Value.absent(),
+    this.habitatsJson = const Value.absent(),
+    this.continentsJson = const Value.absent(),
+    this.animalClass = const Value.absent(),
+    this.foodPreference = const Value.absent(),
+    this.climate = const Value.absent(),
+    this.brawn = const Value.absent(),
+    this.wit = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.size = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.artUrl = const Value.absent(),
+    this.enrichedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalSpeciesTableCompanion.insert({
+    required String definitionId,
+    required String scientificName,
+    required String commonName,
+    required String taxonomicClass,
+    required String iucnStatus,
+    required String habitatsJson,
+    required String continentsJson,
+    this.animalClass = const Value.absent(),
+    this.foodPreference = const Value.absent(),
+    this.climate = const Value.absent(),
+    this.brawn = const Value.absent(),
+    this.wit = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.size = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.artUrl = const Value.absent(),
+    this.enrichedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : definitionId = Value(definitionId),
+        scientificName = Value(scientificName),
+        commonName = Value(commonName),
+        taxonomicClass = Value(taxonomicClass),
+        iucnStatus = Value(iucnStatus),
+        habitatsJson = Value(habitatsJson),
+        continentsJson = Value(continentsJson);
+  static Insertable<LocalSpecies> custom({
+    Expression<String>? definitionId,
+    Expression<String>? scientificName,
+    Expression<String>? commonName,
+    Expression<String>? taxonomicClass,
+    Expression<String>? iucnStatus,
+    Expression<String>? habitatsJson,
+    Expression<String>? continentsJson,
+    Expression<String>? animalClass,
+    Expression<String>? foodPreference,
+    Expression<String>? climate,
+    Expression<int>? brawn,
+    Expression<int>? wit,
+    Expression<int>? speed,
+    Expression<String>? size,
+    Expression<String>? iconUrl,
+    Expression<String>? artUrl,
+    Expression<DateTime>? enrichedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (definitionId != null) 'definition_id': definitionId,
+      if (scientificName != null) 'scientific_name': scientificName,
+      if (commonName != null) 'common_name': commonName,
+      if (taxonomicClass != null) 'taxonomic_class': taxonomicClass,
+      if (iucnStatus != null) 'iucn_status': iucnStatus,
+      if (habitatsJson != null) 'habitats_json': habitatsJson,
+      if (continentsJson != null) 'continents_json': continentsJson,
+      if (animalClass != null) 'animal_class': animalClass,
+      if (foodPreference != null) 'food_preference': foodPreference,
+      if (climate != null) 'climate': climate,
+      if (brawn != null) 'brawn': brawn,
+      if (wit != null) 'wit': wit,
+      if (speed != null) 'speed': speed,
+      if (size != null) 'size': size,
+      if (iconUrl != null) 'icon_url': iconUrl,
+      if (artUrl != null) 'art_url': artUrl,
+      if (enrichedAt != null) 'enriched_at': enrichedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalSpeciesTableCompanion copyWith(
+      {Value<String>? definitionId,
+      Value<String>? scientificName,
+      Value<String>? commonName,
+      Value<String>? taxonomicClass,
+      Value<String>? iucnStatus,
+      Value<String>? habitatsJson,
+      Value<String>? continentsJson,
+      Value<String?>? animalClass,
+      Value<String?>? foodPreference,
+      Value<String?>? climate,
+      Value<int?>? brawn,
+      Value<int?>? wit,
+      Value<int?>? speed,
+      Value<String?>? size,
+      Value<String?>? iconUrl,
+      Value<String?>? artUrl,
+      Value<DateTime?>? enrichedAt,
+      Value<int>? rowid}) {
+    return LocalSpeciesTableCompanion(
+      definitionId: definitionId ?? this.definitionId,
+      scientificName: scientificName ?? this.scientificName,
+      commonName: commonName ?? this.commonName,
+      taxonomicClass: taxonomicClass ?? this.taxonomicClass,
+      iucnStatus: iucnStatus ?? this.iucnStatus,
+      habitatsJson: habitatsJson ?? this.habitatsJson,
+      continentsJson: continentsJson ?? this.continentsJson,
+      animalClass: animalClass ?? this.animalClass,
+      foodPreference: foodPreference ?? this.foodPreference,
+      climate: climate ?? this.climate,
+      brawn: brawn ?? this.brawn,
+      wit: wit ?? this.wit,
+      speed: speed ?? this.speed,
+      size: size ?? this.size,
+      iconUrl: iconUrl ?? this.iconUrl,
+      artUrl: artUrl ?? this.artUrl,
+      enrichedAt: enrichedAt ?? this.enrichedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (definitionId.present) {
+      map['definition_id'] = Variable<String>(definitionId.value);
+    }
+    if (scientificName.present) {
+      map['scientific_name'] = Variable<String>(scientificName.value);
+    }
+    if (commonName.present) {
+      map['common_name'] = Variable<String>(commonName.value);
+    }
+    if (taxonomicClass.present) {
+      map['taxonomic_class'] = Variable<String>(taxonomicClass.value);
+    }
+    if (iucnStatus.present) {
+      map['iucn_status'] = Variable<String>(iucnStatus.value);
+    }
+    if (habitatsJson.present) {
+      map['habitats_json'] = Variable<String>(habitatsJson.value);
+    }
+    if (continentsJson.present) {
+      map['continents_json'] = Variable<String>(continentsJson.value);
+    }
+    if (animalClass.present) {
+      map['animal_class'] = Variable<String>(animalClass.value);
+    }
+    if (foodPreference.present) {
+      map['food_preference'] = Variable<String>(foodPreference.value);
+    }
+    if (climate.present) {
+      map['climate'] = Variable<String>(climate.value);
+    }
+    if (brawn.present) {
+      map['brawn'] = Variable<int>(brawn.value);
+    }
+    if (wit.present) {
+      map['wit'] = Variable<int>(wit.value);
+    }
+    if (speed.present) {
+      map['speed'] = Variable<int>(speed.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<String>(size.value);
+    }
+    if (iconUrl.present) {
+      map['icon_url'] = Variable<String>(iconUrl.value);
+    }
+    if (artUrl.present) {
+      map['art_url'] = Variable<String>(artUrl.value);
+    }
+    if (enrichedAt.present) {
+      map['enriched_at'] = Variable<DateTime>(enrichedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalSpeciesTableCompanion(')
+          ..write('definitionId: $definitionId, ')
+          ..write('scientificName: $scientificName, ')
+          ..write('commonName: $commonName, ')
+          ..write('taxonomicClass: $taxonomicClass, ')
+          ..write('iucnStatus: $iucnStatus, ')
+          ..write('habitatsJson: $habitatsJson, ')
+          ..write('continentsJson: $continentsJson, ')
+          ..write('animalClass: $animalClass, ')
+          ..write('foodPreference: $foodPreference, ')
+          ..write('climate: $climate, ')
+          ..write('brawn: $brawn, ')
+          ..write('wit: $wit, ')
+          ..write('speed: $speed, ')
+          ..write('size: $size, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('artUrl: $artUrl, ')
+          ..write('enrichedAt: $enrichedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $LocalWriteQueueTableTable extends LocalWriteQueueTable
     with TableInfo<$LocalWriteQueueTableTable, LocalWriteQueueEntry> {
   @override
@@ -4488,6 +5312,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalPlayerProfileTableTable(this);
   late final $LocalSpeciesEnrichmentTableTable localSpeciesEnrichmentTable =
       $LocalSpeciesEnrichmentTableTable(this);
+  late final $LocalSpeciesTableTable localSpeciesTable =
+      $LocalSpeciesTableTable(this);
   late final $LocalWriteQueueTableTable localWriteQueueTable =
       $LocalWriteQueueTableTable(this);
   late final $LocalCellPropertiesTableTable localCellPropertiesTable =
@@ -4505,6 +5331,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         localItemInstanceTable,
         localPlayerProfileTable,
         localSpeciesEnrichmentTable,
+        localSpeciesTable,
         localWriteQueueTable,
         localCellPropertiesTable,
         localLocationNodeTable,
@@ -5769,6 +6596,371 @@ typedef $$LocalSpeciesEnrichmentTableTableProcessedTableManager
         ),
         LocalSpeciesEnrichment,
         PrefetchHooks Function()>;
+typedef $$LocalSpeciesTableTableCreateCompanionBuilder
+    = LocalSpeciesTableCompanion Function({
+  required String definitionId,
+  required String scientificName,
+  required String commonName,
+  required String taxonomicClass,
+  required String iucnStatus,
+  required String habitatsJson,
+  required String continentsJson,
+  Value<String?> animalClass,
+  Value<String?> foodPreference,
+  Value<String?> climate,
+  Value<int?> brawn,
+  Value<int?> wit,
+  Value<int?> speed,
+  Value<String?> size,
+  Value<String?> iconUrl,
+  Value<String?> artUrl,
+  Value<DateTime?> enrichedAt,
+  Value<int> rowid,
+});
+typedef $$LocalSpeciesTableTableUpdateCompanionBuilder
+    = LocalSpeciesTableCompanion Function({
+  Value<String> definitionId,
+  Value<String> scientificName,
+  Value<String> commonName,
+  Value<String> taxonomicClass,
+  Value<String> iucnStatus,
+  Value<String> habitatsJson,
+  Value<String> continentsJson,
+  Value<String?> animalClass,
+  Value<String?> foodPreference,
+  Value<String?> climate,
+  Value<int?> brawn,
+  Value<int?> wit,
+  Value<int?> speed,
+  Value<String?> size,
+  Value<String?> iconUrl,
+  Value<String?> artUrl,
+  Value<DateTime?> enrichedAt,
+  Value<int> rowid,
+});
+
+class $$LocalSpeciesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalSpeciesTableTable> {
+  $$LocalSpeciesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get definitionId => $composableBuilder(
+      column: $table.definitionId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get scientificName => $composableBuilder(
+      column: $table.scientificName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get commonName => $composableBuilder(
+      column: $table.commonName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iucnStatus => $composableBuilder(
+      column: $table.iucnStatus, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get animalClass => $composableBuilder(
+      column: $table.animalClass, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get foodPreference => $composableBuilder(
+      column: $table.foodPreference,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get climate => $composableBuilder(
+      column: $table.climate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get brawn => $composableBuilder(
+      column: $table.brawn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get wit => $composableBuilder(
+      column: $table.wit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get speed => $composableBuilder(
+      column: $table.speed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artUrl => $composableBuilder(
+      column: $table.artUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get enrichedAt => $composableBuilder(
+      column: $table.enrichedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalSpeciesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalSpeciesTableTable> {
+  $$LocalSpeciesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get definitionId => $composableBuilder(
+      column: $table.definitionId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get scientificName => $composableBuilder(
+      column: $table.scientificName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get commonName => $composableBuilder(
+      column: $table.commonName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iucnStatus => $composableBuilder(
+      column: $table.iucnStatus, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get animalClass => $composableBuilder(
+      column: $table.animalClass, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get foodPreference => $composableBuilder(
+      column: $table.foodPreference,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get climate => $composableBuilder(
+      column: $table.climate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get brawn => $composableBuilder(
+      column: $table.brawn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get wit => $composableBuilder(
+      column: $table.wit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get speed => $composableBuilder(
+      column: $table.speed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get size => $composableBuilder(
+      column: $table.size, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconUrl => $composableBuilder(
+      column: $table.iconUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artUrl => $composableBuilder(
+      column: $table.artUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get enrichedAt => $composableBuilder(
+      column: $table.enrichedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalSpeciesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalSpeciesTableTable> {
+  $$LocalSpeciesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get definitionId => $composableBuilder(
+      column: $table.definitionId, builder: (column) => column);
+
+  GeneratedColumn<String> get scientificName => $composableBuilder(
+      column: $table.scientificName, builder: (column) => column);
+
+  GeneratedColumn<String> get commonName => $composableBuilder(
+      column: $table.commonName, builder: (column) => column);
+
+  GeneratedColumn<String> get taxonomicClass => $composableBuilder(
+      column: $table.taxonomicClass, builder: (column) => column);
+
+  GeneratedColumn<String> get iucnStatus => $composableBuilder(
+      column: $table.iucnStatus, builder: (column) => column);
+
+  GeneratedColumn<String> get habitatsJson => $composableBuilder(
+      column: $table.habitatsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get continentsJson => $composableBuilder(
+      column: $table.continentsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get animalClass => $composableBuilder(
+      column: $table.animalClass, builder: (column) => column);
+
+  GeneratedColumn<String> get foodPreference => $composableBuilder(
+      column: $table.foodPreference, builder: (column) => column);
+
+  GeneratedColumn<String> get climate =>
+      $composableBuilder(column: $table.climate, builder: (column) => column);
+
+  GeneratedColumn<int> get brawn =>
+      $composableBuilder(column: $table.brawn, builder: (column) => column);
+
+  GeneratedColumn<int> get wit =>
+      $composableBuilder(column: $table.wit, builder: (column) => column);
+
+  GeneratedColumn<int> get speed =>
+      $composableBuilder(column: $table.speed, builder: (column) => column);
+
+  GeneratedColumn<String> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrl =>
+      $composableBuilder(column: $table.iconUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get artUrl =>
+      $composableBuilder(column: $table.artUrl, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get enrichedAt => $composableBuilder(
+      column: $table.enrichedAt, builder: (column) => column);
+}
+
+class $$LocalSpeciesTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalSpeciesTableTable,
+    LocalSpecies,
+    $$LocalSpeciesTableTableFilterComposer,
+    $$LocalSpeciesTableTableOrderingComposer,
+    $$LocalSpeciesTableTableAnnotationComposer,
+    $$LocalSpeciesTableTableCreateCompanionBuilder,
+    $$LocalSpeciesTableTableUpdateCompanionBuilder,
+    (
+      LocalSpecies,
+      BaseReferences<_$AppDatabase, $LocalSpeciesTableTable, LocalSpecies>
+    ),
+    LocalSpecies,
+    PrefetchHooks Function()> {
+  $$LocalSpeciesTableTableTableManager(
+      _$AppDatabase db, $LocalSpeciesTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalSpeciesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalSpeciesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalSpeciesTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> definitionId = const Value.absent(),
+            Value<String> scientificName = const Value.absent(),
+            Value<String> commonName = const Value.absent(),
+            Value<String> taxonomicClass = const Value.absent(),
+            Value<String> iucnStatus = const Value.absent(),
+            Value<String> habitatsJson = const Value.absent(),
+            Value<String> continentsJson = const Value.absent(),
+            Value<String?> animalClass = const Value.absent(),
+            Value<String?> foodPreference = const Value.absent(),
+            Value<String?> climate = const Value.absent(),
+            Value<int?> brawn = const Value.absent(),
+            Value<int?> wit = const Value.absent(),
+            Value<int?> speed = const Value.absent(),
+            Value<String?> size = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
+            Value<String?> artUrl = const Value.absent(),
+            Value<DateTime?> enrichedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalSpeciesTableCompanion(
+            definitionId: definitionId,
+            scientificName: scientificName,
+            commonName: commonName,
+            taxonomicClass: taxonomicClass,
+            iucnStatus: iucnStatus,
+            habitatsJson: habitatsJson,
+            continentsJson: continentsJson,
+            animalClass: animalClass,
+            foodPreference: foodPreference,
+            climate: climate,
+            brawn: brawn,
+            wit: wit,
+            speed: speed,
+            size: size,
+            iconUrl: iconUrl,
+            artUrl: artUrl,
+            enrichedAt: enrichedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String definitionId,
+            required String scientificName,
+            required String commonName,
+            required String taxonomicClass,
+            required String iucnStatus,
+            required String habitatsJson,
+            required String continentsJson,
+            Value<String?> animalClass = const Value.absent(),
+            Value<String?> foodPreference = const Value.absent(),
+            Value<String?> climate = const Value.absent(),
+            Value<int?> brawn = const Value.absent(),
+            Value<int?> wit = const Value.absent(),
+            Value<int?> speed = const Value.absent(),
+            Value<String?> size = const Value.absent(),
+            Value<String?> iconUrl = const Value.absent(),
+            Value<String?> artUrl = const Value.absent(),
+            Value<DateTime?> enrichedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalSpeciesTableCompanion.insert(
+            definitionId: definitionId,
+            scientificName: scientificName,
+            commonName: commonName,
+            taxonomicClass: taxonomicClass,
+            iucnStatus: iucnStatus,
+            habitatsJson: habitatsJson,
+            continentsJson: continentsJson,
+            animalClass: animalClass,
+            foodPreference: foodPreference,
+            climate: climate,
+            brawn: brawn,
+            wit: wit,
+            speed: speed,
+            size: size,
+            iconUrl: iconUrl,
+            artUrl: artUrl,
+            enrichedAt: enrichedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalSpeciesTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalSpeciesTableTable,
+    LocalSpecies,
+    $$LocalSpeciesTableTableFilterComposer,
+    $$LocalSpeciesTableTableOrderingComposer,
+    $$LocalSpeciesTableTableAnnotationComposer,
+    $$LocalSpeciesTableTableCreateCompanionBuilder,
+    $$LocalSpeciesTableTableUpdateCompanionBuilder,
+    (
+      LocalSpecies,
+      BaseReferences<_$AppDatabase, $LocalSpeciesTableTable, LocalSpecies>
+    ),
+    LocalSpecies,
+    PrefetchHooks Function()>;
 typedef $$LocalWriteQueueTableTableCreateCompanionBuilder
     = LocalWriteQueueTableCompanion Function({
   Value<int> id,
@@ -6676,6 +7868,8 @@ class $AppDatabaseManager {
       get localSpeciesEnrichmentTable =>
           $$LocalSpeciesEnrichmentTableTableTableManager(
               _db, _db.localSpeciesEnrichmentTable);
+  $$LocalSpeciesTableTableTableManager get localSpeciesTable =>
+      $$LocalSpeciesTableTableTableManager(_db, _db.localSpeciesTable);
   $$LocalWriteQueueTableTableTableManager get localWriteQueueTable =>
       $$LocalWriteQueueTableTableTableManager(_db, _db.localWriteQueueTable);
   $$LocalCellPropertiesTableTableTableManager get localCellPropertiesTable =>
