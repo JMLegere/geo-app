@@ -7,7 +7,7 @@ import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/utils/phone_validation.dart';
 import 'package:earth_nova/features/auth/widgets/auth_button.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
-import 'package:earth_nova/shared/game_icons.dart';
+import 'package:earth_nova/shared/widgets/spinning_globe.dart';
 
 /// Login screen — shown when auth state is [AuthStatus.unauthenticated].
 ///
@@ -92,13 +92,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               SizedBox(height: Spacing.massive),
 
               // ── Brand ───────────────────────────────────────────────────────
-              Text(
-                GameIcons.globe,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: ComponentSizes.emptyStateIcon,
-                  height: 1,
-                ),
+              const SpinningGlobe(
+                size: ComponentSizes.emptyStateIcon,
               ),
               Spacing.gapLg,
               Text(
