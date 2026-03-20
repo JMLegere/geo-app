@@ -143,7 +143,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         } catch (_) {}
       }
 
-      obs.event('app_startup', {
+      final diagnostics = {
         // Session
         'session_id': obs.sessionId,
         'device_id': obs.deviceId,
@@ -173,7 +173,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
         // Timing
         'startup_ts': DateTime.now().toUtc().toIso8601String(),
-      });
+      };
+
+      obs.event('app_startup', diagnostics);
+      debugPrint('[Startup] $diagnostics');
     } catch (e) {
       debugPrint('[Observability] startup diagnostics failed: $e');
     }
