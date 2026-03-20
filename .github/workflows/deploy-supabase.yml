@@ -47,7 +47,7 @@ jobs:
             local sql=$1
             curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
               -d "{\"query\": \"$sql\"}" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('error','') or 'OK')"
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print('ERROR: '+str(d.get('error',''))) if isinstance(d,dict) and d.get('error') else print('OK')"
           }
 
           # Insert 016 if missing (applied via SQL Editor earlier)
