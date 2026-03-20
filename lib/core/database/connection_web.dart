@@ -3,14 +3,13 @@ import 'package:drift/wasm.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqlite3/wasm.dart';
 
-/// Cache-busting version for the sqlite3.wasm file.
+/// Cache-busting version for the sqlite3.wasm and drift_worker.js files.
 ///
-/// Bump this whenever the sqlite3 package is upgraded in pubspec.yaml.
-/// Without it, browsers may serve a stale cached copy after deploys —
-/// which caused a production outage when Git LFS replaced the binary
-/// with a 131-byte pointer file and the browser kept serving the cached
-/// pointer even after the fix was deployed.
-const _wasmVersion = '2.9.4';
+/// Bump this whenever the sqlite3 or drift package is upgraded, or when
+/// the database schema changes. Without it, browsers may serve a stale
+/// cached copy after deploys — which caused a production outage when
+/// the Drift worker didn't know about the new schema tables.
+const _wasmVersion = '2.9.4-v18';
 
 /// Creates a persistent SQLite database for web.
 ///
@@ -28,7 +27,7 @@ QueryExecutor createDatabaseConnection() {
         final result = await WasmDatabase.open(
           databaseName: 'earthnova',
           sqlite3Uri: Uri.parse('sqlite3.wasm?v=$_wasmVersion'),
-          driftWorkerUri: Uri.parse('drift_worker.js'),
+          driftWorkerUri: Uri.parse('drift_worker.js?v=$_wasmVersion'),
         ).timeout(const Duration(seconds: 8));
 
         debugPrint(
