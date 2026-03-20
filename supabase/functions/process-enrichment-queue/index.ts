@@ -18,7 +18,6 @@ const ANIMAL_SIZES = [
 ];
 
 const ART_BUCKET = "species-art";
-const GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
 const ART_MAX_RETRIES = 3;
 const ART_BASE_DELAY_MS = 2000;
 
@@ -38,6 +37,141 @@ const PROVIDERS: Provider[] = [
   { name: "zen-minimax", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "minimax-m2.5-free" },
   { name: "zen-mimo", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "mimo-v2-flash-free" },
   { name: "zen-nemotron", url: "https://opencode.ai/zen/v1/chat/completions", keyEnv: "OPENCODE_ZEN_API_KEY", model: "nemotron-3-super-free" },
+];
+
+// ── Image Generation Providers ──────────────────────────────────────────────
+
+interface ImageProvider {
+  name: string;
+  keyEnv: string;
+  generate: (
+    apiKey: string,
+    prompt: string,
+  ) => Promise<Uint8Array | null>;
+  rpmDelay: number; // ms to sleep between calls to respect rate limits
+}
+
+const IMAGE_PROVIDERS: ImageProvider[] = [
+  {
+    name: "gemini",
+    keyEnv: "GEMINI_API_KEY",
+    rpmDelay: 7000, // 10 RPM → 6s min, use 7s for safety
+    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+          }),
+        },
+      );
+
+      if (response.status === 429) return null; // rate limited
+      if (!response.ok) throw new Error(`Gemini ${response.status}: ${(await response.text()).slice(0, 200)}`);
+
+      const data = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts;
+      if (!parts) throw new Error("No parts in Gemini response");
+
+      for (const part of parts) {
+        if (part.inlineData?.mimeType?.startsWith("image/")) {
+          const binaryString = atob(part.inlineData.data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return bytes;
+        }
+      }
+      throw new Error("No image in Gemini response");
+    },
+  },
+  {
+    name: "together-flux",
+    keyEnv: "TOGETHER_API_KEY",
+    rpmDelay: 2000, // Together AI is more generous
+    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+      const response = await fetch("https://api.together.xyz/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "black-forest-labs/FLUX.1-schnell-Free",
+          prompt: prompt,
+          width: 512,
+          height: 512,
+          n: 1,
+          response_format: "b64_json",
+        }),
+      });
+
+      if (response.status === 429) return null;
+      if (!response.ok) throw new Error(`Together ${response.status}: ${(await response.text()).slice(0, 200)}`);
+
+      const data = await response.json();
+      const b64 = data.data?.[0]?.b64_json;
+      if (!b64) throw new Error("No image in Together response");
+
+      const binaryString = atob(b64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    },
+  },
+  {
+    name: "leonardo",
+    keyEnv: "LEONARDO_API_KEY",
+    rpmDelay: 5000, // Conservative for free tier
+    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+      // Leonardo uses async generation: create → poll → download
+      const createResponse = await fetch("https://cloud.leonardo.ai/api/rest/v1/generations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          width: 512,
+          height: 512,
+          num_images: 1,
+          modelId: "b24e16ff-06e3-43eb-8d33-4416c2d75876", // Leonardo Lightning XL
+        }),
+      });
+
+      if (createResponse.status === 429) return null;
+      if (!createResponse.ok) throw new Error(`Leonardo create ${createResponse.status}: ${(await createResponse.text()).slice(0, 200)}`);
+
+      const createData = await createResponse.json();
+      const generationId = createData.sdGenerationJob?.generationId;
+      if (!generationId) throw new Error("No generationId from Leonardo");
+
+      // Poll for completion (max 30s)
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const pollResponse = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`, {
+          headers: { "Authorization": `Bearer ${apiKey}` },
+        });
+        if (!pollResponse.ok) continue;
+        const pollData = await pollResponse.json();
+        const images = pollData.generations_by_pk?.generated_images;
+        if (images && images.length > 0) {
+          const imageUrl = images[0].url;
+          const imageResponse = await fetch(imageUrl);
+          if (!imageResponse.ok) throw new Error(`Failed to download Leonardo image: ${imageResponse.status}`);
+          return new Uint8Array(await imageResponse.arrayBuffer());
+        }
+      }
+      throw new Error("Leonardo generation timed out (30s)");
+    },
+  },
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -225,17 +359,18 @@ function buildArtPrompt(
   return `Generate an image: Professional Pokemon TCG-style watercolor illustration of a ${commonName} (${scientificName}). Pose: ${poseDirection}. Composition: Full body, 3/4 view, slightly off-center, breathing room. Background: Soft atmospheric natural scene, impressionistic, not competing with subject. ${climateLighting}. Style: Watercolor with visible brushstrokes, soft edges, translucent layers, luminous quality. Moderate saturation. Soft diffused lighting. No text, no labels, no borders, no card frame. 512x512 pixels.`;
 }
 
-// Returns null on 429 (caller should stop art pass), throws on other errors after retries
+// Rotates through IMAGE_PROVIDERS; returns { url, provider } on success,
+// "rate_limited" if all providers are exhausted/rate-limited, null on total failure.
 async function generateAndUploadArt(
   supabase: any,
   supabaseUrl: string,
-  geminiKey: string,
   definitionId: string,
   scientificName: string,
   commonName: string,
   assetType: "icon" | "illustration",
   enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null },
-): Promise<string | null | "rate_limited"> {
+  logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
+): Promise<{ url: string; provider: string } | "rate_limited" | null> {
   const fileName = assetType === "icon" ? `${definitionId}_icon.webp` : `${definitionId}.webp`;
 
   // Check if already exists in storage
@@ -243,76 +378,67 @@ async function generateAndUploadArt(
   if (existingFile && existingFile.length > 0) {
     const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
     console.log(`[art] ${definitionId} ${assetType} already in storage`);
-    await logEvent('art_skipped', definitionId, {
-      asset_type: assetType,
-      metadata: { reason: 'already_in_storage' },
-    });
-    return url;
+    if (logEvent) await logEvent('art_skipped', definitionId, { asset_type: assetType, metadata: { reason: 'already_in_storage' } });
+    return { url, provider: "cache" };
   }
 
   const prompt = buildArtPrompt(commonName, scientificName, assetType, enrichment);
 
-  for (let attempt = 0; attempt < ART_MAX_RETRIES; attempt++) {
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-          }),
-        },
-      );
+  // Try each image provider in order
+  const availableProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
 
-      if (response.status === 429) {
-        const delayMs = ART_BASE_DELAY_MS * Math.pow(2, attempt);
-        console.log(`[art] rate limited for ${definitionId} ${assetType}, backing off ${delayMs}ms (attempt ${attempt + 1}/${ART_MAX_RETRIES})`);
-        await new Promise(r => setTimeout(r, delayMs));
-        if (attempt === ART_MAX_RETRIES - 1) return "rate_limited";
-        continue;
-      }
+  for (const provider of availableProviders) {
+    const apiKey = Deno.env.get(provider.keyEnv)!;
+    const startMs = Date.now();
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini API error ${response.status}: ${errText.slice(0, 200)}`);
-      }
+    for (let attempt = 0; attempt < ART_MAX_RETRIES; attempt++) {
+      try {
+        const imageBytes = await provider.generate(apiKey, prompt);
 
-      const data = await response.json();
-      const parts = data.candidates?.[0]?.content?.parts;
-      if (!parts) throw new Error("No parts in Gemini response");
+        if (imageBytes === null) {
+          // Rate limited — try next provider
+          console.log(`[art] ${provider.name} rate limited for ${definitionId} ${assetType}`);
+          if (logEvent) await logEvent('rate_limited', definitionId, { asset_type: assetType, provider_name: provider.name });
+          break; // break retry loop, continue to next provider
+        }
 
-      let imageBytes: Uint8Array | null = null;
-      for (const part of parts) {
-        if (part.inlineData?.mimeType?.startsWith("image/")) {
-          const binaryString = atob(part.inlineData.data);
-          imageBytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) imageBytes[i] = binaryString.charCodeAt(i);
-          break;
+        // Upload to storage
+        const { error: uploadError } = await supabase.storage
+          .from(ART_BUCKET)
+          .upload(fileName, imageBytes, { contentType: "image/webp", upsert: true });
+
+        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+        const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
+        const durationMs = Date.now() - startMs;
+
+        // Update species row
+        const column = assetType === "icon" ? "icon_url" : "art_url";
+        await supabase.from("species").update({ [column]: url }).eq("definition_id", definitionId);
+
+        console.log(`[art] ${assetType} generated for ${definitionId} via ${provider.name}: ${url}`);
+        if (logEvent) await logEvent('art_success', definitionId, { asset_type: assetType, provider_name: provider.name, duration_ms: durationMs });
+
+        // Sleep to respect rate limits
+        await new Promise(r => setTimeout(r, provider.rpmDelay));
+
+        return { url, provider: provider.name };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[art] ${provider.name} attempt ${attempt + 1} failed for ${definitionId} ${assetType}: ${message}`);
+
+        if (attempt < ART_MAX_RETRIES - 1) {
+          const delayMs = ART_BASE_DELAY_MS * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, delayMs));
+        } else {
+          if (logEvent) await logEvent('art_error', definitionId, { asset_type: assetType, provider_name: provider.name, error_message: message, duration_ms: Date.now() - startMs });
         }
       }
-      if (!imageBytes) throw new Error("No image in Gemini response");
-
-      const { error: uploadError } = await supabase.storage
-        .from(ART_BUCKET)
-        .upload(fileName, imageBytes, { contentType: "image/webp", upsert: true });
-      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-      const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
-
-      const column = assetType === "icon" ? "icon_url" : "art_url";
-      await supabase.from("species_enrichment").update({ [column]: url }).eq("definition_id", definitionId);
-
-      console.log(`[art] ${assetType} generated for ${definitionId}: ${url}`);
-      return url;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[art] ${assetType} attempt ${attempt + 1} failed for ${definitionId}: ${message}`);
-      if (attempt < ART_MAX_RETRIES - 1) await new Promise(r => setTimeout(r, ART_BASE_DELAY_MS * Math.pow(2, attempt)));
     }
   }
-  return null;
+
+  // All providers exhausted
+  return "rate_limited";
 }
 
 // ── Main Handler ──────────────────────────────────────────────────────────────
@@ -454,9 +580,9 @@ serve(async (req: Request) => {
   // ── Pass 2: Art Generation ───────────────────────────────────────────────
 
   try {
-    const geminiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiKey) {
-      errors.push("Pass 2 skipped: GEMINI_API_KEY not set");
+    const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+    if (availableImageProviders.length === 0) {
+      errors.push("Pass 2 skipped: no image provider API keys configured");
     } else {
       // Get distinct definition_ids that have been discovered
       const { data: discoveredRows, error: instancesErr } = await supabase
@@ -499,72 +625,36 @@ serve(async (req: Request) => {
 
           // Generate icon if missing
           if (!species.icon_url) {
-            const iconStartMs = Date.now();
             const result = await generateAndUploadArt(
-              supabase, supabaseUrl, geminiKey,
+              supabase, supabaseUrl,
               species.definition_id, species.scientific_name, species.common_name,
-              "icon", enrichmentCtx,
+              "icon", enrichmentCtx, logEvent,
             );
             if (result === "rate_limited") {
               rateLimited = true;
-              errors.push("Pass 2 stopped: Gemini rate limit hit");
-              await logEvent('rate_limited', species.definition_id, {
-                asset_type: 'icon',
-                provider_name: 'gemini',
-              });
+              errors.push("Pass 2 stopped: all image providers rate limited");
               break;
             }
-            if (result) {
+            if (result && result !== "rate_limited") {
               icons++;
-              await logEvent('art_success', species.definition_id, {
-                asset_type: 'icon',
-                duration_ms: Date.now() - iconStartMs,
-                provider_name: 'gemini',
-              });
-            } else if (result === null) {
-              await logEvent('art_error', species.definition_id, {
-                asset_type: 'icon',
-                error_message: 'All retries exhausted',
-                duration_ms: Date.now() - iconStartMs,
-                provider_name: 'gemini',
-              });
             }
-            await new Promise(r => setTimeout(r, 7000));
           }
 
           // Generate illustration if missing (and not rate-limited)
           if (!rateLimited && !species.art_url) {
-            const illustrationStartMs = Date.now();
             const result = await generateAndUploadArt(
-              supabase, supabaseUrl, geminiKey,
+              supabase, supabaseUrl,
               species.definition_id, species.scientific_name, species.common_name,
-              "illustration", enrichmentCtx,
+              "illustration", enrichmentCtx, logEvent,
             );
             if (result === "rate_limited") {
               rateLimited = true;
-              errors.push("Pass 2 stopped: Gemini rate limit hit");
-              await logEvent('rate_limited', species.definition_id, {
-                asset_type: 'illustration',
-                provider_name: 'gemini',
-              });
+              errors.push("Pass 2 stopped: all image providers rate limited");
               break;
             }
-            if (result) {
+            if (result && result !== "rate_limited") {
               illustrations++;
-              await logEvent('art_success', species.definition_id, {
-                asset_type: 'illustration',
-                duration_ms: Date.now() - illustrationStartMs,
-                provider_name: 'gemini',
-              });
-            } else if (result === null) {
-              await logEvent('art_error', species.definition_id, {
-                asset_type: 'illustration',
-                error_message: 'All retries exhausted',
-                duration_ms: Date.now() - illustrationStartMs,
-                provider_name: 'gemini',
-              });
             }
-            await new Promise(r => setTimeout(r, 7000));
           }
         }
       }
