@@ -46,18 +46,18 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Drift ORM schema and database connection.
 
 **Public API**:
-- `AppDatabase`: Drift database with 7 tables
+- `AppDatabase`: Drift database with 6 tables
   - `LocalCellProgressTable`: `id` (text PK), `userId`, `cellId`, `fogState`, `distanceWalked`, `visitCount`, `restorationLevel`, `lastVisited`, `createdAt`, `updatedAt`
   - `LocalItemInstanceTable`: `id` (text PK), `userId`, `definitionId`, `categoryName`, `affixesJson`, `parentAId`, `parentBId`, `dailySeed`, `status`, `createdAt`
   - `LocalPlayerProfileTable`: `id` (text PK), `displayName`, `currentStreak`, `longestStreak`, `totalDistanceKm`, `currentSeason`, `createdAt`, `updatedAt`
-  - `LocalSpeciesEnrichmentTable`: `definitionId` (text PK), `animalClass`, `foodPreference`, `climate`, `brawn`, `wit`, `speed`, `size` (nullable text — `AnimalSize` enum name), `artUrl` (nullable), `enrichedAt`
+  - `LocalSpeciesTable`: `definitionId` (text PK), `commonName`, `scientificName`, `taxonomicClass`, `continentsJson`, `habitatsJson`, `iucnStatus`, `animalClass` (nullable), `foodPreference` (nullable), `climate` (nullable), `brawn` (nullable int), `wit` (nullable int), `speed` (nullable int), `size` (nullable text — `AnimalSize` enum name), `artUrl` (nullable), `enrichedAt` (nullable). 32,752 rows seeded from `assets/species_data.json`. Replaces `LocalSpeciesEnrichmentTable` (dropped in schema v18) and the old `species.db` asset.
   - `LocalWriteQueueTable`: `id` (int, autoIncrement PK), `entityType`, `entityId`, `operation`, `payload`, `userId`, `status` (default 'pending'), `attempts` (default 0), `lastError` (nullable), `createdAt`, `updatedAt`
   - `LocalCellPropertiesTable`: `cellId` (text PK), `habitatsJson` (text), `climate` (text), `continent` (text), `locationId` (text nullable), `createdAt` (datetime). Globally shared (no userId).
   - `LocalLocationNodeTable`: `id` (text PK), `name` (text), `adminLevel` (text), `parentId` (text nullable), `osmId` (text nullable), `colorHex` (text nullable), `geometryJson` (text nullable), `createdAt` (datetime)
 - Write queue query methods: `enqueueEntry`, `getPendingEntries`, `getRejectedEntries`, `countPendingEntries`, `confirmEntry`, `rejectEntry`, `incrementEntryAttempts`
 - Cell property query methods: `getCellProperties(cellId)`, `upsertCellProperties(companion)`, `getAllCellProperties()`, `getLocationNode(id)`, `upsertLocationNode(companion)`, `getLocationNodeByOsmId(osmId)`, `getLocationNodeChildren(parentId)`
 - `createDatabaseConnection()`: Platform-aware connection factory (conditional import)
-- `schemaVersion = 13`. Migrations: v2→v3 LocalSpeciesEnrichmentTable, v3→v4 LocalWriteQueueTable, v4→v5 through v8 enrichment columns (brawn/wit/speed/artUrl), v8→v9 `size` column, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 LocalLocationNodeTable osmId nullable (table recreation for SQLite), v12→v13 `geometry_json` column added to `LocalLocationNodeTable` via `m.addColumn`.
+- `schemaVersion = 18`. Key migrations: v2→v3 LocalSpeciesEnrichmentTable (now dropped), v3→v4 LocalWriteQueueTable, v4→v9 enrichment columns, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 osmId nullable, v12→v13 `geometry_json`, v13→v18 drop LocalSpeciesEnrichmentTable + add LocalSpeciesTable (seeded from JSON).
 
 **Conventions**:
 - FogState stored as string enum name (e.g., "observed", "concealed")
@@ -162,7 +162,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `LocationNode`: `id`, `name`, `adminLevel: AdminLevel`, `parentId`, `osmId`, `colorHex: String?`, `geometryJson: String?`. `AdminLevel` enum: world, continent, country, state, city, district. 6-level location hierarchy. `geometryJson` = GeoJSON polygon (Polygon or MultiPolygon), null until fetched via `resolve-admin-boundaries` Edge Function.
 - `DiscoveryEvent`: *(existing)* — added `cellEventType: CellEventType?` nullable field indicating which cell event triggered the encounter (null = normal).
 - `AnimalSize`: enum (fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal). Each value has `minGrams` and `maxGrams` (metric). `rangeSpan` = maxGrams - minGrams + 1. `fromString(String)` parser (case-insensitive). 9 size categories from fine (1–49g) to colossal (15M–247M g). Colossal max = 130% of ~190t blue whale record.
-- `SpeciesEnrichment`: `definitionId`, `animalClass: AnimalClass`, `foodPreference: FoodType`, `climate: Climate`, `brawn: int`, `wit: int`, `speed: int`, `size: AnimalSize?`, `artUrl: String?`, `enrichedAt: DateTime`. Immutable value object for cached AI enrichment data. All fields required except `size` and `artUrl`. Validates `brawn + wit + speed == 90` at runtime (throws `ArgumentError`). Equality by `definitionId`.
+- `AnimalSize`: enum (fine, diminutive, tiny, small, medium, large, huge, gargantuan, colossal). `minGrams`/`maxGrams` per value. `fromString(String)` parser.
 
 **Conventions**:
 - All models are immutable with `@immutable` annotation
@@ -186,7 +186,6 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `CellProgressRepository`: `getCellProgress(String)`, `upsertCellProgress(CellProgressData)`, `addDistance(String, double)`, `getAllVisitedCells()`, `incrementVisitCount(String)`
 - `ItemInstanceRepository`: `create(ItemInstance)`, `read(String id)`, `readAll(String userId)`, `update(ItemInstance)`, `deleteItem(String id)`, `readByStatus(String userId, ItemInstanceStatus)`. Full CRUD with Drift domain conversion.
 - `ProfileRepository`: `getProfile(String)`, `upsertProfile(PlayerStats, String)`, `incrementCellsExplored(String)`, `updateStreak(String, int)`
-- `EnrichmentRepository`: `getEnrichment(String definitionId)`, `getAllEnrichments()`, `upsertEnrichment(SpeciesEnrichment)`, `upsertAll(List<SpeciesEnrichment>)`, `getEnrichmentsSince(DateTime since)`. Local cache CRUD for AI enrichment data.
 - `WriteQueueRepository`: `enqueue(WriteQueueEntry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)`. Offline write queue CRUD.
 - `CellPropertyRepository`: `get(cellId)`, `upsert(CellProperties)`, `updateLocationId(cellId, locationId)`, `getAll()`. Cell property CRUD. Globally shared (not per-user).
 - `LocationNodeRepository`: `get(id)`, `getByOsmId(osmId)`, `upsert(LocationNode)`, `getChildren(parentId)`. Location hierarchy CRUD.
@@ -206,8 +205,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Public API**:
 - `SpeciesService`: `getSpeciesForCell(cellId, habitats, continent, {required dailySeed, encounterSlots})`, `rollMultiple(LootTable, int n, String seed)`, `getSpeciesForMigration(habitats, nativeContinent, nativeClimate, dailySeed, cellId)`, `getSpeciesForNestingSite(habitats, continent, dailySeed, cellId)`
 - `LootTable<T>`: Generic weighted random selection. `add(T item, int weight)`, `roll(String seed)`.
-- `SpeciesRepository`: SQLite-backed species store. `getCandidates(habitats, continent)`, `getAll()`, `count()`. Primary data path.
-- `SpeciesCache`: In-memory cache over `SpeciesRepository`. Used by `SpeciesService.fromCache()`.
+- `SpeciesRepository`: Drift-backed species store via `DriftSpeciesRepository`. `getCandidates(habitats, continent)`, `getAll()`, `count()`. Backed by `LocalSpeciesTable` (not `species.db`).
+- `SpeciesCache`: In-memory cache over `SpeciesRepository`. `getByIdSync(String id)` for synchronous lookup. Used by `SpeciesService.fromCache()`.
 - `ContinentResolver`: `getContinent(Geographic)` uses bounding boxes. Africa split at 20°E.
 
 **Note**: `StatsService` moved to `features/items/services/`. See `features/items/AGENTS.md`.
@@ -218,7 +217,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `maxAttempts = n * 10` to avoid infinite loops on small tables
 - `SpeciesRepository` silently skips rows with unknown habitats, continents, or IUCN statuses
 - `ContinentResolver` bounding boxes: Africa split at 20°E (west=Africa, east=Africa), Europe/Asia split at 60°E
-- Species data is 33k IUCN records in `assets/species.db` (pre-compiled SQLite; source JSON at `assets/species_data.json`)
+- Species data is 32,752 IUCN records in `LocalSpeciesTable` (Drift), seeded from `assets/species_data.json` at first run. `assets/species.db` has been deleted.
 
 ---
 
@@ -226,7 +225,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (21 providers):
+**Public API** (19 providers):
 - `tabIndexProvider`: `NotifierProvider<TabIndexNotifier, int>` — selected tab index (0=Map, 1=Home, 2=Town, 3=Pack). Persists to SharedPreferences.
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
@@ -238,7 +237,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `supabaseBootstrapProvider`: `Provider<SupabaseBootstrap>` — pre-initialized in main(), overridden
 - `appDatabaseProvider`: `Provider<AppDatabase>` — singleton database with lifecycle management. Disposes on shutdown.
 - `itemInstanceRepositoryProvider`: `Provider<ItemInstanceRepository>` — watches appDatabaseProvider. Used by gameCoordinatorProvider for persistence and hydration.
-- `enrichmentRepositoryProvider`: `Provider<EnrichmentRepository>` — watches appDatabaseProvider. Local cache CRUD for species enrichments.
+- `speciesRepositoryProvider`: `Provider<SpeciesRepository>` — watches appDatabaseProvider. Sync provider (not FutureProvider). Backed by `DriftSpeciesRepository`.
 - `writeQueueRepositoryProvider`: `Provider<WriteQueueRepository>` — watches appDatabaseProvider. Offline write queue CRUD.
 - `cellProgressRepositoryProvider`: `Provider<CellProgressRepository>` — watches appDatabaseProvider. Cell visit persistence.
 - `profileRepositoryProvider`: `Provider<ProfileRepository>` — watches appDatabaseProvider. Player profile persistence.

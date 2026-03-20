@@ -38,7 +38,11 @@ Generic weighted random selection:
 
 ## SpeciesRepository
 
-`getCandidates({habitats, continent})` → `List<FaunaDefinition>` (SQL query). `getAll()` → full dataset. Silently skips rows with unknown habitats/continents/IUCN statuses. Open via `SpeciesRepository.fromAssets()` (Flutter) or inject a `Database` for tests. Source of truth: `assets/species.db` (pre-compiled; source JSON: `assets/species_data.json`).
+`getCandidates({habitats, continent})` → `List<FaunaDefinition>` (Drift query). `getAll()` → full dataset. Silently skips rows with unknown habitats/continents/IUCN statuses. Backed by `DriftSpeciesRepository` (queries `LocalSpeciesTable`). No longer opens `assets/species.db` — species data seeded into Drift on first run from `assets/species_data.json`.
+
+## SpeciesCache
+
+In-memory cache over `SpeciesRepository`. `getByIdSync(String id)` — synchronous lookup by definitionId after cache is populated. Used by `SpeciesService.fromCache()`. Enrichment data (animalClass, foodPreference, climate, stats) comes from `LocalSpeciesTable` columns, not a separate enrichment model.
 
 ## ContinentResolver
 

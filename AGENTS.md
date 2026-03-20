@@ -13,8 +13,8 @@
 | Persistence | Drift 2.14.0 (SQLite) — local cache + write queue. Supabase = source of truth |
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
-| Species data | 32,752 real IUCN records in pre-compiled `assets/species.db` (SQLite) |
-| Tests | 1807 passing, `flutter_test` only (no mockito/mocktail) |
+| Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
+| Tests | 1832 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | 131 info-level issues |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
@@ -43,14 +43,14 @@ lib/
 ├── core/                       # Domain logic, models, state, persistence (NO UI)
 │   ├── cells/                  # Spatial indexing (LazyVoronoi, CellCache)
 │   ├── config/                 # SupabaseConfig (env vars)
-│   ├── database/               # Drift ORM (5 tables, schema v14)
+│   ├── database/               # Drift ORM (6 tables, schema v18)
 │   ├── engine/                 # GameEngine + GameCoordinator (event-driven game loop)
 │   ├── fog/                    # FogStateResolver (computed visibility)
 │   ├── models/                 # 24 immutable value objects
 │   ├── persistence/            # Repository pattern (7 repos)
 │   ├── services/               # DailySeedService, ObservabilityBuffer, DebugLogBuffer
-│   ├── species/                # SpeciesRepository (SQLite), LootTable, SpeciesCache
-│   └── state/                  # Riverpod providers, PersistenceConsumer, EnrichmentConsumer
+│   ├── species/                # SpeciesRepository (Drift), LootTable, SpeciesCache
+│   └── state/                  # Riverpod providers, PersistenceConsumer, AffixBackfill
 ├── features/                   # Feature modules (UI + feature-specific logic)
 │   ├── achievements/           # 🏆 Milestone tracking + toast notifications
 │   ├── auth/                   # 🔐 Mock auth (swappable to Supabase)
@@ -64,7 +64,7 @@ lib/
 │   ├── pack/                   # 🎒 Collection viewer with filters
 │   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
 │   ├── steps/                  # 👣 Pedometer, step-based exploration
-│   ├── sync/                   # ☁️ Offline-first sync, enrichment
+│   ├── sync/                   # ☁️ Offline-first sync
 │   └── world/                  # 🌍 Terrain, cell state, restoration (shared state)
 ├── shared/
 │   └── constants.dart          # All game-balance constants
@@ -85,8 +85,8 @@ lib/
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | ~227 (lib/) + 132 (test/) |
-| Total lines | ~38,500 |
+| Dart source files | ~225 (lib/) + ~125 (test/) |
+| Total lines | ~34,500 |
 | Largest file | `app_database.g.dart` (~2,300 lines — generated) |
 | Largest feature | `map/` (25 files) |
 | Features | 14 (4 inputs, 1 domain, 6 experiences, 3 infrastructure) |
@@ -116,6 +116,8 @@ These are **locked in** — do not revisit without explicit instruction.
 9. **Restoration formula** — 3 unique species in a cell = fully restored (level 1.0). Formula: `min(uniqueSpeciesCount, 3) / 3.0`.
 
 10. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
+
+11. **Backend-driven enrichment** — Species classification and art generation run server-side via `process-enrichment-queue` Edge Function (hourly pg_cron). Client never calls enrichment endpoints. Species data lives in one table (`species` on Supabase, `LocalSpeciesTable` in Drift). No client-side `EnrichmentService` or `EnrichmentRepository`.
 
 ---
 
@@ -173,7 +175,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **All categories enriched:** Flora, Mineral, Fossil, Artifact also get category-specific AI enrichment + watercolor art. Food and Orbs are predefined — no enrichment needed.
 - **AI is canonical for facts.** Stats, classification, food preference — AI sets, locked forever. No crowdsourcing for factual attributes.
 - **Art is crowd-canonical.** AI watercolor is the default. First 50 owners can upload art. Art locks when 51% of instances select same art at daily reset. **Moderation: free AI screening only — automatically reject inappropriate uploads. No community reports.**
-- **Architecture:** Supabase species_enrichment table → Edge Function (enrich-species) → Gemini Flash API (classification) → results cached in local SQLite (LocalSpeciesEnrichmentTable) → merged into FaunaDefinition at load time.
+- **Architecture:** `process-enrichment-queue` Edge Function (hourly pg_cron) → Gemini Flash API (classification + art) → writes to `species` Supabase table → client reads enrichment fields from `LocalSpeciesTable` (Drift). No client-side enrichment service.
 - **Non-blocking:** Enrichment runs in background. Gameplay continues with just IUCN data. Enrichment adds richness over time.
 - **Full spec:** `docs/design-jam-2-item-expansion.md`
 
@@ -476,7 +478,7 @@ curl -s "https://api.supabase.com/v1/projects/bfaczcsrpfcbijoaeckb/database/quer
   -d '{"query": "SELECT * FROM app_logs ORDER BY created_at DESC LIMIT 100"}'
 ```
 
-Edge function logs (enrich-species, validate-encounter, etc.) are accessible via the Railway production logs:
+Edge function logs (process-enrichment-queue, validate-encounter, etc.) are accessible via the Railway production logs:
 ```bash
 railway logs --tail 100
 ```

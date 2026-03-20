@@ -6,7 +6,7 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 
 - `DiscoveryService` (in map/providers/) — watches fogResolver, speciesService, habitatService, cellService, seasonService. Subscribes to fog state changes, emits discovery events.
 - `DiscoveryNotifier` — manages notification queue and recent history
-- `speciesServiceProvider` — `Provider<SpeciesService>`, watches `speciesCacheProvider` and `enrichmentMapProvider`. Returns `SpeciesService.fromCache()` when cache is loaded (with merged enrichments), otherwise empty `SpeciesService` (no encounters until loaded).
+- `speciesServiceProvider` — `Provider<SpeciesService>`, watches `speciesCacheProvider`. Returns `SpeciesService.fromCache()` when cache is loaded, otherwise empty `SpeciesService` (no encounters until loaded). No longer depends on `enrichmentMapProvider` — enrichment fields are part of `LocalSpeciesTable` rows.
 
 ## Encounter Flow
 
@@ -19,7 +19,8 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 7. `DiscoveryEvent` created with `cellEventType` field (null for normal encounters)
 8. GameCoordinator rolls intrinsic affix via StatsService, creates ItemInstance with UUID
 9. gameCoordinatorProvider wires callbacks → discoveryProvider.notifier.showDiscovery() + inventoryProvider.notifier.addItem() + discoveryService.markCollected() + SQLite persistence
-9b. gameCoordinatorProvider fires enrichmentService.requestEnrichment() (fire-and-forget) if species not yet enriched
+    9b. If species not yet enriched on Supabase, backend `process-enrichment-queue` Edge Function will enrich it asynchronously (hourly cron). No client-side call needed.
+
 10. DiscoveryNotificationOverlay displays toast
 
 ## Cell Properties Integration
@@ -34,13 +35,6 @@ Species encounter events when player enters cells. Dual-notifier pattern: Discov
 3. If no properties or no event → fall through to normal encounter
 4. `DiscoveryEvent.cellEventType` records which event triggered (for UI display)
 
-## Enrichment Integration
-
-- `speciesServiceProvider` merges `enrichmentMapProvider` data into `FaunaDefinition` at load time
-- Pattern: `enrichmentMapAsync.asData?.value ?? {}` — gracefully handles loading/error states
-- When enrichment exists for a species, `FaunaDefinition.copyWith()` applies animalClass, foodPreference, climate
-- Non-blocking: species service works with or without enrichments
-
 ## Dual Notifier Pattern
 
 Same as achievements:
@@ -50,10 +44,9 @@ Same as achievements:
 
 ## Species Service Provider
 
-Two providers in `discovery_provider.dart`:
+One provider in `discovery_provider.dart`:
 
-- `enrichmentMapProvider` (`FutureProvider`): Loads all cached enrichments from SQLite via `enrichmentRepositoryProvider`. Returns `Map<String, SpeciesEnrichment>` keyed by definitionId.
-- `speciesServiceProvider` (`Provider`): Watches `speciesCacheProvider` and `enrichmentMapProvider`. Returns `SpeciesService.fromCache()` with merged enrichments when cache is loaded; empty `SpeciesService` otherwise.
+- `speciesServiceProvider` (`Provider`): Watches `speciesCacheProvider`. Returns `SpeciesService.fromCache()` when cache is loaded; empty `SpeciesService` otherwise. Enrichment fields (animalClass, foodPreference, climate, stats) come directly from `LocalSpeciesTable` — no separate enrichment merge step.
 
 ## Gotchas
 

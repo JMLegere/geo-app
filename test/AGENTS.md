@@ -1,6 +1,6 @@
 # Test Suite
 
-1694 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1832 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -59,7 +59,6 @@ Defined per-file (not shared). Each test file has its own factories.
 | `offline_discovery_test.dart` | Species encounter events: roll → emit → collect |
 | `offline_audit_test.dart` | Data consistency: no orphaned records, all FK valid |
 | `offline_hydration_test.dart` | Items hydration: SQLite → repo → ItemsNotifier, race safety, restart persistence |
-| `enrichment_merge_test.dart` | Enrichment merge into species service, graceful degradation without enrichments |
 | `write_queue_integration_test.dart` | Write queue: enqueue → read → confirm → reject → increment → stale cleanup |
 
 ## Performance Budgets
