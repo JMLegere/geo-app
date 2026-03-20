@@ -83,7 +83,8 @@ class _SpinningGlobeState extends State<SpinningGlobe>
             .clamp(0, _globeFrames.length - 1);
         return Text(
           _globeFrames[frame],
-          style: TextStyle(fontSize: widget.size),
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: widget.size, height: 1),
         );
       },
     );
