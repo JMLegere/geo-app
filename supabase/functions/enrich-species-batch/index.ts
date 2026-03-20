@@ -20,6 +20,172 @@ const ANIMAL_SIZES = [
   "fine", "diminutive", "tiny", "small", "medium", "large", "huge", "gargantuan", "colossal",
 ];
 
+const ART_BUCKET = "species-art";
+const GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+const ART_MAX_RETRIES = 3;
+const ART_BASE_DELAY_MS = 2000;
+
+function buildArtPrompt(
+  commonName: string,
+  scientificName: string,
+  assetType: "icon" | "illustration",
+  enrichment?: { climate?: string; brawn?: number; wit?: number; speed?: number },
+): string {
+  if (assetType === "icon") {
+    return `Generate an image: Cute chibi-style character icon of a ${commonName} (${scientificName}). Simple, adorable, round proportions, expressive eyes, clean outline. Transparent background, centered, facing slightly left. Style: Pokemon PC box sprite, soft colors, no text, no shadows, no ground. 96x96 pixels.`;
+  }
+
+  let poseDirection = "natural resting pose, alert but relaxed";
+  if (enrichment?.brawn != null && enrichment?.wit != null && enrichment?.speed != null) {
+    const max = Math.max(enrichment.brawn, enrichment.wit, enrichment.speed);
+    if (enrichment.brawn === max) poseDirection = "powerful stance, grounded, imposing";
+    else if (enrichment.speed === max) poseDirection = "dynamic motion, leaping, wind-swept, mid-stride";
+    else if (enrichment.wit === max) poseDirection = "alert and observant, clever posture, head tilted";
+  }
+
+  let climateLighting = "Soft natural daylight, gentle warmth";
+  switch (enrichment?.climate) {
+    case "tropic": climateLighting = "Warm golden tropical light, lush greens"; break;
+    case "boreal": climateLighting = "Cool crisp northern light, muted tones"; break;
+    case "frigid": climateLighting = "Cold blue-white arctic light, stark contrast"; break;
+  }
+
+  return `Generate an image: Professional Pokemon TCG-style watercolor illustration of a ${commonName} (${scientificName}). Pose: ${poseDirection}. Composition: Full body, 3/4 view, slightly off-center, breathing room. Background: Soft atmospheric natural scene, impressionistic, not competing with subject. ${climateLighting}. Style: Watercolor with visible brushstrokes, soft edges, translucent layers, luminous quality. Moderate saturation. Soft diffused lighting. No text, no labels, no borders, no card frame. 512x512 pixels.`;
+}
+
+async function generateAndUploadArt(
+  supabase: any,
+  supabaseUrl: string,
+  geminiKey: string,
+  definitionId: string,
+  scientificName: string,
+  commonName: string,
+  assetType: "icon" | "illustration",
+  enrichment?: { climate?: string; brawn?: number; wit?: number; speed?: number },
+): Promise<string | null> {
+  const fileName = assetType === "icon"
+    ? `${definitionId}_icon.webp`
+    : `${definitionId}.webp`;
+
+  // Check if already exists in storage
+  const { data: existingFile } = await supabase.storage
+    .from(ART_BUCKET)
+    .list("", { search: fileName });
+
+  if (existingFile && existingFile.length > 0) {
+    const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
+    console.log(`[art] ${definitionId} ${assetType} already exists`);
+    return url;
+  }
+
+  const prompt = buildArtPrompt(commonName, scientificName, assetType, enrichment);
+
+  for (let attempt = 0; attempt < ART_MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+          }),
+        },
+      );
+
+      if (response.status === 429) {
+        const delayMs = ART_BASE_DELAY_MS * Math.pow(2, attempt);
+        console.log(`[art] rate limited for ${definitionId} ${assetType}, backing off ${delayMs}ms (attempt ${attempt + 1}/${ART_MAX_RETRIES})`);
+        await new Promise(r => setTimeout(r, delayMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini API error ${response.status}: ${errText.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const parts = data.candidates?.[0]?.content?.parts;
+      if (!parts) throw new Error("No parts in Gemini response");
+
+      let imageBytes: Uint8Array | null = null;
+      for (const part of parts) {
+        if (part.inlineData?.mimeType?.startsWith("image/")) {
+          const binaryString = atob(part.inlineData.data);
+          imageBytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            imageBytes[i] = binaryString.charCodeAt(i);
+          }
+          break;
+        }
+      }
+      if (!imageBytes) throw new Error("No image in Gemini response");
+
+      const { error: uploadError } = await supabase.storage
+        .from(ART_BUCKET)
+        .upload(fileName, imageBytes, { contentType: "image/webp", upsert: true });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+      const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
+
+      // Update enrichment row
+      const column = assetType === "icon" ? "icon_url" : "art_url";
+      await supabase
+        .from("species_enrichment")
+        .update({ [column]: url })
+        .eq("definition_id", definitionId);
+
+      console.log(`[art] ${assetType} generated for ${definitionId}: ${url}`);
+      return url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[art] ${assetType} attempt ${attempt + 1} failed for ${definitionId}: ${message}`);
+      if (attempt < ART_MAX_RETRIES - 1) {
+        const delayMs = ART_BASE_DELAY_MS * Math.pow(2, attempt);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+    }
+  }
+  return null;
+}
+
+async function fillMissingArt(
+  supabase: any,
+  supabaseUrl: string,
+  definitionId: string,
+  scientificName: string,
+  commonName: string,
+  enrichment: { climate?: string; brawn?: number; wit?: number; speed?: number },
+  currentIconUrl: string | null,
+  currentArtUrl: string | null,
+): Promise<{ icon_url: string | null; art_url: string | null }> {
+  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiKey) {
+    console.log("[art] GEMINI_API_KEY not set, skipping art generation");
+    return { icon_url: currentIconUrl, art_url: currentArtUrl };
+  }
+
+  let iconUrl = currentIconUrl;
+  let artUrl = currentArtUrl;
+
+  if (!iconUrl) {
+    iconUrl = await generateAndUploadArt(
+      supabase, supabaseUrl, geminiKey, definitionId, scientificName, commonName, "icon",
+    );
+  }
+
+  if (!artUrl) {
+    artUrl = await generateAndUploadArt(
+      supabase, supabaseUrl, geminiKey, definitionId, scientificName, commonName, "illustration", enrichment,
+    );
+  }
+
+  return { icon_url: iconUrl, art_url: artUrl };
+}
+
 interface Provider {
   name: string;
   url: string;
@@ -55,6 +221,7 @@ interface EnrichmentRow {
   speed: number;
   size: string;
   art_url: string | null;
+  icon_url: string | null;
   enriched_at: string;
 }
 
@@ -335,7 +502,18 @@ serve(async (req: Request) => {
           .maybeSingle();
 
         if (existing && (existing as EnrichmentRow).size) {
-          results.push(existing as EnrichmentRow);
+          const ex = existing as EnrichmentRow;
+          if (ex.icon_url && ex.art_url) {
+            results.push(ex);
+            continue;
+          }
+          // Art missing — generate
+          const artResult = await fillMissingArt(
+            supabase, supabaseUrl, sp.definition_id, sp.scientific_name, sp.common_name,
+            { climate: ex.climate, brawn: ex.brawn, wit: ex.wit, speed: ex.speed },
+            ex.icon_url, ex.art_url,
+          );
+          results.push({ ...ex, ...artResult } as EnrichmentRow);
           continue;
         }
 
@@ -364,8 +542,9 @@ serve(async (req: Request) => {
           wit: enrichment.wit,
           speed: enrichment.speed,
           size: enrichment.size,
-          // Preserve art_url from existing row when re-enriching (same as single-request).
+          // Preserve art_url and icon_url from existing row when re-enriching.
           art_url: existing ? (existing as EnrichmentRow).art_url : null,
+          icon_url: existing ? (existing as EnrichmentRow).icon_url : null,
         };
 
         const { data: upserted, error: upsertError } = await supabase
@@ -378,7 +557,14 @@ serve(async (req: Request) => {
           throw new Error(`Upsert failed: ${upsertError.message}`);
         }
 
-        results.push(upserted as EnrichmentRow);
+        // Generate art for newly enriched species
+        const artResult = await fillMissingArt(
+          supabase, supabaseUrl, sp.definition_id, sp.scientific_name, sp.common_name,
+          { climate: enrichment.climate, brawn: enrichment.brawn, wit: enrichment.wit, speed: enrichment.speed },
+          null, null,
+        );
+
+        results.push({ ...upserted, ...artResult } as EnrichmentRow);
       } catch (err) {
         // Per-species error: continue processing remaining species.
         const message = err instanceof Error ? err.message : String(err);
