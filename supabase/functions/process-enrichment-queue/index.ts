@@ -243,6 +243,10 @@ async function generateAndUploadArt(
   if (existingFile && existingFile.length > 0) {
     const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
     console.log(`[art] ${definitionId} ${assetType} already in storage`);
+    await logEvent('art_skipped', definitionId, {
+      asset_type: assetType,
+      metadata: { reason: 'already_in_storage' },
+    });
     return url;
   }
 
@@ -388,7 +392,12 @@ serve(async (req: Request) => {
 
         if (speciesErr) throw new Error(`Failed to query species: ${speciesErr.message}`);
 
-        for (const species of (needsClassification ?? []) as SpeciesRow[]) {
+        const toClassify = (needsClassification ?? []) as SpeciesRow[];
+        if (toClassify.length === 0) {
+          console.log('[pass1] nothing to classify');
+        }
+
+        for (const species of toClassify) {
           const startMs = Date.now();
           try {
             const { result: enrichment, providerName } = await callLLMWithRotation(
@@ -471,9 +480,14 @@ serve(async (req: Request) => {
 
         if (artErr) throw new Error(`Failed to query species for art: ${artErr.message}`);
 
+        const toGenerate = (needsArt ?? []) as SpeciesRow[];
+        if (toGenerate.length === 0) {
+          console.log('[pass2] nothing to generate');
+        }
+
         let rateLimited = false;
 
-        for (const species of (needsArt ?? []) as SpeciesRow[]) {
+        for (const species of toGenerate) {
           if (rateLimited) break;
 
           const enrichmentCtx = {
@@ -564,8 +578,32 @@ serve(async (req: Request) => {
   const result = { classified, icons, illustrations, errors };
   console.log(`[worker] done — classified=${classified} icons=${icons} illustrations=${illustrations} errors=${errors.length}`);
 
+  // Query remaining queue depth for the summary
+  let pendingClassification = 0;
+  let pendingArt = 0;
+  try {
+    const { count: classCount } = await supabase
+      .from('species')
+      .select('definition_id', { count: 'exact', head: true })
+      .is('animal_class', null);
+    const { count: artCount } = await supabase
+      .from('species')
+      .select('definition_id', { count: 'exact', head: true })
+      .not('animal_class', 'is', null)
+      .or('icon_url.is.null,art_url.is.null');
+    pendingClassification = classCount ?? 0;
+    pendingArt = artCount ?? 0;
+  } catch (_) { /* non-critical */ }
+
   await logEvent('worker_run', null, {
-    metadata: { classified, icons, illustrations, errors: errors.length },
+    metadata: {
+      classified,
+      icons,
+      illustrations,
+      errors: errors.length,
+      pending_classification: pendingClassification,
+      pending_art: pendingArt,
+    },
     duration_ms: Date.now() - workerStartMs,
   });
 
