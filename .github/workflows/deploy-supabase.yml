@@ -47,7 +47,7 @@ jobs:
             local sql=$1
             curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
               -d "{\"query\": \"$sql\"}" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('error','') or 'OK')"
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print('ERROR: '+str(d.get('error',''))) if isinstance(d,dict) and d.get('error') else print('OK')"
           }
 
           # Insert 016 if missing (applied via SQL Editor earlier)
@@ -66,16 +66,15 @@ jobs:
             echo "Migration 017 already recorded."
           fi
 
-          # Apply 018 if missing
-          if [ "$(check '018_species_art')" = "FOUND" ]; then
-            echo "Migration 018 already applied."
-          else
-            echo "Applying migration 018..."
-            SQL="ALTER TABLE species_enrichment ADD COLUMN IF NOT EXISTS icon_url text; INSERT INTO storage.buckets (id, name, public) VALUES ('species-art', 'species-art', true) ON CONFLICT (id) DO NOTHING; CREATE POLICY \"Public read access\" ON storage.objects FOR SELECT USING (bucket_id = 'species-art'); CREATE POLICY \"Service role upload\" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'species-art'); CREATE POLICY \"Service role update\" ON storage.objects FOR UPDATE USING (bucket_id = 'species-art');"
-            run_sql "$SQL"
-            insert_version "018_species_art" "species_art"
-            echo "Migration 018 applied and recorded."
-          fi
+          # Apply 018 statements individually (multi-statement JSON breaks on quotes)
+          echo "Applying migration 018 statements..."
+          run_sql "ALTER TABLE species_enrichment ADD COLUMN IF NOT EXISTS icon_url text"
+          run_sql "INSERT INTO storage.buckets (id, name, public) VALUES ('species-art', 'species-art', true) ON CONFLICT (id) DO NOTHING"
+          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'objects') THEN CREATE POLICY \"Public read access\" ON storage.objects FOR SELECT USING (bucket_id = 'species-art'); END IF; END \$\$"
+          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role upload' AND tablename = 'objects') THEN CREATE POLICY \"Service role upload\" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'species-art'); END IF; END \$\$"
+          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role update' AND tablename = 'objects') THEN CREATE POLICY \"Service role update\" ON storage.objects FOR UPDATE USING (bucket_id = 'species-art'); END IF; END \$\$"
+          insert_version "018_species_art" "species_art"
+          echo "Migration 018 applied and recorded."
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1

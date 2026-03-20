@@ -141,6 +141,11 @@ async function validateAuth(req: Request): Promise<Response | null> {
     );
   }
   const token = authHeader.replace("Bearer ", "");
+
+  // Accept service role key for backfill scripts
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) return null;
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
