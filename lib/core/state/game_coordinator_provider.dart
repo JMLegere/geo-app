@@ -13,9 +13,8 @@ import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/features/items/services/stats_service.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
@@ -34,7 +33,6 @@ import 'package:earth_nova/core/state/persistence_consumer.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
-import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
 import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/location/services/location_simulator.dart';
 import 'package:earth_nova/features/location/services/real_gps_service.dart';
@@ -49,7 +47,7 @@ import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/state/enrichment_consumer.dart';
+import 'package:earth_nova/core/state/affix_backfill.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -83,7 +81,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final profileRepo = ref.watch(profileRepositoryProvider);
   final queueProcessor = ref.watch(queueProcessorProvider);
 
-  final enrichmentRepo = ref.watch(enrichmentRepositoryProvider);
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
 
@@ -111,19 +108,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // This closes the race where .whenComplete() fires after disposal.
   var _providerDisposed = false;
 
-  // In-memory enrichment cache for synchronous stat lookups during discovery.
-  // Populated during hydration, updated when new enrichments arrive.
-  final enrichmentCache =
-      <String, ({int speed, int brawn, int wit, AnimalSize? size})>{};
-
-  // Deferred enrichment queue: species beyond the startup cap of
-  // kStartupEnrichmentCap. Populated by _requeueUnenrichedSpecies, drained
-  // lazily by a Timer.periodic every kDeferredEnrichmentIntervalSeconds.
-  // Cleared on sign-out so stale species don't leak into the next session.
-  final deferredEnrichmentQueue =
-      <({String definitionId, FaunaDefinition fauna, bool force})>[];
-  Timer? deferredDrainTimer;
-
   final engine = GameEngine(
     fogResolver: fogResolver,
     statsService: const StatsService(),
@@ -143,49 +127,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   discoveryService.cellPropertiesLookup =
       (cellId) => coordinator.cellPropertiesCache[cellId];
 
-  // Wire synchronous enrichment lookup for stat rolling.
+  // Wire synchronous enrichment lookup for stat rolling (reads from species cache).
+  final speciesCacheForStats = ref.read(speciesCacheProvider);
   coordinator.enrichedStatsLookup = (definitionId) {
-    return enrichmentCache[definitionId];
+    final def = speciesCacheForStats.getByIdSync(definitionId);
+    if (def == null || def.brawn == null) return null;
+    return (
+      speed: def.speed!,
+      brawn: def.brawn!,
+      wit: def.wit!,
+      size: def.size != null ? AnimalSize.fromString(def.size!) : null,
+    );
   };
-
-  // Enrichment hook callback — shared between initial wiring and re-wiring
-  // after auth cycle (logout → re-login). Updates the in-memory cache and
-  // backfills intrinsic affixes for items whose enrichment arrived via the
-  // startup requeue path (Path B), matching what the in-session discovery
-  // path (Path A) already does.
-  void enrichmentHook(SpeciesEnrichment enrichment) {
-    if (_providerDisposed) return;
-    debugPrint(
-      '[GameCoordinator] onEnrichedHook: backfilling affixes for '
-      '${enrichment.definitionId}',
-    );
-    obs.event('enrichment_complete', {
-      'definition_id': enrichment.definitionId,
-      'animal_class': enrichment.animalClass.name,
-    });
-    enrichmentCache[enrichment.definitionId] = (
-      speed: enrichment.speed,
-      brawn: enrichment.brawn,
-      wit: enrichment.wit,
-      size: enrichment.size,
-    );
-    final userId = ref.read(authProvider).user?.id;
-    if (userId != null) {
-      backfillIntrinsicAffixes(
-        definitionId: enrichment.definitionId,
-        enrichedStats: enrichmentCache[enrichment.definitionId]!,
-        ref: ref,
-        statsService: coordinator.statsService,
-        itemRepo: itemRepo,
-        queueProcessor: queueProcessor,
-        userId: userId,
-      ).catchError((Object e) {
-        debugPrint('[GameCoordinator] onEnrichedHook backfill failed: $e');
-      });
-    }
-  }
-
-  ref.read(enrichmentServiceProvider).onEnrichedHook = enrichmentHook;
 
   // --- Wire auto-flush callback → post-flush badge/rejection processing ---
 
@@ -337,50 +290,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
       );
     }
-
-    // Fire enrichment request for fauna items (fire-and-forget).
-    // On success, update the in-memory cache so future discoveries of the
-    // same species get biologically accurate stats immediately.
-    if (event.item is FaunaDefinition) {
-      final fauna = event.item as FaunaDefinition;
-      ref
-          .read(enrichmentServiceProvider)
-          .requestEnrichment(
-            definitionId: fauna.id,
-            scientificName: fauna.scientificName,
-            commonName: fauna.displayName,
-            taxonomicClass: fauna.taxonomicClass,
-          )
-          .then((_) async {
-        final enrichment = await enrichmentRepo.getEnrichment(fauna.id);
-        if (enrichment != null) {
-          final stats = (
-            speed: enrichment.speed,
-            brawn: enrichment.brawn,
-            wit: enrichment.wit,
-            size: enrichment.size,
-          );
-          enrichmentCache[fauna.id] = stats;
-
-          // Retroactively roll intrinsic affixes for any existing items
-          // of this species that were discovered before enrichment arrived.
-          final userId = ref.read(authProvider).user?.id;
-          if (userId != null) {
-            await backfillIntrinsicAffixes(
-              definitionId: fauna.id,
-              enrichedStats: stats,
-              ref: ref,
-              statsService: coordinator.statsService,
-              itemRepo: itemRepo,
-              queueProcessor: queueProcessor,
-              userId: userId,
-            );
-          }
-        }
-      }).catchError((Object e) {
-        debugPrint('[GameCoordinator] enrichment request failed: $e');
-      });
-    }
   };
 
   // --- Wire permission check callback ---
@@ -461,34 +370,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // compare against the new userId.
   String? lastHydratedUserId;
 
-  /// Load player data from SQLite into providers (inventory, cells, profile,
-  /// enrichment cache). Does NOT start the game loop — call [startLoop]
-  /// separately after this completes.
+  /// Load player data from SQLite into providers (inventory, cells, profile).
+  /// Does NOT start the game loop — call [startLoop] separately after this completes.
   Future<void> rehydrateData(String userId) async {
     try {
       final results = await Future.wait<Object?>([
         itemRepo.getItemsByUser(userId),
         cellProgressRepo.readByUser(userId),
         profileRepo.read(userId),
-        enrichmentRepo.getAllEnrichments(),
         cellPropertyRepo.getAll(),
       ]);
 
       final items = results[0]! as List<ItemInstance>;
       final cellRows = results[1]! as List<LocalCellProgress>;
       final profile = results[2] as LocalPlayerProfile?;
-      final enrichments = results[3]! as List<SpeciesEnrichment>;
-      final cellProperties = results[4]! as List<CellProperties>;
-
-      // 0a. Populate enrichment cache for synchronous stat lookups.
-      for (final e in enrichments) {
-        enrichmentCache[e.definitionId] = (
-          speed: e.speed,
-          brawn: e.brawn,
-          wit: e.wit,
-          size: e.size,
-        );
-      }
+      final cellProperties = results[3]! as List<CellProperties>;
 
       // 0b. Pre-populate cell properties cache from SQLite.
       if (cellProperties.isNotEmpty) {
@@ -592,7 +488,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'item_count': items.length,
         'cell_count': cellRows.length,
         'has_profile': profile != null,
-        'enrichment_count': enrichments.length,
         'cell_property_count': cellProperties.length,
       });
 
@@ -679,7 +574,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'user_id': userId,
         'duration_ms': hydrationStopwatch.elapsedMilliseconds,
         'item_count': inventory.items.length,
-        'enrichment_count': enrichmentCache.length,
         'source': 'sqlite',
       });
 
@@ -706,7 +600,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
         obs: obs,
       ).then((_) async {
         if (_providerDisposed) return;
@@ -732,30 +625,28 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           }
         }
 
-        // Re-queue enrichment for any fauna in inventory that lacks it.
-        // Runs after background sync so enrichment cache includes any
-        // freshly-fetched enrichments from Supabase. Covers:
-        //   - Enrichment requests dropped by daily rate limit
-        //   - Enrichment requests lost to app restart (in-memory queue)
-        //   - New enrichment pipeline deployed after species were discovered
-        // Startup batch capped at kStartupEnrichmentCap; remainder drained
-        // lazily by a Timer.periodic (handle stored in deferredDrainTimer
-        // so ref.onDispose can cancel it).
-        requeueUnenrichedSpecies(
-          ref: ref,
-          enrichmentCache: enrichmentCache,
-          deferredQueue: deferredEnrichmentQueue,
-          onTimerCreated: (timer) {
-            deferredDrainTimer = timer;
-          },
-        );
-
         // Backfill intrinsic affixes for items that were discovered before
         // enrichment was available. Primary safety net — catches all edge
         // cases: items from before this fix, missed callbacks, races, etc.
+        // Build stats map from species cache (enrichment now in LocalSpeciesTable).
+        final backfillStats =
+            <String, ({int speed, int brawn, int wit, AnimalSize? size})>{};
+        for (final item in ref.read(itemsProvider).items) {
+          if (item.category != ItemCategory.fauna) continue;
+          if (backfillStats.containsKey(item.definitionId)) continue;
+          final def = speciesCache.getByIdSync(item.definitionId);
+          if (def != null && def.brawn != null) {
+            backfillStats[item.definitionId] = (
+              speed: def.speed!,
+              brawn: def.brawn!,
+              wit: def.wit!,
+              size: def.size != null ? AnimalSize.fromString(def.size!) : null,
+            );
+          }
+        }
         backfillAllMissingAffixes(
           ref: ref,
-          enrichmentCache: enrichmentCache,
+          enrichmentCache: backfillStats,
           statsService: coordinator.statsService,
           itemRepo: itemRepo,
           queueProcessor: queueProcessor,
@@ -803,13 +694,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
 
-      // Invalidate zombie enrichment service — after auth cycle, the old
-      // service may have _authFailed = true (circuit breaker tripped).
-      // Invalidation disposes the old service and creates a fresh one on
-      // next read. Re-wire the onEnrichedHook on the new instance.
-      ref.invalidate(enrichmentServiceProvider);
-      ref.read(enrichmentServiceProvider).onEnrichedHook = enrichmentHook;
-
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
@@ -824,11 +708,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       coordinator.setCurrentUserId(null);
       lastHydratedUserId = null;
-      // Cancel and clear deferred enrichment drain so stale species from the
-      // outgoing session don't queue under the next session's credentials.
-      deferredDrainTimer?.cancel();
-      deferredDrainTimer = null;
-      deferredEnrichmentQueue.clear();
       ref.read(playerProvider.notifier).loadProfile(
             cellsObserved: 0,
             totalDistanceKm: 0.0,
@@ -838,7 +717,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           );
       ref.read(itemsProvider.notifier).loadItems([]);
       fogResolver.loadVisitedCells({});
-      enrichmentCache.clear();
       lastPersistedProfile = null;
     }
   }
@@ -928,7 +806,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   ref.onDispose(() {
     _providerDisposed = true;
-    deferredDrainTimer?.cancel();
     obs.stop(); // Cancel periodic flush timer.
     engine.dispose(); // coordinator.dispose() + obs.flush() + stream close.
     queueProcessor.dispose();

@@ -17,13 +17,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
-import 'package:earth_nova/core/models/animal_class.dart';
-import 'package:earth_nova/core/models/climate.dart';
-import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
-import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/state/persistence_consumer.dart';
@@ -47,7 +43,6 @@ class _MockSupabasePersistence extends SupabasePersistence {
   Map<String, dynamic>? profileData;
   List<Map<String, dynamic>> cellProgressData = [];
   List<Map<String, dynamic>> itemInstanceData = [];
-  List<Map<String, dynamic>> enrichmentData = [];
 
   /// When true, all fetch methods throw.
   bool shouldThrow = false;
@@ -69,12 +64,6 @@ class _MockSupabasePersistence extends SupabasePersistence {
   Future<List<Map<String, dynamic>>> fetchItemInstances(String userId) async {
     if (shouldThrow) throw SyncException(errorMessage);
     return itemInstanceData;
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> fetchEnrichments({DateTime? since}) async {
-    if (shouldThrow) throw SyncException(errorMessage);
-    return enrichmentData;
   }
 }
 
@@ -98,7 +87,6 @@ void main() {
     late ProfileRepository profileRepo;
     late CellProgressRepository cellProgressRepo;
     late ItemInstanceRepository itemRepo;
-    late EnrichmentRepository enrichmentRepo;
     late _MockSupabasePersistence mockPersistence;
 
     setUp(() {
@@ -106,7 +94,6 @@ void main() {
       profileRepo = ProfileRepository(db);
       cellProgressRepo = CellProgressRepository(db);
       itemRepo = ItemInstanceRepository(db);
-      enrichmentRepo = EnrichmentRepository(db);
       mockPersistence = _MockSupabasePersistence();
     });
 
@@ -129,7 +116,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       // Existing local data should be untouched.
@@ -154,7 +140,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -194,7 +179,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
@@ -239,7 +223,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final items = await itemRepo.getItemsByUser(_userId);
@@ -255,41 +238,6 @@ void main() {
       final lion = items.firstWhere((i) => i.id == 'item-002');
       expect(lion.definitionId, equals('fauna_panthera_leo'));
       expect(lion.affixes, isEmpty);
-    });
-
-    test('hydrates enrichments from Supabase into SQLite', () async {
-      mockPersistence.enrichmentData = [
-        {
-          'definition_id': 'fauna_vulpes_vulpes',
-          'animal_class': 'carnivore',
-          'food_preference': 'critter',
-          'climate': 'temperate',
-          'brawn': 25,
-          'wit': 35,
-          'speed': 30,
-          'art_url': null,
-          'enriched_at': '2026-03-01T00:00:00Z',
-        },
-      ];
-
-      await hydrateFromSupabase(
-        userId: _userId,
-        persistence: mockPersistence,
-        profileRepo: profileRepo,
-        cellProgressRepo: cellProgressRepo,
-        itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
-      );
-
-      final enrichment =
-          await enrichmentRepo.getEnrichment('fauna_vulpes_vulpes');
-      expect(enrichment, isNotNull);
-      expect(enrichment!.animalClass, equals(AnimalClass.carnivore));
-      expect(enrichment.foodPreference, equals(FoodType.critter));
-      expect(enrichment.climate, equals(Climate.temperate));
-      expect(enrichment.brawn, equals(25));
-      expect(enrichment.wit, equals(35));
-      expect(enrichment.speed, equals(30));
     });
 
     test('hydrates all data types in parallel', () async {
@@ -321,18 +269,6 @@ void main() {
             'acquired_in_cell_id': 'cell-A',
             'status': 'active',
           },
-        ]
-        ..enrichmentData = [
-          {
-            'definition_id': 'fauna_ursus_arctos',
-            'animal_class': 'carnivore',
-            'food_preference': 'fish',
-            'climate': 'boreal',
-            'brawn': 45,
-            'wit': 20,
-            'speed': 25,
-            'enriched_at': '2026-03-02T00:00:00Z',
-          },
         ];
 
       await hydrateFromSupabase(
@@ -341,7 +277,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       // Profile
@@ -359,12 +294,6 @@ void main() {
       final items = await itemRepo.getItemsByUser(_userId);
       expect(items.length, equals(1));
       expect(items.first.definitionId, equals('fauna_ursus_arctos'));
-
-      // Enrichment
-      final enrichment =
-          await enrichmentRepo.getEnrichment('fauna_ursus_arctos');
-      expect(enrichment, isNotNull);
-      expect(enrichment!.brawn, equals(45));
     });
 
     test('network error does not crash — graceful fallback', () async {
@@ -378,7 +307,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       // Nothing written to SQLite.
@@ -398,7 +326,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -443,7 +370,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       // Item still exists — no duplication.
@@ -470,15 +396,6 @@ void main() {
           // Missing: affixes, acquired_at, acquired_in_cell_id, etc.
         },
       ];
-      mockPersistence.enrichmentData = [
-        {
-          'definition_id': 'fauna_unknown',
-          'animal_class': 'carnivore',
-          'food_preference': 'critter',
-          'climate': 'temperate',
-          // Missing: brawn, wit, speed, art_url
-        },
-      ];
 
       // Should not throw — defaults should be applied.
       await hydrateFromSupabase(
@@ -487,7 +404,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       // Verify defaults were applied.
@@ -503,12 +419,6 @@ void main() {
       final items = await itemRepo.getItemsByUser(_userId);
       expect(items.length, equals(1));
       expect(items.first.affixes, isEmpty); // Default: empty
-
-      final enrichment = await enrichmentRepo.getEnrichment('fauna_unknown');
-      expect(enrichment, isNotNull);
-      expect(enrichment!.brawn, equals(30)); // Default
-      expect(enrichment.wit, equals(30)); // Default
-      expect(enrichment.speed, equals(30)); // Default
     });
 
     // ── has_completed_onboarding hydration ────────────────────────────────
@@ -531,7 +441,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -558,7 +467,6 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
-        enrichmentRepo: enrichmentRepo,
       );
 
       final profile = await profileRepo.read(_userId);

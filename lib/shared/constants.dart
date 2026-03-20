@@ -309,15 +309,3 @@ const double kBorderLineWeightCity = 1.5;
 
 /// Border line weight for district-level boundaries.
 const double kBorderLineWeightDistrict = 1.0;
-
-// Startup Enrichment Throttling
-/// Maximum number of species queued for enrichment on app startup.
-/// Species beyond this cap are deferred to a lazy background drain to avoid
-/// a 200+ second serial call storm at session start (109 species × 4.2s/req).
-const int kStartupEnrichmentCap = 10;
-
-/// Number of deferred enrichment requests to process per background drain tick.
-const int kDeferredEnrichmentBatchSize = 5;
-
-/// Interval in seconds between background enrichment drain ticks.
-const int kDeferredEnrichmentIntervalSeconds = 30;

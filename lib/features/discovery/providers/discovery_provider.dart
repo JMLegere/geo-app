@@ -20,7 +20,6 @@ final speciesServiceProvider = Provider<SpeciesService>((ref) {
   if (!cache.isEmpty) {
     return SpeciesService.fromCache(
       cache: cache,
-      enrichments: const {}, // Bridge: enrichment merge is now a no-op (FaunaDefinition has stats built in)
     );
   }
 

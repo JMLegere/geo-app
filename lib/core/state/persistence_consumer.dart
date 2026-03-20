@@ -3,21 +3,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:earth_nova/core/models/animal_class.dart';
-import 'package:earth_nova/core/models/animal_size.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
-import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/season.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
-import 'package:earth_nova/core/persistence/enrichment_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
@@ -381,7 +375,6 @@ Future<void> hydrateFromSupabase({
   required ProfileRepository profileRepo,
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
-  required EnrichmentRepository enrichmentRepo,
   ObservabilityBuffer? obs,
 }) async {
   if (persistence == null) {
@@ -400,13 +393,11 @@ Future<void> hydrateFromSupabase({
       persistence.fetchProfile(userId),
       persistence.fetchCellProgress(userId),
       persistence.fetchItemInstances(userId),
-      persistence.fetchEnrichments(),
     ]);
 
     final profileMap = results[0] as Map<String, dynamic>?;
     final cellRows = results[1]! as List<Map<String, dynamic>>;
     final itemRows = results[2]! as List<Map<String, dynamic>>;
-    final enrichmentRows = results[3]! as List<Map<String, dynamic>>;
 
     // 1. Profile → SQLite
     if (profileMap != null) {
@@ -505,59 +496,11 @@ Future<void> hydrateFromSupabase({
       }
     }
 
-    // 4. Enrichments → SQLite
-    for (final row in enrichmentRows) {
-      try {
-        final enrichedAtStr = row['enriched_at'] as String?;
-        final enrichedAt = enrichedAtStr != null
-            ? DateTime.parse(enrichedAtStr)
-            : DateTime.now();
-
-        // Parse optional size (may be null for enrichments created before
-        // the size field was added).
-        final sizeStr = row['size'] as String?;
-        AnimalSize? size;
-        if (sizeStr != null) {
-          try {
-            size = AnimalSize.fromString(sizeStr);
-          } catch (_) {
-            // Unknown size value — leave null.
-          }
-        }
-
-        final enrichment = SpeciesEnrichment(
-          definitionId: row['definition_id'] as String,
-          animalClass: AnimalClass.values.firstWhere(
-            (c) => c.name == row['animal_class'],
-            orElse: () => AnimalClass.carnivore,
-          ),
-          foodPreference: FoodType.values.firstWhere(
-            (f) => f.name == row['food_preference'],
-            orElse: () => FoodType.critter,
-          ),
-          climate: Climate.values.firstWhere(
-            (c) => c.name == row['climate'],
-            orElse: () => Climate.temperate,
-          ),
-          brawn: row['brawn'] as int? ?? 30,
-          wit: row['wit'] as int? ?? 30,
-          speed: row['speed'] as int? ?? 30,
-          size: size,
-          artUrl: row['art_url'] as String?,
-          enrichedAt: enrichedAt,
-        );
-        await enrichmentRepo.upsertEnrichment(enrichment);
-      } catch (e) {
-        debugPrint('[GameCoordinator] failed to hydrate enrichment: $e');
-      }
-    }
-
     debugPrint(
       '[GameCoordinator] Supabase hydration complete: '
       'profile=${profileMap != null}, '
       'cells=${cellRows.length}, '
-      'items=${itemRows.length}, '
-      'enrichments=${enrichmentRows.length}',
+      'items=${itemRows.length}',
     );
   } catch (e) {
     // Network error, Supabase down, etc. — continue with SQLite-only.

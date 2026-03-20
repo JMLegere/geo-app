@@ -17,7 +17,6 @@
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geobase/geobase.dart';
 
@@ -25,18 +24,12 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
-import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
-import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/models/species_enrichment.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/features/items/services/stats_service.dart';
-import 'package:earth_nova/core/state/app_database_provider.dart';
-import 'package:earth_nova/features/sync/providers/enrichment_provider.dart';
-import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 
 // ---------------------------------------------------------------------------
 // _MockCellService — deterministic neighbors for enrichment assertions.
@@ -166,142 +159,6 @@ void main() {
 
       expect(soloEnriched, ['solo']);
       expect(soloEnriched.length, 1);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Enrichment service re-wiring after auth cycle (logout → re-login).
-  //
-  // Tests the fix for the zombie enrichment service bug: after logout →
-  // re-login, the old EnrichmentService had _authFailed = true (circuit
-  // breaker tripped) and the onEnrichedHook pointed to the dead instance.
-  //
-  // Strategy: use a minimal ProviderContainer with overrides for the
-  // enrichment service's dependencies (AppDatabase + SupabaseClient).
-  // This tests the enrichmentServiceProvider itself — proving that
-  // invalidation creates a fresh service and the hook can be re-wired.
-  // The actual gameCoordinatorProvider wiring (ref.invalidate +
-  // ref.read + hook assignment) mirrors this pattern exactly.
-  // ---------------------------------------------------------------------------
-  group('enrichment service re-wiring after auth cycle', () {
-    late ProviderContainer container;
-    late AppDatabase testDb;
-
-    setUpAll(() {
-      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
-    });
-
-    setUp(() {
-      testDb = AppDatabase(NativeDatabase.memory());
-      container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWithValue(testDb),
-        supabaseClientProvider.overrideWithValue(null),
-      ]);
-    });
-
-    tearDown(() {
-      container.dispose();
-      testDb.close();
-    });
-
-    test(
-        'invalidating enrichmentServiceProvider creates fresh instance '
-        'with _authFailed == false (proven by new identity)', () {
-      final service1 = container.read(enrichmentServiceProvider);
-
-      // Simulate zombie state: wire a hook on the old service.
-      service1.onEnrichedHook = (_) {};
-
-      // Invalidate — mirrors what handleAuthState does on re-login.
-      container.invalidate(enrichmentServiceProvider);
-
-      final service2 = container.read(enrichmentServiceProvider);
-
-      // New instance → _authFailed is false (constructor default).
-      // Dart has no public accessor for _authFailed, so we prove it
-      // by identity: a freshly constructed EnrichmentService always
-      // starts with _authFailed = false.
-      expect(identical(service1, service2), isFalse);
-
-      // Hook is null on fresh instance (not yet re-wired by handleAuthState).
-      expect(service2.onEnrichedHook, isNull);
-    });
-
-    test(
-        'onEnrichedHook can be re-wired on fresh service after '
-        'invalidation and fires correctly', () {
-      final service1 = container.read(enrichmentServiceProvider);
-      service1.onEnrichedHook = (_) {};
-
-      // Simulate auth cycle: invalidate → create fresh service.
-      container.invalidate(enrichmentServiceProvider);
-      final service2 = container.read(enrichmentServiceProvider);
-
-      // Re-wire hook (mimics handleAuthState re-login path).
-      SpeciesEnrichment? captured;
-      service2.onEnrichedHook = (e) {
-        captured = e;
-      };
-
-      expect(service2.onEnrichedHook, isNotNull);
-
-      // Verify the hook actually fires on the new instance.
-      final testEnrichment = SpeciesEnrichment(
-        definitionId: 'test-species',
-        animalClass: AnimalClass.carnivore,
-        foodPreference: FoodType.critter,
-        climate: Climate.temperate,
-        brawn: 30,
-        wit: 30,
-        speed: 30,
-        enrichedAt: DateTime.now(),
-      );
-      service2.onEnrichedHook!(testEnrichment);
-      expect(captured, testEnrichment);
-
-      // Old service hook is unaffected — it's a dead zombie.
-      SpeciesEnrichment? oldCaptured;
-      service1.onEnrichedHook = (e) {
-        oldCaptured = e;
-      };
-      service2.onEnrichedHook!(testEnrichment);
-      expect(oldCaptured, isNull,
-          reason: 'old service hook should not fire from new service');
-    });
-
-    test(
-        'full auth cycle: authenticated → unauthenticated → authenticated '
-        'yields fresh enrichment service', () {
-      // Simulate first login: read enrichment service, wire hook.
-      final loginService = container.read(enrichmentServiceProvider);
-      loginService.onEnrichedHook = (_) {};
-
-      // Simulate logout: (in production, handleAuthState clears state but
-      // does NOT invalidate enrichment service — that happens on re-login).
-
-      // Simulate re-login: invalidate + re-read + re-wire.
-      container.invalidate(enrichmentServiceProvider);
-      final reLoginService = container.read(enrichmentServiceProvider);
-
-      // Must be a completely new instance.
-      expect(identical(loginService, reLoginService), isFalse);
-
-      // Re-wire hook and verify it works.
-      SpeciesEnrichment? captured;
-      reLoginService.onEnrichedHook = (e) {
-        captured = e;
-      };
-      reLoginService.onEnrichedHook!(SpeciesEnrichment(
-        definitionId: 're-login-species',
-        animalClass: AnimalClass.songbird,
-        foodPreference: FoodType.seed,
-        climate: Climate.boreal,
-        brawn: 20,
-        wit: 40,
-        speed: 30,
-        enrichedAt: DateTime.now(),
-      ));
-      expect(captured?.definitionId, 're-login-species');
     });
   });
 
@@ -539,88 +396,6 @@ void main() {
       expect(lookup('v_2_2'), isNotNull);
       expect(lookup('v_3_3'), isNotNull);
       expect(lookup('v_99_99'), isNull);
-    });
-
-    test(
-        'enrichment service invalidation + cell property rehydration work '
-        'together across auth cycle', () async {
-      // Combined test: proves both enrichment service and cell property
-      // cache are correctly handled during auth cycle. Extends Task 5's
-      // enrichment tests with the cell property dimension.
-
-      // Seed cell properties in SQLite.
-      final forestCell = makeCellProperties(
-        cellId: 'v_7_7',
-        habitats: {Habitat.forest},
-      );
-      await seedCellProperties(forestCell);
-
-      // Create ProviderContainer with test DB (for enrichment service).
-      final container = ProviderContainer(overrides: [
-        appDatabaseProvider.overrideWithValue(testDb),
-        supabaseClientProvider.overrideWithValue(null),
-      ]);
-      addTearDown(container.dispose);
-
-      // === Initial login ===
-      // Read enrichment service and wire hook.
-      final service1 = container.read(enrichmentServiceProvider);
-      SpeciesEnrichment? captured;
-      service1.onEnrichedHook = (e) => captured = e;
-
-      // Load cell properties into coordinator.
-      final cellService = _MockCellService(neighborMap: {});
-      final coordinator = GameCoordinator(
-        fogResolver: FogStateResolver(cellService),
-        statsService: const StatsService(),
-        cellService: cellService,
-      );
-      addTearDown(coordinator.dispose);
-
-      final repo = CellPropertyRepository(testDb);
-      final props1 = await repo.getAll();
-      coordinator.loadCellProperties({for (final cp in props1) cp.cellId: cp});
-
-      expect(coordinator.cellPropertiesCache['v_7_7'], isNotNull);
-
-      // === Logout + Re-login ===
-      // Invalidate enrichment service (mirrors handleAuthState re-login).
-      container.invalidate(enrichmentServiceProvider);
-      final service2 = container.read(enrichmentServiceProvider);
-      expect(identical(service1, service2), isFalse,
-          reason: 'invalidation creates fresh enrichment service');
-
-      // Re-wire hook on fresh service.
-      service2.onEnrichedHook = (e) => captured = e;
-
-      // Reload cell properties from SQLite.
-      final props2 = await repo.getAll();
-      coordinator.loadCellProperties({for (final cp in props2) cp.cellId: cp});
-
-      // Verify both subsystems work after auth cycle.
-      // 1. Enrichment hook fires on new service.
-      service2.onEnrichedHook!(SpeciesEnrichment(
-        definitionId: 'test-after-cycle',
-        animalClass: AnimalClass.carnivore,
-        foodPreference: FoodType.critter,
-        climate: Climate.temperate,
-        brawn: 30,
-        wit: 30,
-        speed: 30,
-        enrichedAt: DateTime.now(),
-      ));
-      expect(captured?.definitionId, 'test-after-cycle');
-
-      // 2. Cell properties cache still populated.
-      expect(coordinator.cellPropertiesCache['v_7_7'], isNotNull);
-      expect(
-          coordinator.cellPropertiesCache['v_7_7']!.habitats, {Habitat.forest});
-
-      // 3. Lookup closure works.
-      CellProperties? lookup(String cellId) =>
-          coordinator.cellPropertiesCache[cellId];
-      expect(lookup('v_7_7'), isNotNull);
-      expect(lookup('v_unknown'), isNull);
     });
   });
 }

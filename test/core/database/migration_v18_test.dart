@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 
 void main() {
-  group('Database Migration v17 - LocalSpeciesTable', () {
+  group('Database Migration v18 - enrichment merged into LocalSpeciesTable',
+      () {
     late AppDatabase db;
 
     setUp(() {
@@ -15,8 +16,8 @@ void main() {
       await db.close();
     });
 
-    test('schema version is at least 17', () {
-      expect(db.schemaVersion, greaterThanOrEqualTo(17));
+    test('schema version is 18', () {
+      expect(db.schemaVersion, 18);
     });
 
     test('LocalPlayerProfileTable has totalSteps column', () async {
