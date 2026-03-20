@@ -44,9 +44,6 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Compile species database
-        run: dart run tool/compile_species_db.dart
-
       - name: Run tests
         env:
           LD_LIBRARY_PATH: .

@@ -76,6 +76,20 @@ jobs:
           insert_version "018_species_art" "species_art"
           echo "Migration 018 applied and recorded."
 
+          # Apply 019: species table
+          echo "Applying migration 019 (species table)..."
+          run_sql "CREATE TABLE IF NOT EXISTS species (definition_id TEXT PRIMARY KEY, scientific_name TEXT NOT NULL DEFAULT '', common_name TEXT NOT NULL DEFAULT '', taxonomic_class TEXT NOT NULL DEFAULT '', iucn_status TEXT NOT NULL DEFAULT '', habitats_json TEXT NOT NULL DEFAULT '[]', continents_json TEXT NOT NULL DEFAULT '[]', animal_class TEXT, food_preference TEXT, climate TEXT, brawn INTEGER, wit INTEGER, speed INTEGER, size TEXT, icon_url TEXT, art_url TEXT, enriched_at TIMESTAMPTZ)"
+          run_sql "INSERT INTO species (definition_id, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, enriched_at) SELECT definition_id, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, enriched_at FROM species_enrichment ON CONFLICT (definition_id) DO UPDATE SET animal_class = EXCLUDED.animal_class, food_preference = EXCLUDED.food_preference, climate = EXCLUDED.climate, brawn = EXCLUDED.brawn, wit = EXCLUDED.wit, speed = EXCLUDED.speed, size = EXCLUDED.size, icon_url = EXCLUDED.icon_url, art_url = EXCLUDED.art_url, enriched_at = EXCLUDED.enriched_at"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_classification ON species (definition_id) WHERE animal_class IS NULL"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_art ON species (definition_id) WHERE animal_class IS NOT NULL AND (icon_url IS NULL OR art_url IS NULL)"
+          run_sql "ALTER TABLE species ENABLE ROW LEVEL SECURITY"
+          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read' AND tablename = 'species') THEN EXECUTE 'CREATE POLICY \"Public read\" ON species FOR SELECT USING (true)'; END IF; END \$\$"
+          run_sql "GRANT SELECT ON species TO anon, authenticated"
+          run_sql "GRANT ALL ON species TO service_role"
+          run_sql "NOTIFY pgrst, 'reload schema'"
+          insert_version "019_species_table" "species_table"
+          echo "Migration 019 applied and recorded."
+
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:

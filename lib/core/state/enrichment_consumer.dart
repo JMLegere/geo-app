@@ -278,7 +278,7 @@ Future<void> requeueUnenrichedSpecies({
   required void Function(Timer) onTimerCreated,
 }) async {
   try {
-    final speciesRepo = await ref.read(speciesRepositoryProvider.future);
+    final speciesRepo = ref.read(speciesRepositoryProvider);
     final speciesData = await speciesRepo.getAll();
     final inventory = ref.read(itemsProvider);
 

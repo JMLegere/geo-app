@@ -47,7 +47,8 @@ void main() async {
   final species = jsonDecode(jsonStr) as List;
   print('Loaded ${species.length} species');
 
-  final uri = Uri.parse('$supabaseUrl/rest/v1/species');
+  final uri =
+      Uri.parse('$supabaseUrl/rest/v1/species?on_conflict=definition_id');
   final client = HttpClient();
 
   const batchSize = 500;

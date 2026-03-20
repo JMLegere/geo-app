@@ -8,16 +8,18 @@
 // Run:
 //   LD_LIBRARY_PATH=. flutter test test/performance/performance_test.dart
 
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqlite3/sqlite3.dart';
 import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
+import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/species/drift_species_repository.dart';
 import 'package:earth_nova/core/species/species_repository.dart';
-import 'package:earth_nova/core/species/species_repository_native.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/features/world/services/biome_feature_index.dart';
 import 'package:earth_nova/features/world/services/biome_service.dart';
@@ -31,10 +33,31 @@ Duration timeSync(void Function() fn) {
   return sw.elapsed;
 }
 
-/// Helper: opens the species SQLite DB directly from the assets directory.
-SpeciesRepository _openSpeciesDb() {
-  final db = sqlite3.open('assets/species.db', mode: OpenMode.readOnly);
-  return NativeSpeciesRepository(db);
+/// Helper: opens species data from assets/species_data.json into an in-memory Drift DB.
+Future<SpeciesRepository> _openSpeciesDb() async {
+  final db = AppDatabase(NativeDatabase.memory());
+  final jsonStr = File('assets/species_data.json').readAsStringSync();
+  final data = jsonDecode(jsonStr) as List;
+  await db.batch((b) {
+    for (final item in data) {
+      final m = item as Map<String, dynamic>;
+      final sciName = m['scientificName'] as String;
+      final defId = 'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
+      b.insert(
+        db.localSpeciesTable,
+        LocalSpeciesTableCompanion.insert(
+          definitionId: defId,
+          scientificName: sciName,
+          commonName: m['commonName'] as String,
+          taxonomicClass: m['taxonomicClass'] as String,
+          iucnStatus: m['iucnStatus'] as String,
+          habitatsJson: jsonEncode(m['habitats']),
+          continentsJson: jsonEncode(m['continents']),
+        ),
+      );
+    }
+  });
+  return DriftSpeciesRepository(db);
 }
 
 void main() {
@@ -52,7 +75,7 @@ void main() {
 
   group('Species data loading (33k records)', () {
     test('loads 33k species from SQLite in under 5 seconds', () async {
-      final repo = _openSpeciesDb();
+      final repo = await _openSpeciesDb();
       late List records;
       final sw = Stopwatch()..start();
       records = await repo.getAll();
@@ -66,7 +89,7 @@ void main() {
     });
 
     test('builds SpeciesService indices in under 3 seconds', () async {
-      final repo = _openSpeciesDb();
+      final repo = await _openSpeciesDb();
       final records = await repo.getAll();
       repo.dispose();
 
@@ -89,7 +112,7 @@ void main() {
     late SpeciesService service;
 
     setUpAll(() async {
-      final repo = _openSpeciesDb();
+      final repo = await _openSpeciesDb();
       final records = await repo.getAll();
       repo.dispose();
       service = SpeciesService(records);
@@ -454,7 +477,7 @@ void main() {
     late SpeciesService endToEndSpeciesService;
 
     setUpAll(() async {
-      final repo = _openSpeciesDb();
+      final repo = await _openSpeciesDb();
       final records = await repo.getAll();
       repo.dispose();
       endToEndSpeciesService = SpeciesService(records);
