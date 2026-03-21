@@ -94,6 +94,36 @@ class SpeciesCache {
     _totalCount = null;
   }
 
+  /// Invalidate and re-query all previously cached habitat/continent
+  /// combinations from the database.
+  ///
+  /// Use after delta-sync writes new enrichment data to SQLite. Unlike
+  /// [clear] followed by a single [warmUp], this preserves coverage for
+  /// ALL habitat/continent combos the player has visited — so species
+  /// from different areas don't disappear from the pack grid.
+  Future<void> refresh() async {
+    if (_repo == null) return;
+    // Snapshot the keys before clearing.
+    final keys = _cache.keys.toList();
+    _cache.clear();
+    _byId.clear();
+    _totalCount = null;
+    // Re-warm every previously cached key.
+    for (final key in keys) {
+      final parts = key.split(':');
+      if (parts.length != 2) continue;
+      final habitats = parts[0]
+          .split(',')
+          .where((s) => s.isNotEmpty)
+          .map((s) => Habitat.fromString(s))
+          .toSet();
+      final continent = Continent.fromDataString(parts[1]);
+      if (habitats.isNotEmpty) {
+        await warmUp(habitats: habitats, continent: continent);
+      }
+    }
+  }
+
   // ── Internals ─────────────────────────────────────────────────────────────
 
   /// Builds a stable, order-independent cache key from a habitat set and
