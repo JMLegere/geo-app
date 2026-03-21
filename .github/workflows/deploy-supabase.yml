@@ -111,8 +111,9 @@ jobs:
           # Apply 023: Item instance denormalization + per-field enrichment versions
           echo "Applying migration 023 (item instance denorm + enrichment versions)..."
 
-          # Item instance table: 15 data + 17 version = 32 new columns
-          for col in animal_class_name animal_class_name_enrichver food_preference_name food_preference_name_enrichver climate_name climate_name_enrichver size_name size_name_enrichver brawn_enrichver wit_enrichver speed_enrichver icon_url_enrichver art_url_enrichver cell_habitat_name cell_habitat_name_enrichver cell_climate_name cell_climate_name_enrichver cell_continent_name cell_continent_name_enrichver location_district location_district_enrichver location_city location_city_enrichver location_state location_state_enrichver location_country location_country_enrichver location_country_code location_country_code_enrichver; do
+          # Item instance table: icon_url/art_url (may not exist on Supabase
+          # even though they existed in Drift) + 15 data + 17 version columns
+          for col in icon_url art_url animal_class_name animal_class_name_enrichver food_preference_name food_preference_name_enrichver climate_name climate_name_enrichver size_name size_name_enrichver brawn_enrichver wit_enrichver speed_enrichver icon_url_enrichver art_url_enrichver cell_habitat_name cell_habitat_name_enrichver cell_climate_name cell_climate_name_enrichver cell_continent_name cell_continent_name_enrichver location_district location_district_enrichver location_city location_city_enrichver location_state location_state_enrichver location_country location_country_enrichver location_country_code location_country_code_enrichver; do
             run_sql "ALTER TABLE item_instances ADD COLUMN IF NOT EXISTS $col TEXT"
           done
           for col in brawn wit speed; do
