@@ -45,8 +45,10 @@ jobs:
 
           run_sql() {
             local sql=$1
+            local body
+            body=$(python3 -c "import json,sys; print(json.dumps({'query': sys.argv[1]}))" "$sql")
             curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"query\": \"$sql\"}" \
+              -d "$body" \
               | python3 -c "import json,sys; d=json.load(sys.stdin); print('ERROR: '+str(d.get('error',''))) if isinstance(d,dict) and d.get('error') else print('OK')"
           }
 
@@ -70,9 +72,9 @@ jobs:
           echo "Applying migration 018 statements..."
           run_sql "ALTER TABLE species_enrichment ADD COLUMN IF NOT EXISTS icon_url text"
           run_sql "INSERT INTO storage.buckets (id, name, public) VALUES ('species-art', 'species-art', true) ON CONFLICT (id) DO NOTHING"
-          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Public read access' AND tablename = 'objects') THEN CREATE POLICY \"Public read access\" ON storage.objects FOR SELECT USING (bucket_id = 'species-art'); END IF; END \$\$"
-          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role upload' AND tablename = 'objects') THEN CREATE POLICY \"Service role upload\" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'species-art'); END IF; END \$\$"
-          run_sql "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Service role update' AND tablename = 'objects') THEN CREATE POLICY \"Service role update\" ON storage.objects FOR UPDATE USING (bucket_id = 'species-art'); END IF; END \$\$"
+          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Public read access'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Public read access" ON storage.objects FOR SELECT USING (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
+          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Service role upload'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Service role upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
+          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Service role update'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Service role update" ON storage.objects FOR UPDATE USING (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
           insert_version "018_species_art" "species_art"
           echo "Migration 018 applied and recorded."
 
@@ -83,8 +85,8 @@ jobs:
           run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_classification ON species (definition_id) WHERE animal_class IS NULL"
           run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_art ON species (definition_id) WHERE animal_class IS NOT NULL AND (icon_url IS NULL OR art_url IS NULL)"
           run_sql "ALTER TABLE species ENABLE ROW LEVEL SECURITY"
-          run_sql "DROP POLICY IF EXISTS \"Public read\" ON species"
-          run_sql "CREATE POLICY \"Public read\" ON species FOR SELECT USING (true)"
+          run_sql 'DROP POLICY IF EXISTS "Public read" ON species'
+          run_sql 'CREATE POLICY "Public read" ON species FOR SELECT USING (true)'
           run_sql "GRANT SELECT ON species TO anon, authenticated"
           run_sql "GRANT ALL ON species TO service_role"
           run_sql "NOTIFY pgrst, 'reload schema'"
