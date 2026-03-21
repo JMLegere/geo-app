@@ -349,32 +349,38 @@ function buildArtPrompt(
   commonName: string,
   scientificName: string,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null },
+  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null; food_preference?: string | null; animal_class?: string | null },
 ): string {
   if (assetType === "icon") {
-    return `Tiny sprite character of a ${commonName} (${scientificName}).
-Pokémon PC box style miniature portrait — recognizable from silhouette
-alone. Slightly rounded, softened proportions inspired by plushie
-aesthetics: big expressive eyes, gentle curves, approachable even if
-the real animal is intimidating.
+    return `Simple flat 2D icon of a ${commonName} (${scientificName}).
+Style: emoji / iOS app icon — bold shapes, minimal detail, flat colors
+with subtle gradient shading. Clean vector-like appearance.
+Front-facing or slight 3/4 view. 3-4 flat color tones maximum.
+Thick soft outlines, rounded forms, instantly readable at 32px.
 
-Front-facing or slight 3/4 view, grounded at bottom of frame. Warm
-soft shading with 3-4 color tones, smooth anti-aliased edges.
-Simplified detail but clearly identifiable species — a tiny portrait
-with personality, not a blob.
-
-Render on a perfectly transparent background (alpha channel = 0).
-The sprite floats with no ground plane, no drop shadow, no glow,
-no background color — just the creature and nothing else.
-Output as PNG with transparency.`;
+Pure transparent background. No ground, no shadow, no effects, no text.
+Output as PNG with full transparency.`;
   }
 
-  let pose = "natural resting pose, calm and content";
+  // Action mapping from food_preference
+  let action = "resting calmly in its natural habitat";
+  switch (enrichment?.food_preference) {
+    case "critter": action = "stalking or pouncing on small prey, predatory focus"; break;
+    case "fish": action = "diving into water or catching a fish, splash and motion"; break;
+    case "fruit": action = "reaching for or eating ripe fruit from a branch"; break;
+    case "grub": action = "pecking at the ground or probing bark for insects"; break;
+    case "nectar": action = "hovering at or perched on a flower, feeding"; break;
+    case "seed": action = "foraging on the ground among scattered seeds or grasses"; break;
+    case "veg": action = "grazing on fresh vegetation or browsing leafy branches"; break;
+  }
+
+  // Pose modifier from dominant stat
+  let poseModifier = "Natural and relaxed in the moment";
   if (enrichment?.brawn != null && enrichment?.wit != null && enrichment?.speed != null) {
     const max = Math.max(enrichment.brawn, enrichment.wit, enrichment.speed);
-    if (enrichment.brawn === max) pose = "powerful but gentle stance, grounded, quietly imposing";
-    else if (enrichment.speed === max) pose = "light on its feet, mid-stride or leaping, wind-swept";
-    else if (enrichment.wit === max) pose = "wry and confident, relaxed knowing posture, slight smirk";
+    if (enrichment.brawn === max) poseModifier = "Powerful, muscular, dominant presence in the frame";
+    else if (enrichment.speed === max) poseModifier = "Captured mid-motion, dynamic angle, sense of velocity";
+    else if (enrichment.wit === max) poseModifier = "Alert eyes, watchful, cunning expression";
   }
 
   let habitatAtmosphere = "Soft natural outdoor setting";
@@ -395,29 +401,24 @@ Output as PNG with transparency.`;
     case "frigid": climateLighting = "Cold blue-white arctic light, stark contrast"; break;
   }
 
-  return `Watercolor illustration of a ${commonName} (${scientificName}) in the style of
-Mitsuhiro Arita's classic Pokémon TCG card art — nostalgic warmth,
-luminous brushwork, painterly soft light.
+  return `Oil painting illustration of a ${commonName} (${scientificName}) in the style of
+classic Magic: The Gathering and Pokémon TCG card art.
 
-The creature has gently softened, approachable proportions — rounded
-forms, expressive eyes, plushie-like warmth. Even fierce animals feel
-inviting and endearing, like a cozy nature documentary.
+The animal is ${action}. ${poseModifier}.
+Setting: ${habitatAtmosphere}. ${climateLighting}.
 
-Pose: ${pose}. Setting: ${habitatAtmosphere}. ${climateLighting}.
-Composition: Full body, 3/4 view, slightly off-center with breathing
-room. The creature is in a natural everyday moment — resting, foraging,
-curious — not battling or aggressive.
+Composition: Dramatic 3/4 view, slightly low angle to make the creature
+feel heroic. The animal fills most of the frame — this is a portrait,
+not a landscape. Shallow depth of field, background atmospheric and
+painterly.
 
-Technique: Traditional watercolor — visible brushstrokes, translucent
-wet-on-wet layers, soft edges, organic paint bleeds, luminous washes
-that let light through. Warm moderate saturation. Soft diffused lighting
-with gentle highlights.
+Technique: Rich oil painting style — visible brushwork, bold color,
+strong value contrast, dramatic lighting with a clear light source.
+Painterly realism, not photorealistic. Saturated but not garish.
+Think Rebecca Guay, Terese Nielsen, Mitsuhiro Arita.
 
-Avoid: Dead center framing, plastic or digitally over-rendered look,
-hard edges, flat lighting, oversaturated colors, muddy color mixing,
-harsh black shadows.
-
-No text, no labels, no borders, no card frame.`;
+Avoid: Centered composition, flat lighting, white/blank backgrounds,
+cartoon style, digital airbrush look, text, labels, borders, frames.`;
 }
 
 // Rotates through IMAGE_PROVIDERS; returns { url, provider } on success,
@@ -429,7 +430,7 @@ async function generateAndUploadArt(
   scientificName: string,
   commonName: string,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null },
+  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null; food_preference?: string | null; animal_class?: string | null },
   logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
 ): Promise<{ url: string; provider: string } | "rate_limited" | null> {
   const filePrefix = assetType === "icon" ? `${definitionId}_icon` : definitionId;
@@ -642,7 +643,7 @@ serve(async (req: Request) => {
       // Find one classified species that needs art.
       const { data: needsArt, error: artErr } = await supabase
         .from("species")
-        .select("definition_id, scientific_name, common_name, animal_class, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
+        .select("definition_id, scientific_name, common_name, animal_class, food_preference, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
         .not("animal_class", "is", null)
         .or("icon_url.is.null,art_url.is.null")
         .order("enriched_at", { ascending: true })
@@ -662,6 +663,8 @@ serve(async (req: Request) => {
           wit: species.wit,
           speed: species.speed,
           habitat: parseFirstHabitat(species.habitats_json),
+          food_preference: species.food_preference,
+          animal_class: species.animal_class,
         };
 
         // Generate icon if missing
