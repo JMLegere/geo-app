@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
+import 'package:earth_nova/core/state/species_repository_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
-import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Pack Tab enum
@@ -159,14 +159,9 @@ class PackNotifier extends Notifier<PackState> {
 
   /// Resolve a FaunaDefinition from a definitionId.
   ///
-  /// Reads [speciesServiceProvider] on-demand for definition lookup.
+  /// Uses the species cache directly for O(1) lookup by ID.
   FaunaDefinition? resolveFauna(String definitionId) {
-    final service = ref.read(speciesServiceProvider);
-    try {
-      return service.all.firstWhere((s) => s.id == definitionId);
-    } catch (_) {
-      return null;
-    }
+    return ref.read(speciesCacheProvider).getByIdSync(definitionId);
   }
 
   /// Groups items by their category, filtering to active items only.
