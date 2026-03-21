@@ -7,6 +7,12 @@ import 'package:sqlite3/sqlite3.dart' as raw;
 
 import 'app_database.dart' show kExpectedTableNames;
 
+/// No-op on native — database corruption is handled at connection open via
+/// PRAGMA integrity_check. See [createDatabaseConnection].
+void resetDatabaseStorage() {
+  debugPrint('[connection_native] resetDatabaseStorage called — no-op');
+}
+
 /// Creates a file-backed SQLite database for native platforms.
 ///
 /// On first open, runs PRAGMA integrity_check and verifies that expected
