@@ -22,8 +22,13 @@ enum Continent {
     );
   }
 
-  /// Parse from IUCN dataset string format.
+  /// Parse from IUCN dataset string format or enum name.
   static Continent fromDataString(String value) {
+    // Try enum name first (e.g. "northAmerica" from DB storage)
+    for (final c in Continent.values) {
+      if (c.name == value) return c;
+    }
+    // Fall back to display name (e.g. "North America" from IUCN data)
     return switch (value) {
       'Asia' => Continent.asia,
       'North America' => Continent.northAmerica,
