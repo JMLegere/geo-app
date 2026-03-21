@@ -92,7 +92,16 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
   @override
   void dispose() {
     _controller?.dispose();
+    if (widget.artUrl != null) {
+      print('[ART] disposed ${_shortUrl(widget.artUrl!)}');
+    }
     super.dispose();
+  }
+
+  static String _shortUrl(String url) {
+    // Show just the filename for readable logs
+    final lastSlash = url.lastIndexOf('/');
+    return lastSlash >= 0 ? url.substring(lastSlash + 1) : url;
   }
 
   Widget _buildEmojiFallback() {
@@ -115,12 +124,16 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
     if (widget.artUrl == null) {
       content = _buildEmojiFallback();
     } else {
+      final shortName = _shortUrl(widget.artUrl!);
       final networkImage = Image.network(
         widget.artUrl!,
         width: widget.size,
         height: widget.size,
         fit: BoxFit.cover,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (frame != null && !wasSynchronouslyLoaded) {
+            print('[ART] loaded $shortName (network fetch — cache miss)');
+          }
           return AnimatedOpacity(
             opacity: frame != null ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 300),
@@ -128,7 +141,6 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          // ignore: avoid_print
           print('[ART FAIL] image load error for ${widget.artUrl}: $error');
           return _buildEmojiFallback();
         },

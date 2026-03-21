@@ -16,52 +16,67 @@ Each species needs **2 assets** from **2 separate generation calls**:
 
 | Asset | Dimensions | Format | Style | Purpose |
 |-------|-----------|--------|-------|---------|
-| **Icon** | 96×96 px | WebP (transparent) | Chibi sprite, cute, clean outline, transparent BG | Pack grid, discovery toast, sanctuary tile |
-| **Illustration** | 512×512 px | WebP | TCG-style watercolor portrait, identity-driven | Species card hero, sharing |
+| **Icon** | 96×96 px | WebP (transparent) | Flat emoji-style icon, bold shapes, transparent BG | Pack grid, discovery toast, sanctuary tile |
+| **Illustration** | 512×512 px | WebP | Oil painting TCG card art, action-driven | Species card hero, sharing |
 
 ### Icon Style
 
-Cute chibi sprite. Think Pokemon PC box icons: small, recognizable, expressive, simple shapes, clean outlines, transparent background. Not pixel art — smooth vector-style at 96px. Each species should be instantly identifiable at 32–48px display size.
+Flat emoji / iOS app icon style. Bold shapes, minimal detail, flat colors with subtle gradient shading. Clean vector-like appearance. Front-facing or slight 3/4 view. 3-4 flat color tones maximum. Thick soft outlines, rounded forms, instantly readable at 32px. Pure transparent background.
 
-### Illustration Style — Pokemon TCG Conventions
+### Illustration Style — TCG Card Art (Oil Painting)
 
-Full watercolor portrait following TCG card art conventions:
+Oil painting illustration following MTG/Pokémon TCG card art conventions:
 
 **Pose & Composition:**
-- Dynamic 3/4 view, facing toward viewer, showing personality
-- Full body, slightly off-center with breathing room
-- Pose driven by dominant stat (see Identity-Driven Art below)
-- Not static standing — action, alertness, or character expression
+- Dramatic 3/4 view, slightly low angle to make the creature feel heroic
+- Animal fills most of the frame — portrait, not landscape
+- Action driven by `food_preference` (see Action Mapping below)
+- Pose modifier from dominant stat (see Pose Modifiers below)
+- Shallow depth of field, background atmospheric and painterly
 
 **Technique:**
-- Watercolor with visible brushstrokes, soft edges, luminous quality
-- Translucent layers, wet-on-wet effects, organic flowing forms
-- Soft diffused lighting — warm or cool depending on habitat/climate
-- Moderate saturation (not oversaturated, not desaturated)
+- Rich oil painting style — visible brushwork, bold color, strong value contrast
+- Dramatic lighting with a clear light source
+- Painterly realism, not photorealistic. Saturated but not garish
 
 **Background:**
 - Soft atmospheric habitat-appropriate scene, NOT competing with subject
-- Slightly blurred/impressionistic — depth cues via atmospheric perspective
+- Shallow depth of field — background painterly and atmospheric
 - Type-appropriate: forest species get dappled green light, saltwater gets ocean spray, desert gets warm amber haze
 
 **Avoid:**
-- Dead center framing, plastic/over-rendered look, hard edges everywhere
-- Flat lighting, oversaturated colors, muddy color mixing
-- Visible AI artifacts, inconsistent lighting, harsh pure-black shadows
-- Background competing with or distracting from the creature
+- Centered composition, flat lighting, white/blank backgrounds
+- Cartoon style, digital airbrush look
+- Text, labels, borders, frames
+- Visible AI artifacts, inconsistent lighting
 
-**Reference illustrators:** Mitsuhiro Arita (nostalgic warmth), HYOGONOSUKE (dreamy atmosphere), Sowsow (natural serenity).
+**Reference illustrators:** Rebecca Guay (ethereal drama), Terese Nielsen (luminous realism), Mitsuhiro Arita (creature portraiture).
 
-### Identity-Driven Art
+### Action Mapping (from `food_preference`)
 
-The illustration prompt incorporates species stats and traits to drive pose, mood, and color:
+The illustration shows the animal **performing a characteristic action** driven by its diet:
 
-| Dominant Stat | Pose Direction | Mood |
-|---------------|---------------|------|
-| Brawn (highest) | Powerful but gentle stance, grounded, quietly imposing | Strength, warmth |
-| Speed (highest) | Light on its feet, mid-stride or leaping, wind-swept | Energy, agility |
-| Wit (highest) | Wry and confident, relaxed knowing posture, slight smirk | Intelligence, charm |
-| Balanced | Natural resting pose, calm and content | Harmony |
+| food_preference | Action |
+|-----------------|--------|
+| critter | Stalking or pouncing on small prey, predatory focus |
+| fish | Diving into water or catching a fish, splash and motion |
+| fruit | Reaching for or eating ripe fruit from a branch |
+| grub | Pecking at the ground or probing bark for insects |
+| nectar | Hovering at or perched on a flower, feeding |
+| seed | Foraging on the ground among scattered seeds or grasses |
+| veg | Grazing on fresh vegetation or browsing leafy branches |
+| *(default)* | Resting calmly in its natural habitat |
+
+### Pose Modifiers (from dominant stat)
+
+Layered on top of the action to adjust the visual feel:
+
+| Dominant Stat | Pose Modifier |
+|---------------|---------------|
+| Brawn (highest) | Powerful, muscular, dominant presence in the frame |
+| Speed (highest) | Captured mid-motion, dynamic angle, sense of velocity |
+| Wit (highest) | Alert eyes, watchful, cunning expression |
+| Balanced | Natural and relaxed in the moment |
 
 Habitat and climate also influence the illustration's ambient lighting and environment cues (see Prompt Templates below).
 
@@ -306,65 +321,47 @@ After `enrich-species` classification succeeds:
 
 Three visual pillars define EarthNova's art identity:
 
-- **Pokemon TCG** → composition, framing, creature-as-hero
-- **PuffPals** → softened proportions, plushie warmth, big eyes, approachable
-- **Watercolor** → visible brushstrokes, wet-on-wet, luminous washes, organic imperfection
+- **MTG/Pokemon TCG** → dramatic composition, creature-as-hero, heroic low angle
+- **Action-driven** → animals performing characteristic behaviors based on diet, not static poses
+- **Oil painting** → visible brushwork, bold color, strong value contrast, painterly realism
 
 ### Prompt Templates
 
 **Icon prompt:**
 ```
-Tiny sprite character of a {name} ({scientific}).
-Pokémon PC box style miniature portrait — recognizable from silhouette
-alone. Slightly rounded, softened proportions inspired by plushie
-aesthetics: big expressive eyes, gentle curves, approachable even if
-the real animal is intimidating.
+Simple flat 2D icon of a {name} ({scientific}).
+Style: emoji / iOS app icon — bold shapes, minimal detail, flat colors
+with subtle gradient shading. Clean vector-like appearance.
+Front-facing or slight 3/4 view. 3-4 flat color tones maximum.
+Thick soft outlines, rounded forms, instantly readable at 32px.
 
-Front-facing or slight 3/4 view, grounded at bottom of frame. Warm
-soft shading with 3-4 color tones, smooth anti-aliased edges.
-Simplified detail but clearly identifiable species — a tiny portrait
-with personality, not a blob.
-
-Transparent background. No text, no shadows on ground, no effects.
+Pure transparent background. No ground, no shadow, no effects, no text.
+Output as PNG with full transparency.
 ```
 
 **Illustration prompt:**
 ```
-Watercolor illustration of a {name} ({scientific}) in the style of
-Mitsuhiro Arita's classic Pokémon TCG card art — nostalgic warmth,
-luminous brushwork, painterly soft light.
+Oil painting illustration of a {name} ({scientific}) in the style of
+classic Magic: The Gathering and Pokémon TCG card art.
 
-The creature has gently softened, approachable proportions — rounded
-forms, expressive eyes, plushie-like warmth. Even fierce animals feel
-inviting and endearing, like a cozy nature documentary.
+The animal is {action}. {pose_modifier}.
+Setting: {habitat_atmosphere}. {climate_lighting}.
 
-Pose: {pose}. Setting: {habitat_atmosphere}. {climate_lighting}.
-Composition: Full body, 3/4 view, slightly off-center with breathing
-room. The creature is in a natural everyday moment — resting, foraging,
-curious — not battling or aggressive.
+Composition: Dramatic 3/4 view, slightly low angle to make the creature
+feel heroic. The animal fills most of the frame — this is a portrait,
+not a landscape. Shallow depth of field, background atmospheric and
+painterly.
 
-Technique: Traditional watercolor — visible brushstrokes, translucent
-wet-on-wet layers, soft edges, organic paint bleeds, luminous washes
-that let light through. Warm moderate saturation. Soft diffused lighting
-with gentle highlights.
+Technique: Rich oil painting style — visible brushwork, bold color,
+strong value contrast, dramatic lighting with a clear light source.
+Painterly realism, not photorealistic. Saturated but not garish.
+Think Rebecca Guay, Terese Nielsen, Mitsuhiro Arita.
 
-Avoid: Dead center framing, plastic or digitally over-rendered look,
-hard edges, flat lighting, oversaturated colors, muddy color mixing,
-harsh black shadows.
-
-No text, no labels, no borders, no card frame.
+Avoid: Centered composition, flat lighting, white/blank backgrounds,
+cartoon style, digital airbrush look, text, labels, borders, frames.
 ```
 
-Note: Dimension constraints (96×96, 512×512) are controlled via API parameters, not prompt text.
-
-### Pose Mappings (dominant stat)
-
-| Dominant Stat | Pose |
-|---------------|------|
-| Brawn | "powerful but gentle stance, grounded, quietly imposing" |
-| Speed | "light on its feet, mid-stride or leaping, wind-swept" |
-| Wit | "wry and confident, relaxed knowing posture, slight smirk" |
-| Balanced | "natural resting pose, calm and content" |
+Note: `{action}` is derived from `food_preference` (see Action Mapping above). `{pose_modifier}` is derived from the dominant stat (see Pose Modifiers above). Dimension constraints (96×96, 512×512) are controlled via API parameters, not prompt text.
 
 ### Habitat Atmosphere (from `habitats_json` first entry)
 
