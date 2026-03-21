@@ -532,6 +532,8 @@ Future<void> hydrateFromSupabase({
             size: row['size'] as String?,
             iconUrl: row['icon_url'] as String?,
             artUrl: row['art_url'] as String?,
+            iconPrompt: row['icon_prompt'] as String?,
+            artPrompt: row['art_prompt'] as String?,
             enrichedAt: row['enriched_at'] != null
                 ? DateTime.parse(row['enriched_at'] as String)
                 : null,

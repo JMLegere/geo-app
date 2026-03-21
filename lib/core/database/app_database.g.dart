@@ -2275,6 +2275,18 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
   late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
       'art_url', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconPromptMeta =
+      const VerificationMeta('iconPrompt');
+  @override
+  late final GeneratedColumn<String> iconPrompt = GeneratedColumn<String>(
+      'icon_prompt', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artPromptMeta =
+      const VerificationMeta('artPrompt');
+  @override
+  late final GeneratedColumn<String> artPrompt = GeneratedColumn<String>(
+      'art_prompt', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _enrichedAtMeta =
       const VerificationMeta('enrichedAt');
   @override
@@ -2299,6 +2311,8 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
         size,
         iconUrl,
         artUrl,
+        iconPrompt,
+        artPrompt,
         enrichedAt
       ];
   @override
@@ -2407,6 +2421,16 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
       context.handle(_artUrlMeta,
           artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
     }
+    if (data.containsKey('icon_prompt')) {
+      context.handle(
+          _iconPromptMeta,
+          iconPrompt.isAcceptableOrUnknown(
+              data['icon_prompt']!, _iconPromptMeta));
+    }
+    if (data.containsKey('art_prompt')) {
+      context.handle(_artPromptMeta,
+          artPrompt.isAcceptableOrUnknown(data['art_prompt']!, _artPromptMeta));
+    }
     if (data.containsKey('enriched_at')) {
       context.handle(
           _enrichedAtMeta,
@@ -2454,6 +2478,10 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
           .read(DriftSqlType.string, data['${effectivePrefix}icon_url']),
       artUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
+      iconPrompt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}icon_prompt']),
+      artPrompt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}art_prompt']),
       enrichedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}enriched_at']),
     );
@@ -2482,6 +2510,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
   final String? size;
   final String? iconUrl;
   final String? artUrl;
+  final String? iconPrompt;
+  final String? artPrompt;
   final DateTime? enrichedAt;
   const LocalSpecies(
       {required this.definitionId,
@@ -2500,6 +2530,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       this.size,
       this.iconUrl,
       this.artUrl,
+      this.iconPrompt,
+      this.artPrompt,
       this.enrichedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2538,6 +2570,12 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
     if (!nullToAbsent || artUrl != null) {
       map['art_url'] = Variable<String>(artUrl);
     }
+    if (!nullToAbsent || iconPrompt != null) {
+      map['icon_prompt'] = Variable<String>(iconPrompt);
+    }
+    if (!nullToAbsent || artPrompt != null) {
+      map['art_prompt'] = Variable<String>(artPrompt);
+    }
     if (!nullToAbsent || enrichedAt != null) {
       map['enriched_at'] = Variable<DateTime>(enrichedAt);
     }
@@ -2573,6 +2611,12 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           : Value(iconUrl),
       artUrl:
           artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
+      iconPrompt: iconPrompt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconPrompt),
+      artPrompt: artPrompt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artPrompt),
       enrichedAt: enrichedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(enrichedAt),
@@ -2599,6 +2643,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       size: serializer.fromJson<String?>(json['size']),
       iconUrl: serializer.fromJson<String?>(json['iconUrl']),
       artUrl: serializer.fromJson<String?>(json['artUrl']),
+      iconPrompt: serializer.fromJson<String?>(json['iconPrompt']),
+      artPrompt: serializer.fromJson<String?>(json['artPrompt']),
       enrichedAt: serializer.fromJson<DateTime?>(json['enrichedAt']),
     );
   }
@@ -2622,6 +2668,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       'size': serializer.toJson<String?>(size),
       'iconUrl': serializer.toJson<String?>(iconUrl),
       'artUrl': serializer.toJson<String?>(artUrl),
+      'iconPrompt': serializer.toJson<String?>(iconPrompt),
+      'artPrompt': serializer.toJson<String?>(artPrompt),
       'enrichedAt': serializer.toJson<DateTime?>(enrichedAt),
     };
   }
@@ -2643,6 +2691,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           Value<String?> size = const Value.absent(),
           Value<String?> iconUrl = const Value.absent(),
           Value<String?> artUrl = const Value.absent(),
+          Value<String?> iconPrompt = const Value.absent(),
+          Value<String?> artPrompt = const Value.absent(),
           Value<DateTime?> enrichedAt = const Value.absent()}) =>
       LocalSpecies(
         definitionId: definitionId ?? this.definitionId,
@@ -2662,6 +2712,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
         size: size.present ? size.value : this.size,
         iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
         artUrl: artUrl.present ? artUrl.value : this.artUrl,
+        iconPrompt: iconPrompt.present ? iconPrompt.value : this.iconPrompt,
+        artPrompt: artPrompt.present ? artPrompt.value : this.artPrompt,
         enrichedAt: enrichedAt.present ? enrichedAt.value : this.enrichedAt,
       );
   LocalSpecies copyWithCompanion(LocalSpeciesTableCompanion data) {
@@ -2697,6 +2749,9 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       size: data.size.present ? data.size.value : this.size,
       iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
       artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
+      iconPrompt:
+          data.iconPrompt.present ? data.iconPrompt.value : this.iconPrompt,
+      artPrompt: data.artPrompt.present ? data.artPrompt.value : this.artPrompt,
       enrichedAt:
           data.enrichedAt.present ? data.enrichedAt.value : this.enrichedAt,
     );
@@ -2721,6 +2776,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           ..write('size: $size, ')
           ..write('iconUrl: $iconUrl, ')
           ..write('artUrl: $artUrl, ')
+          ..write('iconPrompt: $iconPrompt, ')
+          ..write('artPrompt: $artPrompt, ')
           ..write('enrichedAt: $enrichedAt')
           ..write(')'))
         .toString();
@@ -2744,6 +2801,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       size,
       iconUrl,
       artUrl,
+      iconPrompt,
+      artPrompt,
       enrichedAt);
   @override
   bool operator ==(Object other) =>
@@ -2765,6 +2824,8 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           other.size == this.size &&
           other.iconUrl == this.iconUrl &&
           other.artUrl == this.artUrl &&
+          other.iconPrompt == this.iconPrompt &&
+          other.artPrompt == this.artPrompt &&
           other.enrichedAt == this.enrichedAt);
 }
 
@@ -2785,6 +2846,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
   final Value<String?> size;
   final Value<String?> iconUrl;
   final Value<String?> artUrl;
+  final Value<String?> iconPrompt;
+  final Value<String?> artPrompt;
   final Value<DateTime?> enrichedAt;
   final Value<int> rowid;
   const LocalSpeciesTableCompanion({
@@ -2804,6 +2867,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     this.size = const Value.absent(),
     this.iconUrl = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.iconPrompt = const Value.absent(),
+    this.artPrompt = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2824,6 +2889,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     this.size = const Value.absent(),
     this.iconUrl = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.iconPrompt = const Value.absent(),
+    this.artPrompt = const Value.absent(),
     this.enrichedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : definitionId = Value(definitionId),
@@ -2850,6 +2917,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     Expression<String>? size,
     Expression<String>? iconUrl,
     Expression<String>? artUrl,
+    Expression<String>? iconPrompt,
+    Expression<String>? artPrompt,
     Expression<DateTime>? enrichedAt,
     Expression<int>? rowid,
   }) {
@@ -2870,6 +2939,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       if (size != null) 'size': size,
       if (iconUrl != null) 'icon_url': iconUrl,
       if (artUrl != null) 'art_url': artUrl,
+      if (iconPrompt != null) 'icon_prompt': iconPrompt,
+      if (artPrompt != null) 'art_prompt': artPrompt,
       if (enrichedAt != null) 'enriched_at': enrichedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2892,6 +2963,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       Value<String?>? size,
       Value<String?>? iconUrl,
       Value<String?>? artUrl,
+      Value<String?>? iconPrompt,
+      Value<String?>? artPrompt,
       Value<DateTime?>? enrichedAt,
       Value<int>? rowid}) {
     return LocalSpeciesTableCompanion(
@@ -2911,6 +2984,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       size: size ?? this.size,
       iconUrl: iconUrl ?? this.iconUrl,
       artUrl: artUrl ?? this.artUrl,
+      iconPrompt: iconPrompt ?? this.iconPrompt,
+      artPrompt: artPrompt ?? this.artPrompt,
       enrichedAt: enrichedAt ?? this.enrichedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2967,6 +3042,12 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     if (artUrl.present) {
       map['art_url'] = Variable<String>(artUrl.value);
     }
+    if (iconPrompt.present) {
+      map['icon_prompt'] = Variable<String>(iconPrompt.value);
+    }
+    if (artPrompt.present) {
+      map['art_prompt'] = Variable<String>(artPrompt.value);
+    }
     if (enrichedAt.present) {
       map['enriched_at'] = Variable<DateTime>(enrichedAt.value);
     }
@@ -2995,6 +3076,8 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
           ..write('size: $size, ')
           ..write('iconUrl: $iconUrl, ')
           ..write('artUrl: $artUrl, ')
+          ..write('iconPrompt: $iconPrompt, ')
+          ..write('artPrompt: $artPrompt, ')
           ..write('enrichedAt: $enrichedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5781,6 +5864,8 @@ typedef $$LocalSpeciesTableTableCreateCompanionBuilder
   Value<String?> size,
   Value<String?> iconUrl,
   Value<String?> artUrl,
+  Value<String?> iconPrompt,
+  Value<String?> artPrompt,
   Value<DateTime?> enrichedAt,
   Value<int> rowid,
 });
@@ -5802,6 +5887,8 @@ typedef $$LocalSpeciesTableTableUpdateCompanionBuilder
   Value<String?> size,
   Value<String?> iconUrl,
   Value<String?> artUrl,
+  Value<String?> iconPrompt,
+  Value<String?> artPrompt,
   Value<DateTime?> enrichedAt,
   Value<int> rowid,
 });
@@ -5866,6 +5953,12 @@ class $$LocalSpeciesTableTableFilterComposer
 
   ColumnFilters<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconPrompt => $composableBuilder(
+      column: $table.iconPrompt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artPrompt => $composableBuilder(
+      column: $table.artPrompt, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnFilters(column));
@@ -5934,6 +6027,12 @@ class $$LocalSpeciesTableTableOrderingComposer
   ColumnOrderings<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get iconPrompt => $composableBuilder(
+      column: $table.iconPrompt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artPrompt => $composableBuilder(
+      column: $table.artPrompt, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnOrderings(column));
 }
@@ -5995,6 +6094,12 @@ class $$LocalSpeciesTableTableAnnotationComposer
   GeneratedColumn<String> get artUrl =>
       $composableBuilder(column: $table.artUrl, builder: (column) => column);
 
+  GeneratedColumn<String> get iconPrompt => $composableBuilder(
+      column: $table.iconPrompt, builder: (column) => column);
+
+  GeneratedColumn<String> get artPrompt =>
+      $composableBuilder(column: $table.artPrompt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => column);
 }
@@ -6043,6 +6148,8 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             Value<String?> size = const Value.absent(),
             Value<String?> iconUrl = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> iconPrompt = const Value.absent(),
+            Value<String?> artPrompt = const Value.absent(),
             Value<DateTime?> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6063,6 +6170,8 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             size: size,
             iconUrl: iconUrl,
             artUrl: artUrl,
+            iconPrompt: iconPrompt,
+            artPrompt: artPrompt,
             enrichedAt: enrichedAt,
             rowid: rowid,
           ),
@@ -6083,6 +6192,8 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             Value<String?> size = const Value.absent(),
             Value<String?> iconUrl = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> iconPrompt = const Value.absent(),
+            Value<String?> artPrompt = const Value.absent(),
             Value<DateTime?> enrichedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -6103,6 +6214,8 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             size: size,
             iconUrl: iconUrl,
             artUrl: artUrl,
+            iconPrompt: iconPrompt,
+            artPrompt: artPrompt,
             enrichedAt: enrichedAt,
             rowid: rowid,
           ),

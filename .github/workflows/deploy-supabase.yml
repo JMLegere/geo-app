@@ -100,6 +100,14 @@ jobs:
           echo "Migration 020 applied."
 
           # Apply 021: enrichment observability + pg_cron
+          # Apply 022: 2-stage art prompt columns
+          echo "Applying migration 022 (icon_prompt + art_prompt columns)..."
+          run_sql "ALTER TABLE species ADD COLUMN IF NOT EXISTS icon_prompt TEXT"
+          run_sql "ALTER TABLE species ADD COLUMN IF NOT EXISTS art_prompt TEXT"
+          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_prompt ON species (definition_id) WHERE animal_class IS NOT NULL AND (icon_prompt IS NULL OR art_prompt IS NULL)"
+          insert_version "022_art_prompt_columns" "art_prompt_columns"
+          echo "Migration 022 applied."
+
           echo "Applying migration 021 (enrichment_events + pg_cron)..."
           run_sql "CREATE EXTENSION IF NOT EXISTS pg_cron"
           run_sql "CREATE EXTENSION IF NOT EXISTS pg_net"
@@ -205,11 +213,11 @@ jobs:
               | python3 -c "import json,sys; d=json.load(sys.stdin); print('ERROR: '+str(d.get('error',''))) if isinstance(d,dict) and d.get('error') else print('OK')"
           }
 
-          echo "Clearing icon_url to re-queue all species for icon generation..."
-          run_sql "UPDATE species SET icon_url = NULL WHERE icon_url IS NOT NULL"
+          echo "Clearing all art URLs and prompts to re-queue with 2-stage pipeline..."
+          run_sql "UPDATE species SET icon_url = NULL, art_url = NULL, icon_prompt = NULL, art_prompt = NULL WHERE icon_url IS NOT NULL OR art_url IS NOT NULL OR icon_prompt IS NOT NULL OR art_prompt IS NOT NULL"
 
-          echo "Deleting icon files from storage..."
-          run_sql "DELETE FROM storage.objects WHERE bucket_id = 'species-art' AND name LIKE '%_icon.webp'"
+          echo "Deleting all art files from storage..."
+          run_sql "DELETE FROM storage.objects WHERE bucket_id = 'species-art'"
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
