@@ -3,6 +3,7 @@ import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 // ---------------------------------------------------------------------------
 // Pack Tab enum
@@ -31,14 +32,14 @@ enum PackTab {
       };
 
   String get icon => switch (this) {
-        PackTab.character => '🧑',
-        PackTab.fauna => '🐾',
-        PackTab.flora => '🌿',
-        PackTab.minerals => '💎',
-        PackTab.fossils => '🦴',
-        PackTab.artifacts => '🏺',
-        PackTab.food => '🍎',
-        PackTab.orbs => '🔮',
+        PackTab.character => GameIcons.character,
+        PackTab.fauna => GameIcons.category(ItemCategory.fauna),
+        PackTab.flora => GameIcons.category(ItemCategory.flora),
+        PackTab.minerals => GameIcons.category(ItemCategory.mineral),
+        PackTab.fossils => GameIcons.category(ItemCategory.fossil),
+        PackTab.artifacts => GameIcons.category(ItemCategory.artifact),
+        PackTab.food => GameIcons.category(ItemCategory.food),
+        PackTab.orbs => GameIcons.category(ItemCategory.orb),
       };
 
   /// Maps tab to the corresponding ItemCategory (null for character tab).

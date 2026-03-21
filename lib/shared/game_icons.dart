@@ -287,6 +287,30 @@ abstract final class GameIcons {
   /// Icon for cells with an event that hasn't been visited yet (Witcher 3 "?").
   static const String eventUnknown = '❓';
 
+  // ── Sanctuary Tabs ──────────────────────────────────────────────────────
+
+  static const String zoo = '🏠';
+  static const String feeding = '🍎';
+  static const String breeding = '🧬';
+  static const String museum = '🏛️';
+  static const String achievements = '🏆';
+
+  // ── Achievement-Specific ──────────────────────────────────────────────
+
+  static const String cartographer = '🧭';
+  static const String naturalist = '🌿';
+  static const String biologist = '🔬';
+  static const String taxonomist = '📚';
+  static const String marathon = '🏃';
+  static const String restorer = '🌱';
+  static const String devoted = '💎';
+
+  // ── Habitat constants (for const contexts) ────────────────────────────
+
+  static const String forest = '🌲';
+  static const String saltwater = '🌊';
+  static const String mountain = '⛰️';
+
   // ── Misc game concepts ───────────────────────────────────────────────────
 
   static const String character = '🧑';

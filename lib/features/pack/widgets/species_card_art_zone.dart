@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/habitat_colors.dart';
@@ -46,7 +47,7 @@ class SpeciesCardArtZone extends StatelessWidget {
   String get _fallbackEmoji {
     if (animalClass != null) return GameIcons.animalClass(animalClass!);
     if (animalType != null) return GameIcons.animalType(animalType!);
-    return '🐾';
+    return GameIcons.category(ItemCategory.fauna);
   }
 
   @override

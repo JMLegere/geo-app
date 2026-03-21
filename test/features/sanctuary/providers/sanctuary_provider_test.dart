@@ -11,6 +11,7 @@ import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -279,11 +280,11 @@ void main() {
     });
 
     test('icon returns correct icon for each tab', () {
-      expect(SanctuaryTab.zoo.icon, '🏠');
-      expect(SanctuaryTab.feeding.icon, '🍎');
-      expect(SanctuaryTab.breeding.icon, '🧬');
-      expect(SanctuaryTab.museum.icon, '🏛️');
-      expect(SanctuaryTab.achievements.icon, '🏆');
+      expect(SanctuaryTab.zoo.icon, GameIcons.zoo);
+      expect(SanctuaryTab.feeding.icon, GameIcons.feeding);
+      expect(SanctuaryTab.breeding.icon, GameIcons.breeding);
+      expect(SanctuaryTab.museum.icon, GameIcons.museum);
+      expect(SanctuaryTab.achievements.icon, GameIcons.achievements);
     });
   });
 

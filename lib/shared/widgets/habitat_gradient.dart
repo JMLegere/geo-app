@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/habitat_colors.dart';
 
 /// Builds a habitat-keyed gradient [BoxDecoration] for species cards.
@@ -60,13 +61,5 @@ abstract final class HabitatGradient {
   }
 
   /// Returns the habitat icon for placeholder art.
-  static String icon(Habitat habitat) => switch (habitat) {
-        Habitat.forest => '🌲',
-        Habitat.plains => '🌾',
-        Habitat.freshwater => '💧',
-        Habitat.saltwater => '🌊',
-        Habitat.swamp => '🌿',
-        Habitat.mountain => '⛰️',
-        Habitat.desert => '🏜️',
-      };
+  static String icon(Habitat habitat) => GameIcons.habitat(habitat);
 }

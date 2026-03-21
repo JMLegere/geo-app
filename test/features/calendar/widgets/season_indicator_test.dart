@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/models/season.dart';
 import 'package:earth_nova/features/calendar/widgets/season_indicator.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -52,7 +53,7 @@ void main() {
         _wrap(const SeasonIndicator(season: Season.summer)),
       );
 
-      expect(find.text('☀️'), findsOneWidget);
+      expect(find.text(GameIcons.season(Season.summer)), findsOneWidget);
     });
 
     testWidgets('shows ❄️ icon in winter', (tester) async {
@@ -60,7 +61,7 @@ void main() {
         _wrap(const SeasonIndicator(season: Season.winter)),
       );
 
-      expect(find.text('❄️'), findsOneWidget);
+      expect(find.text(GameIcons.season(Season.winter)), findsOneWidget);
     });
 
     testWidgets('summer has yellow-ish background (amber-50 #FFF9C4)',

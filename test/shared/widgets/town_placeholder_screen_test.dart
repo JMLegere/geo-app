@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/town_placeholder_screen.dart';
 
 void main() {
@@ -9,7 +10,7 @@ void main() {
         const MaterialApp(home: TownPlaceholderScreen()),
       );
 
-      expect(find.text('🏘️'), findsOneWidget);
+      expect(find.text(GameIcons.town), findsOneWidget);
       expect(find.text('Town — Coming Soon'), findsOneWidget);
       expect(find.textContaining('Discover NPCs'), findsOneWidget);
     });

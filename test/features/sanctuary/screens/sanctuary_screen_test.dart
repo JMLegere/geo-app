@@ -13,6 +13,7 @@ import 'package:earth_nova/features/auth/providers/upgrade_prompt_provider.dart'
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
 import 'package:earth_nova/features/sanctuary/providers/sanctuary_provider.dart';
 import 'package:earth_nova/features/sanctuary/screens/sanctuary_screen.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/sanctuary/widgets/sanctuary_health_indicator.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 
@@ -154,21 +155,21 @@ void main() {
 
     testWidgets('tapping Feeding tab shows coming-soon stub', (tester) async {
       await _pumpScreen(tester);
-      await tester.tap(find.text('🍎 Feeding'));
+      await tester.tap(find.text('${GameIcons.feeding} Feeding'));
       await tester.pumpAndSettle();
       expect(find.text('Feeding coming soon'), findsOneWidget);
     });
 
     testWidgets('tapping Breeding tab shows coming-soon stub', (tester) async {
       await _pumpScreen(tester);
-      await tester.tap(find.text('🧬 Breeding'));
+      await tester.tap(find.text('${GameIcons.breeding} Breeding'));
       await tester.pumpAndSettle();
       expect(find.text('Breeding coming soon'), findsOneWidget);
     });
 
     testWidgets('tapping Museum tab shows coming-soon stub', (tester) async {
       await _pumpScreen(tester);
-      await tester.tap(find.text('🏛️ Museum'));
+      await tester.tap(find.text('${GameIcons.museum} Museum'));
       await tester.pumpAndSettle();
       expect(find.text('Museum coming soon'), findsOneWidget);
     });
@@ -176,7 +177,7 @@ void main() {
     testWidgets('tapping Achievements tab shows achievement list',
         (tester) async {
       await _pumpScreen(tester);
-      await tester.tap(find.text('🏆 Achievements'));
+      await tester.tap(find.text('${GameIcons.achievements} Achievements'));
       await tester.pumpAndSettle();
       // Achievement list shows "X / Y Unlocked" header
       expect(find.textContaining('Unlocked'), findsOneWidget);

@@ -4,6 +4,7 @@ import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
+import 'package:earth_nova/shared/game_icons.dart';
 
 // ---------------------------------------------------------------------------
 // Sanctuary Tab enum
@@ -26,11 +27,11 @@ enum SanctuaryTab {
       };
 
   String get icon => switch (this) {
-        SanctuaryTab.zoo => '🏠',
-        SanctuaryTab.feeding => '🍎',
-        SanctuaryTab.breeding => '🧬',
-        SanctuaryTab.museum => '🏛️',
-        SanctuaryTab.achievements => '🏆',
+        SanctuaryTab.zoo => GameIcons.zoo,
+        SanctuaryTab.feeding => GameIcons.feeding,
+        SanctuaryTab.breeding => GameIcons.breeding,
+        SanctuaryTab.museum => GameIcons.museum,
+        SanctuaryTab.achievements => GameIcons.achievements,
       };
 }
 
