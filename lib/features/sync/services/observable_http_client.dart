@@ -78,7 +78,10 @@ class ObservableHttpClient extends BaseClient {
           path.contains('/functions/') ||
           path.contains('/auth/');
 
-      if (expectsJson && !contentType.contains('json')) {
+      // 204 No Content and 201 Created with empty body are valid — don't flag.
+      final hasBody = response.statusCode != 204 && response.contentLength != 0;
+
+      if (expectsJson && hasBody && !contentType.contains('json')) {
         // Read the body to log it, then re-wrap into a new StreamedResponse
         // so downstream consumers can still read it (streams are single-use).
         final bodyBytes = await response.stream.toBytes();
