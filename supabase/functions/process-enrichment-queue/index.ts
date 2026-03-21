@@ -41,13 +41,18 @@ const PROVIDERS: Provider[] = [
 
 // ── Image Generation Providers ──────────────────────────────────────────────
 
+interface ImageResult {
+  bytes: Uint8Array;
+  mimeType: string; // e.g. "image/png", "image/webp"
+}
+
 interface ImageProvider {
   name: string;
   keyEnv: string;
   generate: (
     apiKey: string,
     prompt: string,
-  ) => Promise<Uint8Array | null>;
+  ) => Promise<ImageResult | null>;
   rpmDelay: number; // ms to sleep between calls to respect rate limits
 }
 
@@ -56,7 +61,7 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
     name: "gemini",
     keyEnv: "GEMINI_API_KEY",
     rpmDelay: 7000, // 10 RPM → 6s min, use 7s for safety
-    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+    generate: async (apiKey: string, prompt: string): Promise<ImageResult | null> => {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
         {
@@ -83,7 +88,7 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          return bytes;
+          return { bytes, mimeType: part.inlineData.mimeType };
         }
       }
       throw new Error("No image in Gemini response");
@@ -93,7 +98,7 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
     name: "together-flux",
     keyEnv: "TOGETHER_API_KEY",
     rpmDelay: 2000, // Together AI is more generous
-    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+    generate: async (apiKey: string, prompt: string): Promise<ImageResult | null> => {
       const response = await fetch("https://api.together.xyz/v1/images/generations", {
         method: "POST",
         headers: {
@@ -122,14 +127,14 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      return bytes;
+      return { bytes, mimeType: "image/webp" };
     },
   },
   {
     name: "leonardo",
     keyEnv: "LEONARDO_API_KEY",
     rpmDelay: 5000, // Conservative for free tier
-    generate: async (apiKey: string, prompt: string): Promise<Uint8Array | null> => {
+    generate: async (apiKey: string, prompt: string): Promise<ImageResult | null> => {
       // Leonardo uses async generation: create → poll → download
       const createResponse = await fetch("https://cloud.leonardo.ai/api/rest/v1/generations", {
         method: "POST",
@@ -166,7 +171,7 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
           const imageUrl = images[0].url;
           const imageResponse = await fetch(imageUrl);
           if (!imageResponse.ok) throw new Error(`Failed to download Leonardo image: ${imageResponse.status}`);
-          return new Uint8Array(await imageResponse.arrayBuffer());
+          return { bytes: new Uint8Array(await imageResponse.arrayBuffer()), mimeType: "image/webp" };
         }
       }
       throw new Error("Leonardo generation timed out (30s)");
@@ -358,7 +363,10 @@ soft shading with 3-4 color tones, smooth anti-aliased edges.
 Simplified detail but clearly identifiable species — a tiny portrait
 with personality, not a blob.
 
-Transparent background. No text, no shadows on ground, no effects.`;
+Render on a perfectly transparent background (alpha channel = 0).
+The sprite floats with no ground plane, no drop shadow, no glow,
+no background color — just the creature and nothing else.
+Output as PNG with transparency.`;
   }
 
   let pose = "natural resting pose, calm and content";
@@ -424,12 +432,13 @@ async function generateAndUploadArt(
   enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null },
   logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
 ): Promise<{ url: string; provider: string } | "rate_limited" | null> {
-  const fileName = assetType === "icon" ? `${definitionId}_icon.webp` : `${definitionId}.webp`;
+  const filePrefix = assetType === "icon" ? `${definitionId}_icon` : definitionId;
 
-  // Check if already exists in storage
-  const { data: existingFile } = await supabase.storage.from(ART_BUCKET).list("", { search: fileName });
-  if (existingFile && existingFile.length > 0) {
-    const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
+  // Check if already exists in storage (any extension).
+  const { data: existingFile } = await supabase.storage.from(ART_BUCKET).list("", { search: filePrefix });
+  const existing = existingFile?.find((f: any) => f.name.startsWith(filePrefix));
+  if (existing) {
+    const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${existing.name}`;
     console.log(`[art] ${definitionId} ${assetType} already in storage`);
     if (logEvent) await logEvent('art_skipped', definitionId, { asset_type: assetType, metadata: { reason: 'already_in_storage' } });
     return { url, provider: "cache" };
@@ -446,23 +455,28 @@ async function generateAndUploadArt(
 
     for (let attempt = 0; attempt < ART_MAX_RETRIES; attempt++) {
       try {
-        const imageBytes = await provider.generate(apiKey, prompt);
+        const imageResult = await provider.generate(apiKey, prompt);
 
-        if (imageBytes === null) {
+        if (imageResult === null) {
           // Rate limited — try next provider
           console.log(`[art] ${provider.name} rate limited for ${definitionId} ${assetType}`);
           if (logEvent) await logEvent('rate_limited', definitionId, { asset_type: assetType, provider_name: provider.name });
           break; // break retry loop, continue to next provider
         }
 
-        // Upload to storage
+        // Upload to storage with the provider's actual mime type.
+        // Icons from Gemini may be PNG (with alpha); illustrations are typically WebP.
+        const ext = imageResult.mimeType === "image/png" ? "png" : "webp";
+        const actualFileName = assetType === "icon"
+          ? `${definitionId}_icon.${ext}`
+          : `${definitionId}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from(ART_BUCKET)
-          .upload(fileName, imageBytes, { contentType: "image/webp", upsert: true });
+          .upload(actualFileName, imageResult.bytes, { contentType: imageResult.mimeType, upsert: true });
 
         if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-        const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${fileName}`;
+        const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${actualFileName}`;
         const durationMs = Date.now() - startMs;
 
         // Update species row — bump enriched_at so client delta-sync picks up art changes
