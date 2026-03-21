@@ -43,6 +43,7 @@ class PrismaticBorder extends StatefulWidget {
     required this.child,
     this.borderRadius = Radii.lg,
     this.borderWidth = 2.5,
+    this.animation,
     super.key,
   });
 
@@ -56,11 +57,88 @@ class PrismaticBorder extends StatefulWidget {
   /// Thickness of the rainbow stroke in logical pixels.
   final double borderWidth;
 
+  /// Optional shared animation. When provided, no local controller is
+  /// created — all borders sharing the same animation tick in unison
+  /// from a single [AnimationController]. Use [PrismaticAnimationScope]
+  /// to provide one at the grid level.
+  final Animation<double>? animation;
+
   @override
   State<PrismaticBorder> createState() => _PrismaticBorderState();
 }
 
 class _PrismaticBorderState extends State<PrismaticBorder>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _ownController;
+
+  Animation<double> get _animation =>
+      widget.animation ?? (_ownController ??= _createController());
+
+  AnimationController _createController() {
+    return AnimationController(
+      vsync: this,
+      duration: Durations.prismaticCycle,
+    )..repeat();
+  }
+
+  @override
+  void didUpdateWidget(PrismaticBorder oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // External animation provided — dispose own controller if we had one.
+    if (widget.animation != null && _ownController != null) {
+      _ownController!.dispose();
+      _ownController = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final anim = _animation;
+    // AnimatedBuilder caches `child` so the subtree is not rebuilt each frame.
+    // Only the CustomPaint foreground layer repaints.
+    return AnimatedBuilder(
+      animation: anim,
+      builder: (context, child) => CustomPaint(
+        foregroundPainter: _PrismaticBorderPainter(
+          animationValue: anim.value,
+          borderRadius: widget.borderRadius,
+          borderWidth: widget.borderWidth,
+        ),
+        child: child,
+      ),
+      // RepaintBoundary isolates the child's layer from the per-frame repaint.
+      child: RepaintBoundary(child: widget.child),
+    );
+  }
+}
+
+/// Provides a shared [Animation<double>] for [PrismaticBorder] widgets
+/// in a subtree. Place at the grid level so all first-discovery items
+/// share a single [AnimationController] instead of one each.
+class PrismaticAnimationScope extends StatefulWidget {
+  const PrismaticAnimationScope({required this.child, super.key});
+
+  final Widget child;
+
+  /// Retrieves the shared animation from the nearest scope, or null.
+  static Animation<double>? of(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_PrismaticAnimationInherited>()
+        ?.animation;
+  }
+
+  @override
+  State<PrismaticAnimationScope> createState() =>
+      _PrismaticAnimationScopeState();
+}
+
+class _PrismaticAnimationScopeState extends State<PrismaticAnimationScope>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -81,22 +159,23 @@ class _PrismaticBorderState extends State<PrismaticBorder>
 
   @override
   Widget build(BuildContext context) {
-    // AnimatedBuilder caches `child` so the subtree is not rebuilt each frame.
-    // Only the CustomPaint foreground layer repaints.
-    return AnimatedBuilder(
+    return _PrismaticAnimationInherited(
       animation: _controller,
-      builder: (context, child) => CustomPaint(
-        foregroundPainter: _PrismaticBorderPainter(
-          animationValue: _controller.value,
-          borderRadius: widget.borderRadius,
-          borderWidth: widget.borderWidth,
-        ),
-        child: child,
-      ),
-      // RepaintBoundary isolates the child's layer from the per-frame repaint.
-      child: RepaintBoundary(child: widget.child),
+      child: widget.child,
     );
   }
+}
+
+class _PrismaticAnimationInherited extends InheritedWidget {
+  const _PrismaticAnimationInherited({
+    required this.animation,
+    required super.child,
+  });
+
+  final Animation<double> animation;
+
+  @override
+  bool updateShouldNotify(_PrismaticAnimationInherited old) => false;
 }
 
 // ── Painter ──────────────────────────────────────────────────────────────────

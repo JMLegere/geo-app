@@ -61,6 +61,29 @@ class DriftSpeciesRepository implements SpeciesRepository {
   }
 
   @override
+  Future<List<FaunaDefinition>> getByIds(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    // SQLite has a variable limit (~999), batch if needed.
+    final results = <FaunaDefinition>[];
+    const batchSize = 500;
+    for (var i = 0; i < ids.length; i += batchSize) {
+      final batch = ids.sublist(
+          i, i + batchSize > ids.length ? ids.length : i + batchSize);
+      final rows = await (_db.select(_db.localSpeciesTable)
+            ..where((t) => t.definitionId.isIn(batch)))
+          .get();
+      for (final row in rows) {
+        try {
+          results.add(FaunaDefinition.fromDrift(row));
+        } on ArgumentError {
+          // skip unparseable
+        }
+      }
+    }
+    return results;
+  }
+
+  @override
   Future<int> count() async {
     final result = await _db.localSpeciesTable.count().getSingle();
     return result;

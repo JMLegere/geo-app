@@ -8,11 +8,15 @@ import 'package:earth_nova/features/pack/widgets/species_card_modal.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
+import 'package:earth_nova/shared/widgets/prismatic_border.dart';
 
 /// 6-column grid of all fauna ItemInstances the player owns.
 ///
 /// Reads from [packProvider]. Tapping a slot opens the species card modal.
 /// Shows [EmptyStateWidget] when the player has no fauna yet.
+///
+/// Wraps the grid in a [PrismaticAnimationScope] so all first-discovery
+/// items share a single [AnimationController] instead of one each.
 class FaunaGridTab extends ConsumerWidget {
   const FaunaGridTab({super.key});
 
@@ -29,56 +33,36 @@ class FaunaGridTab extends ConsumerWidget {
       );
     }
 
-    // Log art URL resolution summary on every grid build.
-    int withItemUrl = 0;
-    int withDefUrl = 0;
-    int withNoUrl = 0;
-    int noDef = 0;
-    for (final item in items) {
-      final def =
-          ref.read(packProvider.notifier).resolveFauna(item.definitionId);
-      if (item.iconUrl != null) {
-        withItemUrl++;
-      } else if (def == null) {
-        noDef++;
-      } else if (def.iconUrl != null) {
-        withDefUrl++;
-      } else {
-        withNoUrl++;
-      }
-    }
     // ignore: avoid_print
-    print(
-      '[ART] grid build: ${items.length} items, '
-      'itemUrl=$withItemUrl, defUrl=$withDefUrl, '
-      'noUrl=$withNoUrl, noDef=$noDef',
-    );
+    print('[ART] grid build: ${items.length} items');
 
-    return GridView.builder(
-      padding: EdgeInsets.all(Spacing.sm),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 6,
-        childAspectRatio: 0.85,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        final definition =
-            ref.read(packProvider.notifier).resolveFauna(item.definitionId);
+    return PrismaticAnimationScope(
+      child: GridView.builder(
+        padding: EdgeInsets.all(Spacing.sm),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 6,
+          childAspectRatio: 0.85,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final definition =
+              ref.read(packProvider.notifier).resolveFauna(item.definitionId);
 
-        return ItemSlotWidget(
-          key: ValueKey(item.id),
-          item: item,
-          definition: definition,
-          onTap: () => showSpeciesCardModal(
-            context,
+          return ItemSlotWidget(
+            key: ValueKey(item.id),
             item: item,
             definition: definition,
-          ),
-        );
-      },
+            onTap: () => showSpeciesCardModal(
+              context,
+              item: item,
+              definition: definition,
+            ),
+          );
+        },
+      ),
     );
   }
 }

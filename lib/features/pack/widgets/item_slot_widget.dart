@@ -157,10 +157,12 @@ class ItemSlotWidget extends StatelessWidget {
     );
 
     // Wrap first-discovery slots in the animated prismatic border.
+    // Uses shared animation from PrismaticAnimationScope if available.
     if (item.isFirstDiscovery) {
       return PrismaticBorder(
         borderRadius: Radii.lg,
         borderWidth: 2.5,
+        animation: PrismaticAnimationScope.of(context),
         child: slot,
       );
     }
