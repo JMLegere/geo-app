@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
+
 import 'package:http/http.dart';
 
 import 'package:earth_nova/core/services/observability_buffer.dart';
@@ -9,6 +10,10 @@ import 'package:earth_nova/core/services/observability_buffer.dart';
 /// Injected into [Supabase.initialize(httpClient:)] so all REST,
 /// Edge Function, and Auth calls are automatically instrumented
 /// without per-site boilerplate.
+///
+/// Also detects non-JSON responses (from ad blockers, privacy extensions,
+/// VPNs, or CDN error pages) and logs the raw body loudly before the
+/// Supabase client tries to parse it and throws a cryptic FormatException.
 class ObservableHttpClient extends BaseClient {
   ObservableHttpClient([Client? inner]) : _inner = inner ?? Client();
 
@@ -34,7 +39,8 @@ class ObservableHttpClient extends BaseClient {
       'target': target,
     });
 
-    debugPrint('[API] → ${request.method} $operation $target');
+    // ignore: avoid_print
+    print('[API] → ${request.method} $operation $target');
 
     final sw = Stopwatch()..start();
     try {
@@ -51,10 +57,65 @@ class ObservableHttpClient extends BaseClient {
         'status': status,
       });
 
-      debugPrint(
+      // ignore: avoid_print
+      print(
         '[API] ← ${response.statusCode} $operation $target '
         '${sw.elapsedMilliseconds}ms',
       );
+
+      // ── Non-JSON response detection ─────────────────────────────────
+      // Ad blockers, privacy extensions, and VPN browser extensions can
+      // intercept requests to *.supabase.co and return HTML error pages,
+      // plain text, or blocked-content responses instead of JSON. The
+      // Supabase client will then throw a cryptic FormatException like
+      // "Unexpected identifier 'version'" when it tries to JSON-parse.
+      //
+      // We intercept here: read the body, check if it's valid JSON,
+      // and if not, log the raw body loudly so we can diagnose.
+      final contentType = response.headers['content-type'] ?? '';
+      final expectsJson = path.contains('/rest/') ||
+          path.contains('/rpc/') ||
+          path.contains('/functions/') ||
+          path.contains('/auth/');
+
+      if (expectsJson && !contentType.contains('json')) {
+        // Read the body to log it, then re-wrap into a new StreamedResponse
+        // so downstream consumers can still read it (streams are single-use).
+        final bodyBytes = await response.stream.toBytes();
+        final bodyPreview =
+            utf8.decode(bodyBytes, allowMalformed: true).substring(
+                  0,
+                  bodyBytes.length > 500 ? 500 : bodyBytes.length,
+                );
+
+        // ignore: avoid_print
+        print(
+          '[API] ⚠️ NON-JSON RESPONSE for $operation $target '
+          '(content-type: $contentType). '
+          'Body preview: $bodyPreview',
+        );
+        ObservabilityBuffer.instance?.event('api_non_json_response', {
+          'method': request.method,
+          'operation': operation,
+          'target': target,
+          'status_code': response.statusCode,
+          'content_type': contentType,
+          'body_preview': bodyPreview,
+          'duration_ms': sw.elapsedMilliseconds,
+        });
+
+        // Re-wrap body so downstream still gets the bytes (and the error).
+        return StreamedResponse(
+          ByteStream.fromBytes(bodyBytes),
+          response.statusCode,
+          contentLength: bodyBytes.length,
+          headers: response.headers,
+          reasonPhrase: response.reasonPhrase,
+          request: response.request,
+          isRedirect: response.isRedirect,
+          persistentConnection: response.persistentConnection,
+        );
+      }
 
       return response;
     } catch (e) {
@@ -69,7 +130,8 @@ class ObservableHttpClient extends BaseClient {
         'error': '$e',
       });
 
-      debugPrint(
+      // ignore: avoid_print
+      print(
         '[API] ← ERR $operation $target '
         '${sw.elapsedMilliseconds}ms $e',
       );
