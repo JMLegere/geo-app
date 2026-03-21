@@ -63,6 +63,9 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
   @override
   void didUpdateWidget(SpeciesArtImage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.artUrl != null && widget.artUrl == null) {
+      print('[ART] artUrl went NULL (was ${_shortUrl(oldWidget.artUrl!)})');
+    }
     if (_shouldAnimate != (oldWidget.animate && oldWidget.artUrl != null)) {
       _maybeCreateController();
     }
