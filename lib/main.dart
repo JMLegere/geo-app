@@ -133,12 +133,15 @@ Future<void> main() async {
   // AND catches any unhandled async exceptions (Future rejections, Timer
   // callbacks, microtask errors) that would otherwise crash the app.
   runZonedGuarded(
-    () => runApp(UncontrolledProviderScope(
-      container: container,
-      child: const _ObservabilityLifecycleObserver(
-        child: EarthNovaApp(),
-      ),
-    )),
+    () {
+      runApp(UncontrolledProviderScope(
+        container: container,
+        child: const _ObservabilityLifecycleObserver(
+          child: EarthNovaApp(),
+        ),
+      ));
+      _setupPerfMonitoring();
+    },
     (Object error, StackTrace stack) {
       DebugLogBuffer.instance.add('[CRASH] Unhandled: $error');
       final frames = stack.toString().split('\n').take(15).join('\n');
@@ -160,8 +163,11 @@ Future<void> main() async {
       },
     ),
   );
+}
 
-  // Frame performance monitoring + rendering watchdog.
+/// Performance monitoring — must be called inside runZonedGuarded so that
+/// print() goes through the zone's print override → DebugLogBuffer.
+void _setupPerfMonitoring() {
   print('[PERF] heartbeat initialized (10s interval)');
   var lastFrameTime = DateTime.now();
   var slowFrameCount = 0;
@@ -176,7 +182,6 @@ Future<void> main() async {
       if (totalMs > 16) {
         slowFrameCount++;
         if (totalMs > worstFrameMs) worstFrameMs = totalMs;
-        // Only log individually if really bad (>100ms)
         if (totalMs > 100) {
           print(
               '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
@@ -190,29 +195,19 @@ Future<void> main() async {
     }
   });
 
-  // Periodic performance heartbeat — every 10s, log image cache + frame stats.
   Timer.periodic(const Duration(seconds: 10), (_) {
     final cache = PaintingBinding.instance.imageCache;
-    final cacheSize = cache.currentSizeBytes;
-    final cacheSizeMb = (cacheSize / (1024 * 1024)).toStringAsFixed(1);
-    final cacheCount = cache.currentSize;
-    final liveCount = cache.liveImageCount;
-    final pendingCount = cache.pendingImageCount;
-
+    final cacheSizeMb =
+        (cache.currentSizeBytes / (1024 * 1024)).toStringAsFixed(1);
     print(
-      '[PERF] imgCache: ${cacheCount} cached (${cacheSizeMb}MB), '
-      '${liveCount} live, ${pendingCount} pending | '
+      '[PERF] imgCache: ${cache.currentSize} cached (${cacheSizeMb}MB), '
+      '${cache.liveImageCount} live, ${cache.pendingImageCount} pending | '
       'slowFrames: $slowFrameCount (worst: ${worstFrameMs}ms)',
     );
-
-    // Reset counters for next window
     slowFrameCount = 0;
     worstFrameMs = 0;
   });
 
-  // Rendering watchdog: if no frames paint for 3+ seconds, the UI is dead
-  // but the Dart VM is alive. This detects the "blank screen" condition
-  // where rendering stops without a crash or tab kill.
   Timer.periodic(const Duration(seconds: 3), (_) {
     final gap = DateTime.now().difference(lastFrameTime);
     if (gap.inSeconds >= 3) {
