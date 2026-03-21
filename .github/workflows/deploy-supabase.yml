@@ -107,7 +107,7 @@ jobs:
           run_sql "ALTER TABLE enrichment_events ENABLE ROW LEVEL SECURITY"
           run_sql "GRANT ALL ON enrichment_events TO service_role"
           run_sql "GRANT SELECT ON enrichment_events TO authenticated"
-          run_sql "SELECT cron.schedule('process-enrichment-queue', '0 * * * *', \$\$SELECT net.http_post(url := 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/process-enrichment-queue', headers := '{\"Content-Type\": \"application/json\"}'::jsonb, body := '{}'::jsonb);\$\$)"
+          run_sql "SELECT cron.schedule('process-enrichment-queue', '*/5 * * * *', \$\$SELECT net.http_post(url := 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/process-enrichment-queue', headers := '{\"Content-Type\": \"application/json\"}'::jsonb, body := '{}'::jsonb);\$\$)"
           run_sql "NOTIFY pgrst, 'reload schema'"
           insert_version "021_enrichment_observability" "enrichment_observability"
           echo "Migration 021 applied (enrichment_events table + pg_cron)."

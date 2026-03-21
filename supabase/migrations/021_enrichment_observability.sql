@@ -35,7 +35,7 @@ GRANT ALL ON enrichment_events TO service_role;
 -- Schedule hourly enrichment queue processing
 SELECT cron.schedule(
   'process-enrichment-queue',
-  '0 * * * *',
+  '*/5 * * * *',
   $$
   SELECT net.http_post(
     url := 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/process-enrichment-queue',

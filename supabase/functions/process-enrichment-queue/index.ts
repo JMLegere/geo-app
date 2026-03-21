@@ -543,84 +543,72 @@ serve(async (req: Request) => {
   let icons = 0;
   let illustrations = 0;
 
-  // ── Pass 1: Classification ───────────────────────────────────────────────
+  // ── Pass 1: Classify ONE species ────────────────────────────────────────
+  //
+  // Process a single species per invocation to stay within the free-tier
+  // Edge Function resource limits (2s CPU, 256MB memory). The pg_cron job
+  // runs hourly; increase frequency for faster backfill.
 
   try {
     const availableProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
     if (availableProviders.length === 0) {
       errors.push("Pass 1 skipped: no AI provider API keys configured");
     } else {
-      // Get distinct definition_ids that have been discovered
-      const { data: discoveredRows, error: instancesErr } = await supabase
-        .from("item_instances")
-        .select("definition_id")
-        .limit(10000);
+      // Find one discovered species that needs classification.
+      // Uses an RPC call to avoid fetching 10K item_instances rows.
+      const { data: needsClassification, error: speciesErr } = await supabase
+        .from("species")
+        .select("definition_id, scientific_name, common_name, taxonomic_class")
+        .is("animal_class", null)
+        .limit(1)
+        .maybeSingle();
 
-      if (instancesErr) throw new Error(`Failed to query item_instances: ${instancesErr.message}`);
+      if (speciesErr) throw new Error(`Failed to query species: ${speciesErr.message}`);
 
-      const uniqueIds = [...new Set((discoveredRows ?? []).map((r: any) => r.definition_id))];
+      if (!needsClassification) {
+        console.log('[pass1] nothing to classify');
+      } else {
+        const species = needsClassification as SpeciesRow;
+        const startMs = Date.now();
+        try {
+          const { result: enrichment, providerName } = await callLLMWithRotation(
+            availableProviders,
+            species.scientific_name,
+            species.common_name,
+            species.taxonomic_class,
+          );
+          const durationMs = Date.now() - startMs;
 
-      if (uniqueIds.length > 0) {
-        const { data: needsClassification, error: speciesErr } = await supabase
-          .from("species")
-          .select("definition_id, scientific_name, common_name, taxonomic_class")
-          .is("animal_class", null)
-          .in("definition_id", uniqueIds)
-          .order("definition_id")
-          .limit(10);
+          const { error: updateErr } = await supabase
+            .from("species")
+            .update({
+              animal_class: enrichment.animal_class,
+              food_preference: enrichment.food_preference,
+              climate: enrichment.climate,
+              brawn: enrichment.brawn,
+              wit: enrichment.wit,
+              speed: enrichment.speed,
+              size: enrichment.size,
+              enriched_at: new Date().toISOString(),
+            })
+            .eq("definition_id", species.definition_id);
 
-        if (speciesErr) throw new Error(`Failed to query species: ${speciesErr.message}`);
+          if (updateErr) throw new Error(`UPDATE failed for ${species.definition_id}: ${updateErr.message}`);
 
-        const toClassify = (needsClassification ?? []) as SpeciesRow[];
-        if (toClassify.length === 0) {
-          console.log('[pass1] nothing to classify');
-        }
-
-        for (const species of toClassify) {
-          const startMs = Date.now();
-          try {
-            const { result: enrichment, providerName } = await callLLMWithRotation(
-              availableProviders,
-              species.scientific_name,
-              species.common_name,
-              species.taxonomic_class,
-            );
-            const durationMs = Date.now() - startMs;
-
-            const { error: updateErr } = await supabase
-              .from("species")
-              .update({
-                animal_class: enrichment.animal_class,
-                food_preference: enrichment.food_preference,
-                climate: enrichment.climate,
-                brawn: enrichment.brawn,
-                wit: enrichment.wit,
-                speed: enrichment.speed,
-                size: enrichment.size,
-                enriched_at: new Date().toISOString(),
-              })
-              .eq("definition_id", species.definition_id);
-
-            if (updateErr) throw new Error(`UPDATE failed for ${species.definition_id}: ${updateErr.message}`);
-
-            classified++;
-            console.log(`[pass1] classified ${species.scientific_name} → ${enrichment.animal_class}`);
-            await logEvent('classification_success', species.definition_id, {
-              provider_name: providerName,
-              duration_ms: durationMs,
-            });
-          } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
-            errors.push(`Pass 1 classify ${species.definition_id}: ${message}`);
-            console.error(`[pass1] error for ${species.definition_id}: ${message}`);
-            await logEvent('classification_error', species.definition_id, {
-              error_message: message,
-              duration_ms: Date.now() - startMs,
-            });
-          }
-
-          // Rate limiting: 1s between LLM calls
-          await new Promise(r => setTimeout(r, 1000));
+          classified++;
+          console.log(`[pass1] classified ${species.scientific_name} → ${enrichment.animal_class}`);
+          await logEvent('classification_success', species.definition_id, {
+            provider_name: providerName,
+            duration_ms: durationMs,
+          });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`Pass 1 classify ${species.definition_id}: ${message}`);
+          console.error(`[pass1] error for ${species.definition_id}: ${message}`);
+          await logEvent('classification_error', species.definition_id, {
+            error_message: message,
+            duration_ms: Date.now() - startMs,
+          });
         }
       }
     }
@@ -630,85 +618,65 @@ serve(async (req: Request) => {
     console.error(`[pass1] fatal: ${message}`);
   }
 
-  // ── Pass 2: Art Generation ───────────────────────────────────────────────
+  // ── Pass 2: Generate art for ONE species ──────────────────────────────
 
   try {
     const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
     if (availableImageProviders.length === 0) {
       errors.push("Pass 2 skipped: no image provider API keys configured");
     } else {
-      // Get distinct definition_ids that have been discovered
-      const { data: discoveredRows, error: instancesErr } = await supabase
-        .from("item_instances")
-        .select("definition_id")
-        .limit(10000);
+      // Find one classified species that needs art.
+      const { data: needsArt, error: artErr } = await supabase
+        .from("species")
+        .select("definition_id, scientific_name, common_name, animal_class, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
+        .not("animal_class", "is", null)
+        .or("icon_url.is.null,art_url.is.null")
+        .order("enriched_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      if (instancesErr) throw new Error(`Failed to query item_instances: ${instancesErr.message}`);
+      if (artErr) throw new Error(`Failed to query species for art: ${artErr.message}`);
 
-      const uniqueIds = [...new Set((discoveredRows ?? []).map((r: any) => r.definition_id))];
+      if (!needsArt) {
+        console.log('[pass2] nothing to generate');
+      } else {
+        const species = needsArt as SpeciesRow;
 
-      if (uniqueIds.length > 0) {
-        const { data: needsArt, error: artErr } = await supabase
-          .from("species")
-          .select("definition_id, scientific_name, common_name, animal_class, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
-          .not("animal_class", "is", null)
-          .in("definition_id", uniqueIds)
-          .or("icon_url.is.null,art_url.is.null")
-          .order("enriched_at", { ascending: true })
-          .limit(5);
+        const enrichmentCtx = {
+          climate: species.climate,
+          brawn: species.brawn,
+          wit: species.wit,
+          speed: species.speed,
+          habitat: parseFirstHabitat(species.habitats_json),
+        };
 
-        if (artErr) throw new Error(`Failed to query species for art: ${artErr.message}`);
-
-        const toGenerate = (needsArt ?? []) as SpeciesRow[];
-        if (toGenerate.length === 0) {
-          console.log('[pass2] nothing to generate');
+        // Generate icon if missing
+        if (!species.icon_url) {
+          const result = await generateAndUploadArt(
+            supabase, supabaseUrl,
+            species.definition_id, species.scientific_name, species.common_name,
+            "icon", enrichmentCtx, logEvent,
+          );
+          if (result === "rate_limited") {
+            errors.push("Pass 2 stopped: all image providers rate limited");
+          } else if (result) {
+            icons++;
+          }
         }
 
-        let rateLimited = false;
-
-        for (const species of toGenerate) {
-          if (rateLimited) break;
-
-          const enrichmentCtx = {
-            climate: species.climate,
-            brawn: species.brawn,
-            wit: species.wit,
-            speed: species.speed,
-            habitat: parseFirstHabitat(species.habitats_json),
-          };
-
-          // Generate icon if missing
-          if (!species.icon_url) {
-            const result = await generateAndUploadArt(
-              supabase, supabaseUrl,
-              species.definition_id, species.scientific_name, species.common_name,
-              "icon", enrichmentCtx, logEvent,
-            );
-            if (result === "rate_limited") {
-              rateLimited = true;
-              errors.push("Pass 2 stopped: all image providers rate limited");
-              break;
-            }
-            if (result && result !== "rate_limited") {
-              icons++;
-            }
-          }
-
-          // Generate illustration if missing (and not rate-limited)
-          if (!rateLimited && !species.art_url) {
-            const result = await generateAndUploadArt(
-              supabase, supabaseUrl,
-              species.definition_id, species.scientific_name, species.common_name,
-              "illustration", enrichmentCtx, logEvent,
-            );
-            if (result === "rate_limited") {
-              rateLimited = true;
-              errors.push("Pass 2 stopped: all image providers rate limited");
-              break;
-            }
-            if (result && result !== "rate_limited") {
-              illustrations++;
-            }
+        // Generate illustration if missing
+        if (!species.art_url && icons === 0) {
+          // Only attempt illustration if we didn't just generate an icon
+          // (keep each invocation light).
+          const result = await generateAndUploadArt(
+            supabase, supabaseUrl,
+            species.definition_id, species.scientific_name, species.common_name,
+            "illustration", enrichmentCtx, logEvent,
+          );
+          if (result === "rate_limited") {
+            errors.push("Pass 2 stopped: all image providers rate limited");
+          } else if (result) {
+            illustrations++;
           }
         }
       }
