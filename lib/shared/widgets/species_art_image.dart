@@ -85,7 +85,7 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
   void deactivate() {
     if (widget.artUrl != null && kIsWeb) {
       // ignore: avoid_print
-      print('[ART UNLOAD] ${widget.artUrl!.split('/').last} deactivated');
+      print('[ART] unload ${widget.artUrl!.split('/').last} deactivated');
     }
     super.deactivate();
   }
@@ -132,8 +132,12 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
         height: widget.size,
         fit: BoxFit.cover,
         frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-          if (frame != null && !wasSynchronouslyLoaded) {
-            print('[ART] loaded $shortName (network fetch — cache miss)');
+          if (frame != null) {
+            if (wasSynchronouslyLoaded) {
+              print('[ART] $shortName (cache hit)');
+            } else {
+              print('[ART] $shortName (network fetch — cache miss)');
+            }
           }
           return AnimatedOpacity(
             opacity: frame != null ? 1.0 : 0.0,
@@ -142,7 +146,7 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
           );
         },
         errorBuilder: (context, error, stackTrace) {
-          print('[ART FAIL] image load error for ${widget.artUrl}: $error');
+          print('[ART] FAIL load error for ${widget.artUrl}: $error');
           return _buildEmojiFallback();
         },
       );
@@ -157,8 +161,7 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
 
     // 2-frame idle hop: frame 1 = resting, frame 2 = shifted up 1-2px.
     if (_shouldAnimate && _controller != null) {
-      final phaseOffset =
-          (widget.animationSeed.hashCode & 0xFFFF) / 0xFFFF;
+      final phaseOffset = (widget.animationSeed.hashCode & 0xFFFF) / 0xFFFF;
       content = RepaintBoundary(
         child: AnimatedBuilder(
           animation: _controller!,

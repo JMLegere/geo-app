@@ -109,6 +109,7 @@ class DebugLogBuffer {
     // Always-pass tags bypass severity filtering so they appear in
     // the in-app debug viewer regardless of minLevel.
     final alwaysPass = line.contains('[API]') ||
+        line.contains('[ART]') ||
         line.contains('[Startup]') ||
         line.contains('[GameCoordinator]');
 
