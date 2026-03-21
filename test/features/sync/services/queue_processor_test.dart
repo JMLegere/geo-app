@@ -221,6 +221,38 @@ class _MockSupabasePersistence extends SupabasePersistence {
     String? habitatsJson,
     String? continentsJson,
     String? taxonomicClass,
+    String? animalClassName,
+    String? animalClassNameEnrichver,
+    String? foodPreferenceName,
+    String? foodPreferenceNameEnrichver,
+    String? climateName,
+    String? climateNameEnrichver,
+    int? brawn,
+    String? brawnEnrichver,
+    int? wit,
+    String? witEnrichver,
+    int? speed,
+    String? speedEnrichver,
+    String? sizeName,
+    String? sizeNameEnrichver,
+    String? iconUrlEnrichver,
+    String? artUrlEnrichver,
+    String? cellHabitatName,
+    String? cellHabitatNameEnrichver,
+    String? cellClimateName,
+    String? cellClimateNameEnrichver,
+    String? cellContinentName,
+    String? cellContinentNameEnrichver,
+    String? locationDistrict,
+    String? locationDistrictEnrichver,
+    String? locationCity,
+    String? locationCityEnrichver,
+    String? locationState,
+    String? locationStateEnrichver,
+    String? locationCountry,
+    String? locationCountryEnrichver,
+    String? locationCountryCode,
+    String? locationCountryCodeEnrichver,
   }) async {
     upsertItemInstanceCalls++;
     if (shouldThrowSyncException) throw SyncException(errorMessage);
@@ -1022,8 +1054,7 @@ void main() {
       expect(mockRepo.allEntries, isEmpty);
     });
 
-    test('flush does not coalesce entries with different entity IDs',
-        () async {
+    test('flush does not coalesce entries with different entity IDs', () async {
       final processor = QueueProcessor(
         queueRepo: mockRepo,
         persistence: mockPersistence,

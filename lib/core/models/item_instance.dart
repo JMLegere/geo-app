@@ -85,6 +85,82 @@ class ItemInstance {
   /// Instance-level illustration override. Null = use species default.
   final String? artUrl;
 
+  // ---------------------------------------------------------------------------
+  // Denormalized enrichment fields (snapshotted at discovery or lazily enriched)
+  // ---------------------------------------------------------------------------
+
+  // --- Species enrichment (base stats from FaunaDefinition) ---
+
+  /// AI-determined animal class name (e.g. "Carnivore"). Fauna only.
+  final String? animalClassName;
+  final String? animalClassNameEnrichver;
+
+  /// AI-determined food preference name (e.g. "food-critter"). Fauna only.
+  final String? foodPreferenceName;
+  final String? foodPreferenceNameEnrichver;
+
+  /// Climate zone name (e.g. "temperate"). Derived from species range.
+  final String? climateName;
+  final String? climateNameEnrichver;
+
+  /// AI-canonical brawn stat (contributes to stat total of 90).
+  final int? brawn;
+  final String? brawnEnrichver;
+
+  /// AI-canonical wit stat (contributes to stat total of 90).
+  final int? wit;
+  final String? witEnrichver;
+
+  /// AI-canonical speed stat (contributes to stat total of 90).
+  final int? speed;
+  final String? speedEnrichver;
+
+  /// AI-canonical size category name (e.g. "medium").
+  final String? sizeName;
+  final String? sizeNameEnrichver;
+
+  /// Pipeline version stamp for iconUrl enrichment.
+  final String? iconUrlEnrichver;
+
+  /// Pipeline version stamp for artUrl enrichment.
+  final String? artUrlEnrichver;
+
+  // --- Cell properties (from CellProperties at discovery) ---
+
+  /// Habitat name of the cell where this item was discovered.
+  final String? cellHabitatName;
+  final String? cellHabitatNameEnrichver;
+
+  /// Climate name of the cell where this item was discovered.
+  final String? cellClimateName;
+  final String? cellClimateNameEnrichver;
+
+  /// Continent name of the cell where this item was discovered.
+  final String? cellContinentName;
+  final String? cellContinentNameEnrichver;
+
+  // --- Location hierarchy (lazily enriched from LocationNode chain) ---
+
+  /// District-level location name (admin level 6 or equivalent).
+  final String? locationDistrict;
+  final String? locationDistrictEnrichver;
+
+  /// City-level location name.
+  final String? locationCity;
+  final String? locationCityEnrichver;
+
+  /// State/province-level location name.
+  final String? locationState;
+  final String? locationStateEnrichver;
+
+  /// Country name.
+  final String? locationCountry;
+  final String? locationCountryEnrichver;
+
+  /// ISO 3166-1 alpha-2 country code (e.g. "CA").
+  final String? locationCountryCode;
+  final String? locationCountryCodeEnrichver;
+
   /// Null for wild-caught. Set for bred offspring.
   final String? parentAId;
 
@@ -117,6 +193,38 @@ class ItemInstance {
     this.badges = const {},
     this.iconUrl,
     this.artUrl,
+    this.animalClassName,
+    this.animalClassNameEnrichver,
+    this.foodPreferenceName,
+    this.foodPreferenceNameEnrichver,
+    this.climateName,
+    this.climateNameEnrichver,
+    this.brawn,
+    this.brawnEnrichver,
+    this.wit,
+    this.witEnrichver,
+    this.speed,
+    this.speedEnrichver,
+    this.sizeName,
+    this.sizeNameEnrichver,
+    this.iconUrlEnrichver,
+    this.artUrlEnrichver,
+    this.cellHabitatName,
+    this.cellHabitatNameEnrichver,
+    this.cellClimateName,
+    this.cellClimateNameEnrichver,
+    this.cellContinentName,
+    this.cellContinentNameEnrichver,
+    this.locationDistrict,
+    this.locationDistrictEnrichver,
+    this.locationCity,
+    this.locationCityEnrichver,
+    this.locationState,
+    this.locationStateEnrichver,
+    this.locationCountry,
+    this.locationCountryEnrichver,
+    this.locationCountryCode,
+    this.locationCountryCodeEnrichver,
     this.parentAId,
     this.parentBId,
     required this.acquiredAt,
@@ -124,6 +232,31 @@ class ItemInstance {
     this.dailySeed,
     this.status = ItemInstanceStatus.active,
   });
+
+  /// Count of non-null enrichable data fields (excludes enrichver stamps).
+  int get enrichedFieldCount {
+    int count = 0;
+    if (animalClassName != null) count++;
+    if (foodPreferenceName != null) count++;
+    if (climateName != null) count++;
+    if (brawn != null) count++;
+    if (wit != null) count++;
+    if (speed != null) count++;
+    if (sizeName != null) count++;
+    if (iconUrl != null) count++;
+    if (artUrl != null) count++;
+    if (cellHabitatName != null) count++;
+    if (cellClimateName != null) count++;
+    if (cellContinentName != null) count++;
+    if (locationDistrict != null) count++;
+    if (locationCity != null) count++;
+    if (locationState != null) count++;
+    if (locationCountry != null) count++;
+    if (locationCountryCode != null) count++;
+    return count;
+  }
+
+  static const int totalEnrichableFields = 17;
 
   /// Whether this item was caught in the wild (not bred).
   bool get isWildCaught => parentAId == null && parentBId == null;
@@ -152,6 +285,38 @@ class ItemInstance {
     Set<String>? badges,
     String? iconUrl,
     String? artUrl,
+    String? animalClassName,
+    String? animalClassNameEnrichver,
+    String? foodPreferenceName,
+    String? foodPreferenceNameEnrichver,
+    String? climateName,
+    String? climateNameEnrichver,
+    int? brawn,
+    String? brawnEnrichver,
+    int? wit,
+    String? witEnrichver,
+    int? speed,
+    String? speedEnrichver,
+    String? sizeName,
+    String? sizeNameEnrichver,
+    String? iconUrlEnrichver,
+    String? artUrlEnrichver,
+    String? cellHabitatName,
+    String? cellHabitatNameEnrichver,
+    String? cellClimateName,
+    String? cellClimateNameEnrichver,
+    String? cellContinentName,
+    String? cellContinentNameEnrichver,
+    String? locationDistrict,
+    String? locationDistrictEnrichver,
+    String? locationCity,
+    String? locationCityEnrichver,
+    String? locationState,
+    String? locationStateEnrichver,
+    String? locationCountry,
+    String? locationCountryEnrichver,
+    String? locationCountryCode,
+    String? locationCountryCodeEnrichver,
     String? parentAId,
     String? parentBId,
     DateTime? acquiredAt,
@@ -173,6 +338,48 @@ class ItemInstance {
       badges: badges ?? this.badges,
       iconUrl: iconUrl ?? this.iconUrl,
       artUrl: artUrl ?? this.artUrl,
+      animalClassName: animalClassName ?? this.animalClassName,
+      animalClassNameEnrichver:
+          animalClassNameEnrichver ?? this.animalClassNameEnrichver,
+      foodPreferenceName: foodPreferenceName ?? this.foodPreferenceName,
+      foodPreferenceNameEnrichver:
+          foodPreferenceNameEnrichver ?? this.foodPreferenceNameEnrichver,
+      climateName: climateName ?? this.climateName,
+      climateNameEnrichver: climateNameEnrichver ?? this.climateNameEnrichver,
+      brawn: brawn ?? this.brawn,
+      brawnEnrichver: brawnEnrichver ?? this.brawnEnrichver,
+      wit: wit ?? this.wit,
+      witEnrichver: witEnrichver ?? this.witEnrichver,
+      speed: speed ?? this.speed,
+      speedEnrichver: speedEnrichver ?? this.speedEnrichver,
+      sizeName: sizeName ?? this.sizeName,
+      sizeNameEnrichver: sizeNameEnrichver ?? this.sizeNameEnrichver,
+      iconUrlEnrichver: iconUrlEnrichver ?? this.iconUrlEnrichver,
+      artUrlEnrichver: artUrlEnrichver ?? this.artUrlEnrichver,
+      cellHabitatName: cellHabitatName ?? this.cellHabitatName,
+      cellHabitatNameEnrichver:
+          cellHabitatNameEnrichver ?? this.cellHabitatNameEnrichver,
+      cellClimateName: cellClimateName ?? this.cellClimateName,
+      cellClimateNameEnrichver:
+          cellClimateNameEnrichver ?? this.cellClimateNameEnrichver,
+      cellContinentName: cellContinentName ?? this.cellContinentName,
+      cellContinentNameEnrichver:
+          cellContinentNameEnrichver ?? this.cellContinentNameEnrichver,
+      locationDistrict: locationDistrict ?? this.locationDistrict,
+      locationDistrictEnrichver:
+          locationDistrictEnrichver ?? this.locationDistrictEnrichver,
+      locationCity: locationCity ?? this.locationCity,
+      locationCityEnrichver:
+          locationCityEnrichver ?? this.locationCityEnrichver,
+      locationState: locationState ?? this.locationState,
+      locationStateEnrichver:
+          locationStateEnrichver ?? this.locationStateEnrichver,
+      locationCountry: locationCountry ?? this.locationCountry,
+      locationCountryEnrichver:
+          locationCountryEnrichver ?? this.locationCountryEnrichver,
+      locationCountryCode: locationCountryCode ?? this.locationCountryCode,
+      locationCountryCodeEnrichver:
+          locationCountryCodeEnrichver ?? this.locationCountryCodeEnrichver,
       parentAId: parentAId ?? this.parentAId,
       parentBId: parentBId ?? this.parentBId,
       acquiredAt: acquiredAt ?? this.acquiredAt,
@@ -253,7 +460,8 @@ class ItemInstance {
   @override
   String toString() => 'ItemInstance(id: $id, definitionId: $definitionId, '
       'displayName: $displayName, category: $category, rarity: $rarity, '
-      'affixes: ${affixes.length}, status: $status)';
+      'affixes: ${affixes.length}, status: $status, '
+      'enrichedFields: $enrichedFieldCount/$totalEnrichableFields)';
 }
 
 /// Lifecycle status of an item instance.

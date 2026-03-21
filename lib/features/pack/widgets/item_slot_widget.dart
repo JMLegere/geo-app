@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 
-import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
@@ -9,6 +10,7 @@ import 'package:earth_nova/shared/widgets/habitat_gradient.dart';
 import 'package:earth_nova/shared/widgets/species_art_image.dart';
 import 'package:earth_nova/shared/widgets/prismatic_border.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 
 /// Compact Pokémon-PC-box-style grid cell for a single [ItemInstance].
 ///
@@ -20,15 +22,12 @@ import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 /// [PrismaticBorder] (rotating rainbow stroke) and a [FirstDiscoveryBadge]
 /// star chip in the top-left corner.
 ///
-/// Pass [onTap] to handle selection (opens [ItemDetailSheet]).
-/// [definition] may be null if the species isn't resolved yet — the slot
-/// shows a neutral placeholder in that case.
+/// Pass [onTap] to handle selection (opens the species card modal).
 ///
 /// Plain [StatelessWidget] — no Riverpod dependency.
 class ItemSlotWidget extends StatelessWidget {
   const ItemSlotWidget({
     required this.item,
-    this.definition,
     this.onTap,
     super.key,
   });
@@ -36,28 +35,47 @@ class ItemSlotWidget extends StatelessWidget {
   /// The inventory item to display.
   final ItemInstance item;
 
-  /// Resolved species definition — may be null if lookup failed.
-  final FaunaDefinition? definition;
-
   /// Called when the slot is tapped.
   final VoidCallback? onTap;
 
+  static Habitat? _parseHabitat(String? name) => name == null
+      ? null
+      : Habitat.values.where((h) => h.name == name).firstOrNull;
+
+  static AnimalClass? _parseAnimalClass(String? name) => name == null
+      ? null
+      : AnimalClass.values.where((a) => a.name == name).firstOrNull;
+
+  static AnimalType? _parseAnimalType(String? taxonomicClass) =>
+      taxonomicClass == null
+          ? null
+          : AnimalType.fromTaxonomicClass(taxonomicClass);
+
+  /// Returns the best icon to display for this item.
+  ///
+  /// Priority: animalClass icon → animalType icon → habitat icon → unknown.
+  String _resolveEmoji() {
+    final cls = _parseAnimalClass(item.animalClassName);
+    if (cls != null) return GameIcons.animalClass(cls);
+    final type = _parseAnimalType(item.taxonomicClass);
+    if (type != null) return GameIcons.animalType(type);
+    if (item.habitats.isNotEmpty) return GameIcons.habitat(item.habitats.first);
+    return GameIcons.unknown;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final def = definition;
     final cs = Theme.of(context).colorScheme;
 
-    // Prefer denormalized habitats from instance, fall back to definition.
-    final habitats =
-        item.habitats.isNotEmpty ? item.habitats : (def?.habitats ?? const []);
-    final primaryHabitat = habitats.isNotEmpty ? habitats.first : null;
+    final primaryHabitat = _parseHabitat(item.cellHabitatName) ??
+        (item.habitats.isNotEmpty ? item.habitats.first : null);
 
     final baseDecoration = primaryHabitat != null
         ? HabitatGradient.tile(primaryHabitat)
         : BoxDecoration(color: cs.surfaceContainerHigh);
 
-    // Prefer denormalized rarity from instance, fall back to definition.
-    final rarity = item.rarity ?? def?.rarity;
+    // Prefer denormalized rarity from instance.
+    final rarity = item.rarity;
 
     // First-discovery items swap the static rarity border for PrismaticBorder,
     // so we omit the Border from their BoxDecoration entirely.
@@ -105,8 +123,8 @@ class ItemSlotWidget extends StatelessWidget {
                   // Creature / habitat icon centred
                   Center(
                     child: SpeciesArtImage(
-                      artUrl: item.iconUrl ?? def?.iconUrl,
-                      fallbackEmoji: _resolveEmoji(def),
+                      artUrl: item.iconUrl,
+                      fallbackEmoji: _resolveEmoji(),
                       size: 44,
                       borderRadius: Radii.borderMd,
                       animate: true,
@@ -138,9 +156,7 @@ class ItemSlotWidget extends StatelessWidget {
 
             // ── Display name ─────────────────────────────────────────────
             Text(
-              item.displayName.isNotEmpty
-                  ? item.displayName
-                  : (def?.displayName ?? '???'),
+              item.displayName.isNotEmpty ? item.displayName : '???',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
@@ -167,13 +183,5 @@ class ItemSlotWidget extends StatelessWidget {
       );
     }
     return slot;
-  }
-
-  /// Returns the best icon to display for this item.
-  ///
-  /// Priority: animalClass icon → animalType icon → habitat icon → unknown.
-  static String _resolveEmoji(FaunaDefinition? def) {
-    if (def == null) return GameIcons.unknown;
-    return GameIcons.fauna(def);
   }
 }

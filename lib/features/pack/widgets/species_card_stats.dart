@@ -1,12 +1,14 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/shared/design_tokens.dart';
-import 'package:earth_nova/shared/game_icons.dart';
 
-/// Animated RGB stat bars for the species card.
+/// Three stat ring gauges (brawn/wit/speed) displayed horizontally.
 ///
-/// Three horizontal bars (brawn/wit/speed) with colors derived from stat
-/// values. Bars animate in with staggered timing on card entrance.
+/// Each ring is a small donut arc filled proportionally to stat/90.
+/// Colors: Red (brawn), Blue (wit), Green (speed).
+/// Numbers displayed to the right of each ring.
 class SpeciesCardStats extends StatelessWidget {
   const SpeciesCardStats({
     required this.brawn,
@@ -22,80 +24,68 @@ class SpeciesCardStats extends StatelessWidget {
   final bool animate;
 
   static const int _maxStat = 90;
-
-  Color _brawnColor(int v) =>
-      Color.fromRGBO((v / _maxStat * 255).round().clamp(0, 255), 60, 60, 1.0);
-
-  Color _witColor(int v) =>
-      Color.fromRGBO(60, 60, (v / _maxStat * 255).round().clamp(0, 255), 1.0);
-
-  Color _speedColor(int v) =>
-      Color.fromRGBO(60, (v / _maxStat * 255).round().clamp(0, 255), 60, 1.0);
+  static const _brawnColor = Color(0xFFE53935);
+  static const _witColor = Color(0xFF1E88E5);
+  static const _speedColor = Color(0xFF43A047);
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    if (brawn == 0 && wit == 0 && speed == 0) return const SizedBox.shrink();
 
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _StatBarRow(
-          icon: GameIcons.brawn,
+        _StatRing(
           value: brawn,
-          color: _brawnColor(brawn),
+          color: _brawnColor,
+          label: '💪',
           animate: animate,
           delayMs: 0,
           maxStat: _maxStat,
-          surfaceColor: cs.surfaceContainerHighest,
         ),
-        SizedBox(height: Spacing.xs),
-        _StatBarRow(
-          icon: GameIcons.wit,
+        _StatRing(
           value: wit,
-          color: _witColor(wit),
+          color: _witColor,
+          label: '🧠',
           animate: animate,
           delayMs: 80,
           maxStat: _maxStat,
-          surfaceColor: cs.surfaceContainerHighest,
         ),
-        SizedBox(height: Spacing.xs),
-        _StatBarRow(
-          icon: GameIcons.speed,
+        _StatRing(
           value: speed,
-          color: _speedColor(speed),
+          color: _speedColor,
+          label: '⚡',
           animate: animate,
           delayMs: 160,
           maxStat: _maxStat,
-          surfaceColor: cs.surfaceContainerHighest,
         ),
       ],
     );
   }
 }
 
-class _StatBarRow extends StatefulWidget {
-  const _StatBarRow({
-    required this.icon,
+class _StatRing extends StatefulWidget {
+  const _StatRing({
     required this.value,
     required this.color,
+    required this.label,
     required this.animate,
     required this.delayMs,
     required this.maxStat,
-    required this.surfaceColor,
   });
 
-  final String icon;
   final int value;
   final Color color;
+  final String label;
   final bool animate;
   final int delayMs;
   final int maxStat;
-  final Color surfaceColor;
 
   @override
-  State<_StatBarRow> createState() => _StatBarRowState();
+  State<_StatRing> createState() => _StatRingState();
 }
 
-class _StatBarRowState extends State<_StatBarRow>
+class _StatRingState extends State<_StatRing>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
@@ -105,14 +95,12 @@ class _StatBarRowState extends State<_StatBarRow>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 350),
+      duration: const Duration(milliseconds: 500),
     );
-
     _animation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
     );
-
     if (widget.animate) {
       Future.delayed(Duration(milliseconds: 200 + widget.delayMs), () {
         if (mounted) _controller.forward();
@@ -131,63 +119,89 @@ class _StatBarRowState extends State<_StatBarRow>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fraction = (widget.value / widget.maxStat).clamp(0.0, 1.0);
+    const ringSize = 36.0;
+    const strokeWidth = 4.0;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(widget.icon, style: const TextStyle(fontSize: 14)),
-        SizedBox(width: Spacing.xs),
-        Expanded(
-          child: AnimatedBuilder(
-            animation: _animation,
-            builder: (context, _) {
-              return ClipRRect(
-                borderRadius: Radii.borderSm,
-                child: Stack(
-                  children: [
-                    // Background track
-                    Container(
-                      height: 6,
-                      color: widget.surfaceColor,
-                    ),
-                    // Filled portion
-                    FractionallySizedBox(
-                      widthFactor: fraction * _animation.value,
-                      child: Container(
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: widget.color,
-                          borderRadius: Radii.borderSm,
-                          boxShadow: [
-                            BoxShadow(
-                              color: widget.color.withValues(alpha: 0.4),
-                              blurRadius: 4,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+        AnimatedBuilder(
+          animation: _animation,
+          builder: (context, _) {
+            return SizedBox(
+              width: ringSize,
+              height: ringSize,
+              child: CustomPaint(
+                painter: _RingPainter(
+                  fraction: (widget.value / widget.maxStat).clamp(0.0, 1.0) *
+                      _animation.value,
+                  color: widget.color,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  strokeWidth: strokeWidth,
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
         SizedBox(width: Spacing.xs),
-        SizedBox(
-          width: 28,
-          child: Text(
-            '${widget.value}',
-            textAlign: TextAlign.end,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: cs.onSurface,
-            ),
+        Text(
+          '${widget.value}',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: widget.color,
           ),
         ),
       ],
     );
   }
+}
+
+class _RingPainter extends CustomPainter {
+  const _RingPainter({
+    required this.fraction,
+    required this.color,
+    required this.backgroundColor,
+    required this.strokeWidth,
+  });
+
+  final double fraction;
+  final Color color;
+  final Color backgroundColor;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    // Background ring
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..color = backgroundColor,
+    );
+
+    // Foreground arc
+    if (fraction > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2, // start at top
+        fraction * 2 * math.pi,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..color = color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.fraction != fraction || old.color != color;
 }

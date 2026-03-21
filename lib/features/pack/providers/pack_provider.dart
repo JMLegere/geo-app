@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/models/item_category.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/state/species_repository_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 
@@ -63,7 +61,7 @@ enum PackTab {
 /// Immutable snapshot of the Pack tab state.
 ///
 /// Pack = inventory. Shows items the player HAS (ItemInstance objects),
-/// NOT a species encyclopedia. The old 32k FaunaDefinition list is removed.
+/// NOT a species encyclopedia. Cards render purely from ItemInstance fields.
 class PackState {
   /// All active item instances, grouped by category.
   final Map<ItemCategory, List<ItemInstance>> itemsByCategory;
@@ -155,13 +153,6 @@ class PackNotifier extends Notifier<PackState> {
   /// Set the active tab.
   void setActiveTab(PackTab tab) {
     state = state.copyWith(activeTab: tab);
-  }
-
-  /// Resolve a FaunaDefinition from a definitionId.
-  ///
-  /// Uses the species cache directly for O(1) lookup by ID.
-  FaunaDefinition? resolveFauna(String definitionId) {
-    return ref.read(speciesCacheProvider).getByIdSync(definitionId);
   }
 
   /// Groups items by their category, filtering to active items only.

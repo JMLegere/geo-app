@@ -171,6 +171,41 @@ class SupabasePersistence {
     String? acquiredInCellId,
     String? dailySeed,
     required String status,
+    // Species enrichment denorm
+    String? animalClassName,
+    String? animalClassNameEnrichver,
+    String? foodPreferenceName,
+    String? foodPreferenceNameEnrichver,
+    String? climateName,
+    String? climateNameEnrichver,
+    int? brawn,
+    String? brawnEnrichver,
+    int? wit,
+    String? witEnrichver,
+    int? speed,
+    String? speedEnrichver,
+    String? sizeName,
+    String? sizeNameEnrichver,
+    String? iconUrlEnrichver,
+    String? artUrlEnrichver,
+    // Cell properties denorm
+    String? cellHabitatName,
+    String? cellHabitatNameEnrichver,
+    String? cellClimateName,
+    String? cellClimateNameEnrichver,
+    String? cellContinentName,
+    String? cellContinentNameEnrichver,
+    // Location hierarchy denorm
+    String? locationDistrict,
+    String? locationDistrictEnrichver,
+    String? locationCity,
+    String? locationCityEnrichver,
+    String? locationState,
+    String? locationStateEnrichver,
+    String? locationCountry,
+    String? locationCountryEnrichver,
+    String? locationCountryCode,
+    String? locationCountryCodeEnrichver,
   }) async {
     try {
       final data = <String, dynamic>{
@@ -192,9 +227,40 @@ class SupabasePersistence {
       if (habitatsJson != null) data['habitats_json'] = habitatsJson;
       if (continentsJson != null) data['continents_json'] = continentsJson;
       if (taxonomicClass != null) data['taxonomic_class'] = taxonomicClass;
-      if (badgesJson != null) {
-        data['badges_json'] = badgesJson;
-      }
+      if (badgesJson != null) data['badges_json'] = badgesJson;
+      // Denorm fields — always included (even null) so server gets full picture.
+      data['animal_class_name'] = animalClassName;
+      data['animal_class_name_enrichver'] = animalClassNameEnrichver;
+      data['food_preference_name'] = foodPreferenceName;
+      data['food_preference_name_enrichver'] = foodPreferenceNameEnrichver;
+      data['climate_name'] = climateName;
+      data['climate_name_enrichver'] = climateNameEnrichver;
+      data['brawn'] = brawn;
+      data['brawn_enrichver'] = brawnEnrichver;
+      data['wit'] = wit;
+      data['wit_enrichver'] = witEnrichver;
+      data['speed'] = speed;
+      data['speed_enrichver'] = speedEnrichver;
+      data['size_name'] = sizeName;
+      data['size_name_enrichver'] = sizeNameEnrichver;
+      data['icon_url_enrichver'] = iconUrlEnrichver;
+      data['art_url_enrichver'] = artUrlEnrichver;
+      data['cell_habitat_name'] = cellHabitatName;
+      data['cell_habitat_name_enrichver'] = cellHabitatNameEnrichver;
+      data['cell_climate_name'] = cellClimateName;
+      data['cell_climate_name_enrichver'] = cellClimateNameEnrichver;
+      data['cell_continent_name'] = cellContinentName;
+      data['cell_continent_name_enrichver'] = cellContinentNameEnrichver;
+      data['location_district'] = locationDistrict;
+      data['location_district_enrichver'] = locationDistrictEnrichver;
+      data['location_city'] = locationCity;
+      data['location_city_enrichver'] = locationCityEnrichver;
+      data['location_state'] = locationState;
+      data['location_state_enrichver'] = locationStateEnrichver;
+      data['location_country'] = locationCountry;
+      data['location_country_enrichver'] = locationCountryEnrichver;
+      data['location_country_code'] = locationCountryCode;
+      data['location_country_code_enrichver'] = locationCountryCodeEnrichver;
       await _client.from('item_instances').upsert(
             data,
             onConflict: 'id',

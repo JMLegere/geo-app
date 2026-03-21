@@ -104,11 +104,60 @@ class LocalItemInstanceTable extends Table {
   /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
   TextColumn get taxonomicClass => text().nullable()();
 
-  /// Instance-level icon override URL. Null = use species default from enrichment.
+  /// Denormalized icon URL (from species enrichment). Null = not enriched yet.
   TextColumn get iconUrl => text().nullable()();
 
-  /// Instance-level illustration override URL. Null = use species default from enrichment.
+  /// Denormalized art URL (from species enrichment). Null = not enriched yet.
   TextColumn get artUrl => text().nullable()();
+
+  // ---------------------------------------------------------------------------
+  // Denormalized species enrichment (snapshotted at discovery or lazily enriched)
+  // Each field has a companion `_enrichver` column tracking the pipeline version
+  // (commit hash) that produced the value. Schema v20.
+  // ---------------------------------------------------------------------------
+
+  TextColumn get animalClassName => text().nullable()();
+  TextColumn get animalClassNameEnrichver => text().nullable()();
+  TextColumn get foodPreferenceName => text().nullable()();
+  TextColumn get foodPreferenceNameEnrichver => text().nullable()();
+  TextColumn get climateName => text().nullable()();
+  TextColumn get climateNameEnrichver => text().nullable()();
+  IntColumn get brawn => integer().nullable()();
+  TextColumn get brawnEnrichver => text().nullable()();
+  IntColumn get wit => integer().nullable()();
+  TextColumn get witEnrichver => text().nullable()();
+  IntColumn get speed => integer().nullable()();
+  TextColumn get speedEnrichver => text().nullable()();
+  TextColumn get sizeName => text().nullable()();
+  TextColumn get sizeNameEnrichver => text().nullable()();
+  TextColumn get iconUrlEnrichver => text().nullable()();
+  TextColumn get artUrlEnrichver => text().nullable()();
+
+  // ---------------------------------------------------------------------------
+  // Denormalized cell properties (from CellProperties at discovery)
+  // ---------------------------------------------------------------------------
+
+  TextColumn get cellHabitatName => text().nullable()();
+  TextColumn get cellHabitatNameEnrichver => text().nullable()();
+  TextColumn get cellClimateName => text().nullable()();
+  TextColumn get cellClimateNameEnrichver => text().nullable()();
+  TextColumn get cellContinentName => text().nullable()();
+  TextColumn get cellContinentNameEnrichver => text().nullable()();
+
+  // ---------------------------------------------------------------------------
+  // Denormalized location hierarchy (lazily enriched from LocationNode chain)
+  // ---------------------------------------------------------------------------
+
+  TextColumn get locationDistrict => text().nullable()();
+  TextColumn get locationDistrictEnrichver => text().nullable()();
+  TextColumn get locationCity => text().nullable()();
+  TextColumn get locationCityEnrichver => text().nullable()();
+  TextColumn get locationState => text().nullable()();
+  TextColumn get locationStateEnrichver => text().nullable()();
+  TextColumn get locationCountry => text().nullable()();
+  TextColumn get locationCountryEnrichver => text().nullable()();
+  TextColumn get locationCountryCode => text().nullable()();
+  TextColumn get locationCountryCodeEnrichver => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -142,6 +191,19 @@ class LocalSpeciesTable extends Table {
   TextColumn get iconPrompt => text().nullable()();
   TextColumn get artPrompt => text().nullable()();
   DateTimeColumn get enrichedAt => dateTime().nullable()();
+
+  // Per-field enrichment pipeline version stamps (commit SHA). Schema v20.
+  TextColumn get animalClassEnrichver => text().nullable()();
+  TextColumn get foodPreferenceEnrichver => text().nullable()();
+  TextColumn get climateEnrichver => text().nullable()();
+  TextColumn get brawnEnrichver => text().nullable()();
+  TextColumn get witEnrichver => text().nullable()();
+  TextColumn get speedEnrichver => text().nullable()();
+  TextColumn get sizeEnrichver => text().nullable()();
+  TextColumn get iconPromptEnrichver => text().nullable()();
+  TextColumn get artPromptEnrichver => text().nullable()();
+  TextColumn get iconUrlEnrichver => text().nullable()();
+  TextColumn get artUrlEnrichver => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {definitionId};
@@ -349,7 +411,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration {
@@ -516,6 +578,69 @@ class AppDatabase extends _$AppDatabase {
                 'ALTER TABLE local_species_table ADD COLUMN art_prompt TEXT');
           }
         }
+        if (from < 20) {
+          // v20: Denormalized enrichment fields + per-field version stamps.
+          // Guard against columns already existing (fresh DB created at v20+).
+          Future<Set<String>> columnNames(String table) async {
+            final cols = await customSelect(
+              "PRAGMA table_info($table)",
+            ).get();
+            return cols.map((r) => r.read<String>('name')).toSet();
+          }
+
+          Future<void> addIfMissing(
+              String table, String col, String type) async {
+            final cols = await columnNames(table);
+            if (!cols.contains(col)) {
+              await customStatement('ALTER TABLE $table ADD COLUMN $col $type');
+            }
+          }
+
+          // -- LocalItemInstanceTable: 32 new columns --
+          const itemTable = 'local_item_instance_table';
+          // Species enrichment denorm
+          for (final col in [
+            'animal_class_name', 'animal_class_name_enrichver',
+            'food_preference_name', 'food_preference_name_enrichver',
+            'climate_name', 'climate_name_enrichver',
+            'size_name', 'size_name_enrichver',
+            'brawn_enrichver', 'wit_enrichver', 'speed_enrichver',
+            'icon_url_enrichver', 'art_url_enrichver',
+            // Cell properties denorm
+            'cell_habitat_name', 'cell_habitat_name_enrichver',
+            'cell_climate_name', 'cell_climate_name_enrichver',
+            'cell_continent_name', 'cell_continent_name_enrichver',
+            // Location hierarchy denorm
+            'location_district', 'location_district_enrichver',
+            'location_city', 'location_city_enrichver',
+            'location_state', 'location_state_enrichver',
+            'location_country', 'location_country_enrichver',
+            'location_country_code', 'location_country_code_enrichver',
+          ]) {
+            await addIfMissing(itemTable, col, 'TEXT');
+          }
+          for (final col in ['brawn', 'wit', 'speed']) {
+            await addIfMissing(itemTable, col, 'INTEGER');
+          }
+
+          // -- LocalSpeciesTable: 11 new version columns --
+          const speciesTable = 'local_species_table';
+          for (final col in [
+            'animal_class_enrichver',
+            'food_preference_enrichver',
+            'climate_enrichver',
+            'brawn_enrichver',
+            'wit_enrichver',
+            'speed_enrichver',
+            'size_enrichver',
+            'icon_prompt_enrichver',
+            'art_prompt_enrichver',
+            'icon_url_enrichver',
+            'art_url_enrichver',
+          ]) {
+            await addIfMissing(speciesTable, col, 'TEXT');
+          }
+        }
       },
       beforeOpen: (details) async {
         if (_speciesDataLoader != null) {
@@ -672,6 +797,17 @@ class AppDatabase extends _$AppDatabase {
     String? iconPrompt,
     String? artPrompt,
     DateTime? enrichedAt,
+    String? animalClassEnrichver,
+    String? foodPreferenceEnrichver,
+    String? climateEnrichver,
+    String? brawnEnrichver,
+    String? witEnrichver,
+    String? speedEnrichver,
+    String? sizeEnrichver,
+    String? iconPromptEnrichver,
+    String? artPromptEnrichver,
+    String? iconUrlEnrichver,
+    String? artUrlEnrichver,
   }) {
     return (update(localSpeciesTable)
           ..where((t) => t.definitionId.equals(definitionId)))
@@ -688,6 +824,17 @@ class AppDatabase extends _$AppDatabase {
       iconPrompt: Value(iconPrompt),
       artPrompt: Value(artPrompt),
       enrichedAt: Value(enrichedAt),
+      animalClassEnrichver: Value(animalClassEnrichver),
+      foodPreferenceEnrichver: Value(foodPreferenceEnrichver),
+      climateEnrichver: Value(climateEnrichver),
+      brawnEnrichver: Value(brawnEnrichver),
+      witEnrichver: Value(witEnrichver),
+      speedEnrichver: Value(speedEnrichver),
+      sizeEnrichver: Value(sizeEnrichver),
+      iconPromptEnrichver: Value(iconPromptEnrichver),
+      artPromptEnrichver: Value(artPromptEnrichver),
+      iconUrlEnrichver: Value(iconUrlEnrichver),
+      artUrlEnrichver: Value(artUrlEnrichver),
     ));
   }
 

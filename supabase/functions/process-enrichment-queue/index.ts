@@ -209,6 +209,99 @@ interface SpeciesRow {
   art_prompt: string | null;
   enriched_at: string | null;
   habitats_json: string | null;
+  // enrichver fields
+  animal_class_enrichver: string | null;
+  food_preference_enrichver: string | null;
+  climate_enrichver: string | null;
+  brawn_enrichver: string | null;
+  wit_enrichver: string | null;
+  speed_enrichver: string | null;
+  size_enrichver: string | null;
+  icon_prompt_enrichver: string | null;
+  art_prompt_enrichver: string | null;
+  icon_url_enrichver: string | null;
+  art_url_enrichver: string | null;
+}
+
+// ── Species enrichment stage selection ───────────────────────────────────────
+
+type SpeciesStage =
+  | "classify"
+  | "icon_prompt"
+  | "art_prompt"
+  | "icon_url"
+  | "art_url"
+  | null;
+
+function speciesFieldsNeedingWork(row: SpeciesRow, pipelineVersion: string): number {
+  let count = 0;
+  if (row.animal_class === null || row.animal_class_enrichver !== pipelineVersion) count++;
+  if (row.icon_prompt === null || row.icon_prompt_enrichver !== pipelineVersion) count++;
+  if (row.art_prompt === null || row.art_prompt_enrichver !== pipelineVersion) count++;
+  if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) count++;
+  if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) count++;
+  return count;
+}
+
+function nextSpeciesStage(row: SpeciesRow, pipelineVersion: string): SpeciesStage {
+  if (row.animal_class === null || row.animal_class_enrichver !== pipelineVersion) return "classify";
+  if (row.icon_prompt === null || row.icon_prompt_enrichver !== pipelineVersion) return "icon_prompt";
+  if (row.art_prompt === null || row.art_prompt_enrichver !== pipelineVersion) return "art_prompt";
+  if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) return "icon_url";
+  if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) return "art_url";
+  return null;
+}
+
+// ── Item instance enrichment score ───────────────────────────────────────────
+
+interface ItemInstanceRow {
+  id: string;
+  definition_id: string;
+  acquired_in_cell_id: string | null;
+  animal_class_name: string | null;
+  animal_class_name_enrichver: string | null;
+  food_preference_name: string | null;
+  food_preference_name_enrichver: string | null;
+  climate_name: string | null;
+  climate_name_enrichver: string | null;
+  brawn: number | null;
+  brawn_enrichver: string | null;
+  wit: number | null;
+  wit_enrichver: string | null;
+  speed: number | null;
+  speed_enrichver: string | null;
+  size_name: string | null;
+  size_name_enrichver: string | null;
+  icon_url: string | null;
+  icon_url_enrichver: string | null;
+  art_url: string | null;
+  art_url_enrichver: string | null;
+  cell_habitat_name: string | null;
+  cell_habitat_name_enrichver: string | null;
+  cell_climate_name: string | null;
+  cell_climate_name_enrichver: string | null;
+  cell_continent_name: string | null;
+  cell_continent_name_enrichver: string | null;
+  location_district: string | null;
+  location_district_enrichver: string | null;
+  location_city: string | null;
+  location_city_enrichver: string | null;
+  location_state: string | null;
+  location_state_enrichver: string | null;
+  location_country: string | null;
+  location_country_enrichver: string | null;
+  location_country_code: string | null;
+  location_country_code_enrichver: string | null;
+}
+
+function itemFieldsNeedingWork(row: ItemInstanceRow, pipelineVersion: string): number {
+  let count = 0;
+  if (row.animal_class_name === null || row.animal_class_name_enrichver !== pipelineVersion) count++;
+  if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) count++;
+  if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) count++;
+  if (row.cell_habitat_name === null || row.cell_habitat_name_enrichver !== pipelineVersion) count++;
+  if (row.location_city === null || row.location_city_enrichver !== pipelineVersion) count++;
+  return count;
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -494,10 +587,9 @@ async function generateAndUploadArt(
   definitionId: string,
   assetType: "icon" | "illustration",
   prompt: string,
+  pipelineVersion: string,
   logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
 ): Promise<{ url: string; provider: string } | "rate_limited" | null> {
-  const filePrefix = assetType === "icon" ? `${definitionId}_icon` : definitionId;
-
   // Try each image provider in order
   const availableProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
 
@@ -531,9 +623,14 @@ async function generateAndUploadArt(
         const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${actualFileName}`;
         const durationMs = Date.now() - startMs;
 
-        // Update species row — bump enriched_at so client delta-sync picks up art changes
+        // Update species row with url + enrichver
         const column = assetType === "icon" ? "icon_url" : "art_url";
-        await supabase.from("species").update({ [column]: url, enriched_at: new Date().toISOString() }).eq("definition_id", definitionId);
+        const enrichverColumn = assetType === "icon" ? "icon_url_enrichver" : "art_url_enrichver";
+        await supabase.from("species").update({
+          [column]: url,
+          [enrichverColumn]: pipelineVersion,
+          enriched_at: new Date().toISOString(),
+        }).eq("definition_id", definitionId);
 
         console.log(`[art] ${assetType} generated for ${definitionId} via ${provider.name}: ${url}`);
         if (logEvent) await logEvent('art_success', definitionId, { asset_type: assetType, provider_name: provider.name, duration_ms: durationMs });
@@ -580,6 +677,7 @@ serve(async (req: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const pipelineVersion = Deno.env.get("PIPELINE_VERSION") ?? "unknown";
   const supabase = createClient(supabaseUrl, serviceKey);
 
   // -- Observability helper --------------------------------------------------
@@ -605,73 +703,182 @@ serve(async (req: Request) => {
   }
 
   const errors: string[] = [];
-  let classified = 0;
-  let icons = 0;
-  let illustrations = 0;
+  let speciesEnriched = 0;
+  let itemStage: string | null = null;
+  let itemsEnriched = 0;
 
-  // ── Pass 1: Classify ONE species ────────────────────────────────────────
+  // ── Species enrichment: pick 1, do its next step ─────────────────────────
   //
-  // Process a single species per invocation to stay within the free-tier
-  // Edge Function resource limits (2s CPU, 256MB memory). The pg_cron job
-  // runs hourly; increase frequency for faster backfill.
+  // Query candidates in bulk (TypeScript scoring), pick the one closest to
+  // done (fewest fields needing work), then execute exactly one step.
 
   try {
     const availableProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
-    if (availableProviders.length === 0) {
-      errors.push("Pass 1 skipped: no AI provider API keys configured");
+    const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+
+    const speciesColumns = [
+      "definition_id", "scientific_name", "common_name", "taxonomic_class",
+      "animal_class", "food_preference", "climate", "brawn", "wit", "speed", "size",
+      "icon_url", "art_url", "icon_prompt", "art_prompt", "enriched_at", "habitats_json",
+      "animal_class_enrichver", "food_preference_enrichver", "climate_enrichver",
+      "brawn_enrichver", "wit_enrichver", "speed_enrichver", "size_enrichver",
+      "icon_prompt_enrichver", "art_prompt_enrichver", "icon_url_enrichver", "art_url_enrichver",
+    ].join(", ");
+
+    // Query species that have any field needing work
+    const { data: candidates, error: candidatesErr } = await supabase
+      .from("species")
+      .select(speciesColumns)
+      .or([
+        `animal_class.is.null`,
+        `animal_class_enrichver.is.null`,
+        `animal_class_enrichver.neq.${pipelineVersion}`,
+        `icon_prompt.is.null`,
+        `icon_prompt_enrichver.is.null`,
+        `icon_prompt_enrichver.neq.${pipelineVersion}`,
+        `art_prompt.is.null`,
+        `art_prompt_enrichver.is.null`,
+        `art_prompt_enrichver.neq.${pipelineVersion}`,
+        `icon_url.is.null`,
+        `icon_url_enrichver.is.null`,
+        `icon_url_enrichver.neq.${pipelineVersion}`,
+        `art_url.is.null`,
+        `art_url_enrichver.is.null`,
+        `art_url_enrichver.neq.${pipelineVersion}`,
+      ].join(","))
+      .limit(100);
+
+    if (candidatesErr) throw new Error(`Failed to query species candidates: ${candidatesErr.message}`);
+
+    if (!candidates || candidates.length === 0) {
+      console.log('[species] nothing to enrich');
     } else {
-      // Find one discovered species that needs classification.
-      // Uses an RPC call to avoid fetching 10K item_instances rows.
-      const { data: needsClassification, error: speciesErr } = await supabase
-        .from("species")
-        .select("definition_id, scientific_name, common_name, taxonomic_class")
-        .is("animal_class", null)
-        .limit(1)
-        .maybeSingle();
+      // Score in TypeScript, pick the one closest to done
+      const scored = (candidates as SpeciesRow[]).map(row => ({
+        row,
+        score: speciesFieldsNeedingWork(row, pipelineVersion),
+      }));
+      scored.sort((a, b) => a.score - b.score);
+      const { row: species } = scored[0];
+      const stage = nextSpeciesStage(species, pipelineVersion);
 
-      if (speciesErr) throw new Error(`Failed to query species: ${speciesErr.message}`);
-
-      if (!needsClassification) {
-        console.log('[pass1] nothing to classify');
+      if (!stage) {
+        console.log('[species] top candidate already fully enriched — nothing to do');
       } else {
-        const species = needsClassification as SpeciesRow;
+        const defId = species.definition_id;
+        console.log(`[species] enriching ${defId} → ${stage}`);
+
         const startMs = Date.now();
         try {
-          const { result: enrichment, providerName } = await callLLMWithRotation(
-            availableProviders,
-            species.scientific_name,
-            species.common_name,
-            species.taxonomic_class,
-          );
-          const durationMs = Date.now() - startMs;
+          if (stage === "classify") {
+            if (availableProviders.length === 0) {
+              errors.push("Species classify skipped: no LLM provider API keys configured");
+            } else {
+              const { result: enrichment, providerName } = await callLLMWithRotation(
+                availableProviders,
+                species.scientific_name,
+                species.common_name,
+                species.taxonomic_class,
+              );
+              const { error: updateErr } = await supabase
+                .from("species")
+                .update({
+                  animal_class: enrichment.animal_class,
+                  animal_class_enrichver: pipelineVersion,
+                  food_preference: enrichment.food_preference,
+                  food_preference_enrichver: pipelineVersion,
+                  climate: enrichment.climate,
+                  climate_enrichver: pipelineVersion,
+                  brawn: enrichment.brawn,
+                  brawn_enrichver: pipelineVersion,
+                  wit: enrichment.wit,
+                  wit_enrichver: pipelineVersion,
+                  speed: enrichment.speed,
+                  speed_enrichver: pipelineVersion,
+                  size: enrichment.size,
+                  size_enrichver: pipelineVersion,
+                  enriched_at: new Date().toISOString(),
+                })
+                .eq("definition_id", defId);
+              if (updateErr) throw new Error(`UPDATE failed for ${defId}: ${updateErr.message}`);
+              speciesEnriched++;
+              itemStage = "classify";
+              await logEvent('classification_success', defId, {
+                provider_name: providerName,
+                duration_ms: Date.now() - startMs,
+              });
+            }
 
-          const { error: updateErr } = await supabase
-            .from("species")
-            .update({
-              animal_class: enrichment.animal_class,
-              food_preference: enrichment.food_preference,
-              climate: enrichment.climate,
-              brawn: enrichment.brawn,
-              wit: enrichment.wit,
-              speed: enrichment.speed,
-              size: enrichment.size,
-              enriched_at: new Date().toISOString(),
-            })
-            .eq("definition_id", species.definition_id);
+          } else if (stage === "icon_prompt") {
+            if (availableProviders.length === 0) {
+              errors.push("Species icon_prompt skipped: no LLM provider API keys configured");
+            } else {
+              const habitat = parseFirstHabitat(species.habitats_json);
+              const prompt = await generateArtPrompt(availableProviders, species, "icon", habitat);
+              const { error: updateErr } = await supabase
+                .from("species")
+                .update({ icon_prompt: prompt, icon_prompt_enrichver: pipelineVersion })
+                .eq("definition_id", defId);
+              if (updateErr) throw new Error(`UPDATE icon_prompt failed for ${defId}: ${updateErr.message}`);
+              speciesEnriched++;
+              itemStage = "icon_prompt";
+            }
 
-          if (updateErr) throw new Error(`UPDATE failed for ${species.definition_id}: ${updateErr.message}`);
+          } else if (stage === "art_prompt") {
+            if (availableProviders.length === 0) {
+              errors.push("Species art_prompt skipped: no LLM provider API keys configured");
+            } else {
+              const habitat = parseFirstHabitat(species.habitats_json);
+              const prompt = await generateArtPrompt(availableProviders, species, "illustration", habitat);
+              const { error: updateErr } = await supabase
+                .from("species")
+                .update({ art_prompt: prompt, art_prompt_enrichver: pipelineVersion })
+                .eq("definition_id", defId);
+              if (updateErr) throw new Error(`UPDATE art_prompt failed for ${defId}: ${updateErr.message}`);
+              speciesEnriched++;
+              itemStage = "art_prompt";
+            }
 
-          classified++;
-          console.log(`[pass1] classified ${species.scientific_name} → ${enrichment.animal_class}`);
-          await logEvent('classification_success', species.definition_id, {
-            provider_name: providerName,
-            duration_ms: durationMs,
-          });
+          } else if (stage === "icon_url") {
+            if (availableImageProviders.length === 0) {
+              errors.push("Species icon_url skipped: no image provider API keys configured");
+            } else if (!species.icon_prompt) {
+              errors.push(`Species icon_url skipped: ${defId} has no icon_prompt`);
+            } else {
+              const result = await generateAndUploadArt(
+                supabase, supabaseUrl, defId, "icon", species.icon_prompt, pipelineVersion, logEvent,
+              );
+              if (result === "rate_limited") {
+                errors.push(`Species icon_url: all image providers rate limited for ${defId}`);
+              } else if (result) {
+                speciesEnriched++;
+                itemStage = "icon_url";
+              }
+            }
+
+          } else if (stage === "art_url") {
+            if (availableImageProviders.length === 0) {
+              errors.push("Species art_url skipped: no image provider API keys configured");
+            } else if (!species.art_prompt) {
+              errors.push(`Species art_url skipped: ${defId} has no art_prompt`);
+            } else {
+              const result = await generateAndUploadArt(
+                supabase, supabaseUrl, defId, "illustration", species.art_prompt, pipelineVersion, logEvent,
+              );
+              if (result === "rate_limited") {
+                errors.push(`Species art_url: all image providers rate limited for ${defId}`);
+              } else if (result) {
+                speciesEnriched++;
+                itemStage = "art_url";
+              }
+            }
+          }
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          errors.push(`Pass 1 classify ${species.definition_id}: ${message}`);
-          console.error(`[pass1] error for ${species.definition_id}: ${message}`);
-          await logEvent('classification_error', species.definition_id, {
+          errors.push(`Species ${defId} ${stage}: ${message}`);
+          console.error(`[species] error for ${defId} stage=${stage}: ${message}`);
+          await logEvent('enrichment_error', defId, {
+            stage,
             error_message: message,
             duration_ms: Date.now() - startMs,
           });
@@ -680,142 +887,268 @@ serve(async (req: Request) => {
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    errors.push(`Pass 1 fatal: ${message}`);
-    console.error(`[pass1] fatal: ${message}`);
+    errors.push(`Species enrichment fatal: ${message}`);
+    console.error(`[species] fatal: ${message}`);
   }
 
-  // ── Pass 2: Generate art for ONE species ──────────────────────────────
+  // ── Item denormalization: batch of up to 50 ───────────────────────────────
+  //
+  // Pure SQL look-ups — no API calls. Fill whatever is available from already-
+  // enriched species rows and cell_properties.
 
   try {
-    const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
-    if (availableImageProviders.length === 0) {
-      errors.push("Pass 2 skipped: no image provider API keys configured");
+    const itemColumns = [
+      "id", "definition_id", "acquired_in_cell_id",
+      "animal_class_name", "animal_class_name_enrichver",
+      "food_preference_name", "food_preference_name_enrichver",
+      "climate_name", "climate_name_enrichver",
+      "brawn", "brawn_enrichver",
+      "wit", "wit_enrichver",
+      "speed", "speed_enrichver",
+      "size_name", "size_name_enrichver",
+      "icon_url", "icon_url_enrichver",
+      "art_url", "art_url_enrichver",
+      "cell_habitat_name", "cell_habitat_name_enrichver",
+      "cell_climate_name", "cell_climate_name_enrichver",
+      "cell_continent_name", "cell_continent_name_enrichver",
+      "location_district", "location_district_enrichver",
+      "location_city", "location_city_enrichver",
+      "location_state", "location_state_enrichver",
+      "location_country", "location_country_enrichver",
+      "location_country_code", "location_country_code_enrichver",
+    ].join(", ");
+
+    // Query item instances that have any field needing work
+    const { data: itemCandidates, error: itemCandidatesErr } = await supabase
+      .from("item_instances")
+      .select(itemColumns)
+      .or([
+        `animal_class_name.is.null`,
+        `animal_class_name_enrichver.is.null`,
+        `animal_class_name_enrichver.neq.${pipelineVersion}`,
+        `icon_url.is.null`,
+        `icon_url_enrichver.is.null`,
+        `icon_url_enrichver.neq.${pipelineVersion}`,
+        `art_url.is.null`,
+        `art_url_enrichver.is.null`,
+        `art_url_enrichver.neq.${pipelineVersion}`,
+        `cell_habitat_name.is.null`,
+        `cell_habitat_name_enrichver.is.null`,
+        `cell_habitat_name_enrichver.neq.${pipelineVersion}`,
+        `location_city.is.null`,
+        `location_city_enrichver.is.null`,
+        `location_city_enrichver.neq.${pipelineVersion}`,
+      ].join(","))
+      .limit(200);
+
+    if (itemCandidatesErr) throw new Error(`Failed to query item_instances: ${itemCandidatesErr.message}`);
+
+    if (!itemCandidates || itemCandidates.length === 0) {
+      console.log('[items] nothing to denormalize');
     } else {
-      // 2-Stage art pipeline: LLM generates prompt → image model generates art.
-      // Prioritize species closest to complete.
-      const artColumns = "definition_id, scientific_name, common_name, taxonomic_class, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, icon_prompt, art_prompt, enriched_at, habitats_json";
-      const availableLLMProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+      // Score in TypeScript, pick top 50
+      const scoredItems = (itemCandidates as ItemInstanceRow[]).map(row => ({
+        row,
+        score: itemFieldsNeedingWork(row, pipelineVersion),
+      }));
+      scoredItems.sort((a, b) => a.score - b.score);
+      const batch = scoredItems.slice(0, 50).map(x => x.row);
 
-      // Priority 1: has icon, missing art only (one step from complete)
-      const { data: needsArtOnly, error: artOnlyErr } = await supabase
-        .from("species")
-        .select(artColumns)
-        .not("animal_class", "is", null)
-        .not("icon_url", "is", null)
-        .is("art_url", null)
-        .order("enriched_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (artOnlyErr) throw new Error(`Failed to query species (art-only): ${artOnlyErr.message}`);
+      // Collect unique definition_ids and cell_ids in the batch
+      const definitionIds = [...new Set(batch.map(i => i.definition_id))];
+      const cellIds = [...new Set(batch.map(i => i.acquired_in_cell_id).filter(Boolean))] as string[];
 
-      // Priority 2: needs icon (and possibly art too)
-      const needsArt = needsArtOnly ?? await (async () => {
-        const { data, error } = await supabase
+      // Fetch species data for all definition_ids in batch
+      const speciesMap: Map<string, SpeciesRow> = new Map();
+      if (definitionIds.length > 0) {
+        const { data: speciesRows } = await supabase
           .from("species")
-          .select(artColumns)
-          .not("animal_class", "is", null)
-          .is("icon_url", null)
-          .order("enriched_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (error) throw new Error(`Failed to query species (needs-icon): ${error.message}`);
-        return data;
-      })();
-
-      if (!needsArt) {
-        console.log('[pass2] nothing to generate');
-      } else {
-        const priority = needsArtOnly ? 'art-only' : 'needs-icon';
-        console.log(`[pass2] picked ${needsArt.definition_id} (${priority})`);
-        const species = needsArt as SpeciesRow;
-        const habitat = parseFirstHabitat(species.habitats_json);
-
-        // ── Stage 1: Generate prompts via LLM (if not already cached) ────
-        let iconPrompt = species.icon_prompt;
-        let artPrompt = species.art_prompt;
-
-        if (!iconPrompt && !species.icon_url && availableLLMProviders.length > 0) {
-          try {
-            iconPrompt = await generateArtPrompt(availableLLMProviders, species, "icon", habitat);
-            await supabase.from("species").update({ icon_prompt: iconPrompt }).eq("definition_id", species.definition_id);
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Stage 1 icon prompt: ${msg}`);
-            console.error(`[pass2] icon prompt failed: ${msg}`);
-          }
-        }
-
-        if (!artPrompt && !species.art_url && availableLLMProviders.length > 0) {
-          try {
-            artPrompt = await generateArtPrompt(availableLLMProviders, species, "illustration", habitat);
-            await supabase.from("species").update({ art_prompt: artPrompt }).eq("definition_id", species.definition_id);
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            errors.push(`Stage 1 art prompt: ${msg}`);
-            console.error(`[pass2] art prompt failed: ${msg}`);
-          }
-        }
-
-        // ── Stage 2: Generate images from prompts ────────────────────────
-        if (!species.icon_url && iconPrompt) {
-          const result = await generateAndUploadArt(
-            supabase, supabaseUrl,
-            species.definition_id, "icon", iconPrompt, logEvent,
-          );
-          if (result === "rate_limited") {
-            errors.push("Pass 2 stopped: all image providers rate limited");
-          } else if (result) {
-            icons++;
-          }
-        }
-
-        if (!species.art_url && artPrompt) {
-          const result = await generateAndUploadArt(
-            supabase, supabaseUrl,
-            species.definition_id, "illustration", artPrompt, logEvent,
-          );
-          if (result === "rate_limited") {
-            errors.push("Pass 2 stopped: all image providers rate limited");
-          } else if (result) {
-            illustrations++;
+          .select("definition_id, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url")
+          .in("definition_id", definitionIds);
+        if (speciesRows) {
+          for (const s of speciesRows) {
+            speciesMap.set(s.definition_id, s as SpeciesRow);
           }
         }
       }
+
+      // Fetch cell_properties for all cell_ids in batch
+      const cellMap: Map<string, any> = new Map();
+      if (cellIds.length > 0) {
+        const { data: cellRows } = await supabase
+          .from("cell_properties")
+          .select("cell_id, habitats, climate, continent, location_id")
+          .in("cell_id", cellIds);
+        if (cellRows) {
+          for (const c of cellRows) {
+            cellMap.set(c.cell_id, c);
+          }
+        }
+      }
+
+      // Collect all location_ids we need to walk
+      const locationIdSet: Set<number> = new Set();
+      for (const item of batch) {
+        if (item.acquired_in_cell_id) {
+          const cell = cellMap.get(item.acquired_in_cell_id);
+          if (cell?.location_id) locationIdSet.add(cell.location_id);
+        }
+      }
+
+      // Build location chain for each unique location_id
+      // Walk location_nodes upward, building a map: location_id → { district, city, state, country }
+      const locationChainMap: Map<number, Record<string, string>> = new Map();
+      for (const rootId of locationIdSet) {
+        const fields: Record<string, string> = {};
+        let nodeId: number | null = rootId;
+        while (nodeId !== null) {
+          const { data: node } = await supabase
+            .from("location_nodes")
+            .select("id, name, admin_level, parent_id")
+            .eq("id", nodeId)
+            .maybeSingle();
+          if (!node) break;
+          switch (node.admin_level) {
+            case "district": fields.location_district = node.name; break;
+            case "city": fields.location_city = node.name; break;
+            case "state": fields.location_state = node.name; break;
+            case "country": fields.location_country = node.name; break;
+          }
+          nodeId = node.parent_id ?? null;
+        }
+        locationChainMap.set(rootId, fields);
+      }
+
+      // Now update each item in the batch
+      let batchUpdated = 0;
+      for (const item of batch) {
+        const updates: Record<string, unknown> = {};
+        const species = speciesMap.get(item.definition_id);
+        const cell = item.acquired_in_cell_id ? cellMap.get(item.acquired_in_cell_id) : null;
+        const locationId: number | null = cell?.location_id ?? null;
+        const locationFields = locationId ? (locationChainMap.get(locationId) ?? {}) : {};
+
+        // Species fields — only if species has animal_class (classification done)
+        if (species?.animal_class !== null && species?.animal_class !== undefined) {
+          if (item.animal_class_name === null || item.animal_class_name_enrichver !== pipelineVersion) {
+            updates.animal_class_name = species.animal_class;
+            updates.animal_class_name_enrichver = pipelineVersion;
+          }
+          if (item.food_preference_name === null || item.food_preference_name_enrichver !== pipelineVersion) {
+            updates.food_preference_name = species.food_preference ?? null;
+            updates.food_preference_name_enrichver = pipelineVersion;
+          }
+          if (item.climate_name === null || item.climate_name_enrichver !== pipelineVersion) {
+            updates.climate_name = species.climate ?? null;
+            updates.climate_name_enrichver = pipelineVersion;
+          }
+          if (item.brawn === null || item.brawn_enrichver !== pipelineVersion) {
+            updates.brawn = species.brawn ?? null;
+            updates.brawn_enrichver = pipelineVersion;
+          }
+          if (item.wit === null || item.wit_enrichver !== pipelineVersion) {
+            updates.wit = species.wit ?? null;
+            updates.wit_enrichver = pipelineVersion;
+          }
+          if (item.speed === null || item.speed_enrichver !== pipelineVersion) {
+            updates.speed = species.speed ?? null;
+            updates.speed_enrichver = pipelineVersion;
+          }
+          if (item.size_name === null || item.size_name_enrichver !== pipelineVersion) {
+            updates.size_name = species.size ?? null;
+            updates.size_name_enrichver = pipelineVersion;
+          }
+        }
+
+        // Icon/art URL from species
+        if (species?.icon_url !== null && species?.icon_url !== undefined) {
+          if (item.icon_url === null || item.icon_url_enrichver !== pipelineVersion) {
+            updates.icon_url = species.icon_url;
+            updates.icon_url_enrichver = pipelineVersion;
+          }
+        }
+        if (species?.art_url !== null && species?.art_url !== undefined) {
+          if (item.art_url === null || item.art_url_enrichver !== pipelineVersion) {
+            updates.art_url = species.art_url;
+            updates.art_url_enrichver = pipelineVersion;
+          }
+        }
+
+        // Cell properties
+        if (cell) {
+          if (item.cell_habitat_name === null || item.cell_habitat_name_enrichver !== pipelineVersion) {
+            // habitats is a TEXT[] array — first element
+            const habitats = cell.habitats;
+            const firstHabitat = Array.isArray(habitats) && habitats.length > 0 ? habitats[0] : null;
+            updates.cell_habitat_name = firstHabitat;
+            updates.cell_habitat_name_enrichver = pipelineVersion;
+          }
+          if (item.cell_climate_name === null || item.cell_climate_name_enrichver !== pipelineVersion) {
+            updates.cell_climate_name = cell.climate ?? null;
+            updates.cell_climate_name_enrichver = pipelineVersion;
+          }
+          if (item.cell_continent_name === null || item.cell_continent_name_enrichver !== pipelineVersion) {
+            updates.cell_continent_name = cell.continent ?? null;
+            updates.cell_continent_name_enrichver = pipelineVersion;
+          }
+        }
+
+        // Location fields
+        if (Object.keys(locationFields).length > 0) {
+          if (locationFields.location_district !== undefined &&
+            (item.location_district === null || item.location_district_enrichver !== pipelineVersion)) {
+            updates.location_district = locationFields.location_district;
+            updates.location_district_enrichver = pipelineVersion;
+          }
+          if (locationFields.location_city !== undefined &&
+            (item.location_city === null || item.location_city_enrichver !== pipelineVersion)) {
+            updates.location_city = locationFields.location_city;
+            updates.location_city_enrichver = pipelineVersion;
+          }
+          if (locationFields.location_state !== undefined &&
+            (item.location_state === null || item.location_state_enrichver !== pipelineVersion)) {
+            updates.location_state = locationFields.location_state;
+            updates.location_state_enrichver = pipelineVersion;
+          }
+          if (locationFields.location_country !== undefined &&
+            (item.location_country === null || item.location_country_enrichver !== pipelineVersion)) {
+            updates.location_country = locationFields.location_country;
+            updates.location_country_enrichver = pipelineVersion;
+          }
+          // location_country_code: not available from location_nodes for now
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: updateErr } = await supabase
+            .from("item_instances")
+            .update(updates)
+            .eq("id", item.id);
+          if (updateErr) {
+            errors.push(`Item ${item.id} update failed: ${updateErr.message}`);
+          } else {
+            batchUpdated++;
+          }
+        }
+      }
+
+      itemsEnriched = batchUpdated;
+      console.log(`[items] enriched ${itemsEnriched} items`);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    errors.push(`Pass 2 fatal: ${message}`);
-    console.error(`[pass2] fatal: ${message}`);
+    errors.push(`Item denormalization fatal: ${message}`);
+    console.error(`[items] fatal: ${message}`);
   }
 
-  const result = { classified, icons, illustrations, errors };
-  console.log(`[worker] done — classified=${classified} icons=${icons} illustrations=${illustrations} errors=${errors.length}`);
-
-  // Query remaining queue depth for the summary
-  let pendingClassification = 0;
-  let pendingArt = 0;
-  try {
-    const { count: classCount } = await supabase
-      .from('species')
-      .select('definition_id', { count: 'exact', head: true })
-      .is('animal_class', null);
-    const { count: artCount } = await supabase
-      .from('species')
-      .select('definition_id', { count: 'exact', head: true })
-      .not('animal_class', 'is', null)
-      .or('icon_url.is.null,art_url.is.null');
-    pendingClassification = classCount ?? 0;
-    pendingArt = artCount ?? 0;
-  } catch (_) { /* non-critical */ }
+  const result = { species_enriched: speciesEnriched, item_stage: itemStage, items_enriched: itemsEnriched, errors };
+  console.log(`[worker] done — species_enriched=${speciesEnriched} item_stage=${itemStage} items_enriched=${itemsEnriched} errors=${errors.length}`);
 
   await logEvent('worker_run', null, {
     metadata: {
-      classified,
-      icons,
-      illustrations,
+      species_enriched: speciesEnriched,
+      item_stage: itemStage,
+      items_enriched: itemsEnriched,
       errors: errors.length,
-      pending_classification: pendingClassification,
-      pending_art: pendingArt,
     },
     duration_ms: Date.now() - workerStartMs,
   });

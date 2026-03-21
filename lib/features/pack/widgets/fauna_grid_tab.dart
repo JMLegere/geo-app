@@ -48,18 +48,11 @@ class FaunaGridTab extends ConsumerWidget {
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-          final definition =
-              ref.read(packProvider.notifier).resolveFauna(item.definitionId);
 
           return ItemSlotWidget(
             key: ValueKey(item.id),
             item: item,
-            definition: definition,
-            onTap: () => showSpeciesCardModal(
-              context,
-              item: item,
-              definition: definition,
-            ),
+            onTap: () => showSpeciesCardModal(context, item: item),
           );
         },
       ),
