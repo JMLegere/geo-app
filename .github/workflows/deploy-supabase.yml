@@ -127,7 +127,7 @@ jobs:
           supabase functions deploy validate-encounter --project-ref ${{ env.PROJECT_REF }}
           supabase functions deploy enrich-location --project-ref ${{ env.PROJECT_REF }}
           supabase functions deploy enrich-locations-batch --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy process-enrichment-queue --project-ref ${{ env.PROJECT_REF }}
+          supabase functions deploy process-enrichment-queue --no-verify-jwt --project-ref ${{ env.PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
