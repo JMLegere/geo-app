@@ -14,6 +14,9 @@ abstract class SpeciesRepository {
 
   Future<FaunaDefinition?> getByScientificName(String name);
 
+  /// Batch-fetch species by definition IDs.
+  Future<List<FaunaDefinition>> getByIds(List<String> ids);
+
   Future<int> count();
 
   Future<List<FaunaDefinition>> getAll();

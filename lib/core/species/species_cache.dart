@@ -56,6 +56,21 @@ class SpeciesCache {
     }
   }
 
+  /// Ensure specific definition IDs are in the `_byId` cache.
+  ///
+  /// Called after inventory hydration so that `getByIdSync()` works for all
+  /// owned species — not just those from previously warmed habitat/continent
+  /// combos. Skips IDs already cached.
+  Future<void> warmUpByIds(List<String> ids) async {
+    if (_repo == null || ids.isEmpty) return;
+    final missing = ids.where((id) => !_byId.containsKey(id)).toList();
+    if (missing.isEmpty) return;
+    final defs = await _repo!.getByIds(missing);
+    for (final def in defs) {
+      _byId[def.id] = def;
+    }
+  }
+
   /// Sync lookup — returns cached candidates or an empty list if not warmed.
   ///
   /// This is the hot path called by SpeciesService during each game tick.

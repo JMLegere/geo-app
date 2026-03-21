@@ -644,6 +644,17 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             continent: Continent.northAmerica,
           );
         }
+
+        // Ensure all owned species are in the _byId cache so the Pack
+        // grid can resolve definitions. warmUp() only covers habitat+
+        // continent combos the player has visited — this fills the gaps.
+        final ownedIds = ref
+            .read(itemsProvider)
+            .items
+            .map((i) => i.definitionId)
+            .toSet()
+            .toList();
+        await speciesCache.warmUpByIds(ownedIds);
       }
 
       // Restore last known position before starting the game loop.
