@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show countAll;
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -18,7 +17,6 @@ import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/features/sync/services/queue_processor.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
@@ -510,63 +508,31 @@ Future<void> hydrateFromSupabase({
       debugPrint('[GameCoordinator] no AppDatabase — skipping species sync');
     } else
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final lastSyncStr = prefs.getString('lastEnrichmentSync');
-
-        // Guard: if a sync watermark exists but the local species table has
-        // no enrichment data, the watermark is stale. This happens on web
-        // when IndexedDB is cleared (losing SQLite data) but localStorage
-        // persists. Reset the watermark to force a full re-sync.
-        DateTime lastSync;
-        if (lastSyncStr != null) {
-          final countExpr = countAll();
-          final enrichedCount = await (db.selectOnly(db.localSpeciesTable)
-                ..addColumns([countExpr])
-                ..where(db.localSpeciesTable.enrichedAt.isNotNull()))
-              .map((row) => row.read(countExpr)!)
-              .getSingle();
-          if (enrichedCount == 0) {
-            debugPrint(
-              '[GameCoordinator] stale enrichment watermark detected '
-              '(was: $lastSyncStr, local enriched: 0) — resetting',
-            );
-            await prefs.remove('lastEnrichmentSync');
-            lastSync = DateTime(2020);
-          } else {
-            lastSync = DateTime.tryParse(lastSyncStr) ?? DateTime(2020);
-          }
-        } else {
-          lastSync = DateTime(2020);
-        }
-
+        // Always do a full sync — the enriched species set is small (~500)
+        // and art URLs can be added after classification. A delta watermark
+        // would miss art URL updates that arrive after the initial sync.
         final sw = Stopwatch()..start();
         final speciesUpdates =
-            await persistence.fetchSpeciesUpdates(since: lastSync);
+            await persistence.fetchSpeciesUpdates(since: DateTime(2020));
         sw.stop();
 
-        if (speciesUpdates.isNotEmpty) {
-          for (final row in speciesUpdates) {
-            await db.updateSpeciesEnrichment(
-              definitionId: row['definition_id'] as String,
-              animalClass: row['animal_class'] as String?,
-              foodPreference: row['food_preference'] as String?,
-              climate: row['climate'] as String?,
-              brawn: row['brawn'] as int?,
-              wit: row['wit'] as int?,
-              speed: row['speed'] as int?,
-              size: row['size'] as String?,
-              iconUrl: row['icon_url'] as String?,
-              artUrl: row['art_url'] as String?,
-              enrichedAt: row['enriched_at'] != null
-                  ? DateTime.parse(row['enriched_at'] as String)
-                  : null,
-            );
-            speciesSynced++;
-          }
-          await prefs.setString(
-            'lastEnrichmentSync',
-            DateTime.now().toIso8601String(),
+        for (final row in speciesUpdates) {
+          await db.updateSpeciesEnrichment(
+            definitionId: row['definition_id'] as String,
+            animalClass: row['animal_class'] as String?,
+            foodPreference: row['food_preference'] as String?,
+            climate: row['climate'] as String?,
+            brawn: row['brawn'] as int?,
+            wit: row['wit'] as int?,
+            speed: row['speed'] as int?,
+            size: row['size'] as String?,
+            iconUrl: row['icon_url'] as String?,
+            artUrl: row['art_url'] as String?,
+            enrichedAt: row['enriched_at'] != null
+                ? DateTime.parse(row['enriched_at'] as String)
+                : null,
           );
+          speciesSynced++;
         }
 
         // Invalidate species cache so next warmUp() re-reads art URLs from Drift.
@@ -580,7 +546,7 @@ Future<void> hydrateFromSupabase({
         obs?.event('species_delta_sync', {
           'count': speciesSynced,
           'duration_ms': sw.elapsedMilliseconds,
-          'since': lastSyncStr ?? 'never',
+          'since': 'full',
         });
       } catch (e) {
         debugPrint('[GameCoordinator] species delta-sync failed: $e');
