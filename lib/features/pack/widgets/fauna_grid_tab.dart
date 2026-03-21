@@ -49,7 +49,7 @@ class FaunaGridTab extends ConsumerWidget {
     }
     // ignore: avoid_print
     print(
-      '[ART GRID] build: ${items.length} items, '
+      '[ART] grid build: ${items.length} items, '
       'itemUrl=$withItemUrl, defUrl=$withDefUrl, '
       'noUrl=$withNoUrl, noDef=$noDef',
     );
