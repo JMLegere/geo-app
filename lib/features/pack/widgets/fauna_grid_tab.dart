@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,6 +29,31 @@ class FaunaGridTab extends ConsumerWidget {
       );
     }
 
+    // Log art URL resolution summary on every grid build.
+    int withItemUrl = 0;
+    int withDefUrl = 0;
+    int withNoUrl = 0;
+    int noDef = 0;
+    for (final item in items) {
+      final def =
+          ref.read(packProvider.notifier).resolveFauna(item.definitionId);
+      if (item.iconUrl != null) {
+        withItemUrl++;
+      } else if (def == null) {
+        noDef++;
+      } else if (def.iconUrl != null) {
+        withDefUrl++;
+      } else {
+        withNoUrl++;
+      }
+    }
+    // ignore: avoid_print
+    print(
+      '[ART GRID] build: ${items.length} items, '
+      'itemUrl=$withItemUrl, defUrl=$withDefUrl, '
+      'noUrl=$withNoUrl, noDef=$noDef',
+    );
+
     return GridView.builder(
       padding: EdgeInsets.all(Spacing.sm),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -43,18 +67,6 @@ class FaunaGridTab extends ConsumerWidget {
         final item = items[index];
         final definition =
             ref.read(packProvider.notifier).resolveFauna(item.definitionId);
-
-        if (index < 3 && kIsWeb) {
-          final artUrl = item.iconUrl ?? definition?.iconUrl;
-          // ignore: avoid_print
-          print(
-            '[ART DEBUG] ${item.displayName}: '
-            'def=${definition != null ? "YES" : "NULL"}, '
-            'def.iconUrl=${definition?.iconUrl != null ? "YES" : "null"}, '
-            'item.iconUrl=${item.iconUrl != null ? "YES" : "null"}, '
-            'resolved=$artUrl',
-          );
-        }
 
         return ItemSlotWidget(
           item: item,
