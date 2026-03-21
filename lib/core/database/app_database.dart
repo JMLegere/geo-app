@@ -634,6 +634,12 @@ class AppDatabase extends _$AppDatabase {
 
   /// Update enrichment columns on a LocalSpeciesTable row.
   /// Used by species delta-sync from Supabase.
+  /// Update enrichment columns on a LocalSpeciesTable row.
+  ///
+  /// All fields are written unconditionally (including null) so that
+  /// server-side clears (e.g. art URL wipe) propagate to the local cache.
+  /// Previously used `Value.absent()` for nulls, which meant "don't touch" —
+  /// stale local values were never cleared.
   Future<void> updateSpeciesEnrichment({
     required String definitionId,
     String? animalClass,
@@ -650,18 +656,16 @@ class AppDatabase extends _$AppDatabase {
     return (update(localSpeciesTable)
           ..where((t) => t.definitionId.equals(definitionId)))
         .write(LocalSpeciesTableCompanion(
-      animalClass:
-          animalClass != null ? Value(animalClass) : const Value.absent(),
-      foodPreference:
-          foodPreference != null ? Value(foodPreference) : const Value.absent(),
-      climate: climate != null ? Value(climate) : const Value.absent(),
-      brawn: brawn != null ? Value(brawn) : const Value.absent(),
-      wit: wit != null ? Value(wit) : const Value.absent(),
-      speed: speed != null ? Value(speed) : const Value.absent(),
-      size: size != null ? Value(size) : const Value.absent(),
-      iconUrl: iconUrl != null ? Value(iconUrl) : const Value.absent(),
-      artUrl: artUrl != null ? Value(artUrl) : const Value.absent(),
-      enrichedAt: enrichedAt != null ? Value(enrichedAt) : const Value.absent(),
+      animalClass: Value(animalClass),
+      foodPreference: Value(foodPreference),
+      climate: Value(climate),
+      brawn: Value(brawn),
+      wit: Value(wit),
+      speed: Value(speed),
+      size: Value(size),
+      iconUrl: Value(iconUrl),
+      artUrl: Value(artUrl),
+      enrichedAt: Value(enrichedAt),
     ));
   }
 

@@ -26,6 +26,11 @@ import 'package:earth_nova/shared/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Increase image cache for species grid — default 100 images / 100MB is
+  // too small for a 293+ item grid that scrolls and rebuilds during hydration.
+  PaintingBinding.instance.imageCache.maximumSize = 500;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
+
   await SupabaseBootstrap.initialize(
     httpClient: ObservableHttpClient(),
   );
@@ -158,6 +163,8 @@ Future<void> main() async {
 
   // Frame performance monitoring + rendering watchdog.
   var lastFrameTime = DateTime.now();
+  var slowFrameCount = 0;
+  var worstFrameMs = 0;
 
   SchedulerBinding.instance.addTimingsCallback((List<FrameTiming> timings) {
     lastFrameTime = DateTime.now();
@@ -166,8 +173,13 @@ Future<void> main() async {
       final rasterMs = timing.rasterDuration.inMilliseconds;
       final totalMs = buildMs + rasterMs;
       if (totalMs > 16) {
-        debugPrint(
-            '[FRAME-PERF] slow frame: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
+        slowFrameCount++;
+        if (totalMs > worstFrameMs) worstFrameMs = totalMs;
+        // Only log individually if really bad (>100ms)
+        if (totalMs > 100) {
+          print(
+              '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
+        }
         ObservabilityBuffer.instance?.event('long_frame', {
           'build_ms': buildMs,
           'raster_ms': rasterMs,
@@ -175,6 +187,26 @@ Future<void> main() async {
         });
       }
     }
+  });
+
+  // Periodic performance heartbeat — every 10s, log image cache + frame stats.
+  Timer.periodic(const Duration(seconds: 10), (_) {
+    final cache = PaintingBinding.instance.imageCache;
+    final cacheSize = cache.currentSizeBytes;
+    final cacheSizeMb = (cacheSize / (1024 * 1024)).toStringAsFixed(1);
+    final cacheCount = cache.currentSize;
+    final liveCount = cache.liveImageCount;
+    final pendingCount = cache.pendingImageCount;
+
+    print(
+      '[PERF] imgCache: ${cacheCount} cached (${cacheSizeMb}MB), '
+      '${liveCount} live, ${pendingCount} pending | '
+      'slowFrames: $slowFrameCount (worst: ${worstFrameMs}ms)',
+    );
+
+    // Reset counters for next window
+    slowFrameCount = 0;
+    worstFrameMs = 0;
   });
 
   // Rendering watchdog: if no frames paint for 3+ seconds, the UI is dead

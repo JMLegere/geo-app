@@ -110,6 +110,8 @@ class DebugLogBuffer {
     // the in-app debug viewer regardless of minLevel.
     final alwaysPass = line.contains('[API]') ||
         line.contains('[ART]') ||
+        line.contains('[FRAME-PERF]') ||
+        line.contains('[PERF]') ||
         line.contains('[Startup]') ||
         line.contains('[GameCoordinator]');
 
