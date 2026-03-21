@@ -701,18 +701,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
         obs.event('background_sync_complete', {'user_id': userId});
 
-        // Re-warm species cache after delta-sync (art URLs may have changed).
-        final speciesCacheAfterSync = ref.read(speciesCacheProvider);
-        if (!speciesCacheAfterSync.isEmpty) {
-          final cachedProps = coordinator.cellPropertiesCache.values;
-          if (cachedProps.isNotEmpty) {
-            final first = cachedProps.first;
-            await speciesCacheAfterSync.warmUp(
-              habitats: first.habitats,
-              continent: first.continent,
-            );
-          }
-        }
+        // Species cache is already refreshed inside hydrateFromSupabase()
+        // via speciesCache.refresh() — no additional warmUp needed here.
 
         // On cold start (empty SQLite), Supabase sync wrote data to SQLite
         // but providers are still empty. Re-hydrate providers from the

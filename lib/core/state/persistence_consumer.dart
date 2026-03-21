@@ -544,11 +544,13 @@ Future<void> hydrateFromSupabase({
           '$withArt with art URLs',
         );
 
-        // Invalidate species cache so next warmUp() re-reads art URLs from Drift.
+        // Refresh species cache — re-queries all previously cached
+        // habitat/continent combos so art URLs are picked up without
+        // losing coverage for species in different areas.
         if (speciesSynced > 0 && speciesCache != null) {
-          speciesCache.clear();
+          await speciesCache.refresh();
           debugPrint(
-            '[GameCoordinator] species cache invalidated after syncing $speciesSynced species',
+            '[GameCoordinator] species cache refreshed after syncing $speciesSynced species',
           );
         }
 
