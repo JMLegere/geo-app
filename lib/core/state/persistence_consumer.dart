@@ -489,6 +489,45 @@ Future<void> hydrateFromSupabase({
         status: ItemInstanceStatus.fromString(
           row['status'] as String? ?? 'active',
         ),
+        // Species enrichment denorm
+        animalClassName: row['animal_class_name'] as String?,
+        animalClassNameEnrichver: row['animal_class_name_enrichver'] as String?,
+        foodPreferenceName: row['food_preference_name'] as String?,
+        foodPreferenceNameEnrichver:
+            row['food_preference_name_enrichver'] as String?,
+        climateName: row['climate_name'] as String?,
+        climateNameEnrichver: row['climate_name_enrichver'] as String?,
+        brawn: row['brawn'] as int?,
+        brawnEnrichver: row['brawn_enrichver'] as String?,
+        wit: row['wit'] as int?,
+        witEnrichver: row['wit_enrichver'] as String?,
+        speed: row['speed'] as int?,
+        speedEnrichver: row['speed_enrichver'] as String?,
+        sizeName: row['size_name'] as String?,
+        sizeNameEnrichver: row['size_name_enrichver'] as String?,
+        iconUrlEnrichver: row['icon_url_enrichver'] as String?,
+        artUrlEnrichver: row['art_url_enrichver'] as String?,
+        // Cell properties denorm
+        cellHabitatName: row['cell_habitat_name'] as String?,
+        cellHabitatNameEnrichver: row['cell_habitat_name_enrichver'] as String?,
+        cellClimateName: row['cell_climate_name'] as String?,
+        cellClimateNameEnrichver: row['cell_climate_name_enrichver'] as String?,
+        cellContinentName: row['cell_continent_name'] as String?,
+        cellContinentNameEnrichver:
+            row['cell_continent_name_enrichver'] as String?,
+        // Location hierarchy denorm
+        locationDistrict: row['location_district'] as String?,
+        locationDistrictEnrichver:
+            row['location_district_enrichver'] as String?,
+        locationCity: row['location_city'] as String?,
+        locationCityEnrichver: row['location_city_enrichver'] as String?,
+        locationState: row['location_state'] as String?,
+        locationStateEnrichver: row['location_state_enrichver'] as String?,
+        locationCountry: row['location_country'] as String?,
+        locationCountryEnrichver: row['location_country_enrichver'] as String?,
+        locationCountryCode: row['location_country_code'] as String?,
+        locationCountryCodeEnrichver:
+            row['location_country_code_enrichver'] as String?,
       );
 
       try {
@@ -537,6 +576,18 @@ Future<void> hydrateFromSupabase({
             enrichedAt: row['enriched_at'] != null
                 ? DateTime.parse(row['enriched_at'] as String)
                 : null,
+            animalClassEnrichver: row['animal_class_enrichver'] as String?,
+            foodPreferenceEnrichver:
+                row['food_preference_enrichver'] as String?,
+            climateEnrichver: row['climate_enrichver'] as String?,
+            brawnEnrichver: row['brawn_enrichver'] as String?,
+            witEnrichver: row['wit_enrichver'] as String?,
+            speedEnrichver: row['speed_enrichver'] as String?,
+            sizeEnrichver: row['size_enrichver'] as String?,
+            iconPromptEnrichver: row['icon_prompt_enrichver'] as String?,
+            artPromptEnrichver: row['art_prompt_enrichver'] as String?,
+            iconUrlEnrichver: row['icon_url_enrichver'] as String?,
+            artUrlEnrichver: row['art_url_enrichver'] as String?,
           );
           speciesSynced++;
         }

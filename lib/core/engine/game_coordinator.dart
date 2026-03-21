@@ -437,6 +437,9 @@ class GameCoordinator {
     }
 
     final definition = event.item;
+    final fauna = definition is FaunaDefinition ? definition : null;
+    final cellProps = _cellPropertiesCache[event.cellId];
+
     final instance = ItemInstance(
       id: instanceId,
       definitionId: definition.id,
@@ -446,12 +449,28 @@ class GameCoordinator {
       rarity: definition.rarity,
       habitats: definition.habitats,
       continents: definition.continents,
-      taxonomicClass:
-          definition is FaunaDefinition ? definition.taxonomicClass : null,
+      taxonomicClass: fauna?.taxonomicClass,
       acquiredAt: event.timestamp,
       acquiredInCellId: event.cellId,
       dailySeed: event.dailySeed,
       affixes: affixes,
+      // Denormalized species enrichment (snapshot at discovery, base stats)
+      animalClassName: fauna?.animalClass?.name,
+      foodPreferenceName: fauna?.foodPreference?.name,
+      climateName: fauna?.climate?.name,
+      brawn: fauna?.brawn,
+      wit: fauna?.wit,
+      speed: fauna?.speed,
+      sizeName: fauna?.size,
+      iconUrl: fauna?.iconUrl,
+      artUrl: fauna?.artUrl,
+      // Denormalized cell properties
+      cellHabitatName: cellProps?.habitats.isNotEmpty == true
+          ? cellProps!.habitats.first.name
+          : null,
+      cellClimateName: cellProps?.climate.name,
+      cellContinentName: cellProps?.continent.name,
+      // Location fields stay null — enriched lazily by server pipeline
     );
     onItemDiscovered?.call(event, instance);
 

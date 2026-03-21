@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/features/pack/widgets/species_card.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_rarity_frame.dart';
@@ -10,16 +9,11 @@ import 'package:earth_nova/features/pack/widgets/species_card_rarity_frame.dart'
 ///
 /// Usage:
 /// ```dart
-/// showSpeciesCardModal(
-///   context,
-///   item: instance,
-///   definition: definition,
-/// );
+/// showSpeciesCardModal(context, item: instance);
 /// ```
 void showSpeciesCardModal(
   BuildContext context, {
   required ItemInstance item,
-  FaunaDefinition? definition,
 }) {
   showGeneralDialog<void>(
     context: context,
@@ -30,19 +24,20 @@ void showSpeciesCardModal(
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
       return _SpeciesCardDialog(
         item: item,
-        definition: definition,
         animation: animation,
       );
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
-      // Scale 0.85 → 1.0 with easeOutBack
       final curved = CurvedAnimation(
         parent: animation,
-        curve: Curves.easeOutBack,
-        reverseCurve: Curves.easeInBack,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
       );
-      return ScaleTransition(
-        scale: curved,
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.3),
+          end: Offset.zero,
+        ).animate(curved),
         child: child,
       );
     },
@@ -53,12 +48,10 @@ void showSpeciesCardModal(
 class _SpeciesCardDialog extends StatelessWidget {
   const _SpeciesCardDialog({
     required this.item,
-    required this.definition,
     required this.animation,
   });
 
   final ItemInstance item;
-  final FaunaDefinition? definition;
   final Animation<double> animation;
 
   /// Responsive card width as fraction of screen.
@@ -80,7 +73,7 @@ class _SpeciesCardDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rarity = item.rarity ?? definition?.rarity;
+    final rarity = item.rarity;
     final cardWidth = _cardWidth(context);
     // 2:3 aspect ratio (width : height)
     final cardHeight = cardWidth * 1.5;
@@ -112,11 +105,10 @@ class _SpeciesCardDialog extends StatelessWidget {
             child: SpeciesCardRarityFrame(
               rarity: rarity,
               borderRadius: Radii.lg,
-              child: SingleChildScrollView(
+              child: Padding(
                 padding: EdgeInsets.all(Spacing.lg),
                 child: SpeciesCard(
                   item: item,
-                  definition: definition,
                   animate: true,
                 ),
               ),

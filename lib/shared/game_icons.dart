@@ -119,10 +119,10 @@ abstract final class GameIcons {
   // ── Climate Zones (4) ────────────────────────────────────────────────────
 
   static String climate(Climate c) => switch (c) {
-        Climate.tropic => '🌴',
-        Climate.temperate => '🍂',
-        Climate.boreal => '🌨️',
-        Climate.frigid => '❄️',
+        Climate.tropic => '🔥',
+        Climate.temperate => '☀️',
+        Climate.boreal => '❄️',
+        Climate.frigid => '🧊',
       };
 
   // ── Food Types (7) ───────────────────────────────────────────────────────
@@ -165,6 +165,106 @@ abstract final class GameIcons {
         Season.summer => '☀️',
         Season.winter => '❄️',
       };
+
+  // ── Abbreviations ──────────────────────────────────────────────────────────
+
+  static String habitatAbbrev(Habitat h) => switch (h) {
+        Habitat.forest => 'FOR',
+        Habitat.plains => 'PLN',
+        Habitat.freshwater => 'FRW',
+        Habitat.saltwater => 'SAL',
+        Habitat.swamp => 'SWP',
+        Habitat.mountain => 'MTN',
+        Habitat.desert => 'DES',
+      };
+
+  static String continentAbbrev(Continent c) => switch (c) {
+        Continent.asia => 'AS',
+        Continent.northAmerica => 'NA',
+        Continent.southAmerica => 'SA',
+        Continent.africa => 'AF',
+        Continent.oceania => 'OC',
+        Continent.europe => 'EU',
+      };
+
+  static String climateAbbrev(Climate c) => switch (c) {
+        Climate.tropic => 'TRP',
+        Climate.temperate => 'TMP',
+        Climate.boreal => 'BOR',
+        Climate.frigid => 'FRG',
+      };
+
+  static String foodTypeAbbrev(FoodType f) => switch (f) {
+        FoodType.critter => 'CRT',
+        FoodType.fish => 'FSH',
+        FoodType.fruit => 'FRT',
+        FoodType.grub => 'GRB',
+        FoodType.nectar => 'NCT',
+        FoodType.seed => 'SED',
+        FoodType.veg => 'VEG',
+      };
+
+  static String animalTypeIcon(AnimalType type) => switch (type) {
+        AnimalType.mammal => '🦁',
+        AnimalType.bird => '🦅',
+        AnimalType.fish => '🐟',
+        AnimalType.reptile => '🦎',
+        AnimalType.bug => '🐛',
+      };
+
+  static String animalTypeAbbrev(AnimalType type) => switch (type) {
+        AnimalType.mammal => 'MAM',
+        AnimalType.bird => 'BRD',
+        AnimalType.fish => 'FSH',
+        AnimalType.reptile => 'RPT',
+        AnimalType.bug => 'BUG',
+      };
+
+  static String animalClassAbbrev(AnimalClass cls) => switch (cls) {
+        AnimalClass.birdOfPrey => 'BOP',
+        AnimalClass.gameBird => 'GMB',
+        AnimalClass.nightbird => 'NTB',
+        AnimalClass.parrot => 'PRT',
+        AnimalClass.songbird => 'SNG',
+        AnimalClass.waterfowl => 'WTF',
+        AnimalClass.woodpecker => 'WDP',
+        AnimalClass.bee => 'BEE',
+        AnimalClass.beetle => 'BTL',
+        AnimalClass.butterfly => 'BTF',
+        AnimalClass.cicada => 'CCD',
+        AnimalClass.dragonfly => 'DGF',
+        AnimalClass.landMollusk => 'MLK',
+        AnimalClass.locust => 'LCT',
+        AnimalClass.scorpion => 'SCR',
+        AnimalClass.spider => 'SPD',
+        AnimalClass.cartilaginousFish => 'CRT',
+        AnimalClass.cephalopod => 'CPH',
+        AnimalClass.clamsUrchinsAndCrustaceans => 'CRC',
+        AnimalClass.jawlessFish => 'JWL',
+        AnimalClass.lobeFinnedFish => 'LBF',
+        AnimalClass.rayFinnedFish => 'RYF',
+        AnimalClass.bat => 'BAT',
+        AnimalClass.carnivore => 'CRN',
+        AnimalClass.hare => 'HAR',
+        AnimalClass.herbivore => 'HRB',
+        AnimalClass.primate => 'PRM',
+        AnimalClass.rodent => 'RDT',
+        AnimalClass.seaMammal => 'SEA',
+        AnimalClass.shrew => 'SHR',
+        AnimalClass.amphibian => 'AMP',
+        AnimalClass.crocodile => 'CRO',
+        AnimalClass.lizard => 'LZD',
+        AnimalClass.snake => 'SNK',
+        AnimalClass.turtle => 'TRT',
+      };
+
+  /// Convert 2-letter ISO 3166-1 country code to flag emoji.
+  static String countryFlag(String isoCode) {
+    if (isoCode.length != 2) return '🏳️';
+    return String.fromCharCodes(
+      isoCode.toUpperCase().codeUnits.map((c) => c + 0x1F1A5),
+    );
+  }
 
   // ── Size & Weight ─────────────────────────────────────────────────────────
 

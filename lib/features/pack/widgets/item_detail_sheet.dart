@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
 import 'package:earth_nova/core/models/animal_size.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
@@ -14,24 +17,23 @@ import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 /// Shows a modal bottom sheet with full item instance details.
 ///
 /// Displays species identity (name, scientific name, rarity), properties
-/// (type, class, habitat, region, climate, diet, season), stat bars
-/// (brawn/wit/speed from intrinsic affix), and instance provenance
+/// (type, class, habitat, region, climate, diet), stat bars
+/// (brawn/wit/speed from ItemInstance), and instance provenance
 /// (wild/bred, date acquired, cell ID).
 ///
 /// Usage:
 /// ```dart
-/// showItemDetailSheet(context, item: instance, definition: def);
+/// showItemDetailSheet(context, item: instance);
 /// ```
 void showItemDetailSheet(
   BuildContext context, {
   required ItemInstance item,
-  FaunaDefinition? definition,
 }) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => ItemDetailSheet(item: item, definition: definition),
+    builder: (_) => ItemDetailSheet(item: item),
   );
 }
 
@@ -40,11 +42,9 @@ class ItemDetailSheet extends StatelessWidget {
   const ItemDetailSheet({
     super.key,
     required this.item,
-    this.definition,
   });
 
   final ItemInstance item;
-  final FaunaDefinition? definition;
 
   @override
   Widget build(BuildContext context) {
@@ -110,8 +110,7 @@ class ItemDetailSheet extends StatelessWidget {
                       Spacing.lg,
                       Spacing.xxl,
                     ),
-                    child:
-                        _ItemDetailContent(item: item, definition: definition),
+                    child: _ItemDetailContent(item: item),
                   ),
                 ],
               ),
@@ -128,31 +127,60 @@ class ItemDetailSheet extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ItemDetailContent extends StatelessWidget {
-  const _ItemDetailContent({required this.item, required this.definition});
+  const _ItemDetailContent({required this.item});
 
   final ItemInstance item;
-  final FaunaDefinition? definition;
+
+  static AnimalClass? _parseAnimalClass(String? name) => name == null
+      ? null
+      : AnimalClass.values.where((a) => a.name == name).firstOrNull;
+
+  static AnimalType? _parseAnimalType(String? taxonomicClass) =>
+      taxonomicClass == null
+          ? null
+          : AnimalType.fromTaxonomicClass(taxonomicClass);
+
+  static Climate? _parseClimate(String? name) => name == null
+      ? null
+      : Climate.values.where((c) => c.name == name).firstOrNull;
+
+  static FoodType? _parseFoodType(String? name) => name == null
+      ? null
+      : FoodType.values.where((f) => f.name == name).firstOrNull;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final def = definition;
 
-    // Prefer denormalized fields from ItemInstance, fall back to definition.
-    final displayName = item.displayName.isNotEmpty
-        ? item.displayName
-        : (def?.displayName ?? 'Unknown Species');
-    final scientificName = item.scientificName ?? def?.scientificName;
-    final rarity = item.rarity ?? def?.rarity;
-    final habitats =
-        item.habitats.isNotEmpty ? item.habitats : (def?.habitats ?? const []);
-    final continents = item.continents.isNotEmpty
-        ? item.continents
-        : (def?.continents ?? const []);
+    final displayName =
+        item.displayName.isNotEmpty ? item.displayName : 'Unknown Species';
+    final scientificName = item.scientificName;
+    final rarity = item.rarity;
+    final habitats = item.habitats;
+    final continents = item.continents;
 
-    // Find intrinsic affix for stat bars
+    // Parse enriched fields from denormalized strings.
+    final animalType = _parseAnimalType(item.taxonomicClass);
+    final animalClass = _parseAnimalClass(item.animalClassName);
+    final climate = _parseClimate(item.climateName);
+    final foodPreference = _parseFoodType(item.foodPreferenceName);
+
+    // Find intrinsic affix for weight (per-instance).
     final intrinsic =
         item.affixes.where((a) => a.type == AffixType.intrinsic).firstOrNull;
+
+    // Determine if we have any property rows to show.
+    final hasProperties = animalType != null ||
+        animalClass != null ||
+        habitats.isNotEmpty ||
+        continents.isNotEmpty ||
+        climate != null ||
+        rarity != null ||
+        foodPreference != null;
+
+    // Determine if we have stats.
+    final hasStats =
+        (item.brawn ?? 0) > 0 || (item.wit ?? 0) > 0 || (item.speed ?? 0) > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,88 +248,108 @@ class _ItemDetailContent extends StatelessWidget {
         SizedBox(height: Spacing.lg),
 
         // ── Properties ───────────────────────────────────────────────────
-        // Enriched-only fields (animalType, animalClass, climate,
-        // foodPreference, seasonRestriction) still require definition.
-        // Denormalized fields (habitat, region, rarity) use instance values.
-        if (def != null) ...[
-          if (def.animalType != null)
-            _PropertyRow(
-              label: 'Type',
-              value:
-                  '${GameIcons.animalType(def.animalType!)} ${def.animalType!.name[0].toUpperCase()}${def.animalType!.name.substring(1)}',
-            ),
+        if (animalType != null) ...[
+          _PropertyRow(
+            label: 'Type',
+            value:
+                '${GameIcons.animalType(animalType)} ${animalType.name[0].toUpperCase()}${animalType.name.substring(1)}',
+          ),
           SizedBox(height: Spacing.sm),
+        ],
+        if (animalClass != null) ...[
           _PropertyRow(
             label: 'Class',
-            value: def.animalClass != null
-                ? '${GameIcons.animalClass(def.animalClass!)} ${def.animalClass!.displayName}'
-                : 'Awaiting enrichment. Check back soon.',
+            value:
+                '${GameIcons.animalClass(animalClass)} ${animalClass.displayName}',
           ),
+          SizedBox(height: Spacing.sm),
+        ] else if (animalType != null) ...[
+          _PropertyRow(
+            label: 'Class',
+            value: 'Awaiting enrichment. Check back soon.',
+          ),
+          SizedBox(height: Spacing.sm),
         ],
         if (habitats.isNotEmpty) ...[
-          SizedBox(height: Spacing.sm),
           _PropertyRow(
             label: 'Habitat',
             value: habitats
                 .map((h) => '${GameIcons.habitat(h)} ${h.displayName}')
                 .join('  '),
           ),
+          SizedBox(height: Spacing.sm),
         ],
         if (continents.isNotEmpty) ...[
-          SizedBox(height: Spacing.sm),
           _PropertyRow(
             label: 'Region',
             value: continents
                 .map((c) => '${GameIcons.continent(c)} ${c.displayName}')
                 .join('  '),
           ),
-        ],
-        if (def != null) ...[
           SizedBox(height: Spacing.sm),
+        ],
+        if (climate != null) ...[
           _PropertyRow(
             label: 'Climate',
-            value: def.climate != null
-                ? '${GameIcons.climate(def.climate!)} ${def.climate!.displayName}'
-                : 'Awaiting enrichment. Check back soon.',
+            value: '${GameIcons.climate(climate)} ${climate.displayName}',
           ),
+          SizedBox(height: Spacing.sm),
+        ] else if (animalType != null) ...[
+          _PropertyRow(
+            label: 'Climate',
+            value: 'Awaiting enrichment. Check back soon.',
+          ),
+          SizedBox(height: Spacing.sm),
         ],
         if (rarity != null) ...[
-          SizedBox(height: Spacing.sm),
           _PropertyRow(
             label: 'Rarity',
             value:
                 '${GameIcons.rarity(rarity)} ${EarthNovaTheme.rarityLabel(rarity)}',
           ),
-        ],
-        if (def != null) ...[
           SizedBox(height: Spacing.sm),
+        ],
+        if (foodPreference != null) ...[
           _PropertyRow(
             label: 'Diet',
-            value: def.foodPreference != null
-                ? '${GameIcons.foodType(def.foodPreference!)} ${def.foodPreference!.displayName}'
-                : 'Awaiting enrichment. Check back soon.',
+            value:
+                '${GameIcons.foodType(foodPreference)} ${foodPreference.displayName}',
           ),
-          if (def.seasonRestriction != null) ...[
-            SizedBox(height: Spacing.sm),
-            _PropertyRow(
-              label: 'Season',
-              value:
-                  '${GameIcons.season(def.seasonRestriction!)} ${def.seasonRestriction!.displayName}',
-            ),
-          ],
+          SizedBox(height: Spacing.sm),
+        ] else if (animalType != null) ...[
+          _PropertyRow(
+            label: 'Diet',
+            value: 'Awaiting enrichment. Check back soon.',
+          ),
+          SizedBox(height: Spacing.sm),
         ],
+
         // Show divider if we had any property rows
-        if (def != null ||
-            habitats.isNotEmpty ||
-            continents.isNotEmpty ||
-            rarity != null) ...[
-          SizedBox(height: Spacing.lg),
+        if (hasProperties) ...[
+          SizedBox(height: Spacing.xs),
           Divider(height: 1, color: cs.outlineVariant),
           SizedBox(height: Spacing.lg),
         ],
 
         // ── Size & Weight ─────────────────────────────────────────────────
-        if (intrinsic != null &&
+        if (item.sizeName != null) ...[
+          _PropertyRow(
+            label: 'Size',
+            value: '${GameIcons.size} ${_formatSize(item.sizeName!)}',
+          ),
+          if (intrinsic != null &&
+              intrinsic.values.containsKey(kWeightAffixKey)) ...[
+            SizedBox(height: Spacing.sm),
+            _PropertyRow(
+              label: 'Weight',
+              value:
+                  '${GameIcons.weight} ${_formatWeight((intrinsic.values[kWeightAffixKey] as num).round())}',
+            ),
+          ],
+          SizedBox(height: Spacing.lg),
+          Divider(height: 1, color: cs.outlineVariant),
+          SizedBox(height: Spacing.lg),
+        ] else if (intrinsic != null &&
             intrinsic.values.containsKey(kSizeAffixKey)) ...[
           _PropertyRow(
             label: 'Size',
@@ -322,7 +370,7 @@ class _ItemDetailContent extends StatelessWidget {
         ],
 
         // ── Stat bars ────────────────────────────────────────────────────
-        if (intrinsic != null) ...[
+        if (hasStats) ...[
           Text(
             'Stats',
             style: TextStyle(
@@ -336,21 +384,21 @@ class _ItemDetailContent extends StatelessWidget {
           _StatBar(
             icon: GameIcons.brawn,
             label: 'Brawn',
-            value: (intrinsic.values['brawn'] as num?)?.round() ?? 0,
+            value: item.brawn ?? 0,
             color: const Color(0xFFE57373), // muted red
           ),
           SizedBox(height: Spacing.xs),
           _StatBar(
             icon: GameIcons.wit,
             label: 'Wit',
-            value: (intrinsic.values['wit'] as num?)?.round() ?? 0,
+            value: item.wit ?? 0,
             color: const Color(0xFF64B5F6), // muted blue
           ),
           SizedBox(height: Spacing.xs),
           _StatBar(
             icon: GameIcons.speed,
             label: 'Speed',
-            value: (intrinsic.values['speed'] as num?)?.round() ?? 0,
+            value: item.speed ?? 0,
             color: const Color(0xFF81C784), // muted green
           ),
           SizedBox(height: Spacing.lg),
@@ -409,7 +457,7 @@ class _ItemDetailContent extends StatelessWidget {
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
-  /// Capitalize an [AnimalSize] enum name for display (e.g. "medium" → "Medium").
+  /// Capitalize an [AnimalSize] enum name or raw string for display.
   static String _formatSize(String sizeEnumName) {
     try {
       final size = AnimalSize.fromString(sizeEnumName);

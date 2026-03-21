@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/affix.dart';
+import 'package:earth_nova/core/models/animal_class.dart';
+import 'package:earth_nova/core/models/animal_type.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/continent.dart';
+import 'package:earth_nova/core/models/food_type.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
-import 'package:earth_nova/core/models/food_type.dart';
-import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/shared/widgets/rarity_badge.dart';
@@ -14,72 +16,83 @@ import 'package:earth_nova/shared/widgets/prismatic_border.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_art_zone.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_stats.dart';
 
-/// Fixed 2:3 aspect ratio species card combining all identity + art + stats.
+/// Fixed 2:3 aspect ratio species card rendering purely from [ItemInstance].
 ///
 /// Sections (top to bottom):
-/// 1. **Name plate** — displayName + scientificName + rarity badge + ★ badge
-/// 2. **Art zone** (~55% height) — watercolor illustration on habitat surface
-/// 3. **Stats** — animated RGB brawn/wit/speed bars
-/// 4. **Identity strip** — habitat · continent · weight · diet
-/// 5. **Scrollable section** — type/class, climate/season, provenance, cell
+/// 1. **Name plate** — displayName + rarity badge + ★ badge
+/// 2. **Art zone** (Expanded) — watercolor illustration on habitat surface
+/// 3. **Stat rings** — animated RGB brawn/wit/speed gauges
+/// 4. **Type line** — 🦁 MAM · 🐺 CRN  ⚖️ 62kg
+/// 5. **Identity row** — 🌲 FOR  🌎 NA  🍖 CRT  ☀️ TMP
+/// 6. **Location** — Downtown Fredericton 🇨🇦
+/// 7. **Provenance** — Wild · Mar 21, 2026
 class SpeciesCard extends StatelessWidget {
   const SpeciesCard({
     required this.item,
-    this.definition,
     this.animate = true,
     super.key,
   });
 
   final ItemInstance item;
-  final FaunaDefinition? definition;
   final bool animate;
+
+  // ── Enum parsers ──────────────────────────────────────────────────────────
+
+  static Habitat? _parseHabitat(String? name) => name == null
+      ? null
+      : Habitat.values.where((h) => h.name == name).firstOrNull;
+
+  static Continent? _parseContinent(String? name) => name == null
+      ? null
+      : Continent.values.where((c) => c.name == name).firstOrNull;
+
+  static Climate? _parseClimate(String? name) => name == null
+      ? null
+      : Climate.values.where((c) => c.name == name).firstOrNull;
+
+  static FoodType? _parseFoodType(String? name) => name == null
+      ? null
+      : FoodType.values.where((f) => f.name == name).firstOrNull;
+
+  static AnimalClass? _parseAnimalClass(String? name) => name == null
+      ? null
+      : AnimalClass.values.where((a) => a.name == name).firstOrNull;
+
+  static AnimalType? _parseAnimalType(String? taxonomicClass) =>
+      taxonomicClass == null
+          ? null
+          : AnimalType.fromTaxonomicClass(taxonomicClass);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
-  String get _displayName => item.displayName.isNotEmpty
-      ? item.displayName
-      : (definition?.displayName ?? '???');
+  int? get _weightGrams {
+    final intrinsic =
+        item.affixes.where((a) => a.type == AffixType.intrinsic).firstOrNull;
+    return intrinsic?.values['weightGrams'] as int?;
+  }
 
-  String? get _scientificName =>
-      item.scientificName ?? definition?.scientificName;
-
-  IucnStatus? get _rarity => item.rarity ?? definition?.rarity;
-
-  List<Habitat> get _habitats =>
-      item.habitats.isNotEmpty ? item.habitats : (definition?.habitats ?? []);
-
-  List<Continent> get _continents => item.continents.isNotEmpty
-      ? item.continents
-      : (definition?.continents ?? []);
-
-  Habitat? get _primaryHabitat => _habitats.isNotEmpty ? _habitats.first : null;
-
-  String? get _artUrl => item.artUrl ?? definition?.artUrl;
-
-  // Stats from definition → instance intrinsic affix → 0
-  int get _brawn => (definition?.brawn) ?? (intrinsic?['brawn'] as int?) ?? 0;
-
-  int get _wit => (definition?.wit) ?? (intrinsic?['wit'] as int?) ?? 0;
-
-  int get _speed => (definition?.speed) ?? (intrinsic?['speed'] as int?) ?? 0;
-
-  Map<String, dynamic>? get intrinsic => item.affixes
-      .where((a) => a.type == AffixType.intrinsic)
-      .firstOrNull
-      ?.values;
-
-  int? get _weightGrams => intrinsic?['weightGrams'] as int?;
-
-  FoodType? get _foodPreference => definition?.foodPreference;
+  bool get _hasStats =>
+      (item.brawn ?? 0) > 0 || (item.wit ?? 0) > 0 || (item.speed ?? 0) > 0;
 
   String get _fallbackEmoji {
-    final cls = definition?.animalClass;
+    final cls = _parseAnimalClass(item.animalClassName);
     if (cls != null) return GameIcons.animalClass(cls);
-    if (definition != null) return GameIcons.fauna(definition!);
+    final type = _parseAnimalType(item.taxonomicClass);
+    if (type != null) return GameIcons.animalType(type);
     return GameIcons.category(item.category);
   }
 
-  // ── Weight formatting ───────────────────────────────────────────────────
+  String get _locationLabel {
+    final parts = <String>[];
+    if (item.locationDistrict != null) parts.add(item.locationDistrict!);
+    if (item.locationCity != null) parts.add(item.locationCity!);
+    if (item.locationCountryCode != null) {
+      parts.add(GameIcons.countryFlag(item.locationCountryCode!));
+    }
+    return parts.join(' ');
+  }
+
+  // ── Weight formatting ────────────────────────────────────────────────────
 
   static String formatWeight(int grams) {
     if (grams < 1000) return '$grams g';
@@ -95,7 +108,7 @@ class SpeciesCard extends StatelessWidget {
         : '${tonnes.toStringAsFixed(1)} t';
   }
 
-  // ── Date formatting ───────────────────────────────────────────────────
+  // ── Date formatting ──────────────────────────────────────────────────────
 
   static String _formatDate(DateTime dt) {
     const months = [
@@ -110,26 +123,21 @@ class SpeciesCard extends StatelessWidget {
       'Sep',
       'Oct',
       'Nov',
-      'Dec'
+      'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
-  // ── Cell ID truncation ─────────────────────────────────────────────────
-
-  static String _truncateCellId(String id) {
-    if (id.length <= 16) return id;
-    return '${id.substring(0, 8)}…${id.substring(id.length - 6)}';
-  }
-
-  // ── Art zone ──────────────────────────────────────────────────────────
+  // ── Art zone ─────────────────────────────────────────────────────────────
 
   Widget _buildArtZone(BuildContext context) {
-    if (_primaryHabitat == null) {
-      final cs = Theme.of(context).colorScheme;
+    final habitat = _parseHabitat(item.cellHabitatName) ??
+        (item.habitats.isNotEmpty ? item.habitats.first : null);
+
+    if (habitat == null) {
       return Container(
         decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: Radii.borderMd,
         ),
         child: Center(
@@ -139,174 +147,170 @@ class SpeciesCard extends StatelessWidget {
     }
 
     return SpeciesCardArtZone(
-      artUrl: _artUrl,
-      primaryHabitat: _primaryHabitat!,
-      habitats: _habitats,
-      definitionId: definition?.id ?? item.definitionId,
-      animalClass: definition?.animalClass,
-      animalType: definition?.animalType,
+      artUrl: item.artUrl,
+      primaryHabitat: habitat,
+      habitats: item.habitats,
+      definitionId: item.definitionId,
+      animalClass: _parseAnimalClass(item.animalClassName),
+      animalType: _parseAnimalType(item.taxonomicClass),
     );
   }
 
-  // ── Identity strip ───────────────────────────────────────────────────
+  // ── Type line ─────────────────────────────────────────────────────────────
 
-  Widget _buildIdentityStrip(BuildContext context) {
+  Widget _buildTypeLine(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final items = <Widget>[];
+    final parts = <String>[];
 
-    // Habitat(s)
-    if (_habitats.isNotEmpty) {
-      items.add(_IdentityChip(
-        label: _habitats
-            .map((h) => '${GameIcons.habitat(h)} ${h.displayName}')
-            .join('  '),
-        color: cs.onSurfaceVariant,
-      ));
+    final animalType = _parseAnimalType(item.taxonomicClass);
+    final animalClass = _parseAnimalClass(item.animalClassName);
+
+    if (animalType != null) {
+      parts.add(
+          '${GameIcons.animalTypeIcon(animalType)} ${GameIcons.animalTypeAbbrev(animalType)}');
+    }
+    if (animalClass != null) {
+      parts.add(
+          '${GameIcons.animalClass(animalClass)} ${GameIcons.animalClassAbbrev(animalClass)}');
     }
 
-    // Continent
-    if (_continents.isNotEmpty) {
-      items.add(_IdentityChip(
-        label: _continents
-            .map((c) => '${GameIcons.continent(c)} ${c.displayName}')
-            .join('  '),
-        color: cs.onSurfaceVariant,
-      ));
+    final weight = _weightGrams;
+    if (weight != null) {
+      parts.add('${GameIcons.weight} ${formatWeight(weight)}');
     }
 
-    // Weight
-    if (_weightGrams != null) {
-      items.add(_IdentityChip(
-        label: '${GameIcons.weight} ${formatWeight(_weightGrams!)}',
-        color: cs.onSurfaceVariant,
-      ));
-    }
+    if (parts.isEmpty) return const SizedBox.shrink();
 
-    // Diet
-    if (_foodPreference != null) {
-      items.add(_IdentityChip(
-        label:
-            '${GameIcons.foodType(_foodPreference!)} ${_foodPreference!.displayName}',
-        color: cs.onSurfaceVariant,
-      ));
-    }
-
-    if (items.isEmpty) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: Spacing.sm,
-      runSpacing: Spacing.xs,
-      children: items,
+    return Padding(
+      padding: EdgeInsets.only(bottom: Spacing.xxs),
+      child: Text(
+        parts.join('  '),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
-  // ── Scrollable section ─────────────────────────────────────────────────
+  // ── Identity row ──────────────────────────────────────────────────────────
 
-  Widget _buildScrollSection(BuildContext context) {
+  Widget _buildIdentityRow(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final rows = <Widget>[];
+    final parts = <String>[];
 
-    // Animal type + class
-    final typeLabel = definition?.animalType?.name;
-    final classLabel = definition?.animalClass?.displayName;
-    if (typeLabel != null || classLabel != null) {
-      rows.add(_MetadataRow(
-        label: _fallbackEmoji,
-        value: [
-          if (typeLabel != null)
-            typeLabel[0].toUpperCase() + typeLabel.substring(1),
-          if (classLabel != null) classLabel,
-        ].join(' · '),
-      ));
+    final habitat = _parseHabitat(item.cellHabitatName) ??
+        (item.habitats.isNotEmpty ? item.habitats.first : null);
+    if (habitat != null) {
+      parts.add(
+          '${GameIcons.habitat(habitat)} ${GameIcons.habitatAbbrev(habitat)}');
     }
 
-    // Climate + season
-    final climate = definition?.climate;
-    final season = definition?.seasonRestriction;
-    if (climate != null || season != null) {
-      final seasonText = season != null
-          ? '${GameIcons.season(season)} ${season.displayName}'
-          : '${GameIcons.climate(climate!)} ${climate.displayName}';
-      rows.add(_MetadataRow(
-        label: '🌡️',
-        value: season != null ? '$seasonText  ☀️ Year-round' : seasonText,
-      ));
+    final continent = _parseContinent(item.cellContinentName) ??
+        (item.continents.isNotEmpty ? item.continents.first : null);
+    if (continent != null) {
+      parts.add(
+          '${GameIcons.continent(continent)} ${GameIcons.continentAbbrev(continent)}');
     }
 
-    // Provenance + date
-    rows.add(_MetadataRow(
-      label: '📍',
-      value:
-          '${item.isWildCaught ? 'Wild' : 'Bred'} · ${_formatDate(item.acquiredAt)}',
-    ));
-
-    // Cell
-    if (item.acquiredInCellId != null) {
-      rows.add(_MetadataRow(
-        label: '📦',
-        value: 'Cell ${_truncateCellId(item.acquiredInCellId!)}',
-      ));
+    final food = _parseFoodType(item.foodPreferenceName);
+    if (food != null) {
+      parts
+          .add('${GameIcons.foodType(food)} ${GameIcons.foodTypeAbbrev(food)}');
     }
 
-    if (rows.isEmpty) return const SizedBox.shrink();
+    final climate = _parseClimate(item.climateName);
+    if (climate != null) {
+      parts.add(
+          '${GameIcons.climate(climate)} ${GameIcons.climateAbbrev(climate)}');
+    }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Divider(color: cs.outlineVariant.withValues(alpha: 0.4)),
-        SizedBox(height: Spacing.sm),
-        ...rows,
-      ],
+    if (parts.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: Spacing.xxs),
+      child: Text(
+        parts.join('  '),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: cs.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────
+  // ── Footer row ───────────────────────────────────────────────────────────
+
+  Widget _buildFooterRow(BuildContext context, String text) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Spacing.xxs),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: Theme.of(context)
+              .colorScheme
+              .onSurfaceVariant
+              .withValues(alpha: 0.7),
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // Collect items into column
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ── Name plate ─────────────────────────────────────────────────
+        // Name plate
         _NamePlate(
-          displayName: _displayName,
-          scientificName: _scientificName,
-          rarity: _rarity,
+          displayName: item.displayName,
+          scientificName: item.scientificName,
+          rarity: item.rarity,
           isFirstDiscovery: item.isFirstDiscovery,
         ),
 
         SizedBox(height: Spacing.md),
 
-        // ── Art zone ─────────────────────────────────────────────────
-        AspectRatio(
-          aspectRatio: 1 / 1.1, // slightly taller than square for portrait feel
-          child: _buildArtZone(context),
-        ),
+        // Art zone (~50% of card)
+        Expanded(child: _buildArtZone(context)),
 
-        SizedBox(height: Spacing.md),
+        SizedBox(height: Spacing.sm),
 
-        // ── Stats ────────────────────────────────────────────────────
+        // Stat rings
         if (_hasStats)
-          SpeciesCardStats(
-            brawn: _brawn,
-            wit: _wit,
-            speed: _speed,
-            animate: animate,
+          Padding(
+            padding: EdgeInsets.only(bottom: Spacing.sm),
+            child: SpeciesCardStats(
+              brawn: item.brawn ?? 0,
+              wit: item.wit ?? 0,
+              speed: item.speed ?? 0,
+              animate: animate,
+            ),
           ),
 
-        if (_hasStats) SizedBox(height: Spacing.md),
+        // Type line: 🦁 MAM · 🐺 CRN  ⚖️ 62kg
+        _buildTypeLine(context),
 
-        // ── Identity strip ────────────────────────────────────────────
-        _buildIdentityStrip(context),
+        // Identity row: 🌲 FOR  🌎 NA  🍖 CRT  ☀️ TMP
+        _buildIdentityRow(context),
 
-        // ── Scrollable section ──────────────────────────────────────
-        _buildScrollSection(context),
+        // Location: Downtown Fredericton 🇨🇦
+        if (_locationLabel.isNotEmpty) _buildFooterRow(context, _locationLabel),
+
+        // Provenance: Wild · Mar 21, 2026
+        _buildFooterRow(
+          context,
+          '${item.isWildCaught ? "Wild" : "Bred"} · ${_formatDate(item.acquiredAt)}',
+        ),
       ],
     );
   }
-
-  bool get _hasStats => _brawn > 0 || _wit > 0 || _speed > 0;
 }
 
 // ── Name plate ────────────────────────────────────────────────────────────────
@@ -382,72 +386,6 @@ class _NamePlate extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-// ── Identity chip ─────────────────────────────────────────────────────────────
-
-class _IdentityChip extends StatelessWidget {
-  const _IdentityChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: Spacing.sm,
-        vertical: Spacing.xxs,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: Radii.borderSm,
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
-}
-
-// ── Metadata row ───────────────────────────────────────────────────────────────
-
-class _MetadataRow extends StatelessWidget {
-  const _MetadataRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: EdgeInsets.only(bottom: Spacing.xs),
-      child: Row(
-        children: [
-          Text(label, style: TextStyle(fontSize: 13)),
-          SizedBox(width: Spacing.xs),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

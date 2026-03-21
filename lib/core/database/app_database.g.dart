@@ -658,6 +658,198 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
   late final GeneratedColumn<String> artUrl = GeneratedColumn<String>(
       'art_url', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _animalClassNameMeta =
+      const VerificationMeta('animalClassName');
+  @override
+  late final GeneratedColumn<String> animalClassName = GeneratedColumn<String>(
+      'animal_class_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _animalClassNameEnrichverMeta =
+      const VerificationMeta('animalClassNameEnrichver');
+  @override
+  late final GeneratedColumn<String> animalClassNameEnrichver =
+      GeneratedColumn<String>('animal_class_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _foodPreferenceNameMeta =
+      const VerificationMeta('foodPreferenceName');
+  @override
+  late final GeneratedColumn<String> foodPreferenceName =
+      GeneratedColumn<String>('food_preference_name', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _foodPreferenceNameEnrichverMeta =
+      const VerificationMeta('foodPreferenceNameEnrichver');
+  @override
+  late final GeneratedColumn<String> foodPreferenceNameEnrichver =
+      GeneratedColumn<String>(
+          'food_preference_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _climateNameMeta =
+      const VerificationMeta('climateName');
+  @override
+  late final GeneratedColumn<String> climateName = GeneratedColumn<String>(
+      'climate_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _climateNameEnrichverMeta =
+      const VerificationMeta('climateNameEnrichver');
+  @override
+  late final GeneratedColumn<String> climateNameEnrichver =
+      GeneratedColumn<String>('climate_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _brawnMeta = const VerificationMeta('brawn');
+  @override
+  late final GeneratedColumn<int> brawn = GeneratedColumn<int>(
+      'brawn', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _brawnEnrichverMeta =
+      const VerificationMeta('brawnEnrichver');
+  @override
+  late final GeneratedColumn<String> brawnEnrichver = GeneratedColumn<String>(
+      'brawn_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _witMeta = const VerificationMeta('wit');
+  @override
+  late final GeneratedColumn<int> wit = GeneratedColumn<int>(
+      'wit', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _witEnrichverMeta =
+      const VerificationMeta('witEnrichver');
+  @override
+  late final GeneratedColumn<String> witEnrichver = GeneratedColumn<String>(
+      'wit_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<int> speed = GeneratedColumn<int>(
+      'speed', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _speedEnrichverMeta =
+      const VerificationMeta('speedEnrichver');
+  @override
+  late final GeneratedColumn<String> speedEnrichver = GeneratedColumn<String>(
+      'speed_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sizeNameMeta =
+      const VerificationMeta('sizeName');
+  @override
+  late final GeneratedColumn<String> sizeName = GeneratedColumn<String>(
+      'size_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sizeNameEnrichverMeta =
+      const VerificationMeta('sizeNameEnrichver');
+  @override
+  late final GeneratedColumn<String> sizeNameEnrichver =
+      GeneratedColumn<String>('size_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconUrlEnrichverMeta =
+      const VerificationMeta('iconUrlEnrichver');
+  @override
+  late final GeneratedColumn<String> iconUrlEnrichver = GeneratedColumn<String>(
+      'icon_url_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artUrlEnrichverMeta =
+      const VerificationMeta('artUrlEnrichver');
+  @override
+  late final GeneratedColumn<String> artUrlEnrichver = GeneratedColumn<String>(
+      'art_url_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellHabitatNameMeta =
+      const VerificationMeta('cellHabitatName');
+  @override
+  late final GeneratedColumn<String> cellHabitatName = GeneratedColumn<String>(
+      'cell_habitat_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellHabitatNameEnrichverMeta =
+      const VerificationMeta('cellHabitatNameEnrichver');
+  @override
+  late final GeneratedColumn<String> cellHabitatNameEnrichver =
+      GeneratedColumn<String>('cell_habitat_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellClimateNameMeta =
+      const VerificationMeta('cellClimateName');
+  @override
+  late final GeneratedColumn<String> cellClimateName = GeneratedColumn<String>(
+      'cell_climate_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellClimateNameEnrichverMeta =
+      const VerificationMeta('cellClimateNameEnrichver');
+  @override
+  late final GeneratedColumn<String> cellClimateNameEnrichver =
+      GeneratedColumn<String>('cell_climate_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellContinentNameMeta =
+      const VerificationMeta('cellContinentName');
+  @override
+  late final GeneratedColumn<String> cellContinentName =
+      GeneratedColumn<String>('cell_continent_name', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellContinentNameEnrichverMeta =
+      const VerificationMeta('cellContinentNameEnrichver');
+  @override
+  late final GeneratedColumn<String> cellContinentNameEnrichver =
+      GeneratedColumn<String>(
+          'cell_continent_name_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationDistrictMeta =
+      const VerificationMeta('locationDistrict');
+  @override
+  late final GeneratedColumn<String> locationDistrict = GeneratedColumn<String>(
+      'location_district', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationDistrictEnrichverMeta =
+      const VerificationMeta('locationDistrictEnrichver');
+  @override
+  late final GeneratedColumn<String> locationDistrictEnrichver =
+      GeneratedColumn<String>('location_district_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCityMeta =
+      const VerificationMeta('locationCity');
+  @override
+  late final GeneratedColumn<String> locationCity = GeneratedColumn<String>(
+      'location_city', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCityEnrichverMeta =
+      const VerificationMeta('locationCityEnrichver');
+  @override
+  late final GeneratedColumn<String> locationCityEnrichver =
+      GeneratedColumn<String>('location_city_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationStateMeta =
+      const VerificationMeta('locationState');
+  @override
+  late final GeneratedColumn<String> locationState = GeneratedColumn<String>(
+      'location_state', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationStateEnrichverMeta =
+      const VerificationMeta('locationStateEnrichver');
+  @override
+  late final GeneratedColumn<String> locationStateEnrichver =
+      GeneratedColumn<String>('location_state_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryMeta =
+      const VerificationMeta('locationCountry');
+  @override
+  late final GeneratedColumn<String> locationCountry = GeneratedColumn<String>(
+      'location_country', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryEnrichverMeta =
+      const VerificationMeta('locationCountryEnrichver');
+  @override
+  late final GeneratedColumn<String> locationCountryEnrichver =
+      GeneratedColumn<String>('location_country_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryCodeMeta =
+      const VerificationMeta('locationCountryCode');
+  @override
+  late final GeneratedColumn<String> locationCountryCode =
+      GeneratedColumn<String>('location_country_code', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryCodeEnrichverMeta =
+      const VerificationMeta('locationCountryCodeEnrichver');
+  @override
+  late final GeneratedColumn<String> locationCountryCodeEnrichver =
+      GeneratedColumn<String>(
+          'location_country_code_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -679,7 +871,39 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
         continentsJson,
         taxonomicClass,
         iconUrl,
-        artUrl
+        artUrl,
+        animalClassName,
+        animalClassNameEnrichver,
+        foodPreferenceName,
+        foodPreferenceNameEnrichver,
+        climateName,
+        climateNameEnrichver,
+        brawn,
+        brawnEnrichver,
+        wit,
+        witEnrichver,
+        speed,
+        speedEnrichver,
+        sizeName,
+        sizeNameEnrichver,
+        iconUrlEnrichver,
+        artUrlEnrichver,
+        cellHabitatName,
+        cellHabitatNameEnrichver,
+        cellClimateName,
+        cellClimateNameEnrichver,
+        cellContinentName,
+        cellContinentNameEnrichver,
+        locationDistrict,
+        locationDistrictEnrichver,
+        locationCity,
+        locationCityEnrichver,
+        locationState,
+        locationStateEnrichver,
+        locationCountry,
+        locationCountryEnrichver,
+        locationCountryCode,
+        locationCountryCodeEnrichver
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -804,6 +1028,198 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
       context.handle(_artUrlMeta,
           artUrl.isAcceptableOrUnknown(data['art_url']!, _artUrlMeta));
     }
+    if (data.containsKey('animal_class_name')) {
+      context.handle(
+          _animalClassNameMeta,
+          animalClassName.isAcceptableOrUnknown(
+              data['animal_class_name']!, _animalClassNameMeta));
+    }
+    if (data.containsKey('animal_class_name_enrichver')) {
+      context.handle(
+          _animalClassNameEnrichverMeta,
+          animalClassNameEnrichver.isAcceptableOrUnknown(
+              data['animal_class_name_enrichver']!,
+              _animalClassNameEnrichverMeta));
+    }
+    if (data.containsKey('food_preference_name')) {
+      context.handle(
+          _foodPreferenceNameMeta,
+          foodPreferenceName.isAcceptableOrUnknown(
+              data['food_preference_name']!, _foodPreferenceNameMeta));
+    }
+    if (data.containsKey('food_preference_name_enrichver')) {
+      context.handle(
+          _foodPreferenceNameEnrichverMeta,
+          foodPreferenceNameEnrichver.isAcceptableOrUnknown(
+              data['food_preference_name_enrichver']!,
+              _foodPreferenceNameEnrichverMeta));
+    }
+    if (data.containsKey('climate_name')) {
+      context.handle(
+          _climateNameMeta,
+          climateName.isAcceptableOrUnknown(
+              data['climate_name']!, _climateNameMeta));
+    }
+    if (data.containsKey('climate_name_enrichver')) {
+      context.handle(
+          _climateNameEnrichverMeta,
+          climateNameEnrichver.isAcceptableOrUnknown(
+              data['climate_name_enrichver']!, _climateNameEnrichverMeta));
+    }
+    if (data.containsKey('brawn')) {
+      context.handle(
+          _brawnMeta, brawn.isAcceptableOrUnknown(data['brawn']!, _brawnMeta));
+    }
+    if (data.containsKey('brawn_enrichver')) {
+      context.handle(
+          _brawnEnrichverMeta,
+          brawnEnrichver.isAcceptableOrUnknown(
+              data['brawn_enrichver']!, _brawnEnrichverMeta));
+    }
+    if (data.containsKey('wit')) {
+      context.handle(
+          _witMeta, wit.isAcceptableOrUnknown(data['wit']!, _witMeta));
+    }
+    if (data.containsKey('wit_enrichver')) {
+      context.handle(
+          _witEnrichverMeta,
+          witEnrichver.isAcceptableOrUnknown(
+              data['wit_enrichver']!, _witEnrichverMeta));
+    }
+    if (data.containsKey('speed')) {
+      context.handle(
+          _speedMeta, speed.isAcceptableOrUnknown(data['speed']!, _speedMeta));
+    }
+    if (data.containsKey('speed_enrichver')) {
+      context.handle(
+          _speedEnrichverMeta,
+          speedEnrichver.isAcceptableOrUnknown(
+              data['speed_enrichver']!, _speedEnrichverMeta));
+    }
+    if (data.containsKey('size_name')) {
+      context.handle(_sizeNameMeta,
+          sizeName.isAcceptableOrUnknown(data['size_name']!, _sizeNameMeta));
+    }
+    if (data.containsKey('size_name_enrichver')) {
+      context.handle(
+          _sizeNameEnrichverMeta,
+          sizeNameEnrichver.isAcceptableOrUnknown(
+              data['size_name_enrichver']!, _sizeNameEnrichverMeta));
+    }
+    if (data.containsKey('icon_url_enrichver')) {
+      context.handle(
+          _iconUrlEnrichverMeta,
+          iconUrlEnrichver.isAcceptableOrUnknown(
+              data['icon_url_enrichver']!, _iconUrlEnrichverMeta));
+    }
+    if (data.containsKey('art_url_enrichver')) {
+      context.handle(
+          _artUrlEnrichverMeta,
+          artUrlEnrichver.isAcceptableOrUnknown(
+              data['art_url_enrichver']!, _artUrlEnrichverMeta));
+    }
+    if (data.containsKey('cell_habitat_name')) {
+      context.handle(
+          _cellHabitatNameMeta,
+          cellHabitatName.isAcceptableOrUnknown(
+              data['cell_habitat_name']!, _cellHabitatNameMeta));
+    }
+    if (data.containsKey('cell_habitat_name_enrichver')) {
+      context.handle(
+          _cellHabitatNameEnrichverMeta,
+          cellHabitatNameEnrichver.isAcceptableOrUnknown(
+              data['cell_habitat_name_enrichver']!,
+              _cellHabitatNameEnrichverMeta));
+    }
+    if (data.containsKey('cell_climate_name')) {
+      context.handle(
+          _cellClimateNameMeta,
+          cellClimateName.isAcceptableOrUnknown(
+              data['cell_climate_name']!, _cellClimateNameMeta));
+    }
+    if (data.containsKey('cell_climate_name_enrichver')) {
+      context.handle(
+          _cellClimateNameEnrichverMeta,
+          cellClimateNameEnrichver.isAcceptableOrUnknown(
+              data['cell_climate_name_enrichver']!,
+              _cellClimateNameEnrichverMeta));
+    }
+    if (data.containsKey('cell_continent_name')) {
+      context.handle(
+          _cellContinentNameMeta,
+          cellContinentName.isAcceptableOrUnknown(
+              data['cell_continent_name']!, _cellContinentNameMeta));
+    }
+    if (data.containsKey('cell_continent_name_enrichver')) {
+      context.handle(
+          _cellContinentNameEnrichverMeta,
+          cellContinentNameEnrichver.isAcceptableOrUnknown(
+              data['cell_continent_name_enrichver']!,
+              _cellContinentNameEnrichverMeta));
+    }
+    if (data.containsKey('location_district')) {
+      context.handle(
+          _locationDistrictMeta,
+          locationDistrict.isAcceptableOrUnknown(
+              data['location_district']!, _locationDistrictMeta));
+    }
+    if (data.containsKey('location_district_enrichver')) {
+      context.handle(
+          _locationDistrictEnrichverMeta,
+          locationDistrictEnrichver.isAcceptableOrUnknown(
+              data['location_district_enrichver']!,
+              _locationDistrictEnrichverMeta));
+    }
+    if (data.containsKey('location_city')) {
+      context.handle(
+          _locationCityMeta,
+          locationCity.isAcceptableOrUnknown(
+              data['location_city']!, _locationCityMeta));
+    }
+    if (data.containsKey('location_city_enrichver')) {
+      context.handle(
+          _locationCityEnrichverMeta,
+          locationCityEnrichver.isAcceptableOrUnknown(
+              data['location_city_enrichver']!, _locationCityEnrichverMeta));
+    }
+    if (data.containsKey('location_state')) {
+      context.handle(
+          _locationStateMeta,
+          locationState.isAcceptableOrUnknown(
+              data['location_state']!, _locationStateMeta));
+    }
+    if (data.containsKey('location_state_enrichver')) {
+      context.handle(
+          _locationStateEnrichverMeta,
+          locationStateEnrichver.isAcceptableOrUnknown(
+              data['location_state_enrichver']!, _locationStateEnrichverMeta));
+    }
+    if (data.containsKey('location_country')) {
+      context.handle(
+          _locationCountryMeta,
+          locationCountry.isAcceptableOrUnknown(
+              data['location_country']!, _locationCountryMeta));
+    }
+    if (data.containsKey('location_country_enrichver')) {
+      context.handle(
+          _locationCountryEnrichverMeta,
+          locationCountryEnrichver.isAcceptableOrUnknown(
+              data['location_country_enrichver']!,
+              _locationCountryEnrichverMeta));
+    }
+    if (data.containsKey('location_country_code')) {
+      context.handle(
+          _locationCountryCodeMeta,
+          locationCountryCode.isAcceptableOrUnknown(
+              data['location_country_code']!, _locationCountryCodeMeta));
+    }
+    if (data.containsKey('location_country_code_enrichver')) {
+      context.handle(
+          _locationCountryCodeEnrichverMeta,
+          locationCountryCodeEnrichver.isAcceptableOrUnknown(
+              data['location_country_code_enrichver']!,
+              _locationCountryCodeEnrichverMeta));
+    }
     return context;
   }
 
@@ -853,6 +1269,81 @@ class $LocalItemInstanceTableTable extends LocalItemInstanceTable
           .read(DriftSqlType.string, data['${effectivePrefix}icon_url']),
       artUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}art_url']),
+      animalClassName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}animal_class_name']),
+      animalClassNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}animal_class_name_enrichver']),
+      foodPreferenceName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}food_preference_name']),
+      foodPreferenceNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}food_preference_name_enrichver']),
+      climateName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}climate_name']),
+      climateNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}climate_name_enrichver']),
+      brawn: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}brawn']),
+      brawnEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}brawn_enrichver']),
+      wit: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}wit']),
+      witEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}wit_enrichver']),
+      speed: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}speed']),
+      speedEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}speed_enrichver']),
+      sizeName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}size_name']),
+      sizeNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}size_name_enrichver']),
+      iconUrlEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}icon_url_enrichver']),
+      artUrlEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}art_url_enrichver']),
+      cellHabitatName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}cell_habitat_name']),
+      cellHabitatNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}cell_habitat_name_enrichver']),
+      cellClimateName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}cell_climate_name']),
+      cellClimateNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}cell_climate_name_enrichver']),
+      cellContinentName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}cell_continent_name']),
+      cellContinentNameEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}cell_continent_name_enrichver']),
+      locationDistrict: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_district']),
+      locationDistrictEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}location_district_enrichver']),
+      locationCity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_city']),
+      locationCityEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}location_city_enrichver']),
+      locationState: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_state']),
+      locationStateEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}location_state_enrichver']),
+      locationCountry: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_country']),
+      locationCountryEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}location_country_enrichver']),
+      locationCountryCode: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_country_code']),
+      locationCountryCodeEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}location_country_code_enrichver']),
     );
   }
 
@@ -918,11 +1409,43 @@ class LocalItemInstance extends DataClass
   /// Taxonomic class string (e.g. "Mammalia"). Fauna only — null otherwise.
   final String? taxonomicClass;
 
-  /// Instance-level icon override URL. Null = use species default from enrichment.
+  /// Denormalized icon URL (from species enrichment). Null = not enriched yet.
   final String? iconUrl;
 
-  /// Instance-level illustration override URL. Null = use species default from enrichment.
+  /// Denormalized art URL (from species enrichment). Null = not enriched yet.
   final String? artUrl;
+  final String? animalClassName;
+  final String? animalClassNameEnrichver;
+  final String? foodPreferenceName;
+  final String? foodPreferenceNameEnrichver;
+  final String? climateName;
+  final String? climateNameEnrichver;
+  final int? brawn;
+  final String? brawnEnrichver;
+  final int? wit;
+  final String? witEnrichver;
+  final int? speed;
+  final String? speedEnrichver;
+  final String? sizeName;
+  final String? sizeNameEnrichver;
+  final String? iconUrlEnrichver;
+  final String? artUrlEnrichver;
+  final String? cellHabitatName;
+  final String? cellHabitatNameEnrichver;
+  final String? cellClimateName;
+  final String? cellClimateNameEnrichver;
+  final String? cellContinentName;
+  final String? cellContinentNameEnrichver;
+  final String? locationDistrict;
+  final String? locationDistrictEnrichver;
+  final String? locationCity;
+  final String? locationCityEnrichver;
+  final String? locationState;
+  final String? locationStateEnrichver;
+  final String? locationCountry;
+  final String? locationCountryEnrichver;
+  final String? locationCountryCode;
+  final String? locationCountryCodeEnrichver;
   const LocalItemInstance(
       {required this.id,
       required this.userId,
@@ -943,7 +1466,39 @@ class LocalItemInstance extends DataClass
       required this.continentsJson,
       this.taxonomicClass,
       this.iconUrl,
-      this.artUrl});
+      this.artUrl,
+      this.animalClassName,
+      this.animalClassNameEnrichver,
+      this.foodPreferenceName,
+      this.foodPreferenceNameEnrichver,
+      this.climateName,
+      this.climateNameEnrichver,
+      this.brawn,
+      this.brawnEnrichver,
+      this.wit,
+      this.witEnrichver,
+      this.speed,
+      this.speedEnrichver,
+      this.sizeName,
+      this.sizeNameEnrichver,
+      this.iconUrlEnrichver,
+      this.artUrlEnrichver,
+      this.cellHabitatName,
+      this.cellHabitatNameEnrichver,
+      this.cellClimateName,
+      this.cellClimateNameEnrichver,
+      this.cellContinentName,
+      this.cellContinentNameEnrichver,
+      this.locationDistrict,
+      this.locationDistrictEnrichver,
+      this.locationCity,
+      this.locationCityEnrichver,
+      this.locationState,
+      this.locationStateEnrichver,
+      this.locationCountry,
+      this.locationCountryEnrichver,
+      this.locationCountryCode,
+      this.locationCountryCodeEnrichver});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -984,6 +1539,111 @@ class LocalItemInstance extends DataClass
     }
     if (!nullToAbsent || artUrl != null) {
       map['art_url'] = Variable<String>(artUrl);
+    }
+    if (!nullToAbsent || animalClassName != null) {
+      map['animal_class_name'] = Variable<String>(animalClassName);
+    }
+    if (!nullToAbsent || animalClassNameEnrichver != null) {
+      map['animal_class_name_enrichver'] =
+          Variable<String>(animalClassNameEnrichver);
+    }
+    if (!nullToAbsent || foodPreferenceName != null) {
+      map['food_preference_name'] = Variable<String>(foodPreferenceName);
+    }
+    if (!nullToAbsent || foodPreferenceNameEnrichver != null) {
+      map['food_preference_name_enrichver'] =
+          Variable<String>(foodPreferenceNameEnrichver);
+    }
+    if (!nullToAbsent || climateName != null) {
+      map['climate_name'] = Variable<String>(climateName);
+    }
+    if (!nullToAbsent || climateNameEnrichver != null) {
+      map['climate_name_enrichver'] = Variable<String>(climateNameEnrichver);
+    }
+    if (!nullToAbsent || brawn != null) {
+      map['brawn'] = Variable<int>(brawn);
+    }
+    if (!nullToAbsent || brawnEnrichver != null) {
+      map['brawn_enrichver'] = Variable<String>(brawnEnrichver);
+    }
+    if (!nullToAbsent || wit != null) {
+      map['wit'] = Variable<int>(wit);
+    }
+    if (!nullToAbsent || witEnrichver != null) {
+      map['wit_enrichver'] = Variable<String>(witEnrichver);
+    }
+    if (!nullToAbsent || speed != null) {
+      map['speed'] = Variable<int>(speed);
+    }
+    if (!nullToAbsent || speedEnrichver != null) {
+      map['speed_enrichver'] = Variable<String>(speedEnrichver);
+    }
+    if (!nullToAbsent || sizeName != null) {
+      map['size_name'] = Variable<String>(sizeName);
+    }
+    if (!nullToAbsent || sizeNameEnrichver != null) {
+      map['size_name_enrichver'] = Variable<String>(sizeNameEnrichver);
+    }
+    if (!nullToAbsent || iconUrlEnrichver != null) {
+      map['icon_url_enrichver'] = Variable<String>(iconUrlEnrichver);
+    }
+    if (!nullToAbsent || artUrlEnrichver != null) {
+      map['art_url_enrichver'] = Variable<String>(artUrlEnrichver);
+    }
+    if (!nullToAbsent || cellHabitatName != null) {
+      map['cell_habitat_name'] = Variable<String>(cellHabitatName);
+    }
+    if (!nullToAbsent || cellHabitatNameEnrichver != null) {
+      map['cell_habitat_name_enrichver'] =
+          Variable<String>(cellHabitatNameEnrichver);
+    }
+    if (!nullToAbsent || cellClimateName != null) {
+      map['cell_climate_name'] = Variable<String>(cellClimateName);
+    }
+    if (!nullToAbsent || cellClimateNameEnrichver != null) {
+      map['cell_climate_name_enrichver'] =
+          Variable<String>(cellClimateNameEnrichver);
+    }
+    if (!nullToAbsent || cellContinentName != null) {
+      map['cell_continent_name'] = Variable<String>(cellContinentName);
+    }
+    if (!nullToAbsent || cellContinentNameEnrichver != null) {
+      map['cell_continent_name_enrichver'] =
+          Variable<String>(cellContinentNameEnrichver);
+    }
+    if (!nullToAbsent || locationDistrict != null) {
+      map['location_district'] = Variable<String>(locationDistrict);
+    }
+    if (!nullToAbsent || locationDistrictEnrichver != null) {
+      map['location_district_enrichver'] =
+          Variable<String>(locationDistrictEnrichver);
+    }
+    if (!nullToAbsent || locationCity != null) {
+      map['location_city'] = Variable<String>(locationCity);
+    }
+    if (!nullToAbsent || locationCityEnrichver != null) {
+      map['location_city_enrichver'] = Variable<String>(locationCityEnrichver);
+    }
+    if (!nullToAbsent || locationState != null) {
+      map['location_state'] = Variable<String>(locationState);
+    }
+    if (!nullToAbsent || locationStateEnrichver != null) {
+      map['location_state_enrichver'] =
+          Variable<String>(locationStateEnrichver);
+    }
+    if (!nullToAbsent || locationCountry != null) {
+      map['location_country'] = Variable<String>(locationCountry);
+    }
+    if (!nullToAbsent || locationCountryEnrichver != null) {
+      map['location_country_enrichver'] =
+          Variable<String>(locationCountryEnrichver);
+    }
+    if (!nullToAbsent || locationCountryCode != null) {
+      map['location_country_code'] = Variable<String>(locationCountryCode);
+    }
+    if (!nullToAbsent || locationCountryCodeEnrichver != null) {
+      map['location_country_code_enrichver'] =
+          Variable<String>(locationCountryCodeEnrichver);
     }
     return map;
   }
@@ -1027,6 +1687,102 @@ class LocalItemInstance extends DataClass
           : Value(iconUrl),
       artUrl:
           artUrl == null && nullToAbsent ? const Value.absent() : Value(artUrl),
+      animalClassName: animalClassName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animalClassName),
+      animalClassNameEnrichver: animalClassNameEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animalClassNameEnrichver),
+      foodPreferenceName: foodPreferenceName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foodPreferenceName),
+      foodPreferenceNameEnrichver:
+          foodPreferenceNameEnrichver == null && nullToAbsent
+              ? const Value.absent()
+              : Value(foodPreferenceNameEnrichver),
+      climateName: climateName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(climateName),
+      climateNameEnrichver: climateNameEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(climateNameEnrichver),
+      brawn:
+          brawn == null && nullToAbsent ? const Value.absent() : Value(brawn),
+      brawnEnrichver: brawnEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brawnEnrichver),
+      wit: wit == null && nullToAbsent ? const Value.absent() : Value(wit),
+      witEnrichver: witEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(witEnrichver),
+      speed:
+          speed == null && nullToAbsent ? const Value.absent() : Value(speed),
+      speedEnrichver: speedEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(speedEnrichver),
+      sizeName: sizeName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sizeName),
+      sizeNameEnrichver: sizeNameEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sizeNameEnrichver),
+      iconUrlEnrichver: iconUrlEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrlEnrichver),
+      artUrlEnrichver: artUrlEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artUrlEnrichver),
+      cellHabitatName: cellHabitatName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellHabitatName),
+      cellHabitatNameEnrichver: cellHabitatNameEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellHabitatNameEnrichver),
+      cellClimateName: cellClimateName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellClimateName),
+      cellClimateNameEnrichver: cellClimateNameEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellClimateNameEnrichver),
+      cellContinentName: cellContinentName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellContinentName),
+      cellContinentNameEnrichver:
+          cellContinentNameEnrichver == null && nullToAbsent
+              ? const Value.absent()
+              : Value(cellContinentNameEnrichver),
+      locationDistrict: locationDistrict == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationDistrict),
+      locationDistrictEnrichver:
+          locationDistrictEnrichver == null && nullToAbsent
+              ? const Value.absent()
+              : Value(locationDistrictEnrichver),
+      locationCity: locationCity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCity),
+      locationCityEnrichver: locationCityEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCityEnrichver),
+      locationState: locationState == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationState),
+      locationStateEnrichver: locationStateEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationStateEnrichver),
+      locationCountry: locationCountry == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCountry),
+      locationCountryEnrichver: locationCountryEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCountryEnrichver),
+      locationCountryCode: locationCountryCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCountryCode),
+      locationCountryCodeEnrichver:
+          locationCountryCodeEnrichver == null && nullToAbsent
+              ? const Value.absent()
+              : Value(locationCountryCodeEnrichver),
     );
   }
 
@@ -1054,6 +1810,53 @@ class LocalItemInstance extends DataClass
       taxonomicClass: serializer.fromJson<String?>(json['taxonomicClass']),
       iconUrl: serializer.fromJson<String?>(json['iconUrl']),
       artUrl: serializer.fromJson<String?>(json['artUrl']),
+      animalClassName: serializer.fromJson<String?>(json['animalClassName']),
+      animalClassNameEnrichver:
+          serializer.fromJson<String?>(json['animalClassNameEnrichver']),
+      foodPreferenceName:
+          serializer.fromJson<String?>(json['foodPreferenceName']),
+      foodPreferenceNameEnrichver:
+          serializer.fromJson<String?>(json['foodPreferenceNameEnrichver']),
+      climateName: serializer.fromJson<String?>(json['climateName']),
+      climateNameEnrichver:
+          serializer.fromJson<String?>(json['climateNameEnrichver']),
+      brawn: serializer.fromJson<int?>(json['brawn']),
+      brawnEnrichver: serializer.fromJson<String?>(json['brawnEnrichver']),
+      wit: serializer.fromJson<int?>(json['wit']),
+      witEnrichver: serializer.fromJson<String?>(json['witEnrichver']),
+      speed: serializer.fromJson<int?>(json['speed']),
+      speedEnrichver: serializer.fromJson<String?>(json['speedEnrichver']),
+      sizeName: serializer.fromJson<String?>(json['sizeName']),
+      sizeNameEnrichver:
+          serializer.fromJson<String?>(json['sizeNameEnrichver']),
+      iconUrlEnrichver: serializer.fromJson<String?>(json['iconUrlEnrichver']),
+      artUrlEnrichver: serializer.fromJson<String?>(json['artUrlEnrichver']),
+      cellHabitatName: serializer.fromJson<String?>(json['cellHabitatName']),
+      cellHabitatNameEnrichver:
+          serializer.fromJson<String?>(json['cellHabitatNameEnrichver']),
+      cellClimateName: serializer.fromJson<String?>(json['cellClimateName']),
+      cellClimateNameEnrichver:
+          serializer.fromJson<String?>(json['cellClimateNameEnrichver']),
+      cellContinentName:
+          serializer.fromJson<String?>(json['cellContinentName']),
+      cellContinentNameEnrichver:
+          serializer.fromJson<String?>(json['cellContinentNameEnrichver']),
+      locationDistrict: serializer.fromJson<String?>(json['locationDistrict']),
+      locationDistrictEnrichver:
+          serializer.fromJson<String?>(json['locationDistrictEnrichver']),
+      locationCity: serializer.fromJson<String?>(json['locationCity']),
+      locationCityEnrichver:
+          serializer.fromJson<String?>(json['locationCityEnrichver']),
+      locationState: serializer.fromJson<String?>(json['locationState']),
+      locationStateEnrichver:
+          serializer.fromJson<String?>(json['locationStateEnrichver']),
+      locationCountry: serializer.fromJson<String?>(json['locationCountry']),
+      locationCountryEnrichver:
+          serializer.fromJson<String?>(json['locationCountryEnrichver']),
+      locationCountryCode:
+          serializer.fromJson<String?>(json['locationCountryCode']),
+      locationCountryCodeEnrichver:
+          serializer.fromJson<String?>(json['locationCountryCodeEnrichver']),
     );
   }
   @override
@@ -1080,6 +1883,48 @@ class LocalItemInstance extends DataClass
       'taxonomicClass': serializer.toJson<String?>(taxonomicClass),
       'iconUrl': serializer.toJson<String?>(iconUrl),
       'artUrl': serializer.toJson<String?>(artUrl),
+      'animalClassName': serializer.toJson<String?>(animalClassName),
+      'animalClassNameEnrichver':
+          serializer.toJson<String?>(animalClassNameEnrichver),
+      'foodPreferenceName': serializer.toJson<String?>(foodPreferenceName),
+      'foodPreferenceNameEnrichver':
+          serializer.toJson<String?>(foodPreferenceNameEnrichver),
+      'climateName': serializer.toJson<String?>(climateName),
+      'climateNameEnrichver': serializer.toJson<String?>(climateNameEnrichver),
+      'brawn': serializer.toJson<int?>(brawn),
+      'brawnEnrichver': serializer.toJson<String?>(brawnEnrichver),
+      'wit': serializer.toJson<int?>(wit),
+      'witEnrichver': serializer.toJson<String?>(witEnrichver),
+      'speed': serializer.toJson<int?>(speed),
+      'speedEnrichver': serializer.toJson<String?>(speedEnrichver),
+      'sizeName': serializer.toJson<String?>(sizeName),
+      'sizeNameEnrichver': serializer.toJson<String?>(sizeNameEnrichver),
+      'iconUrlEnrichver': serializer.toJson<String?>(iconUrlEnrichver),
+      'artUrlEnrichver': serializer.toJson<String?>(artUrlEnrichver),
+      'cellHabitatName': serializer.toJson<String?>(cellHabitatName),
+      'cellHabitatNameEnrichver':
+          serializer.toJson<String?>(cellHabitatNameEnrichver),
+      'cellClimateName': serializer.toJson<String?>(cellClimateName),
+      'cellClimateNameEnrichver':
+          serializer.toJson<String?>(cellClimateNameEnrichver),
+      'cellContinentName': serializer.toJson<String?>(cellContinentName),
+      'cellContinentNameEnrichver':
+          serializer.toJson<String?>(cellContinentNameEnrichver),
+      'locationDistrict': serializer.toJson<String?>(locationDistrict),
+      'locationDistrictEnrichver':
+          serializer.toJson<String?>(locationDistrictEnrichver),
+      'locationCity': serializer.toJson<String?>(locationCity),
+      'locationCityEnrichver':
+          serializer.toJson<String?>(locationCityEnrichver),
+      'locationState': serializer.toJson<String?>(locationState),
+      'locationStateEnrichver':
+          serializer.toJson<String?>(locationStateEnrichver),
+      'locationCountry': serializer.toJson<String?>(locationCountry),
+      'locationCountryEnrichver':
+          serializer.toJson<String?>(locationCountryEnrichver),
+      'locationCountryCode': serializer.toJson<String?>(locationCountryCode),
+      'locationCountryCodeEnrichver':
+          serializer.toJson<String?>(locationCountryCodeEnrichver),
     };
   }
 
@@ -1103,7 +1948,40 @@ class LocalItemInstance extends DataClass
           String? continentsJson,
           Value<String?> taxonomicClass = const Value.absent(),
           Value<String?> iconUrl = const Value.absent(),
-          Value<String?> artUrl = const Value.absent()}) =>
+          Value<String?> artUrl = const Value.absent(),
+          Value<String?> animalClassName = const Value.absent(),
+          Value<String?> animalClassNameEnrichver = const Value.absent(),
+          Value<String?> foodPreferenceName = const Value.absent(),
+          Value<String?> foodPreferenceNameEnrichver = const Value.absent(),
+          Value<String?> climateName = const Value.absent(),
+          Value<String?> climateNameEnrichver = const Value.absent(),
+          Value<int?> brawn = const Value.absent(),
+          Value<String?> brawnEnrichver = const Value.absent(),
+          Value<int?> wit = const Value.absent(),
+          Value<String?> witEnrichver = const Value.absent(),
+          Value<int?> speed = const Value.absent(),
+          Value<String?> speedEnrichver = const Value.absent(),
+          Value<String?> sizeName = const Value.absent(),
+          Value<String?> sizeNameEnrichver = const Value.absent(),
+          Value<String?> iconUrlEnrichver = const Value.absent(),
+          Value<String?> artUrlEnrichver = const Value.absent(),
+          Value<String?> cellHabitatName = const Value.absent(),
+          Value<String?> cellHabitatNameEnrichver = const Value.absent(),
+          Value<String?> cellClimateName = const Value.absent(),
+          Value<String?> cellClimateNameEnrichver = const Value.absent(),
+          Value<String?> cellContinentName = const Value.absent(),
+          Value<String?> cellContinentNameEnrichver = const Value.absent(),
+          Value<String?> locationDistrict = const Value.absent(),
+          Value<String?> locationDistrictEnrichver = const Value.absent(),
+          Value<String?> locationCity = const Value.absent(),
+          Value<String?> locationCityEnrichver = const Value.absent(),
+          Value<String?> locationState = const Value.absent(),
+          Value<String?> locationStateEnrichver = const Value.absent(),
+          Value<String?> locationCountry = const Value.absent(),
+          Value<String?> locationCountryEnrichver = const Value.absent(),
+          Value<String?> locationCountryCode = const Value.absent(),
+          Value<String?> locationCountryCodeEnrichver =
+              const Value.absent()}) =>
       LocalItemInstance(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -1129,6 +2007,87 @@ class LocalItemInstance extends DataClass
             taxonomicClass.present ? taxonomicClass.value : this.taxonomicClass,
         iconUrl: iconUrl.present ? iconUrl.value : this.iconUrl,
         artUrl: artUrl.present ? artUrl.value : this.artUrl,
+        animalClassName: animalClassName.present
+            ? animalClassName.value
+            : this.animalClassName,
+        animalClassNameEnrichver: animalClassNameEnrichver.present
+            ? animalClassNameEnrichver.value
+            : this.animalClassNameEnrichver,
+        foodPreferenceName: foodPreferenceName.present
+            ? foodPreferenceName.value
+            : this.foodPreferenceName,
+        foodPreferenceNameEnrichver: foodPreferenceNameEnrichver.present
+            ? foodPreferenceNameEnrichver.value
+            : this.foodPreferenceNameEnrichver,
+        climateName: climateName.present ? climateName.value : this.climateName,
+        climateNameEnrichver: climateNameEnrichver.present
+            ? climateNameEnrichver.value
+            : this.climateNameEnrichver,
+        brawn: brawn.present ? brawn.value : this.brawn,
+        brawnEnrichver:
+            brawnEnrichver.present ? brawnEnrichver.value : this.brawnEnrichver,
+        wit: wit.present ? wit.value : this.wit,
+        witEnrichver:
+            witEnrichver.present ? witEnrichver.value : this.witEnrichver,
+        speed: speed.present ? speed.value : this.speed,
+        speedEnrichver:
+            speedEnrichver.present ? speedEnrichver.value : this.speedEnrichver,
+        sizeName: sizeName.present ? sizeName.value : this.sizeName,
+        sizeNameEnrichver: sizeNameEnrichver.present
+            ? sizeNameEnrichver.value
+            : this.sizeNameEnrichver,
+        iconUrlEnrichver: iconUrlEnrichver.present
+            ? iconUrlEnrichver.value
+            : this.iconUrlEnrichver,
+        artUrlEnrichver: artUrlEnrichver.present
+            ? artUrlEnrichver.value
+            : this.artUrlEnrichver,
+        cellHabitatName: cellHabitatName.present
+            ? cellHabitatName.value
+            : this.cellHabitatName,
+        cellHabitatNameEnrichver: cellHabitatNameEnrichver.present
+            ? cellHabitatNameEnrichver.value
+            : this.cellHabitatNameEnrichver,
+        cellClimateName: cellClimateName.present
+            ? cellClimateName.value
+            : this.cellClimateName,
+        cellClimateNameEnrichver: cellClimateNameEnrichver.present
+            ? cellClimateNameEnrichver.value
+            : this.cellClimateNameEnrichver,
+        cellContinentName: cellContinentName.present
+            ? cellContinentName.value
+            : this.cellContinentName,
+        cellContinentNameEnrichver: cellContinentNameEnrichver.present
+            ? cellContinentNameEnrichver.value
+            : this.cellContinentNameEnrichver,
+        locationDistrict: locationDistrict.present
+            ? locationDistrict.value
+            : this.locationDistrict,
+        locationDistrictEnrichver: locationDistrictEnrichver.present
+            ? locationDistrictEnrichver.value
+            : this.locationDistrictEnrichver,
+        locationCity:
+            locationCity.present ? locationCity.value : this.locationCity,
+        locationCityEnrichver: locationCityEnrichver.present
+            ? locationCityEnrichver.value
+            : this.locationCityEnrichver,
+        locationState:
+            locationState.present ? locationState.value : this.locationState,
+        locationStateEnrichver: locationStateEnrichver.present
+            ? locationStateEnrichver.value
+            : this.locationStateEnrichver,
+        locationCountry: locationCountry.present
+            ? locationCountry.value
+            : this.locationCountry,
+        locationCountryEnrichver: locationCountryEnrichver.present
+            ? locationCountryEnrichver.value
+            : this.locationCountryEnrichver,
+        locationCountryCode: locationCountryCode.present
+            ? locationCountryCode.value
+            : this.locationCountryCode,
+        locationCountryCodeEnrichver: locationCountryCodeEnrichver.present
+            ? locationCountryCodeEnrichver.value
+            : this.locationCountryCodeEnrichver,
       );
   LocalItemInstance copyWithCompanion(LocalItemInstanceTableCompanion data) {
     return LocalItemInstance(
@@ -1170,6 +2129,93 @@ class LocalItemInstance extends DataClass
           : this.taxonomicClass,
       iconUrl: data.iconUrl.present ? data.iconUrl.value : this.iconUrl,
       artUrl: data.artUrl.present ? data.artUrl.value : this.artUrl,
+      animalClassName: data.animalClassName.present
+          ? data.animalClassName.value
+          : this.animalClassName,
+      animalClassNameEnrichver: data.animalClassNameEnrichver.present
+          ? data.animalClassNameEnrichver.value
+          : this.animalClassNameEnrichver,
+      foodPreferenceName: data.foodPreferenceName.present
+          ? data.foodPreferenceName.value
+          : this.foodPreferenceName,
+      foodPreferenceNameEnrichver: data.foodPreferenceNameEnrichver.present
+          ? data.foodPreferenceNameEnrichver.value
+          : this.foodPreferenceNameEnrichver,
+      climateName:
+          data.climateName.present ? data.climateName.value : this.climateName,
+      climateNameEnrichver: data.climateNameEnrichver.present
+          ? data.climateNameEnrichver.value
+          : this.climateNameEnrichver,
+      brawn: data.brawn.present ? data.brawn.value : this.brawn,
+      brawnEnrichver: data.brawnEnrichver.present
+          ? data.brawnEnrichver.value
+          : this.brawnEnrichver,
+      wit: data.wit.present ? data.wit.value : this.wit,
+      witEnrichver: data.witEnrichver.present
+          ? data.witEnrichver.value
+          : this.witEnrichver,
+      speed: data.speed.present ? data.speed.value : this.speed,
+      speedEnrichver: data.speedEnrichver.present
+          ? data.speedEnrichver.value
+          : this.speedEnrichver,
+      sizeName: data.sizeName.present ? data.sizeName.value : this.sizeName,
+      sizeNameEnrichver: data.sizeNameEnrichver.present
+          ? data.sizeNameEnrichver.value
+          : this.sizeNameEnrichver,
+      iconUrlEnrichver: data.iconUrlEnrichver.present
+          ? data.iconUrlEnrichver.value
+          : this.iconUrlEnrichver,
+      artUrlEnrichver: data.artUrlEnrichver.present
+          ? data.artUrlEnrichver.value
+          : this.artUrlEnrichver,
+      cellHabitatName: data.cellHabitatName.present
+          ? data.cellHabitatName.value
+          : this.cellHabitatName,
+      cellHabitatNameEnrichver: data.cellHabitatNameEnrichver.present
+          ? data.cellHabitatNameEnrichver.value
+          : this.cellHabitatNameEnrichver,
+      cellClimateName: data.cellClimateName.present
+          ? data.cellClimateName.value
+          : this.cellClimateName,
+      cellClimateNameEnrichver: data.cellClimateNameEnrichver.present
+          ? data.cellClimateNameEnrichver.value
+          : this.cellClimateNameEnrichver,
+      cellContinentName: data.cellContinentName.present
+          ? data.cellContinentName.value
+          : this.cellContinentName,
+      cellContinentNameEnrichver: data.cellContinentNameEnrichver.present
+          ? data.cellContinentNameEnrichver.value
+          : this.cellContinentNameEnrichver,
+      locationDistrict: data.locationDistrict.present
+          ? data.locationDistrict.value
+          : this.locationDistrict,
+      locationDistrictEnrichver: data.locationDistrictEnrichver.present
+          ? data.locationDistrictEnrichver.value
+          : this.locationDistrictEnrichver,
+      locationCity: data.locationCity.present
+          ? data.locationCity.value
+          : this.locationCity,
+      locationCityEnrichver: data.locationCityEnrichver.present
+          ? data.locationCityEnrichver.value
+          : this.locationCityEnrichver,
+      locationState: data.locationState.present
+          ? data.locationState.value
+          : this.locationState,
+      locationStateEnrichver: data.locationStateEnrichver.present
+          ? data.locationStateEnrichver.value
+          : this.locationStateEnrichver,
+      locationCountry: data.locationCountry.present
+          ? data.locationCountry.value
+          : this.locationCountry,
+      locationCountryEnrichver: data.locationCountryEnrichver.present
+          ? data.locationCountryEnrichver.value
+          : this.locationCountryEnrichver,
+      locationCountryCode: data.locationCountryCode.present
+          ? data.locationCountryCode.value
+          : this.locationCountryCode,
+      locationCountryCodeEnrichver: data.locationCountryCodeEnrichver.present
+          ? data.locationCountryCodeEnrichver.value
+          : this.locationCountryCodeEnrichver,
     );
   }
 
@@ -1195,33 +2241,98 @@ class LocalItemInstance extends DataClass
           ..write('continentsJson: $continentsJson, ')
           ..write('taxonomicClass: $taxonomicClass, ')
           ..write('iconUrl: $iconUrl, ')
-          ..write('artUrl: $artUrl')
+          ..write('artUrl: $artUrl, ')
+          ..write('animalClassName: $animalClassName, ')
+          ..write('animalClassNameEnrichver: $animalClassNameEnrichver, ')
+          ..write('foodPreferenceName: $foodPreferenceName, ')
+          ..write('foodPreferenceNameEnrichver: $foodPreferenceNameEnrichver, ')
+          ..write('climateName: $climateName, ')
+          ..write('climateNameEnrichver: $climateNameEnrichver, ')
+          ..write('brawn: $brawn, ')
+          ..write('brawnEnrichver: $brawnEnrichver, ')
+          ..write('wit: $wit, ')
+          ..write('witEnrichver: $witEnrichver, ')
+          ..write('speed: $speed, ')
+          ..write('speedEnrichver: $speedEnrichver, ')
+          ..write('sizeName: $sizeName, ')
+          ..write('sizeNameEnrichver: $sizeNameEnrichver, ')
+          ..write('iconUrlEnrichver: $iconUrlEnrichver, ')
+          ..write('artUrlEnrichver: $artUrlEnrichver, ')
+          ..write('cellHabitatName: $cellHabitatName, ')
+          ..write('cellHabitatNameEnrichver: $cellHabitatNameEnrichver, ')
+          ..write('cellClimateName: $cellClimateName, ')
+          ..write('cellClimateNameEnrichver: $cellClimateNameEnrichver, ')
+          ..write('cellContinentName: $cellContinentName, ')
+          ..write('cellContinentNameEnrichver: $cellContinentNameEnrichver, ')
+          ..write('locationDistrict: $locationDistrict, ')
+          ..write('locationDistrictEnrichver: $locationDistrictEnrichver, ')
+          ..write('locationCity: $locationCity, ')
+          ..write('locationCityEnrichver: $locationCityEnrichver, ')
+          ..write('locationState: $locationState, ')
+          ..write('locationStateEnrichver: $locationStateEnrichver, ')
+          ..write('locationCountry: $locationCountry, ')
+          ..write('locationCountryEnrichver: $locationCountryEnrichver, ')
+          ..write('locationCountryCode: $locationCountryCode, ')
+          ..write('locationCountryCodeEnrichver: $locationCountryCodeEnrichver')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      userId,
-      definitionId,
-      affixes,
-      parentAId,
-      parentBId,
-      acquiredAt,
-      acquiredInCellId,
-      dailySeed,
-      status,
-      badgesJson,
-      displayName,
-      scientificName,
-      categoryName,
-      rarityName,
-      habitatsJson,
-      continentsJson,
-      taxonomicClass,
-      iconUrl,
-      artUrl);
+  int get hashCode => Object.hashAll([
+        id,
+        userId,
+        definitionId,
+        affixes,
+        parentAId,
+        parentBId,
+        acquiredAt,
+        acquiredInCellId,
+        dailySeed,
+        status,
+        badgesJson,
+        displayName,
+        scientificName,
+        categoryName,
+        rarityName,
+        habitatsJson,
+        continentsJson,
+        taxonomicClass,
+        iconUrl,
+        artUrl,
+        animalClassName,
+        animalClassNameEnrichver,
+        foodPreferenceName,
+        foodPreferenceNameEnrichver,
+        climateName,
+        climateNameEnrichver,
+        brawn,
+        brawnEnrichver,
+        wit,
+        witEnrichver,
+        speed,
+        speedEnrichver,
+        sizeName,
+        sizeNameEnrichver,
+        iconUrlEnrichver,
+        artUrlEnrichver,
+        cellHabitatName,
+        cellHabitatNameEnrichver,
+        cellClimateName,
+        cellClimateNameEnrichver,
+        cellContinentName,
+        cellContinentNameEnrichver,
+        locationDistrict,
+        locationDistrictEnrichver,
+        locationCity,
+        locationCityEnrichver,
+        locationState,
+        locationStateEnrichver,
+        locationCountry,
+        locationCountryEnrichver,
+        locationCountryCode,
+        locationCountryCodeEnrichver
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1245,7 +2356,41 @@ class LocalItemInstance extends DataClass
           other.continentsJson == this.continentsJson &&
           other.taxonomicClass == this.taxonomicClass &&
           other.iconUrl == this.iconUrl &&
-          other.artUrl == this.artUrl);
+          other.artUrl == this.artUrl &&
+          other.animalClassName == this.animalClassName &&
+          other.animalClassNameEnrichver == this.animalClassNameEnrichver &&
+          other.foodPreferenceName == this.foodPreferenceName &&
+          other.foodPreferenceNameEnrichver ==
+              this.foodPreferenceNameEnrichver &&
+          other.climateName == this.climateName &&
+          other.climateNameEnrichver == this.climateNameEnrichver &&
+          other.brawn == this.brawn &&
+          other.brawnEnrichver == this.brawnEnrichver &&
+          other.wit == this.wit &&
+          other.witEnrichver == this.witEnrichver &&
+          other.speed == this.speed &&
+          other.speedEnrichver == this.speedEnrichver &&
+          other.sizeName == this.sizeName &&
+          other.sizeNameEnrichver == this.sizeNameEnrichver &&
+          other.iconUrlEnrichver == this.iconUrlEnrichver &&
+          other.artUrlEnrichver == this.artUrlEnrichver &&
+          other.cellHabitatName == this.cellHabitatName &&
+          other.cellHabitatNameEnrichver == this.cellHabitatNameEnrichver &&
+          other.cellClimateName == this.cellClimateName &&
+          other.cellClimateNameEnrichver == this.cellClimateNameEnrichver &&
+          other.cellContinentName == this.cellContinentName &&
+          other.cellContinentNameEnrichver == this.cellContinentNameEnrichver &&
+          other.locationDistrict == this.locationDistrict &&
+          other.locationDistrictEnrichver == this.locationDistrictEnrichver &&
+          other.locationCity == this.locationCity &&
+          other.locationCityEnrichver == this.locationCityEnrichver &&
+          other.locationState == this.locationState &&
+          other.locationStateEnrichver == this.locationStateEnrichver &&
+          other.locationCountry == this.locationCountry &&
+          other.locationCountryEnrichver == this.locationCountryEnrichver &&
+          other.locationCountryCode == this.locationCountryCode &&
+          other.locationCountryCodeEnrichver ==
+              this.locationCountryCodeEnrichver);
 }
 
 class LocalItemInstanceTableCompanion
@@ -1270,6 +2415,38 @@ class LocalItemInstanceTableCompanion
   final Value<String?> taxonomicClass;
   final Value<String?> iconUrl;
   final Value<String?> artUrl;
+  final Value<String?> animalClassName;
+  final Value<String?> animalClassNameEnrichver;
+  final Value<String?> foodPreferenceName;
+  final Value<String?> foodPreferenceNameEnrichver;
+  final Value<String?> climateName;
+  final Value<String?> climateNameEnrichver;
+  final Value<int?> brawn;
+  final Value<String?> brawnEnrichver;
+  final Value<int?> wit;
+  final Value<String?> witEnrichver;
+  final Value<int?> speed;
+  final Value<String?> speedEnrichver;
+  final Value<String?> sizeName;
+  final Value<String?> sizeNameEnrichver;
+  final Value<String?> iconUrlEnrichver;
+  final Value<String?> artUrlEnrichver;
+  final Value<String?> cellHabitatName;
+  final Value<String?> cellHabitatNameEnrichver;
+  final Value<String?> cellClimateName;
+  final Value<String?> cellClimateNameEnrichver;
+  final Value<String?> cellContinentName;
+  final Value<String?> cellContinentNameEnrichver;
+  final Value<String?> locationDistrict;
+  final Value<String?> locationDistrictEnrichver;
+  final Value<String?> locationCity;
+  final Value<String?> locationCityEnrichver;
+  final Value<String?> locationState;
+  final Value<String?> locationStateEnrichver;
+  final Value<String?> locationCountry;
+  final Value<String?> locationCountryEnrichver;
+  final Value<String?> locationCountryCode;
+  final Value<String?> locationCountryCodeEnrichver;
   final Value<int> rowid;
   const LocalItemInstanceTableCompanion({
     this.id = const Value.absent(),
@@ -1292,6 +2469,38 @@ class LocalItemInstanceTableCompanion
     this.taxonomicClass = const Value.absent(),
     this.iconUrl = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.animalClassName = const Value.absent(),
+    this.animalClassNameEnrichver = const Value.absent(),
+    this.foodPreferenceName = const Value.absent(),
+    this.foodPreferenceNameEnrichver = const Value.absent(),
+    this.climateName = const Value.absent(),
+    this.climateNameEnrichver = const Value.absent(),
+    this.brawn = const Value.absent(),
+    this.brawnEnrichver = const Value.absent(),
+    this.wit = const Value.absent(),
+    this.witEnrichver = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.speedEnrichver = const Value.absent(),
+    this.sizeName = const Value.absent(),
+    this.sizeNameEnrichver = const Value.absent(),
+    this.iconUrlEnrichver = const Value.absent(),
+    this.artUrlEnrichver = const Value.absent(),
+    this.cellHabitatName = const Value.absent(),
+    this.cellHabitatNameEnrichver = const Value.absent(),
+    this.cellClimateName = const Value.absent(),
+    this.cellClimateNameEnrichver = const Value.absent(),
+    this.cellContinentName = const Value.absent(),
+    this.cellContinentNameEnrichver = const Value.absent(),
+    this.locationDistrict = const Value.absent(),
+    this.locationDistrictEnrichver = const Value.absent(),
+    this.locationCity = const Value.absent(),
+    this.locationCityEnrichver = const Value.absent(),
+    this.locationState = const Value.absent(),
+    this.locationStateEnrichver = const Value.absent(),
+    this.locationCountry = const Value.absent(),
+    this.locationCountryEnrichver = const Value.absent(),
+    this.locationCountryCode = const Value.absent(),
+    this.locationCountryCodeEnrichver = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalItemInstanceTableCompanion.insert({
@@ -1315,6 +2524,38 @@ class LocalItemInstanceTableCompanion
     this.taxonomicClass = const Value.absent(),
     this.iconUrl = const Value.absent(),
     this.artUrl = const Value.absent(),
+    this.animalClassName = const Value.absent(),
+    this.animalClassNameEnrichver = const Value.absent(),
+    this.foodPreferenceName = const Value.absent(),
+    this.foodPreferenceNameEnrichver = const Value.absent(),
+    this.climateName = const Value.absent(),
+    this.climateNameEnrichver = const Value.absent(),
+    this.brawn = const Value.absent(),
+    this.brawnEnrichver = const Value.absent(),
+    this.wit = const Value.absent(),
+    this.witEnrichver = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.speedEnrichver = const Value.absent(),
+    this.sizeName = const Value.absent(),
+    this.sizeNameEnrichver = const Value.absent(),
+    this.iconUrlEnrichver = const Value.absent(),
+    this.artUrlEnrichver = const Value.absent(),
+    this.cellHabitatName = const Value.absent(),
+    this.cellHabitatNameEnrichver = const Value.absent(),
+    this.cellClimateName = const Value.absent(),
+    this.cellClimateNameEnrichver = const Value.absent(),
+    this.cellContinentName = const Value.absent(),
+    this.cellContinentNameEnrichver = const Value.absent(),
+    this.locationDistrict = const Value.absent(),
+    this.locationDistrictEnrichver = const Value.absent(),
+    this.locationCity = const Value.absent(),
+    this.locationCityEnrichver = const Value.absent(),
+    this.locationState = const Value.absent(),
+    this.locationStateEnrichver = const Value.absent(),
+    this.locationCountry = const Value.absent(),
+    this.locationCountryEnrichver = const Value.absent(),
+    this.locationCountryCode = const Value.absent(),
+    this.locationCountryCodeEnrichver = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
@@ -1341,6 +2582,38 @@ class LocalItemInstanceTableCompanion
     Expression<String>? taxonomicClass,
     Expression<String>? iconUrl,
     Expression<String>? artUrl,
+    Expression<String>? animalClassName,
+    Expression<String>? animalClassNameEnrichver,
+    Expression<String>? foodPreferenceName,
+    Expression<String>? foodPreferenceNameEnrichver,
+    Expression<String>? climateName,
+    Expression<String>? climateNameEnrichver,
+    Expression<int>? brawn,
+    Expression<String>? brawnEnrichver,
+    Expression<int>? wit,
+    Expression<String>? witEnrichver,
+    Expression<int>? speed,
+    Expression<String>? speedEnrichver,
+    Expression<String>? sizeName,
+    Expression<String>? sizeNameEnrichver,
+    Expression<String>? iconUrlEnrichver,
+    Expression<String>? artUrlEnrichver,
+    Expression<String>? cellHabitatName,
+    Expression<String>? cellHabitatNameEnrichver,
+    Expression<String>? cellClimateName,
+    Expression<String>? cellClimateNameEnrichver,
+    Expression<String>? cellContinentName,
+    Expression<String>? cellContinentNameEnrichver,
+    Expression<String>? locationDistrict,
+    Expression<String>? locationDistrictEnrichver,
+    Expression<String>? locationCity,
+    Expression<String>? locationCityEnrichver,
+    Expression<String>? locationState,
+    Expression<String>? locationStateEnrichver,
+    Expression<String>? locationCountry,
+    Expression<String>? locationCountryEnrichver,
+    Expression<String>? locationCountryCode,
+    Expression<String>? locationCountryCodeEnrichver,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1364,6 +2637,51 @@ class LocalItemInstanceTableCompanion
       if (taxonomicClass != null) 'taxonomic_class': taxonomicClass,
       if (iconUrl != null) 'icon_url': iconUrl,
       if (artUrl != null) 'art_url': artUrl,
+      if (animalClassName != null) 'animal_class_name': animalClassName,
+      if (animalClassNameEnrichver != null)
+        'animal_class_name_enrichver': animalClassNameEnrichver,
+      if (foodPreferenceName != null)
+        'food_preference_name': foodPreferenceName,
+      if (foodPreferenceNameEnrichver != null)
+        'food_preference_name_enrichver': foodPreferenceNameEnrichver,
+      if (climateName != null) 'climate_name': climateName,
+      if (climateNameEnrichver != null)
+        'climate_name_enrichver': climateNameEnrichver,
+      if (brawn != null) 'brawn': brawn,
+      if (brawnEnrichver != null) 'brawn_enrichver': brawnEnrichver,
+      if (wit != null) 'wit': wit,
+      if (witEnrichver != null) 'wit_enrichver': witEnrichver,
+      if (speed != null) 'speed': speed,
+      if (speedEnrichver != null) 'speed_enrichver': speedEnrichver,
+      if (sizeName != null) 'size_name': sizeName,
+      if (sizeNameEnrichver != null) 'size_name_enrichver': sizeNameEnrichver,
+      if (iconUrlEnrichver != null) 'icon_url_enrichver': iconUrlEnrichver,
+      if (artUrlEnrichver != null) 'art_url_enrichver': artUrlEnrichver,
+      if (cellHabitatName != null) 'cell_habitat_name': cellHabitatName,
+      if (cellHabitatNameEnrichver != null)
+        'cell_habitat_name_enrichver': cellHabitatNameEnrichver,
+      if (cellClimateName != null) 'cell_climate_name': cellClimateName,
+      if (cellClimateNameEnrichver != null)
+        'cell_climate_name_enrichver': cellClimateNameEnrichver,
+      if (cellContinentName != null) 'cell_continent_name': cellContinentName,
+      if (cellContinentNameEnrichver != null)
+        'cell_continent_name_enrichver': cellContinentNameEnrichver,
+      if (locationDistrict != null) 'location_district': locationDistrict,
+      if (locationDistrictEnrichver != null)
+        'location_district_enrichver': locationDistrictEnrichver,
+      if (locationCity != null) 'location_city': locationCity,
+      if (locationCityEnrichver != null)
+        'location_city_enrichver': locationCityEnrichver,
+      if (locationState != null) 'location_state': locationState,
+      if (locationStateEnrichver != null)
+        'location_state_enrichver': locationStateEnrichver,
+      if (locationCountry != null) 'location_country': locationCountry,
+      if (locationCountryEnrichver != null)
+        'location_country_enrichver': locationCountryEnrichver,
+      if (locationCountryCode != null)
+        'location_country_code': locationCountryCode,
+      if (locationCountryCodeEnrichver != null)
+        'location_country_code_enrichver': locationCountryCodeEnrichver,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1389,6 +2707,38 @@ class LocalItemInstanceTableCompanion
       Value<String?>? taxonomicClass,
       Value<String?>? iconUrl,
       Value<String?>? artUrl,
+      Value<String?>? animalClassName,
+      Value<String?>? animalClassNameEnrichver,
+      Value<String?>? foodPreferenceName,
+      Value<String?>? foodPreferenceNameEnrichver,
+      Value<String?>? climateName,
+      Value<String?>? climateNameEnrichver,
+      Value<int?>? brawn,
+      Value<String?>? brawnEnrichver,
+      Value<int?>? wit,
+      Value<String?>? witEnrichver,
+      Value<int?>? speed,
+      Value<String?>? speedEnrichver,
+      Value<String?>? sizeName,
+      Value<String?>? sizeNameEnrichver,
+      Value<String?>? iconUrlEnrichver,
+      Value<String?>? artUrlEnrichver,
+      Value<String?>? cellHabitatName,
+      Value<String?>? cellHabitatNameEnrichver,
+      Value<String?>? cellClimateName,
+      Value<String?>? cellClimateNameEnrichver,
+      Value<String?>? cellContinentName,
+      Value<String?>? cellContinentNameEnrichver,
+      Value<String?>? locationDistrict,
+      Value<String?>? locationDistrictEnrichver,
+      Value<String?>? locationCity,
+      Value<String?>? locationCityEnrichver,
+      Value<String?>? locationState,
+      Value<String?>? locationStateEnrichver,
+      Value<String?>? locationCountry,
+      Value<String?>? locationCountryEnrichver,
+      Value<String?>? locationCountryCode,
+      Value<String?>? locationCountryCodeEnrichver,
       Value<int>? rowid}) {
     return LocalItemInstanceTableCompanion(
       id: id ?? this.id,
@@ -1411,6 +2761,48 @@ class LocalItemInstanceTableCompanion
       taxonomicClass: taxonomicClass ?? this.taxonomicClass,
       iconUrl: iconUrl ?? this.iconUrl,
       artUrl: artUrl ?? this.artUrl,
+      animalClassName: animalClassName ?? this.animalClassName,
+      animalClassNameEnrichver:
+          animalClassNameEnrichver ?? this.animalClassNameEnrichver,
+      foodPreferenceName: foodPreferenceName ?? this.foodPreferenceName,
+      foodPreferenceNameEnrichver:
+          foodPreferenceNameEnrichver ?? this.foodPreferenceNameEnrichver,
+      climateName: climateName ?? this.climateName,
+      climateNameEnrichver: climateNameEnrichver ?? this.climateNameEnrichver,
+      brawn: brawn ?? this.brawn,
+      brawnEnrichver: brawnEnrichver ?? this.brawnEnrichver,
+      wit: wit ?? this.wit,
+      witEnrichver: witEnrichver ?? this.witEnrichver,
+      speed: speed ?? this.speed,
+      speedEnrichver: speedEnrichver ?? this.speedEnrichver,
+      sizeName: sizeName ?? this.sizeName,
+      sizeNameEnrichver: sizeNameEnrichver ?? this.sizeNameEnrichver,
+      iconUrlEnrichver: iconUrlEnrichver ?? this.iconUrlEnrichver,
+      artUrlEnrichver: artUrlEnrichver ?? this.artUrlEnrichver,
+      cellHabitatName: cellHabitatName ?? this.cellHabitatName,
+      cellHabitatNameEnrichver:
+          cellHabitatNameEnrichver ?? this.cellHabitatNameEnrichver,
+      cellClimateName: cellClimateName ?? this.cellClimateName,
+      cellClimateNameEnrichver:
+          cellClimateNameEnrichver ?? this.cellClimateNameEnrichver,
+      cellContinentName: cellContinentName ?? this.cellContinentName,
+      cellContinentNameEnrichver:
+          cellContinentNameEnrichver ?? this.cellContinentNameEnrichver,
+      locationDistrict: locationDistrict ?? this.locationDistrict,
+      locationDistrictEnrichver:
+          locationDistrictEnrichver ?? this.locationDistrictEnrichver,
+      locationCity: locationCity ?? this.locationCity,
+      locationCityEnrichver:
+          locationCityEnrichver ?? this.locationCityEnrichver,
+      locationState: locationState ?? this.locationState,
+      locationStateEnrichver:
+          locationStateEnrichver ?? this.locationStateEnrichver,
+      locationCountry: locationCountry ?? this.locationCountry,
+      locationCountryEnrichver:
+          locationCountryEnrichver ?? this.locationCountryEnrichver,
+      locationCountryCode: locationCountryCode ?? this.locationCountryCode,
+      locationCountryCodeEnrichver:
+          locationCountryCodeEnrichver ?? this.locationCountryCodeEnrichver,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1478,6 +2870,114 @@ class LocalItemInstanceTableCompanion
     if (artUrl.present) {
       map['art_url'] = Variable<String>(artUrl.value);
     }
+    if (animalClassName.present) {
+      map['animal_class_name'] = Variable<String>(animalClassName.value);
+    }
+    if (animalClassNameEnrichver.present) {
+      map['animal_class_name_enrichver'] =
+          Variable<String>(animalClassNameEnrichver.value);
+    }
+    if (foodPreferenceName.present) {
+      map['food_preference_name'] = Variable<String>(foodPreferenceName.value);
+    }
+    if (foodPreferenceNameEnrichver.present) {
+      map['food_preference_name_enrichver'] =
+          Variable<String>(foodPreferenceNameEnrichver.value);
+    }
+    if (climateName.present) {
+      map['climate_name'] = Variable<String>(climateName.value);
+    }
+    if (climateNameEnrichver.present) {
+      map['climate_name_enrichver'] =
+          Variable<String>(climateNameEnrichver.value);
+    }
+    if (brawn.present) {
+      map['brawn'] = Variable<int>(brawn.value);
+    }
+    if (brawnEnrichver.present) {
+      map['brawn_enrichver'] = Variable<String>(brawnEnrichver.value);
+    }
+    if (wit.present) {
+      map['wit'] = Variable<int>(wit.value);
+    }
+    if (witEnrichver.present) {
+      map['wit_enrichver'] = Variable<String>(witEnrichver.value);
+    }
+    if (speed.present) {
+      map['speed'] = Variable<int>(speed.value);
+    }
+    if (speedEnrichver.present) {
+      map['speed_enrichver'] = Variable<String>(speedEnrichver.value);
+    }
+    if (sizeName.present) {
+      map['size_name'] = Variable<String>(sizeName.value);
+    }
+    if (sizeNameEnrichver.present) {
+      map['size_name_enrichver'] = Variable<String>(sizeNameEnrichver.value);
+    }
+    if (iconUrlEnrichver.present) {
+      map['icon_url_enrichver'] = Variable<String>(iconUrlEnrichver.value);
+    }
+    if (artUrlEnrichver.present) {
+      map['art_url_enrichver'] = Variable<String>(artUrlEnrichver.value);
+    }
+    if (cellHabitatName.present) {
+      map['cell_habitat_name'] = Variable<String>(cellHabitatName.value);
+    }
+    if (cellHabitatNameEnrichver.present) {
+      map['cell_habitat_name_enrichver'] =
+          Variable<String>(cellHabitatNameEnrichver.value);
+    }
+    if (cellClimateName.present) {
+      map['cell_climate_name'] = Variable<String>(cellClimateName.value);
+    }
+    if (cellClimateNameEnrichver.present) {
+      map['cell_climate_name_enrichver'] =
+          Variable<String>(cellClimateNameEnrichver.value);
+    }
+    if (cellContinentName.present) {
+      map['cell_continent_name'] = Variable<String>(cellContinentName.value);
+    }
+    if (cellContinentNameEnrichver.present) {
+      map['cell_continent_name_enrichver'] =
+          Variable<String>(cellContinentNameEnrichver.value);
+    }
+    if (locationDistrict.present) {
+      map['location_district'] = Variable<String>(locationDistrict.value);
+    }
+    if (locationDistrictEnrichver.present) {
+      map['location_district_enrichver'] =
+          Variable<String>(locationDistrictEnrichver.value);
+    }
+    if (locationCity.present) {
+      map['location_city'] = Variable<String>(locationCity.value);
+    }
+    if (locationCityEnrichver.present) {
+      map['location_city_enrichver'] =
+          Variable<String>(locationCityEnrichver.value);
+    }
+    if (locationState.present) {
+      map['location_state'] = Variable<String>(locationState.value);
+    }
+    if (locationStateEnrichver.present) {
+      map['location_state_enrichver'] =
+          Variable<String>(locationStateEnrichver.value);
+    }
+    if (locationCountry.present) {
+      map['location_country'] = Variable<String>(locationCountry.value);
+    }
+    if (locationCountryEnrichver.present) {
+      map['location_country_enrichver'] =
+          Variable<String>(locationCountryEnrichver.value);
+    }
+    if (locationCountryCode.present) {
+      map['location_country_code'] =
+          Variable<String>(locationCountryCode.value);
+    }
+    if (locationCountryCodeEnrichver.present) {
+      map['location_country_code_enrichver'] =
+          Variable<String>(locationCountryCodeEnrichver.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1507,6 +3007,39 @@ class LocalItemInstanceTableCompanion
           ..write('taxonomicClass: $taxonomicClass, ')
           ..write('iconUrl: $iconUrl, ')
           ..write('artUrl: $artUrl, ')
+          ..write('animalClassName: $animalClassName, ')
+          ..write('animalClassNameEnrichver: $animalClassNameEnrichver, ')
+          ..write('foodPreferenceName: $foodPreferenceName, ')
+          ..write('foodPreferenceNameEnrichver: $foodPreferenceNameEnrichver, ')
+          ..write('climateName: $climateName, ')
+          ..write('climateNameEnrichver: $climateNameEnrichver, ')
+          ..write('brawn: $brawn, ')
+          ..write('brawnEnrichver: $brawnEnrichver, ')
+          ..write('wit: $wit, ')
+          ..write('witEnrichver: $witEnrichver, ')
+          ..write('speed: $speed, ')
+          ..write('speedEnrichver: $speedEnrichver, ')
+          ..write('sizeName: $sizeName, ')
+          ..write('sizeNameEnrichver: $sizeNameEnrichver, ')
+          ..write('iconUrlEnrichver: $iconUrlEnrichver, ')
+          ..write('artUrlEnrichver: $artUrlEnrichver, ')
+          ..write('cellHabitatName: $cellHabitatName, ')
+          ..write('cellHabitatNameEnrichver: $cellHabitatNameEnrichver, ')
+          ..write('cellClimateName: $cellClimateName, ')
+          ..write('cellClimateNameEnrichver: $cellClimateNameEnrichver, ')
+          ..write('cellContinentName: $cellContinentName, ')
+          ..write('cellContinentNameEnrichver: $cellContinentNameEnrichver, ')
+          ..write('locationDistrict: $locationDistrict, ')
+          ..write('locationDistrictEnrichver: $locationDistrictEnrichver, ')
+          ..write('locationCity: $locationCity, ')
+          ..write('locationCityEnrichver: $locationCityEnrichver, ')
+          ..write('locationState: $locationState, ')
+          ..write('locationStateEnrichver: $locationStateEnrichver, ')
+          ..write('locationCountry: $locationCountry, ')
+          ..write('locationCountryEnrichver: $locationCountryEnrichver, ')
+          ..write('locationCountryCode: $locationCountryCode, ')
+          ..write(
+              'locationCountryCodeEnrichver: $locationCountryCodeEnrichver, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2293,6 +3826,72 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
   late final GeneratedColumn<DateTime> enrichedAt = GeneratedColumn<DateTime>(
       'enriched_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _animalClassEnrichverMeta =
+      const VerificationMeta('animalClassEnrichver');
+  @override
+  late final GeneratedColumn<String> animalClassEnrichver =
+      GeneratedColumn<String>('animal_class_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _foodPreferenceEnrichverMeta =
+      const VerificationMeta('foodPreferenceEnrichver');
+  @override
+  late final GeneratedColumn<String> foodPreferenceEnrichver =
+      GeneratedColumn<String>('food_preference_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _climateEnrichverMeta =
+      const VerificationMeta('climateEnrichver');
+  @override
+  late final GeneratedColumn<String> climateEnrichver = GeneratedColumn<String>(
+      'climate_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _brawnEnrichverMeta =
+      const VerificationMeta('brawnEnrichver');
+  @override
+  late final GeneratedColumn<String> brawnEnrichver = GeneratedColumn<String>(
+      'brawn_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _witEnrichverMeta =
+      const VerificationMeta('witEnrichver');
+  @override
+  late final GeneratedColumn<String> witEnrichver = GeneratedColumn<String>(
+      'wit_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _speedEnrichverMeta =
+      const VerificationMeta('speedEnrichver');
+  @override
+  late final GeneratedColumn<String> speedEnrichver = GeneratedColumn<String>(
+      'speed_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sizeEnrichverMeta =
+      const VerificationMeta('sizeEnrichver');
+  @override
+  late final GeneratedColumn<String> sizeEnrichver = GeneratedColumn<String>(
+      'size_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconPromptEnrichverMeta =
+      const VerificationMeta('iconPromptEnrichver');
+  @override
+  late final GeneratedColumn<String> iconPromptEnrichver =
+      GeneratedColumn<String>('icon_prompt_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artPromptEnrichverMeta =
+      const VerificationMeta('artPromptEnrichver');
+  @override
+  late final GeneratedColumn<String> artPromptEnrichver =
+      GeneratedColumn<String>('art_prompt_enrichver', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _iconUrlEnrichverMeta =
+      const VerificationMeta('iconUrlEnrichver');
+  @override
+  late final GeneratedColumn<String> iconUrlEnrichver = GeneratedColumn<String>(
+      'icon_url_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _artUrlEnrichverMeta =
+      const VerificationMeta('artUrlEnrichver');
+  @override
+  late final GeneratedColumn<String> artUrlEnrichver = GeneratedColumn<String>(
+      'art_url_enrichver', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         definitionId,
@@ -2313,7 +3912,18 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
         artUrl,
         iconPrompt,
         artPrompt,
-        enrichedAt
+        enrichedAt,
+        animalClassEnrichver,
+        foodPreferenceEnrichver,
+        climateEnrichver,
+        brawnEnrichver,
+        witEnrichver,
+        speedEnrichver,
+        sizeEnrichver,
+        iconPromptEnrichver,
+        artPromptEnrichver,
+        iconUrlEnrichver,
+        artUrlEnrichver
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2437,6 +4047,73 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
           enrichedAt.isAcceptableOrUnknown(
               data['enriched_at']!, _enrichedAtMeta));
     }
+    if (data.containsKey('animal_class_enrichver')) {
+      context.handle(
+          _animalClassEnrichverMeta,
+          animalClassEnrichver.isAcceptableOrUnknown(
+              data['animal_class_enrichver']!, _animalClassEnrichverMeta));
+    }
+    if (data.containsKey('food_preference_enrichver')) {
+      context.handle(
+          _foodPreferenceEnrichverMeta,
+          foodPreferenceEnrichver.isAcceptableOrUnknown(
+              data['food_preference_enrichver']!,
+              _foodPreferenceEnrichverMeta));
+    }
+    if (data.containsKey('climate_enrichver')) {
+      context.handle(
+          _climateEnrichverMeta,
+          climateEnrichver.isAcceptableOrUnknown(
+              data['climate_enrichver']!, _climateEnrichverMeta));
+    }
+    if (data.containsKey('brawn_enrichver')) {
+      context.handle(
+          _brawnEnrichverMeta,
+          brawnEnrichver.isAcceptableOrUnknown(
+              data['brawn_enrichver']!, _brawnEnrichverMeta));
+    }
+    if (data.containsKey('wit_enrichver')) {
+      context.handle(
+          _witEnrichverMeta,
+          witEnrichver.isAcceptableOrUnknown(
+              data['wit_enrichver']!, _witEnrichverMeta));
+    }
+    if (data.containsKey('speed_enrichver')) {
+      context.handle(
+          _speedEnrichverMeta,
+          speedEnrichver.isAcceptableOrUnknown(
+              data['speed_enrichver']!, _speedEnrichverMeta));
+    }
+    if (data.containsKey('size_enrichver')) {
+      context.handle(
+          _sizeEnrichverMeta,
+          sizeEnrichver.isAcceptableOrUnknown(
+              data['size_enrichver']!, _sizeEnrichverMeta));
+    }
+    if (data.containsKey('icon_prompt_enrichver')) {
+      context.handle(
+          _iconPromptEnrichverMeta,
+          iconPromptEnrichver.isAcceptableOrUnknown(
+              data['icon_prompt_enrichver']!, _iconPromptEnrichverMeta));
+    }
+    if (data.containsKey('art_prompt_enrichver')) {
+      context.handle(
+          _artPromptEnrichverMeta,
+          artPromptEnrichver.isAcceptableOrUnknown(
+              data['art_prompt_enrichver']!, _artPromptEnrichverMeta));
+    }
+    if (data.containsKey('icon_url_enrichver')) {
+      context.handle(
+          _iconUrlEnrichverMeta,
+          iconUrlEnrichver.isAcceptableOrUnknown(
+              data['icon_url_enrichver']!, _iconUrlEnrichverMeta));
+    }
+    if (data.containsKey('art_url_enrichver')) {
+      context.handle(
+          _artUrlEnrichverMeta,
+          artUrlEnrichver.isAcceptableOrUnknown(
+              data['art_url_enrichver']!, _artUrlEnrichverMeta));
+    }
     return context;
   }
 
@@ -2484,6 +4161,30 @@ class $LocalSpeciesTableTable extends LocalSpeciesTable
           .read(DriftSqlType.string, data['${effectivePrefix}art_prompt']),
       enrichedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}enriched_at']),
+      animalClassEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}animal_class_enrichver']),
+      foodPreferenceEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}food_preference_enrichver']),
+      climateEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}climate_enrichver']),
+      brawnEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}brawn_enrichver']),
+      witEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}wit_enrichver']),
+      speedEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}speed_enrichver']),
+      sizeEnrichver: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}size_enrichver']),
+      iconPromptEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}icon_prompt_enrichver']),
+      artPromptEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}art_prompt_enrichver']),
+      iconUrlEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}icon_url_enrichver']),
+      artUrlEnrichver: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}art_url_enrichver']),
     );
   }
 
@@ -2513,6 +4214,17 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
   final String? iconPrompt;
   final String? artPrompt;
   final DateTime? enrichedAt;
+  final String? animalClassEnrichver;
+  final String? foodPreferenceEnrichver;
+  final String? climateEnrichver;
+  final String? brawnEnrichver;
+  final String? witEnrichver;
+  final String? speedEnrichver;
+  final String? sizeEnrichver;
+  final String? iconPromptEnrichver;
+  final String? artPromptEnrichver;
+  final String? iconUrlEnrichver;
+  final String? artUrlEnrichver;
   const LocalSpecies(
       {required this.definitionId,
       required this.scientificName,
@@ -2532,7 +4244,18 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       this.artUrl,
       this.iconPrompt,
       this.artPrompt,
-      this.enrichedAt});
+      this.enrichedAt,
+      this.animalClassEnrichver,
+      this.foodPreferenceEnrichver,
+      this.climateEnrichver,
+      this.brawnEnrichver,
+      this.witEnrichver,
+      this.speedEnrichver,
+      this.sizeEnrichver,
+      this.iconPromptEnrichver,
+      this.artPromptEnrichver,
+      this.iconUrlEnrichver,
+      this.artUrlEnrichver});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2579,6 +4302,40 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
     if (!nullToAbsent || enrichedAt != null) {
       map['enriched_at'] = Variable<DateTime>(enrichedAt);
     }
+    if (!nullToAbsent || animalClassEnrichver != null) {
+      map['animal_class_enrichver'] = Variable<String>(animalClassEnrichver);
+    }
+    if (!nullToAbsent || foodPreferenceEnrichver != null) {
+      map['food_preference_enrichver'] =
+          Variable<String>(foodPreferenceEnrichver);
+    }
+    if (!nullToAbsent || climateEnrichver != null) {
+      map['climate_enrichver'] = Variable<String>(climateEnrichver);
+    }
+    if (!nullToAbsent || brawnEnrichver != null) {
+      map['brawn_enrichver'] = Variable<String>(brawnEnrichver);
+    }
+    if (!nullToAbsent || witEnrichver != null) {
+      map['wit_enrichver'] = Variable<String>(witEnrichver);
+    }
+    if (!nullToAbsent || speedEnrichver != null) {
+      map['speed_enrichver'] = Variable<String>(speedEnrichver);
+    }
+    if (!nullToAbsent || sizeEnrichver != null) {
+      map['size_enrichver'] = Variable<String>(sizeEnrichver);
+    }
+    if (!nullToAbsent || iconPromptEnrichver != null) {
+      map['icon_prompt_enrichver'] = Variable<String>(iconPromptEnrichver);
+    }
+    if (!nullToAbsent || artPromptEnrichver != null) {
+      map['art_prompt_enrichver'] = Variable<String>(artPromptEnrichver);
+    }
+    if (!nullToAbsent || iconUrlEnrichver != null) {
+      map['icon_url_enrichver'] = Variable<String>(iconUrlEnrichver);
+    }
+    if (!nullToAbsent || artUrlEnrichver != null) {
+      map['art_url_enrichver'] = Variable<String>(artUrlEnrichver);
+    }
     return map;
   }
 
@@ -2620,6 +4377,39 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       enrichedAt: enrichedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(enrichedAt),
+      animalClassEnrichver: animalClassEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animalClassEnrichver),
+      foodPreferenceEnrichver: foodPreferenceEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(foodPreferenceEnrichver),
+      climateEnrichver: climateEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(climateEnrichver),
+      brawnEnrichver: brawnEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brawnEnrichver),
+      witEnrichver: witEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(witEnrichver),
+      speedEnrichver: speedEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(speedEnrichver),
+      sizeEnrichver: sizeEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sizeEnrichver),
+      iconPromptEnrichver: iconPromptEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconPromptEnrichver),
+      artPromptEnrichver: artPromptEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artPromptEnrichver),
+      iconUrlEnrichver: iconUrlEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconUrlEnrichver),
+      artUrlEnrichver: artUrlEnrichver == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artUrlEnrichver),
     );
   }
 
@@ -2646,6 +4436,21 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       iconPrompt: serializer.fromJson<String?>(json['iconPrompt']),
       artPrompt: serializer.fromJson<String?>(json['artPrompt']),
       enrichedAt: serializer.fromJson<DateTime?>(json['enrichedAt']),
+      animalClassEnrichver:
+          serializer.fromJson<String?>(json['animalClassEnrichver']),
+      foodPreferenceEnrichver:
+          serializer.fromJson<String?>(json['foodPreferenceEnrichver']),
+      climateEnrichver: serializer.fromJson<String?>(json['climateEnrichver']),
+      brawnEnrichver: serializer.fromJson<String?>(json['brawnEnrichver']),
+      witEnrichver: serializer.fromJson<String?>(json['witEnrichver']),
+      speedEnrichver: serializer.fromJson<String?>(json['speedEnrichver']),
+      sizeEnrichver: serializer.fromJson<String?>(json['sizeEnrichver']),
+      iconPromptEnrichver:
+          serializer.fromJson<String?>(json['iconPromptEnrichver']),
+      artPromptEnrichver:
+          serializer.fromJson<String?>(json['artPromptEnrichver']),
+      iconUrlEnrichver: serializer.fromJson<String?>(json['iconUrlEnrichver']),
+      artUrlEnrichver: serializer.fromJson<String?>(json['artUrlEnrichver']),
     );
   }
   @override
@@ -2671,6 +4476,18 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       'iconPrompt': serializer.toJson<String?>(iconPrompt),
       'artPrompt': serializer.toJson<String?>(artPrompt),
       'enrichedAt': serializer.toJson<DateTime?>(enrichedAt),
+      'animalClassEnrichver': serializer.toJson<String?>(animalClassEnrichver),
+      'foodPreferenceEnrichver':
+          serializer.toJson<String?>(foodPreferenceEnrichver),
+      'climateEnrichver': serializer.toJson<String?>(climateEnrichver),
+      'brawnEnrichver': serializer.toJson<String?>(brawnEnrichver),
+      'witEnrichver': serializer.toJson<String?>(witEnrichver),
+      'speedEnrichver': serializer.toJson<String?>(speedEnrichver),
+      'sizeEnrichver': serializer.toJson<String?>(sizeEnrichver),
+      'iconPromptEnrichver': serializer.toJson<String?>(iconPromptEnrichver),
+      'artPromptEnrichver': serializer.toJson<String?>(artPromptEnrichver),
+      'iconUrlEnrichver': serializer.toJson<String?>(iconUrlEnrichver),
+      'artUrlEnrichver': serializer.toJson<String?>(artUrlEnrichver),
     };
   }
 
@@ -2693,7 +4510,18 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           Value<String?> artUrl = const Value.absent(),
           Value<String?> iconPrompt = const Value.absent(),
           Value<String?> artPrompt = const Value.absent(),
-          Value<DateTime?> enrichedAt = const Value.absent()}) =>
+          Value<DateTime?> enrichedAt = const Value.absent(),
+          Value<String?> animalClassEnrichver = const Value.absent(),
+          Value<String?> foodPreferenceEnrichver = const Value.absent(),
+          Value<String?> climateEnrichver = const Value.absent(),
+          Value<String?> brawnEnrichver = const Value.absent(),
+          Value<String?> witEnrichver = const Value.absent(),
+          Value<String?> speedEnrichver = const Value.absent(),
+          Value<String?> sizeEnrichver = const Value.absent(),
+          Value<String?> iconPromptEnrichver = const Value.absent(),
+          Value<String?> artPromptEnrichver = const Value.absent(),
+          Value<String?> iconUrlEnrichver = const Value.absent(),
+          Value<String?> artUrlEnrichver = const Value.absent()}) =>
       LocalSpecies(
         definitionId: definitionId ?? this.definitionId,
         scientificName: scientificName ?? this.scientificName,
@@ -2715,6 +4543,35 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
         iconPrompt: iconPrompt.present ? iconPrompt.value : this.iconPrompt,
         artPrompt: artPrompt.present ? artPrompt.value : this.artPrompt,
         enrichedAt: enrichedAt.present ? enrichedAt.value : this.enrichedAt,
+        animalClassEnrichver: animalClassEnrichver.present
+            ? animalClassEnrichver.value
+            : this.animalClassEnrichver,
+        foodPreferenceEnrichver: foodPreferenceEnrichver.present
+            ? foodPreferenceEnrichver.value
+            : this.foodPreferenceEnrichver,
+        climateEnrichver: climateEnrichver.present
+            ? climateEnrichver.value
+            : this.climateEnrichver,
+        brawnEnrichver:
+            brawnEnrichver.present ? brawnEnrichver.value : this.brawnEnrichver,
+        witEnrichver:
+            witEnrichver.present ? witEnrichver.value : this.witEnrichver,
+        speedEnrichver:
+            speedEnrichver.present ? speedEnrichver.value : this.speedEnrichver,
+        sizeEnrichver:
+            sizeEnrichver.present ? sizeEnrichver.value : this.sizeEnrichver,
+        iconPromptEnrichver: iconPromptEnrichver.present
+            ? iconPromptEnrichver.value
+            : this.iconPromptEnrichver,
+        artPromptEnrichver: artPromptEnrichver.present
+            ? artPromptEnrichver.value
+            : this.artPromptEnrichver,
+        iconUrlEnrichver: iconUrlEnrichver.present
+            ? iconUrlEnrichver.value
+            : this.iconUrlEnrichver,
+        artUrlEnrichver: artUrlEnrichver.present
+            ? artUrlEnrichver.value
+            : this.artUrlEnrichver,
       );
   LocalSpecies copyWithCompanion(LocalSpeciesTableCompanion data) {
     return LocalSpecies(
@@ -2754,6 +4611,39 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
       artPrompt: data.artPrompt.present ? data.artPrompt.value : this.artPrompt,
       enrichedAt:
           data.enrichedAt.present ? data.enrichedAt.value : this.enrichedAt,
+      animalClassEnrichver: data.animalClassEnrichver.present
+          ? data.animalClassEnrichver.value
+          : this.animalClassEnrichver,
+      foodPreferenceEnrichver: data.foodPreferenceEnrichver.present
+          ? data.foodPreferenceEnrichver.value
+          : this.foodPreferenceEnrichver,
+      climateEnrichver: data.climateEnrichver.present
+          ? data.climateEnrichver.value
+          : this.climateEnrichver,
+      brawnEnrichver: data.brawnEnrichver.present
+          ? data.brawnEnrichver.value
+          : this.brawnEnrichver,
+      witEnrichver: data.witEnrichver.present
+          ? data.witEnrichver.value
+          : this.witEnrichver,
+      speedEnrichver: data.speedEnrichver.present
+          ? data.speedEnrichver.value
+          : this.speedEnrichver,
+      sizeEnrichver: data.sizeEnrichver.present
+          ? data.sizeEnrichver.value
+          : this.sizeEnrichver,
+      iconPromptEnrichver: data.iconPromptEnrichver.present
+          ? data.iconPromptEnrichver.value
+          : this.iconPromptEnrichver,
+      artPromptEnrichver: data.artPromptEnrichver.present
+          ? data.artPromptEnrichver.value
+          : this.artPromptEnrichver,
+      iconUrlEnrichver: data.iconUrlEnrichver.present
+          ? data.iconUrlEnrichver.value
+          : this.iconUrlEnrichver,
+      artUrlEnrichver: data.artUrlEnrichver.present
+          ? data.artUrlEnrichver.value
+          : this.artUrlEnrichver,
     );
   }
 
@@ -2778,32 +4668,55 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           ..write('artUrl: $artUrl, ')
           ..write('iconPrompt: $iconPrompt, ')
           ..write('artPrompt: $artPrompt, ')
-          ..write('enrichedAt: $enrichedAt')
+          ..write('enrichedAt: $enrichedAt, ')
+          ..write('animalClassEnrichver: $animalClassEnrichver, ')
+          ..write('foodPreferenceEnrichver: $foodPreferenceEnrichver, ')
+          ..write('climateEnrichver: $climateEnrichver, ')
+          ..write('brawnEnrichver: $brawnEnrichver, ')
+          ..write('witEnrichver: $witEnrichver, ')
+          ..write('speedEnrichver: $speedEnrichver, ')
+          ..write('sizeEnrichver: $sizeEnrichver, ')
+          ..write('iconPromptEnrichver: $iconPromptEnrichver, ')
+          ..write('artPromptEnrichver: $artPromptEnrichver, ')
+          ..write('iconUrlEnrichver: $iconUrlEnrichver, ')
+          ..write('artUrlEnrichver: $artUrlEnrichver')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      definitionId,
-      scientificName,
-      commonName,
-      taxonomicClass,
-      iucnStatus,
-      habitatsJson,
-      continentsJson,
-      animalClass,
-      foodPreference,
-      climate,
-      brawn,
-      wit,
-      speed,
-      size,
-      iconUrl,
-      artUrl,
-      iconPrompt,
-      artPrompt,
-      enrichedAt);
+  int get hashCode => Object.hashAll([
+        definitionId,
+        scientificName,
+        commonName,
+        taxonomicClass,
+        iucnStatus,
+        habitatsJson,
+        continentsJson,
+        animalClass,
+        foodPreference,
+        climate,
+        brawn,
+        wit,
+        speed,
+        size,
+        iconUrl,
+        artUrl,
+        iconPrompt,
+        artPrompt,
+        enrichedAt,
+        animalClassEnrichver,
+        foodPreferenceEnrichver,
+        climateEnrichver,
+        brawnEnrichver,
+        witEnrichver,
+        speedEnrichver,
+        sizeEnrichver,
+        iconPromptEnrichver,
+        artPromptEnrichver,
+        iconUrlEnrichver,
+        artUrlEnrichver
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2826,7 +4739,18 @@ class LocalSpecies extends DataClass implements Insertable<LocalSpecies> {
           other.artUrl == this.artUrl &&
           other.iconPrompt == this.iconPrompt &&
           other.artPrompt == this.artPrompt &&
-          other.enrichedAt == this.enrichedAt);
+          other.enrichedAt == this.enrichedAt &&
+          other.animalClassEnrichver == this.animalClassEnrichver &&
+          other.foodPreferenceEnrichver == this.foodPreferenceEnrichver &&
+          other.climateEnrichver == this.climateEnrichver &&
+          other.brawnEnrichver == this.brawnEnrichver &&
+          other.witEnrichver == this.witEnrichver &&
+          other.speedEnrichver == this.speedEnrichver &&
+          other.sizeEnrichver == this.sizeEnrichver &&
+          other.iconPromptEnrichver == this.iconPromptEnrichver &&
+          other.artPromptEnrichver == this.artPromptEnrichver &&
+          other.iconUrlEnrichver == this.iconUrlEnrichver &&
+          other.artUrlEnrichver == this.artUrlEnrichver);
 }
 
 class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
@@ -2849,6 +4773,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
   final Value<String?> iconPrompt;
   final Value<String?> artPrompt;
   final Value<DateTime?> enrichedAt;
+  final Value<String?> animalClassEnrichver;
+  final Value<String?> foodPreferenceEnrichver;
+  final Value<String?> climateEnrichver;
+  final Value<String?> brawnEnrichver;
+  final Value<String?> witEnrichver;
+  final Value<String?> speedEnrichver;
+  final Value<String?> sizeEnrichver;
+  final Value<String?> iconPromptEnrichver;
+  final Value<String?> artPromptEnrichver;
+  final Value<String?> iconUrlEnrichver;
+  final Value<String?> artUrlEnrichver;
   final Value<int> rowid;
   const LocalSpeciesTableCompanion({
     this.definitionId = const Value.absent(),
@@ -2870,6 +4805,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     this.iconPrompt = const Value.absent(),
     this.artPrompt = const Value.absent(),
     this.enrichedAt = const Value.absent(),
+    this.animalClassEnrichver = const Value.absent(),
+    this.foodPreferenceEnrichver = const Value.absent(),
+    this.climateEnrichver = const Value.absent(),
+    this.brawnEnrichver = const Value.absent(),
+    this.witEnrichver = const Value.absent(),
+    this.speedEnrichver = const Value.absent(),
+    this.sizeEnrichver = const Value.absent(),
+    this.iconPromptEnrichver = const Value.absent(),
+    this.artPromptEnrichver = const Value.absent(),
+    this.iconUrlEnrichver = const Value.absent(),
+    this.artUrlEnrichver = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LocalSpeciesTableCompanion.insert({
@@ -2892,6 +4838,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     this.iconPrompt = const Value.absent(),
     this.artPrompt = const Value.absent(),
     this.enrichedAt = const Value.absent(),
+    this.animalClassEnrichver = const Value.absent(),
+    this.foodPreferenceEnrichver = const Value.absent(),
+    this.climateEnrichver = const Value.absent(),
+    this.brawnEnrichver = const Value.absent(),
+    this.witEnrichver = const Value.absent(),
+    this.speedEnrichver = const Value.absent(),
+    this.sizeEnrichver = const Value.absent(),
+    this.iconPromptEnrichver = const Value.absent(),
+    this.artPromptEnrichver = const Value.absent(),
+    this.iconUrlEnrichver = const Value.absent(),
+    this.artUrlEnrichver = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : definitionId = Value(definitionId),
         scientificName = Value(scientificName),
@@ -2920,6 +4877,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     Expression<String>? iconPrompt,
     Expression<String>? artPrompt,
     Expression<DateTime>? enrichedAt,
+    Expression<String>? animalClassEnrichver,
+    Expression<String>? foodPreferenceEnrichver,
+    Expression<String>? climateEnrichver,
+    Expression<String>? brawnEnrichver,
+    Expression<String>? witEnrichver,
+    Expression<String>? speedEnrichver,
+    Expression<String>? sizeEnrichver,
+    Expression<String>? iconPromptEnrichver,
+    Expression<String>? artPromptEnrichver,
+    Expression<String>? iconUrlEnrichver,
+    Expression<String>? artUrlEnrichver,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2942,6 +4910,21 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       if (iconPrompt != null) 'icon_prompt': iconPrompt,
       if (artPrompt != null) 'art_prompt': artPrompt,
       if (enrichedAt != null) 'enriched_at': enrichedAt,
+      if (animalClassEnrichver != null)
+        'animal_class_enrichver': animalClassEnrichver,
+      if (foodPreferenceEnrichver != null)
+        'food_preference_enrichver': foodPreferenceEnrichver,
+      if (climateEnrichver != null) 'climate_enrichver': climateEnrichver,
+      if (brawnEnrichver != null) 'brawn_enrichver': brawnEnrichver,
+      if (witEnrichver != null) 'wit_enrichver': witEnrichver,
+      if (speedEnrichver != null) 'speed_enrichver': speedEnrichver,
+      if (sizeEnrichver != null) 'size_enrichver': sizeEnrichver,
+      if (iconPromptEnrichver != null)
+        'icon_prompt_enrichver': iconPromptEnrichver,
+      if (artPromptEnrichver != null)
+        'art_prompt_enrichver': artPromptEnrichver,
+      if (iconUrlEnrichver != null) 'icon_url_enrichver': iconUrlEnrichver,
+      if (artUrlEnrichver != null) 'art_url_enrichver': artUrlEnrichver,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2966,6 +4949,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       Value<String?>? iconPrompt,
       Value<String?>? artPrompt,
       Value<DateTime?>? enrichedAt,
+      Value<String?>? animalClassEnrichver,
+      Value<String?>? foodPreferenceEnrichver,
+      Value<String?>? climateEnrichver,
+      Value<String?>? brawnEnrichver,
+      Value<String?>? witEnrichver,
+      Value<String?>? speedEnrichver,
+      Value<String?>? sizeEnrichver,
+      Value<String?>? iconPromptEnrichver,
+      Value<String?>? artPromptEnrichver,
+      Value<String?>? iconUrlEnrichver,
+      Value<String?>? artUrlEnrichver,
       Value<int>? rowid}) {
     return LocalSpeciesTableCompanion(
       definitionId: definitionId ?? this.definitionId,
@@ -2987,6 +4981,18 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
       iconPrompt: iconPrompt ?? this.iconPrompt,
       artPrompt: artPrompt ?? this.artPrompt,
       enrichedAt: enrichedAt ?? this.enrichedAt,
+      animalClassEnrichver: animalClassEnrichver ?? this.animalClassEnrichver,
+      foodPreferenceEnrichver:
+          foodPreferenceEnrichver ?? this.foodPreferenceEnrichver,
+      climateEnrichver: climateEnrichver ?? this.climateEnrichver,
+      brawnEnrichver: brawnEnrichver ?? this.brawnEnrichver,
+      witEnrichver: witEnrichver ?? this.witEnrichver,
+      speedEnrichver: speedEnrichver ?? this.speedEnrichver,
+      sizeEnrichver: sizeEnrichver ?? this.sizeEnrichver,
+      iconPromptEnrichver: iconPromptEnrichver ?? this.iconPromptEnrichver,
+      artPromptEnrichver: artPromptEnrichver ?? this.artPromptEnrichver,
+      iconUrlEnrichver: iconUrlEnrichver ?? this.iconUrlEnrichver,
+      artUrlEnrichver: artUrlEnrichver ?? this.artUrlEnrichver,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3051,6 +5057,42 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
     if (enrichedAt.present) {
       map['enriched_at'] = Variable<DateTime>(enrichedAt.value);
     }
+    if (animalClassEnrichver.present) {
+      map['animal_class_enrichver'] =
+          Variable<String>(animalClassEnrichver.value);
+    }
+    if (foodPreferenceEnrichver.present) {
+      map['food_preference_enrichver'] =
+          Variable<String>(foodPreferenceEnrichver.value);
+    }
+    if (climateEnrichver.present) {
+      map['climate_enrichver'] = Variable<String>(climateEnrichver.value);
+    }
+    if (brawnEnrichver.present) {
+      map['brawn_enrichver'] = Variable<String>(brawnEnrichver.value);
+    }
+    if (witEnrichver.present) {
+      map['wit_enrichver'] = Variable<String>(witEnrichver.value);
+    }
+    if (speedEnrichver.present) {
+      map['speed_enrichver'] = Variable<String>(speedEnrichver.value);
+    }
+    if (sizeEnrichver.present) {
+      map['size_enrichver'] = Variable<String>(sizeEnrichver.value);
+    }
+    if (iconPromptEnrichver.present) {
+      map['icon_prompt_enrichver'] =
+          Variable<String>(iconPromptEnrichver.value);
+    }
+    if (artPromptEnrichver.present) {
+      map['art_prompt_enrichver'] = Variable<String>(artPromptEnrichver.value);
+    }
+    if (iconUrlEnrichver.present) {
+      map['icon_url_enrichver'] = Variable<String>(iconUrlEnrichver.value);
+    }
+    if (artUrlEnrichver.present) {
+      map['art_url_enrichver'] = Variable<String>(artUrlEnrichver.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3079,6 +5121,17 @@ class LocalSpeciesTableCompanion extends UpdateCompanion<LocalSpecies> {
           ..write('iconPrompt: $iconPrompt, ')
           ..write('artPrompt: $artPrompt, ')
           ..write('enrichedAt: $enrichedAt, ')
+          ..write('animalClassEnrichver: $animalClassEnrichver, ')
+          ..write('foodPreferenceEnrichver: $foodPreferenceEnrichver, ')
+          ..write('climateEnrichver: $climateEnrichver, ')
+          ..write('brawnEnrichver: $brawnEnrichver, ')
+          ..write('witEnrichver: $witEnrichver, ')
+          ..write('speedEnrichver: $speedEnrichver, ')
+          ..write('sizeEnrichver: $sizeEnrichver, ')
+          ..write('iconPromptEnrichver: $iconPromptEnrichver, ')
+          ..write('artPromptEnrichver: $artPromptEnrichver, ')
+          ..write('iconUrlEnrichver: $iconUrlEnrichver, ')
+          ..write('artUrlEnrichver: $artUrlEnrichver, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5143,6 +7196,38 @@ typedef $$LocalItemInstanceTableTableCreateCompanionBuilder
   Value<String?> taxonomicClass,
   Value<String?> iconUrl,
   Value<String?> artUrl,
+  Value<String?> animalClassName,
+  Value<String?> animalClassNameEnrichver,
+  Value<String?> foodPreferenceName,
+  Value<String?> foodPreferenceNameEnrichver,
+  Value<String?> climateName,
+  Value<String?> climateNameEnrichver,
+  Value<int?> brawn,
+  Value<String?> brawnEnrichver,
+  Value<int?> wit,
+  Value<String?> witEnrichver,
+  Value<int?> speed,
+  Value<String?> speedEnrichver,
+  Value<String?> sizeName,
+  Value<String?> sizeNameEnrichver,
+  Value<String?> iconUrlEnrichver,
+  Value<String?> artUrlEnrichver,
+  Value<String?> cellHabitatName,
+  Value<String?> cellHabitatNameEnrichver,
+  Value<String?> cellClimateName,
+  Value<String?> cellClimateNameEnrichver,
+  Value<String?> cellContinentName,
+  Value<String?> cellContinentNameEnrichver,
+  Value<String?> locationDistrict,
+  Value<String?> locationDistrictEnrichver,
+  Value<String?> locationCity,
+  Value<String?> locationCityEnrichver,
+  Value<String?> locationState,
+  Value<String?> locationStateEnrichver,
+  Value<String?> locationCountry,
+  Value<String?> locationCountryEnrichver,
+  Value<String?> locationCountryCode,
+  Value<String?> locationCountryCodeEnrichver,
   Value<int> rowid,
 });
 typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
@@ -5167,6 +7252,38 @@ typedef $$LocalItemInstanceTableTableUpdateCompanionBuilder
   Value<String?> taxonomicClass,
   Value<String?> iconUrl,
   Value<String?> artUrl,
+  Value<String?> animalClassName,
+  Value<String?> animalClassNameEnrichver,
+  Value<String?> foodPreferenceName,
+  Value<String?> foodPreferenceNameEnrichver,
+  Value<String?> climateName,
+  Value<String?> climateNameEnrichver,
+  Value<int?> brawn,
+  Value<String?> brawnEnrichver,
+  Value<int?> wit,
+  Value<String?> witEnrichver,
+  Value<int?> speed,
+  Value<String?> speedEnrichver,
+  Value<String?> sizeName,
+  Value<String?> sizeNameEnrichver,
+  Value<String?> iconUrlEnrichver,
+  Value<String?> artUrlEnrichver,
+  Value<String?> cellHabitatName,
+  Value<String?> cellHabitatNameEnrichver,
+  Value<String?> cellClimateName,
+  Value<String?> cellClimateNameEnrichver,
+  Value<String?> cellContinentName,
+  Value<String?> cellContinentNameEnrichver,
+  Value<String?> locationDistrict,
+  Value<String?> locationDistrictEnrichver,
+  Value<String?> locationCity,
+  Value<String?> locationCityEnrichver,
+  Value<String?> locationState,
+  Value<String?> locationStateEnrichver,
+  Value<String?> locationCountry,
+  Value<String?> locationCountryEnrichver,
+  Value<String?> locationCountryCode,
+  Value<String?> locationCountryCodeEnrichver,
   Value<int> rowid,
 });
 
@@ -5242,6 +7359,126 @@ class $$LocalItemInstanceTableTableFilterComposer
 
   ColumnFilters<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get animalClassName => $composableBuilder(
+      column: $table.animalClassName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get animalClassNameEnrichver => $composableBuilder(
+      column: $table.animalClassNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get foodPreferenceName => $composableBuilder(
+      column: $table.foodPreferenceName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get foodPreferenceNameEnrichver => $composableBuilder(
+      column: $table.foodPreferenceNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get climateName => $composableBuilder(
+      column: $table.climateName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get climateNameEnrichver => $composableBuilder(
+      column: $table.climateNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get brawn => $composableBuilder(
+      column: $table.brawn, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get wit => $composableBuilder(
+      column: $table.wit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get speed => $composableBuilder(
+      column: $table.speed, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sizeName => $composableBuilder(
+      column: $table.sizeName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sizeNameEnrichver => $composableBuilder(
+      column: $table.sizeNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellHabitatName => $composableBuilder(
+      column: $table.cellHabitatName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellHabitatNameEnrichver => $composableBuilder(
+      column: $table.cellHabitatNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellClimateName => $composableBuilder(
+      column: $table.cellClimateName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellClimateNameEnrichver => $composableBuilder(
+      column: $table.cellClimateNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellContinentName => $composableBuilder(
+      column: $table.cellContinentName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellContinentNameEnrichver => $composableBuilder(
+      column: $table.cellContinentNameEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationDistrictEnrichver => $composableBuilder(
+      column: $table.locationDistrictEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCity => $composableBuilder(
+      column: $table.locationCity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCityEnrichver => $composableBuilder(
+      column: $table.locationCityEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationState => $composableBuilder(
+      column: $table.locationState, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationStateEnrichver => $composableBuilder(
+      column: $table.locationStateEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountryEnrichver => $composableBuilder(
+      column: $table.locationCountryEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountryCodeEnrichver => $composableBuilder(
+      column: $table.locationCountryCodeEnrichver,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalItemInstanceTableTableOrderingComposer
@@ -5319,6 +7556,130 @@ class $$LocalItemInstanceTableTableOrderingComposer
 
   ColumnOrderings<String> get artUrl => $composableBuilder(
       column: $table.artUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get animalClassName => $composableBuilder(
+      column: $table.animalClassName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get animalClassNameEnrichver => $composableBuilder(
+      column: $table.animalClassNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get foodPreferenceName => $composableBuilder(
+      column: $table.foodPreferenceName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get foodPreferenceNameEnrichver => $composableBuilder(
+      column: $table.foodPreferenceNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get climateName => $composableBuilder(
+      column: $table.climateName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get climateNameEnrichver => $composableBuilder(
+      column: $table.climateNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get brawn => $composableBuilder(
+      column: $table.brawn, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get wit => $composableBuilder(
+      column: $table.wit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get speed => $composableBuilder(
+      column: $table.speed, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sizeName => $composableBuilder(
+      column: $table.sizeName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sizeNameEnrichver => $composableBuilder(
+      column: $table.sizeNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellHabitatName => $composableBuilder(
+      column: $table.cellHabitatName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellHabitatNameEnrichver => $composableBuilder(
+      column: $table.cellHabitatNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellClimateName => $composableBuilder(
+      column: $table.cellClimateName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellClimateNameEnrichver => $composableBuilder(
+      column: $table.cellClimateNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellContinentName => $composableBuilder(
+      column: $table.cellContinentName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellContinentNameEnrichver => $composableBuilder(
+      column: $table.cellContinentNameEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationDistrictEnrichver => $composableBuilder(
+      column: $table.locationDistrictEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCity => $composableBuilder(
+      column: $table.locationCity,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCityEnrichver => $composableBuilder(
+      column: $table.locationCityEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationState => $composableBuilder(
+      column: $table.locationState,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationStateEnrichver => $composableBuilder(
+      column: $table.locationStateEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountryEnrichver => $composableBuilder(
+      column: $table.locationCountryEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountryCodeEnrichver =>
+      $composableBuilder(
+          column: $table.locationCountryCodeEnrichver,
+          builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalItemInstanceTableTableAnnotationComposer
@@ -5389,6 +7750,104 @@ class $$LocalItemInstanceTableTableAnnotationComposer
 
   GeneratedColumn<String> get artUrl =>
       $composableBuilder(column: $table.artUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get animalClassName => $composableBuilder(
+      column: $table.animalClassName, builder: (column) => column);
+
+  GeneratedColumn<String> get animalClassNameEnrichver => $composableBuilder(
+      column: $table.animalClassNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get foodPreferenceName => $composableBuilder(
+      column: $table.foodPreferenceName, builder: (column) => column);
+
+  GeneratedColumn<String> get foodPreferenceNameEnrichver => $composableBuilder(
+      column: $table.foodPreferenceNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get climateName => $composableBuilder(
+      column: $table.climateName, builder: (column) => column);
+
+  GeneratedColumn<String> get climateNameEnrichver => $composableBuilder(
+      column: $table.climateNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<int> get brawn =>
+      $composableBuilder(column: $table.brawn, builder: (column) => column);
+
+  GeneratedColumn<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver, builder: (column) => column);
+
+  GeneratedColumn<int> get wit =>
+      $composableBuilder(column: $table.wit, builder: (column) => column);
+
+  GeneratedColumn<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver, builder: (column) => column);
+
+  GeneratedColumn<int> get speed =>
+      $composableBuilder(column: $table.speed, builder: (column) => column);
+
+  GeneratedColumn<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get sizeName =>
+      $composableBuilder(column: $table.sizeName, builder: (column) => column);
+
+  GeneratedColumn<String> get sizeNameEnrichver => $composableBuilder(
+      column: $table.sizeNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get cellHabitatName => $composableBuilder(
+      column: $table.cellHabitatName, builder: (column) => column);
+
+  GeneratedColumn<String> get cellHabitatNameEnrichver => $composableBuilder(
+      column: $table.cellHabitatNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get cellClimateName => $composableBuilder(
+      column: $table.cellClimateName, builder: (column) => column);
+
+  GeneratedColumn<String> get cellClimateNameEnrichver => $composableBuilder(
+      column: $table.cellClimateNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get cellContinentName => $composableBuilder(
+      column: $table.cellContinentName, builder: (column) => column);
+
+  GeneratedColumn<String> get cellContinentNameEnrichver => $composableBuilder(
+      column: $table.cellContinentNameEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict, builder: (column) => column);
+
+  GeneratedColumn<String> get locationDistrictEnrichver => $composableBuilder(
+      column: $table.locationDistrictEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCity => $composableBuilder(
+      column: $table.locationCity, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCityEnrichver => $composableBuilder(
+      column: $table.locationCityEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get locationState => $composableBuilder(
+      column: $table.locationState, builder: (column) => column);
+
+  GeneratedColumn<String> get locationStateEnrichver => $composableBuilder(
+      column: $table.locationStateEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountryEnrichver => $composableBuilder(
+      column: $table.locationCountryEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountryCodeEnrichver =>
+      $composableBuilder(
+          column: $table.locationCountryCodeEnrichver,
+          builder: (column) => column);
 }
 
 class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
@@ -5442,6 +7901,38 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> taxonomicClass = const Value.absent(),
             Value<String?> iconUrl = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> animalClassName = const Value.absent(),
+            Value<String?> animalClassNameEnrichver = const Value.absent(),
+            Value<String?> foodPreferenceName = const Value.absent(),
+            Value<String?> foodPreferenceNameEnrichver = const Value.absent(),
+            Value<String?> climateName = const Value.absent(),
+            Value<String?> climateNameEnrichver = const Value.absent(),
+            Value<int?> brawn = const Value.absent(),
+            Value<String?> brawnEnrichver = const Value.absent(),
+            Value<int?> wit = const Value.absent(),
+            Value<String?> witEnrichver = const Value.absent(),
+            Value<int?> speed = const Value.absent(),
+            Value<String?> speedEnrichver = const Value.absent(),
+            Value<String?> sizeName = const Value.absent(),
+            Value<String?> sizeNameEnrichver = const Value.absent(),
+            Value<String?> iconUrlEnrichver = const Value.absent(),
+            Value<String?> artUrlEnrichver = const Value.absent(),
+            Value<String?> cellHabitatName = const Value.absent(),
+            Value<String?> cellHabitatNameEnrichver = const Value.absent(),
+            Value<String?> cellClimateName = const Value.absent(),
+            Value<String?> cellClimateNameEnrichver = const Value.absent(),
+            Value<String?> cellContinentName = const Value.absent(),
+            Value<String?> cellContinentNameEnrichver = const Value.absent(),
+            Value<String?> locationDistrict = const Value.absent(),
+            Value<String?> locationDistrictEnrichver = const Value.absent(),
+            Value<String?> locationCity = const Value.absent(),
+            Value<String?> locationCityEnrichver = const Value.absent(),
+            Value<String?> locationState = const Value.absent(),
+            Value<String?> locationStateEnrichver = const Value.absent(),
+            Value<String?> locationCountry = const Value.absent(),
+            Value<String?> locationCountryEnrichver = const Value.absent(),
+            Value<String?> locationCountryCode = const Value.absent(),
+            Value<String?> locationCountryCodeEnrichver = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion(
@@ -5465,6 +7956,38 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             taxonomicClass: taxonomicClass,
             iconUrl: iconUrl,
             artUrl: artUrl,
+            animalClassName: animalClassName,
+            animalClassNameEnrichver: animalClassNameEnrichver,
+            foodPreferenceName: foodPreferenceName,
+            foodPreferenceNameEnrichver: foodPreferenceNameEnrichver,
+            climateName: climateName,
+            climateNameEnrichver: climateNameEnrichver,
+            brawn: brawn,
+            brawnEnrichver: brawnEnrichver,
+            wit: wit,
+            witEnrichver: witEnrichver,
+            speed: speed,
+            speedEnrichver: speedEnrichver,
+            sizeName: sizeName,
+            sizeNameEnrichver: sizeNameEnrichver,
+            iconUrlEnrichver: iconUrlEnrichver,
+            artUrlEnrichver: artUrlEnrichver,
+            cellHabitatName: cellHabitatName,
+            cellHabitatNameEnrichver: cellHabitatNameEnrichver,
+            cellClimateName: cellClimateName,
+            cellClimateNameEnrichver: cellClimateNameEnrichver,
+            cellContinentName: cellContinentName,
+            cellContinentNameEnrichver: cellContinentNameEnrichver,
+            locationDistrict: locationDistrict,
+            locationDistrictEnrichver: locationDistrictEnrichver,
+            locationCity: locationCity,
+            locationCityEnrichver: locationCityEnrichver,
+            locationState: locationState,
+            locationStateEnrichver: locationStateEnrichver,
+            locationCountry: locationCountry,
+            locationCountryEnrichver: locationCountryEnrichver,
+            locationCountryCode: locationCountryCode,
+            locationCountryCodeEnrichver: locationCountryCodeEnrichver,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5488,6 +8011,38 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             Value<String?> taxonomicClass = const Value.absent(),
             Value<String?> iconUrl = const Value.absent(),
             Value<String?> artUrl = const Value.absent(),
+            Value<String?> animalClassName = const Value.absent(),
+            Value<String?> animalClassNameEnrichver = const Value.absent(),
+            Value<String?> foodPreferenceName = const Value.absent(),
+            Value<String?> foodPreferenceNameEnrichver = const Value.absent(),
+            Value<String?> climateName = const Value.absent(),
+            Value<String?> climateNameEnrichver = const Value.absent(),
+            Value<int?> brawn = const Value.absent(),
+            Value<String?> brawnEnrichver = const Value.absent(),
+            Value<int?> wit = const Value.absent(),
+            Value<String?> witEnrichver = const Value.absent(),
+            Value<int?> speed = const Value.absent(),
+            Value<String?> speedEnrichver = const Value.absent(),
+            Value<String?> sizeName = const Value.absent(),
+            Value<String?> sizeNameEnrichver = const Value.absent(),
+            Value<String?> iconUrlEnrichver = const Value.absent(),
+            Value<String?> artUrlEnrichver = const Value.absent(),
+            Value<String?> cellHabitatName = const Value.absent(),
+            Value<String?> cellHabitatNameEnrichver = const Value.absent(),
+            Value<String?> cellClimateName = const Value.absent(),
+            Value<String?> cellClimateNameEnrichver = const Value.absent(),
+            Value<String?> cellContinentName = const Value.absent(),
+            Value<String?> cellContinentNameEnrichver = const Value.absent(),
+            Value<String?> locationDistrict = const Value.absent(),
+            Value<String?> locationDistrictEnrichver = const Value.absent(),
+            Value<String?> locationCity = const Value.absent(),
+            Value<String?> locationCityEnrichver = const Value.absent(),
+            Value<String?> locationState = const Value.absent(),
+            Value<String?> locationStateEnrichver = const Value.absent(),
+            Value<String?> locationCountry = const Value.absent(),
+            Value<String?> locationCountryEnrichver = const Value.absent(),
+            Value<String?> locationCountryCode = const Value.absent(),
+            Value<String?> locationCountryCodeEnrichver = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalItemInstanceTableCompanion.insert(
@@ -5511,6 +8066,38 @@ class $$LocalItemInstanceTableTableTableManager extends RootTableManager<
             taxonomicClass: taxonomicClass,
             iconUrl: iconUrl,
             artUrl: artUrl,
+            animalClassName: animalClassName,
+            animalClassNameEnrichver: animalClassNameEnrichver,
+            foodPreferenceName: foodPreferenceName,
+            foodPreferenceNameEnrichver: foodPreferenceNameEnrichver,
+            climateName: climateName,
+            climateNameEnrichver: climateNameEnrichver,
+            brawn: brawn,
+            brawnEnrichver: brawnEnrichver,
+            wit: wit,
+            witEnrichver: witEnrichver,
+            speed: speed,
+            speedEnrichver: speedEnrichver,
+            sizeName: sizeName,
+            sizeNameEnrichver: sizeNameEnrichver,
+            iconUrlEnrichver: iconUrlEnrichver,
+            artUrlEnrichver: artUrlEnrichver,
+            cellHabitatName: cellHabitatName,
+            cellHabitatNameEnrichver: cellHabitatNameEnrichver,
+            cellClimateName: cellClimateName,
+            cellClimateNameEnrichver: cellClimateNameEnrichver,
+            cellContinentName: cellContinentName,
+            cellContinentNameEnrichver: cellContinentNameEnrichver,
+            locationDistrict: locationDistrict,
+            locationDistrictEnrichver: locationDistrictEnrichver,
+            locationCity: locationCity,
+            locationCityEnrichver: locationCityEnrichver,
+            locationState: locationState,
+            locationStateEnrichver: locationStateEnrichver,
+            locationCountry: locationCountry,
+            locationCountryEnrichver: locationCountryEnrichver,
+            locationCountryCode: locationCountryCode,
+            locationCountryCodeEnrichver: locationCountryCodeEnrichver,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -5867,6 +8454,17 @@ typedef $$LocalSpeciesTableTableCreateCompanionBuilder
   Value<String?> iconPrompt,
   Value<String?> artPrompt,
   Value<DateTime?> enrichedAt,
+  Value<String?> animalClassEnrichver,
+  Value<String?> foodPreferenceEnrichver,
+  Value<String?> climateEnrichver,
+  Value<String?> brawnEnrichver,
+  Value<String?> witEnrichver,
+  Value<String?> speedEnrichver,
+  Value<String?> sizeEnrichver,
+  Value<String?> iconPromptEnrichver,
+  Value<String?> artPromptEnrichver,
+  Value<String?> iconUrlEnrichver,
+  Value<String?> artUrlEnrichver,
   Value<int> rowid,
 });
 typedef $$LocalSpeciesTableTableUpdateCompanionBuilder
@@ -5890,6 +8488,17 @@ typedef $$LocalSpeciesTableTableUpdateCompanionBuilder
   Value<String?> iconPrompt,
   Value<String?> artPrompt,
   Value<DateTime?> enrichedAt,
+  Value<String?> animalClassEnrichver,
+  Value<String?> foodPreferenceEnrichver,
+  Value<String?> climateEnrichver,
+  Value<String?> brawnEnrichver,
+  Value<String?> witEnrichver,
+  Value<String?> speedEnrichver,
+  Value<String?> sizeEnrichver,
+  Value<String?> iconPromptEnrichver,
+  Value<String?> artPromptEnrichver,
+  Value<String?> iconUrlEnrichver,
+  Value<String?> artUrlEnrichver,
   Value<int> rowid,
 });
 
@@ -5962,6 +8571,48 @@ class $$LocalSpeciesTableTableFilterComposer
 
   ColumnFilters<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get animalClassEnrichver => $composableBuilder(
+      column: $table.animalClassEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get foodPreferenceEnrichver => $composableBuilder(
+      column: $table.foodPreferenceEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get climateEnrichver => $composableBuilder(
+      column: $table.climateEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sizeEnrichver => $composableBuilder(
+      column: $table.sizeEnrichver, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconPromptEnrichver => $composableBuilder(
+      column: $table.iconPromptEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artPromptEnrichver => $composableBuilder(
+      column: $table.artPromptEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$LocalSpeciesTableTableOrderingComposer
@@ -6035,6 +8686,50 @@ class $$LocalSpeciesTableTableOrderingComposer
 
   ColumnOrderings<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get animalClassEnrichver => $composableBuilder(
+      column: $table.animalClassEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get foodPreferenceEnrichver => $composableBuilder(
+      column: $table.foodPreferenceEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get climateEnrichver => $composableBuilder(
+      column: $table.climateEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sizeEnrichver => $composableBuilder(
+      column: $table.sizeEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconPromptEnrichver => $composableBuilder(
+      column: $table.iconPromptEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artPromptEnrichver => $composableBuilder(
+      column: $table.artPromptEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$LocalSpeciesTableTableAnnotationComposer
@@ -6102,6 +8797,39 @@ class $$LocalSpeciesTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get enrichedAt => $composableBuilder(
       column: $table.enrichedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get animalClassEnrichver => $composableBuilder(
+      column: $table.animalClassEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get foodPreferenceEnrichver => $composableBuilder(
+      column: $table.foodPreferenceEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get climateEnrichver => $composableBuilder(
+      column: $table.climateEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get brawnEnrichver => $composableBuilder(
+      column: $table.brawnEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get witEnrichver => $composableBuilder(
+      column: $table.witEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get speedEnrichver => $composableBuilder(
+      column: $table.speedEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get sizeEnrichver => $composableBuilder(
+      column: $table.sizeEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get iconPromptEnrichver => $composableBuilder(
+      column: $table.iconPromptEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get artPromptEnrichver => $composableBuilder(
+      column: $table.artPromptEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrlEnrichver => $composableBuilder(
+      column: $table.iconUrlEnrichver, builder: (column) => column);
+
+  GeneratedColumn<String> get artUrlEnrichver => $composableBuilder(
+      column: $table.artUrlEnrichver, builder: (column) => column);
 }
 
 class $$LocalSpeciesTableTableTableManager extends RootTableManager<
@@ -6151,6 +8879,17 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             Value<String?> iconPrompt = const Value.absent(),
             Value<String?> artPrompt = const Value.absent(),
             Value<DateTime?> enrichedAt = const Value.absent(),
+            Value<String?> animalClassEnrichver = const Value.absent(),
+            Value<String?> foodPreferenceEnrichver = const Value.absent(),
+            Value<String?> climateEnrichver = const Value.absent(),
+            Value<String?> brawnEnrichver = const Value.absent(),
+            Value<String?> witEnrichver = const Value.absent(),
+            Value<String?> speedEnrichver = const Value.absent(),
+            Value<String?> sizeEnrichver = const Value.absent(),
+            Value<String?> iconPromptEnrichver = const Value.absent(),
+            Value<String?> artPromptEnrichver = const Value.absent(),
+            Value<String?> iconUrlEnrichver = const Value.absent(),
+            Value<String?> artUrlEnrichver = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalSpeciesTableCompanion(
@@ -6173,6 +8912,17 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             iconPrompt: iconPrompt,
             artPrompt: artPrompt,
             enrichedAt: enrichedAt,
+            animalClassEnrichver: animalClassEnrichver,
+            foodPreferenceEnrichver: foodPreferenceEnrichver,
+            climateEnrichver: climateEnrichver,
+            brawnEnrichver: brawnEnrichver,
+            witEnrichver: witEnrichver,
+            speedEnrichver: speedEnrichver,
+            sizeEnrichver: sizeEnrichver,
+            iconPromptEnrichver: iconPromptEnrichver,
+            artPromptEnrichver: artPromptEnrichver,
+            iconUrlEnrichver: iconUrlEnrichver,
+            artUrlEnrichver: artUrlEnrichver,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6195,6 +8945,17 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             Value<String?> iconPrompt = const Value.absent(),
             Value<String?> artPrompt = const Value.absent(),
             Value<DateTime?> enrichedAt = const Value.absent(),
+            Value<String?> animalClassEnrichver = const Value.absent(),
+            Value<String?> foodPreferenceEnrichver = const Value.absent(),
+            Value<String?> climateEnrichver = const Value.absent(),
+            Value<String?> brawnEnrichver = const Value.absent(),
+            Value<String?> witEnrichver = const Value.absent(),
+            Value<String?> speedEnrichver = const Value.absent(),
+            Value<String?> sizeEnrichver = const Value.absent(),
+            Value<String?> iconPromptEnrichver = const Value.absent(),
+            Value<String?> artPromptEnrichver = const Value.absent(),
+            Value<String?> iconUrlEnrichver = const Value.absent(),
+            Value<String?> artUrlEnrichver = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               LocalSpeciesTableCompanion.insert(
@@ -6217,6 +8978,17 @@ class $$LocalSpeciesTableTableTableManager extends RootTableManager<
             iconPrompt: iconPrompt,
             artPrompt: artPrompt,
             enrichedAt: enrichedAt,
+            animalClassEnrichver: animalClassEnrichver,
+            foodPreferenceEnrichver: foodPreferenceEnrichver,
+            climateEnrichver: climateEnrichver,
+            brawnEnrichver: brawnEnrichver,
+            witEnrichver: witEnrichver,
+            speedEnrichver: speedEnrichver,
+            sizeEnrichver: sizeEnrichver,
+            iconPromptEnrichver: iconPromptEnrichver,
+            artPromptEnrichver: artPromptEnrichver,
+            iconUrlEnrichver: iconUrlEnrichver,
+            artUrlEnrichver: artUrlEnrichver,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
