@@ -390,22 +390,27 @@ ART DIRECTION:
 YOUR JOB:
 Given the species data below, write a vivid image prompt that:
 1. Describes the animal with 2-3 specific visual details (coloring, pattern, distinctive body features).
-2. Reflects the dominant stat in body language and build:
-   - brawn → sturdy, grounded, powerful presence, thick limbs
-   - speed → mid-motion, dynamic angle, lean and agile
-   - wit → alert eyes, clever expression, observant pose
-3. Shows the animal in an EXCITING, DYNAMIC moment — the shot that would make the best trading card. Pick a dramatic angle:
-   - Leaping toward the viewer, foreshortened
-   - Diving from above, wings/limbs spread wide
-   - Bursting through foliage or water
-   - Rearing up, silhouetted against sky
-   - Charging forward with dust/snow/water kicked up
-   - Soaring low over terrain, speed lines implied
-   The action should be ICONIC for this species — the thing it's famous for. A puma mid-leap across a canyon. A peregrine falcon in a vertical dive. A bison charging through dust. An otter cracking a shell on its chest. A chameleon's tongue mid-strike.
-   For slow/calm animals, make the COMPOSITION dramatic instead — a tortoise framed heroically from below against golden sky, a sloth hanging serenely with jungle sprawling behind it.
-   Camera angle should feel cinematic — low angle, dramatic 3/4 view, dynamic diagonal composition. Never flat, never centered, never static portrait.
+2. The dominant stat DRIVES the action, pose, and energy of the scene:
+   - brawn → POWER fantasy. Fighting, intimidating, defending territory,
+     displaying dominance. A buck locking antlers in a rut. A gorilla
+     beating its chest. A bear rearing up, massive and imposing. A rhino
+     charging. Thick limbs, sturdy grounded stance, raw physical presence.
+   - speed → VELOCITY fantasy. Hunting at full sprint, fleeing in a blur,
+     leaping across a gap, banking hard mid-flight, diving at terminal
+     velocity. A cheetah stretched flat-out in a sprint. A falcon in a
+     stoop. A marlin breaching. Lean, dynamic, caught mid-motion with
+     a sense of explosive movement.
+   - wit → CUNNING fantasy. Outsmarting, problem-solving, setting a trap,
+     using tools, scheming. A raccoon picking a lock. An octopus unscrewing
+     a jar. A crow using a stick tool. A fox with a sly knowing look.
+     Alert sharp eyes, clever expression, doing something unexpectedly
+     intelligent for an animal.
+3. Camera angle should feel cinematic and exciting — low angle, dramatic
+   3/4 view, dynamic diagonal composition. Never flat, never centered,
+   never a static portrait. The shot that would make the best trading card.
 4. Places it in a loosely-painted habitat setting that matches its biome.
-5. Uses size to set scale — large animals dominate the frame, small animals are perched on mushrooms/branches/rocks.
+5. Uses size to set scale — large animals dominate the frame, small animals
+   are perched on mushrooms/branches/rocks.
 
 OUTPUT:
 Write ONLY the image prompt (3-5 sentences). No preamble, no explanation.
