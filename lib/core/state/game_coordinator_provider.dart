@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/database/connection.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
@@ -767,6 +768,25 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         '[GameCoordinator] SQLite hydration failed '
         '(starting loop anyway): $e',
       );
+
+      // ── Corruption auto-recovery (web only) ────────────────────────
+      // If the error looks like a corrupt WASM SQLite database
+      // (FormatException wrapping a JS SyntaxError), wipe all browser
+      // databases and reload. Supabase is the source of truth — the
+      // fresh database will re-hydrate from the server on next load.
+      if (kIsWeb && _looksLikeDatabaseCorruption(e)) {
+        // ignore: avoid_print
+        print(
+          '[RECOVERY] database corruption detected during hydration: $e',
+        );
+        obs.event('database_corruption_recovery', {
+          'error': e.toString(),
+          'trigger': 'hydration_failure',
+        });
+        _triggerWebDatabaseRecovery();
+        return; // Page will reload — don't start the loop.
+      }
+
       if (!_providerDisposed) {
         // Mark hydrated even on failure so _resolveHome() progresses past
         // LoadingScreen. Without this, the app is stuck on "Loading your
@@ -921,6 +941,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 });
 
 GameEngine? _latestEngine;
+
+/// Returns true if the error looks like a corrupt WASM SQLite database.
+///
+/// On Safari/WebKit, corrupt OPFS or IndexedDB databases produce errors
+/// like: `FormatException: SyntaxError: JSON Parse error: Unexpected
+/// identifier "version"`. These are unrecoverable — the only fix is to
+/// wipe browser storage and start fresh.
+bool _looksLikeDatabaseCorruption(Object error) {
+  final msg = error.toString();
+  return msg.contains('FormatException') && msg.contains('SyntaxError') ||
+      msg.contains('JSON Parse error') ||
+      msg.contains('database disk image is malformed');
+}
+
+/// Wipe all web databases (OPFS + IndexedDB) and reload the page.
+///
+/// Uses [resetDatabaseStorage] from the platform-conditional connection
+/// module (no-op on native, wipes OPFS + IndexedDB + reloads on web).
+void _triggerWebDatabaseRecovery() {
+  resetDatabaseStorage();
+}
 
 /// Exposes the [EngineRunner] for UI-layer event consumption.
 ///

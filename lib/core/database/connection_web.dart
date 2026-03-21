@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:drift/drift.dart';
 import 'package:drift/wasm.dart';
 import 'package:flutter/foundation.dart';
@@ -10,7 +12,33 @@ import 'package:web/web.dart' as web;
 /// the database schema changes. Without it, browsers may serve a stale
 /// cached copy after deploys — which caused a production outage when
 /// the Drift worker didn't know about the new schema tables.
-const _wasmVersion = '2.9.4-v19';
+const _wasmVersion = '2.9.4-v21';
+
+/// Wipe all web database storage (OPFS + IndexedDB) and reload the page.
+///
+/// Called by gameCoordinatorProvider when the first database operation fails
+/// with FormatException — indicating a corrupt database that passed the
+/// connection check but fails on every SQL operation.
+///
+/// Platform-conditional: this is the web implementation. The native stub
+/// in connection_native.dart is a no-op.
+void resetDatabaseStorage() {
+  // Fire-and-forget — the page will reload before this completes.
+  _resetWebDatabaseAndReload();
+}
+
+Future<void> _resetWebDatabaseAndReload() async {
+  // ignore: avoid_print
+  print(
+    '[RECOVERY] wiping ALL web databases (OPFS + IndexedDB) and reloading. '
+    'Supabase is source of truth — no permanent data loss.',
+  );
+  await _deleteOpfsDatabases();
+  await _deleteIndexedDb('earthnova_db');
+  // Also delete the drift worker's OPFS database.
+  await _deleteIndexedDb('earthnova');
+  web.window.location.reload();
+}
 
 /// Creates a persistent SQLite database for web.
 ///
@@ -19,7 +47,7 @@ const _wasmVersion = '2.9.4-v19';
 /// #3242), fall back to direct WASM loading with IndexedDB persistence.
 ///
 /// On corruption (FormatException, SqliteException during migration),
-/// wipes IndexedDB and retries with a fresh database. Supabase is the
+/// wipes storage and retries with a fresh database. Supabase is the
 /// source of truth — local data loss is acceptable.
 QueryExecutor createDatabaseConnection() {
   return DatabaseConnection.delayed(
@@ -44,6 +72,13 @@ QueryExecutor createDatabaseConnection() {
           '[connection_web] WasmDatabase.open failed ($e) '
           '— falling back to direct IndexedDB',
         );
+        // If the error looks like OPFS corruption (FormatException,
+        // SyntaxError), wipe OPFS so the next WasmDatabase.open() attempt
+        // (on reload) starts fresh.
+        if (_looksLikeCorruption(e)) {
+          debugPrint('[connection_web] wiping OPFS databases (corruption)');
+          await _deleteOpfsDatabases();
+        }
       }
 
       // ── Attempt 2: Direct WASM + IndexedDB (no worker) ───────────
@@ -88,6 +123,17 @@ Future<DatabaseConnection> _openDirectIndexedDb({bool isRetry = false}) async {
   );
 }
 
+/// Returns true if the error looks like database corruption rather than
+/// a transient or configuration problem.
+bool _looksLikeCorruption(Object error) {
+  final msg = error.toString();
+  return msg.contains('FormatException') ||
+      msg.contains('SyntaxError') ||
+      msg.contains('JSON Parse error') ||
+      msg.contains('SqliteException') ||
+      msg.contains('database disk image is malformed');
+}
+
 /// Delete an IndexedDB database by name to recover from corruption.
 Future<void> _deleteIndexedDb(String name) async {
   try {
@@ -96,5 +142,27 @@ Future<void> _deleteIndexedDb(String name) async {
     debugPrint('[connection_web] deleted IndexedDB "$name"');
   } catch (e) {
     debugPrint('[connection_web] failed to delete IndexedDB "$name": $e');
+  }
+}
+
+/// Delete OPFS databases used by Drift's WasmDatabase.open().
+///
+/// Drift stores databases in OPFS under `/drift-databases/`. Clearing
+/// this directory forces a fresh database on the next open.
+Future<void> _deleteOpfsDatabases() async {
+  try {
+    // Access the OPFS root and remove the drift databases directory.
+    final root = await web.window.navigator.storage.getDirectory().toDart;
+    await root
+        .removeEntry(
+          'drift-databases',
+          web.FileSystemRemoveOptions(recursive: true),
+        )
+        .toDart;
+    debugPrint('[connection_web] deleted OPFS drift-databases');
+  } catch (e) {
+    debugPrint(
+      '[connection_web] OPFS cleanup failed ($e) — may not exist yet',
+    );
   }
 }
