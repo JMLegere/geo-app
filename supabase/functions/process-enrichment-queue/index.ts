@@ -646,21 +646,42 @@ serve(async (req: Request) => {
     if (availableImageProviders.length === 0) {
       errors.push("Pass 2 skipped: no image provider API keys configured");
     } else {
-      // Find one classified species that needs art.
-      const { data: needsArt, error: artErr } = await supabase
+      // Find one classified species that needs art. Prioritize species
+      // closest to complete: prefer "has icon, needs art" over "needs both".
+      // Finishing a species is more valuable than starting a new one.
+      const artColumns = "definition_id, scientific_name, common_name, animal_class, food_preference, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json";
+
+      // Priority 1: has icon, missing art only (one step from complete)
+      const { data: needsArtOnly, error: artOnlyErr } = await supabase
         .from("species")
-        .select("definition_id, scientific_name, common_name, animal_class, food_preference, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json")
+        .select(artColumns)
         .not("animal_class", "is", null)
-        .or("icon_url.is.null,art_url.is.null")
+        .not("icon_url", "is", null)
+        .is("art_url", null)
         .order("enriched_at", { ascending: true })
         .limit(1)
         .maybeSingle();
+      if (artOnlyErr) throw new Error(`Failed to query species (art-only): ${artOnlyErr.message}`);
 
-      if (artErr) throw new Error(`Failed to query species for art: ${artErr.message}`);
+      // Priority 2: needs icon (and possibly art too)
+      const needsArt = needsArtOnly ?? await (async () => {
+        const { data, error } = await supabase
+          .from("species")
+          .select(artColumns)
+          .not("animal_class", "is", null)
+          .is("icon_url", null)
+          .order("enriched_at", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (error) throw new Error(`Failed to query species (needs-icon): ${error.message}`);
+        return data;
+      })();
 
       if (!needsArt) {
         console.log('[pass2] nothing to generate');
       } else {
+        const priority = needsArtOnly ? 'art-only' : 'needs-icon';
+        console.log(`[pass2] picked ${needsArt.definition_id} (${priority})`);
         const species = needsArt as SpeciesRow;
 
         const enrichmentCtx = {
