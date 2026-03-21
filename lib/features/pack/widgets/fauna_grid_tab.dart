@@ -43,6 +43,17 @@ class FaunaGridTab extends ConsumerWidget {
         final definition =
             ref.read(packProvider.notifier).resolveFauna(item.definitionId);
 
+        if (index < 3) {
+          final artUrl = item.iconUrl ?? definition?.iconUrl;
+          debugPrint(
+            '[ART DEBUG] ${item.displayName}: '
+            'def=${definition != null ? "YES" : "NULL"}, '
+            'def.iconUrl=${definition?.iconUrl != null ? "YES" : "null"}, '
+            'item.iconUrl=${item.iconUrl != null ? "YES" : "null"}, '
+            'resolved artUrl=${artUrl != null ? "YES" : "null"}',
+          );
+        }
+
         return ItemSlotWidget(
           item: item,
           definition: definition,

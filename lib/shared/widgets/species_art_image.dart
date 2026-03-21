@@ -117,7 +117,12 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
             child: child,
           );
         },
-        errorBuilder: (context, error, stackTrace) => _buildEmojiFallback(),
+        errorBuilder: (context, error, stackTrace) {
+          debugPrint(
+            '[ART FAIL] image load error for ${widget.artUrl}: $error',
+          );
+          return _buildEmojiFallback();
+        },
       );
 
       content = Stack(
