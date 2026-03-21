@@ -570,10 +570,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // an OnboardingScreen flash for returning users).
       ref.read(playerProvider.notifier).markHydrated();
 
-      // Capture hydrated profile state so the write-through listener
-      // doesn't redundantly persist the data we just loaded from SQLite.
-      lastPersistedProfile = ref.read(playerProvider);
-
       obs.event('sqlite_hydration_complete', {
         'user_id': userId,
         'item_count': items.length,
@@ -597,6 +593,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       } catch (e) {
         debugPrint('[GameCoordinator] step hydration failed: $e');
       }
+
+      // Capture final hydrated profile state so the write-through listener
+      // doesn't redundantly persist or enqueue data we just loaded.
+      // Placed AFTER step hydration so loadProfile(), markHydrated(), and
+      // addSteps() mutations are all suppressed by the listener guard.
+      lastPersistedProfile = ref.read(playerProvider);
     } catch (e) {
       debugPrint('[GameCoordinator] failed to hydrate: $e');
       // Rethrow so hydrateAndStart's .catchError handles it in one place.

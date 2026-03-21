@@ -100,6 +100,12 @@ class WriteQueueRepository {
     await _db.deleteQueueEntry(id);
   }
 
+  /// Delete multiple entries by ID (batch cleanup of superseded entries).
+  Future<int> deleteEntries(List<int> ids) async {
+    if (ids.isEmpty) return 0;
+    return _db.deleteQueueEntries(ids);
+  }
+
   /// Mark an entry as rejected (server validation failed).
   Future<void> markRejected(int id, String error) async {
     final entry = await _db.getQueueEntryById(id);

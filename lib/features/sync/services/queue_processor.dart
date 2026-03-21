@@ -216,6 +216,32 @@ class QueueProcessor {
       return FlushSummary(staleDeleted: staleDeleted);
     }
 
+    // Coalesce: for each (entityType, entityId, operation) group, keep only
+    // the latest entry (highest id = most recent payload). Superseded entries
+    // are deleted without being sent — for upserts the latest payload always
+    // contains the cumulative state.
+    final coalescedEntries = <WriteQueueEntry>[];
+    final supersededIds = <int>[];
+    final grouped = <String, List<WriteQueueEntry>>{};
+    for (final entry in pending) {
+      final key =
+          '${entry.entityType.name}:${entry.entityId}:${entry.operation.name}';
+      (grouped[key] ??= []).add(entry);
+    }
+    for (final group in grouped.values) {
+      coalescedEntries.add(group.last);
+      for (var i = 0; i < group.length - 1; i++) {
+        supersededIds.add(group[i].id!);
+      }
+    }
+    if (supersededIds.isNotEmpty) {
+      await _queueRepo.deleteEntries(supersededIds);
+      debugPrint(
+        '[QueueProcessor] coalesced ${supersededIds.length} superseded entries',
+      );
+    }
+    coalescedEntries.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
     var confirmed = 0;
     var retried = 0;
     var rejected = 0;
@@ -223,7 +249,7 @@ class QueueProcessor {
 
     final flushSw = Stopwatch()..start();
 
-    for (final entry in pending) {
+    for (final entry in coalescedEntries) {
       final result = await _processEntry(entry, persistence);
 
       switch (result) {
@@ -256,7 +282,8 @@ class QueueProcessor {
     ObservabilityBuffer.instance?.event('api_call', {
       'duration_ms': flushSw.elapsedMilliseconds,
       'operation': 'write_queue_flush',
-      'entry_count': pending.length,
+      'entry_count': coalescedEntries.length,
+      if (supersededIds.isNotEmpty) 'coalesced_count': supersededIds.length,
     });
 
     return FlushSummary(
