@@ -946,6 +946,7 @@ serve(async (req: Request) => {
     if (!itemCandidates || itemCandidates.length === 0) {
       console.log('[items] nothing to denormalize');
     } else {
+      console.log(`[items] ${itemCandidates.length} candidates found`);
       // Score in TypeScript, pick top 50
       const scoredItems = (itemCandidates as ItemInstanceRow[]).map(row => ({
         row,
@@ -953,6 +954,9 @@ serve(async (req: Request) => {
       }));
       scoredItems.sort((a, b) => a.score - b.score);
       const batch = scoredItems.slice(0, 50).map(x => x.row);
+      const minScore = scoredItems[0]?.score ?? 0;
+      const maxScore = scoredItems[scoredItems.length - 1]?.score ?? 0;
+      console.log(`[items] batch of ${batch.length} (scores: ${minScore}-${maxScore})`);
 
       // Collect unique definition_ids and cell_ids in the batch
       const definitionIds = [...new Set(batch.map(i => i.definition_id))];
@@ -986,22 +990,24 @@ serve(async (req: Request) => {
         }
       }
 
-      // Collect all location_ids we need to walk
-      const locationIdSet: Set<number> = new Set();
+      // Collect all location_ids we need to walk (TEXT type, not number)
+      const locationIdSet: Set<string> = new Set();
       for (const item of batch) {
         if (item.acquired_in_cell_id) {
           const cell = cellMap.get(item.acquired_in_cell_id);
-          if (cell?.location_id) locationIdSet.add(cell.location_id);
+          if (cell?.location_id) locationIdSet.add(String(cell.location_id));
         }
       }
 
       // Build location chain for each unique location_id
       // Walk location_nodes upward, building a map: location_id → { district, city, state, country }
-      const locationChainMap: Map<number, Record<string, string>> = new Map();
+      const locationChainMap: Map<string, Record<string, string>> = new Map();
       for (const rootId of locationIdSet) {
         const fields: Record<string, string> = {};
-        let nodeId: number | null = rootId;
-        while (nodeId !== null) {
+        let nodeId: string | null = rootId;
+        let depth = 0;
+        while (nodeId !== null && depth < 10) {
+          depth++;
           const { data: node } = await supabase
             .from("location_nodes")
             .select("id, name, admin_level, parent_id")
@@ -1018,6 +1024,7 @@ serve(async (req: Request) => {
         }
         locationChainMap.set(rootId, fields);
       }
+      console.log(`[items] location chains resolved: ${locationChainMap.size} unique locations`);
 
       // Now update each item in the batch
       let batchUpdated = 0;
@@ -1025,7 +1032,7 @@ serve(async (req: Request) => {
         const updates: Record<string, unknown> = {};
         const species = speciesMap.get(item.definition_id);
         const cell = item.acquired_in_cell_id ? cellMap.get(item.acquired_in_cell_id) : null;
-        const locationId: number | null = cell?.location_id ?? null;
+        const locationId: string | null = cell?.location_id ? String(cell.location_id) : null;
         const locationFields = locationId ? (locationChainMap.get(locationId) ?? {}) : {};
 
         // Species fields — only if species has animal_class (classification done)
@@ -1142,6 +1149,9 @@ serve(async (req: Request) => {
 
   const result = { species_enriched: speciesEnriched, item_stage: itemStage, items_enriched: itemsEnriched, errors };
   console.log(`[worker] done — species_enriched=${speciesEnriched} item_stage=${itemStage} items_enriched=${itemsEnriched} errors=${errors.length}`);
+  if (errors.length > 0) {
+    console.error(`[worker] errors: ${JSON.stringify(errors)}`);
+  }
 
   await logEvent('worker_run', null, {
     metadata: {
@@ -1149,6 +1159,8 @@ serve(async (req: Request) => {
       item_stage: itemStage,
       items_enriched: itemsEnriched,
       errors: errors.length,
+      error_messages: errors.slice(0, 5), // cap at 5 to avoid huge payloads
+      pipeline_version: pipelineVersion,
     },
     duration_ms: Date.now() - workerStartMs,
   });

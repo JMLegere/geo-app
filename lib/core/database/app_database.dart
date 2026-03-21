@@ -420,146 +420,170 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        if (from < 2) {
-          await m.createTable(localItemInstanceTable);
-          await m.deleteTable('local_collected_species_table');
-        }
-        if (from < 3) {
-          // Old enrichment table — created here, migrated + dropped in v18.
-          await customStatement('''
-            CREATE TABLE IF NOT EXISTS local_species_enrichment_table (
-              definition_id TEXT NOT NULL PRIMARY KEY,
-              animal_class TEXT NOT NULL,
-              food_preference TEXT NOT NULL,
-              climate TEXT NOT NULL,
-              brawn INTEGER NOT NULL,
-              wit INTEGER NOT NULL,
-              speed INTEGER NOT NULL,
-              art_url TEXT,
-              enriched_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )
-          ''');
-        }
-        if (from < 4) {
-          await m.createTable(localWriteQueueTable);
-        }
-        if (from < 5) {
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.badgesJson);
-        }
-        if (from < 6) {
-          await m.addColumn(localPlayerProfileTable,
-              localPlayerProfileTable.hasCompletedOnboarding);
-        }
-        if (from < 7) {
-          // Add denormalized identity fields to item instances.
-          // categoryName is new — not present before v7.
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.displayName);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.scientificName);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.categoryName);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.rarityName);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.habitatsJson);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.continentsJson);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.taxonomicClass);
-        }
-        if (from < 8) {
-          // Add last known position to player profile for session restore.
-          await m.addColumn(
-              localPlayerProfileTable, localPlayerProfileTable.lastLat);
-          await m.addColumn(
-              localPlayerProfileTable, localPlayerProfileTable.lastLon);
-        }
-        if (from < 9) {
-          // Add size column to species enrichment (AnimalSize enum name).
-          await customStatement(
-              'ALTER TABLE local_species_enrichment_table ADD COLUMN size TEXT');
-        }
-        if (from < 10) {
-          // Add step tracking columns to player profile.
-          await m.addColumn(
-              localPlayerProfileTable, localPlayerProfileTable.totalSteps);
-          await m.addColumn(localPlayerProfileTable,
-              localPlayerProfileTable.lastKnownStepCount);
-        }
-        if (from < 11) {
-          await m.createTable(localCellPropertiesTable);
-          await m.createTable(localLocationNodeTable);
-        }
-        if (from < 12) {
-          // Make osmId nullable for synthetic nodes (world, continent).
-          // SQLite doesn't support ALTER COLUMN, so we recreate the table.
-          await customStatement('''
-            CREATE TABLE local_location_node_table_new (
-              id TEXT NOT NULL PRIMARY KEY,
-              osm_id INTEGER,
-              name TEXT NOT NULL,
-              admin_level TEXT NOT NULL,
-              parent_id TEXT,
-              color_hex TEXT,
-              created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )
-          ''');
-          await customStatement('''
-            INSERT INTO local_location_node_table_new
-              (id, osm_id, name, admin_level, parent_id, color_hex, created_at)
-            SELECT id, osm_id, name, admin_level, parent_id, color_hex, created_at
-            FROM local_location_node_table
-          ''');
-          await customStatement('DROP TABLE local_location_node_table');
-          await customStatement(
-              'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
-        }
-        if (from < 13) {
-          // Add geometryJson column for storing GeoJSON polygon boundaries.
-          await m.addColumn(
-              localLocationNodeTable, localLocationNodeTable.geometryJson);
-        }
-        if (from < 14) {
-          await m.createTable(localAppEventsTable);
-        }
-        if (from < 15) {
-          await customStatement(
-              'ALTER TABLE local_species_enrichment_table ADD COLUMN icon_url TEXT');
-        }
-        if (from < 16) {
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.iconUrl);
-          await m.addColumn(
-              localItemInstanceTable, localItemInstanceTable.artUrl);
-        }
-        if (from < 17) {
-          await m.createTable(localSpeciesTable);
-        }
+        // ── Legacy migrations (v1–v17) ──────────────────────────────────
+        // These only apply to databases upgrading from pre-v18 schemas.
+        // Fresh databases (created by createAll at v18+) already have the
+        // correct schema and must NOT run these — they reference tables
+        // and columns that never existed on fresh installs (e.g.
+        // local_species_enrichment_table, dropped in v18).
+        //
+        // No production users exist on schemas < 18 (pre-release), so
+        // these are kept only for development DB upgrades. Once all dev
+        // databases are at v18+, this entire block can be deleted.
         if (from < 18) {
-          // Migrate enrichment data from old table → LocalSpeciesTable, then drop.
-          // Guard: old table only exists for upgrades from v3-v17 (not fresh installs).
-          final tables = await customSelect(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
-          ).get();
-          if (tables.isNotEmpty) {
-            await customStatement('''
-              UPDATE local_species_table SET
-                animal_class   = (SELECT animal_class   FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                food_preference = (SELECT food_preference FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                climate        = (SELECT climate        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                brawn          = (SELECT brawn          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                wit            = (SELECT wit            FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                speed          = (SELECT speed          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                size           = (SELECT size           FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                icon_url       = (SELECT icon_url       FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                art_url        = (SELECT art_url        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
-                enriched_at    = (SELECT enriched_at    FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id)
-              WHERE definition_id IN (SELECT definition_id FROM local_species_enrichment_table)
-            ''');
-            await customStatement(
-                'DROP TABLE IF EXISTS local_species_enrichment_table');
+          // Check if this is a genuine upgrade from an old schema
+          // (enrichment table exists) vs a fresh DB where Drift calls
+          // onUpgrade(from:1) because no prior version was stored.
+          final isLegacyDb = (await customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
+              ).get())
+                  .isNotEmpty ||
+              from >= 2; // from >= 2 means a real prior schema existed
+
+          if (isLegacyDb) {
+            if (from < 2) {
+              await m.createTable(localItemInstanceTable);
+              await customStatement(
+                  'DROP TABLE IF EXISTS local_collected_species_table');
+            }
+            if (from < 3) {
+              await customStatement('''
+                CREATE TABLE IF NOT EXISTS local_species_enrichment_table (
+                  definition_id TEXT NOT NULL PRIMARY KEY,
+                  animal_class TEXT NOT NULL,
+                  food_preference TEXT NOT NULL,
+                  climate TEXT NOT NULL,
+                  brawn INTEGER NOT NULL,
+                  wit INTEGER NOT NULL,
+                  speed INTEGER NOT NULL,
+                  art_url TEXT,
+                  enriched_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+                )
+              ''');
+            }
+            if (from < 4) {
+              await m.createTable(localWriteQueueTable);
+            }
+            if (from < 5) {
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.badgesJson);
+            }
+            if (from < 6) {
+              await m.addColumn(localPlayerProfileTable,
+                  localPlayerProfileTable.hasCompletedOnboarding);
+            }
+            if (from < 7) {
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.displayName);
+              await m.addColumn(localItemInstanceTable,
+                  localItemInstanceTable.scientificName);
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.categoryName);
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.rarityName);
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.habitatsJson);
+              await m.addColumn(localItemInstanceTable,
+                  localItemInstanceTable.continentsJson);
+              await m.addColumn(localItemInstanceTable,
+                  localItemInstanceTable.taxonomicClass);
+            }
+            if (from < 8) {
+              await m.addColumn(
+                  localPlayerProfileTable, localPlayerProfileTable.lastLat);
+              await m.addColumn(
+                  localPlayerProfileTable, localPlayerProfileTable.lastLon);
+            }
+            if (from < 9) {
+              final hasEnrich = (await customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
+              ).get())
+                  .isNotEmpty;
+              if (hasEnrich) {
+                await customStatement(
+                    'ALTER TABLE local_species_enrichment_table ADD COLUMN size TEXT');
+              }
+            }
+            if (from < 10) {
+              await m.addColumn(
+                  localPlayerProfileTable, localPlayerProfileTable.totalSteps);
+              await m.addColumn(localPlayerProfileTable,
+                  localPlayerProfileTable.lastKnownStepCount);
+            }
+            if (from < 11) {
+              await m.createTable(localCellPropertiesTable);
+              await m.createTable(localLocationNodeTable);
+            }
+            if (from < 12) {
+              await customStatement('''
+                CREATE TABLE local_location_node_table_new (
+                  id TEXT NOT NULL PRIMARY KEY,
+                  osm_id INTEGER,
+                  name TEXT NOT NULL,
+                  admin_level TEXT NOT NULL,
+                  parent_id TEXT,
+                  color_hex TEXT,
+                  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+                )
+              ''');
+              await customStatement('''
+                INSERT INTO local_location_node_table_new
+                  (id, osm_id, name, admin_level, parent_id, color_hex, created_at)
+                SELECT id, osm_id, name, admin_level, parent_id, color_hex, created_at
+                FROM local_location_node_table
+              ''');
+              await customStatement('DROP TABLE local_location_node_table');
+              await customStatement(
+                  'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
+            }
+            if (from < 13) {
+              await m.addColumn(
+                  localLocationNodeTable, localLocationNodeTable.geometryJson);
+            }
+            if (from < 14) {
+              await m.createTable(localAppEventsTable);
+            }
+            if (from < 15) {
+              final hasEnrich15 = (await customSelect(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
+              ).get())
+                  .isNotEmpty;
+              if (hasEnrich15) {
+                await customStatement(
+                    'ALTER TABLE local_species_enrichment_table ADD COLUMN icon_url TEXT');
+              }
+            }
+            if (from < 16) {
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.iconUrl);
+              await m.addColumn(
+                  localItemInstanceTable, localItemInstanceTable.artUrl);
+            }
+            if (from < 17) {
+              await m.createTable(localSpeciesTable);
+            }
+            // v18: migrate enrichment data to LocalSpeciesTable, drop old table
+            final tables = await customSelect(
+              "SELECT name FROM sqlite_master WHERE type='table' AND name='local_species_enrichment_table'",
+            ).get();
+            if (tables.isNotEmpty) {
+              await customStatement('''
+                UPDATE local_species_table SET
+                  animal_class   = (SELECT animal_class   FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  food_preference = (SELECT food_preference FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  climate        = (SELECT climate        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  brawn          = (SELECT brawn          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  wit            = (SELECT wit            FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  speed          = (SELECT speed          FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  size           = (SELECT size           FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  icon_url       = (SELECT icon_url       FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  art_url        = (SELECT art_url        FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id),
+                  enriched_at    = (SELECT enriched_at    FROM local_species_enrichment_table WHERE definition_id = local_species_table.definition_id)
+                WHERE definition_id IN (SELECT definition_id FROM local_species_enrichment_table)
+              ''');
+              await customStatement(
+                  'DROP TABLE IF EXISTS local_species_enrichment_table');
+            }
           }
         }
         if (from < 19) {
