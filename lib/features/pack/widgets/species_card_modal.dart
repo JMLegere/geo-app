@@ -35,7 +35,7 @@ void showSpeciesCardModal(
       );
       return SlideTransition(
         position: Tween<Offset>(
-          begin: const Offset(0, 0.3),
+          begin: const Offset(0, 1.0),
           end: Offset.zero,
         ).animate(curved),
         child: child,
