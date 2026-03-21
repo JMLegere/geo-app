@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io' as io show Platform;
 
-import 'package:drift/drift.dart' show countAll;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
@@ -106,28 +105,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   () async {
     try {
       final db = ref.read(appDatabaseProvider);
-      final speciesCount = await (db.selectOnly(db.localSpeciesTable)
-            ..addColumns([countAll()]))
-          .map((r) => r.read(countAll())!)
-          .getSingle();
-      final itemCount = await (db.selectOnly(db.localItemInstanceTable)
-            ..addColumns([countAll()]))
-          .map((r) => r.read(countAll())!)
-          .getSingle();
-      final cellCount = await (db.selectOnly(db.localCellProgressTable)
-            ..addColumns([countAll()]))
-          .map((r) => r.read(countAll())!)
-          .getSingle();
-      final enrichedCount = await (db.selectOnly(db.localSpeciesTable)
-            ..addColumns([countAll()])
-            ..where(db.localSpeciesTable.animalClass.isNotNull()))
-          .map((r) => r.read(countAll())!)
-          .getSingle();
-      final withArtCount = await (db.selectOnly(db.localSpeciesTable)
-            ..addColumns([countAll()])
-            ..where(db.localSpeciesTable.iconUrl.isNotNull()))
-          .map((r) => r.read(countAll())!)
-          .getSingle();
+      // Single query for all startup counts — avoids 5 sequential COUNT(*)
+      // queries that each block the main thread (~50ms each on web).
+      final counts = await db.customSelect('''
+        SELECT
+          (SELECT COUNT(*) FROM local_species_table) AS species_total,
+          (SELECT COUNT(*) FROM local_item_instance_table) AS item_total,
+          (SELECT COUNT(*) FROM local_cell_progress_table) AS cell_total,
+          (SELECT COUNT(*) FROM local_species_table WHERE animal_class IS NOT NULL) AS enriched_total,
+          (SELECT COUNT(*) FROM local_species_table WHERE icon_url IS NOT NULL) AS with_art_total
+      ''').getSingle();
+      final speciesCount = counts.read<int>('species_total');
+      final itemCount = counts.read<int>('item_total');
+      final cellCount = counts.read<int>('cell_total');
+      final enrichedCount = counts.read<int>('enriched_total');
+      final withArtCount = counts.read<int>('with_art_total');
 
       // Platform info — dart:io not available on web
       String platformOs = 'web';

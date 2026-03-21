@@ -98,6 +98,10 @@ class ObservabilityBuffer {
 
   int _flushedCount = 0;
 
+  /// Max entries per flush batch. Prevents timeout on large backlogs
+  /// (e.g. 8k entries accumulated offline → single POST → 5s timeout).
+  static const int _maxBatchSize = 100;
+
   Future<void> flush() async {
     if (_flushing) return;
 
@@ -116,16 +120,22 @@ class ObservabilityBuffer {
 
     _flushing = true;
     try {
+      // Chunk to avoid timeout on large backlogs.
+      final batch = unflushed.length <= _maxBatchSize
+          ? unflushed
+          : unflushed.sublist(0, _maxBatchSize);
       final rows =
-          unflushed.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
+          batch.map((e) => jsonDecode(e) as Map<String, dynamic>).toList();
       await _flusher(rows).timeout(const Duration(seconds: 5), onTimeout: () {
-        debugPrint('[Observability] flush timed out (${rows.length} entries)');
+        // ignore: avoid_print
+        print('[Observability] flush timed out (${rows.length} entries)');
       });
-      // Mark these as flushed — but DON'T remove from localStorage.
-      // The flight recorder keeps everything (2MB cap evicts oldest).
-      _flushedCount = entries.length;
+      // Mark this batch as flushed — remaining unflushed entries will be
+      // picked up on the next 30s timer tick.
+      _flushedCount += batch.length;
     } catch (e) {
-      debugPrint('[Observability] flush failed: $e');
+      // ignore: avoid_print
+      print('[Observability] flush failed: $e');
     } finally {
       _flushing = false;
     }
