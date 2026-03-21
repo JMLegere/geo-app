@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide Durations;
 
@@ -11,10 +9,10 @@ import 'package:earth_nova/shared/design_tokens.dart';
 /// and species card modal. Handles loading, error, and missing URL states
 /// gracefully — shows the emoji immediately, replaces with art when loaded.
 ///
-/// When [animate] is true and [artUrl] is non-null, a subtle sinusoidal
-/// breathing idle animation plays (scale-Y + translate-Y, anchored at
-/// bottom-center so the sprite's feet stay grounded). Use [animationSeed]
-/// to phase-offset each sprite so they don't breathe in sync.
+/// When [animate] is true and [artUrl] is non-null, a 2-frame idle hop
+/// animation plays (resting → 2px up, snapping between frames like pixel
+/// art). Use [animationSeed] to phase-offset each sprite so they don't
+/// hop in sync.
 class SpeciesArtImage extends StatefulWidget {
   const SpeciesArtImage({
     required this.fallbackEmoji,
@@ -157,7 +155,7 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
       );
     }
 
-    // Wrap in breathing animation when active.
+    // 2-frame idle hop: frame 1 = resting, frame 2 = shifted up 1-2px.
     if (_shouldAnimate && _controller != null) {
       final phaseOffset =
           (widget.animationSeed.hashCode & 0xFFFF) / 0xFFFF;
@@ -166,14 +164,10 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
           animation: _controller!,
           builder: (context, child) {
             final t = (_controller!.value + phaseOffset) % 1.0;
-            final sin = math.sin(t * 2 * math.pi);
-            final scaleY = 1.0 - 0.05 * sin;
-            final translateY = widget.size * 0.02 * sin;
-            return Transform(
-              alignment: Alignment.bottomCenter,
-              transform: Matrix4.identity()
-                ..scale(1.0, scaleY)
-                ..translate(0.0, translateY),
+            // Snap to 2 frames: 0.0–0.5 = resting, 0.5–1.0 = hop up
+            final hop = t < 0.5 ? 0.0 : -2.0;
+            return Transform.translate(
+              offset: Offset(0, hop),
               child: child,
             );
           },

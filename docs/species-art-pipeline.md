@@ -16,12 +16,12 @@ Each species needs **2 assets** from **2 separate generation calls**:
 
 | Asset | Dimensions | Format | Style | Purpose |
 |-------|-----------|--------|-------|---------|
-| **Icon** | 96×96 px | WebP (transparent) | Chibi portrait, cute, cel-shaded, transparent BG | Pack grid, discovery toast, sanctuary tile |
+| **Icon** | 96×96 px | WebP (transparent) | Pixel art chibi, chunky, transparent BG | Pack grid, discovery toast, sanctuary tile |
 | **Illustration** | 512×512 px | WebP | Oil painting TCG card art, action-driven | Species card hero, sharing |
 
 ### Icon Style
 
-Cute chibi character portrait. Pokémon PC box icon style — tiny, round, expressive, instantly recognizable from silhouette. Simplified but species-accurate features. Big expressive eyes, soft rounded proportions, friendly and appealing. Front-facing or slight 3/4 view. Warm soft cel-shading with clean outlines, 4-5 color tones. Head and upper body only. Must read clearly at 32px. Transparent background.
+Pixel art chibi sprite. 32×32 pixel art with chibi proportions: oversized head (50%+ of body), tiny stubby body, big round shiny eyes. Crisp visible pixels, no anti-aliasing, no smooth gradients. 4-6 colors from the animal's real palette. Front-facing, whole body visible, grounded at bottom. Keep only 1-2 most distinctive features. Transparent background.
 
 ### Illustration Style — TCG Card Art (Oil Painting)
 
@@ -234,8 +234,8 @@ class SpeciesArtImage extends StatefulWidget {
   final String fallbackEmoji; // from GameIcons.fauna()
   final double size;
   final BorderRadius? borderRadius;
-  final bool animate;         // enable idle breathing animation (default false)
-  final int animationSeed;    // phase-offset so sprites don't breathe in sync
+  final bool animate;         // enable 2-frame idle hop (default false)
+  final int animationSeed;    // phase-offset so sprites don't hop in sync
 }
 ```
 
@@ -246,10 +246,9 @@ class SpeciesArtImage extends StatefulWidget {
 - Loading → emoji (no spinner — instant fallback, art replaces when cached)
 
 **Idle animation** (when `animate: true` and `artUrl` is non-null):
-- Sinusoidal breathing: `scaleY: 1.0 - 0.05 * sin(t * 2π)`, `translateY: size * 0.02 * sin(t * 2π)`
-- `Alignment.bottomCenter` so feet stay grounded
-- Phase offset derived from `animationSeed.hashCode` — each sprite breathes at a different point in the cycle
-- Duration: `Durations.spriteIdle` (1800ms)
+- 2-frame hop: frame 1 = resting position, frame 2 = 2px up (snaps, no tween)
+- Phase offset derived from `animationSeed.hashCode` — each sprite hops at a different point in the cycle
+- Duration: `Durations.spriteIdle` (1800ms) — half resting, half hopped
 - Wrapped in `RepaintBoundary` to isolate repaints
 
 Flutter's default image cache (1000 images, 100MB) is sufficient. Icons are ~5–15KB, illustrations ~30–80KB. 438 species × 50KB = ~22MB.
@@ -329,19 +328,20 @@ Three visual pillars define EarthNova's art identity:
 
 **Icon prompt:**
 ```
-Cute chibi character portrait of a {name} ({scientific}).
-Style: Pokémon PC box icon — tiny, round, expressive, instantly
-recognizable from silhouette alone. Simplified but species-accurate
-features. Big expressive eyes, soft rounded proportions, friendly
-and appealing even if the real animal is scary.
+Pixel art chibi of a {name} ({scientific}).
+32×32 sprite. Chibi proportions: oversized head (50%+ of body),
+tiny stubby body, big round shiny eyes. Cute and chunky.
 
-Front-facing or slight 3/4 view. Warm soft cel-shading with clean
-outlines. 4-5 color tones, smooth anti-aliased edges. Head and upper
-body only — no full body, no legs cut off. Must read clearly at 32px.
+Pixel art style: crisp visible pixels, no anti-aliasing, no smooth
+gradients. Hard pixel edges. 4-6 colors from the animal's real
+palette. Front-facing, whole body visible, grounded at bottom.
 
-Render on a perfectly transparent background (alpha = 0).
-No ground plane, no drop shadow, no glow, no background elements.
-Just the creature, nothing else. Output as PNG with transparency.
+Must read as "{name}" at a glance — keep the 1-2 most
+distinctive features (color pattern, ears, beak, horns, etc)
+and drop everything else.
+
+Transparent background. No ground, no shadow, no effects.
+Output as PNG with transparency.
 ```
 
 **Illustration prompt:**

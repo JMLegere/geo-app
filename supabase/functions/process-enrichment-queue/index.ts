@@ -352,19 +352,20 @@ function buildArtPrompt(
   enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null; food_preference?: string | null; animal_class?: string | null },
 ): string {
   if (assetType === "icon") {
-    return `Cute chibi character portrait of a ${commonName} (${scientificName}).
-Style: Pokémon PC box icon — tiny, round, expressive, instantly
-recognizable from silhouette alone. Simplified but species-accurate
-features. Big expressive eyes, soft rounded proportions, friendly
-and appealing even if the real animal is scary.
+    return `Pixel art chibi of a ${commonName} (${scientificName}).
+32×32 sprite. Chibi proportions: oversized head (50%+ of body),
+tiny stubby body, big round shiny eyes. Cute and chunky.
 
-Front-facing or slight 3/4 view. Warm soft cel-shading with clean
-outlines. 4-5 color tones, smooth anti-aliased edges. Head and upper
-body only — no full body, no legs cut off. Must read clearly at 32px.
+Pixel art style: crisp visible pixels, no anti-aliasing, no smooth
+gradients. Hard pixel edges. 4-6 colors from the animal's real
+palette. Front-facing, whole body visible, grounded at bottom.
 
-Render on a perfectly transparent background (alpha = 0).
-No ground plane, no drop shadow, no glow, no background elements.
-Just the creature, nothing else. Output as PNG with transparency.`;
+Must read as "${commonName}" at a glance — keep the 1-2 most
+distinctive features (color pattern, ears, beak, horns, etc)
+and drop everything else.
+
+Transparent background. No ground, no shadow, no effects.
+Output as PNG with transparency.`;
   }
 
   // Action mapping from food_preference
