@@ -112,6 +112,7 @@ class DebugLogBuffer {
         line.contains('[ART]') ||
         line.contains('[FRAME-PERF]') ||
         line.contains('[PERF]') ||
+        line.contains('[RECOVERY]') ||
         line.contains('[Startup]') ||
         line.contains('[GameCoordinator]');
 
