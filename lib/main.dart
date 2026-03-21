@@ -162,6 +162,7 @@ Future<void> main() async {
   );
 
   // Frame performance monitoring + rendering watchdog.
+  print('[PERF] heartbeat initialized (10s interval)');
   var lastFrameTime = DateTime.now();
   var slowFrameCount = 0;
   var worstFrameMs = 0;
