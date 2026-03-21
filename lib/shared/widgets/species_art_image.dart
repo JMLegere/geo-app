@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide Durations;
 
 import 'package:earth_nova/shared/design_tokens.dart';
@@ -77,6 +78,15 @@ class _SpeciesArtImageState extends State<SpeciesArtImage>
       _controller!.dispose();
       _controller = null;
     }
+  }
+
+  @override
+  void deactivate() {
+    if (widget.artUrl != null && kIsWeb) {
+      // ignore: avoid_print
+      print('[ART UNLOAD] ${widget.artUrl!.split('/').last} deactivated');
+    }
+    super.deactivate();
   }
 
   @override
