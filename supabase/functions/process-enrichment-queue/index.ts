@@ -687,10 +687,8 @@ serve(async (req: Request) => {
           }
         }
 
-        // Generate illustration if missing
-        if (!species.art_url && icons === 0) {
-          // Only attempt illustration if we didn't just generate an icon
-          // (keep each invocation light).
+        // Generate illustration if missing (same species, same invocation)
+        if (!species.art_url) {
           const result = await generateAndUploadArt(
             supabase, supabaseUrl,
             species.definition_id, species.scientific_name, species.common_name,
