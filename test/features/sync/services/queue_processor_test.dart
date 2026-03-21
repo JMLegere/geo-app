@@ -139,6 +139,13 @@ class _MockWriteQueueRepository extends WriteQueueRepository {
   }
 
   @override
+  Future<int> deleteEntries(List<int> ids) async {
+    final before = _entries.length;
+    _entries.removeWhere((e) => ids.contains(e.id));
+    return before - _entries.length;
+  }
+
+  @override
   Future<int> clearUser(String userId) async {
     final before = _entries.length;
     _entries.removeWhere((e) => e.userId == userId);
@@ -953,6 +960,120 @@ void main() {
       expect(summary.confirmed, equals(1));
       expect(mockPersistence.upsertProfileCalls, equals(1));
       expect(mockPersistence.lastProfileHasCompletedOnboarding, isNull);
+    });
+
+    // ── coalescing ──────────────────────────────────────────────────────────
+
+    test('flush coalesces multiple profile upserts for the same entity',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      // Simulate 3 rapid profile mutations (like startup hydration).
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: jsonEncode({
+          'display_name': 'TestPlayer',
+          'current_streak': 1,
+          'longest_streak': 5,
+          'total_distance_km': 0.0,
+          'current_season': 'winter',
+        }),
+        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+      ));
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: jsonEncode({
+          'display_name': 'TestPlayer',
+          'current_streak': 1,
+          'longest_streak': 5,
+          'total_distance_km': 0.0,
+          'current_season': 'winter',
+          'has_completed_onboarding': true,
+        }),
+        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+      ));
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: jsonEncode({
+          'display_name': 'TestPlayer',
+          'current_streak': 1,
+          'longest_streak': 5,
+          'total_distance_km': 0.0,
+          'current_season': 'winter',
+          'has_completed_onboarding': true,
+          'total_steps': 500,
+        }),
+        createdAt: DateTime(2026, 3, 20, 12, 0, 2),
+      ));
+
+      final summary = await processor.flush();
+
+      // Only the latest payload should be sent.
+      expect(summary.confirmed, equals(1));
+      expect(mockPersistence.upsertProfileCalls, equals(1));
+      // All entries removed from queue.
+      expect(mockRepo.allEntries, isEmpty);
+    });
+
+    test('flush does not coalesce entries with different entity IDs',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.cellProgress,
+        entityId: 'cell-1',
+        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+      ));
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.cellProgress,
+        entityId: 'cell-2',
+        payload: _cellProgressPayload('cell-2'),
+        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+      ));
+
+      final summary = await processor.flush();
+
+      // Both entries processed separately.
+      expect(summary.confirmed, equals(2));
+      expect(mockPersistence.upsertCellProgressCalls, equals(2));
+    });
+
+    test('flush does not coalesce entries with different entity types',
+        () async {
+      final processor = QueueProcessor(
+        queueRepo: mockRepo,
+        persistence: mockPersistence,
+        itemRepo: mockItemRepo,
+      );
+
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.profile,
+        entityId: 'user-1',
+        payload: _profilePayload(),
+        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+      ));
+      mockRepo.addEntry(makeEntry(
+        entityType: WriteQueueEntityType.cellProgress,
+        entityId: 'cell-1',
+        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+      ));
+
+      final summary = await processor.flush();
+
+      expect(summary.confirmed, equals(2));
+      expect(mockPersistence.upsertProfileCalls, equals(1));
+      expect(mockPersistence.upsertCellProgressCalls, equals(1));
     });
   });
 }

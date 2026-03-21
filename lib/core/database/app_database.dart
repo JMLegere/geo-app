@@ -665,6 +665,11 @@ class AppDatabase extends _$AppDatabase {
     ));
   }
 
+  /// Delete multiple write queue entries by ID (batch cleanup of superseded
+  /// entries during flush coalescing).
+  Future<int> deleteQueueEntries(List<int> ids) =>
+      (delete(localWriteQueueTable)..where((t) => t.id.isIn(ids))).go();
+
   // ========================================================================
   // PLAYER PROFILE QUERIES
   // ========================================================================

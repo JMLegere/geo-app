@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show countAll;
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -511,9 +512,32 @@ Future<void> hydrateFromSupabase({
       try {
         final prefs = await SharedPreferences.getInstance();
         final lastSyncStr = prefs.getString('lastEnrichmentSync');
-        final lastSync = lastSyncStr != null
-            ? DateTime.tryParse(lastSyncStr) ?? DateTime(2020)
-            : DateTime(2020);
+
+        // Guard: if a sync watermark exists but the local species table has
+        // no enrichment data, the watermark is stale. This happens on web
+        // when IndexedDB is cleared (losing SQLite data) but localStorage
+        // persists. Reset the watermark to force a full re-sync.
+        DateTime lastSync;
+        if (lastSyncStr != null) {
+          final countExpr = countAll();
+          final enrichedCount = await (db.selectOnly(db.localSpeciesTable)
+                ..addColumns([countExpr])
+                ..where(db.localSpeciesTable.enrichedAt.isNotNull()))
+              .map((row) => row.read(countExpr)!)
+              .getSingle();
+          if (enrichedCount == 0) {
+            debugPrint(
+              '[GameCoordinator] stale enrichment watermark detected '
+              '(was: $lastSyncStr, local enriched: 0) — resetting',
+            );
+            await prefs.remove('lastEnrichmentSync');
+            lastSync = DateTime(2020);
+          } else {
+            lastSync = DateTime.tryParse(lastSyncStr) ?? DateTime(2020);
+          }
+        } else {
+          lastSync = DateTime(2020);
+        }
 
         final sw = Stopwatch()..start();
         final speciesUpdates =
