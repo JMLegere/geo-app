@@ -16,12 +16,12 @@ Each species needs **2 assets** from **2 separate generation calls**:
 
 | Asset | Dimensions | Format | Style | Purpose |
 |-------|-----------|--------|-------|---------|
-| **Icon** | 96×96 px | WebP (transparent) | Flat emoji-style icon, bold shapes, transparent BG | Pack grid, discovery toast, sanctuary tile |
+| **Icon** | 96×96 px | WebP (transparent) | Chibi portrait, cute, cel-shaded, transparent BG | Pack grid, discovery toast, sanctuary tile |
 | **Illustration** | 512×512 px | WebP | Oil painting TCG card art, action-driven | Species card hero, sharing |
 
 ### Icon Style
 
-Flat emoji / iOS app icon style. Bold shapes, minimal detail, flat colors with subtle gradient shading. Clean vector-like appearance. Front-facing or slight 3/4 view. 3-4 flat color tones maximum. Thick soft outlines, rounded forms, instantly readable at 32px. Pure transparent background.
+Cute chibi character portrait. Pokémon PC box icon style — tiny, round, expressive, instantly recognizable from silhouette. Simplified but species-accurate features. Big expressive eyes, soft rounded proportions, friendly and appealing. Front-facing or slight 3/4 view. Warm soft cel-shading with clean outlines, 4-5 color tones. Head and upper body only. Must read clearly at 32px. Transparent background.
 
 ### Illustration Style — TCG Card Art (Oil Painting)
 
@@ -329,14 +329,19 @@ Three visual pillars define EarthNova's art identity:
 
 **Icon prompt:**
 ```
-Simple flat 2D icon of a {name} ({scientific}).
-Style: emoji / iOS app icon — bold shapes, minimal detail, flat colors
-with subtle gradient shading. Clean vector-like appearance.
-Front-facing or slight 3/4 view. 3-4 flat color tones maximum.
-Thick soft outlines, rounded forms, instantly readable at 32px.
+Cute chibi character portrait of a {name} ({scientific}).
+Style: Pokémon PC box icon — tiny, round, expressive, instantly
+recognizable from silhouette alone. Simplified but species-accurate
+features. Big expressive eyes, soft rounded proportions, friendly
+and appealing even if the real animal is scary.
 
-Pure transparent background. No ground, no shadow, no effects, no text.
-Output as PNG with full transparency.
+Front-facing or slight 3/4 view. Warm soft cel-shading with clean
+outlines. 4-5 color tones, smooth anti-aliased edges. Head and upper
+body only — no full body, no legs cut off. Must read clearly at 32px.
+
+Render on a perfectly transparent background (alpha = 0).
+No ground plane, no drop shadow, no glow, no background elements.
+Just the creature, nothing else. Output as PNG with transparency.
 ```
 
 **Illustration prompt:**
