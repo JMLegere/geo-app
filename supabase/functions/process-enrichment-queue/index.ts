@@ -205,6 +205,8 @@ interface SpeciesRow {
   size: string | null;
   icon_url: string | null;
   art_url: string | null;
+  icon_prompt: string | null;
+  art_prompt: string | null;
   enriched_at: string | null;
   habitats_json: string | null;
 }
@@ -345,113 +347,151 @@ function parseFirstHabitat(json: string | null | undefined): string | null {
   } catch { return null; }
 }
 
-function buildArtPrompt(
-  commonName: string,
-  scientificName: string,
+// ── 2-Stage Art Prompt Pipeline ──────────────────────────────────────────────
+//
+// Stage 1: LLM text call generates a species-specific image prompt using
+//          enrichment data (stats, habitat, food preference, etc.)
+// Stage 2: Image model generates the image from that prompt.
+//
+// The generated prompt is stored on the species row (icon_prompt / art_prompt)
+// so we can inspect, iterate, and regenerate selectively.
+
+const ICON_META_PROMPT = `You are writing an image generation prompt for a game creature icon.
+
+ART DIRECTION:
+- 32×32 pixel art sprite. Pokémon PC box style.
+- Flat fill colors only — NO gradients, NO 3D shading, NO highlights, NO specular reflections, NO rim lighting.
+- Bold clean outlines, 4-6 colors from the animal's real palette.
+- Chibi proportions: oversized head (~50% of body), stubby limbs, big round eyes.
+- Front-facing, whole body visible, grounded at bottom of frame.
+- Must be instantly recognizable as this species at 32px.
+
+YOUR JOB:
+Given the species data below, write a short image prompt that captures
+the 1-2 visual features that make THIS species recognizable at a glance.
+Be specific — don't say "distinctive markings," say "black mask across
+eyes" or "bright red throat pouch." Think about what a child would draw
+if asked to draw this animal.
+
+OUTPUT:
+Write ONLY the image prompt (2-4 sentences). No preamble, no explanation.
+Always end with: "Flat cartoon lighting. Transparent PNG background. No ground, no shadow, no effects."`;
+
+const CARD_ART_META_PROMPT = `You are writing an image generation prompt for a collectible creature card illustration (512×512).
+
+ART DIRECTION:
+- Watercolor illustration with soft edges and gentle color bleeding.
+- Cute, rounded, slightly exaggerated proportions — NOT realistic anatomy.
+- Think PuffPals, Ooblets, Slime Rancher — cozy game creature art.
+- The animal should feel friendly and appealing even if the real species is scary (e.g., a cute chunky crocodile, a friendly round spider).
+- Warm natural habitat background, loosely painted, soft focus.
+- Gentle lighting — no dramatic shadows, no harsh contrast.
+
+YOUR JOB:
+Given the species data below, write a vivid image prompt that:
+1. Describes the animal with 2-3 specific visual details (coloring, pattern, distinctive body features).
+2. Reflects the dominant stat in body language and build:
+   - brawn → sturdy, grounded, powerful presence, thick limbs
+   - speed → mid-motion, dynamic angle, lean and agile
+   - wit → alert eyes, clever expression, observant pose
+3. Shows the animal in an EXCITING, DYNAMIC moment — the shot that would make the best trading card. Pick a dramatic angle:
+   - Leaping toward the viewer, foreshortened
+   - Diving from above, wings/limbs spread wide
+   - Bursting through foliage or water
+   - Rearing up, silhouetted against sky
+   - Charging forward with dust/snow/water kicked up
+   - Soaring low over terrain, speed lines implied
+   The action should be ICONIC for this species — the thing it's famous for. A puma mid-leap across a canyon. A peregrine falcon in a vertical dive. A bison charging through dust. An otter cracking a shell on its chest. A chameleon's tongue mid-strike.
+   For slow/calm animals, make the COMPOSITION dramatic instead — a tortoise framed heroically from below against golden sky, a sloth hanging serenely with jungle sprawling behind it.
+   Camera angle should feel cinematic — low angle, dramatic 3/4 view, dynamic diagonal composition. Never flat, never centered, never static portrait.
+4. Places it in a loosely-painted habitat setting that matches its biome.
+5. Uses size to set scale — large animals dominate the frame, small animals are perched on mushrooms/branches/rocks.
+
+OUTPUT:
+Write ONLY the image prompt (3-5 sentences). No preamble, no explanation.
+Always end with: "Watercolor illustration, soft edges, cozy game art style. No text, no border, no frame."`;
+
+function buildSpeciesDataBlock(species: SpeciesRow, habitat: string | null): string {
+  let dominantStat = "balanced";
+  if (species.brawn != null && species.wit != null && species.speed != null) {
+    const max = Math.max(species.brawn, species.wit, species.speed);
+    if (species.brawn === max) dominantStat = "brawn";
+    else if (species.speed === max) dominantStat = "speed";
+    else dominantStat = "wit";
+  }
+
+  return `
+- Common name: ${species.common_name}
+- Scientific name: ${species.scientific_name}
+- Animal class: ${species.animal_class ?? "unknown"}
+- Habitat: ${habitat ?? "unknown"}
+- Size: ${species.size ?? "unknown"}
+- Climate: ${species.climate ?? "unknown"}
+- Dominant stat: ${dominantStat}
+- Food preference: ${species.food_preference ?? "unknown"}`;
+}
+
+async function generateArtPrompt(
+  providers: Provider[],
+  species: SpeciesRow,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null; food_preference?: string | null; animal_class?: string | null },
-): string {
-  if (assetType === "icon") {
-    return `Pixel art chibi of a ${commonName} (${scientificName}).
-32×32 sprite. Chibi proportions: oversized head (50%+ of body),
-tiny stubby body, big round shiny eyes. Cute and chunky.
+  habitat: string | null,
+): Promise<string> {
+  const metaPrompt = assetType === "icon" ? ICON_META_PROMPT : CARD_ART_META_PROMPT;
+  const speciesData = buildSpeciesDataBlock(species, habitat);
+  const userMessage = `${metaPrompt}\n\nSPECIES DATA:\n${speciesData}`;
 
-Pixel art style: crisp visible pixels, no anti-aliasing, no smooth
-gradients. Hard pixel edges. 4-6 colors from the animal's real
-palette. Front-facing, whole body visible, grounded at bottom.
+  for (const provider of providers) {
+    const apiKey = Deno.env.get(provider.keyEnv);
+    if (!apiKey) continue;
 
-Must read as "${commonName}" at a glance — keep the 1-2 most
-distinctive features (color pattern, ears, beak, horns, etc)
-and drop everything else.
+    try {
+      const response = await fetch(provider.url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: provider.model,
+          messages: [
+            { role: "system", content: "You write concise, vivid image generation prompts. Output ONLY the prompt text, nothing else." },
+            { role: "user", content: userMessage },
+          ],
+          temperature: 0.7,
+        }),
+      });
 
-Transparent background. No ground, no shadow, no effects.
-Output as PNG with transparency.`;
+      if (!response.ok) {
+        console.error(`[prompt] ${provider.name} failed: ${response.status}`);
+        continue;
+      }
+
+      const body = await response.json();
+      const text = body?.choices?.[0]?.message?.content?.trim();
+      if (text && text.length > 20) {
+        console.log(`[prompt] ${assetType} prompt generated via ${provider.name} (${text.length} chars)`);
+        return text;
+      }
+    } catch (err) {
+      console.error(`[prompt] ${provider.name} error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
-
-  // Action mapping from food_preference
-  let action = "resting calmly in its natural habitat";
-  switch (enrichment?.food_preference) {
-    case "critter": action = "stalking or pouncing on small prey, predatory focus"; break;
-    case "fish": action = "diving into water or catching a fish, splash and motion"; break;
-    case "fruit": action = "reaching for or eating ripe fruit from a branch"; break;
-    case "grub": action = "pecking at the ground or probing bark for insects"; break;
-    case "nectar": action = "hovering at or perched on a flower, feeding"; break;
-    case "seed": action = "foraging on the ground among scattered seeds or grasses"; break;
-    case "veg": action = "grazing on fresh vegetation or browsing leafy branches"; break;
-  }
-
-  // Pose modifier from dominant stat
-  let poseModifier = "Natural and relaxed in the moment";
-  if (enrichment?.brawn != null && enrichment?.wit != null && enrichment?.speed != null) {
-    const max = Math.max(enrichment.brawn, enrichment.wit, enrichment.speed);
-    if (enrichment.brawn === max) poseModifier = "Powerful, muscular, dominant presence in the frame";
-    else if (enrichment.speed === max) poseModifier = "Captured mid-motion, dynamic angle, sense of velocity";
-    else if (enrichment.wit === max) poseModifier = "Alert eyes, watchful, cunning expression";
-  }
-
-  let habitatAtmosphere = "Soft natural outdoor setting";
-  switch (enrichment?.habitat) {
-    case "forest": habitatAtmosphere = "Dappled green light filtering through a forest canopy"; break;
-    case "plains": habitatAtmosphere = "Open golden grassland with warm horizon light"; break;
-    case "freshwater": habitatAtmosphere = "Misty riverbank with soft teal reflections"; break;
-    case "saltwater": habitatAtmosphere = "Coastal scene with ocean spray and deep blue atmosphere"; break;
-    case "swamp": habitatAtmosphere = "Lush wetland with filtered olive-green light"; break;
-    case "mountain": habitatAtmosphere = "Rocky alpine scene with cool slate-grey mist"; break;
-    case "desert": habitatAtmosphere = "Warm amber haze over dry sandy terrain"; break;
-  }
-
-  let climateLighting = "Soft natural daylight, gentle warmth";
-  switch (enrichment?.climate) {
-    case "tropic": climateLighting = "Warm golden tropical light, lush greens"; break;
-    case "boreal": climateLighting = "Cool crisp northern light, muted tones"; break;
-    case "frigid": climateLighting = "Cold blue-white arctic light, stark contrast"; break;
-  }
-
-  return `Oil painting illustration of a ${commonName} (${scientificName}) in the style of
-classic Magic: The Gathering and Pokémon TCG card art.
-
-The animal is ${action}. ${poseModifier}.
-Setting: ${habitatAtmosphere}. ${climateLighting}.
-
-Composition: Dramatic 3/4 view, slightly low angle to make the creature
-feel heroic. The animal fills most of the frame — this is a portrait,
-not a landscape. Shallow depth of field, background atmospheric and
-painterly.
-
-Technique: Rich oil painting style — visible brushwork, bold color,
-strong value contrast, dramatic lighting with a clear light source.
-Painterly realism, not photorealistic. Saturated but not garish.
-Think Rebecca Guay, Terese Nielsen, Mitsuhiro Arita.
-
-Avoid: Centered composition, flat lighting, white/blank backgrounds,
-cartoon style, digital airbrush look, text, labels, borders, frames.`;
+  throw new Error(`All providers failed to generate ${assetType} prompt for ${species.definition_id}`);
 }
 
 // Rotates through IMAGE_PROVIDERS; returns { url, provider } on success,
 // "rate_limited" if all providers are exhausted/rate-limited, null on total failure.
+// Takes a pre-generated prompt from the 2-stage pipeline.
 async function generateAndUploadArt(
   supabase: any,
   supabaseUrl: string,
   definitionId: string,
-  scientificName: string,
-  commonName: string,
   assetType: "icon" | "illustration",
-  enrichment?: { climate?: string | null; brawn?: number | null; wit?: number | null; speed?: number | null; habitat?: string | null; food_preference?: string | null; animal_class?: string | null },
+  prompt: string,
   logEvent?: (type: string, defId: string | null, extra: Record<string, unknown>) => Promise<void>,
 ): Promise<{ url: string; provider: string } | "rate_limited" | null> {
   const filePrefix = assetType === "icon" ? `${definitionId}_icon` : definitionId;
-
-  // Check if already exists in storage (any extension).
-  const { data: existingFile } = await supabase.storage.from(ART_BUCKET).list("", { search: filePrefix });
-  const existing = existingFile?.find((f: any) => f.name.startsWith(filePrefix));
-  if (existing) {
-    const url = `${supabaseUrl}/storage/v1/object/public/${ART_BUCKET}/${existing.name}`;
-    console.log(`[art] ${definitionId} ${assetType} already in storage`);
-    if (logEvent) await logEvent('art_skipped', definitionId, { asset_type: assetType, metadata: { reason: 'already_in_storage' } });
-    return { url, provider: "cache" };
-  }
-
-  const prompt = buildArtPrompt(commonName, scientificName, assetType, enrichment);
 
   // Try each image provider in order
   const availableProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
@@ -646,10 +686,10 @@ serve(async (req: Request) => {
     if (availableImageProviders.length === 0) {
       errors.push("Pass 2 skipped: no image provider API keys configured");
     } else {
-      // Find one classified species that needs art. Prioritize species
-      // closest to complete: prefer "has icon, needs art" over "needs both".
-      // Finishing a species is more valuable than starting a new one.
-      const artColumns = "definition_id, scientific_name, common_name, animal_class, food_preference, climate, brawn, wit, speed, icon_url, art_url, enriched_at, habitats_json";
+      // 2-Stage art pipeline: LLM generates prompt → image model generates art.
+      // Prioritize species closest to complete.
+      const artColumns = "definition_id, scientific_name, common_name, taxonomic_class, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, icon_prompt, art_prompt, enriched_at, habitats_json";
+      const availableLLMProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
 
       // Priority 1: has icon, missing art only (one step from complete)
       const { data: needsArtOnly, error: artOnlyErr } = await supabase
@@ -683,23 +723,39 @@ serve(async (req: Request) => {
         const priority = needsArtOnly ? 'art-only' : 'needs-icon';
         console.log(`[pass2] picked ${needsArt.definition_id} (${priority})`);
         const species = needsArt as SpeciesRow;
+        const habitat = parseFirstHabitat(species.habitats_json);
 
-        const enrichmentCtx = {
-          climate: species.climate,
-          brawn: species.brawn,
-          wit: species.wit,
-          speed: species.speed,
-          habitat: parseFirstHabitat(species.habitats_json),
-          food_preference: species.food_preference,
-          animal_class: species.animal_class,
-        };
+        // ── Stage 1: Generate prompts via LLM (if not already cached) ────
+        let iconPrompt = species.icon_prompt;
+        let artPrompt = species.art_prompt;
 
-        // Generate icon if missing
-        if (!species.icon_url) {
+        if (!iconPrompt && !species.icon_url && availableLLMProviders.length > 0) {
+          try {
+            iconPrompt = await generateArtPrompt(availableLLMProviders, species, "icon", habitat);
+            await supabase.from("species").update({ icon_prompt: iconPrompt }).eq("definition_id", species.definition_id);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            errors.push(`Stage 1 icon prompt: ${msg}`);
+            console.error(`[pass2] icon prompt failed: ${msg}`);
+          }
+        }
+
+        if (!artPrompt && !species.art_url && availableLLMProviders.length > 0) {
+          try {
+            artPrompt = await generateArtPrompt(availableLLMProviders, species, "illustration", habitat);
+            await supabase.from("species").update({ art_prompt: artPrompt }).eq("definition_id", species.definition_id);
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            errors.push(`Stage 1 art prompt: ${msg}`);
+            console.error(`[pass2] art prompt failed: ${msg}`);
+          }
+        }
+
+        // ── Stage 2: Generate images from prompts ────────────────────────
+        if (!species.icon_url && iconPrompt) {
           const result = await generateAndUploadArt(
             supabase, supabaseUrl,
-            species.definition_id, species.scientific_name, species.common_name,
-            "icon", enrichmentCtx, logEvent,
+            species.definition_id, "icon", iconPrompt, logEvent,
           );
           if (result === "rate_limited") {
             errors.push("Pass 2 stopped: all image providers rate limited");
@@ -708,12 +764,10 @@ serve(async (req: Request) => {
           }
         }
 
-        // Generate illustration if missing (same species, same invocation)
-        if (!species.art_url) {
+        if (!species.art_url && artPrompt) {
           const result = await generateAndUploadArt(
             supabase, supabaseUrl,
-            species.definition_id, species.scientific_name, species.common_name,
-            "illustration", enrichmentCtx, logEvent,
+            species.definition_id, "illustration", artPrompt, logEvent,
           );
           if (result === "rate_limited") {
             errors.push("Pass 2 stopped: all image providers rate limited");

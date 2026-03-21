@@ -139,6 +139,8 @@ class LocalSpeciesTable extends Table {
   TextColumn get size => text().nullable()();
   TextColumn get iconUrl => text().nullable()();
   TextColumn get artUrl => text().nullable()();
+  TextColumn get iconPrompt => text().nullable()();
+  TextColumn get artPrompt => text().nullable()();
   DateTimeColumn get enrichedAt => dateTime().nullable()();
 
   @override
@@ -347,7 +349,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration {
@@ -496,6 +498,22 @@ class AppDatabase extends _$AppDatabase {
             ''');
             await customStatement(
                 'DROP TABLE IF EXISTS local_species_enrichment_table');
+          }
+        }
+        if (from < 19) {
+          // Add icon_prompt and art_prompt columns for 2-stage art pipeline.
+          // Guard: columns may already exist if table was created fresh at v19+.
+          final cols = await customSelect(
+            "PRAGMA table_info(local_species_table)",
+          ).get();
+          final colNames = cols.map((r) => r.read<String>('name')).toSet();
+          if (!colNames.contains('icon_prompt')) {
+            await customStatement(
+                'ALTER TABLE local_species_table ADD COLUMN icon_prompt TEXT');
+          }
+          if (!colNames.contains('art_prompt')) {
+            await customStatement(
+                'ALTER TABLE local_species_table ADD COLUMN art_prompt TEXT');
           }
         }
       },
@@ -651,6 +669,8 @@ class AppDatabase extends _$AppDatabase {
     String? size,
     String? iconUrl,
     String? artUrl,
+    String? iconPrompt,
+    String? artPrompt,
     DateTime? enrichedAt,
   }) {
     return (update(localSpeciesTable)
@@ -665,6 +685,8 @@ class AppDatabase extends _$AppDatabase {
       size: Value(size),
       iconUrl: Value(iconUrl),
       artUrl: Value(artUrl),
+      iconPrompt: Value(iconPrompt),
+      artPrompt: Value(artPrompt),
       enrichedAt: Value(enrichedAt),
     ));
   }
