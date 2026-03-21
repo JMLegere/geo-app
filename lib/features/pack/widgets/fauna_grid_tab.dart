@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,14 +44,15 @@ class FaunaGridTab extends ConsumerWidget {
         final definition =
             ref.read(packProvider.notifier).resolveFauna(item.definitionId);
 
-        if (index < 3) {
+        if (index < 3 && kIsWeb) {
           final artUrl = item.iconUrl ?? definition?.iconUrl;
-          debugPrint(
+          // ignore: avoid_print
+          print(
             '[ART DEBUG] ${item.displayName}: '
             'def=${definition != null ? "YES" : "NULL"}, '
             'def.iconUrl=${definition?.iconUrl != null ? "YES" : "null"}, '
             'item.iconUrl=${item.iconUrl != null ? "YES" : "null"}, '
-            'resolved artUrl=${artUrl != null ? "YES" : "null"}',
+            'resolved=$artUrl',
           );
         }
 

@@ -538,7 +538,8 @@ Future<void> hydrateFromSupabase({
           );
           speciesSynced++;
         }
-        debugPrint(
+        // ignore: avoid_print
+        print(
           '[GameCoordinator] species sync: $speciesSynced enriched, '
           '$withArt with art URLs',
         );
