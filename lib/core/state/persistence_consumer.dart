@@ -516,7 +516,11 @@ Future<void> hydrateFromSupabase({
             await persistence.fetchSpeciesUpdates(since: DateTime(2020));
         sw.stop();
 
+        int withArt = 0;
         for (final row in speciesUpdates) {
+          final hasIcon = row['icon_url'] != null;
+          final hasArt = row['art_url'] != null;
+          if (hasIcon || hasArt) withArt++;
           await db.updateSpeciesEnrichment(
             definitionId: row['definition_id'] as String,
             animalClass: row['animal_class'] as String?,
@@ -534,6 +538,10 @@ Future<void> hydrateFromSupabase({
           );
           speciesSynced++;
         }
+        debugPrint(
+          '[GameCoordinator] species sync: $speciesSynced enriched, '
+          '$withArt with art URLs',
+        );
 
         // Invalidate species cache so next warmUp() re-reads art URLs from Drift.
         if (speciesSynced > 0 && speciesCache != null) {
