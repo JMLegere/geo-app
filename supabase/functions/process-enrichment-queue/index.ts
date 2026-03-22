@@ -859,12 +859,15 @@ serve(async (req: Request) => {
     if (!candidates || candidates.length === 0) {
       console.log('[species] nothing to enrich');
     } else {
-      // Score and sort: fewest fields needing work first
+      // Score and sort: fewest fields needing work first.
+      // Randomize within same score to avoid getting stuck on the same
+      // rate-limited species every tick.
       const scored = (candidates as SpeciesRow[]).map(row => ({
         row,
         score: speciesFieldsNeedingWork(row, pipelineVersion),
+        rand: Math.random(),
       }));
-      scored.sort((a, b) => a.score - b.score);
+      scored.sort((a, b) => a.score - b.score || a.rand - b.rand);
 
       const needs = (val: unknown, ver: string | null) =>
         val === null || val === undefined || ver !== pipelineVersion;
