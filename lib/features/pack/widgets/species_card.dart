@@ -147,7 +147,6 @@ class SpeciesCard extends StatelessWidget {
         _TitleBar(
           displayName: item.displayName,
           rarity: item.rarity,
-          isFirstDiscovery: item.isFirstDiscovery,
           backgroundColor: tintColor,
         ),
 
@@ -171,6 +170,22 @@ class SpeciesCard extends StatelessWidget {
         ),
 
         const SizedBox(height: 2),
+
+        // ─── Badge bar (below art) ───────────────────────────────────
+        if (item.isFirstDiscovery)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            decoration: BoxDecoration(
+              color: tintColor,
+              borderRadius: Radii.borderSm,
+            ),
+            child: const Center(
+              child: FirstDiscoveryBadge(size: FirstDiscoveryBadgeSize.pill),
+            ),
+          ),
+
+        if (item.isFirstDiscovery) const SizedBox(height: 2),
 
         // ─── Type bar (thin habitat-colored divider) ────────────────
         _TypeBar(
@@ -326,13 +341,11 @@ class _TitleBar extends StatelessWidget {
   const _TitleBar({
     required this.displayName,
     required this.rarity,
-    required this.isFirstDiscovery,
     required this.backgroundColor,
   });
 
   final String displayName;
   final IucnStatus? rarity;
-  final bool isFirstDiscovery;
   final Color backgroundColor;
 
   @override
@@ -350,24 +363,23 @@ class _TitleBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Name
+          // Name — shrinks font to fit, never truncates
           Expanded(
-            child: Text(
-              displayName,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-                letterSpacing: -0.3,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface,
+                  letterSpacing: -0.3,
+                ),
+                maxLines: 1,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ),
-          // First discovery star
-          if (isFirstDiscovery) ...[
-            SizedBox(width: Spacing.xs),
-            const FirstDiscoveryBadge(size: FirstDiscoveryBadgeSize.pill),
-          ],
           // Rarity badge
           if (rarity != null) ...[
             SizedBox(width: Spacing.xs),
