@@ -498,36 +498,37 @@ function parseFirstHabitat(json: string | null | undefined): string | null {
 // The generated prompt is stored on the species row (icon_prompt / art_prompt)
 // so we can inspect, iterate, and regenerate selectively.
 
-const ICON_META_PROMPT = `You are writing an image generation prompt for a game creature icon.
+const ICON_META_PROMPT = `You are writing an image generation prompt for a tiny game creature icon.
 
 ART DIRECTION:
-- 32×32 pixel art sprite. Pokémon PC box style.
-- Flat fill colors only — NO gradients, NO 3D shading, NO highlights, NO specular reflections, NO rim lighting.
-- Bold clean outlines, 4-6 colors from the animal's real palette.
-- Chibi proportions: oversized head (~50% of body), stubby limbs, big round eyes.
-- Front-facing, whole body visible, grounded at bottom of frame.
-- Must be instantly recognizable as this species at 32px.
+- Flat vector art icon. Like a mobile game emoji or Neko Atsume cat.
+- NOT pixel art. NOT photorealistic. NOT 3D.
+- Solid flat color fills, black outlines, zero shading, zero gradients.
+- Maximum 4 colors from the animal's real palette (e.g. "brown, cream, black, orange").
+- Chibi proportions: huge round head (60% of body), tiny stubby body, big dot eyes.
+- Front-facing, symmetrical, whole body, centered.
 
 YOUR JOB:
-Given the species data below, write a short image prompt that captures
-the 1-2 visual features that make THIS species recognizable at a glance.
-Be specific — don't say "distinctive markings," say "black mask across
-eyes" or "bright red throat pouch." Think about what a child would draw
-if asked to draw this animal.
+Write a SHORT prompt describing ONLY the animal's shape and colors.
+2 sentences max. Use simple words a child would use.
+NEVER use words like: "iridescent", "shimmering", "detailed", "realistic",
+"textured", "intricate", "delicate", "gradient", "glossy", "translucent".
 
 OUTPUT:
-Write ONLY the image prompt (2-4 sentences). No preamble, no explanation.
-Always end with: "Flat cartoon lighting. Transparent PNG background. No ground, no shadow, no effects."`;
+Write ONLY the prompt (1-2 sentences). No preamble.
+Always end with: "Flat vector icon, solid colors, black outlines, no shading. Transparent background."`;
 
 const CARD_ART_META_PROMPT = `You are writing an image generation prompt for a collectible creature card illustration (512×512).
 
 ART DIRECTION:
-- Watercolor illustration with soft edges and gentle color bleeding.
-- Cute, rounded, slightly exaggerated proportions — NOT realistic anatomy.
-- Think PuffPals, Ooblets, Slime Rancher — cozy game creature art.
-- The animal should feel friendly and appealing even if the real species is scary (e.g., a cute chunky crocodile, a friendly round spider).
-- Warm natural habitat background, loosely painted, soft focus.
-- Gentle lighting — no dramatic shadows, no harsh contrast.
+- FLAT WATERCOLOR with visible paper texture and paint bleeding. NOT photorealistic. NOT digital art. NOT 3D render.
+- Limited color palette: 5-8 colors max, muted/earthy tones, NO metallic sheen, NO iridescence, NO glossy highlights.
+- Simple shapes, bold outlines, slightly chunky proportions — like a children's book illustration or indie game art.
+- Think Pokémon TCG illustration rares by Mitsuhiro Arita, or Redwall book covers.
+- The animal should look hand-painted, stylized, and charming — NOT photographically accurate.
+- Background: loose watercolor washes suggesting habitat. Minimal detail. Soft color fields, NOT rendered environments.
+- NO lens effects, NO depth of field, NO motion blur, NO particle effects, NO dramatic lighting.
+- The whole image should look like it was painted with a brush on textured paper.
 
 YOUR JOB:
 Given the species data below, write a vivid image prompt that:
@@ -564,9 +565,16 @@ Given the species data below, write a vivid image prompt that:
 6. Uses size to set scale — large animals dominate the frame, small animals
    are perched on mushrooms/branches/rocks.
 
+CRITICAL STYLE RULES FOR YOUR PROMPT:
+- NEVER use words like "iridescent", "shimmering", "glossy", "photorealistic",
+  "lens", "bokeh", "depth of field", "ray tracing", "motion blur", "particle"
+- ALWAYS describe colors as flat and muted: "warm brown", "dusty orange", "soft green"
+- ALWAYS describe the animal with simple shapes: "round body", "stubby legs", "big head"
+- Keep descriptions SHORT and painterly. 3 sentences max for the animal, 1 for background.
+
 OUTPUT:
-Write ONLY the image prompt (3-5 sentences). No preamble, no explanation.
-Always end with: "Watercolor illustration, soft edges, cozy game art style. No text, no border, no frame."`;
+Write ONLY the image prompt (3-4 sentences). No preamble, no explanation.
+Always end with: "Flat watercolor on textured paper. Simple shapes, bold outlines, muted palette. Hand-painted children's book style. No text, no border, no frame."`;
 
 function buildSpeciesDataBlock(species: SpeciesRow, habitat: string | null): string {
   let dominantStat = "balanced";
