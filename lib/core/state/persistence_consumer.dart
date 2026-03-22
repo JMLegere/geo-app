@@ -486,6 +486,8 @@ Future<void> hydrateFromSupabase({
         dailySeed: row['daily_seed'] as String?,
         parentAId: row['parent_a_id'] as String?,
         parentBId: row['parent_b_id'] as String?,
+        iconUrl: row['icon_url'] as String?,
+        artUrl: row['art_url'] as String?,
         status: ItemInstanceStatus.fromString(
           row['status'] as String? ?? 'active',
         ),
