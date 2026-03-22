@@ -119,8 +119,8 @@ class _StatRingState extends State<_StatRing>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    const ringSize = 36.0;
-    const strokeWidth = 4.0;
+    const ringSize = 40.0;
+    const strokeWidth = 3.5;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -131,23 +131,34 @@ class _StatRingState extends State<_StatRing>
             return SizedBox(
               width: ringSize,
               height: ringSize,
-              child: CustomPaint(
-                painter: _RingPainter(
-                  fraction: (widget.value / widget.maxStat).clamp(0.0, 1.0) *
-                      _animation.value,
-                  color: widget.color,
-                  backgroundColor: cs.surfaceContainerHighest,
-                  strokeWidth: strokeWidth,
-                ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CustomPaint(
+                    size: Size(ringSize, ringSize),
+                    painter: _RingPainter(
+                      fraction:
+                          (widget.value / widget.maxStat).clamp(0.0, 1.0) *
+                              _animation.value,
+                      color: widget.color,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      strokeWidth: strokeWidth,
+                    ),
+                  ),
+                  Text(
+                    widget.label,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
               ),
             );
           },
         ),
-        SizedBox(width: Spacing.xs),
+        SizedBox(width: Spacing.xxs),
         Text(
           '${widget.value}',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
             color: widget.color,
           ),
