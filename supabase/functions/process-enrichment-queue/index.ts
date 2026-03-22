@@ -486,22 +486,28 @@ Given the species data below, write a vivid image prompt that:
    pattern, distinctive body features).
 2. Shows the animal doing the ONE THING it is most famous for — the
    behavior a nature documentary would feature. Use your real-world
-   knowledge of this species. Examples:
-   - An anole flashing its bright dewlap on a sunny branch
-   - A hummingbird hovering at a flower, wings a blur
+   knowledge of this species. Every species has an iconic behavior.
+   Find it. DO NOT default to generic actions like "sprinting" or
+   "hunting." Examples of iconic behaviors:
+   - An anole flashing its bright dewlap
+   - A hummingbird hovering at a flower
    - A pangolin curled into an armored ball
-   - A pistol shrimp snapping its claw with a shockwave
-   - A flying fish gliding above ocean waves
+   - A pistol shrimp snapping its claw
    - A chameleon's tongue mid-strike at an insect
-   - A bison stampeding through dust
-   - An archerfish spitting water at a leaf-perched bug
-   Every species has an iconic behavior. Find it. If you're unsure,
-   pick the most visually interesting real behavior this animal does.
-   DO NOT default to generic actions like "sprinting" or "hunting."
-3. The dominant stat shapes the ENERGY and BODY LANGUAGE, not the action:
-   - brawn → sturdy build, thick limbs, grounded powerful presence
-   - speed → lean build, dynamic angle, sense of momentum
-   - wit → alert eyes, clever expression, focused intensity
+   - An archerfish spitting water at a bug
+3. The dominant stat FLAVORS how the iconic action is depicted. Same
+   action, different energy:
+   - brawn → the powerful version. An anole flashing its dewlap while
+     puffed up huge, dominating the branch, muscles tense. A bison
+     stampeding — massive, unstoppable, dust exploding.
+   - speed → the fast version. An anole mid-leap between branches,
+     dewlap flashing as it lands. A chameleon tongue mid-strike,
+     frozen at the instant of peak velocity.
+   - wit → the clever version. An anole strategically positioned on
+     the highest branch, dewlap angled to catch a rival's eye. An
+     archerfish calculating the perfect angle before spitting.
+   The stat doesn't change WHAT the animal does — it changes HOW
+   it does it.
 4. Camera angle should feel cinematic and exciting — low angle, dramatic
    3/4 view, dynamic diagonal composition. Never flat, never centered,
    never a static portrait. The shot that would make the best trading card.
