@@ -44,7 +44,7 @@ abstract final class GameIcons {
   // ── Animal Types (5) ─────────────────────────────────────────────────────
 
   static String animalType(AnimalType type) => switch (type) {
-        AnimalType.mammal => '🐾',
+        AnimalType.mammal => '🐻',
         AnimalType.bird => '🐦',
         AnimalType.fish => '🐟',
         AnimalType.reptile => '🦎',
@@ -128,7 +128,7 @@ abstract final class GameIcons {
   // ── Food Types (7) ───────────────────────────────────────────────────────
 
   static String foodType(FoodType f) => switch (f) {
-        FoodType.critter => '🦗',
+        FoodType.critter => '🍖',
         FoodType.fish => '🐟',
         FoodType.fruit => '🍇',
         FoodType.grub => '🪱',
@@ -204,21 +204,7 @@ abstract final class GameIcons {
         FoodType.veg => 'VEG',
       };
 
-  static String animalTypeIcon(AnimalType type) => switch (type) {
-        AnimalType.mammal => '🦁',
-        AnimalType.bird => '🦅',
-        AnimalType.fish => '🐟',
-        AnimalType.reptile => '🦎',
-        AnimalType.bug => '🐛',
-      };
-
-  static String animalTypeAbbrev(AnimalType type) => switch (type) {
-        AnimalType.mammal => 'MAM',
-        AnimalType.bird => 'BRD',
-        AnimalType.fish => 'FSH',
-        AnimalType.reptile => 'RPT',
-        AnimalType.bug => 'BUG',
-      };
+  // animalTypeIcon and animalTypeAbbrev removed — use animalType() instead.
 
   static String animalClassAbbrev(AnimalClass cls) => switch (cls) {
         AnimalClass.birdOfPrey => 'BOP',

@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ── Timeout guard ─────────────────────────────────────────────────────────────
+const FUNCTION_TIMEOUT_MS = 50000; // 50s guard (Supabase free=60s, Pro=150s)
+const functionStartMs = Date.now();
+
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const ANIMAL_CLASSES = [
@@ -30,8 +34,16 @@ async function pooled(tasks: (() => Promise<void>)[], limit: number): Promise<vo
   let i = 0;
   async function worker(): Promise<void> {
     while (i < tasks.length) {
+      if (Date.now() - functionStartMs > FUNCTION_TIMEOUT_MS) {
+        console.warn(`[pool] approaching timeout, stopping`);
+        break;
+      }
       const idx = i++;
-      await tasks[idx]();
+      try {
+        await tasks[idx]();
+      } catch {
+        // Error already handled inside task
+      }
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
@@ -174,8 +186,8 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
       const generationId = createData.sdGenerationJob?.generationId;
       if (!generationId) throw new Error("No generationId from Leonardo");
 
-      // Poll for completion (max 30s)
-      for (let i = 0; i < 15; i++) {
+      // Poll for completion (max 15s)
+      for (let i = 0; i < 8; i++) {
         await new Promise(r => setTimeout(r, 2000));
         const pollResponse = await fetch(`https://cloud.leonardo.ai/api/rest/v1/generations/${generationId}`, {
           headers: { "Authorization": `Bearer ${apiKey}` },
@@ -190,7 +202,7 @@ const IMAGE_PROVIDERS: ImageProvider[] = [
           return { bytes: new Uint8Array(await imageResponse.arrayBuffer()), mimeType: "image/webp" };
         }
       }
-      throw new Error("Leonardo generation timed out (30s)");
+      throw new Error("Leonardo generation timed out (15s)");
     },
   },
 ];
@@ -251,11 +263,20 @@ type SpeciesStage =
 
 function speciesFieldsNeedingWork(row: SpeciesRow, pipelineVersion: string): number {
   let count = 0;
+  // classify — always actionable
   if (row.animal_class === null || row.animal_class_enrichver !== pipelineVersion) count++;
-  if (row.icon_prompt === null || row.icon_prompt_enrichver !== pipelineVersion) count++;
-  if (row.art_prompt === null || row.art_prompt_enrichver !== pipelineVersion) count++;
-  if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) count++;
-  if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) count++;
+  // prompts — only actionable if classified
+  if (row.animal_class) {
+    if (row.icon_prompt === null || row.icon_prompt_enrichver !== pipelineVersion) count++;
+    if (row.art_prompt === null || row.art_prompt_enrichver !== pipelineVersion) count++;
+  }
+  // images — only actionable if prompt exists
+  if (row.icon_prompt) {
+    if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) count++;
+  }
+  if (row.art_prompt) {
+    if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) count++;
+  }
   return count;
 }
 
@@ -313,10 +334,22 @@ interface ItemInstanceRow {
 function itemFieldsNeedingWork(row: ItemInstanceRow, pipelineVersion: string): number {
   let count = 0;
   if (row.animal_class_name === null || row.animal_class_name_enrichver !== pipelineVersion) count++;
+  if (row.food_preference_name === null || row.food_preference_name_enrichver !== pipelineVersion) count++;
+  if (row.climate_name === null || row.climate_name_enrichver !== pipelineVersion) count++;
+  if (row.brawn === null || row.brawn_enrichver !== pipelineVersion) count++;
+  if (row.wit === null || row.wit_enrichver !== pipelineVersion) count++;
+  if (row.speed === null || row.speed_enrichver !== pipelineVersion) count++;
+  if (row.size_name === null || row.size_name_enrichver !== pipelineVersion) count++;
   if (row.icon_url === null || row.icon_url_enrichver !== pipelineVersion) count++;
   if (row.art_url === null || row.art_url_enrichver !== pipelineVersion) count++;
   if (row.cell_habitat_name === null || row.cell_habitat_name_enrichver !== pipelineVersion) count++;
+  if (row.cell_climate_name === null || row.cell_climate_name_enrichver !== pipelineVersion) count++;
+  if (row.cell_continent_name === null || row.cell_continent_name_enrichver !== pipelineVersion) count++;
+  if (row.location_district === null || row.location_district_enrichver !== pipelineVersion) count++;
   if (row.location_city === null || row.location_city_enrichver !== pipelineVersion) count++;
+  if (row.location_state === null || row.location_state_enrichver !== pipelineVersion) count++;
+  if (row.location_country === null || row.location_country_enrichver !== pipelineVersion) count++;
+  if (row.location_country_code === null || row.location_country_code_enrichver !== pipelineVersion) count++;
   return count;
 }
 
@@ -668,6 +701,8 @@ async function generateAndUploadArt(
               console.error(`[art] remove.bg error: ${bgErr instanceof Error ? bgErr.message : String(bgErr)}`);
               // Continue with original image
             }
+          } else if (assetType === "icon") {
+            console.warn(`[art] REMOVE_BG_API_KEY not set — icon ${definitionId} will have opaque background`);
           }
         }
 
@@ -741,6 +776,7 @@ serve(async (req: Request) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const pipelineVersion = Deno.env.get("PIPELINE_VERSION") ?? "unknown";
   const supabase = createClient(supabaseUrl, serviceKey);
+  console.log('[worker] pipeline version:', pipelineVersion, 'timeout guard:', FUNCTION_TIMEOUT_MS, 'ms');
 
   // -- Observability helper --------------------------------------------------
   async function logEvent(
@@ -783,8 +819,9 @@ serve(async (req: Request) => {
   // expensive (cap at 3 per tick to respect API rate limits).
 
   try {
-    const availableProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
-    const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+      const availableProviders = PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
+      const shuffledProviders = [...availableProviders].sort(() => Math.random() - 0.5);
+      const availableImageProviders = IMAGE_PROVIDERS.filter(p => Deno.env.get(p.keyEnv));
 
     const speciesColumns = [
       "definition_id", "scientific_name", "common_name", "taxonomic_class",
@@ -815,7 +852,7 @@ serve(async (req: Request) => {
         `art_url_enrichver.is.null`,
         `art_url_enrichver.neq.${pipelineVersion}`,
       ].join(","))
-      .limit(100);
+      .limit(20);
 
     if (candidatesErr) throw new Error(`Failed to query species candidates: ${candidatesErr.message}`);
 
@@ -841,13 +878,13 @@ serve(async (req: Request) => {
         const defId = species.definition_id;
 
         // classify — no deps (LLM call)
-        if (needs(species.animal_class, species.animal_class_enrichver) && availableProviders.length > 0) {
+        if (needs(species.animal_class, species.animal_class_enrichver) && shuffledProviders.length > 0) {
           allStages.push(`${defId}:classify`);
           llmTasks.push(async () => {
             const startMs = Date.now();
             try {
               const { result: enrichment, providerName } = await callLLMWithRotation(
-                availableProviders, species.scientific_name, species.common_name, species.taxonomic_class,
+                shuffledProviders, species.scientific_name, species.common_name, species.taxonomic_class,
               );
               const { error } = await supabase.from("species").update({
                 animal_class: enrichment.animal_class, animal_class_enrichver: pipelineVersion,
@@ -869,12 +906,12 @@ serve(async (req: Request) => {
         }
 
         // icon_prompt — needs animal_class to ALREADY EXIST (LLM call)
-        if (species.animal_class && needs(species.icon_prompt, species.icon_prompt_enrichver) && availableProviders.length > 0) {
+        if (species.animal_class && needs(species.icon_prompt, species.icon_prompt_enrichver) && shuffledProviders.length > 0) {
           allStages.push(`${defId}:icon_prompt`);
           const habitat = parseFirstHabitat(species.habitats_json);
           llmTasks.push(async () => {
             try {
-              const prompt = await generateArtPrompt(availableProviders, species, "icon", habitat);
+              const prompt = await generateArtPrompt(shuffledProviders, species, "icon", habitat);
               const { error } = await supabase.from("species")
                 .update({ icon_prompt: prompt, icon_prompt_enrichver: pipelineVersion })
                 .eq("definition_id", defId);
@@ -887,12 +924,12 @@ serve(async (req: Request) => {
         }
 
         // art_prompt — needs animal_class to ALREADY EXIST (LLM call)
-        if (species.animal_class && needs(species.art_prompt, species.art_prompt_enrichver) && availableProviders.length > 0) {
+        if (species.animal_class && needs(species.art_prompt, species.art_prompt_enrichver) && shuffledProviders.length > 0) {
           allStages.push(`${defId}:art_prompt`);
           const habitat = parseFirstHabitat(species.habitats_json);
           llmTasks.push(async () => {
             try {
-              const prompt = await generateArtPrompt(availableProviders, species, "illustration", habitat);
+              const prompt = await generateArtPrompt(shuffledProviders, species, "illustration", habitat);
               const { error } = await supabase.from("species")
                 .update({ art_prompt: prompt, art_prompt_enrichver: pipelineVersion })
                 .eq("definition_id", defId);
@@ -1002,7 +1039,7 @@ serve(async (req: Request) => {
         `location_city_enrichver.is.null`,
         `location_city_enrichver.neq.${pipelineVersion}`,
       ].join(","))
-      .limit(200);
+      .limit(20);
 
     if (itemCandidatesErr) throw new Error(`Failed to query item_instances: ${itemCandidatesErr.message}`);
 
@@ -1222,7 +1259,7 @@ serve(async (req: Request) => {
       item_stage: itemStage,
       items_enriched: itemsEnriched,
       errors: errors.length,
-      error_messages: errors.slice(0, 5), // cap at 5 to avoid huge payloads
+      error_messages: errors.slice(0, 20), // cap at 20 to avoid huge payloads
       pipeline_version: pipelineVersion,
     },
     duration_ms: Date.now() - workerStartMs,
