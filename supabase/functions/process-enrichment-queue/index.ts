@@ -608,15 +608,51 @@ async function generateAndUploadArt(
           break; // break retry loop, continue to next provider
         }
 
-        // Upload to storage with the provider's actual mime type.
-        // Icons from Gemini may be PNG (with alpha); illustrations are typically WebP.
-        const ext = imageResult.mimeType === "image/png" ? "png" : "webp";
+        // Post-process icons: remove background for true transparency.
+        // AI image generators cannot produce real alpha channels — they draw
+        // fake checkerboard or solid backgrounds. We use remove.bg API to
+        // strip the background and get a clean transparent PNG.
+        let finalBytes = imageResult.bytes;
+        let finalMimeType = imageResult.mimeType;
+
+        if (assetType === "icon") {
+          const removeBgKey = Deno.env.get("REMOVE_BG_API_KEY");
+          if (removeBgKey) {
+            try {
+              const formData = new FormData();
+              formData.append("image_file", new Blob([imageResult.bytes], { type: imageResult.mimeType }), "icon.png");
+              formData.append("size", "auto");
+
+              const bgResponse = await fetch("https://api.remove.bg/v1.0/removebg", {
+                method: "POST",
+                headers: { "X-Api-Key": removeBgKey },
+                body: formData,
+              });
+
+              if (bgResponse.ok) {
+                finalBytes = new Uint8Array(await bgResponse.arrayBuffer());
+                finalMimeType = "image/png";
+                console.log(`[art] background removed for ${definitionId} icon (${finalBytes.length} bytes)`);
+              } else {
+                const errorText = await bgResponse.text();
+                console.error(`[art] remove.bg failed (${bgResponse.status}): ${errorText}`);
+                // Continue with original image — background removal is best-effort
+              }
+            } catch (bgErr) {
+              console.error(`[art] remove.bg error: ${bgErr instanceof Error ? bgErr.message : String(bgErr)}`);
+              // Continue with original image
+            }
+          }
+        }
+
+        // Upload to storage
+        const ext = finalMimeType === "image/png" ? "png" : "webp";
         const actualFileName = assetType === "icon"
           ? `${definitionId}_icon.${ext}`
           : `${definitionId}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from(ART_BUCKET)
-          .upload(actualFileName, imageResult.bytes, { contentType: imageResult.mimeType, upsert: true });
+          .upload(actualFileName, finalBytes, { contentType: finalMimeType, upsert: true });
 
         if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
