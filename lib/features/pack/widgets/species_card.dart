@@ -162,16 +162,10 @@ class SpeciesCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final parts = <String>[];
 
-    final animalType = _parseAnimalType(item.taxonomicClass);
     final animalClass = _parseAnimalClass(item.animalClassName);
 
-    if (animalType != null) {
-      parts.add(
-          '${GameIcons.animalTypeIcon(animalType)} ${GameIcons.animalTypeAbbrev(animalType)}');
-    }
     if (animalClass != null) {
-      parts.add(
-          '${GameIcons.animalClass(animalClass)} ${GameIcons.animalClassAbbrev(animalClass)}');
+      parts.add(GameIcons.animalClass(animalClass));
     }
 
     final weight = _weightGrams;
@@ -200,30 +194,43 @@ class SpeciesCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final parts = <String>[];
 
-    final habitat = _parseHabitat(item.cellHabitatName) ??
-        (item.habitats.isNotEmpty ? item.habitats.first : null);
-    if (habitat != null) {
-      parts.add(
-          '${GameIcons.habitat(habitat)} ${GameIcons.habitatAbbrev(habitat)}');
+    // Show ALL habitats the species lives in (not just the discovery cell)
+    if (item.habitats.isNotEmpty) {
+      final habitatStr = item.habitats
+          .map((h) => '${GameIcons.habitat(h)} ${GameIcons.habitatAbbrev(h)}')
+          .join(' ');
+      parts.add(habitatStr);
+    } else {
+      final habitat = _parseHabitat(item.cellHabitatName);
+      if (habitat != null) {
+        parts.add(
+            '${GameIcons.habitat(habitat)} ${GameIcons.habitatAbbrev(habitat)}');
+      }
     }
 
-    final continent = _parseContinent(item.cellContinentName) ??
-        (item.continents.isNotEmpty ? item.continents.first : null);
-    if (continent != null) {
-      parts.add(
-          '${GameIcons.continent(continent)} ${GameIcons.continentAbbrev(continent)}');
+    // Show ALL continents the species is found on
+    if (item.continents.isNotEmpty) {
+      final continentStr = item.continents
+          .map((c) =>
+              '${GameIcons.continent(c)} ${GameIcons.continentAbbrev(c)}')
+          .join(' ');
+      parts.add(continentStr);
+    } else {
+      final continent = _parseContinent(item.cellContinentName);
+      if (continent != null) {
+        parts.add(
+            '${GameIcons.continent(continent)} ${GameIcons.continentAbbrev(continent)}');
+      }
     }
 
     final food = _parseFoodType(item.foodPreferenceName);
     if (food != null) {
-      parts
-          .add('${GameIcons.foodType(food)} ${GameIcons.foodTypeAbbrev(food)}');
+      parts.add(GameIcons.foodType(food));
     }
 
     final climate = _parseClimate(item.climateName);
     if (climate != null) {
-      parts.add(
-          '${GameIcons.climate(climate)} ${GameIcons.climateAbbrev(climate)}');
+      parts.add(GameIcons.climate(climate));
     }
 
     if (parts.isEmpty) return const SizedBox.shrink();
