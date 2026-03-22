@@ -13,11 +13,13 @@ import 'package:earth_nova/core/models/season.dart';
 // ═══════════════════════════════════════════════════════════════════════════════
 // EarthNova Game Iconography
 //
-// Icon placeholders for every game concept. These will eventually be replaced
-// with custom sprite assets. Every UI that shows a game concept should pull
-// its icon from here — never hardcode an icon string inline.
+// Every emoji is UNIQUE across all categories that can appear on the same
+// screen. The species card identity row (habitat, continent, food, climate)
+// must have zero collisions. Animal class (type bar) must not repeat habitat
+// or food emojis.
 //
-// Organized by domain. Lookup via static methods that accept domain enums.
+// When picking emojis: check this file first. If the emoji exists, pick
+// a different one.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Centralized icons for all game concepts.
@@ -25,7 +27,7 @@ import 'package:earth_nova/core/models/season.dart';
 /// Usage:
 /// ```dart
 /// GameIcons.habitat(Habitat.forest)   // '🌲'
-/// GameIcons.animalType(AnimalType.bird) // '🐦'
+/// GameIcons.animalClass(AnimalClass.carnivore) // '🦁'
 /// GameIcons.rarity(IucnStatus.endangered) // '🔴'
 /// ```
 abstract final class GameIcons {
@@ -41,17 +43,17 @@ abstract final class GameIcons {
         ItemCategory.orb => '🔮',
       };
 
-  // ── Animal Types (5) ─────────────────────────────────────────────────────
+  // ── Animal Types (5) — fallback when class is unknown ─────────────────────
 
   static String animalType(AnimalType type) => switch (type) {
         AnimalType.mammal => '🐻',
-        AnimalType.bird => '🐦',
+        AnimalType.bird => '🕊️',
         AnimalType.fish => '🐟',
-        AnimalType.reptile => '🦎',
-        AnimalType.bug => '🐛',
+        AnimalType.reptile => '🐲',
+        AnimalType.bug => '🪳',
       };
 
-  // ── Animal Classes (35) ──────────────────────────────────────────────────
+  // ── Animal Classes (35) — all unique, no repeats ─────────────────────────
 
   static String animalClass(AnimalClass cls) => switch (cls) {
         // Bird (7)
@@ -69,14 +71,14 @@ abstract final class GameIcons {
         AnimalClass.cicada => '🦗',
         AnimalClass.dragonfly => '🪰',
         AnimalClass.landMollusk => '🐌',
-        AnimalClass.locust => '🦗',
+        AnimalClass.locust => '🦟',
         AnimalClass.scorpion => '🦂',
         AnimalClass.spider => '🕷️',
-        // Fish (6)
+        // Fish (6) — 🐟🐠🐡🦈🐙🦞 all distinct
         AnimalClass.cartilaginousFish => '🦈',
         AnimalClass.cephalopod => '🐙',
         AnimalClass.clamsUrchinsAndCrustaceans => '🦞',
-        AnimalClass.jawlessFish => '🐟',
+        AnimalClass.jawlessFish => '🐡',
         AnimalClass.lobeFinnedFish => '🐟',
         AnimalClass.rayFinnedFish => '🐠',
         // Mammal (8)
@@ -104,32 +106,32 @@ abstract final class GameIcons {
     return unknown;
   }
 
-  // ── Habitats (7) ─────────────────────────────────────────────────────────
+  // ── Habitats (7) — identity row emojis ────────────────────────────────────
 
   static String habitat(Habitat h) => switch (h) {
         Habitat.forest => '🌲',
         Habitat.plains => '🌾',
         Habitat.freshwater => '💧',
         Habitat.saltwater => '🌊',
-        Habitat.swamp => '🌿',
+        Habitat.swamp => '🪷',
         Habitat.mountain => '⛰️',
         Habitat.desert => '🏜️',
       };
 
-  // ── Climate Zones (4) ────────────────────────────────────────────────────
+  // ── Climate Zones (4) — identity row emojis ───────────────────────────────
 
   static String climate(Climate c) => switch (c) {
-        Climate.tropic => '🔥',
-        Climate.temperate => '☀️',
-        Climate.boreal => '❄️',
+        Climate.tropic => '🌴',
+        Climate.temperate => '🌤️',
+        Climate.boreal => '🌨️',
         Climate.frigid => '🧊',
       };
 
-  // ── Food Types (7) ───────────────────────────────────────────────────────
+  // ── Food Types (7) — identity row emojis ──────────────────────────────────
 
   static String foodType(FoodType f) => switch (f) {
         FoodType.critter => '🍖',
-        FoodType.fish => '🐟',
+        FoodType.fish => '🎣',
         FoodType.fruit => '🍇',
         FoodType.grub => '🪱',
         FoodType.nectar => '🍯',
@@ -137,7 +139,7 @@ abstract final class GameIcons {
         FoodType.veg => '🥬',
       };
 
-  // ── Continents (6) ───────────────────────────────────────────────────────
+  // ── Continents (6) — identity row emojis ──────────────────────────────────
 
   static String continent(Continent c) => switch (c) {
         Continent.asia => '🏯',
@@ -166,7 +168,7 @@ abstract final class GameIcons {
         Season.winter => '❄️',
       };
 
-  // ── Abbreviations ──────────────────────────────────────────────────────────
+  // ── Abbreviations (kept for non-card contexts) ───────────────────────────
 
   static String habitatAbbrev(Habitat h) => switch (h) {
         Habitat.forest => 'FOR',
@@ -186,25 +188,6 @@ abstract final class GameIcons {
         Continent.oceania => 'OC',
         Continent.europe => 'EU',
       };
-
-  static String climateAbbrev(Climate c) => switch (c) {
-        Climate.tropic => 'TRP',
-        Climate.temperate => 'TMP',
-        Climate.boreal => 'BOR',
-        Climate.frigid => 'FRG',
-      };
-
-  static String foodTypeAbbrev(FoodType f) => switch (f) {
-        FoodType.critter => 'CRT',
-        FoodType.fish => 'FSH',
-        FoodType.fruit => 'FRT',
-        FoodType.grub => 'GRB',
-        FoodType.nectar => 'NCT',
-        FoodType.seed => 'SED',
-        FoodType.veg => 'VEG',
-      };
-
-  // animalTypeIcon and animalTypeAbbrev removed — use animalType() instead.
 
   static String animalClassAbbrev(AnimalClass cls) => switch (cls) {
         AnimalClass.birdOfPrey => 'BOP',
@@ -266,11 +249,11 @@ abstract final class GameIcons {
   // ── Cell Events (2) ────────────────────────────────────────────────────
 
   static String cellEvent(CellEventType type) => switch (type) {
-        CellEventType.migration => '🦅',
+        CellEventType.migration => '🦢',
         CellEventType.nestingSite => '🪺',
       };
 
-  /// Icon for cells with an event that hasn't been visited yet (Witcher 3 "?").
+  /// Icon for cells with an event that hasn't been visited yet.
   static const String eventUnknown = '❓';
 
   // ── Misc game concepts ───────────────────────────────────────────────────
@@ -290,6 +273,6 @@ abstract final class GameIcons {
   static const String unknown = '❓';
   static const String empty = '◻️';
   static const String town = '🏘️';
-  static const String globe = '🌍';
+  static const String globe = '🌏';
   static const String error = '😕';
 }
