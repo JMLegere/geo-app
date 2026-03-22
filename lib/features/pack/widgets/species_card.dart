@@ -11,21 +11,18 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
-import 'package:earth_nova/shared/widgets/rarity_badge.dart';
+import 'package:earth_nova/shared/habitat_colors.dart';
 import 'package:earth_nova/shared/widgets/prismatic_border.dart';
+import 'package:earth_nova/shared/widgets/rarity_badge.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_art_zone.dart';
 import 'package:earth_nova/features/pack/widgets/species_card_stats.dart';
 
-/// Fixed 2:3 aspect ratio species card rendering purely from [ItemInstance].
+/// Trading card layout inspired by MtG/Pokémon TCG.
 ///
-/// Sections (top to bottom):
-/// 1. **Name plate** — displayName + rarity badge + ★ badge
-/// 2. **Art zone** (Expanded) — watercolor illustration on habitat surface
-/// 3. **Stat rings** — animated RGB brawn/wit/speed gauges
-/// 4. **Type line** — 🦁 MAM · 🐺 CRN  ⚖️ 62kg
-/// 5. **Identity row** — 🌲 FOR  🌎 NA  🍖 CRT  ☀️ TMP
-/// 6. **Location** — Downtown Fredericton 🇨🇦
-/// 7. **Provenance** — Wild · Mar 21, 2026
+/// Visual zones (top → bottom):
+///   Title bar  → Art frame  → Type bar  → Info box  → Footer
+///
+/// Renders purely from [ItemInstance]. No scroll. Fixed 2:3 aspect.
 class SpeciesCard extends StatelessWidget {
   const SpeciesCard({
     required this.item,
@@ -65,6 +62,13 @@ class SpeciesCard extends StatelessWidget {
 
   // ── Derived values ────────────────────────────────────────────────────────
 
+  Habitat? get _primaryHabitat =>
+      _parseHabitat(item.cellHabitatName) ??
+      (item.habitats.isNotEmpty ? item.habitats.first : null);
+
+  HabitatPalette? get _palette =>
+      _primaryHabitat != null ? HabitatColors.of(_primaryHabitat!) : null;
+
   int? get _weightGrams {
     final intrinsic =
         item.affixes.where((a) => a.type == AffixType.intrinsic).firstOrNull;
@@ -92,7 +96,7 @@ class SpeciesCard extends StatelessWidget {
     return parts.join(' ');
   }
 
-  // ── Weight formatting ────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   static String formatWeight(int grams) {
     if (grams < 1000) return '$grams g';
@@ -107,8 +111,6 @@ class SpeciesCard extends StatelessWidget {
         ? '${tonnes.round()} t'
         : '${tonnes.toStringAsFixed(1)} t';
   }
-
-  // ── Date formatting ──────────────────────────────────────────────────────
 
   static String _formatDate(DateTime dt) {
     const months = [
@@ -128,24 +130,110 @@ class SpeciesCard extends StatelessWidget {
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final palette = _palette;
+    // Subtle habitat tint for the title bar and info box backgrounds.
+    final tintColor = palette?.primary.withValues(alpha: 0.15) ??
+        cs.surfaceContainerHighest.withValues(alpha: 0.5);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ─── Title bar ──────────────────────────────────────────────
+        _TitleBar(
+          displayName: item.displayName,
+          rarity: item.rarity,
+          isFirstDiscovery: item.isFirstDiscovery,
+          backgroundColor: tintColor,
+        ),
+
+        const SizedBox(height: 2),
+
+        // ─── Art frame (fills available space) ──────────────────────
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: Radii.borderSm,
+              border: Border.all(
+                color: cs.outlineVariant.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: Radii.borderSm,
+              child: _buildArtZone(context),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 2),
+
+        // ─── Type bar (thin habitat-colored divider) ────────────────
+        _TypeBar(
+          scientificName: item.scientificName,
+          animalClass: _parseAnimalClass(item.animalClassName),
+          weight: _weightGrams,
+          palette: palette,
+        ),
+
+        const SizedBox(height: 2),
+
+        // ─── Info box (contained panel) ─────────────────────────────
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: Spacing.sm,
+            vertical: Spacing.xs,
+          ),
+          decoration: BoxDecoration(
+            color: tintColor,
+            borderRadius: Radii.borderSm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Stat rings
+              if (_hasStats)
+                Padding(
+                  padding: EdgeInsets.only(bottom: Spacing.xs),
+                  child: SpeciesCardStats(
+                    brawn: item.brawn ?? 0,
+                    wit: item.wit ?? 0,
+                    speed: item.speed ?? 0,
+                    animate: animate,
+                  ),
+                ),
+
+              // Identity emojis
+              _buildIdentityRow(context),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 2),
+
+        // ─── Footer ─────────────────────────────────────────────────
+        _buildFooter(context),
+      ],
+    );
+  }
+
   // ── Art zone ─────────────────────────────────────────────────────────────
 
   Widget _buildArtZone(BuildContext context) {
-    final habitat = _parseHabitat(item.cellHabitatName) ??
-        (item.habitats.isNotEmpty ? item.habitats.first : null);
-
+    final habitat = _primaryHabitat;
     if (habitat == null) {
       return Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: Radii.borderMd,
-        ),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Center(
           child: Text(_fallbackEmoji, style: const TextStyle(fontSize: 48)),
         ),
       );
     }
-
     return SpeciesCardArtZone(
       artUrl: item.artUrl,
       primaryHabitat: habitat,
@@ -156,243 +244,200 @@ class SpeciesCard extends StatelessWidget {
     );
   }
 
-  // ── Type line ─────────────────────────────────────────────────────────────
-
-  Widget _buildTypeLine(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final parts = <String>[];
-
-    final animalClass = _parseAnimalClass(item.animalClassName);
-
-    if (animalClass != null) {
-      parts.add(GameIcons.animalClass(animalClass));
-    }
-
-    final weight = _weightGrams;
-    if (weight != null) {
-      parts.add('${GameIcons.weight} ${formatWeight(weight)}');
-    }
-
-    if (parts.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: Spacing.xxs),
-      child: Text(
-        parts.join('  '),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: cs.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
-  // ── Identity row ──────────────────────────────────────────────────────────
+  // ── Identity row (emoji only, no abbreviations) ──────────────────────────
 
   Widget _buildIdentityRow(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final parts = <String>[];
+    final emojis = <String>[];
 
-    // Show ALL habitats the species lives in (not just the discovery cell)
-    if (item.habitats.isNotEmpty) {
-      final habitatStr = item.habitats
-          .map((h) => '${GameIcons.habitat(h)} ${GameIcons.habitatAbbrev(h)}')
-          .join(' ');
-      parts.add(habitatStr);
-    } else {
-      final habitat = _parseHabitat(item.cellHabitatName);
-      if (habitat != null) {
-        parts.add(
-            '${GameIcons.habitat(habitat)} ${GameIcons.habitatAbbrev(habitat)}');
-      }
+    // All habitats
+    for (final h in item.habitats) {
+      emojis.add(GameIcons.habitat(h));
+    }
+    if (emojis.isEmpty) {
+      final h = _parseHabitat(item.cellHabitatName);
+      if (h != null) emojis.add(GameIcons.habitat(h));
     }
 
-    // Show ALL continents the species is found on
-    if (item.continents.isNotEmpty) {
-      final continentStr = item.continents
-          .map((c) =>
-              '${GameIcons.continent(c)} ${GameIcons.continentAbbrev(c)}')
-          .join(' ');
-      parts.add(continentStr);
-    } else {
-      final continent = _parseContinent(item.cellContinentName);
-      if (continent != null) {
-        parts.add(
-            '${GameIcons.continent(continent)} ${GameIcons.continentAbbrev(continent)}');
-      }
+    // All continents
+    for (final c in item.continents) {
+      emojis.add(GameIcons.continent(c));
+    }
+    if (item.continents.isEmpty) {
+      final c = _parseContinent(item.cellContinentName);
+      if (c != null) emojis.add(GameIcons.continent(c));
     }
 
+    // Food
     final food = _parseFoodType(item.foodPreferenceName);
-    if (food != null) {
-      parts.add(GameIcons.foodType(food));
-    }
+    if (food != null) emojis.add(GameIcons.foodType(food));
 
+    // Climate
     final climate = _parseClimate(item.climateName);
-    if (climate != null) {
-      parts.add(GameIcons.climate(climate));
-    }
+    if (climate != null) emojis.add(GameIcons.climate(climate));
 
-    if (parts.isEmpty) return const SizedBox.shrink();
+    if (emojis.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: Spacing.xxs),
-      child: Text(
-        parts.join('  '),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: cs.onSurfaceVariant,
-        ),
-      ),
+    return Text(
+      emojis.join('  '),
+      style: const TextStyle(fontSize: 14, letterSpacing: 2),
     );
   }
 
-  // ── Footer row ───────────────────────────────────────────────────────────
+  // ── Footer ───────────────────────────────────────────────────────────────
 
-  Widget _buildFooterRow(BuildContext context, String text) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: Spacing.xxs),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          color: Theme.of(context)
-              .colorScheme
-              .onSurfaceVariant
-              .withValues(alpha: 0.7),
-        ),
-        overflow: TextOverflow.ellipsis,
-      ),
+  Widget _buildFooter(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final footerStyle = TextStyle(
+      fontSize: 9,
+      color: cs.onSurfaceVariant.withValues(alpha: 0.6),
+      letterSpacing: 0.2,
     );
-  }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Name plate
-        _NamePlate(
-          displayName: item.displayName,
-          scientificName: item.scientificName,
-          rarity: item.rarity,
-          isFirstDiscovery: item.isFirstDiscovery,
-        ),
-
-        SizedBox(height: Spacing.md),
-
-        // Art zone (~50% of card)
-        Expanded(child: _buildArtZone(context)),
-
-        SizedBox(height: Spacing.sm),
-
-        // Stat rings
-        if (_hasStats)
-          Padding(
-            padding: EdgeInsets.only(bottom: Spacing.sm),
-            child: SpeciesCardStats(
-              brawn: item.brawn ?? 0,
-              wit: item.wit ?? 0,
-              speed: item.speed ?? 0,
-              animate: animate,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: Spacing.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Location (left)
+          if (_locationLabel.isNotEmpty)
+            Flexible(
+              child: Text(
+                _locationLabel,
+                style: footerStyle,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+          // Provenance (right)
+          Text(
+            '${item.isWildCaught ? "Wild" : "Bred"} · ${_formatDate(item.acquiredAt)}',
+            style: footerStyle,
           ),
-
-        // Type line: 🦁 MAM · 🐺 CRN  ⚖️ 62kg
-        _buildTypeLine(context),
-
-        // Identity row: 🌲 FOR  🌎 NA  🍖 CRT  ☀️ TMP
-        _buildIdentityRow(context),
-
-        // Location: Downtown Fredericton 🇨🇦
-        if (_locationLabel.isNotEmpty) _buildFooterRow(context, _locationLabel),
-
-        // Provenance: Wild · Mar 21, 2026
-        _buildFooterRow(
-          context,
-          '${item.isWildCaught ? "Wild" : "Bred"} · ${_formatDate(item.acquiredAt)}',
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-// ── Name plate ────────────────────────────────────────────────────────────────
+// ── Title bar ────────────────────────────────────────────────────────────────
 
-class _NamePlate extends StatelessWidget {
-  const _NamePlate({
+class _TitleBar extends StatelessWidget {
+  const _TitleBar({
     required this.displayName,
-    required this.scientificName,
     required this.rarity,
     required this.isFirstDiscovery,
+    required this.backgroundColor,
   });
 
   final String displayName;
-  final String? scientificName;
   final IucnStatus? rarity;
   final bool isFirstDiscovery;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Display name + ★ badge
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      displayName,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
-                        letterSpacing: -0.3,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isFirstDiscovery) ...[
-                    SizedBox(width: Spacing.xs),
-                    const FirstDiscoveryBadge(
-                      size: FirstDiscoveryBadgeSize.pill,
-                    ),
-                  ],
-                ],
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: Spacing.sm,
+        vertical: Spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: Radii.borderSm,
+      ),
+      child: Row(
+        children: [
+          // Name
+          Expanded(
+            child: Text(
+              displayName,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+                letterSpacing: -0.3,
               ),
-              if (scientificName != null) ...[
-                SizedBox(height: Spacing.xxs),
-                Text(
-                  scientificName!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: cs.onSurfaceVariant,
-                    letterSpacing: 0.05,
-                  ),
-                ),
-              ],
-            ],
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-        ),
-        if (rarity != null) ...[
-          SizedBox(width: Spacing.md),
-          RarityBadge(
-            status: rarity!,
-            size: RarityBadgeSize.medium,
-          ),
+          // First discovery star
+          if (isFirstDiscovery) ...[
+            SizedBox(width: Spacing.xs),
+            const FirstDiscoveryBadge(size: FirstDiscoveryBadgeSize.pill),
+          ],
+          // Rarity badge
+          if (rarity != null) ...[
+            SizedBox(width: Spacing.xs),
+            RarityBadge(status: rarity!, size: RarityBadgeSize.medium),
+          ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+// ── Type bar ─────────────────────────────────────────────────────────────────
+
+class _TypeBar extends StatelessWidget {
+  const _TypeBar({
+    required this.scientificName,
+    required this.animalClass,
+    required this.weight,
+    required this.palette,
+  });
+
+  final String? scientificName;
+  final AnimalClass? animalClass;
+  final int? weight;
+  final HabitatPalette? palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = palette?.primary.withValues(alpha: 0.25) ??
+        Theme.of(context).colorScheme.surfaceContainerHighest;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: Spacing.sm,
+        vertical: 3,
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: Radii.borderSm,
+      ),
+      child: Row(
+        children: [
+          // Class emoji + scientific name
+          if (animalClass != null)
+            Text(
+              GameIcons.animalClass(animalClass!),
+              style: const TextStyle(fontSize: 12),
+            ),
+          if (animalClass != null) SizedBox(width: Spacing.xs),
+          Expanded(
+            child: Text(
+              scientificName ?? '',
+              style: TextStyle(
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
+                color: Colors.white.withValues(alpha: 0.8),
+                letterSpacing: 0.3,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Weight (right-aligned)
+          if (weight != null)
+            Text(
+              '${GameIcons.weight} ${SpeciesCard.formatWeight(weight!)}',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
