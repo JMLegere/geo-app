@@ -14,8 +14,8 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
 | Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
-| Tests | 1832 passing, `flutter_test` only (no mockito/mocktail) |
-| Analysis | 131 info-level issues |
+| Tests | 1835 passing, `flutter_test` only (no mockito/mocktail) |
+| Analysis | info-level issues only (0 errors, 0 warnings) |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
 
@@ -117,7 +117,7 @@ These are **locked in** — do not revisit without explicit instruction.
 
 10. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
 
-11. **Backend-driven enrichment** — Species classification and art generation run server-side via `process-enrichment-queue` Edge Function (hourly pg_cron). Client never calls enrichment endpoints. Species data lives in one table (`species` on Supabase, `LocalSpeciesTable` in Drift). No client-side `EnrichmentService` or `EnrichmentRepository`.
+11. **Backend-driven enrichment** — Unified enrichment pipeline runs server-side via `process-enrichment-queue` Edge Function (1-minute pg_cron). Processes species AND items per tick. Species: classify → icon prompt → art prompt → icon image → art image (2-stage LLM → image pipeline with per-field version stamps). Items: denormalizes species fields, icon/art URLs, cell properties, and location hierarchy onto instances. Priority: count fields needing work (null or stale enrichver), process closest-to-done first. No client-side enrichment.
 
 ---
 
@@ -330,7 +330,9 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 
 ### Drift (SQLite) ORM
 
-3 tables: `LocalCellProgressTable`, `LocalItemInstanceTable`, `LocalPlayerProfileTable`.
+6 tables: `LocalCellProgressTable`, `LocalItemInstanceTable`, `LocalPlayerProfileTable`, `LocalSpeciesTable`, `LocalWriteQueueTable`, `LocalCellPropertiesTable`, `LocalLocationNodeTable`. Schema v20.
+
+`LocalItemInstanceTable` has 32 denormalized enrichment columns (15 data + 17 per-field version stamps). `LocalSpeciesTable` has 11 per-field version stamps. Each enrichable field has a companion `_enrichver` column tracking the pipeline commit that produced the value.
 
 **Critical Drift conventions:**
 - `copyWith` uses `Value<T>` wrappers — use `Value(x)` for set, `Value.absent()` for skip
