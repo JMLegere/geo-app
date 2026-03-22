@@ -482,27 +482,31 @@ ART DIRECTION:
 
 YOUR JOB:
 Given the species data below, write a vivid image prompt that:
-1. Describes the animal with 2-3 specific visual details (coloring, pattern, distinctive body features).
-2. The dominant stat DRIVES the action, pose, and energy of the scene:
-   - brawn → POWER fantasy. Fighting, intimidating, defending territory,
-     displaying dominance. A buck locking antlers in a rut. A gorilla
-     beating its chest. A bear rearing up, massive and imposing. A rhino
-     charging. Thick limbs, sturdy grounded stance, raw physical presence.
-   - speed → VELOCITY fantasy. Hunting at full sprint, fleeing in a blur,
-     leaping across a gap, banking hard mid-flight, diving at terminal
-     velocity. A cheetah stretched flat-out in a sprint. A falcon in a
-     stoop. A marlin breaching. Lean, dynamic, caught mid-motion with
-     a sense of explosive movement.
-   - wit → CUNNING fantasy. Outsmarting, problem-solving, setting a trap,
-     using tools, scheming. A raccoon picking a lock. An octopus unscrewing
-     a jar. A crow using a stick tool. A fox with a sly knowing look.
-     Alert sharp eyes, clever expression, doing something unexpectedly
-     intelligent for an animal.
-3. Camera angle should feel cinematic and exciting — low angle, dramatic
+1. Describes the animal with 2-3 specific visual details (coloring,
+   pattern, distinctive body features).
+2. Shows the animal doing the ONE THING it is most famous for — the
+   behavior a nature documentary would feature. Use your real-world
+   knowledge of this species. Examples:
+   - An anole flashing its bright dewlap on a sunny branch
+   - A hummingbird hovering at a flower, wings a blur
+   - A pangolin curled into an armored ball
+   - A pistol shrimp snapping its claw with a shockwave
+   - A flying fish gliding above ocean waves
+   - A chameleon's tongue mid-strike at an insect
+   - A bison stampeding through dust
+   - An archerfish spitting water at a leaf-perched bug
+   Every species has an iconic behavior. Find it. If you're unsure,
+   pick the most visually interesting real behavior this animal does.
+   DO NOT default to generic actions like "sprinting" or "hunting."
+3. The dominant stat shapes the ENERGY and BODY LANGUAGE, not the action:
+   - brawn → sturdy build, thick limbs, grounded powerful presence
+   - speed → lean build, dynamic angle, sense of momentum
+   - wit → alert eyes, clever expression, focused intensity
+4. Camera angle should feel cinematic and exciting — low angle, dramatic
    3/4 view, dynamic diagonal composition. Never flat, never centered,
    never a static portrait. The shot that would make the best trading card.
-4. Places it in a loosely-painted habitat setting that matches its biome.
-5. Uses size to set scale — large animals dominate the frame, small animals
+5. Places it in a loosely-painted habitat setting that matches its biome.
+6. Uses size to set scale — large animals dominate the frame, small animals
    are perched on mushrooms/branches/rocks.
 
 OUTPUT:
