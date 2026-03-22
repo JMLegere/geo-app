@@ -150,7 +150,19 @@ class SpeciesCard extends StatelessWidget {
           backgroundColor: tintColor,
         ),
 
-        const SizedBox(height: 2),
+        // ─── Badge bar (between title and art, right-aligned) ───────
+        if (item.isFirstDiscovery)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: const [
+                FirstDiscoveryBadge(size: FirstDiscoveryBadgeSize.pill),
+              ],
+            ),
+          ),
+
+        if (!item.isFirstDiscovery) const SizedBox(height: 2),
 
         // ─── Art frame (fills available space) ──────────────────────
         Expanded(
@@ -170,22 +182,6 @@ class SpeciesCard extends StatelessWidget {
         ),
 
         const SizedBox(height: 2),
-
-        // ─── Badge bar (below art) ───────────────────────────────────
-        if (item.isFirstDiscovery)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            decoration: BoxDecoration(
-              color: tintColor,
-              borderRadius: Radii.borderSm,
-            ),
-            child: const Center(
-              child: FirstDiscoveryBadge(size: FirstDiscoveryBadgeSize.pill),
-            ),
-          ),
-
-        if (item.isFirstDiscovery) const SizedBox(height: 2),
 
         // ─── Type bar (thin habitat-colored divider) ────────────────
         _TypeBar(
