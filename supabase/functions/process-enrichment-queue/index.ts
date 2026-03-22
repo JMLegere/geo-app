@@ -21,6 +21,22 @@ const ART_BUCKET = "species-art";
 const ART_MAX_RETRIES = 3;
 const ART_BASE_DELAY_MS = 2000;
 
+// Concurrency limits — prevent rate limit storms from parallel calls.
+const MAX_LLM_CONCURRENT = 5;   // prompt generation + classification
+const MAX_IMAGE_CONCURRENT = 2; // image generation (slowest, most expensive)
+
+/** Run async task factories with a concurrency limit. */
+async function pooled(tasks: (() => Promise<void>)[], limit: number): Promise<void> {
+  let i = 0;
+  async function worker(): Promise<void> {
+    while (i < tasks.length) {
+      const idx = i++;
+      await tasks[idx]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
+}
+
 // ── LLM Providers ────────────────────────────────────────────────────────────
 
 interface Provider {
@@ -816,108 +832,119 @@ serve(async (req: Request) => {
       const needs = (val: unknown, ver: string | null) =>
         val === null || val === undefined || ver !== pipelineVersion;
 
-      const allJobs: Promise<void>[] = [];
+      // Collect task factories (not executing yet) by type for pooled execution
+      const llmTasks: (() => Promise<void>)[] = [];
+      const imageTasks: (() => Promise<void>)[] = [];
       const allStages: string[] = [];
-      let imageJobCount = 0;
-      const MAX_IMAGE_JOBS = 3; // cap image generation to respect rate limits
 
-      // For each candidate, check deps and fire what's ready
       for (const { row: species } of scored) {
         const defId = species.definition_id;
 
-        // classify — no deps
+        // classify — no deps (LLM call)
         if (needs(species.animal_class, species.animal_class_enrichver) && availableProviders.length > 0) {
           allStages.push(`${defId}:classify`);
-          allJobs.push((async () => {
+          llmTasks.push(async () => {
             const startMs = Date.now();
-            const { result: enrichment, providerName } = await callLLMWithRotation(
-              availableProviders, species.scientific_name, species.common_name, species.taxonomic_class,
-            );
-            const { error } = await supabase.from("species").update({
-              animal_class: enrichment.animal_class, animal_class_enrichver: pipelineVersion,
-              food_preference: enrichment.food_preference, food_preference_enrichver: pipelineVersion,
-              climate: enrichment.climate, climate_enrichver: pipelineVersion,
-              brawn: enrichment.brawn, brawn_enrichver: pipelineVersion,
-              wit: enrichment.wit, wit_enrichver: pipelineVersion,
-              speed: enrichment.speed, speed_enrichver: pipelineVersion,
-              size: enrichment.size, size_enrichver: pipelineVersion,
-              enriched_at: new Date().toISOString(),
-            }).eq("definition_id", defId);
-            if (error) throw new Error(`UPDATE failed: ${error.message}`);
-            speciesEnriched++;
-            await logEvent('classification_success', defId, { provider_name: providerName, duration_ms: Date.now() - startMs });
-          })().catch(err => {
-            errors.push(`${defId} classify: ${err instanceof Error ? err.message : String(err)}`);
-          }));
+            try {
+              const { result: enrichment, providerName } = await callLLMWithRotation(
+                availableProviders, species.scientific_name, species.common_name, species.taxonomic_class,
+              );
+              const { error } = await supabase.from("species").update({
+                animal_class: enrichment.animal_class, animal_class_enrichver: pipelineVersion,
+                food_preference: enrichment.food_preference, food_preference_enrichver: pipelineVersion,
+                climate: enrichment.climate, climate_enrichver: pipelineVersion,
+                brawn: enrichment.brawn, brawn_enrichver: pipelineVersion,
+                wit: enrichment.wit, wit_enrichver: pipelineVersion,
+                speed: enrichment.speed, speed_enrichver: pipelineVersion,
+                size: enrichment.size, size_enrichver: pipelineVersion,
+                enriched_at: new Date().toISOString(),
+              }).eq("definition_id", defId);
+              if (error) throw new Error(`UPDATE failed: ${error.message}`);
+              speciesEnriched++;
+              await logEvent('classification_success', defId, { provider_name: providerName, duration_ms: Date.now() - startMs });
+            } catch (err) {
+              errors.push(`${defId} classify: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          });
         }
 
-        // icon_prompt — needs animal_class to ALREADY EXIST
+        // icon_prompt — needs animal_class to ALREADY EXIST (LLM call)
         if (species.animal_class && needs(species.icon_prompt, species.icon_prompt_enrichver) && availableProviders.length > 0) {
           allStages.push(`${defId}:icon_prompt`);
           const habitat = parseFirstHabitat(species.habitats_json);
-          allJobs.push((async () => {
-            const prompt = await generateArtPrompt(availableProviders, species, "icon", habitat);
-            const { error } = await supabase.from("species")
-              .update({ icon_prompt: prompt, icon_prompt_enrichver: pipelineVersion })
-              .eq("definition_id", defId);
-            if (error) throw new Error(`UPDATE icon_prompt failed: ${error.message}`);
-            speciesEnriched++;
-          })().catch(err => {
-            errors.push(`${defId} icon_prompt: ${err instanceof Error ? err.message : String(err)}`);
-          }));
+          llmTasks.push(async () => {
+            try {
+              const prompt = await generateArtPrompt(availableProviders, species, "icon", habitat);
+              const { error } = await supabase.from("species")
+                .update({ icon_prompt: prompt, icon_prompt_enrichver: pipelineVersion })
+                .eq("definition_id", defId);
+              if (error) throw new Error(`UPDATE icon_prompt failed: ${error.message}`);
+              speciesEnriched++;
+            } catch (err) {
+              errors.push(`${defId} icon_prompt: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          });
         }
 
-        // art_prompt — needs animal_class to ALREADY EXIST
+        // art_prompt — needs animal_class to ALREADY EXIST (LLM call)
         if (species.animal_class && needs(species.art_prompt, species.art_prompt_enrichver) && availableProviders.length > 0) {
           allStages.push(`${defId}:art_prompt`);
           const habitat = parseFirstHabitat(species.habitats_json);
-          allJobs.push((async () => {
-            const prompt = await generateArtPrompt(availableProviders, species, "illustration", habitat);
-            const { error } = await supabase.from("species")
-              .update({ art_prompt: prompt, art_prompt_enrichver: pipelineVersion })
-              .eq("definition_id", defId);
-            if (error) throw new Error(`UPDATE art_prompt failed: ${error.message}`);
-            speciesEnriched++;
-          })().catch(err => {
-            errors.push(`${defId} art_prompt: ${err instanceof Error ? err.message : String(err)}`);
-          }));
+          llmTasks.push(async () => {
+            try {
+              const prompt = await generateArtPrompt(availableProviders, species, "illustration", habitat);
+              const { error } = await supabase.from("species")
+                .update({ art_prompt: prompt, art_prompt_enrichver: pipelineVersion })
+                .eq("definition_id", defId);
+              if (error) throw new Error(`UPDATE art_prompt failed: ${error.message}`);
+              speciesEnriched++;
+            } catch (err) {
+              errors.push(`${defId} art_prompt: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          });
         }
 
-        // icon_url — needs icon_prompt to ALREADY EXIST (cap image jobs)
-        if (species.icon_prompt && needs(species.icon_url, species.icon_url_enrichver)
-            && availableImageProviders.length > 0 && imageJobCount < MAX_IMAGE_JOBS) {
+        // icon_url — needs icon_prompt to ALREADY EXIST (image API call)
+        if (species.icon_prompt && needs(species.icon_url, species.icon_url_enrichver) && availableImageProviders.length > 0) {
           allStages.push(`${defId}:icon_url`);
-          imageJobCount++;
-          allJobs.push((async () => {
-            const result = await generateAndUploadArt(
-              supabase, supabaseUrl, defId, "icon", species.icon_prompt!, pipelineVersion, logEvent,
-            );
-            if (result === "rate_limited") { errors.push(`icon_url: rate limited for ${defId}`); return; }
-            if (result) speciesEnriched++;
-          })().catch(err => {
-            errors.push(`${defId} icon_url: ${err instanceof Error ? err.message : String(err)}`);
-          }));
+          imageTasks.push(async () => {
+            try {
+              const result = await generateAndUploadArt(
+                supabase, supabaseUrl, defId, "icon", species.icon_prompt!, pipelineVersion, logEvent,
+              );
+              if (result === "rate_limited") { errors.push(`icon_url: rate limited for ${defId}`); return; }
+              if (result) speciesEnriched++;
+            } catch (err) {
+              errors.push(`${defId} icon_url: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          });
         }
 
-        // art_url — needs art_prompt to ALREADY EXIST (cap image jobs)
-        if (species.art_prompt && needs(species.art_url, species.art_url_enrichver)
-            && availableImageProviders.length > 0 && imageJobCount < MAX_IMAGE_JOBS) {
+        // art_url — needs art_prompt to ALREADY EXIST (image API call)
+        if (species.art_prompt && needs(species.art_url, species.art_url_enrichver) && availableImageProviders.length > 0) {
           allStages.push(`${defId}:art_url`);
-          imageJobCount++;
-          allJobs.push((async () => {
-            const result = await generateAndUploadArt(
-              supabase, supabaseUrl, defId, "illustration", species.art_prompt!, pipelineVersion, logEvent,
-            );
-            if (result === "rate_limited") { errors.push(`art_url: rate limited for ${defId}`); return; }
-            if (result) speciesEnriched++;
-          })().catch(err => {
-            errors.push(`${defId} art_url: ${err instanceof Error ? err.message : String(err)}`);
-          }));
+          imageTasks.push(async () => {
+            try {
+              const result = await generateAndUploadArt(
+                supabase, supabaseUrl, defId, "illustration", species.art_prompt!, pipelineVersion, logEvent,
+              );
+              if (result === "rate_limited") { errors.push(`art_url: rate limited for ${defId}`); return; }
+              if (result) speciesEnriched++;
+            } catch (err) {
+              errors.push(`${defId} art_url: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          });
         }
       }
 
-      console.log(`[species] firing ${allJobs.length} jobs across ${scored.length} candidates: [${allStages.slice(0, 10).join(", ")}${allStages.length > 10 ? ` +${allStages.length - 10} more` : ""}]`);
-      await Promise.all(allJobs);
+      console.log(`[species] queued ${llmTasks.length} LLM + ${imageTasks.length} image tasks across ${scored.length} candidates`);
+
+      // Run LLM and image pools concurrently, each with their own limit
+      await Promise.all([
+        llmTasks.length > 0 ? pooled(llmTasks, MAX_LLM_CONCURRENT) : Promise.resolve(),
+        imageTasks.length > 0 ? pooled(imageTasks, MAX_IMAGE_CONCURRENT) : Promise.resolve(),
+      ]);
+
       itemStage = `${allStages.length} stages`;
       console.log(`[species] done — ${speciesEnriched} enriched, ${errors.length} errors`);
     }
