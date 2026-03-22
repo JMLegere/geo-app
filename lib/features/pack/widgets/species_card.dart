@@ -277,9 +277,11 @@ class SpeciesCard extends StatelessWidget {
 
     if (emojis.isEmpty) return const SizedBox.shrink();
 
-    return Text(
-      emojis.join('  '),
-      style: const TextStyle(fontSize: 14, letterSpacing: 2),
+    return Center(
+      child: Text(
+        emojis.join('  '),
+        style: const TextStyle(fontSize: 14, letterSpacing: 2),
+      ),
     );
   }
 
