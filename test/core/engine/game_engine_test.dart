@@ -265,23 +265,14 @@ void main() {
         expect(engine.coordinator.currentUserId, isNull);
       });
 
-      test('AppBackgrounded flushes ObservabilityBuffer', () async {
-        var flushCount = 0;
-        final sink = ObservabilityBuffer(
-          flusher: (rows) async => flushCount++,
-        );
-
-        final engine = _makeEngine(obs: sink);
+      test('AppBackgrounded does not throw', () async {
+        final engine = _makeEngine();
         addTearDown(engine.dispose);
 
-        // Add an event so flush has something to send.
         engine.coordinator.onCellVisited?.call('cell_1');
 
-        engine.send(const AppBackgrounded());
-
-        // Allow microtask for async flush.
-        await Future<void>.delayed(Duration.zero);
-        expect(flushCount, 1);
+        // Should not throw — flush is now a no-op (events go via debugPrint).
+        expect(() => engine.send(const AppBackgrounded()), returnsNormally);
       });
     });
 
@@ -492,7 +483,7 @@ void main() {
 class _ThrowOnceSink extends ObservabilityBuffer {
   int _callCount = 0;
 
-  _ThrowOnceSink() : super(flusher: (_) async {});
+  _ThrowOnceSink() : super();
 
   @override
   void event(String name, [Map<String, dynamic> data = const {}]) {
@@ -508,7 +499,7 @@ class _ThrowOnceSink extends ObservabilityBuffer {
 class _CapturingSink extends ObservabilityBuffer {
   final List<(String, Map<String, dynamic>)> captured = [];
 
-  _CapturingSink() : super(flusher: (_) async {});
+  _CapturingSink() : super();
 
   @override
   void event(String name, [Map<String, dynamic> data = const {}]) {

@@ -314,31 +314,8 @@ class LocalPlayerProfileTable extends Table {
 /// Events are also flushed to Supabase `app_events` table remotely.
 /// Retention: 10,000 rows max (oldest evicted on overflow).
 @DataClassName('LocalAppEvent')
-class LocalAppEventsTable extends Table {
-  /// UUID v4.
-  TextColumn get id => text()();
-
-  /// Session UUID (one per app launch).
-  TextColumn get sessionId => text()();
-
-  /// Supabase user ID (nullable — events fire before auth).
-  TextColumn get userId => text().nullable()();
-
-  /// Event category: event, log, js, ui.
-  TextColumn get category => text()();
-
-  /// Event name (e.g. 'cell_visited', 'session_started').
-  TextColumn get event => text()();
-
-  /// JSON-encoded event payload.
-  TextColumn get dataJson => text().withDefault(const Constant('{}'))();
-
-  /// When the event occurred (UTC).
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
+// LocalAppEventsTable removed — observability unified into app_logs (Supabase).
+// All structured events now flow through debugPrint → LogFlushService → app_logs.
 
 // ============================================================================
 // WRITE SERIALIZER
@@ -399,7 +376,6 @@ const kExpectedTableNames = [
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
   LocalLocationNodeTable,
-  LocalAppEventsTable,
 ])
 class AppDatabase extends _$AppDatabase {
   /// Optional loader for species data JSON. Null in tests (manual seeding).
@@ -411,7 +387,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration {
@@ -541,7 +517,19 @@ class AppDatabase extends _$AppDatabase {
                   localLocationNodeTable, localLocationNodeTable.geometryJson);
             }
             if (from < 14) {
-              await m.createTable(localAppEventsTable);
+              // localAppEventsTable was here — dropped in v21.
+              // Create it only if upgrading from <14, so v21 drop succeeds.
+              await customStatement('''
+                CREATE TABLE IF NOT EXISTS local_app_events_table (
+                  id TEXT NOT NULL PRIMARY KEY,
+                  session_id TEXT NOT NULL,
+                  user_id TEXT,
+                  category TEXT NOT NULL,
+                  event TEXT NOT NULL,
+                  data_json TEXT NOT NULL DEFAULT '{}',
+                  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+                )
+              ''');
             }
             if (from < 15) {
               final hasEnrich15 = (await customSelect(
@@ -664,6 +652,12 @@ class AppDatabase extends _$AppDatabase {
           ]) {
             await addIfMissing(speciesTable, col, 'TEXT');
           }
+        }
+        if (from < 21) {
+          // v21: Drop LocalAppEventsTable — observability unified into
+          // app_logs (Supabase). Structured events now flow through
+          // debugPrint → LogFlushService → app_logs.
+          await customStatement('DROP TABLE IF EXISTS local_app_events_table');
         }
       },
       beforeOpen: (details) async {
@@ -1043,48 +1037,5 @@ class AppDatabase extends _$AppDatabase {
     return select(localLocationNodeTable).get();
   }
 
-  // =========================================================================
-  // App Events (observability)
-  // =========================================================================
-
-  /// Insert a batch of events. Used by ObservabilityBuffer for local persistence.
-  Future<void> insertAppEvents(
-      List<LocalAppEventsTableCompanion> events) async {
-    await _writer.run(() async {
-      await batch((b) {
-        b.insertAll(localAppEventsTable, events);
-      });
-    });
-  }
-
-  /// Read events for a session (for offline debugging/reconstruction).
-  Future<List<LocalAppEvent>> getEventsBySession(String sessionId) async {
-    return (select(localAppEventsTable)
-          ..where((e) => e.sessionId.equals(sessionId))
-          ..orderBy([(e) => OrderingTerm.asc(e.createdAt)]))
-        .get();
-  }
-
-  /// Count total local events.
-  Future<int> countAppEvents() async {
-    final count = countAll();
-    final query = selectOnly(localAppEventsTable)..addColumns([count]);
-    final result = await query.getSingle();
-    return result.read(count)!;
-  }
-
-  /// Delete oldest events when count exceeds cap.
-  Future<void> trimAppEvents({int maxRows = 10000}) async {
-    await _writer.run(() async {
-      final total = await countAppEvents();
-      if (total <= maxRows) return;
-      final excess = total - maxRows;
-      // Delete oldest N rows
-      await customStatement(
-        'DELETE FROM local_app_events_table WHERE id IN '
-        '(SELECT id FROM local_app_events_table ORDER BY created_at ASC LIMIT ?)',
-        [excess],
-      );
-    });
-  }
+  // App Events table removed in v21 — observability unified into app_logs.
 }

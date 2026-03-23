@@ -76,7 +76,7 @@ class GameEngine {
         case CellTapped():
           break; // future: cell interaction
         case AppBackgrounded():
-          _obs?.flush();
+          break; // flush handled by LogFlushService
         case AppResumed():
           break; // future: refresh seed
       }
@@ -103,7 +103,6 @@ class GameEngine {
   /// Permanently releases all resources.
   void dispose() {
     _coordinator.dispose();
-    _obs?.flush();
     _controller.close();
   }
 

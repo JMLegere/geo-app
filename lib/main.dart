@@ -131,13 +131,11 @@ Future<void> main() async {
     LogFlushService.instance?.addLines(lines);
   });
 
-  // Flush both buffers on crash/auth events for immediate delivery.
+  // Flush log buffer on crash/auth events for immediate delivery.
   DebugLogBuffer.instance.onCrash = () {
-    ObservabilityBuffer.instance?.flush();
     LogFlushService.instance?.flush();
   };
   DebugLogBuffer.instance.onAuthEvent = () {
-    ObservabilityBuffer.instance?.flush();
     LogFlushService.instance?.flush();
   };
 
@@ -162,13 +160,11 @@ Future<void> main() async {
       DebugLogBuffer.instance.add('[CRASH-STACK]\n$frames');
       debugPrint('[CRASH] Unhandled zone error: $error\n$stack');
 
-      // Emit structured crash event + emergency flush so the last events
-      // before the blank screen are captured in app_events.
+      // Emit structured crash event — flows via debugPrint → DebugLogBuffer → app_logs.
       ObservabilityBuffer.instance?.event('crash', {
         'error': error.toString(),
         'stack_trace': frames,
       });
-      ObservabilityBuffer.instance?.flush();
     },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
@@ -348,7 +344,6 @@ class _ObservabilityLifecycleObserverState
       ObservabilityBuffer.instance?.event('session_ended', {
         'reason': 'background',
       });
-      ObservabilityBuffer.instance?.flush();
       LogFlushService.instance?.flush();
     }
   }

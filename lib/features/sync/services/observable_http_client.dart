@@ -21,7 +21,7 @@ class ObservableHttpClient extends BaseClient {
 
   /// Paths that should NOT be logged to avoid circular logging
   /// (the observability buffer itself writes to app_events).
-  static const _skipPaths = {'/rest/v1/app_events', '/rest/v1/app_logs'};
+  static const _skipPaths = {'/rest/v1/app_logs'};
 
   @override
   Future<StreamedResponse> send(BaseRequest request) async {

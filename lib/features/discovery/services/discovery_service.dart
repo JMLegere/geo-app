@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:earth_nova/features/world/services/event_resolver.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
@@ -176,6 +176,8 @@ class DiscoveryService {
   // ---------------------------------------------------------------------------
 
   void _onFogStateChanged(FogStateChangedEvent event) {
+    debugPrint(
+        '[DISCOVERY] fog_event cell=${event.cellId} state=${event.newState.name}');
     // Only react to a player entering a new cell for the first time.
     if (event.newState != FogState.observed) return;
 
@@ -183,6 +185,7 @@ class DiscoveryService {
     // from the server (offline fallback seeds never expire).
     final seedService = _dailySeedService;
     if (seedService != null && seedService.isDiscoveryPaused) {
+      debugPrint('[SEED] discovery_paused stale_seed');
       return; // Seed >24h stale — skip discoveries until refreshed.
     }
 
@@ -276,25 +279,27 @@ class DiscoveryService {
     }
 
     rollSw.stop();
-    if (rollSw.elapsedMilliseconds > 5) {
-      ObservabilityBuffer.instance?.event('species_roll', {
-        'duration_ms': rollSw.elapsedMilliseconds,
-        'result_count': species.length,
-        'cell_id': event.cellId,
-      });
-    }
+    debugPrint(
+        '[DISCOVERY] species_rolled cell=${event.cellId} count=${species.length} habitats=${habitats.map((h) => h.name).join(",")} continent=${continent.name} event=${eventType?.name ?? "none"} duration=${rollSw.elapsedMilliseconds}ms');
 
     // Filter by current season when a SeasonService is wired in.
     // Capture in a local variable to enable null promotion (field promotion
     // is not available in Dart <3.2, and is unsafe for mutable fields).
     final seasonService = _seasonService;
     if (seasonService != null) {
+      final beforeCount = species.length;
       final currentSeason = seasonService.getCurrentSeason();
       species = seasonService.filterBySeason(species, currentSeason);
+      if (species.length != beforeCount) {
+        debugPrint(
+            '[DISCOVERY] season_filtered before=$beforeCount after=${species.length} season=${currentSeason.name}');
+      }
     }
 
     for (final s in species) {
       final isNew = !_collectedSpeciesIds.contains(s.id);
+      debugPrint(
+          '[DISCOVERY] emitted cell=${event.cellId} species=${s.id} is_new=$isNew');
       _discoveryController.add(
         DiscoveryEvent(
           item: s,
