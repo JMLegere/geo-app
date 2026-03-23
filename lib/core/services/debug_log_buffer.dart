@@ -77,12 +77,12 @@ class DebugLogBuffer {
   final _pending = <String>[];
   final _listeners = <VoidCallback>[];
 
-  /// Called when a [CRASH] line is added. Wired by [LogFlushService] to
-  /// trigger an immediate flush before the process dies.
+  /// Called when a [CRASH] line is added. Wired in main.dart to trigger
+  /// immediate flush of both ObservabilityBuffer and LogFlushService.
   VoidCallback? onCrash;
 
-  /// Called when an [AUTH] line is added. Wired by [LogFlushService] to
-  /// capture sign-in attempts/failures before the 30s timer.
+  /// Called when an [AUTH] or [NAV] line is added. Wired in main.dart to
+  /// trigger immediate flush of both ObservabilityBuffer and LogFlushService.
   VoidCallback? onAuthEvent;
 
   /// All buffered lines (oldest first).

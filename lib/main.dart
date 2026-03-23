@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
+import 'package:earth_nova/core/services/log_flush_service.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/features/sync/services/observable_http_client.dart';
@@ -120,20 +121,24 @@ Future<void> main() async {
     return _GlobalErrorFallback(details: details);
   };
 
-  // 6. Drain DebugLogBuffer pending lines periodically so the ring buffer
-  //    doesn't grow unbounded.  We intentionally do NOT mirror these to
-  //    ObservabilityBuffer — debugPrint output is high-volume text noise
-  //    that drowns structured events in the app_events table.
+  // 6. Drain DebugLogBuffer pending lines periodically and feed them to
+  //    LogFlushService for debounced shipping to the app_logs table.
+  //    These are NOT mirrored to ObservabilityBuffer — debugPrint output
+  //    is high-volume text noise that drowns structured events in
+  //    app_events.  app_logs stores raw text; app_events stores typed JSON.
   Timer.periodic(const Duration(seconds: 1), (_) {
-    DebugLogBuffer.instance.drainPending();
+    final lines = DebugLogBuffer.instance.drainPending();
+    LogFlushService.instance?.addLines(lines);
   });
 
-  // Flush ObservabilityBuffer on crash/auth events for immediate delivery.
+  // Flush both buffers on crash/auth events for immediate delivery.
   DebugLogBuffer.instance.onCrash = () {
     ObservabilityBuffer.instance?.flush();
+    LogFlushService.instance?.flush();
   };
   DebugLogBuffer.instance.onAuthEvent = () {
     ObservabilityBuffer.instance?.flush();
+    LogFlushService.instance?.flush();
   };
 
   // Run inside a Zone that intercepts all print() output (which includes
@@ -344,6 +349,7 @@ class _ObservabilityLifecycleObserverState
         'reason': 'background',
       });
       ObservabilityBuffer.instance?.flush();
+      LogFlushService.instance?.flush();
     }
   }
 

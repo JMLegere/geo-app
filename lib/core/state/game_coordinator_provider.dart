@@ -8,6 +8,7 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/database/connection.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
+import 'package:earth_nova/core/services/log_flush_service.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
@@ -101,6 +102,22 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   obs.setDatabase(ref.read(appDatabaseProvider));
   obs.start();
   ObservabilityBuffer.instance = obs;
+
+  // Debug log flush — ships DebugLogBuffer text to app_logs table.
+  // Debounced: 5s after first line, no fixed timer when idle.
+  if (supabaseClient != null) {
+    final logFlush = LogFlushService(
+      flusher: (row) => supabaseClient.from('app_logs').insert(row),
+    );
+    logFlush.sessionId = obs.sessionId;
+    logFlush.deviceId = obs.deviceId;
+    LogFlushService.instance = logFlush;
+    ref.onDispose(() {
+      logFlush.flush(); // best-effort drain before teardown
+      logFlush.dispose();
+      LogFlushService.instance = null;
+    });
+  }
 
   // ── Startup diagnostics ──────────────────────────────────────────────────
   // Log comprehensive device/app/session info on every cold start.
@@ -820,6 +837,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     if (authState.status == AuthStatus.authenticated && userId != null) {
       StartupBeacon.emit('auth_settled', {'status': 'authenticated'});
       obs.event('auth_restored', {'user_id': userId});
+      LogFlushService.instance?.userId = userId;
+      LogFlushService.instance?.phoneNumber = authState.user?.phoneNumber;
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
 
