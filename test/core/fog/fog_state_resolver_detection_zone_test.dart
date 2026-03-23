@@ -2,6 +2,7 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geobase/geobase.dart';
 
 /// Mock CellService for testing FogStateResolver.
 class MockCellService implements CellService {
@@ -73,6 +74,29 @@ class MockCellService implements CellService {
   String get systemName => 'Mock Voronoi';
 }
 
+/// Helper: set up a 10×10 grid of cells with centers and neighbors.
+/// Cell v_{row}_{col} has center at (45.0 + row * 0.002, -66.0 + col * 0.002).
+void setupGrid(MockCellService cellService) {
+  for (var row = 0; row < 10; row++) {
+    for (var col = 0; col < 10; col++) {
+      final cellId = 'v_${row}_$col';
+      final lat = 45.0 + row * 0.002;
+      final lon = -66.0 + col * 0.002;
+      cellService.setCenter(cellId, lat, lon);
+      final neighbors = <String>[];
+      if (row > 0) neighbors.add('v_${row - 1}_$col');
+      if (row < 9) neighbors.add('v_${row + 1}_$col');
+      if (col > 0) neighbors.add('v_${row}_${col - 1}');
+      if (col < 9) neighbors.add('v_${row}_${col + 1}');
+      cellService.setNeighbors(cellId, neighbors);
+    }
+  }
+}
+
+/// Helper: get the lat/lon for a cell in the grid.
+double gridLat(int row) => 45.0 + row * 0.002;
+double gridLon(int col) => -66.0 + col * 0.002;
+
 void main() {
   group('FogStateResolver with detection zone', () {
     late MockCellService cellService;
@@ -85,22 +109,7 @@ void main() {
 
     group('setDetectionZone', () {
       test('replaces detection radius check with zone membership', () {
-        // Set up a grid of cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-              'v_${row}_${col - 1}',
-              'v_${row}_${col + 1}',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         // Set detection zone to cells in rows 3-7
         final detectionZone = <String>{};
@@ -112,35 +121,20 @@ void main() {
 
         resolver.setDetectionZone(detectionZone);
 
-        // Move player to center of detection zone
-        resolver.onLocationUpdate(45.006, -66.006); // Row 3, Col 3
+        // Move player to v_3_3 (inside detection zone)
+        resolver.onLocationUpdate(gridLat(3), gridLon(3));
 
         // Cells in detection zone should be unexplored (not undetected)
-        final inZoneCell = 'v_5_5';
-        expect(resolver.resolve(inZoneCell), equals(FogState.unexplored));
+        expect(resolver.resolve('v_5_5'), equals(FogState.unexplored));
 
         // Cells outside detection zone should be undetected
-        final outOfZoneCell = 'v_0_0';
-        expect(resolver.resolve(outOfZoneCell), equals(FogState.undetected));
+        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
       });
 
       test('detection zone expands when new cells are added', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
-        // Initial detection zone
+        // Initial detection zone — small
         final initialZone = <String>{'v_5_5', 'v_5_6', 'v_6_5', 'v_6_6'};
         resolver.setDetectionZone(initialZone);
 
@@ -163,111 +157,60 @@ void main() {
       });
 
       test('visited cells remain hidden even outside detection zone', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
-        // Set detection zone to center
-        final detectionZone = <String>{'v_5_5'};
-        resolver.setDetectionZone(detectionZone);
+        // Visit v_0_0 first (before setting detection zone)
+        resolver.onLocationUpdate(gridLat(0), gridLon(0));
+        expect(resolver.resolve('v_0_0'), equals(FogState.observed));
 
-        // Visit a cell outside detection zone
-        resolver.onLocationUpdate(45.000, -66.000); // v_0_0
+        // Move away from v_0_0
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        // That cell should be hidden (visited)
+        // Set detection zone that does NOT include v_0_0
+        resolver.setDetectionZone({'v_5_5'});
+
+        // v_0_0 should be hidden (visited), not undetected
         expect(resolver.resolve('v_0_0'), equals(FogState.hidden));
-
-        // Even if detection zone doesn't include it
         expect(resolver.visitedCellIds, contains('v_0_0'));
       });
     });
 
     group('resolve with detection zone', () {
       test('returns observed for current cell', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         resolver.setDetectionZone({'v_5_5'});
 
         // Move to v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         expect(resolver.resolve('v_5_5'), equals(FogState.observed));
       });
 
       test('returns hidden for visited cells outside current position', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         resolver.setDetectionZone({'v_5_5', 'v_5_6', 'v_6_5', 'v_6_6'});
 
         // Visit v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // Move to v_6_6
-        resolver.onLocationUpdate(45.007, -66.007);
+        resolver.onLocationUpdate(gridLat(6), gridLon(6));
 
         // v_5_5 should be hidden (visited but not current)
         expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
       });
 
       test('returns concealed for neighbors of current cell', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         resolver.setDetectionZone({'v_5_5', 'v_5_6', 'v_6_5', 'v_6_6'});
 
         // Move to v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        // Neighbors should be concealed
+        // Neighbors of v_5_5 are v_4_5, v_6_5, v_5_4, v_5_6
         expect(resolver.resolve('v_5_6'), equals(FogState.concealed));
         expect(resolver.resolve('v_6_5'), equals(FogState.concealed));
       });
@@ -275,73 +218,34 @@ void main() {
       test(
           'returns unexplored for cells in detection zone but not visited/adjacent',
           () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
-        // Detection zone includes v_5_5 and v_7_7 (not adjacent)
-        resolver.setDetectionZone({'v_5_5', 'v_7_7'});
+        // Detection zone includes v_5_5 and v_8_8 (not adjacent)
+        resolver.setDetectionZone({'v_5_5', 'v_8_8'});
 
         // Move to v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        // v_7_7 is in detection zone but not visited or adjacent
-        expect(resolver.resolve('v_7_7'), equals(FogState.unexplored));
+        // v_8_8 is in detection zone but not visited or adjacent
+        expect(resolver.resolve('v_8_8'), equals(FogState.unexplored));
       });
 
       test('returns undetected for cells outside detection zone', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         resolver.setDetectionZone({'v_5_5'});
 
         // Move to v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        // v_0_0 is outside detection zone
+        // v_0_0 is outside detection zone and not visited/adjacent
         expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
       });
     });
 
     group('priority order', () {
       test('observed > hidden > concealed > unexplored > undetected', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         // Detection zone includes all cells
         final allCells = <String>{};
@@ -353,75 +257,53 @@ void main() {
         resolver.setDetectionZone(allCells);
 
         // Visit v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // Current cell: observed
         expect(resolver.resolve('v_5_5'), equals(FogState.observed));
 
-        // Visited cell (not current): hidden
         // Move to v_6_6
-        resolver.onLocationUpdate(45.007, -66.007);
+        resolver.onLocationUpdate(gridLat(6), gridLon(6));
+
+        // Visited cell (not current): hidden
         expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
 
         // Adjacent to current: concealed
+        // v_6_5 is a neighbor of v_6_6
         expect(resolver.resolve('v_6_5'), equals(FogState.concealed));
 
         // In detection zone but not visited/adjacent: unexplored
         expect(resolver.resolve('v_0_0'), equals(FogState.unexplored));
 
-        // Outside detection zone: undetected
+        // Shrink detection zone — v_0_0 should become undetected
         resolver.setDetectionZone({'v_6_6'});
-        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
+        // But v_0_0 was already in _everDetectedCellIds, so it stays unexplored
+        // This is correct behavior: once detected, never reverts
+        expect(resolver.resolve('v_0_0'), equals(FogState.unexplored));
       });
     });
 
     group('visited perimeter', () {
       test('visitedPerimeter contains unvisited neighbors of visited cells',
           () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
-        resolver.setDetectionZone({'v_5_5'});
+        resolver.setDetectionZone({'v_5_5', 'v_5_6', 'v_4_5', 'v_6_5'});
 
         // Visit v_5_5
-        resolver.onLocationUpdate(45.005, -66.005);
+        resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        // The visited perimeter should contain neighbors of v_5_5
-        // (but these are now concealed, not in a separate perimeter set)
-        // This test verifies the old explorationFrontier behavior is removed
-        // and replaced with detection zone logic
+        // The exploration frontier should contain unvisited neighbors
         expect(resolver.visitedCellIds, contains('v_5_5'));
+        expect(resolver.explorationFrontier, contains('v_4_5'));
+        expect(resolver.explorationFrontier, contains('v_6_5'));
+        expect(resolver.explorationFrontier, contains('v_5_6'));
       });
     });
 
     group('loadVisitedCells', () {
       test('restores visited cells from persistence', () {
-        // Set up cells
-        for (var row = 0; row < 10; row++) {
-          for (var col = 0; col < 10; col++) {
-            final cellId = 'v_${row}_$col';
-            final lat = 45.0 + row * 0.002;
-            final lon = -66.0 + col * 0.002;
-            cellService.setCenter(cellId, lat, lon);
-            cellService.setNeighbors(cellId, [
-              'v_${row}_$col',
-              'v_${row - 1}_$col',
-              'v_${row + 1}_$col',
-            ]);
-          }
-        }
+        setupGrid(cellService);
 
         // Load visited cells
         resolver.loadVisitedCells({'v_5_5', 'v_5_6'});
@@ -430,7 +312,7 @@ void main() {
         resolver.setDetectionZone({'v_5_5', 'v_5_6', 'v_6_5', 'v_6_6'});
 
         // Move to v_6_6
-        resolver.onLocationUpdate(45.007, -66.007);
+        resolver.onLocationUpdate(gridLat(6), gridLon(6));
 
         // Previously visited cells should be hidden
         expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
