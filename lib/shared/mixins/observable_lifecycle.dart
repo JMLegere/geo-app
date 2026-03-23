@@ -9,12 +9,16 @@ mixin ObservableLifecycle<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    ObservabilityBuffer.instance?.ui('mount:$observabilityName');
+    ObservabilityBuffer.instance?.event('ui_mount', {
+      'widget': observabilityName,
+    });
   }
 
   @override
   void dispose() {
-    ObservabilityBuffer.instance?.ui('dispose:$observabilityName');
+    ObservabilityBuffer.instance?.event('ui_dispose', {
+      'widget': observabilityName,
+    });
     super.dispose();
   }
 }

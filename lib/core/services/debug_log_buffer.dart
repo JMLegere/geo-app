@@ -114,7 +114,11 @@ class DebugLogBuffer {
         line.contains('[PERF]') ||
         line.contains('[RECOVERY]') ||
         line.contains('[Startup]') ||
-        line.contains('[GameCoordinator]');
+        line.contains('[GameCoordinator]') ||
+        line.contains('[DISCOVERY]') ||
+        line.contains('[FOG]') ||
+        line.contains('[SEED]') ||
+        line.contains('[EVENT]');
 
     // Filter by level — drop lines below minLevel.
     if (!alwaysPass) {

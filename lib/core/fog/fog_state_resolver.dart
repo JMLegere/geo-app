@@ -5,6 +5,7 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:flutter/foundation.dart';
 
 /// Computes fog-of-war visibility from player position and visit history.
 ///
@@ -262,6 +263,8 @@ class FogStateResolver {
       }
     }
 
+    debugPrint(
+        '[FOG] cell_visited cell=$cellId old=${oldState.name} new=${newState.name} frontier=${_explorationFrontier.length}');
     _streamController.add(
       FogStateChangedEvent(
         cellId: cellId,

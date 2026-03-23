@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/species/species_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
@@ -91,7 +92,12 @@ class DiscoveryNotifier extends Notifier<DiscoveryState> {
         .take(_kMaxRecentDiscoveries)
         .toList();
     var updatedQueue = [...state.notificationQueue, event];
+    debugPrint(
+        '[DISCOVERY] toast_queued species=${event.item.id} queue_length=${updatedQueue.length}');
     if (updatedQueue.length > kMaxNotificationQueue) {
+      final dropped = updatedQueue.length - kMaxNotificationQueue;
+      debugPrint(
+          '[DISCOVERY] toast_overflow dropped=$dropped queue_cap=$kMaxNotificationQueue');
       updatedQueue = updatedQueue.sublist(
         updatedQueue.length - kMaxNotificationQueue,
       );

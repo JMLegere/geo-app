@@ -89,18 +89,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
 
-  // Structured event telemetry — always created so events are captured in dev
-  // mode too.  When Supabase is configured the flusher writes to app_events;
-  // otherwise a no-op flusher keeps the 30 s timer harmless and events still
-  // persist to local SQLite via _persistLocally().
+  // Structured event telemetry — thin debugPrint wrapper.
+  // Events flow through DebugLogBuffer → LogFlushService → app_logs.
   final supabaseClient = ref.read(supabaseClientProvider);
-  final obs = ObservabilityBuffer(
-    flusher: supabaseClient != null
-        ? (rows) => supabaseClient.from('app_events').insert(rows)
-        : (_) async {},
-  );
-  obs.setDatabase(ref.read(appDatabaseProvider));
-  obs.start();
+  final obs = ObservabilityBuffer();
   ObservabilityBuffer.instance = obs;
 
   // Debug log flush — ships DebugLogBuffer text to app_logs table.
@@ -194,10 +186,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     }
   }();
 
-  // Trim old local events (10K cap)
-  ref.read(appDatabaseProvider).trimAppEvents().catchError((Object e) {
-    debugPrint('[Observability] trim failed: $e');
-  });
+  // LocalAppEventsTable removed — trimAppEvents no longer needed.
 
   // Guard flag: set to true in ref.onDispose to prevent callbacks and
   // startLoop() from calling ref.read() on a dead provider reference.
@@ -359,7 +348,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final engineOnDiscovery = coordinator.onItemDiscovered;
   coordinator.onItemDiscovered = (event, instance) {
     engineOnDiscovery?.call(event, instance);
-    if (_providerDisposed) return;
+    debugPrint(
+        '[DISCOVERY] provider_received instance=${instance.id} definition=${instance.definitionId}');
+    if (_providerDisposed) {
+      debugPrint(
+          '[DISCOVERY] provider_disposed_dropped instance=${instance.id}');
+      return;
+    }
     // First-discovery badge (★):
     // - When Supabase IS configured: server-validated after write queue
     //   flushes and validate-encounter confirms first global discovery.
@@ -955,8 +950,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   ref.onDispose(() {
     _providerDisposed = true;
-    obs.stop(); // Cancel periodic flush timer.
-    engine.dispose(); // coordinator.dispose() + obs.flush() + stream close.
+    engine.dispose(); // coordinator.dispose() + stream close.
     queueProcessor.dispose();
     locationService.stop();
   });
