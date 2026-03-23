@@ -6093,6 +6093,18 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
   late final GeneratedColumn<String> geometryJson = GeneratedColumn<String>(
       'geometry_json', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _adjacentLocationIdsMeta =
+      const VerificationMeta('adjacentLocationIds');
+  @override
+  late final GeneratedColumn<String> adjacentLocationIds =
+      GeneratedColumn<String>('adjacent_location_ids', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellIdsMeta =
+      const VerificationMeta('cellIds');
+  @override
+  late final GeneratedColumn<String> cellIds = GeneratedColumn<String>(
+      'cell_ids', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -6110,6 +6122,8 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
         parentId,
         colorHex,
         geometryJson,
+        adjacentLocationIds,
+        cellIds,
         createdAt
       ];
   @override
@@ -6159,6 +6173,16 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
           geometryJson.isAcceptableOrUnknown(
               data['geometry_json']!, _geometryJsonMeta));
     }
+    if (data.containsKey('adjacent_location_ids')) {
+      context.handle(
+          _adjacentLocationIdsMeta,
+          adjacentLocationIds.isAcceptableOrUnknown(
+              data['adjacent_location_ids']!, _adjacentLocationIdsMeta));
+    }
+    if (data.containsKey('cell_ids')) {
+      context.handle(_cellIdsMeta,
+          cellIds.isAcceptableOrUnknown(data['cell_ids']!, _cellIdsMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -6186,6 +6210,10 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
           .read(DriftSqlType.string, data['${effectivePrefix}color_hex']),
       geometryJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}geometry_json']),
+      adjacentLocationIds: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}adjacent_location_ids']),
+      cellIds: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}cell_ids']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -6206,6 +6234,8 @@ class LocalLocationNode extends DataClass
   final String? parentId;
   final String? colorHex;
   final String? geometryJson;
+  final String? adjacentLocationIds;
+  final String? cellIds;
   final DateTime createdAt;
   const LocalLocationNode(
       {required this.id,
@@ -6215,6 +6245,8 @@ class LocalLocationNode extends DataClass
       this.parentId,
       this.colorHex,
       this.geometryJson,
+      this.adjacentLocationIds,
+      this.cellIds,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6233,6 +6265,12 @@ class LocalLocationNode extends DataClass
     }
     if (!nullToAbsent || geometryJson != null) {
       map['geometry_json'] = Variable<String>(geometryJson);
+    }
+    if (!nullToAbsent || adjacentLocationIds != null) {
+      map['adjacent_location_ids'] = Variable<String>(adjacentLocationIds);
+    }
+    if (!nullToAbsent || cellIds != null) {
+      map['cell_ids'] = Variable<String>(cellIds);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -6254,6 +6292,12 @@ class LocalLocationNode extends DataClass
       geometryJson: geometryJson == null && nullToAbsent
           ? const Value.absent()
           : Value(geometryJson),
+      adjacentLocationIds: adjacentLocationIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(adjacentLocationIds),
+      cellIds: cellIds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellIds),
       createdAt: Value(createdAt),
     );
   }
@@ -6269,6 +6313,9 @@ class LocalLocationNode extends DataClass
       parentId: serializer.fromJson<String?>(json['parentId']),
       colorHex: serializer.fromJson<String?>(json['colorHex']),
       geometryJson: serializer.fromJson<String?>(json['geometryJson']),
+      adjacentLocationIds:
+          serializer.fromJson<String?>(json['adjacentLocationIds']),
+      cellIds: serializer.fromJson<String?>(json['cellIds']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -6283,6 +6330,8 @@ class LocalLocationNode extends DataClass
       'parentId': serializer.toJson<String?>(parentId),
       'colorHex': serializer.toJson<String?>(colorHex),
       'geometryJson': serializer.toJson<String?>(geometryJson),
+      'adjacentLocationIds': serializer.toJson<String?>(adjacentLocationIds),
+      'cellIds': serializer.toJson<String?>(cellIds),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -6295,6 +6344,8 @@ class LocalLocationNode extends DataClass
           Value<String?> parentId = const Value.absent(),
           Value<String?> colorHex = const Value.absent(),
           Value<String?> geometryJson = const Value.absent(),
+          Value<String?> adjacentLocationIds = const Value.absent(),
+          Value<String?> cellIds = const Value.absent(),
           DateTime? createdAt}) =>
       LocalLocationNode(
         id: id ?? this.id,
@@ -6305,6 +6356,10 @@ class LocalLocationNode extends DataClass
         colorHex: colorHex.present ? colorHex.value : this.colorHex,
         geometryJson:
             geometryJson.present ? geometryJson.value : this.geometryJson,
+        adjacentLocationIds: adjacentLocationIds.present
+            ? adjacentLocationIds.value
+            : this.adjacentLocationIds,
+        cellIds: cellIds.present ? cellIds.value : this.cellIds,
         createdAt: createdAt ?? this.createdAt,
       );
   LocalLocationNode copyWithCompanion(LocalLocationNodeTableCompanion data) {
@@ -6319,6 +6374,10 @@ class LocalLocationNode extends DataClass
       geometryJson: data.geometryJson.present
           ? data.geometryJson.value
           : this.geometryJson,
+      adjacentLocationIds: data.adjacentLocationIds.present
+          ? data.adjacentLocationIds.value
+          : this.adjacentLocationIds,
+      cellIds: data.cellIds.present ? data.cellIds.value : this.cellIds,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -6333,14 +6392,16 @@ class LocalLocationNode extends DataClass
           ..write('parentId: $parentId, ')
           ..write('colorHex: $colorHex, ')
           ..write('geometryJson: $geometryJson, ')
+          ..write('adjacentLocationIds: $adjacentLocationIds, ')
+          ..write('cellIds: $cellIds, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, osmId, name, adminLevel, parentId, colorHex, geometryJson, createdAt);
+  int get hashCode => Object.hash(id, osmId, name, adminLevel, parentId,
+      colorHex, geometryJson, adjacentLocationIds, cellIds, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6352,6 +6413,8 @@ class LocalLocationNode extends DataClass
           other.parentId == this.parentId &&
           other.colorHex == this.colorHex &&
           other.geometryJson == this.geometryJson &&
+          other.adjacentLocationIds == this.adjacentLocationIds &&
+          other.cellIds == this.cellIds &&
           other.createdAt == this.createdAt);
 }
 
@@ -6364,6 +6427,8 @@ class LocalLocationNodeTableCompanion
   final Value<String?> parentId;
   final Value<String?> colorHex;
   final Value<String?> geometryJson;
+  final Value<String?> adjacentLocationIds;
+  final Value<String?> cellIds;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const LocalLocationNodeTableCompanion({
@@ -6374,6 +6439,8 @@ class LocalLocationNodeTableCompanion
     this.parentId = const Value.absent(),
     this.colorHex = const Value.absent(),
     this.geometryJson = const Value.absent(),
+    this.adjacentLocationIds = const Value.absent(),
+    this.cellIds = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6385,6 +6452,8 @@ class LocalLocationNodeTableCompanion
     this.parentId = const Value.absent(),
     this.colorHex = const Value.absent(),
     this.geometryJson = const Value.absent(),
+    this.adjacentLocationIds = const Value.absent(),
+    this.cellIds = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -6398,6 +6467,8 @@ class LocalLocationNodeTableCompanion
     Expression<String>? parentId,
     Expression<String>? colorHex,
     Expression<String>? geometryJson,
+    Expression<String>? adjacentLocationIds,
+    Expression<String>? cellIds,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -6409,6 +6480,9 @@ class LocalLocationNodeTableCompanion
       if (parentId != null) 'parent_id': parentId,
       if (colorHex != null) 'color_hex': colorHex,
       if (geometryJson != null) 'geometry_json': geometryJson,
+      if (adjacentLocationIds != null)
+        'adjacent_location_ids': adjacentLocationIds,
+      if (cellIds != null) 'cell_ids': cellIds,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6422,6 +6496,8 @@ class LocalLocationNodeTableCompanion
       Value<String?>? parentId,
       Value<String?>? colorHex,
       Value<String?>? geometryJson,
+      Value<String?>? adjacentLocationIds,
+      Value<String?>? cellIds,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return LocalLocationNodeTableCompanion(
@@ -6432,6 +6508,8 @@ class LocalLocationNodeTableCompanion
       parentId: parentId ?? this.parentId,
       colorHex: colorHex ?? this.colorHex,
       geometryJson: geometryJson ?? this.geometryJson,
+      adjacentLocationIds: adjacentLocationIds ?? this.adjacentLocationIds,
+      cellIds: cellIds ?? this.cellIds,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -6461,6 +6539,13 @@ class LocalLocationNodeTableCompanion
     if (geometryJson.present) {
       map['geometry_json'] = Variable<String>(geometryJson.value);
     }
+    if (adjacentLocationIds.present) {
+      map['adjacent_location_ids'] =
+          Variable<String>(adjacentLocationIds.value);
+    }
+    if (cellIds.present) {
+      map['cell_ids'] = Variable<String>(cellIds.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -6480,6 +6565,8 @@ class LocalLocationNodeTableCompanion
           ..write('parentId: $parentId, ')
           ..write('colorHex: $colorHex, ')
           ..write('geometryJson: $geometryJson, ')
+          ..write('adjacentLocationIds: $adjacentLocationIds, ')
+          ..write('cellIds: $cellIds, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -9084,6 +9171,8 @@ typedef $$LocalLocationNodeTableTableCreateCompanionBuilder
   Value<String?> parentId,
   Value<String?> colorHex,
   Value<String?> geometryJson,
+  Value<String?> adjacentLocationIds,
+  Value<String?> cellIds,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -9096,6 +9185,8 @@ typedef $$LocalLocationNodeTableTableUpdateCompanionBuilder
   Value<String?> parentId,
   Value<String?> colorHex,
   Value<String?> geometryJson,
+  Value<String?> adjacentLocationIds,
+  Value<String?> cellIds,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -9129,6 +9220,13 @@ class $$LocalLocationNodeTableTableFilterComposer
 
   ColumnFilters<String> get geometryJson => $composableBuilder(
       column: $table.geometryJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get adjacentLocationIds => $composableBuilder(
+      column: $table.adjacentLocationIds,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cellIds => $composableBuilder(
+      column: $table.cellIds, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -9165,6 +9263,13 @@ class $$LocalLocationNodeTableTableOrderingComposer
       column: $table.geometryJson,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get adjacentLocationIds => $composableBuilder(
+      column: $table.adjacentLocationIds,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cellIds => $composableBuilder(
+      column: $table.cellIds, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -9198,6 +9303,12 @@ class $$LocalLocationNodeTableTableAnnotationComposer
 
   GeneratedColumn<String> get geometryJson => $composableBuilder(
       column: $table.geometryJson, builder: (column) => column);
+
+  GeneratedColumn<String> get adjacentLocationIds => $composableBuilder(
+      column: $table.adjacentLocationIds, builder: (column) => column);
+
+  GeneratedColumn<String> get cellIds =>
+      $composableBuilder(column: $table.cellIds, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9241,6 +9352,8 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             Value<String?> colorHex = const Value.absent(),
             Value<String?> geometryJson = const Value.absent(),
+            Value<String?> adjacentLocationIds = const Value.absent(),
+            Value<String?> cellIds = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -9252,6 +9365,8 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             parentId: parentId,
             colorHex: colorHex,
             geometryJson: geometryJson,
+            adjacentLocationIds: adjacentLocationIds,
+            cellIds: cellIds,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -9263,6 +9378,8 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             Value<String?> colorHex = const Value.absent(),
             Value<String?> geometryJson = const Value.absent(),
+            Value<String?> adjacentLocationIds = const Value.absent(),
+            Value<String?> cellIds = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -9274,6 +9391,8 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
             parentId: parentId,
             colorHex: colorHex,
             geometryJson: geometryJson,
+            adjacentLocationIds: adjacentLocationIds,
+            cellIds: cellIds,
             createdAt: createdAt,
             rowid: rowid,
           ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 
@@ -74,6 +76,14 @@ class LocationNode {
   /// Null if geometry has not been fetched from Nominatim
   final String? geometryJson;
 
+  /// IDs of adjacent location nodes at the same admin level.
+  /// Populated by server-side enrichment. Used for detection zone expansion.
+  final List<String>? adjacentLocationIds;
+
+  /// Pre-computed cell IDs within this location's boundary.
+  /// Populated client-side after flood-fill from geometryJson.
+  final List<String>? cellIds;
+
   const LocationNode({
     required this.id,
     required this.osmId,
@@ -82,6 +92,8 @@ class LocationNode {
     required this.parentId,
     required this.colorHex,
     required this.geometryJson,
+    this.adjacentLocationIds,
+    this.cellIds,
   });
 
   LocationNode copyWith({
@@ -92,6 +104,8 @@ class LocationNode {
     String? parentId,
     String? colorHex,
     String? Function()? geometryJson,
+    List<String>? adjacentLocationIds,
+    List<String>? cellIds,
   }) {
     return LocationNode(
       id: id ?? this.id,
@@ -101,6 +115,8 @@ class LocationNode {
       parentId: parentId ?? this.parentId,
       colorHex: colorHex ?? this.colorHex,
       geometryJson: geometryJson != null ? geometryJson() : this.geometryJson,
+      adjacentLocationIds: adjacentLocationIds ?? this.adjacentLocationIds,
+      cellIds: cellIds ?? this.cellIds,
     );
   }
 
@@ -113,6 +129,8 @@ class LocationNode {
       'parentId': parentId,
       'colorHex': colorHex,
       'geometryJson': geometryJson,
+      'adjacentLocationIds': adjacentLocationIds,
+      'cellIds': cellIds,
     };
   }
 
@@ -125,6 +143,14 @@ class LocationNode {
       parentId: row.parentId,
       colorHex: row.colorHex,
       geometryJson: row.geometryJson,
+      adjacentLocationIds: row.adjacentLocationIds != null
+          ? (jsonDecode(row.adjacentLocationIds!) as List)
+              .map((e) => e as String)
+              .toList()
+          : null,
+      cellIds: row.cellIds != null
+          ? (jsonDecode(row.cellIds!) as List).map((e) => e as String).toList()
+          : null,
     );
   }
 
@@ -137,6 +163,9 @@ class LocationNode {
       parentId: parentId,
       colorHex: colorHex,
       geometryJson: geometryJson,
+      adjacentLocationIds:
+          adjacentLocationIds != null ? jsonEncode(adjacentLocationIds) : null,
+      cellIds: cellIds != null ? jsonEncode(cellIds) : null,
       createdAt: DateTime.now(),
     );
   }
@@ -150,18 +179,25 @@ class LocationNode {
       parentId: Value(parentId),
       colorHex: Value(colorHex),
       geometryJson: Value(geometryJson),
+      adjacentLocationIds: Value(
+          adjacentLocationIds != null ? jsonEncode(adjacentLocationIds) : null),
+      cellIds: Value(cellIds != null ? jsonEncode(cellIds) : null),
     );
   }
 
   static LocationNode fromJson(Map<String, dynamic> json) {
     return LocationNode(
       id: json['id'] as String,
-      osmId: json['osmId'] as int,
+      osmId: json['osmId'] as int?,
       name: json['name'] as String,
       adminLevel: AdminLevel.fromString(json['adminLevel'] as String),
       parentId: json['parentId'] as String?,
       colorHex: json['colorHex'] as String?,
       geometryJson: json['geometryJson'] as String?,
+      adjacentLocationIds: (json['adjacentLocationIds'] as List?)
+          ?.map((e) => e as String)
+          .toList(),
+      cellIds: (json['cellIds'] as List?)?.map((e) => e as String).toList(),
     );
   }
 
@@ -176,7 +212,19 @@ class LocationNode {
         other.adminLevel == adminLevel &&
         other.parentId == parentId &&
         other.colorHex == colorHex &&
-        other.geometryJson == geometryJson;
+        other.geometryJson == geometryJson &&
+        _listEquals(other.adjacentLocationIds, adjacentLocationIds) &&
+        _listEquals(other.cellIds, cellIds);
+  }
+
+  static bool _listEquals<T>(List<T>? a, List<T>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
@@ -189,6 +237,8 @@ class LocationNode {
       parentId,
       colorHex,
       geometryJson,
+      Object.hashAll(adjacentLocationIds ?? []),
+      Object.hashAll(cellIds ?? []),
     );
   }
 
@@ -196,6 +246,8 @@ class LocationNode {
   String toString() {
     return 'LocationNode(id: $id, osmId: $osmId, name: $name, '
         'adminLevel: $adminLevel, parentId: $parentId, colorHex: $colorHex, '
-        'geometryJson: $geometryJson)';
+        'geometryJson: ${geometryJson != null ? "present" : "null"}, '
+        'adjacentLocationIds: ${adjacentLocationIds?.length ?? 0} items, '
+        'cellIds: ${cellIds?.length ?? 0} items)';
   }
 }

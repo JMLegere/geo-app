@@ -279,6 +279,10 @@ class LocalLocationNodeTable extends Table {
   TextColumn get colorHex => text().nullable()(); // hex from flag, or null
   TextColumn get geometryJson =>
       text().nullable()(); // GeoJSON polygon, null if not fetched
+  TextColumn get adjacentLocationIds =>
+      text().nullable()(); // JSON list of adjacent location IDs
+  TextColumn get cellIds =>
+      text().nullable()(); // JSON list of pre-computed cell IDs
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -387,7 +391,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration {
@@ -658,6 +662,22 @@ class AppDatabase extends _$AppDatabase {
           // app_logs (Supabase). Structured events now flow through
           // debugPrint → LogFlushService → app_logs.
           await customStatement('DROP TABLE IF EXISTS local_app_events_table');
+        }
+        if (from < 22) {
+          // v22: Add adjacentLocationIds and cellIds to LocalLocationNodeTable
+          // for detection zone caching.
+          final cols = await customSelect(
+            "PRAGMA table_info(local_location_node_table)",
+          ).get();
+          final colNames = cols.map((r) => r.read<String>('name')).toSet();
+          if (!colNames.contains('adjacent_location_ids')) {
+            await customStatement(
+                'ALTER TABLE local_location_node_table ADD COLUMN adjacent_location_ids TEXT');
+          }
+          if (!colNames.contains('cell_ids')) {
+            await customStatement(
+                'ALTER TABLE local_location_node_table ADD COLUMN cell_ids TEXT');
+          }
         }
       },
       beforeOpen: (details) async {

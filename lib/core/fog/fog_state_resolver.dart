@@ -61,6 +61,10 @@ class FogStateResolver {
   /// Current player longitude in degrees, or null before any location update.
   double? _playerLon;
 
+  /// Detection zone cell IDs, or null if using distance-based detection.
+  /// When set, replaces [kDetectionRadiusMeters] check in [resolve].
+  Set<String>? _detectionZoneCellIds;
+
   // sync: true ensures events are delivered synchronously during onLocationUpdate,
   // which simplifies both testing (no async needed) and render-loop integration.
   final StreamController<FogStateChangedEvent> _streamController =
@@ -94,6 +98,16 @@ class FogStateResolver {
   /// but never physically entered. Maintained incrementally.
   Set<String> get explorationFrontier => Set.unmodifiable(_explorationFrontier);
 
+  /// Sets the detection zone — cells that should resolve as at least
+  /// [FogState.unexplored] instead of [FogState.undetected].
+  ///
+  /// Replaces the distance-based [kDetectionRadiusMeters] check when set.
+  /// Called by DetectionZoneService when the player enters a new district.
+  void setDetectionZone(Set<String> cellIds) {
+    _detectionZoneCellIds = cellIds;
+    _everDetectedCellIds.addAll(cellIds);
+  }
+
   /// Computes and returns the [FogState] for [cellId] based on the current
   /// player position and visit history.
   ///
@@ -116,7 +130,13 @@ class FogStateResolver {
       _everDetectedCellIds.add(cellId);
       return FogState.unexplored;
     }
-    if (isCellWithinDetectionRadius(cellId)) {
+    // Detection zone membership replaces distance-based check when set.
+    if (_detectionZoneCellIds != null) {
+      if (_detectionZoneCellIds!.contains(cellId)) {
+        _everDetectedCellIds.add(cellId);
+        return FogState.unexplored;
+      }
+    } else if (isCellWithinDetectionRadius(cellId)) {
       _everDetectedCellIds.add(cellId);
       return FogState.unexplored;
     }

@@ -351,7 +351,7 @@ void main() {
       final str = node.toString();
 
       expect(str, contains('geometryJson'));
-      expect(str, contains(geoJson));
+      expect(str, contains('present'));
     });
 
     test('toString includes null geometryJson', () {

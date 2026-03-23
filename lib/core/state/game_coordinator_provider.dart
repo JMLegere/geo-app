@@ -52,6 +52,7 @@ import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/affix_backfill.dart';
+import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -633,21 +634,26 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     // Phase 1: SQLite → providers → markHydrated() → startLoop().
     rehydrateData(userId).then((_) async {
-      // Warm species cache for cells already in the cell properties cache.
-      // Uses the habitats/continent from the first resolved cell property;
-      // subsequent warm-ups fire automatically when the player moves.
+      // Warm species cache for ALL unique (habitat, continent) combos in
+      // the cell properties cache. Previously only warmed the first combo,
+      // causing 46% of cells to produce 0 species (cache miss).
       final speciesCache = ref.read(speciesCacheProvider);
       if (!speciesCache.isEmpty) {
         final cachedProps = coordinator.cellPropertiesCache.values;
         if (cachedProps.isNotEmpty) {
-          final first = cachedProps.first;
-          speciesCache.warmUp(
-            habitats: first.habitats,
-            continent: first.continent,
-          );
+          final seen = <String>{};
+          for (final props in cachedProps) {
+            final key = SpeciesCache.cacheKey(props.habitats, props.continent);
+            if (seen.add(key)) {
+              await speciesCache.warmUp(
+                habitats: props.habitats,
+                continent: props.continent,
+              );
+            }
+          }
         } else {
           // No cached cells yet — warm default habitats for a common area.
-          speciesCache.warmUp(
+          await speciesCache.warmUp(
             habitats: {Habitat.forest, Habitat.plains},
             continent: Continent.northAmerica,
           );
