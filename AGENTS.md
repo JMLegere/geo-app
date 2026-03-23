@@ -466,18 +466,19 @@ When a feature misbehaves:
 4. **Check constraints** — verify no scope ceiling violations
 5. **Verify reversibility** — ensure any fix can be toggled off
 
-> **Observability architecture** — the target architecture defines 5 pillars including an Observe pillar (ObservabilityBuffer, DebugLogBuffer, structured log channels). See `docs/target-architecture.md` for the full observability design.
+> **Observability architecture** — two parallel systems:
+> - **`app_logs`** table: Raw debug text blobs from `DebugLogBuffer` via `LogFlushService` (debounced 5s). Severity-filtered (warning+ and always-pass tags).
+> - **`app_events`** table: Structured typed events from `ObservabilityBuffer` (30s batch flush). Categories: event, log, js, ui.
+>
+> See `docs/target-architecture.md` for the full observability design.
 
 ### Supabase App Logs
 
-App logs are written to the `app_logs` table in Supabase (project ref: `bfaczcsrpfcbijoaeckb`). Query via the Management API:
+Debug text logs are in `app_logs`, structured events are in `app_events`. Both are in Supabase (project ref: `bfaczcsrpfcbijoaeckb`). Query via the Supabase CLI:
 
 ```bash
-TOKEN=$(cat ~/.supabase/access-token)
-curl -s "https://api.supabase.com/v1/projects/bfaczcsrpfcbijoaeckb/database/query" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "SELECT * FROM app_logs ORDER BY created_at DESC LIMIT 100"}'
+npx supabase db query --linked "SELECT * FROM app_logs ORDER BY created_at DESC LIMIT 100"
+npx supabase db query --linked "SELECT * FROM app_events ORDER BY created_at DESC LIMIT 100"
 ```
 
 Edge function logs (process-enrichment-queue, validate-encounter, etc.) are accessible via the Railway production logs:
