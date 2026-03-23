@@ -3,7 +3,6 @@ import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/location_node_repository.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
