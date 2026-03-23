@@ -656,7 +656,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (currentCellId == null) return;
 
     final cellService = ref.read(cellServiceProvider);
-    final neighborIds = fogResolver.currentNeighborIds;
+    final neighborIds = fogResolver.adjacentCellIds;
 
     var minLat = 90.0;
     var maxLat = -90.0;
@@ -1008,7 +1008,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       // Trigger an initial admin boundary request for the current player
       // position so borders load even for returning players who won't visit
-      // any new cells (onCellVisited alone is insufficient for 145+ cell users).
+      // any new cells (onCellEntered alone is insufficient for 145+ cell users).
       final playerPos = ref.read(locationProvider).currentPosition;
       if (playerPos != null && mounted) {
         _adminBoundaryService?.requestBoundaries(

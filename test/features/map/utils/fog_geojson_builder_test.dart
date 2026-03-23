@@ -112,7 +112,7 @@ void main() {
 
     test('with observed cell punches a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         getBoundary: _getBoundary,
       );
 
@@ -124,7 +124,7 @@ void main() {
 
     test('with hidden cell punches a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.hidden},
+        cellStates: {'cell_37_-122': FogState.visited},
         getBoundary: _getBoundary,
       );
 
@@ -135,7 +135,7 @@ void main() {
 
     test('with concealed cell punches a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.concealed},
+        cellStates: {'cell_37_-122': FogState.nearby},
         getBoundary: _getBoundary,
       );
 
@@ -147,7 +147,7 @@ void main() {
 
     test('with undetected cell does NOT punch a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.undetected},
+        cellStates: {'cell_37_-122': FogState.unknown},
         getBoundary: _getBoundary,
       );
 
@@ -159,7 +159,7 @@ void main() {
 
     test('with unexplored cell does NOT punch a hole', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
 
@@ -172,9 +172,9 @@ void main() {
     test('multiple cells produce multiple holes', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
         cellStates: {
-          'cell_37_-122': FogState.observed,
-          'cell_38_-122': FogState.hidden,
-          'cell_37_-121': FogState.concealed,
+          'cell_37_-122': FogState.active,
+          'cell_38_-122': FogState.visited,
+          'cell_37_-121': FogState.nearby,
         },
         getBoundary: _getBoundary,
       );
@@ -187,7 +187,7 @@ void main() {
 
     test('hole rings are closed (first == last vertex)', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         getBoundary: _getBoundary,
       );
 
@@ -204,7 +204,7 @@ void main() {
 
     test('hole coordinates use [lon, lat] order', () {
       final result = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         getBoundary: _getBoundary,
       );
 
@@ -238,7 +238,7 @@ void main() {
 
     test('includes hidden cells with density 0.5', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.hidden},
+        cellStates: {'cell_37_-122': FogState.visited},
         getBoundary: _getBoundary,
       );
 
@@ -251,7 +251,7 @@ void main() {
 
     test('includes concealed cells with density 0.95', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.concealed},
+        cellStates: {'cell_37_-122': FogState.nearby},
         getBoundary: _getBoundary,
       );
 
@@ -264,7 +264,7 @@ void main() {
 
     test('excludes observed cells', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         getBoundary: _getBoundary,
       );
 
@@ -273,7 +273,7 @@ void main() {
 
     test('excludes undetected cells', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.undetected},
+        cellStates: {'cell_37_-122': FogState.unknown},
         getBoundary: _getBoundary,
       );
 
@@ -282,7 +282,7 @@ void main() {
 
     test('includes unexplored cells with pre-rendered concealed density 0.95', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
 
@@ -297,8 +297,8 @@ void main() {
     test('multiple cells produce multiple features', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {
-          'cell_37_-122': FogState.hidden,
-          'cell_38_-122': FogState.concealed,
+          'cell_37_-122': FogState.visited,
+          'cell_38_-122': FogState.nearby,
         },
         getBoundary: _getBoundary,
       );
@@ -310,7 +310,7 @@ void main() {
 
     test('feature polygons are closed rings', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.hidden},
+        cellStates: {'cell_37_-122': FogState.visited},
         getBoundary: _getBoundary,
       );
 
@@ -324,7 +324,7 @@ void main() {
 
     test('unexplored cells use concealed density not their own', () {
       final result = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
 
@@ -335,14 +335,14 @@ void main() {
       // Unexplored.density is 1.0, but should use concealed.density (0.95)
       expect(props['density'], equals(0.95),
           reason: 'Unexplored cells pre-rendered at concealed density');
-      expect(props['density'], isNot(equals(FogState.unexplored.density)),
+      expect(props['density'], isNot(equals(FogState.detected.density)),
           reason: 'Should not use unexplored density (1.0)');
     });
 
     test('unexplored cell pre-rendered: base-fog no hole, mid-fog has polygon', () {
       // Base fog should NOT punch a hole for unexplored
       final baseFog = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
       final baseCoordinates = _features(baseFog)[0]['geometry']['coordinates']
@@ -352,7 +352,7 @@ void main() {
 
       // Mid fog SHOULD include the unexplored cell
       final midFog = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
       final midFeatures = _features(midFog);
@@ -367,11 +367,11 @@ void main() {
     test('mixed states includes unexplored, concealed, and hidden', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {
-          'cell_37_-122': FogState.observed, // excluded
-          'cell_38_-122': FogState.hidden, // included (0.5)
-          'cell_37_-121': FogState.undetected, // excluded
-          'cell_38_-121': FogState.concealed, // included (0.95)
-          'cell_39_-122': FogState.unexplored, // included (0.95)
+          'cell_37_-122': FogState.active, // excluded
+          'cell_38_-122': FogState.visited, // included (0.5)
+          'cell_37_-121': FogState.unknown, // excluded
+          'cell_38_-121': FogState.nearby, // included (0.95)
+          'cell_39_-122': FogState.detected, // included (0.95)
         },
         getBoundary: _getBoundary,
       );
@@ -404,7 +404,7 @@ void main() {
 
     test('includes observed cells with restoration level > 0', () {
       final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         restorationLevels: {'cell_37_-122': 0.67},
         getBoundary: _getBoundary,
       );
@@ -418,7 +418,7 @@ void main() {
 
     test('excludes non-observed cells even with restoration level', () {
       final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.hidden},
+        cellStates: {'cell_37_-122': FogState.visited},
         restorationLevels: {'cell_37_-122': 0.5},
         getBoundary: _getBoundary,
       );
@@ -428,7 +428,7 @@ void main() {
 
     test('excludes cells with restoration level 0', () {
       final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         restorationLevels: {'cell_37_-122': 0.0},
         getBoundary: _getBoundary,
       );
@@ -438,7 +438,7 @@ void main() {
 
     test('excludes cells with no restoration entry', () {
       final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         restorationLevels: {},
         getBoundary: _getBoundary,
       );
@@ -463,7 +463,7 @@ void main() {
 
     test('includes unexplored cells with opacity 0.4', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
 
@@ -476,7 +476,7 @@ void main() {
 
     test('includes concealed cells with opacity 0.25', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
-        cellStates: {'cell_37_-122': FogState.concealed},
+        cellStates: {'cell_37_-122': FogState.nearby},
         getBoundary: _getBoundary,
       );
 
@@ -489,7 +489,7 @@ void main() {
 
     test('excludes undetected cells', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
-        cellStates: {'cell_37_-122': FogState.undetected},
+        cellStates: {'cell_37_-122': FogState.unknown},
         getBoundary: _getBoundary,
       );
 
@@ -499,8 +499,8 @@ void main() {
     test('excludes observed and hidden cells', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {
-          'cell_37_-122': FogState.observed,
-          'cell_38_-122': FogState.hidden,
+          'cell_37_-122': FogState.active,
+          'cell_38_-122': FogState.visited,
         },
         getBoundary: _getBoundary,
       );
@@ -511,11 +511,11 @@ void main() {
     test('mixed states only includes unexplored and concealed', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {
-          'cell_37_-122': FogState.observed,
-          'cell_38_-122': FogState.unexplored,
-          'cell_37_-121': FogState.undetected,
-          'cell_38_-121': FogState.concealed,
-          'cell_39_-122': FogState.hidden,
+          'cell_37_-122': FogState.active,
+          'cell_38_-122': FogState.detected,
+          'cell_37_-121': FogState.unknown,
+          'cell_38_-121': FogState.nearby,
+          'cell_39_-122': FogState.visited,
         },
         getBoundary: _getBoundary,
       );
@@ -531,7 +531,7 @@ void main() {
 
     test('polygon rings are closed', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
 
@@ -552,21 +552,21 @@ void main() {
     test('all builder outputs are valid JSON', () {
       // buildBaseFog
       final base = FogGeoJsonBuilder.buildBaseFog(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         getBoundary: _getBoundary,
       );
       expect(() => jsonDecode(base), returnsNormally);
 
       // buildMidFog
       final mid = FogGeoJsonBuilder.buildMidFog(
-        cellStates: {'cell_37_-122': FogState.hidden},
+        cellStates: {'cell_37_-122': FogState.visited},
         getBoundary: _getBoundary,
       );
       expect(() => jsonDecode(mid), returnsNormally);
 
       // buildRestorationOverlay
       final rest = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.observed},
+        cellStates: {'cell_37_-122': FogState.active},
         restorationLevels: {'cell_37_-122': 1.0},
         getBoundary: _getBoundary,
       );
@@ -574,7 +574,7 @@ void main() {
 
       // buildCellBorders
       final border = FogGeoJsonBuilder.buildCellBorders(
-        cellStates: {'cell_37_-122': FogState.unexplored},
+        cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
       expect(() => jsonDecode(border), returnsNormally);

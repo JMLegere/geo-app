@@ -1,14 +1,14 @@
 // Tests for the enrichment wiring added to gameCoordinatorProvider.
 //
 // Strategy: bypass Riverpod entirely. Build GameCoordinator directly and
-// wire onCellVisited manually — mirroring the production code in
+// wire onCellEntered manually — mirroring the production code in
 // gameCoordinatorProvider. This avoids the Riverpod assertion that fires
 // when ProviderContainer initialises gameCoordinatorProvider (which calls
 // handleAuthState → PlayerNotifier.loadProfile during build, violating
 // "no cross-provider mutation during init").
 //
 // What we're testing:
-//   1. When onCellVisited fires, the wiring code enriches the visited cell
+//   1. When onCellEntered fires, the wiring code enriches the visited cell
 //      AND its ring-1 Voronoi neighbors — and does NOT enrich anything on
 //      startup (before any cell visit).
 //   2. After auth cycle (logout → re-login), the enrichment service is
@@ -67,7 +67,7 @@ class _MockCellService implements CellService {
 }
 
 // ---------------------------------------------------------------------------
-// Wire the same enrichment logic as gameCoordinatorProvider.onCellVisited.
+// Wire the same enrichment logic as gameCoordinatorProvider.onCellEntered.
 //
 // Production code (game_coordinator_provider.dart):
 //
@@ -86,7 +86,7 @@ void _wireEnrichmentOnCellVisited(
   CellService cellService,
   List<String> enrichedCellIds,
 ) {
-  coordinator.onCellVisited = (String cellId) {
+  coordinator.onCellEntered = (String cellId) {
     // Mirror production wiring: visited cell + ring-1 neighbors.
     // (getCellCenter is called in production to get lat/lon for the request;
     //  we call it here too to mirror the wiring faithfully.)
@@ -127,10 +127,10 @@ void main() {
     });
 
     test('visiting a cell enriches the cell and its ring-1 neighbors', () {
-      // Simulate a cell visit by firing the onCellVisited callback directly.
+      // Simulate a cell visit by firing the onCellEntered callback directly.
       // In production this is called by GameCoordinator when the player
       // enters a new cell. We bypass the GPS loop here.
-      coordinator.onCellVisited?.call('visited');
+      coordinator.onCellEntered?.call('visited');
 
       // Visited cell + 3 neighbors = 4 enrichment requests.
       expect(enrichedCellIds, containsAll(['visited', 'n1', 'n2', 'n3']));
@@ -155,7 +155,7 @@ void main() {
       addTearDown(soloCoordinator.dispose);
       _wireEnrichmentOnCellVisited(soloCoordinator, soloService, soloEnriched);
 
-      soloCoordinator.onCellVisited?.call('solo');
+      soloCoordinator.onCellEntered?.call('solo');
 
       expect(soloEnriched, ['solo']);
       expect(soloEnriched.length, 1);

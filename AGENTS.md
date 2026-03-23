@@ -337,7 +337,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 **Critical Drift conventions:**
 - `copyWith` uses `Value<T>` wrappers — use `Value(x)` for set, `Value.absent()` for skip
 - Tables with `autoIncrement()` must NOT override `primaryKey`
-- FogState stored as string in DB (e.g., `'undetected'`)
+- FogState stored as string in DB (e.g., `'unknown'`)
 - Use `Companion.insert()` for auto-increment tables
 - Database uses `LazyDatabase` for deferred file opening
 - Run `flutter pub run build_runner build` after schema changes
@@ -403,10 +403,10 @@ Additional directories:
 | Species | 32,752 (real IUCN dataset) | Full biodiversity catalog |
 | Habitats | 7 | Forest, Plains, Freshwater, Saltwater, Swamp, Mountain, Desert |
 | IUCN rarity tiers | 6 | LC, NT, VU, EN, CR, EX — with 3^x loot weights |
-| Fog levels | 5 | Undetected (1.0), Unexplored (1.0), Concealed (0.95), Hidden (0.5), Observed (0.0) |
+| Fog levels | 5 | Unknown (1.0), Detected (1.0), Nearby (0.95), Visited (0.5), Active (0.0) |
 | Seasons | 2 | Summer (May–Oct), Winter (Nov–Apr) |
 | Continents | 6 | Asia, North America, South America, Africa, Oceania, Europe |
-| Detection radius | 1000 m | kDetectionRadiusMeters — cells within this radius are at least "unexplored" |
+| Detection radius | 1000 m | kAwarenessRadiusMeters — cells within this radius are at least "detected" |
 | Restoration threshold | 3 species | 3 unique species per cell = fully restored |
 | Encounter slots per cell | 3 | Max species rolled per cell visit |
 | Max cells per tile | 100 | Mesh generation performance |

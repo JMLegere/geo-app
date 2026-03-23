@@ -79,7 +79,7 @@ List<String> _captureDebugPrints(void Function() body) {
 void main() {
   group('Discovery pipeline observability', () {
     group('FogStateResolver', () {
-      test('logs [FOG] cell_visited when new cell entered', () {
+      test('logs [FOG] cell_entered when new cell entered', () {
         final cellService = _MockCellService();
         final resolver = FogStateResolver(cellService);
 
@@ -88,13 +88,13 @@ void main() {
         });
 
         expect(
-          logs.any((l) => l.contains('[FOG]') && l.contains('cell_visited')),
+          logs.any((l) => l.contains('[FOG]') && l.contains('cell_entered')),
           isTrue,
-          reason: 'Expected [FOG] cell_visited log, got: $logs',
+          reason: 'Expected [FOG] cell_entered log, got: $logs',
         );
       });
 
-      test('does not log [FOG] cell_visited for already-visited cell', () {
+      test('does not log [FOG] cell_entered for already-entered cell', () {
         final cellService = _MockCellService();
         final resolver = FogStateResolver(cellService);
 
@@ -107,9 +107,9 @@ void main() {
         });
 
         expect(
-          logs.any((l) => l.contains('[FOG]') && l.contains('cell_visited')),
+          logs.any((l) => l.contains('[FOG]') && l.contains('cell_entered')),
           isFalse,
-          reason: 'Should not log for already-visited cell',
+          reason: 'Should not log for already-entered cell',
         );
       });
     });
@@ -178,35 +178,41 @@ void main() {
         }
       });
 
-      test(
-        'logs [SEED] discovery_paused when seed is stale',
-        skip: 'TODO: requires time mock to force stale seed state',
-        () {
-          final staleSeedService = DailySeedService(
-            fetchRemoteSeed: () async => 'test_seed',
-          );
+      test('logs [SEED] discovery_paused when seed is stale', () {
+        final staleSeedService = DailySeedService(
+          fetchRemoteSeed: () async => 'test_seed',
+        );
+        // Inject a stale server seed (fetched 48h ago).
+        staleSeedService.cachedSeedForTest = DailySeedState(
+          seed: 'old_seed',
+          seedDate: '2026-01-01',
+          fetchedAt: DateTime.now().subtract(const Duration(hours: 48)),
+          isServerSeed: true,
+        );
 
-          final svcWithStaleSeed = DiscoveryService(
-            fogResolver: fogResolver,
-            speciesService: buildSpeciesService(),
-            habitatService: _MockHabitatService(),
-            cellService: cellService,
-            dailySeedService: staleSeedService,
-          );
-          addTearDown(svcWithStaleSeed.dispose);
+        // Need a fresh FogStateResolver so the new cell triggers a fog event
+        final freshCellService = _MockCellService();
+        final freshResolver = FogStateResolver(freshCellService);
+        final svcWithStaleSeed = DiscoveryService(
+          fogResolver: freshResolver,
+          speciesService: buildSpeciesService(),
+          habitatService: _MockHabitatService(),
+          cellService: freshCellService,
+          dailySeedService: staleSeedService,
+        );
+        addTearDown(svcWithStaleSeed.dispose);
 
-          final logs = _captureDebugPrints(() {
-            fogResolver.onLocationUpdate(46.0, -67.0); // new cell
-          });
+        final logs = _captureDebugPrints(() {
+          freshResolver.onLocationUpdate(46.0, -67.0);
+        });
 
-          expect(
-            logs.any(
-                (l) => l.contains('[SEED]') && l.contains('discovery_paused')),
-            isTrue,
-            reason: 'Expected [SEED] discovery_paused log, got: $logs',
-          );
-        },
-      );
+        expect(
+          logs.any(
+              (l) => l.contains('[SEED]') && l.contains('discovery_paused')),
+          isTrue,
+          reason: 'Expected [SEED] discovery_paused log, got: $logs',
+        );
+      });
     });
 
     group('DiscoveryNotifier', () {

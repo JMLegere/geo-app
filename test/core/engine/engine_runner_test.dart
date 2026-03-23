@@ -88,7 +88,7 @@ void main() {
         runner.engine.events.listen(engineEvents.add);
 
         // Trigger an event through the engine's coordinator.
-        runner.engine.coordinator.onCellVisited?.call('cell_99');
+        runner.engine.coordinator.onCellEntered?.call('cell_99');
 
         // Both streams see the same event.
         expect(runnerEvents, hasLength(1));
@@ -111,7 +111,7 @@ void main() {
         final events = <GameEvent>[];
         runner.events.listen(events.add);
 
-        runner.engine.coordinator.onCellVisited?.call('cell_42');
+        runner.engine.coordinator.onCellEntered?.call('cell_42');
 
         expect(events, hasLength(1));
         expect(events.first.event, 'cell_visited');

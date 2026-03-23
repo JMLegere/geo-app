@@ -21,7 +21,7 @@ import 'package:earth_nova/features/calendar/services/season_service.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Listens to fog events and emits [DiscoveryEvent]s when a player enters a
-/// new cell (FogState.observed).
+/// new cell (FogState.active).
 ///
 /// Plain Dart class (not a widget). Constructor-injected dependencies keep
 /// this fully testable without Riverpod.
@@ -154,7 +154,7 @@ class DiscoveryService {
 
   /// Stream of discovery events — one per species found in a new cell.
   ///
-  /// Only emits for [FogState.observed] state transitions (new cell entries).
+  /// Only emits for [FogState.active] state transitions (new cell entries).
   Stream<DiscoveryEvent> get onDiscovery => _discoveryController.stream;
 
   /// Records [speciesId] as collected so future discoveries mark it correctly.
@@ -179,7 +179,7 @@ class DiscoveryService {
     debugPrint(
         '[DISCOVERY] fog_event cell=${event.cellId} state=${event.newState.name}');
     // Only react to a player entering a new cell for the first time.
-    if (event.newState != FogState.observed) return;
+    if (event.newState != FogState.active) return;
 
     // Stale seed guard — pause discoveries when seed is expired and came
     // from the server (offline fallback seeds never expire).

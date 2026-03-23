@@ -21,7 +21,7 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
         distanceWalked: 0.0,
         visitCount: 0,
       );
@@ -32,7 +32,7 @@ void main() {
       expect(progress, isNotNull);
       expect(progress!.userId, userId);
       expect(progress.cellId, cellId);
-      expect(progress.fogState, 'undetected');
+      expect(progress.fogState, 'unknown');
       expect(progress.distanceWalked, 0.0);
       expect(progress.visitCount, 0);
     });
@@ -46,15 +46,15 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
 
       // Update fog state
-      await repo.updateFogState(userId, cellId, FogState.unexplored);
+      await repo.updateFogState(userId, cellId, FogState.detected);
 
       // Verify
       final progress = await repo.read(userId, cellId);
-      expect(progress!.fogState, 'unexplored');
+      expect(progress!.fogState, 'detected');
     });
 
     test('add distance to cell progress', () async {
@@ -66,7 +66,7 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
         distanceWalked: 10.0,
       );
 
@@ -87,7 +87,7 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
         visitCount: 0,
       );
 
@@ -109,7 +109,7 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
 
       // Delete
@@ -129,19 +129,19 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: 'cell1',
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
       await repo.create(
         id: 'progress2',
         userId: userId,
         cellId: 'cell2',
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
       );
       await repo.create(
         id: 'progress3',
         userId: 'other_user',
         cellId: 'cell3',
-        fogState: FogState.hidden,
+        fogState: FogState.visited,
       );
 
       // Read by user
@@ -159,24 +159,24 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: 'cell1',
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
       await repo.create(
         id: 'progress2',
         userId: userId,
         cellId: 'cell2',
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
       );
       await repo.create(
         id: 'progress3',
         userId: userId,
         cellId: 'cell3',
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
       );
 
       // Query by state
       final unexploredCells =
-          await repo.getCellsByFogState(userId, FogState.unexplored);
+          await repo.getCellsByFogState(userId, FogState.detected);
 
       expect(unexploredCells.length, 2);
     });
@@ -189,35 +189,35 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: 'cell1',
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
       await repo.create(
         id: 'progress2',
         userId: userId,
         cellId: 'cell2',
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
       );
       await repo.create(
         id: 'progress3',
         userId: userId,
         cellId: 'cell3',
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
       );
       await repo.create(
         id: 'progress4',
         userId: userId,
         cellId: 'cell4',
-        fogState: FogState.observed,
+        fogState: FogState.active,
       );
 
       // Get counts
       final counts = await repo.getCellCountByFogState(userId);
 
-      expect(counts[FogState.undetected], 1);
-      expect(counts[FogState.unexplored], 2);
-      expect(counts[FogState.hidden], 0);
-      expect(counts[FogState.concealed], 0);
-      expect(counts[FogState.observed], 1);
+      expect(counts[FogState.unknown], 1);
+      expect(counts[FogState.detected], 2);
+      expect(counts[FogState.visited], 0);
+      expect(counts[FogState.nearby], 0);
+      expect(counts[FogState.active], 1);
     });
 
     test('concurrent writes do not lose data', () async {
@@ -231,7 +231,7 @@ void main() {
             id: 'progress$i',
             userId: userId,
             cellId: 'cell$i',
-            fogState: FogState.undetected,
+            fogState: FogState.unknown,
           ),
         );
       }
@@ -252,15 +252,15 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
       );
 
       // Progress through states
       for (final state in [
-        FogState.unexplored,
-        FogState.hidden,
-        FogState.concealed,
-        FogState.observed,
+        FogState.detected,
+        FogState.visited,
+        FogState.nearby,
+        FogState.active,
       ]) {
         await repo.updateFogState(userId, cellId, state);
         final progress = await repo.read(userId, cellId);
@@ -277,13 +277,13 @@ void main() {
         id: 'progress1',
         userId: userId,
         cellId: cellId,
-        fogState: FogState.hidden,
+        fogState: FogState.visited,
       );
 
       // Get fog state
       final state = await repo.getFogState(userId, cellId);
 
-      expect(state, FogState.hidden);
+      expect(state, FogState.visited);
       expect(state!.density, 0.5);
     });
   });

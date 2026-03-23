@@ -72,8 +72,8 @@ UI components overlaid on the map:
 
 - **fog_geojson_builder.dart**: Static methods for 3-layer native GeoJSON fog system:
   - `buildBaseFog()` — world polygon with holes for non-opaque cells
-  - `buildMidFog()` — individual polygons for hidden/concealed/unexplored with density property
-  - `buildCellBorders()` — line outlines for unexplored (0.4 opacity) + concealed (0.25 opacity)
+  - `buildMidFog()` — individual polygons for visited/nearby/detected with density property
+  - `buildCellBorders()` — line outlines for detected (0.4 opacity) + nearby (0.25 opacity)
   - All coordinates are `[longitude, latitude]` (GeoJSON convention)
 - **territory_border_geojson_builder.dart**: Stellaris-style territory border rendering. Two static methods:
   - `buildBorderFill()` — Polygon FeatureCollection with BFS-computed `border_distance_<level>` and `region_color_<level>` properties for quadratic opacity falloff (0.15 → 0.04 → 0.01 → 0.00 over 3 cells)
@@ -100,10 +100,10 @@ UI components overlaid on the map:
 The fog is rendered using 3 MapLibre native GeoJSON layers (NOT Canvas):
 
 1. **fog-base** — Opaque world polygon with holes punched for non-opaque cells. Covers the entire world.
-2. **fog-mid** — Semi-transparent fill polygons for hidden/concealed/unexplored cells. Each has a `density` property.
-3. **fog-border** — Line outlines at unexplored (0.4) and concealed (0.25) opacity.
+2. **fog-mid** — Semi-transparent fill polygons for visited/nearby/detected cells. Each has a `density` property.
+3. **fog-border** — Line outlines at detected (0.4) and nearby (0.25) opacity.
 
-**Pre-rendering trick:** Unexplored cells are rendered in mid-fog at concealed density (0.95) but hidden behind the opaque base layer. When a cell transitions from unexplored to concealed, the base-fog hole is punched, revealing the already-rendered mid-fog polygon. This eliminates flash artifacts during transitions.
+**Pre-rendering trick:** Detected cells are rendered in mid-fog at nearby density (0.95) but hidden behind the opaque base layer. When a cell transitions from detected to nearby, the base-fog hole is punched, revealing the already-rendered mid-fog polygon. This eliminates flash artifacts during transitions.
 
 ---
 
@@ -299,7 +299,7 @@ The following issues were resolved in the service injection refactoring:
 
 - **System:** 3-layer GeoJSON (base fog world polygon + mid-fog semi-transparent fills + border outlines)
 - **Update trigger:** Only on fog state change or camera move (not every frame)
-- **Opacity:** Derived from FogState density values (Undetected/Unexplored: 1.0, Concealed: 0.95, Hidden: 0.5, Observed: 0.0)
+- **Opacity:** Derived from FogState density values (Unknown/Detected: 1.0, Nearby: 0.95, Visited: 0.5, Active: 0.0)
 
 ### Mercator Projection
 

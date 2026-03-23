@@ -77,7 +77,7 @@ void main() {
     test('returns emptyFeatureCollection when cellProperties is empty', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {},
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       expect(result, equals(HabitatFillGeoJsonBuilder.emptyFeatureCollection));
@@ -90,7 +90,7 @@ void main() {
     test('skips undetected cells', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1')},
-        cellStates: {'cell1': FogState.undetected},
+        cellStates: {'cell1': FogState.unknown},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -100,7 +100,7 @@ void main() {
     test('skips unexplored cells', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1')},
-        cellStates: {'cell1': FogState.unexplored},
+        cellStates: {'cell1': FogState.detected},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -110,7 +110,7 @@ void main() {
     test('emits rings for concealed cells', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1')},
-        cellStates: {'cell1': FogState.concealed},
+        cellStates: {'cell1': FogState.nearby},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -120,7 +120,7 @@ void main() {
     test('emits rings for hidden cells', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1')},
-        cellStates: {'cell1': FogState.hidden},
+        cellStates: {'cell1': FogState.visited},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -130,7 +130,7 @@ void main() {
     test('emits rings for observed cells', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1')},
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -140,7 +140,7 @@ void main() {
     test('skips cell with no matching cellProperties entry', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'other': _makeCell('other')},
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -156,7 +156,7 @@ void main() {
         cellProperties: {
           'cell1': _makeCell('cell1', habitats: {Habitat.forest})
         },
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -175,7 +175,7 @@ void main() {
         cellProperties: {
           'cell1': _makeCell('cell1', habitats: {Habitat.forest})
         },
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -205,7 +205,7 @@ void main() {
       const habitats = {Habitat.forest, Habitat.freshwater};
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'cell1': _makeCell('cell1', habitats: habitats)},
-        cellStates: {'cell1': FogState.observed},
+        cellStates: {'cell1': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -230,9 +230,9 @@ void main() {
         'cell3': _makeCell('cell3'),
       };
       final states = {
-        'cell1': FogState.observed,
-        'cell2': FogState.hidden,
-        'cell3': FogState.concealed,
+        'cell1': FogState.active,
+        'cell2': FogState.visited,
+        'cell3': FogState.nearby,
       };
 
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
@@ -252,8 +252,8 @@ void main() {
         'gone': _makeCell('gone'),
       };
       final states = {
-        'vis': FogState.observed,
-        'gone': FogState.undetected,
+        'vis': FogState.active,
+        'gone': FogState.unknown,
       };
 
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
@@ -277,7 +277,7 @@ void main() {
     test('ring 0 uses original boundary vertices (scale=1.0)', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -293,7 +293,7 @@ void main() {
     test('ring 1 vertices are closer to centroid than ring 0 vertices', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -327,7 +327,7 @@ void main() {
     test('ring 1 vertices are at 75% distance from centroid', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -343,7 +343,7 @@ void main() {
     test('ring 2 vertices are at 50% distance from centroid', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -363,7 +363,7 @@ void main() {
     test('each ring polygon is a closed GeoJSON ring (first==last vertex)', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));
@@ -394,8 +394,8 @@ void main() {
           'b': _makeCell('b', habitats: {Habitat.saltwater, Habitat.swamp}),
         },
         cellStates: {
-          'a': FogState.observed,
-          'b': FogState.hidden,
+          'a': FogState.active,
+          'b': FogState.visited,
         },
         getCellBoundary: _getBoundary,
       );
@@ -409,7 +409,7 @@ void main() {
     test('each feature has correct GeoJSON structure', () {
       final result = HabitatFillGeoJsonBuilder.buildHabitatFills(
         cellProperties: {'c': _makeCell('c')},
-        cellStates: {'c': FogState.observed},
+        cellStates: {'c': FogState.active},
         getCellBoundary: _getBoundary,
       );
       final features = _features(_parse(result));

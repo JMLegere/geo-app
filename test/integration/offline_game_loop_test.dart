@@ -134,7 +134,7 @@ void main() {
       expect(cellId, isNotNull);
       expect(
         session.fogResolver.resolve(cellId!),
-        equals(FogState.observed),
+        equals(FogState.active),
       );
     });
 
@@ -178,7 +178,7 @@ void main() {
       // concealed (if still adjacent to new current) or hidden (if not).
       // Either way it must NOT be observed.
       final state = session.fogResolver.resolve(firstId);
-      expect(state, isNot(equals(FogState.observed)),
+      expect(state, isNot(equals(FogState.active)),
           reason: 'Original cell must not remain observed after player leaves');
     });
 
@@ -397,7 +397,7 @@ void main() {
         id: 'cp-golden',
         userId: 'player-1',
         cellId: cellId,
-        fogState: 'observed',
+        fogState: 'active',
         distanceWalked: 50.0,
         visitCount: 1,
         restorationLevel: 0.0,
@@ -429,7 +429,7 @@ void main() {
 
       final progress = await session.db.getCellProgress('player-1', cellId);
       expect(progress, isNotNull);
-      expect(progress!.fogState, equals('observed'));
+      expect(progress!.fogState, equals('active'));
 
       final items = await session.db.getItemInstancesByUser('player-1');
       final collected = items.any((i) =>
@@ -457,7 +457,7 @@ void main() {
         // firstId is now visited-not-current; resolves as concealed (adjacent)
         // or hidden (if not adjacent). Either way it's no longer observed.
         expect(session.fogResolver.resolve(firstId),
-            isNot(equals(FogState.observed)));
+            isNot(equals(FogState.active)));
       }
 
       // 3. Species discovered (may or may not have results for the fixture).

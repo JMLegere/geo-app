@@ -15,7 +15,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
   }
 
   FogState getCellFogState(String cellId) {
-    return state[cellId] ?? FogState.undetected;
+    return state[cellId] ?? FogState.unknown;
   }
 }
 

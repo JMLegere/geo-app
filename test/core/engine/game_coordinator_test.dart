@@ -653,15 +653,15 @@ void main() {
     // Fog cell visited callback
     // -----------------------------------------------------------------------
     group('fog cell visited', () {
-      test('onCellVisited fires when player enters a new cell', () {
+      test('onCellEntered fires when player enters a new cell', () {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = (_) => visitCount++;
+        c.onCellEntered = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         // updatePlayerPosition → _processGameLogic → fogResolver.onLocationUpdate
-        // → new cell → onVisitedCellAdded fires → onCellVisited callback
+        // → new cell → onVisitedCellAdded fires → onCellEntered callback
         c.updatePlayerPosition(1.0, 1.0);
         expect(visitCount, 1);
 
@@ -670,11 +670,11 @@ void main() {
         c.dispose();
       });
 
-      test('onCellVisited does NOT fire for re-entering the same cell', () {
+      test('onCellEntered does NOT fire for re-entering the same cell', () {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = (_) => visitCount++;
+        c.onCellEntered = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         c.updatePlayerPosition(1.0, 1.0); // first visit → fires
@@ -692,11 +692,11 @@ void main() {
         c.dispose();
       });
 
-      test('onCellVisited fires for each distinct cell entered', () {
+      test('onCellEntered fires for each distinct cell entered', () {
         int visitCount = 0;
         final resolver = FogStateResolver(_MockCellService());
         final c = _makeCoordinator(fogResolver: resolver);
-        c.onCellVisited = (_) => visitCount++;
+        c.onCellEntered = (_) => visitCount++;
         final s = _startCoordinator(c);
 
         c.updatePlayerPosition(1.0, 1.0); // cell '1_1' → fires

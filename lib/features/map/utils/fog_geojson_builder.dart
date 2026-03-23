@@ -10,8 +10,8 @@ import 'package:earth_nova/core/models/fog_state.dart';
 ///    cells (hidden, concealed, observed). Everything not cut remains fully
 ///    opaque — this covers undetected and unexplored cells.
 ///
-/// 2. **fog-mid**: Individual polygons for cells at [FogState.hidden] and
-///    [FogState.concealed] density. Rendered with partial opacity on top of
+/// 2. **fog-mid**: Individual polygons for cells at [FogState.visited] and
+///    [FogState.nearby] density. Rendered with partial opacity on top of
 ///    the transparent holes, creating a semi-transparent fog effect.
 ///
 /// 3. **fog-restoration**: Individual polygons for observed cells with
@@ -31,7 +31,7 @@ class FogGeoJsonBuilder {
   /// Polygon whose first ring is the world exterior and subsequent rings
   /// are holes for revealed cells.
   ///
-  /// Cells with [FogState.undetected] or [FogState.unexplored] are NOT
+  /// Cells with [FogState.unknown] or [FogState.detected] are NOT
   /// punched — they remain under the opaque base layer. Concealed cells
   /// get holes punched so the pre-rendered mid-fog polygon can show through.
   static String buildBaseFog({
@@ -50,7 +50,7 @@ class FogGeoJsonBuilder {
       // Only punch holes for cells that should show through the base fog.
       // Hidden (0.5), concealed (0.95), and observed (0.0) get holes.
       // Undetected and unexplored stay under opaque fog.
-      if (state == FogState.undetected || state == FogState.unexplored) {
+      if (state == FogState.unknown || state == FogState.detected) {
         continue;
       }
 
@@ -73,7 +73,7 @@ class FogGeoJsonBuilder {
   }
 
   /// Builds the "fog-mid" GeoJSON: individual polygons for cells at partial
-  /// fog density ([FogState.hidden], [FogState.concealed], and [FogState.unexplored]).
+  /// fog density ([FogState.visited], [FogState.nearby], and [FogState.detected]).
   ///
   /// Each cell becomes a separate Feature with a `density` property so the
   /// MapLibre style can use data-driven opacity:
@@ -83,8 +83,8 @@ class FogGeoJsonBuilder {
   /// behind the opaque base fog. When a cell transitions to concealed, the
   /// base-fog hole is punched, revealing the already-rendered polygon.
   ///
-  /// [FogState.observed] cells are excluded — they are fully clear.
-  /// [FogState.undetected] is excluded — it remains under the opaque base.
+  /// [FogState.active] cells are excluded — they are fully clear.
+  /// [FogState.unknown] is excluded — it remains under the opaque base.
   static String buildMidFog({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
@@ -96,7 +96,7 @@ class FogGeoJsonBuilder {
       final state = entry.value;
       // Include unexplored (pre-rendered behind base fog), concealed, and hidden.
       // Undetected and observed are excluded.
-      if (state == FogState.undetected || state == FogState.observed) continue;
+      if (state == FogState.unknown || state == FogState.active) continue;
 
       final boundary = getBoundary(entry.key);
       if (boundary.length < 3) continue;
@@ -113,8 +113,8 @@ class FogGeoJsonBuilder {
        // Close ring.
       features.write(',[${boundary[0].lon},${boundary[0].lat}]');
       // Unexplored cells use concealed density (0.95) for pre-rendering.
-      final density = state == FogState.unexplored
-          ? FogState.concealed.density
+      final density = state == FogState.detected
+          ? FogState.nearby.density
           : state.density;
       features.write(']]},"properties":{"density":$density}}');
     }
@@ -128,7 +128,7 @@ class FogGeoJsonBuilder {
   /// Each Feature has a `level` property (0.0–1.0) for data-driven opacity.
   ///
   /// [restorationLevels] maps cell IDs to their restoration level.
-  /// Only cells that are [FogState.observed] in [cellStates] are included.
+  /// Only cells that are [FogState.active] in [cellStates] are included.
   static String buildRestorationOverlay({
     required Map<String, FogState> cellStates,
     required Map<String, double> restorationLevels,
@@ -141,7 +141,7 @@ class FogGeoJsonBuilder {
       if (entry.value <= 0.0) continue;
 
       final state = cellStates[entry.key];
-      if (state != FogState.observed) continue;
+      if (state != FogState.active) continue;
 
       final boundary = getBoundary(entry.key);
       if (boundary.length < 3) continue;
@@ -162,8 +162,8 @@ class FogGeoJsonBuilder {
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
-  /// Builds the "fog-border" GeoJSON: polygon outlines for [FogState.unexplored]
-  /// and [FogState.concealed] cells rendered as a [LineLayer] on top of the fog.
+  /// Builds the "fog-border" GeoJSON: polygon outlines for [FogState.detected]
+  /// and [FogState.nearby] cells rendered as a [LineLayer] on top of the fog.
   ///
   /// Both states get borders with different opacity values:
   /// - **Unexplored** (0.4): within detection radius, never visited.
@@ -181,9 +181,9 @@ class FogGeoJsonBuilder {
     for (final entry in cellStates.entries) {
       final double opacity;
       switch (entry.value) {
-        case FogState.unexplored:
+        case FogState.detected:
           opacity = 0.4;
-        case FogState.concealed:
+        case FogState.nearby:
           opacity = 0.25;
         default:
           continue;

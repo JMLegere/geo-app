@@ -282,9 +282,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     ref.read(locationProvider.notifier).setError(locationError);
   };
 
-  final engineOnCellVisited = coordinator.onCellVisited;
-  coordinator.onCellVisited = (String cellId) {
-    engineOnCellVisited?.call(cellId);
+  final engineOnCellEntered = coordinator.onCellEntered;
+  coordinator.onCellEntered = (String cellId) {
+    engineOnCellEntered?.call(cellId);
     if (_providerDisposed) return;
     ref.read(playerProvider.notifier).incrementCellsObserved();
 
@@ -527,7 +527,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         final visitedCellIds = <String>{};
         for (final row in cellRows) {
           final fog = FogState.fromString(row.fogState);
-          if (fog == FogState.observed || fog == FogState.hidden) {
+          if (fog == FogState.active || fog == FogState.visited) {
             visitedCellIds.add(row.cellId);
           }
         }
@@ -541,7 +541,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // stored in the profile table (which has no such column).
       final cellsObserved = cellRows.where((row) {
         final fog = FogState.fromString(row.fogState);
-        return fog == FogState.observed || fog == FogState.hidden;
+        return fog == FogState.active || fog == FogState.visited;
       }).length;
 
       // Capture the in-memory onboarding flag before hydration overwrites

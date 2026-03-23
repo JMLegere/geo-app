@@ -136,14 +136,14 @@ void main() {
         expect(events, isEmpty);
       });
 
-      test('onCellVisited emits cell_visited', () async {
+      test('onCellEntered emits cell_visited', () async {
         final engine = _makeEngine();
         addTearDown(engine.dispose);
 
         final events = <GameEvent>[];
         engine.events.listen(events.add);
 
-        engine.coordinator.onCellVisited?.call('cell_42');
+        engine.coordinator.onCellEntered?.call('cell_42');
 
         expect(events, hasLength(1));
         expect(events.first.category, 'state');
@@ -269,7 +269,7 @@ void main() {
         final engine = _makeEngine();
         addTearDown(engine.dispose);
 
-        engine.coordinator.onCellVisited?.call('cell_1');
+        engine.coordinator.onCellEntered?.call('cell_1');
 
         // Should not throw — flush is now a no-op (events go via debugPrint).
         expect(() => engine.send(const AppBackgrounded()), returnsNormally);
@@ -377,7 +377,7 @@ void main() {
 
         // Trigger callback — sink.add() throws on first call, caught by
         // try-catch, crash event emitted (sink succeeds on second call).
-        engine.coordinator.onCellVisited?.call('cell_err');
+        engine.coordinator.onCellEntered?.call('cell_err');
 
         expect(events, hasLength(2));
         // First: the normal event got added to stream before sink threw.
@@ -385,7 +385,7 @@ void main() {
         // Second: crash event with correct context.
         expect(events[1].category, 'system');
         expect(events[1].event, 'crash');
-        expect(events[1].data['context'], 'onCellVisited');
+        expect(events[1].data['context'], 'onCellEntered');
         expect(events[1].data['error'], contains('sink boom'));
         expect(events[1].data['stack_trace'], isA<String>());
       });
@@ -413,10 +413,10 @@ void main() {
         engine.events.listen(events.add);
 
         // First call: throws + crash event.
-        engine.coordinator.onCellVisited?.call('cell_err');
+        engine.coordinator.onCellEntered?.call('cell_err');
 
         // Second call: sink no longer throws, normal event only.
-        engine.coordinator.onCellVisited?.call('cell_ok');
+        engine.coordinator.onCellEntered?.call('cell_ok');
 
         final normalEvents =
             events.where((e) => e.event == 'cell_visited').toList();
@@ -452,7 +452,7 @@ void main() {
         final engine = _makeEngine(obs: sink);
         addTearDown(engine.dispose);
 
-        engine.coordinator.onCellVisited?.call('cell_99');
+        engine.coordinator.onCellEntered?.call('cell_99');
 
         expect(sink.captured, hasLength(1));
         expect(sink.captured.first.$1, 'cell_visited');

@@ -51,9 +51,9 @@ class FogOverlayController {
   /// points on one frame and be hit on the next, causing them to pop in/out
   /// of the GeoJSON. MapLibre clips off-screen polygons natively, so
   /// including out-of-viewport cells has negligible rendering cost.
-  final Set<String> _discoveredCellIds = {};
+  final Set<String> _renderedCellIds = {};
 
-  /// Callback fired the first time a cell is added to [_discoveredCellIds].
+  /// Callback fired the first time a cell is added to [_renderedCellIds].
   ///
   /// Provides the cell ID and the geographic center of the cell so the caller
   /// can trigger async work (e.g. location enrichment) without knowing the
@@ -118,7 +118,7 @@ class FogOverlayController {
   int get renderVersion => _renderVersion;
 
   /// Number of cells currently discovered via viewport sampling.
-  int get visibleCellCount => _discoveredCellIds.length;
+  int get visibleCellCount => _renderedCellIds.length;
 
   /// GeoJSON for the opaque base fog (world polygon with holes).
   String get baseFogGeoJson => _baseFogGeoJson;
@@ -259,20 +259,20 @@ class FogOverlayController {
     // This prevents flickering caused by viewport sampling aliasing.
     // Fire onCellBecameVisible for each cell added for the first time.
     for (final cellId in visibleCellIds) {
-      if (_discoveredCellIds.add(cellId)) {
+      if (_renderedCellIds.add(cellId)) {
         final center = cellService.getCellCenter(cellId);
         onCellBecameVisible?.call(cellId, center.lat, center.lon);
       }
     }
 
-    _buildGeoJson(_discoveredCellIds);
+    _buildGeoJson(_renderedCellIds);
     _renderVersion++;
 
     sw.stop();
     if (sw.elapsedMilliseconds > 8) {
       ObservabilityBuffer.instance?.event('fog_computed', {
         'duration_ms': sw.elapsedMilliseconds,
-        'cell_count': _discoveredCellIds.length,
+        'cell_count': _renderedCellIds.length,
         'dirty': _fogDirty,
       });
     }
@@ -310,7 +310,7 @@ class FogOverlayController {
       // Accumulate into the persistent set — never remove.
       // Fire onCellBecameVisible for each cell added for the first time.
       for (final cellId in chunk) {
-        if (_discoveredCellIds.add(cellId)) {
+        if (_renderedCellIds.add(cellId)) {
           addedCount++;
           final center = cellService.getCellCenter(cellId);
           onCellBecameVisible?.call(cellId, center.lat, center.lon);
@@ -318,7 +318,7 @@ class FogOverlayController {
       }
 
       // Build GeoJSON from all discovered cells so far.
-      _buildGeoJson(_discoveredCellIds);
+      _buildGeoJson(_renderedCellIds);
       _renderVersion++;
       onBatchReady?.call();
 
@@ -342,7 +342,7 @@ class FogOverlayController {
     final cellStates = <String, FogState>{};
     for (final cellId in cellIds) {
       final state = fogResolver.resolve(cellId);
-      if (state == FogState.undetected) continue;
+      if (state == FogState.unknown) continue;
       cellStates[cellId] = state;
     }
 
@@ -372,7 +372,7 @@ class FogOverlayController {
         cellStates: cellStates,
         cellProperties: _cellPropertiesCache,
         currentCellId: fogResolver.currentCellId,
-        adjacentCellIds: fogResolver.currentNeighborIds,
+        adjacentCellIds: fogResolver.adjacentCellIds,
         visitedCellIds: fogResolver.visitedCellIds,
         dailySeed: _dailySeed,
         getCellCenter: cellService.getCellCenter,

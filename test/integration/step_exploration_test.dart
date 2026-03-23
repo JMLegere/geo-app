@@ -4,7 +4,7 @@
 ///   1. Step values survive DB round-trips (write → read → match)
 ///   2. Frontier exploration deducts steps, visits cell, expands frontier
 ///   3. Insufficient step balance rejects spending
-///   4. visitCellRemotely triggers onVisitedCellAdded stream event
+///   4. revealCell triggers onVisitedCellAdded stream event
 ///   5. Hydrate → spend → persist → read round-trip
 ///
 /// All tests use `NativeDatabase.memory()` — no Supabase or network access.
@@ -200,7 +200,7 @@ void main() {
   // ── Test 2: Frontier exploration with step spending ─────────────────────
 
   group('Frontier exploration with step spending', () {
-    test('spending steps + visitCellRemotely visits cell and expands frontier',
+    test('spending steps + revealCell visits cell and expands frontier',
         () async {
       final cellService = _MockCellService();
       final resolver = FogStateResolver(cellService);
@@ -211,10 +211,10 @@ void main() {
       resolver.onLocationUpdate(12.0, 10.0); // cell_12_10
 
       expect(resolver.visitedCellIds.length, equals(3));
-      expect(resolver.explorationFrontier.isNotEmpty, isTrue);
+      expect(resolver.visitedPerimeter.isNotEmpty, isTrue);
 
       // Pick a frontier cell.
-      final frontierCell = resolver.explorationFrontier.first;
+      final frontierCell = resolver.visitedPerimeter.first;
       expect(resolver.visitedCellIds.contains(frontierCell), isFalse);
 
       // Set up player with steps.
@@ -229,26 +229,26 @@ void main() {
       expect(container.read(playerProvider).totalSteps, equals(0));
 
       // Capture frontier before visit for expansion check.
-      final frontierBefore = Set<String>.from(resolver.explorationFrontier);
+      final frontierBefore = Set<String>.from(resolver.visitedPerimeter);
 
       // Visit the cell remotely.
-      resolver.visitCellRemotely(frontierCell);
+      resolver.revealCell(frontierCell);
 
       // Cell is now visited.
       expect(resolver.visitedCellIds.contains(frontierCell), isTrue);
 
       // Cell is no longer on frontier.
-      expect(resolver.explorationFrontier.contains(frontierCell), isFalse);
+      expect(resolver.visitedPerimeter.contains(frontierCell), isFalse);
 
       // Frontier expanded: at least one new cell added (neighbors of the
       // visited cell that weren't already visited or on frontier).
       final newFrontierCells =
-          resolver.explorationFrontier.difference(frontierBefore);
+          resolver.visitedPerimeter.difference(frontierBefore);
       // The newly visited cell may have neighbors that weren't on the frontier
       // before. In a Moore neighborhood (8 neighbors), at least some should be
       // new unless the visited cell was completely surrounded.
       expect(
-        newFrontierCells.isNotEmpty || resolver.explorationFrontier.isNotEmpty,
+        newFrontierCells.isNotEmpty || resolver.visitedPerimeter.isNotEmpty,
         isTrue,
         reason: 'Frontier must expand or remain non-empty after visiting',
       );
@@ -280,9 +280,9 @@ void main() {
     });
   });
 
-  // ── Test 4: visitCellRemotely emits onVisitedCellAdded event ────────────
+  // ── Test 4: revealCell emits onVisitedCellAdded event ────────────
 
-  group('visitCellRemotely — stream event', () {
+  group('revealCell — stream event', () {
     test('emits FogStateChangedEvent on onVisitedCellAdded stream', () async {
       final cellService = _MockCellService();
       final resolver = FogStateResolver(cellService);
@@ -290,7 +290,7 @@ void main() {
       // Visit an initial cell to create a frontier.
       resolver.onLocationUpdate(10.0, 10.0); // cell_10_10
 
-      final frontierCell = resolver.explorationFrontier.first;
+      final frontierCell = resolver.visitedPerimeter.first;
 
       // Collect stream events.
       final events = <FogStateChangedEvent>[];
@@ -298,7 +298,7 @@ void main() {
       addTearDown(sub.cancel);
 
       // Visit remotely — should emit event (sync stream, so immediate).
-      resolver.visitCellRemotely(frontierCell);
+      resolver.revealCell(frontierCell);
 
       // onVisitedCellAdded is sync: true — event is already in the list.
       expect(events.length, equals(1));
@@ -311,8 +311,8 @@ void main() {
 
       resolver.onLocationUpdate(10.0, 10.0); // cell_10_10
 
-      final frontierCell = resolver.explorationFrontier.first;
-      resolver.visitCellRemotely(frontierCell); // First visit
+      final frontierCell = resolver.visitedPerimeter.first;
+      resolver.revealCell(frontierCell); // First visit
 
       // Collect events from now on.
       final events = <FogStateChangedEvent>[];
@@ -320,7 +320,7 @@ void main() {
       addTearDown(sub.cancel);
 
       // Second visit — should be a no-op.
-      resolver.visitCellRemotely(frontierCell);
+      resolver.revealCell(frontierCell);
 
       expect(events, isEmpty, reason: 'No event for already-visited cell');
     });
