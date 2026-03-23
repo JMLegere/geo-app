@@ -44,7 +44,7 @@ class SpeciesCache {
     required Continent continent,
   }) async {
     if (_repo == null || habitats.isEmpty) return;
-    final key = _cacheKey(habitats, continent);
+    final key = cacheKey(habitats, continent);
     if (_cache.containsKey(key)) return;
     final candidates = await _repo!.getCandidates(
       habitats: habitats,
@@ -81,7 +81,7 @@ class SpeciesCache {
     required Continent continent,
   }) {
     if (habitats.isEmpty) return const [];
-    return _cache[_cacheKey(habitats, continent)] ?? const [];
+    return _cache[cacheKey(habitats, continent)] ?? const [];
   }
 
   /// Sync lookup by definition ID — returns null if not cached.
@@ -143,7 +143,10 @@ class SpeciesCache {
 
   /// Builds a stable, order-independent cache key from a habitat set and
   /// continent. Example: `"forest,mountain:northAmerica"`.
-  static String _cacheKey(Set<Habitat> habitats, Continent continent) {
+  ///
+  /// Public for testing. Used by DetectionZoneService to track which
+  /// (habitat, continent) combinations have been warmed.
+  static String cacheKey(Set<Habitat> habitats, Continent continent) {
     final sorted = habitats.map((h) => h.name).toList()..sort();
     return '${sorted.join(',')}:${continent.name}';
   }
