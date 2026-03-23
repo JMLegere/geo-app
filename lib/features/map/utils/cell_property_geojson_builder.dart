@@ -52,8 +52,8 @@ class CellPropertyGeoJsonBuilder {
 
       // Only show icons for cells that are at least concealed.
       if (fogState == null ||
-          fogState == FogState.undetected ||
-          fogState == FogState.unexplored) {
+          fogState == FogState.unknown ||
+          fogState == FogState.detected) {
         continue;
       }
 

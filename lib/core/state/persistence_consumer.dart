@@ -209,7 +209,7 @@ Future<void> persistCellVisit({
         id: progressId,
         userId: userId,
         cellId: cellId,
-        fogState: FogState.observed,
+        fogState: FogState.active,
         visitCount: 1,
         lastVisited: now,
       );
@@ -235,7 +235,7 @@ Future<void> persistCellVisit({
   try {
     final payload = jsonEncode({
       'cell_id': cellId,
-      'fog_state': FogState.observed.name,
+      'fog_state': FogState.active.name,
       'visit_count': visitCount,
       'distance_walked': distanceWalked,
       'restoration_level': restorationLevel,
@@ -423,7 +423,7 @@ Future<void> hydrateFromSupabase({
       final cellId = row['cell_id'] as String;
       final id = row['id'] as String? ?? '${userId}_$cellId';
       final fogState = FogState.fromString(
-        row['fog_state'] as String? ?? 'observed',
+        row['fog_state'] as String? ?? FogState.active.name,
       );
       final visitCount = row['visit_count'] as int? ?? 1;
       final distanceWalked =

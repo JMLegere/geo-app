@@ -22,7 +22,7 @@ LocalCellProgress makeCellProgress({
   String id = 'cp-1',
   String userId = 'user-1',
   String cellId = 'cell-42',
-  String fogState = 'hidden',
+  String fogState = 'visited',
   double distanceWalked = 100.0,
   int visitCount = 1,
   double restorationLevel = 0.0,
@@ -109,7 +109,7 @@ void main() {
       final result = await db.getCellProgress(progress.userId, progress.cellId);
       expect(result, isNotNull);
       expect(result!.id, equals(progress.id));
-      expect(result.fogState, equals('hidden'));
+      expect(result.fogState, equals('visited'));
     });
 
     test('getCellProgressByUser returns all records for user', () async {
@@ -126,15 +126,15 @@ void main() {
 
     test('upsertCellProgress updates existing record (upsert semantics)',
         () async {
-      final initial = makeCellProgress(fogState: 'hidden', visitCount: 1);
+      final initial = makeCellProgress(fogState: 'visited', visitCount: 1);
       await db.upsertCellProgress(initial);
 
-      final updated = makeCellProgress(fogState: 'observed', visitCount: 3);
+      final updated = makeCellProgress(fogState: 'active', visitCount: 3);
       await db.upsertCellProgress(updated);
 
       final result = await db.getCellProgress('user-1', 'cell-42');
       expect(result, isNotNull);
-      expect(result!.fogState, equals('observed'));
+      expect(result!.fogState, equals('active'));
       expect(result.visitCount, equals(3));
     });
 
@@ -297,7 +297,7 @@ void main() {
           id: 'cp-$i',
           userId: 'player-1',
           cellId: 'cell-$i',
-          fogState: 'observed',
+          fogState: 'active',
           visitCount: 1,
         ));
       }

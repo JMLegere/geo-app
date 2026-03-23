@@ -142,13 +142,13 @@ class GameEngine {
     // Position data is in locationProvider; no event needed.
     _coordinator.onPlayerLocationUpdate = (position, accuracy) {};
 
-    _coordinator.onCellVisited = (cellId) {
+    _coordinator.onCellEntered = (cellId) {
       try {
         _emit(GameEvent.state('cell_visited', {
           'cell_id': cellId,
         }));
       } catch (e, stack) {
-        _emitCrash(e, stack, 'onCellVisited');
+        _emitCrash(e, stack, 'onCellEntered');
       }
     };
 

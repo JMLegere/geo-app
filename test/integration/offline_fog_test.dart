@@ -79,7 +79,7 @@ void main() {
       // No update yet — a cell far from any player position should be undetected.
       final farCellId =
           cellService.getCellId(0.0, 0.0); // equator/prime meridian
-      expect(resolver.resolve(farCellId), equals(FogState.undetected));
+      expect(resolver.resolve(farCellId), equals(FogState.unknown));
     });
 
     test('currentCellId is null before any location update', () {
@@ -90,8 +90,8 @@ void main() {
       expect(resolver.visitedCellIds, isEmpty);
     });
 
-    test('explorationFrontier is empty before any location update', () {
-      expect(resolver.explorationFrontier, isEmpty);
+    test('visitedPerimeter is empty before any location update', () {
+      expect(resolver.visitedPerimeter, isEmpty);
     });
 
     // ── FogStateResolver: after first location update ────────────────────
@@ -99,7 +99,7 @@ void main() {
     test('current cell resolves as observed after location update', () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final cellId = resolver.currentCellId!;
-      expect(resolver.resolve(cellId), equals(FogState.observed));
+      expect(resolver.resolve(cellId), equals(FogState.active));
     });
 
     test('current cell is added to visitedCellIds', () {
@@ -109,19 +109,19 @@ void main() {
 
     test('neighbors of current cell resolve as concealed', () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
-      final neighbors = resolver.currentNeighborIds;
+      final neighbors = resolver.adjacentCellIds;
       expect(neighbors, isNotEmpty);
       for (final neighbor in neighbors) {
-        expect(resolver.resolve(neighbor), equals(FogState.concealed));
+        expect(resolver.resolve(neighbor), equals(FogState.nearby));
       }
     });
 
-    test('neighbor cells appear in explorationFrontier', () {
+    test('neighbor cells appear in visitedPerimeter', () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
-      final neighbors = resolver.currentNeighborIds;
+      final neighbors = resolver.adjacentCellIds;
       for (final neighbor in neighbors) {
         // Neighbor cells are in the frontier (never visited, adjacent to visited)
-        expect(resolver.explorationFrontier, contains(neighbor));
+        expect(resolver.visitedPerimeter, contains(neighbor));
       }
     });
 
@@ -129,7 +129,7 @@ void main() {
         () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final currentId = resolver.currentCellId!;
-      final neighbors = resolver.currentNeighborIds;
+      final neighbors = resolver.adjacentCellIds;
 
       // Use ring-2 cells (2 hops away) to find cells not in the direct neighbor
       // set but still within the detection radius.
@@ -139,10 +139,10 @@ void main() {
         if (neighbors.contains(id)) continue;
 
         final dist = resolver.distanceToCell(id);
-        if (dist <= kDetectionRadiusMeters) {
+        if (dist <= kAwarenessRadiusMeters) {
           // Within detection radius → must be at least unexplored or better
           final state = resolver.resolve(id);
-          expect(state, isNot(equals(FogState.undetected)),
+          expect(state, isNot(equals(FogState.unknown)),
               reason:
                   'Cell $id is within detection radius ($dist m) and should '
                   'not be undetected, but resolved as $state');
@@ -157,7 +157,7 @@ void main() {
       // Visit centre cell.
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final firstCellId = resolver.currentCellId!;
-      expect(resolver.resolve(firstCellId), equals(FogState.observed));
+      expect(resolver.resolve(firstCellId), equals(FogState.active));
 
       // Move to a direct neighbor.
       final neighbors = cellService.getNeighborIds(firstCellId);
@@ -167,11 +167,11 @@ void main() {
 
       // The original cell is no longer observed (it's either concealed or hidden).
       final stateAfterLeaving = resolver.resolve(firstCellId);
-      expect(stateAfterLeaving, isNot(equals(FogState.observed)),
+      expect(stateAfterLeaving, isNot(equals(FogState.active)),
           reason: 'Cell must not remain "observed" after player leaves');
       // Adjacent to new current cell → concealed; this is correct per priority table.
       expect(stateAfterLeaving,
-          anyOf(equals(FogState.concealed), equals(FogState.hidden)));
+          anyOf(equals(FogState.nearby), equals(FogState.visited)));
     });
 
     test('visited cell resolves as hidden when player moves 2 cells away', () {
@@ -198,7 +198,7 @@ void main() {
         final step2Center = cellService.getCellCenter(step2Candidates.first);
         resolver.onLocationUpdate(step2Center.lat, step2Center.lon);
         // firstCellId is visited, not current, not adjacent to current → hidden.
-        expect(resolver.resolve(firstCellId), equals(FogState.hidden));
+        expect(resolver.resolve(firstCellId), equals(FogState.visited));
       }
       // If no suitable step2 exists for this grid seed, the test is vacuously
       // satisfied — the grid topology doesn't allow the scenario.
@@ -226,14 +226,14 @@ void main() {
       // Now the frontier may contain cells that are neighbors of firstId
       // but NOT neighbors of the current cell (step1). Those should resolve
       // as unexplored.
-      final frontier = resolver.explorationFrontier;
-      final currentNeighbors = resolver.currentNeighborIds;
+      final frontier = resolver.visitedPerimeter;
+      final currentNeighbors = resolver.adjacentCellIds;
 
       final trueFrontierCells =
           frontier.where((id) => !currentNeighbors.contains(id)).toList();
 
       for (final cellId in trueFrontierCells) {
-        expect(resolver.resolve(cellId), equals(FogState.unexplored),
+        expect(resolver.resolve(cellId), equals(FogState.detected),
             reason: 'Frontier cell $cellId is not adjacent to current cell '
                 'and must resolve as unexplored');
       }
@@ -250,7 +250,7 @@ void main() {
       resolver.onLocationUpdate(kCentLat, kCentLon);
 
       expect(events.length, equals(1));
-      expect(events.first.newState, equals(FogState.observed));
+      expect(events.first.newState, equals(FogState.active));
     });
 
     test('onVisitedCellAdded does NOT fire on re-entering a visited cell', () {
@@ -330,16 +330,16 @@ void main() {
       expect(resolver2.visitedCellIds, equals(visited));
     });
 
-    test('loadVisitedCells rebuilds explorationFrontier', () {
+    test('loadVisitedCells rebuilds visitedPerimeter', () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final visited = resolver.getVisitedCells();
-      final originalFrontier = resolver.explorationFrontier;
+      final originalFrontier = resolver.visitedPerimeter;
 
       final resolver2 = FogStateResolver(cellService);
       addTearDown(resolver2.dispose);
       resolver2.loadVisitedCells(visited);
 
-      expect(resolver2.explorationFrontier, equals(originalFrontier));
+      expect(resolver2.visitedPerimeter, equals(originalFrontier));
     });
 
     test('loadVisitedCells does NOT emit events', () {
@@ -361,12 +361,12 @@ void main() {
     test('FogState resolved values follow priority table', () {
       resolver.onLocationUpdate(kCentLat, kCentLon);
       final currentId = resolver.currentCellId!;
-      final neighborId = resolver.currentNeighborIds.first;
+      final neighborId = resolver.adjacentCellIds.first;
 
       // Priority 1: current cell → observed.
-      expect(resolver.resolve(currentId), equals(FogState.observed));
+      expect(resolver.resolve(currentId), equals(FogState.active));
       // Priority 2: immediate neighbor → concealed.
-      expect(resolver.resolve(neighborId), equals(FogState.concealed));
+      expect(resolver.resolve(neighborId), equals(FogState.nearby));
     });
   });
 }

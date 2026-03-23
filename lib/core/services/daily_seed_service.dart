@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
 
 import 'package:earth_nova/shared/constants.dart';
 
@@ -60,6 +61,10 @@ class DailySeedService {
       : _fetchRemoteSeed = fetchRemoteSeed;
 
   DailySeedState? get currentSeed => _cached;
+
+  /// Inject a cached state for testing. Production code uses [fetchSeed].
+  @visibleForTesting
+  set cachedSeedForTest(DailySeedState? state) => _cached = state;
 
   bool get isDiscoveryPaused {
     final seed = _cached;

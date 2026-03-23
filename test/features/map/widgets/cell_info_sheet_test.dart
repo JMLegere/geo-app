@@ -207,7 +207,7 @@ void main() {
       );
     });
 
-    // ── Scenario 3: Tapping Explore calls spendSteps + visitCellRemotely
+    // ── Scenario 3: Tapping Explore calls spendSteps + revealCell
 
     testWidgets('tapping Explore deducts steps and marks cell as visited',
         (tester) async {
@@ -217,7 +217,7 @@ void main() {
       );
 
       // Confirm cell is on frontier before the test.
-      expect(resolver.explorationFrontier.contains(kTestCellId), isTrue);
+      expect(resolver.visitedPerimeter.contains(kTestCellId), isTrue);
 
       final container = ProviderContainer(
         overrides: [
@@ -245,7 +245,7 @@ void main() {
       expect(
         resolver.visitedCellIds.contains(kTestCellId),
         isTrue,
-        reason: 'visitCellRemotely must add cell to visitedCellIds',
+        reason: 'revealCell must add cell to visitedCellIds',
       );
     });
 
@@ -288,7 +288,7 @@ void main() {
       );
 
       // Visit the test cell remotely first.
-      resolver.visitCellRemotely(kTestCellId);
+      resolver.revealCell(kTestCellId);
       expect(resolver.visitedCellIds.contains(kTestCellId), isTrue);
 
       final container = ProviderContainer(

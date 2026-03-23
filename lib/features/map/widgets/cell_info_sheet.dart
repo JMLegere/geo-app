@@ -27,7 +27,7 @@ import 'package:earth_nova/shared/design_tokens.dart';
 /// Tapping the button:
 ///   - Disables button immediately (rapid-tap guard).
 ///   - Calls [PlayerNotifier.spendSteps] → reduces [PlayerState.totalSteps].
-///   - Calls [FogStateResolver.visitCellRemotely] → emits [onVisitedCellAdded]
+///   - Calls [FogStateResolver.revealCell] → emits [onVisitedCellAdded]
 ///     which triggers [DiscoveryService] automatically (no extra wiring needed).
 ///   - Closes the sheet.
 ///
@@ -107,7 +107,7 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
     final isWeb = widget.isWebPlatformOverride ?? kIsWeb;
     final isVisited = fogResolver.visitedCellIds.contains(widget.cellId);
     final isCurrentCell = fogResolver.currentCellId == widget.cellId;
-    final isFrontier = fogResolver.explorationFrontier.contains(widget.cellId);
+    final isFrontier = fogResolver.visitedPerimeter.contains(widget.cellId);
     final isDiscoveryPaused = seedService.isDiscoveryPaused;
 
     // Determine the cell status label for display.
@@ -280,7 +280,7 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
   ) {
     final isVisited = fogResolver.visitedCellIds.contains(widget.cellId);
     final isCurrentCell = fogResolver.currentCellId == widget.cellId;
-    final isFrontier = fogResolver.explorationFrontier.contains(widget.cellId);
+    final isFrontier = fogResolver.visitedPerimeter.contains(widget.cellId);
     final hasEnoughSteps = totalSteps >= kStepCostPerCell;
 
     // Conditions where we show a disabled/non-explore button:
@@ -378,7 +378,7 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
 
     // Visit the cell remotely — triggers DiscoveryService via onVisitedCellAdded.
     try {
-      fogResolver.visitCellRemotely(widget.cellId);
+      fogResolver.revealCell(widget.cellId);
     } catch (_) {
       // Cell left frontier between render and tap (e.g. GPS moved player into it).
       // Refund the steps to keep the balance consistent.

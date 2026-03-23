@@ -388,7 +388,7 @@ WriteQueueEntry makeEntry({
 /// Build a cell-progress payload JSON for the given cell ID.
 String _cellProgressPayload(String cellId) => jsonEncode({
       'cell_id': cellId,
-      'fog_state': 'observed',
+      'fog_state': 'active',
       'distance_walked': 100.0,
       'visit_count': 1,
       'restoration_level': 0.33,

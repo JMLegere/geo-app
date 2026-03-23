@@ -50,9 +50,10 @@ const int kEncounterSlotsPerCell = 1;
 /// Number of discrete fog states.
 const int kFogLevels = 5;
 
-/// Detection radius in meters. Cells within this distance of the player
-/// are detected (at minimum `FogState.unexplored`) even if never visited.
-const double kDetectionRadiusMeters = 1000.0;
+/// Awareness radius in meters. Cells within this distance of the player
+/// are detected (at minimum `FogState.detected`) even if never visited.
+/// Transitional name — will be replaced by district-based awareness in a future phase.
+const double kAwarenessRadiusMeters = 1000.0;
 
 /// Fog density values for each state.
 /// Index 0 = Undetected (fully opaque), Index 4 = Observed (fully transparent).
@@ -260,7 +261,7 @@ const int kMinDailyStepGrant = 1000;
 
 /// Step cost for remotely exploring a frontier cell via the cell info sheet.
 ///
-/// Spending this many steps calls [FogStateResolver.visitCellRemotely], which
+/// Spending this many steps calls [FogStateResolver.revealCell], which
 /// marks the cell as visited and triggers species discoveries via the
 /// [DiscoveryService] subscription.
 const int kStepCostPerCell = 1000;

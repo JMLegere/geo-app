@@ -221,9 +221,9 @@ class GameCoordinator {
   /// Called when GPS error state changes (permission, accuracy).
   void Function(GpsError error)? onGpsErrorChanged;
 
-  /// Called when a new cell is visited (fog resolver emits).
+  /// Called when a new cell is entered (fog resolver emits).
   /// Receives the cell ID for persistence.
-  void Function(String cellId)? onCellVisited;
+  void Function(String cellId)? onCellEntered;
 
   /// Called when an item is discovered. Receives the event and the newly
   /// created ItemInstance (with rolled intrinsic affix).
@@ -235,7 +235,7 @@ class GameCoordinator {
   void Function(String? userId)? onAuthStateChanged;
 
   // ---------------------------------------------------------------------------
-  // Auth state (tracked for persistence — userId needed by onCellVisited etc.)
+  // Auth state (tracked for persistence — userId needed by onCellEntered etc.)
   // ---------------------------------------------------------------------------
 
   String? _currentUserId;
@@ -315,7 +315,7 @@ class GameCoordinator {
     _discoverySubscription = discoveryStream.listen(_onDiscovery);
 
     _fogCellSubscription = _fogResolver.onVisitedCellAdded.listen((event) {
-      onCellVisited?.call(event.cellId);
+      onCellEntered?.call(event.cellId);
 
       obs?.event('cell_visited', {
         'cell_id': event.cellId,

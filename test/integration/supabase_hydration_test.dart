@@ -156,7 +156,7 @@ void main() {
         {
           'id': '${_userId}_cell-1',
           'cell_id': 'cell-1',
-          'fog_state': 'observed',
+          'fog_state': 'active',
           'visit_count': 5,
           'distance_walked': 120.5,
           'restoration_level': 0.67,
@@ -165,7 +165,7 @@ void main() {
         {
           'id': '${_userId}_cell-2',
           'cell_id': 'cell-2',
-          'fog_state': 'hidden',
+          'fog_state': 'visited',
           'visit_count': 1,
           'distance_walked': 30.0,
           'restoration_level': 0.33,
@@ -183,14 +183,14 @@ void main() {
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
       expect(cell1, isNotNull);
-      expect(cell1!.fogState, equals('observed'));
+      expect(cell1!.fogState, equals('active'));
       expect(cell1.visitCount, equals(5));
       expect(cell1.distanceWalked, equals(120.5));
       expect(cell1.restorationLevel, equals(0.67));
 
       final cell2 = await cellProgressRepo.read(_userId, 'cell-2');
       expect(cell2, isNotNull);
-      expect(cell2!.fogState, equals('hidden'));
+      expect(cell2!.fogState, equals('visited'));
       expect(cell2.visitCount, equals(1));
     });
 
@@ -254,7 +254,7 @@ void main() {
           {
             'id': '${_userId}_cell-A',
             'cell_id': 'cell-A',
-            'fog_state': 'observed',
+            'fog_state': 'active',
             'visit_count': 2,
             'distance_walked': 50.0,
             'restoration_level': 1.0,
@@ -288,7 +288,7 @@ void main() {
       // Cell progress
       final cell = await cellProgressRepo.read(_userId, 'cell-A');
       expect(cell, isNotNull);
-      expect(cell!.fogState, equals('observed'));
+      expect(cell!.fogState, equals('active'));
 
       // Item
       final items = await itemRepo.getItemsByUser(_userId);
@@ -414,7 +414,7 @@ void main() {
 
       final cell = await cellProgressRepo.read(_userId, 'cell-sparse');
       expect(cell, isNotNull);
-      expect(cell!.fogState, equals('observed')); // Default fog state
+      expect(cell!.fogState, equals('active')); // Default fog state
 
       final items = await itemRepo.getItemsByUser(_userId);
       expect(items.length, equals(1));

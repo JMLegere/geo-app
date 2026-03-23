@@ -60,7 +60,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `schemaVersion = 18`. Key migrations: v2→v3 LocalSpeciesEnrichmentTable (now dropped), v3→v4 LocalWriteQueueTable, v4→v9 enrichment columns, v10→v11 LocalCellPropertiesTable + LocalLocationNodeTable, v11→v12 osmId nullable, v12→v13 `geometry_json`, v13→v18 drop LocalSpeciesEnrichmentTable + add LocalSpeciesTable (seeded from JSON).
 
 **Conventions**:
-- FogState stored as string enum name (e.g., "observed", "concealed")
+- FogState stored as string enum name (e.g., "active", "nearby")
 - Uses `part 'app_database.g.dart'` — run `dart run build_runner build` after schema changes
 - Upsert semantics: `onConflict: DoUpdate((old) => ...)`
 - All tables use explicit text PKs except `LocalWriteQueueTable` (auto-increment int PK)
@@ -99,11 +99,11 @@ Shared domain logic, models, state management, and persistence for the geo-game.
   - Player's current cell
   - Distance from player position to cell center
   - Whether cell is in `visitedCellIds`
-- Detection radius from `kDetectionRadiusMeters` constant
-- Priority order: Observed (in current cell) > Hidden (previously visited) > Concealed (adjacent to current) > Unexplored (frontier or within detection radius) > Undetected (default)
+- Awareness radius from `kAwarenessRadiusMeters` constant
+- Priority order: Active (in current cell) > Visited (previously visited) > Nearby (adjacent to current) > Detected (visited perimeter or within awareness radius) > Unknown (default)
 - `onLocationUpdate()` emits a stream of `(cellId, FogState)` tuples for all cells whose state changed
 - Stream controller uses `sync: true` — events are emitted synchronously
-- Exploration frontier (Unexplored cells) is maintained incrementally: when a cell becomes Observed, its unvisited neighbors become Unexplored
+- Visited perimeter (Detected cells) is maintained incrementally: when a cell becomes Active, its unvisited neighbors become Detected
 
 ---
 
@@ -135,7 +135,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Immutable value objects for domain entities.
 
 **Public API** (23 models):
-- `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
+- `FogState`: enum with 5 values (unknown, detected, nearby, visited, active). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 3^x progression: LC=243, NT=81, VU=27, EN=9, CR=3, EX=1.
 - `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
 - `FaunaDefinition`: `scientificName`, `displayName`, `taxonomicClass`, `animalType`, `animalClass`, `foodPreference`, `climate`, `continents`, `habitats`, `rarity`. Equality by `id`. `animalType` auto-computed from `taxonomicClass`.
@@ -296,7 +296,7 @@ External dependencies: `geobase` (Geographic type), `drift` (ORM), `riverpod` (s
 ### Drift Value Wrappers
 - Nullable fields in `copyWith()` use `Value<T>` wrappers
 - `Value(x)` to set a value, `Value.absent()` to leave unchanged
-- Example: `entity.copyWith(fogState: Value('observed'), distanceTraveled: Value.absent())`
+- Example: `entity.copyWith(fogState: Value('active'), distanceTraveled: Value.absent())`
 
 ### Drift Auto-Increment
 - Tables with `autoIncrement()` must NOT override `primaryKey` getter
@@ -346,7 +346,7 @@ External dependencies: `geobase` (Geographic type), `drift` (ORM), `riverpod` (s
 ### Startup Hydration Order
 - `gameCoordinatorProvider` must hydrate inventory + cell progress + profile + cell properties from SQLite BEFORE starting the game loop.
 - `loadItems()` replaces inventory state entirely — a discovery during the race window would be wiped.
-- `cellsObserved` is hydrated from cell progress count (observed + hidden fog states), NOT from profile.currentStreak.
+- `cellsObserved` is hydrated from cell progress count (active + visited fog states), NOT from profile.currentStreak.
 - Auth may not be settled when the provider initializes. Use `ref.listen(authProvider)` with a `started` guard to wait.
 - On hydration failure, the loop starts without persisted data (graceful degradation).
 - Persistence uses async/await with try/catch (fire-and-forget). All writes go to SQLite + write queue simultaneously.
