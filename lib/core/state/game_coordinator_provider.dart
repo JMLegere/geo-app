@@ -949,6 +949,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           obs: obs,
         );
       }
+      // Warm species cache for newly resolved habitats so discoveries work.
+      final speciesCache = ref.read(speciesCacheProvider);
+      if (!speciesCache.isEmpty) {
+        final seen = <String>{};
+        for (final props in reResolved) {
+          final key = SpeciesCache.cacheKey(props.habitats, props.continent);
+          if (seen.add(key)) {
+            speciesCache.warmUp(
+              habitats: props.habitats,
+              continent: props.continent,
+            );
+          }
+        }
+      }
     }
   });
 

@@ -107,12 +107,26 @@ class SpeciesService {
     required Continent continent,
     int encounterSlots = kEncounterSlotsPerCell,
   }) {
-    final pool = <FaunaDefinition>{};
+    var pool = <FaunaDefinition>{};
     if (_cache != null) {
       pool.addAll(_getPool(habitats, continent));
     } else {
       for (final habitat in habitats) {
         pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+      }
+    }
+    // Fallback: plains is the default habitat when biome data hasn't loaded.
+    // No IUCN species are tagged with "plains". Retry with forest (the most
+    // common real habitat) so the player still gets discoveries.
+    if (pool.isEmpty && habitats.contains(Habitat.plains)) {
+      final fallback = (Set<Habitat>.from(habitats)..remove(Habitat.plains))
+        ..add(Habitat.forest);
+      if (_cache != null) {
+        pool.addAll(_getPool(fallback, continent));
+      } else {
+        for (final habitat in fallback) {
+          pool.addAll(_byHabitatAndContinent[(habitat, continent)] ?? []);
+        }
       }
     }
     if (pool.isEmpty) return [];
