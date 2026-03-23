@@ -1005,6 +1005,7 @@ void main() {
       );
 
       // Simulate 3 rapid profile mutations (like startup hydration).
+      final now = DateTime.now();
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.profile,
         entityId: 'user-1',
@@ -1015,7 +1016,7 @@ void main() {
           'total_distance_km': 0.0,
           'current_season': 'winter',
         }),
-        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+        createdAt: now.subtract(const Duration(seconds: 2)),
       ));
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.profile,
@@ -1028,7 +1029,7 @@ void main() {
           'current_season': 'winter',
           'has_completed_onboarding': true,
         }),
-        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+        createdAt: now.subtract(const Duration(seconds: 1)),
       ));
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.profile,
@@ -1042,7 +1043,7 @@ void main() {
           'has_completed_onboarding': true,
           'total_steps': 500,
         }),
-        createdAt: DateTime(2026, 3, 20, 12, 0, 2),
+        createdAt: now,
       ));
 
       final summary = await processor.flush();
@@ -1064,13 +1065,13 @@ void main() {
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
         entityId: 'cell-1',
-        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+        createdAt: DateTime.now().subtract(const Duration(seconds: 1)),
       ));
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
         entityId: 'cell-2',
         payload: _cellProgressPayload('cell-2'),
-        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+        createdAt: DateTime.now(),
       ));
 
       final summary = await processor.flush();
@@ -1092,12 +1093,12 @@ void main() {
         entityType: WriteQueueEntityType.profile,
         entityId: 'user-1',
         payload: _profilePayload(),
-        createdAt: DateTime(2026, 3, 20, 12, 0, 0),
+        createdAt: DateTime.now().subtract(const Duration(seconds: 1)),
       ));
       mockRepo.addEntry(makeEntry(
         entityType: WriteQueueEntityType.cellProgress,
         entityId: 'cell-1',
-        createdAt: DateTime(2026, 3, 20, 12, 0, 1),
+        createdAt: DateTime.now(),
       ));
 
       final summary = await processor.flush();
