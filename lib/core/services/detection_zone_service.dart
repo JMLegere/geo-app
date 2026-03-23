@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/location_node_repository.dart';
 import 'package:flutter/foundation.dart';
 
