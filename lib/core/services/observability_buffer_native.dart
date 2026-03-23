@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/device_fingerprint.dart';
+import 'package:earth_nova/core/services/startup_beacon.dart';
 
 typedef RemoteFlusher = Future<void> Function(List<Map<String, dynamic>> rows);
 
@@ -16,7 +17,9 @@ class ObservabilityBuffer {
   static ObservabilityBuffer? instance;
 
   final RemoteFlusher _flusher;
-  final String sessionId = const Uuid().v4();
+
+  /// Session UUID — shared with [StartupBeacon] and [LogFlushService].
+  late final String sessionId = StartupBeacon.sessionId;
   late final String deviceId = _safeDeviceId();
   String? _userId;
 

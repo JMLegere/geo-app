@@ -63,6 +63,7 @@ void main() {
         // must live here to break the auth↔sync circular dependency.
         if (file.path.endsWith('supabase_bootstrap.dart')) continue;
         if (file.path.endsWith('daily_seed_provider.dart')) continue;
+        if (file.path.endsWith('startup_beacon.dart')) continue;
 
         final content = file.readAsStringSync();
         final found = findNetworkImports(content);
@@ -137,6 +138,7 @@ void main() {
             path.endsWith('supabase_auth_service.dart') ||
             path.endsWith('supabase_bootstrap.dart') ||
             path.endsWith('daily_seed_provider.dart') ||
+            path.endsWith('startup_beacon.dart') ||
             path.endsWith('main.dart');
 
         if (!isAllowed) {
@@ -168,10 +170,12 @@ void main() {
 
         if (!hasHttp) continue;
 
-        // Allowed: sync/ (network layer) and supabase_bootstrap.dart
-        // (needs package:http for injectable Client parameter).
+        // Allowed: sync/ (network layer), supabase_bootstrap.dart
+        // (needs package:http for injectable Client parameter), and
+        // startup_beacon.dart (raw HTTP for pre-init telemetry).
         if (!path.contains('lib/features/sync/') &&
-            !path.endsWith('supabase_bootstrap.dart')) {
+            !path.endsWith('supabase_bootstrap.dart') &&
+            !path.endsWith('startup_beacon.dart')) {
           violations.add(path);
         }
       }

@@ -9,6 +9,7 @@ import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/database/connection.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/engine/game_engine.dart';
 import 'package:earth_nova/core/engine/main_thread_engine_runner.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
@@ -74,6 +75,7 @@ import 'package:earth_nova/core/state/species_repository_provider.dart';
 /// chains those handlers with its own Riverpod/persistence logic so BOTH event
 /// emission and state mutations fire on each callback.
 final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
+  StartupBeacon.emit('provider_init');
   final fogResolver = ref.watch(fogResolverProvider);
   final cellService = ref.watch(cellServiceProvider);
   final locationService = ref.watch(locationServiceProvider);
@@ -612,6 +614,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     //
     // The game loop MUST start even if hydration fails (e.g. Ref disposed
     // due to provider rebuild race).
+    StartupBeacon.emit('hydration_start', {'user_id': userId});
     obs.event('hydration_started', {'user_id': userId});
 
     final hydrationStopwatch = Stopwatch()..start();
@@ -666,6 +669,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
 
       hydrationStopwatch.stop();
+      StartupBeacon.emit('hydration_complete', {
+        'duration_ms': '${hydrationStopwatch.elapsedMilliseconds}',
+      });
       final inventory = ref.read(itemsProvider);
       obs.event('hydration_complete', {
         'user_id': userId,
@@ -764,6 +770,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         });
       });
     }).catchError((Object e) {
+      StartupBeacon.emit('hydration_error', {'error': e.toString()});
       debugPrint(
         '[GameCoordinator] SQLite hydration failed '
         '(starting loop anyway): $e',
@@ -811,6 +818,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     final userId = authState.user?.id;
 
     if (authState.status == AuthStatus.authenticated && userId != null) {
+      StartupBeacon.emit('auth_settled', {'status': 'authenticated'});
       obs.event('auth_restored', {'user_id': userId});
       if (userId == lastHydratedUserId) return; // Already hydrated — no-op.
       lastHydratedUserId = userId;
@@ -818,6 +826,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       coordinator.setCurrentUserId(userId);
       hydrateAndStart(userId);
     } else if (authState.status == AuthStatus.unauthenticated) {
+      StartupBeacon.emit('auth_settled', {'status': 'unauthenticated'});
       obs.event('auth_expired', {'previous_user_id': lastHydratedUserId});
       // Clear write queue for the outgoing user BEFORE resetting state.
       // Prevents stale entries from being flushed with the next session's
