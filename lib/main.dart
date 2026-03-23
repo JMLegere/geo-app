@@ -5,9 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+
 import 'package:earth_nova/core/config/supabase_bootstrap.dart';
 import 'package:earth_nova/core/services/debug_log_buffer.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/features/sync/services/observable_http_client.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
@@ -31,9 +34,13 @@ Future<void> main() async {
   PaintingBinding.instance.imageCache.maximumSize = 500;
   PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
 
+  StartupBeacon.emit('supabase_init');
   await SupabaseBootstrap.initialize(
     httpClient: ObservableHttpClient(),
   );
+  if (SupabaseBootstrap.initialized) {
+    StartupBeacon.promote(Supabase.instance.client);
+  }
 
   // 1. Create the appropriate AuthService based on Supabase availability.
   final AuthService authService =
@@ -48,6 +55,7 @@ Future<void> main() async {
 
   // 4. Attempt session restore. AuthNotifier starts at `loading` so
   //    LoadingScreen shows while this runs.
+  StartupBeacon.emit('session_restore');
   try {
     debugPrint('[AUTH] restoring session…');
     final hasSession = await authService.restoreSession();
@@ -132,6 +140,7 @@ Future<void> main() async {
   // debugPrint and MapLogger) and feeds it to the in-app debug log viewer,
   // AND catches any unhandled async exceptions (Future rejections, Timer
   // callbacks, microtask errors) that would otherwise crash the app.
+  StartupBeacon.emit('run_app');
   runZonedGuarded(
     () {
       runApp(UncontrolledProviderScope(
@@ -288,6 +297,7 @@ class EarthNovaApp extends ConsumerWidget {
       AuthStatus.unauthenticated => 'LoginScreen',
     };
     debugPrint('[NAV] resolveHome → $pageName');
+    StartupBeacon.emit('resolve_home', {'route': pageName});
 
     return widget;
   }
