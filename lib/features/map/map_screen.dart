@@ -112,6 +112,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Location enrichment service. Saved in initState for safe access in dispose()
   /// (calling ref.read() in dispose() triggers "Bad state: Using ref" error).
   late final LocationEnrichmentService _locationEnrichmentService;
+  StreamSubscription<({String cellId, String locationId})>?
+      _enrichmentSubscription;
 
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
@@ -224,23 +226,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // the fog overlay cache so territory borders update without an app restart.
     // Save reference to field — ref.read() in dispose() is unsafe (Bad state: Using ref).
     _locationEnrichmentService = ref.read(locationEnrichmentServiceProvider);
-    _locationEnrichmentService.onLocationEnriched = (cellId, locationId) {
+    _enrichmentSubscription =
+        _locationEnrichmentService.onLocationEnriched.listen((event) {
       if (!mounted) return;
-      ref.read(locationNodeRepositoryProvider).get(locationId).then((node) {
+      ref
+          .read(locationNodeRepositoryProvider)
+          .get(event.locationId)
+          .then((node) {
         if (node != null && mounted) {
           ref.read(fogOverlayControllerProvider).addLocationNode(node);
         }
       }).catchError((Object e) {
-        debugPrint('[MapScreen] failed to load location node $locationId: $e');
+        debugPrint(
+            '[MapScreen] failed to load location node ${event.locationId}: $e');
       });
 
       // Trigger admin boundary fetch when enrichment resolves — the district
       // locationId may have changed, so requestBoundaries will check and fetch
       // polygon data if needed (deduplicates internally by location).
       final cellService = ref.read(cellServiceProvider);
-      final center = cellService.getCellCenter(cellId);
+      final center = cellService.getCellCenter(event.cellId);
       _adminBoundaryService?.requestBoundaries(center.lat, center.lon);
-    };
+    });
 
     // Wire admin boundary service — fetch polygons on district change.
     _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
@@ -253,7 +260,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   @override
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
-    _locationEnrichmentService.onLocationEnriched = null;
+    _enrichmentSubscription?.cancel();
     _adminBoundaryService?.onBoundariesResolved = null;
     _rubberBand.dispose();
     _markerPosition.dispose();

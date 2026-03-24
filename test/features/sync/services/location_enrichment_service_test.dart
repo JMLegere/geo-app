@@ -157,25 +157,16 @@ void main() {
       expect(cellPropertyRepo.updateLocationIdCalls, isEmpty);
     });
 
-    test('onLocationEnriched callback fires with correct arguments', () {
-      // Test the callback wiring — we can't call _executeRequest directly,
-      // but we can verify the callback is settable and invokable.
-      final enrichedCells = <(String, String)>[];
-
+    test('onLocationEnriched stream emits enrichment events', () async {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
         locationNodeRepo: locationNodeRepo,
         supabaseClient: null,
-        onLocationEnriched: (cellId, locationId) {
-          enrichedCells.add((cellId, locationId));
-        },
       );
       addTearDown(service.dispose);
 
-      // Manually invoke the callback to verify wiring.
-      service.onLocationEnriched?.call('cell_42', 'loc_123');
-      expect(enrichedCells, hasLength(1));
-      expect(enrichedCells.first, ('cell_42', 'loc_123'));
+      // Stream should be a broadcast stream (multiple listeners OK).
+      expect(service.onLocationEnriched.isBroadcast, isTrue);
     });
 
     test('dispose cancels drain timer without error', () {
@@ -225,26 +216,21 @@ void main() {
       expect(service.baseDelayMs, 1200);
     });
 
-    test('onLocationEnriched callback can be replaced after construction', () {
-      final firstCalls = <String>[];
-      final secondCalls = <String>[];
+    test('onLocationEnriched supports multiple listeners', () async {
+      final listener1 = <String>[];
+      final listener2 = <String>[];
 
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
         locationNodeRepo: locationNodeRepo,
-        onLocationEnriched: (cellId, _) => firstCalls.add(cellId),
       );
       addTearDown(service.dispose);
 
-      service.onLocationEnriched?.call('a', 'loc');
-      expect(firstCalls, ['a']);
-      expect(secondCalls, isEmpty);
+      service.onLocationEnriched.listen((e) => listener1.add(e.cellId));
+      service.onLocationEnriched.listen((e) => listener2.add(e.cellId));
 
-      // Replace callback.
-      service.onLocationEnriched = (cellId, _) => secondCalls.add(cellId);
-      service.onLocationEnriched?.call('b', 'loc');
-      expect(firstCalls, ['a']); // Not called again.
-      expect(secondCalls, ['b']);
+      // Both listeners should be independent — broadcast stream.
+      expect(service.onLocationEnriched.isBroadcast, isTrue);
     });
   });
 
@@ -468,11 +454,11 @@ void main() {
           cellPropertyRepo: cellPropertyRepo,
           locationNodeRepo: locationNodeRepo,
           supabaseClient: mockClient,
-          onLocationEnriched: (cellId, locationId) {
-            enrichedCells.add((cellId, locationId));
-          },
         );
         addTearDown(service.dispose);
+        service.onLocationEnriched.listen((e) {
+          enrichedCells.add((e.cellId, e.locationId));
+        });
 
         service.requestEnrichment(cellId: 'cell_a', lat: 45.0, lon: -66.0);
         service.requestEnrichment(cellId: 'cell_b', lat: 46.0, lon: -67.0);

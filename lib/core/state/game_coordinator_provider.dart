@@ -338,25 +338,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   String? _lastDistrictId;
 
   // When enrichment resolves a locationId for a cell, update the in-memory
-  // cache and check if this triggers a detection zone update. This handles
-  // the startup case where the current cell had no locationId and enrichment
-  // was requested.
+  // cache and check if this triggers a detection zone update.
   final locationEnrichmentSvc = ref.read(locationEnrichmentServiceProvider);
-  final existingEnrichCallback = locationEnrichmentSvc.onLocationEnriched;
-  locationEnrichmentSvc.onLocationEnriched = (cellId, locationId) {
-    existingEnrichCallback?.call(cellId, locationId);
+  locationEnrichmentSvc.onLocationEnriched.listen((event) {
     if (_providerDisposed) return;
     // Update in-memory cache with the new locationId.
-    final cached = coordinator.cellPropertiesCache[cellId];
+    final cached = coordinator.cellPropertiesCache[event.cellId];
     if (cached != null && cached.locationId == null) {
-      coordinator.updateCellPropertyLocationId(cellId, locationId);
+      coordinator.updateCellPropertyLocationId(event.cellId, event.locationId);
     }
     // Trigger detection zone if this is a new district.
-    if (locationId != _lastDistrictId) {
-      _lastDistrictId = locationId;
-      detectionZoneService.onDistrictChange(locationId);
+    if (event.locationId != _lastDistrictId) {
+      _lastDistrictId = event.locationId;
+      detectionZoneService.onDistrictChange(event.locationId);
     }
-  };
+  });
 
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
@@ -757,36 +753,61 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'source': 'sqlite',
       });
 
-      // Seed detection zone from ANY cached cell with a locationId.
-      // 420 of ~1700 cached cells have locationIds. Scan all of them,
-      // preferring the player's current cell/neighbors, falling back to
-      // any cell in the cache.
+      // ── Startup enrichment backfill ──────────────────────────────────────
+      // Queue cells without locationId for enrichment. Priority order:
+      // 1. Player's current cell + neighbors (unblocks detection zone fast)
+      // 2. Remaining cells without locationId (capped at 50 per session)
+      //
+      // Also seed detection zone from any cached locationId.
       {
+        // Reset circuit breaker on fresh session — previous auth failures
+        // should not persist across app restarts.
+        locationEnrichmentSvc.resetAuthCircuitBreaker();
+
         String? seedDistrictId;
-        // Priority 1: current cell + neighbors
+        final unenriched = <({String cellId, double lat, double lon})>[];
+        String? currentCellId;
+
+        // Scan for seed + collect un-enriched cells
         if (profile?.lastLat != null && profile?.lastLon != null) {
-          final currentCellId =
+          currentCellId =
               cellService.getCellId(profile!.lastLat!, profile.lastLon!);
+        }
+
+        // Priority pass: current cell + neighbors
+        if (currentCellId != null) {
           for (final cellId in [
             currentCellId,
             ...cellService.getNeighborIds(currentCellId),
           ]) {
             final props = coordinator.cellPropertiesCache[cellId];
-            if (props?.locationId != null) {
-              seedDistrictId = props!.locationId;
-              break;
-            }
-          }
-        }
-        // Priority 2: any cached cell with a locationId
-        if (seedDistrictId == null) {
-          for (final props in coordinator.cellPropertiesCache.values) {
+            if (props == null) continue;
             if (props.locationId != null) {
-              seedDistrictId = props.locationId;
-              break;
+              seedDistrictId ??= props.locationId;
+            } else {
+              final center = cellService.getCellCenter(cellId);
+              unenriched
+                  .add((cellId: cellId, lat: center.lat, lon: center.lon));
             }
           }
         }
+
+        // Remaining pass: all cached cells (capped)
+        const backfillCap = 50;
+        for (final entry in coordinator.cellPropertiesCache.entries) {
+          if (unenriched.length >= backfillCap) break;
+          if (entry.value.locationId != null) {
+            seedDistrictId ??= entry.value.locationId;
+          } else {
+            // Skip if already queued from priority pass
+            if (unenriched.any((e) => e.cellId == entry.key)) continue;
+            final center = cellService.getCellCenter(entry.key);
+            unenriched
+                .add((cellId: entry.key, lat: center.lat, lon: center.lon));
+          }
+        }
+
+        // Seed detection zone
         if (seedDistrictId != null) {
           _lastDistrictId = seedDistrictId;
           detectionZoneService.onDistrictChange(seedDistrictId);
@@ -794,16 +815,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             '[DetectionZone] seeded from cache, district=$seedDistrictId',
           );
         } else {
-          // No locationIds at all — trigger enrichment for current cell.
-          debugPrint('[DetectionZone] no locationId in any cached cell');
-          if (profile?.lastLat != null && profile?.lastLon != null) {
-            final currentCellId =
-                cellService.getCellId(profile!.lastLat!, profile.lastLon!);
-            final enrichSvc = ref.read(locationEnrichmentServiceProvider);
-            enrichSvc.requestEnrichment(
-              cellId: currentCellId,
-              lat: profile.lastLat!,
-              lon: profile.lastLon!,
+          debugPrint('[DetectionZone] no locationId in cache — '
+              'awaiting enrichment');
+        }
+
+        // Queue un-enriched cells for background enrichment
+        if (unenriched.isNotEmpty) {
+          debugPrint('[LocationEnrichment] startup backfill: '
+              'queuing ${unenriched.length} cells '
+              '(${unenriched.length >= backfillCap ? "capped" : "all"})');
+          for (final cell in unenriched) {
+            locationEnrichmentSvc.requestEnrichment(
+              cellId: cell.cellId,
+              lat: cell.lat,
+              lon: cell.lon,
             );
           }
         }
