@@ -1180,11 +1180,42 @@ bool _looksLikeDatabaseCorruption(Object error) {
       msg.contains('database disk image is malformed');
 }
 
+/// Max number of automatic database wipe+reload cycles allowed per session.
+///
+/// After this many reloads, the recovery is skipped to prevent an infinite
+/// crash loop (e.g. FormatException from a corrupt asset, not a corrupt DB).
+const _kMaxRecoveryAttempts = 3;
+
+/// Count of database wipe+reload attempts in this process lifetime.
+///
+/// Resets to 0 when the page/process is started fresh.  Because
+/// [resetDatabaseStorage] triggers a page reload, this counter resets
+/// naturally after a successful recovery.  It only accumulates when the
+/// reload itself fails to fix the problem (i.e. the app crashes again
+/// before the counter is reset).
+int _recoveryAttemptCount = 0;
+
 /// Wipe all web databases (OPFS + IndexedDB) and reload the page.
 ///
 /// Uses [resetDatabaseStorage] from the platform-conditional connection
 /// module (no-op on native, wipes OPFS + IndexedDB + reloads on web).
+///
+/// A max-retry guard prevents an infinite reload loop when the corruption
+/// is caused by a bad asset (FormatException from JSON parsing) rather than
+/// a truly corrupt SQLite file.  After [_kMaxRecoveryAttempts] reloads the
+/// recovery is skipped and the app continues in degraded mode.
 void _triggerWebDatabaseRecovery() {
+  _recoveryAttemptCount++;
+  if (_recoveryAttemptCount > _kMaxRecoveryAttempts) {
+    debugPrint(
+      '[RECOVERY] max recovery attempts ($_kMaxRecoveryAttempts) reached — '
+      'skipping wipe to prevent crash loop. App will run in degraded mode.',
+    );
+    return;
+  }
+  debugPrint(
+    '[RECOVERY] attempt $_recoveryAttemptCount of $_kMaxRecoveryAttempts',
+  );
   resetDatabaseStorage();
 }
 
