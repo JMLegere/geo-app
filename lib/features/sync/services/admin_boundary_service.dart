@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -15,26 +16,22 @@ class AdminBoundaryService {
   AdminBoundaryService({
     required SupabaseClient client,
     required LocationNodeRepository repository,
-    this.onBoundariesResolved,
   })  : _client = client,
         _repository = repository;
 
   final SupabaseClient _client;
   final LocationNodeRepository _repository;
 
-  /// Fires after each successful call with the list of upserted node IDs.
-  void Function(List<String> nodeIds)? onBoundariesResolved;
+  final StreamController<List<String>> _boundariesResolvedController =
+      StreamController<List<String>>.broadcast(sync: true);
+
+  /// Fires after each successful boundary fetch with the upserted node IDs.
+  Stream<List<String>> get onBoundariesResolved =>
+      _boundariesResolvedController.stream;
 
   /// Lat/lon key from the last [requestBoundaries] call, rounded to 4 decimal
   /// places (~11 m). Repeated calls at the same location are no-ops.
   String? _lastRequestedLocation;
-
-  static const _requiredLevels = {
-    AdminLevel.country,
-    AdminLevel.state,
-    AdminLevel.city,
-    AdminLevel.district,
-  };
 
   /// Fetches admin boundary polygons for [lat]/[lon] from the Edge Function
   /// and upserts them into the local [LocationNodeRepository].
@@ -47,21 +44,13 @@ class AdminBoundaryService {
     // Primary deduplication: same location (rounded to 4 decimal places).
     final locationKey = '${lat.toStringAsFixed(4)}_${lon.toStringAsFixed(4)}';
     if (locationKey == _lastRequestedLocation) return;
-    _lastRequestedLocation = locationKey;
 
     try {
-      // Secondary deduplication: skip if all admin levels already cached.
-      try {
-        final allNodes = await _repository.getAll();
-        final levelsWithGeometry = allNodes
-            .where((n) => n.geometryJson != null)
-            .map((n) => n.adminLevel)
-            .toSet();
-        if (_requiredLevels.every(levelsWithGeometry.contains)) return;
-      } catch (e) {
-        // Pre-check failure is non-fatal — proceed with Edge Function call.
-        debugPrint('[AdminBoundary] pre-call cache check failed: $e');
-      }
+      // Secondary deduplication removed — the old check looked at ALL nodes
+      // globally, so once any single district had geometry, it skipped
+      // fetching geometry for every other district. The primary deduplication
+      // (same lat/lon rounded to 4 decimal places) and the Edge Function's
+      // own per-node cache are sufficient.
 
       final response = await _client.functions.invoke(
         'resolve-admin-boundaries',
@@ -136,8 +125,10 @@ class AdminBoundaryService {
         nodeIds.add(nodeId);
       }
 
+      // Only mark location as done after successful response with results.
       if (nodeIds.isNotEmpty) {
-        onBoundariesResolved?.call(nodeIds);
+        _lastRequestedLocation = locationKey;
+        _boundariesResolvedController.add(nodeIds);
       }
     } catch (e) {
       debugPrint('[AdminBoundary] requestBoundaries failed: $e');

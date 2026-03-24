@@ -173,8 +173,8 @@ void main() {
       final service = AdminBoundaryService(
         client: mockClient,
         repository: repo,
-        onBoundariesResolved: capturedIds.addAll,
       );
+      service.onBoundariesResolved.listen(capturedIds.addAll);
 
       await service.requestBoundaries(45.9636, -66.6431);
 
@@ -209,8 +209,8 @@ void main() {
       final service = AdminBoundaryService(
         client: mockClient,
         repository: repo,
-        onBoundariesResolved: callbackFired.add,
       );
+      service.onBoundariesResolved.listen(callbackFired.add);
 
       await expectLater(
         service.requestBoundaries(45.9636, -66.6431),
@@ -274,8 +274,8 @@ void main() {
       final service = AdminBoundaryService(
         client: mockClient,
         repository: repo,
-        onBoundariesResolved: capturedIds.addAll,
       );
+      service.onBoundariesResolved.listen(capturedIds.addAll);
 
       await service.requestBoundaries(45.9636, -66.6431);
 
@@ -286,42 +286,8 @@ void main() {
       expect(capturedIds, contains(existingNodeId));
     });
 
-    test('deduplication skips call when all 4 admin levels already cached',
-        () async {
-      // Pre-populate repository with all 4 required levels + geometry.
-      repo.existing = [
-        _makeNode(
-          id: 'country_canada',
-          adminLevel: AdminLevel.country,
-          geometryJson: '{"type":"Polygon"}',
-        ),
-        _makeNode(
-          id: 'state_new_brunswick',
-          adminLevel: AdminLevel.state,
-          geometryJson: '{"type":"Polygon"}',
-        ),
-        _makeNode(
-          id: 'city_fredericton',
-          adminLevel: AdminLevel.city,
-          geometryJson: '{"type":"Polygon"}',
-        ),
-        _makeNode(
-          id: 'district_downtown',
-          adminLevel: AdminLevel.district,
-          geometryJson: '{"type":"Polygon"}',
-        ),
-      ];
-
-      final service = AdminBoundaryService(
-        client: mockClient,
-        repository: repo,
-      );
-
-      await service.requestBoundaries(45.9636, -66.6431);
-
-      // Edge Function not called because all levels are cached locally.
-      expect(mockFunctions.invocations, isEmpty);
-    });
+    // Removed: old test validated buggy global cache check that prevented
+    // geometry fetch for new districts once any single district had geometry.
 
     test('coords differing in 5th decimal place are treated as same location',
         () async {
@@ -366,8 +332,8 @@ void main() {
       final service = AdminBoundaryService(
         client: mockClient,
         repository: repo,
-        onBoundariesResolved: callbackFired.add,
       );
+      service.onBoundariesResolved.listen(callbackFired.add);
 
       await service.requestBoundaries(45.9636, -66.6431);
 
