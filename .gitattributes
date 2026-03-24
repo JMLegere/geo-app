@@ -15,7 +15,8 @@
 
 # Large data assets
 assets/biome_features.json filter=lfs diff=lfs merge=lfs -text
-assets/species_data.json filter=lfs diff=lfs merge=lfs -text
+# species_data.json NOT in LFS — needed in Docker build context for web deploys.
+# Railway doesn't pull LFS files, causing FormatException at runtime.
 assets/*.db filter=lfs diff=lfs merge=lfs -text
 
 # Images (future-proof — app icons, watercolor art, etc.)
