@@ -54,6 +54,7 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/affix_backfill.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
+import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -338,15 +339,42 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   String? _lastDistrictId;
 
   // When enrichment resolves a locationId for a cell, update the in-memory
-  // cache and check if this triggers a detection zone update.
+  // cache, flood-fill nearby cached cells with the same district (spatial
+  // dedup — avoids 100s of Nominatim calls), and trigger detection zone.
   final locationEnrichmentSvc = ref.read(locationEnrichmentServiceProvider);
-  locationEnrichmentSvc.onLocationEnriched.listen((event) {
+  final enrichLocationNodeRepo = ref.read(locationNodeRepositoryProvider);
+
+  locationEnrichmentSvc.onLocationEnriched.listen((event) async {
     if (_providerDisposed) return;
-    // Update in-memory cache with the new locationId.
+
+    // Update the enriched cell's in-memory cache.
     final cached = coordinator.cellPropertiesCache[event.cellId];
     if (cached != null && cached.locationId == null) {
       coordinator.updateCellPropertyLocationId(event.cellId, event.locationId);
     }
+
+    // ── Spatial dedup: flood-fill locationId to nearby cached cells ──────
+    // When this district has geometry, compute all cells inside the polygon
+    // and assign them the same locationId — no Nominatim call needed.
+    final node = await enrichLocationNodeRepo.get(event.locationId);
+    if (node?.geometryJson != null) {
+      final districtCellIds = await detectionZoneService
+          .computeCellIdsForDistrict(event.locationId);
+      var floodFilled = 0;
+      for (final cellId in districtCellIds) {
+        final props = coordinator.cellPropertiesCache[cellId];
+        if (props != null && props.locationId == null) {
+          coordinator.updateCellPropertyLocationId(cellId, event.locationId);
+          await cellPropertyRepo.updateLocationId(cellId, event.locationId);
+          floodFilled++;
+        }
+      }
+      if (floodFilled > 0) {
+        debugPrint('[DetectionZone] flood-filled $floodFilled cells '
+            'with district=${event.locationId}');
+      }
+    }
+
     // Trigger detection zone if this is a new district.
     if (event.locationId != _lastDistrictId) {
       _lastDistrictId = event.locationId;
