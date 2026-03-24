@@ -126,6 +126,15 @@ class GameCoordinator {
     _cellPropertiesCache.addAll(properties);
   }
 
+  /// Update the locationId on a cached cell property.
+  /// Called when enrichment resolves a locationId after initial resolution.
+  void updateCellPropertyLocationId(String cellId, String locationId) {
+    final existing = _cellPropertiesCache[cellId];
+    if (existing != null) {
+      _cellPropertiesCache[cellId] = existing.copyWith(locationId: locationId);
+    }
+  }
+
   /// Re-resolve cells in the cache that have only `{plains}` as their habitat.
   ///
   /// These cells were likely resolved before the biome feature index loaded,

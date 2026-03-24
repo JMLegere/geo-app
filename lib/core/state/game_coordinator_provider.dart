@@ -337,6 +337,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final detectionZoneService = ref.read(detectionZoneServiceProvider);
   String? _lastDistrictId;
 
+  // When enrichment resolves a locationId for a cell, update the in-memory
+  // cache and check if this triggers a detection zone update. This handles
+  // the startup case where the current cell had no locationId and enrichment
+  // was requested.
+  final locationEnrichmentSvc = ref.read(locationEnrichmentServiceProvider);
+  final existingEnrichCallback = locationEnrichmentSvc.onLocationEnriched;
+  locationEnrichmentSvc.onLocationEnriched = (cellId, locationId) {
+    existingEnrichCallback?.call(cellId, locationId);
+    if (_providerDisposed) return;
+    // Update in-memory cache with the new locationId.
+    final cached = coordinator.cellPropertiesCache[cellId];
+    if (cached != null && cached.locationId == null) {
+      coordinator.updateCellPropertyLocationId(cellId, locationId);
+    }
+    // Trigger detection zone if this is a new district.
+    if (locationId != _lastDistrictId) {
+      _lastDistrictId = locationId;
+      detectionZoneService.onDistrictChange(locationId);
+    }
+  };
+
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
     fogResolver.setDetectionZone(zoneCellIds);
@@ -736,16 +757,46 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'source': 'sqlite',
       });
 
-      // Seed detection zone from player's current cell if it has a locationId.
-      // This ensures the zone is active at startup without needing a new cell
-      // visit — the player may be sitting still in an already-visited cell.
+      // Seed detection zone from player's current cell or nearby cells.
+      // Scans current cell + ring-1 neighbors for any locationId. If none
+      // found, triggers enrichment and seeds the zone when it completes.
       if (profile?.lastLat != null && profile?.lastLon != null) {
         final currentCellId =
             cellService.getCellId(profile!.lastLat!, profile.lastLon!);
-        final currentProps = coordinator.cellPropertiesCache[currentCellId];
-        if (currentProps?.locationId != null) {
-          _lastDistrictId = currentProps!.locationId;
-          detectionZoneService.onDistrictChange(currentProps.locationId!);
+        // Search current cell + neighbors for a locationId
+        String? seedDistrictId;
+        final candidates = [
+          currentCellId,
+          ...cellService.getNeighborIds(currentCellId),
+        ];
+        for (final cellId in candidates) {
+          final props = coordinator.cellPropertiesCache[cellId];
+          if (props?.locationId != null) {
+            seedDistrictId = props!.locationId;
+            break;
+          }
+        }
+        if (seedDistrictId != null) {
+          _lastDistrictId = seedDistrictId;
+          detectionZoneService.onDistrictChange(seedDistrictId);
+          debugPrint(
+            '[DetectionZone] seeded from cached cell locationId=$seedDistrictId',
+          );
+        } else {
+          // No locationId in cache — trigger enrichment for current cell.
+          // When enrichment completes, it writes locationId to SQLite.
+          // We listen for that and seed the detection zone.
+          debugPrint(
+            '[DetectionZone] no locationId cached — requesting enrichment '
+            'for $currentCellId',
+          );
+          final locationEnrichmentSvc =
+              ref.read(locationEnrichmentServiceProvider);
+          locationEnrichmentSvc.requestEnrichment(
+            cellId: currentCellId,
+            lat: profile.lastLat!,
+            lon: profile.lastLon!,
+          );
         }
       }
 
