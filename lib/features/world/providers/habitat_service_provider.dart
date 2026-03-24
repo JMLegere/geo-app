@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/features/world/services/biome_feature_index.dart';
@@ -20,8 +20,14 @@ final biomeFeatureIndexProvider =
   if (kIsWeb) {
     await Future<void>.delayed(const Duration(seconds: 10));
   }
-  final jsonString = await rootBundle.loadString('assets/biome_features.json');
-  return BiomeFeatureIndex.load(jsonString);
+  try {
+    final jsonString =
+        await rootBundle.loadString('assets/biome_features.json');
+    return BiomeFeatureIndex.load(jsonString);
+  } catch (e) {
+    debugPrint('[BiomeFeatureIndex] failed to load asset: $e');
+    rethrow;
+  }
 });
 
 /// Provides a [HabitatService] backed by real geographic feature data.

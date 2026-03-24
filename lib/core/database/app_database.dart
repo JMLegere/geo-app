@@ -697,32 +697,40 @@ class AppDatabase extends _$AppDatabase {
           final count = await localSpeciesTable.count().getSingle();
           if (count == 0) {
             final sw = Stopwatch()..start();
-            final jsonStr = await _speciesDataLoader!();
-            final data = jsonDecode(jsonStr) as List;
-            await batch((b) {
-              for (final item in data) {
-                final m = item as Map<String, dynamic>;
-                final sciName = m['scientificName'] as String;
-                final defId =
-                    'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
-                b.insert(
-                  localSpeciesTable,
-                  LocalSpeciesTableCompanion.insert(
-                    definitionId: defId,
-                    scientificName: sciName,
-                    commonName: m['commonName'] as String,
-                    taxonomicClass: m['taxonomicClass'] as String,
-                    iucnStatus: m['iucnStatus'] as String,
-                    habitatsJson: jsonEncode(m['habitats']),
-                    continentsJson: jsonEncode(m['continents']),
-                  ),
-                );
-              }
-            });
-            sw.stop();
-            // ignore: avoid_print
-            print(
-                '[AppDatabase] seeded ${data.length} species in ${sw.elapsedMilliseconds}ms');
+            try {
+              final jsonStr = await _speciesDataLoader!();
+              final data = jsonDecode(jsonStr) as List;
+              await batch((b) {
+                for (final item in data) {
+                  final m = item as Map<String, dynamic>;
+                  final sciName = m['scientificName'] as String;
+                  final defId =
+                      'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
+                  b.insert(
+                    localSpeciesTable,
+                    LocalSpeciesTableCompanion.insert(
+                      definitionId: defId,
+                      scientificName: sciName,
+                      commonName: m['commonName'] as String,
+                      taxonomicClass: m['taxonomicClass'] as String,
+                      iucnStatus: m['iucnStatus'] as String,
+                      habitatsJson: jsonEncode(m['habitats']),
+                      continentsJson: jsonEncode(m['continents']),
+                    ),
+                  );
+                }
+              });
+              sw.stop();
+              // ignore: avoid_print
+              print(
+                  '[AppDatabase] seeded ${data.length} species in ${sw.elapsedMilliseconds}ms');
+            } catch (e) {
+              // ignore: avoid_print
+              print(
+                  '[AppDatabase] species seeding failed (will retry next open): $e');
+              // Don't rethrow — let the DB open without species data.
+              // Supabase species sync will populate later.
+            }
           }
         }
       },
