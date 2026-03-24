@@ -35,7 +35,6 @@ class LocationEnrichmentService {
     required this.cellPropertyRepo,
     required this.locationNodeRepo,
     this.supabaseClient,
-    this.onLocationEnriched,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 1200,
   });
@@ -46,12 +45,26 @@ class LocationEnrichmentService {
   final int maxRetries;
   final int baseDelayMs;
 
-  void Function(String cellId, String locationId)? onLocationEnriched;
+  /// Stream of (cellId, locationId) pairs emitted when enrichment completes.
+  /// Replaces the old `onLocationEnriched` callback field — multiple listeners
+  /// can subscribe without collision.
+  final StreamController<({String cellId, String locationId})>
+      _enrichedController =
+      StreamController<({String cellId, String locationId})>.broadcast();
 
-  // Nominatim: 1 req/sec. Keep interval above that.
+  /// Stream that fires when a cell's locationId is resolved via enrichment.
+  Stream<({String cellId, String locationId})> get onLocationEnriched =>
+      _enrichedController.stream;
+
+  /// Cells that permanently failed enrichment (e.g., ocean, no Nominatim data).
+  /// Skipped on future requests to avoid hammering Nominatim.
+  final Set<String> _permanentlyFailed = {};
+
+  // Nominatim: 1 req/sec. Edge Function batches internally.
+  // Client interval should exceed expected server batch time (~25 cells × 1.1s).
   static const _minIntervalMs = 1200;
-  static const _batchSize = 10;
-  static const _batchIntervalMs = 15000;
+  static const _batchSize = 25;
+  static const _batchIntervalMs = 12000;
 
   final Queue<_EnrichRequest> _queue = Queue();
   final Set<String> _inFlight = {};
@@ -81,10 +94,19 @@ class LocationEnrichmentService {
     if (supabaseClient == null) return;
     if (_inFlight.contains(cellId)) return;
     if (_authFailed) return;
+    if (_permanentlyFailed.contains(cellId)) return;
 
     _queue.add(_EnrichRequest(cellId: cellId, lat: lat, lon: lon));
     _inFlight.add(cellId);
     _scheduleDrain();
+  }
+
+  /// Resets the auth circuit breaker so enrichment can resume.
+  /// Call when the user re-authenticates or a new session starts.
+  void resetAuthCircuitBreaker() {
+    if (!_authFailed) return;
+    _authFailed = false;
+    debugPrint('[LocationEnrichment] auth circuit breaker reset');
   }
 
   void _scheduleDrain() {
@@ -181,8 +203,9 @@ class LocationEnrichmentService {
               }
 
               await cellPropertyRepo.updateLocationId(cellId, locationId);
-              if (!_disposed) {
-                onLocationEnriched?.call(cellId, locationId);
+              if (!_disposed && !_enrichedController.isClosed) {
+                _enrichedController
+                    .add((cellId: cellId, locationId: locationId));
               }
 
               debugPrint('[LocationEnrichment] batch enriched $cellId '
@@ -191,13 +214,23 @@ class LocationEnrichmentService {
           }
         }
 
-        // Log per-cell errors.
+        // Track per-cell errors. Mark cells as permanently failed if
+        // the error indicates no data available (e.g., ocean cells).
         final errors = data['errors'] as List<dynamic>?;
         if (errors != null) {
           for (final error in errors) {
             final errorMap = error as Map<String, dynamic>;
+            final failedCellId = errorMap['cell_id'] as String?;
+            final errorMsg = errorMap['error'] as String? ?? '';
             debugPrint('[LocationEnrichment] batch error for '
-                '${errorMap['cell_id']}: ${errorMap['error']}');
+                '$failedCellId: $errorMsg');
+            // Permanent failures: Nominatim returned no usable data.
+            if (failedCellId != null &&
+                (errorMsg.contains('no_location') ||
+                    errorMsg.contains('unable to resolve') ||
+                    errorMsg.contains('ocean'))) {
+              _permanentlyFailed.add(failedCellId);
+            }
           }
         }
       }
@@ -308,8 +341,9 @@ class LocationEnrichmentService {
             }
 
             await cellPropertyRepo.updateLocationId(request.cellId, locationId);
-            if (!_disposed) {
-              onLocationEnriched?.call(request.cellId, locationId);
+            if (!_disposed && !_enrichedController.isClosed) {
+              _enrichedController
+                  .add((cellId: request.cellId, locationId: locationId));
             }
 
             debugPrint('[LocationEnrichment] enriched ${request.cellId} '
@@ -435,5 +469,6 @@ class LocationEnrichmentService {
   void dispose() {
     _disposed = true;
     _drainTimer?.cancel();
+    _enrichedController.close();
   }
 }
