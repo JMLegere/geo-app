@@ -546,10 +546,20 @@ class AppDatabase extends _$AppDatabase {
               }
             }
             if (from < 16) {
-              await m.addColumn(
-                  localItemInstanceTable, localItemInstanceTable.iconUrl);
-              await m.addColumn(
-                  localItemInstanceTable, localItemInstanceTable.artUrl);
+              // Guard: columns may already exist on fresh DB or web re-open.
+              final cols16 = await customSelect(
+                "PRAGMA table_info(local_item_instance_table)",
+              ).get();
+              final colNames16 =
+                  cols16.map((r) => r.read<String>('name')).toSet();
+              if (!colNames16.contains('icon_url')) {
+                await m.addColumn(
+                    localItemInstanceTable, localItemInstanceTable.iconUrl);
+              }
+              if (!colNames16.contains('art_url')) {
+                await m.addColumn(
+                    localItemInstanceTable, localItemInstanceTable.artUrl);
+              }
             }
             if (from < 17) {
               await m.createTable(localSpeciesTable);
@@ -612,10 +622,12 @@ class AppDatabase extends _$AppDatabase {
             }
           }
 
-          // -- LocalItemInstanceTable: 32 new columns --
+          // -- LocalItemInstanceTable: 32+ new columns --
           const itemTable = 'local_item_instance_table';
-          // Species enrichment denorm
+          // Species enrichment denorm (icon_url/art_url added in v16 but
+          // without column-existence guards — include here as safety net).
           for (final col in [
+            'icon_url', 'art_url',
             'animal_class_name', 'animal_class_name_enrichver',
             'food_preference_name', 'food_preference_name_enrichver',
             'climate_name', 'climate_name_enrichver',
