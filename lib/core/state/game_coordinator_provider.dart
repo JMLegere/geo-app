@@ -757,46 +757,55 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'source': 'sqlite',
       });
 
-      // Seed detection zone from player's current cell or nearby cells.
-      // Scans current cell + ring-1 neighbors for any locationId. If none
-      // found, triggers enrichment and seeds the zone when it completes.
-      if (profile?.lastLat != null && profile?.lastLon != null) {
-        final currentCellId =
-            cellService.getCellId(profile!.lastLat!, profile.lastLon!);
-        // Search current cell + neighbors for a locationId
+      // Seed detection zone from ANY cached cell with a locationId.
+      // 420 of ~1700 cached cells have locationIds. Scan all of them,
+      // preferring the player's current cell/neighbors, falling back to
+      // any cell in the cache.
+      {
         String? seedDistrictId;
-        final candidates = [
-          currentCellId,
-          ...cellService.getNeighborIds(currentCellId),
-        ];
-        for (final cellId in candidates) {
-          final props = coordinator.cellPropertiesCache[cellId];
-          if (props?.locationId != null) {
-            seedDistrictId = props!.locationId;
-            break;
+        // Priority 1: current cell + neighbors
+        if (profile?.lastLat != null && profile?.lastLon != null) {
+          final currentCellId =
+              cellService.getCellId(profile!.lastLat!, profile.lastLon!);
+          for (final cellId in [
+            currentCellId,
+            ...cellService.getNeighborIds(currentCellId),
+          ]) {
+            final props = coordinator.cellPropertiesCache[cellId];
+            if (props?.locationId != null) {
+              seedDistrictId = props!.locationId;
+              break;
+            }
+          }
+        }
+        // Priority 2: any cached cell with a locationId
+        if (seedDistrictId == null) {
+          for (final props in coordinator.cellPropertiesCache.values) {
+            if (props.locationId != null) {
+              seedDistrictId = props.locationId;
+              break;
+            }
           }
         }
         if (seedDistrictId != null) {
           _lastDistrictId = seedDistrictId;
           detectionZoneService.onDistrictChange(seedDistrictId);
           debugPrint(
-            '[DetectionZone] seeded from cached cell locationId=$seedDistrictId',
+            '[DetectionZone] seeded from cache, district=$seedDistrictId',
           );
         } else {
-          // No locationId in cache — trigger enrichment for current cell.
-          // When enrichment completes, it writes locationId to SQLite.
-          // We listen for that and seed the detection zone.
-          debugPrint(
-            '[DetectionZone] no locationId cached — requesting enrichment '
-            'for $currentCellId',
-          );
-          final locationEnrichmentSvc =
-              ref.read(locationEnrichmentServiceProvider);
-          locationEnrichmentSvc.requestEnrichment(
-            cellId: currentCellId,
-            lat: profile.lastLat!,
-            lon: profile.lastLon!,
-          );
+          // No locationIds at all — trigger enrichment for current cell.
+          debugPrint('[DetectionZone] no locationId in any cached cell');
+          if (profile?.lastLat != null && profile?.lastLon != null) {
+            final currentCellId =
+                cellService.getCellId(profile!.lastLat!, profile.lastLon!);
+            final enrichSvc = ref.read(locationEnrichmentServiceProvider);
+            enrichSvc.requestEnrichment(
+              cellId: currentCellId,
+              lat: profile.lastLat!,
+              lon: profile.lastLon!,
+            );
+          }
         }
       }
 
