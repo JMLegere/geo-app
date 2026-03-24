@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
+import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/persistence/location_node_repository.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,6 +10,10 @@ import 'package:flutter/foundation.dart';
 ///
 /// The detection zone = current district + adjacent districts. All cells
 /// in this zone become "known" (resolved, SpeciesCache warmed, fog rendered).
+///
+/// Adjacent districts are discovered automatically: after computing cells
+/// for the current district, border cells' Voronoi neighbors are checked
+/// for different `locationId`s via [cellPropertiesLookup].
 ///
 /// Pure Dart service — no Flutter widgets, no Riverpod dependency.
 class DetectionZoneService {
@@ -24,6 +29,10 @@ class DetectionZoneService {
   /// Stream that fires when the detection zone changes.
   final StreamController<Set<String>> _zoneChangedController =
       StreamController<Set<String>>.broadcast();
+
+  /// Lookup callback for cell properties (wired by gameCoordinatorProvider).
+  /// Returns the CellProperties for a given cellId, or null if not cached.
+  CellProperties? Function(String cellId)? cellPropertiesLookup;
 
   DetectionZoneService({
     required CellService cellService,
@@ -54,16 +63,49 @@ class DetectionZoneService {
 
     final zone = <String>{};
 
-    // Compute cells for current district
+    // Compute cells for current district.
     final currentCells = await computeCellIdsForDistrict(districtId);
     zone.addAll(currentCells);
 
-    // Compute cells for adjacent districts
+    // Discover adjacent districts from border cell Voronoi neighbors.
+    // A neighbor cell with a different locationId → that's an adjacent district.
+    final adjacentDistrictIds = <String>{};
+
+    // Check explicitly stored adjacency first.
     final node = await _locationNodeRepo.get(districtId);
     if (node?.adjacentLocationIds != null) {
-      for (final adjId in node!.adjacentLocationIds!) {
-        final adjCells = await computeCellIdsForDistrict(adjId);
-        zone.addAll(adjCells);
+      adjacentDistrictIds.addAll(node!.adjacentLocationIds!);
+    }
+
+    // Auto-discover from cached cell properties: scan border cells for
+    // neighbors with a different locationId.
+    if (cellPropertiesLookup != null && currentCells.isNotEmpty) {
+      for (final cellId in currentCells) {
+        for (final neighborId in _cellService.getNeighborIds(cellId)) {
+          if (currentCells.contains(neighborId)) continue;
+          final props = cellPropertiesLookup!(neighborId);
+          if (props?.locationId != null && props!.locationId != districtId) {
+            adjacentDistrictIds.add(props.locationId!);
+          }
+        }
+      }
+    }
+
+    // Expand zone with cells from adjacent districts.
+    for (final adjId in adjacentDistrictIds) {
+      final adjCells = await computeCellIdsForDistrict(adjId);
+      zone.addAll(adjCells);
+    }
+
+    // Persist discovered adjacency for future sessions.
+    if (adjacentDistrictIds.isNotEmpty && node != null) {
+      final merged = <String>{
+        ...?node.adjacentLocationIds,
+        ...adjacentDistrictIds,
+      };
+      if (merged.length != (node.adjacentLocationIds?.length ?? 0)) {
+        final updated = node.copyWith(adjacentLocationIds: merged.toList());
+        await _locationNodeRepo.upsert(updated);
       }
     }
 

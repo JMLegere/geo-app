@@ -115,6 +115,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   StreamSubscription<({String cellId, String locationId})>?
       _enrichmentSubscription;
 
+  /// Subscription to admin boundary resolution events.
+  StreamSubscription<List<String>>? _adminBoundarySubscription;
+
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
   /// updates via a Ticker.
@@ -251,17 +254,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // Wire admin boundary service — fetch polygons on district change.
     _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-    _adminBoundaryService?.onBoundariesResolved = (nodeIds) {
+    _adminBoundarySubscription =
+        _adminBoundaryService?.onBoundariesResolved.listen((nodeIds) {
       if (!mounted) return;
       _rebuildAdminBoundaryGeoJson();
-    };
+    });
   }
 
   @override
   void dispose() {
     _gameCoordinator.onExplorationDisabledChanged = null;
     _enrichmentSubscription?.cancel();
-    _adminBoundaryService?.onBoundariesResolved = null;
+    _adminBoundarySubscription?.cancel();
     _rubberBand.dispose();
     _markerPosition.dispose();
     _rawGpsSubscription?.cancel();
@@ -541,19 +545,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     final fogCtrl = ref.read(fogOverlayControllerProvider);
 
-    // Consume fog flag unconditionally — fog is the primary layer.
+    // Consume all dirty flags independently — the old exclusive stagger
+    // starved border/icon updates because habitat was dirty every frame.
     final fogDirty = fogCtrl.consumeFogDirty();
-
-    // Peek at non-fog flags: consume ONE per frame (staggered).
-    // Unconsumed flags stay dirty for the next frame.
     final adminDirty = fogCtrl.consumeAdminDirty();
-    final habitatDirty = !adminDirty && fogCtrl.consumeHabitatDirty();
-    final borderDirty =
-        !adminDirty && !habitatDirty && fogCtrl.consumeBorderDirty();
-    final iconsDirty = !adminDirty &&
-        !habitatDirty &&
-        !borderDirty &&
-        fogCtrl.consumeIconsDirty();
+    final habitatDirty = fogCtrl.consumeHabitatDirty();
+    final borderDirty = fogCtrl.consumeBorderDirty();
+    final iconsDirty = fogCtrl.consumeIconsDirty();
 
     // Nothing changed — skip entirely.
     if (!fogDirty &&
@@ -587,40 +585,43 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ]);
       }
 
-      // Non-fog: at most ONE group per call.
+      // Push all dirty non-fog groups in parallel.
+      final updates = <Future<void>>[];
+
       if (adminDirty) {
-        await Future.wait([
-          controller.updateGeoJsonSource(
-            id: _adminBoundaryFillSrcId,
-            data: fogCtrl.adminBoundaryFillGeoJson,
-          ),
-          controller.updateGeoJsonSource(
-            id: _adminBoundaryLinesSrcId,
-            data: fogCtrl.adminBoundaryLinesGeoJson,
-          ),
-        ]);
-      } else if (habitatDirty) {
-        await controller.updateGeoJsonSource(
+        updates.add(controller.updateGeoJsonSource(
+          id: _adminBoundaryFillSrcId,
+          data: fogCtrl.adminBoundaryFillGeoJson,
+        ));
+        updates.add(controller.updateGeoJsonSource(
+          id: _adminBoundaryLinesSrcId,
+          data: fogCtrl.adminBoundaryLinesGeoJson,
+        ));
+      }
+      if (habitatDirty) {
+        updates.add(controller.updateGeoJsonSource(
           id: _habitatFillSrcId,
           data: fogCtrl.habitatFillGeoJson,
-        );
-      } else if (borderDirty) {
-        await Future.wait([
-          controller.updateGeoJsonSource(
-            id: _borderFillSrcId,
-            data: fogCtrl.borderFillGeoJson,
-          ),
-          controller.updateGeoJsonSource(
-            id: _borderLinesSrcId,
-            data: fogCtrl.borderLinesGeoJson,
-          ),
-        ]);
-      } else if (iconsDirty && _iconImagesRegistered) {
-        await controller.updateGeoJsonSource(
+        ));
+      }
+      if (borderDirty) {
+        updates.add(controller.updateGeoJsonSource(
+          id: _borderFillSrcId,
+          data: fogCtrl.borderFillGeoJson,
+        ));
+        updates.add(controller.updateGeoJsonSource(
+          id: _borderLinesSrcId,
+          data: fogCtrl.borderLinesGeoJson,
+        ));
+      }
+      if (iconsDirty && _iconImagesRegistered) {
+        updates.add(controller.updateGeoJsonSource(
           id: _cellIconsSrcId,
           data: fogCtrl.cellIconsGeoJson,
-        );
+        ));
       }
+
+      if (updates.isNotEmpty) await Future.wait(updates);
 
       sw.stop();
       MapLogger.fogUpdateCompleted();
@@ -853,11 +854,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
       fogOverlayController.dailySeed = seedState?.seed ?? '';
 
       // Lazy-load location nodes for territory border rendering.
+      // Set once when loaded — not every frame (setter triggers BFS rebuild).
       if (!_locationNodesLoaded) {
         _locationNodesLoaded = true;
-        _loadLocationNodes();
+        _loadLocationNodes().then((_) {
+          if (mounted) {
+            fogOverlayController.locationNodesCache = _locationNodesMap;
+            _updateFogSources();
+          }
+        });
       }
-      fogOverlayController.locationNodesCache = _locationNodesMap;
 
       fogOverlayController.update(
         cameraLat: camera.center.lat.toDouble(),

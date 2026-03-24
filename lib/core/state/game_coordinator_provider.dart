@@ -336,6 +336,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // When a cell's locationId (district) changes, recompute the detection zone
   // (current district + adjacent districts) and forward to the fog resolver.
   final detectionZoneService = ref.read(detectionZoneServiceProvider);
+  detectionZoneService.cellPropertiesLookup =
+      (cellId) => coordinator.cellPropertiesCache[cellId];
   String? _lastDistrictId;
 
   // When enrichment resolves a locationId for a cell, update the in-memory
@@ -382,6 +384,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     }
   });
 
+  // When admin boundary geometry arrives (async, after Nominatim fetch),
+  // re-trigger detection zone computation. The initial onDistrictChange()
+  // likely ran before geometry was available → returned empty zone. Now
+  // that geometry exists, recompute. Clear _lastDistrictId to bypass dedup.
+  final adminBoundaryServiceForZone = ref.read(adminBoundaryServiceProvider);
+  adminBoundaryServiceForZone?.onBoundariesResolved.listen((nodeIds) {
+    if (_providerDisposed) return;
+    final currentDistrict = detectionZoneService.currentDistrictId;
+    if (currentDistrict != null) {
+      _lastDistrictId = null; // Allow re-entry
+      detectionZoneService.onDistrictChange(currentDistrict);
+    }
+  });
+
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
     fogResolver.setDetectionZone(zoneCellIds);
@@ -420,10 +436,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       obs: obs,
     );
 
-    // Detect district change: when a resolved cell has a locationId that
-    // differs from the current district, trigger detection zone update.
+    // Detect district change: only trigger for the player's CURRENT cell.
+    // Neighbor cells resolving in a different district should not hijack the
+    // detection zone — only the cell the player is standing in matters.
     final districtId = properties.locationId;
-    if (districtId != null && districtId != _lastDistrictId) {
+    if (districtId != null &&
+        districtId != _lastDistrictId &&
+        properties.cellId == fogResolver.currentCellId) {
       _lastDistrictId = districtId;
       detectionZoneService.onDistrictChange(districtId);
     }
