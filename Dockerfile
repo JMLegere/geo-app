@@ -3,7 +3,12 @@ ARG RAILWAY_GIT_COMMIT_SHA=""
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
+# Bust Docker cache — ensures COPY picks up LFS-untracked JSON files.
+# Remove this comment when Railway build caching is verified clean.
 COPY . .
+# Verify critical assets are real JSON, not Git LFS pointers.
+RUN head -c 1 assets/species_data.json | grep -q '\[' || \
+    (echo "ERROR: species_data.json is a Git LFS pointer, not JSON" && exit 1)
 RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     BUILD_TS="β $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \
