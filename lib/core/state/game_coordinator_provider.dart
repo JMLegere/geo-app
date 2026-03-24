@@ -53,6 +53,7 @@ import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/affix_backfill.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
+import 'package:earth_nova/core/state/detection_zone_provider.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -330,6 +331,35 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     );
   };
 
+  // ── Detection zone wiring ──────────────────────────────────────────────
+  // When a cell's locationId (district) changes, recompute the detection zone
+  // (current district + adjacent districts) and forward to the fog resolver.
+  final detectionZoneService = ref.read(detectionZoneServiceProvider);
+  String? _lastDistrictId;
+
+  detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
+    if (_providerDisposed) return;
+    fogResolver.setDetectionZone(zoneCellIds);
+    // Warm species cache for all unique combos in the new zone.
+    final speciesCache = ref.read(speciesCacheProvider);
+    if (!speciesCache.isEmpty) {
+      final seen = <String>{};
+      for (final cellId in zoneCellIds) {
+        final props = coordinator.cellPropertiesCache[cellId];
+        if (props == null) continue;
+        final key = SpeciesCache.cacheKey(props.habitats, props.continent);
+        if (seen.add(key)) {
+          speciesCache.warmUp(
+              habitats: props.habitats, continent: props.continent);
+        }
+      }
+    }
+    debugPrint(
+      '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
+      'district=${detectionZoneService.currentDistrictId}',
+    );
+  });
+
   final engineOnCellProps = coordinator.onCellPropertiesResolved;
   coordinator.onCellPropertiesResolved = (CellProperties properties) {
     engineOnCellProps?.call(properties);
@@ -344,6 +374,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       userId: ref.read(authProvider).user?.id,
       obs: obs,
     );
+
+    // Detect district change: when a resolved cell has a locationId that
+    // differs from the current district, trigger detection zone update.
+    final districtId = properties.locationId;
+    if (districtId != null && districtId != _lastDistrictId) {
+      _lastDistrictId = districtId;
+      detectionZoneService.onDistrictChange(districtId);
+    }
   };
 
   final engineOnDiscovery = coordinator.onItemDiscovered;
