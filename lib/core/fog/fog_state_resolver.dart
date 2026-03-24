@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/shared/constants.dart';
 import 'package:flutter/foundation.dart';
 
 /// Computes fog-of-war visibility from player position and visit history.
@@ -20,7 +19,7 @@ import 'package:flutter/foundation.dart';
 /// | 1        | Observed     | Player is currently in this cell                   | 0.0         |
 /// | 2        | Hidden       | Previously visited, not in current view            | 0.5         |
 /// | 3        | Concealed    | Adjacent to player's current cell                  | 0.95        |
-/// | 4        | Unexplored   | Frontier cell OR within [kDetectionRadiusMeters]   | 0.75        |
+/// | 4        | Unexplored   | Frontier cell OR in detection zone                 | 0.75        |
 /// | 5        | Undetected   | >50 km from player and none of the above           | 1.0         |
 ///
 /// ## Key behaviours
@@ -30,7 +29,7 @@ import 'package:flutter/foundation.dart';
 /// - **No forward-only constraint**: States can go "backward" because they
 ///   are computed, not stored.
 /// - **50 km detection**: On every [onLocationUpdate] call, cells within
-///   [kDetectionRadiusMeters] that are not already Observed/Concealed/Hidden/
+///   the detection zone that are not already Observed/Concealed/Hidden/
 ///   frontier resolve as [FogState.unexplored] via [resolve].
 /// - **Event emission**: [onVisitedCellAdded] fires only when a NEW cell is
 ///   added to [visitedCellIds]. Dynamic state changes never emit events.
@@ -62,7 +61,7 @@ class FogStateResolver {
   double? _playerLon;
 
   /// Detection zone cell IDs, or null if using distance-based detection.
-  /// When set, replaces [kDetectionRadiusMeters] check in [resolve].
+  /// When set, cells in the zone resolve as at least [FogState.unexplored].
   Set<String>? _detectionZoneCellIds;
 
   // sync: true ensures events are delivered synchronously during onLocationUpdate,
@@ -101,7 +100,6 @@ class FogStateResolver {
   /// Sets the detection zone — cells that should resolve as at least
   /// [FogState.unexplored] instead of [FogState.undetected].
   ///
-  /// Replaces the distance-based [kDetectionRadiusMeters] check when set.
   /// Called by DetectionZoneService when the player enters a new district.
   void setDetectionZone(Set<String> cellIds) {
     _detectionZoneCellIds = cellIds;
@@ -130,13 +128,9 @@ class FogStateResolver {
       _everDetectedCellIds.add(cellId);
       return FogState.unexplored;
     }
-    // Detection zone membership replaces distance-based check when set.
-    if (_detectionZoneCellIds != null) {
-      if (_detectionZoneCellIds!.contains(cellId)) {
-        _everDetectedCellIds.add(cellId);
-        return FogState.unexplored;
-      }
-    } else if (isCellWithinDetectionRadius(cellId)) {
+    // Detection zone membership — cells in current + adjacent districts.
+    if (_detectionZoneCellIds != null &&
+        _detectionZoneCellIds!.contains(cellId)) {
       _everDetectedCellIds.add(cellId);
       return FogState.unexplored;
     }
@@ -244,11 +238,11 @@ class FogStateResolver {
     return _haversine(_playerLat!, _playerLon!, center.lat, center.lon);
   }
 
-  /// Returns true if [cellId] is within [kDetectionRadiusMeters] of the player.
+  /// Returns true if [cellId] is within the detection zone.
   ///
-  /// Returns false if no location update has been made yet.
-  bool isCellWithinDetectionRadius(String cellId) {
-    return distanceToCell(cellId) <= kDetectionRadiusMeters;
+  /// Returns false if no detection zone has been set.
+  bool isCellInDetectionZone(String cellId) {
+    return _detectionZoneCellIds?.contains(cellId) ?? false;
   }
 
   /// Releases the stream controller. Call when this resolver is no longer needed.

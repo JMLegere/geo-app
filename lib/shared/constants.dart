@@ -50,10 +50,6 @@ const int kEncounterSlotsPerCell = 1;
 /// Number of discrete fog states.
 const int kFogLevels = 5;
 
-/// Detection radius in meters. Cells within this distance of the player
-/// are detected (at minimum `FogState.unexplored`) even if never visited.
-const double kDetectionRadiusMeters = 1000.0;
-
 /// Fog density values for each state.
 /// Index 0 = Undetected (fully opaque), Index 4 = Observed (fully transparent).
 const List<double> kFogDensityValues = [1.0, 0.95, 0.75, 0.5, 0.0];

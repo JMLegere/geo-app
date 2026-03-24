@@ -8,7 +8,6 @@ import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/shared/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // ---------------------------------------------------------------------------
@@ -132,19 +131,19 @@ void main() {
       final neighbors = resolver.currentNeighborIds;
 
       // Use ring-2 cells (2 hops away) to find cells not in the direct neighbor
-      // set but still within the detection radius.
+      // set but included in the detection zone.
       final ring2 = cellService.getCellsInRing(currentId, 2);
+      // Set detection zone to include all ring-2 cells.
+      resolver.setDetectionZone(ring2.toSet());
       for (final id in ring2) {
         if (id == currentId) continue;
         if (neighbors.contains(id)) continue;
 
-        final dist = resolver.distanceToCell(id);
-        if (dist <= kDetectionRadiusMeters) {
-          // Within detection radius → must be at least unexplored or better
+        if (resolver.isCellInDetectionZone(id)) {
+          // In detection zone → must be at least unexplored or better
           final state = resolver.resolve(id);
           expect(state, isNot(equals(FogState.undetected)),
-              reason:
-                  'Cell $id is within detection radius ($dist m) and should '
+              reason: 'Cell $id is in detection zone and should '
                   'not be undetected, but resolved as $state');
           break; // One check is enough
         }

@@ -4,7 +4,6 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_event.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — deterministic grid-based cell service.
@@ -183,12 +182,13 @@ void main() {
     //         frontier/visited.
     // -------------------------------------------------------------------------
     test(
-        '6. resolve() returns unexplored for cells within detection radius but not visited/frontier',
+        '6. resolve() returns unexplored for cells in detection zone but not visited/frontier',
         () {
+      // Set detection zone to include cell_0.005_0
+      resolver.setDetectionZone({'cell_0.005_0'});
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // "cell_0.005_0" has center at (0.005°, 0°) ≈ 556 m from player.
-      // It is within kDetectionRadiusMeters (1 km) but is NOT in the frontier
+      // "cell_0.005_0" is in the detection zone but is NOT in the frontier
       // (mock frontier uses integer-coordinate cells only).
       expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
     });
@@ -352,51 +352,44 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // Test 18: isCellWithinDetectionRadius respects kDetectionRadiusMeters.
+    // Test 18: isCellInDetectionZone checks zone membership.
     // -------------------------------------------------------------------------
     test(
-        '18. isCellWithinDetectionRadius returns true for cells within detection radius',
+        '18. isCellInDetectionZone returns true for cells in zone, false otherwise',
         () {
-      resolver.onLocationUpdate(0.0, 0.0);
+      resolver.setDetectionZone({'cell_0.005_0', 'cell_0.008_0'});
 
-      // cell_0.005_0 center at (0.005°, 0°) ≈ 556 m — within 1 km radius.
-      expect(resolver.isCellWithinDetectionRadius('cell_0.005_0'), isTrue);
-      // cell_0.02_0 center at (0.02°, 0°) ≈ 2.2 km — beyond 1 km radius.
-      expect(resolver.isCellWithinDetectionRadius('cell_0.02_0'), isFalse);
+      expect(resolver.isCellInDetectionZone('cell_0.005_0'), isTrue);
+      expect(resolver.isCellInDetectionZone('cell_0.02_0'), isFalse);
     });
 
     // -------------------------------------------------------------------------
-    // Test 19: detection — cells within radius but not frontier/visited
+    // Test 19: detection — cells in zone but not frontier/visited
     //          are unexplored.
     // -------------------------------------------------------------------------
-    test(
-        '19. detection: cells within radius but not frontier/visited are unexplored',
+    test('19. detection: cells in zone but not frontier/visited are unexplored',
         () {
+      resolver.setDetectionZone({'cell_0.005_0', 'cell_0.008_0'});
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // cell_0.005_0 is ≈556 m away, within detection radius.
+      // cell_0.005_0 is in the detection zone.
       expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
 
-      // cell_0.008_0 is ≈890 m away, also within detection radius.
-      final dist = resolver.distanceToCell('cell_0.008_0');
-      expect(dist, lessThanOrEqualTo(kDetectionRadiusMeters));
+      // cell_0.008_0 is also in the detection zone.
       expect(resolver.resolve('cell_0.008_0'), equals(FogState.unexplored));
     });
 
     // -------------------------------------------------------------------------
-    // Test 20: 50km detection — cells beyond radius are undetected.
+    // Test 20: cells outside zone and frontier are undetected.
     // -------------------------------------------------------------------------
-    test('20. detection: cells beyond radius are undetected', () {
+    test('20. detection: cells outside zone are undetected', () {
+      resolver.setDetectionZone({'cell_0.005_0'}); // Small zone
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // cell_3_0 center at (3°, 0°) ≈ 333 km — well beyond detection radius.
-      // Not visited, not frontier.
+      // cell_3_0 is not in the zone, not visited, not frontier.
       expect(resolver.resolve('cell_3_0'), equals(FogState.undetected));
 
-      // cell_0.6_0 center at (0.6°, 0°) ≈ 67 km — beyond detection radius.
-      // Not in integer-coordinate frontier.
-      final dist = resolver.distanceToCell('cell_0.6_0');
-      expect(dist, greaterThan(kDetectionRadiusMeters));
+      // cell_0.6_0 is not in the zone, not in integer-coordinate frontier.
       expect(resolver.resolve('cell_0.6_0'), equals(FogState.undetected));
     });
 
@@ -457,16 +450,19 @@ void main() {
     // Test: Once detected, cells never revert to undetected.
     // -------------------------------------------------------------------------
     test(
-        'once detected via proximity, cells stay unexplored when player moves away',
+        'once detected via detection zone, cells stay unexplored when player moves away',
         () {
+      // Set detection zone to include cell_0.005_0
+      resolver.setDetectionZone({'cell_0.005_0'});
       resolver.onLocationUpdate(0.0, 0.0);
 
-      // cell_0.005_0 is ≈556 m away → within detection radius → unexplored.
+      // cell_0.005_0 is in detection zone → unexplored.
       expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
 
-      // Move far away — cell_0.005_0 is now outside detection radius AND
-      // not in the exploration frontier. Before the fix it would revert
-      // to undetected; now it should stay unexplored.
+      // Move far away — cell_0.005_0 is now outside the detection zone AND
+      // not in the exploration frontier. But once detected, a cell should
+      // stay unexplored (never revert to undetected).
+      resolver.setDetectionZone({}); // Clear detection zone
       resolver.onLocationUpdate(50.0, 50.0);
       expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
     });
