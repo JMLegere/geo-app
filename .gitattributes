@@ -13,10 +13,8 @@
 # Platforms without git-lfs (e.g. Railway) check out LFS pointers instead
 # of real binaries, causing WASM CompileError at runtime.
 
-# Large data assets
-assets/biome_features.json filter=lfs diff=lfs merge=lfs -text
-# species_data.json NOT in LFS — needed in Docker build context for web deploys.
-# Railway doesn't pull LFS files, causing FormatException at runtime.
+# Large data assets — JSON NOT in LFS.
+# Railway doesn't pull LFS files during Docker build, causing FormatException.
 assets/*.db filter=lfs diff=lfs merge=lfs -text
 
 # Images (future-proof — app icons, watercolor art, etc.)
