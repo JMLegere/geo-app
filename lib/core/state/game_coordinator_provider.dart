@@ -736,6 +736,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'source': 'sqlite',
       });
 
+      // Seed detection zone from player's current cell if it has a locationId.
+      // This ensures the zone is active at startup without needing a new cell
+      // visit — the player may be sitting still in an already-visited cell.
+      if (profile?.lastLat != null && profile?.lastLon != null) {
+        final currentCellId =
+            cellService.getCellId(profile!.lastLat!, profile.lastLon!);
+        final currentProps = coordinator.cellPropertiesCache[currentCellId];
+        if (currentProps?.locationId != null) {
+          _lastDistrictId = currentProps!.locationId;
+          detectionZoneService.onDistrictChange(currentProps.locationId!);
+        }
+      }
+
       // Start game loop immediately with cached data.
       if (_providerDisposed) return;
       startLoop();
