@@ -39,6 +39,13 @@ enum LogLevel {
       return LogLevel.warning;
     }
 
+    // ── Suppress (high-frequency noise) — MUST run before [EVENT] check
+    // because fog_sources_updated uses [EVENT] prefix at 10Hz.
+    if (line.contains('fog_sources_updated') ||
+        line.contains('updateFogSources #')) {
+      return LogLevel.debug;
+    }
+
     // ── Info (user-meaningful low-volume events) ───────────────────────
     if (line.contains('[AUTH]') ||
         line.contains('[Auth]') ||
@@ -53,13 +60,6 @@ enum LogLevel {
         line.contains('[CRASH-STACK]') ||
         line.contains('[RENDER-STALL]')) {
       return LogLevel.info;
-    }
-
-    // ── Suppress (high-frequency noise that drowns critical events) ──
-    if (line.contains('fog_sources_updated') ||
-        line.contains('fog_computed') ||
-        line.contains('updateFogSources #')) {
-      return LogLevel.debug;
     }
 
     // ── Debug (everything else: hydration, enrichment, per-cell ops) ──
