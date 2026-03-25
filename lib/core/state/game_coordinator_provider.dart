@@ -92,6 +92,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
 
+  // Gate flag: set true after Supabase hydration so that zone computation
+  // fires exactly once (post-hydration) rather than 5 times during startup.
+  var _zoneHydrationComplete = false;
+
   // Structured event telemetry — thin debugPrint wrapper.
   // Events flow through DebugLogBuffer → LogFlushService → app_logs.
   final supabaseClient = ref.read(supabaseClientProvider);
@@ -377,8 +381,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     }
 
-    // Trigger detection zone if this is a new district.
-    if (event.locationId != _lastDistrictId) {
+    // Trigger detection zone if this is a new district (only after hydration).
+    if (event.locationId != _lastDistrictId && _zoneHydrationComplete) {
       _lastDistrictId = event.locationId;
       detectionZoneService.onDistrictChange(event.locationId);
     }
@@ -504,7 +508,8 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     final districtId = properties.locationId;
     if (districtId != null &&
         districtId != _lastDistrictId &&
-        properties.cellId == fogResolver.currentCellId) {
+        properties.cellId == fogResolver.currentCellId &&
+        _zoneHydrationComplete) {
       _lastDistrictId = districtId;
       detectionZoneService.onDistrictChange(districtId);
     }
@@ -873,11 +878,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         // should not persist across app restarts.
         locationEnrichmentSvc.resetAuthCircuitBreaker();
 
-        String? seedDistrictId;
         final unenriched = <({String cellId, double lat, double lon})>[];
         String? currentCellId;
 
-        // Scan for seed + collect un-enriched cells
+        // Scan for un-enriched cells (no detection zone trigger here —
+        // zone computation fires once after Supabase hydration completes).
         if (profile?.lastLat != null && profile?.lastLon != null) {
           currentCellId =
               cellService.getCellId(profile!.lastLat!, profile.lastLon!);
@@ -891,9 +896,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           ]) {
             final props = coordinator.cellPropertiesCache[cellId];
             if (props == null) continue;
-            if (props.locationId != null) {
-              seedDistrictId ??= props.locationId;
-            } else {
+            if (props.locationId == null) {
               final center = cellService.getCellCenter(cellId);
               unenriched
                   .add((cellId: cellId, lat: center.lat, lon: center.lon));
@@ -905,36 +908,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         const backfillCap = 50;
         for (final entry in coordinator.cellPropertiesCache.entries) {
           if (unenriched.length >= backfillCap) break;
-          if (entry.value.locationId != null) {
-            seedDistrictId ??= entry.value.locationId;
-          } else {
+          if (entry.value.locationId == null) {
             // Skip if already queued from priority pass
             if (unenriched.any((e) => e.cellId == entry.key)) continue;
             final center = cellService.getCellCenter(entry.key);
             unenriched
                 .add((cellId: entry.key, lat: center.lat, lon: center.lon));
           }
-        }
-
-        // Seed detection zone + fetch admin boundary geometry.
-        if (seedDistrictId != null) {
-          _lastDistrictId = null; // Allow re-trigger when geometry arrives
-          detectionZoneService.onDistrictChange(seedDistrictId);
-
-          // Fetch geometry so detection zone can be computed.
-          // onBoundariesResolved listener will re-trigger onDistrictChange
-          // once geometry is available.
-          if (currentCellId != null) {
-            final center = cellService.getCellCenter(currentCellId);
-            final adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-            adminBoundaryService?.requestBoundaries(center.lat, center.lon);
-          }
-          debugPrint(
-            '[DetectionZone] seeded from cache, district=$seedDistrictId',
-          );
-        } else {
-          debugPrint('[DetectionZone] no locationId in cache — '
-              'awaiting enrichment');
         }
 
         // Queue un-enriched cells for background enrichment
@@ -997,19 +977,36 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           );
         }
 
-        // Refresh detection zone with Supabase-hydrated cell properties.
-        // SQLite seed may have lacked locationId; Supabase data is richer.
+        // Detection zone: single computation after all data is ready.
+        // Supabase hydration provides locationId on cells + location nodes with
+        // geometry. This is the ONE authoritative trigger.
+        _zoneHydrationComplete = true;
+
         final currentCell = fogResolver.currentCellId;
         if (currentCell != null) {
           final props = coordinator.cellPropertiesCache[currentCell];
-          if (props?.locationId != null &&
-              props!.locationId != _lastDistrictId) {
-            _lastDistrictId = null; // Allow re-trigger
-            detectionZoneService.onDistrictChange(props.locationId!);
-            debugPrint(
-              '[DetectionZone] refreshed after Supabase hydration, '
-              'district=${props.locationId}',
-            );
+          if (props?.locationId != null) {
+            _lastDistrictId = props!.locationId;
+            await detectionZoneService.onDistrictChange(props.locationId!);
+
+            debugPrint('[DetectionZone] computed after hydration: '
+                'district=${props.locationId}, '
+                'zone=${detectionZoneService.detectionZoneCellIds.length} cells');
+
+            // Fallback: if zone is empty (no cached cellIds, no geometry),
+            // fetch geometry from Nominatim. The onBoundariesResolved listener
+            // will fire recomputeCurrentZone() as the one allowed re-trigger.
+            if (detectionZoneService.detectionZoneCellIds.isEmpty) {
+              final center = cellService.getCellCenter(currentCell);
+              ref
+                  .read(adminBoundaryServiceProvider)
+                  ?.requestBoundaries(center.lat, center.lon);
+              debugPrint('[DetectionZone] zone empty — fetching geometry');
+            }
+          } else {
+            _zoneHydrationComplete = true;
+            debugPrint('[DetectionZone] no locationId after hydration — '
+                'awaiting enrichment');
           }
         }
 
