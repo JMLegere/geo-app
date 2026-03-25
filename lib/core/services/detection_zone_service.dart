@@ -169,12 +169,20 @@ class DetectionZoneService {
     }
 
     final polygons = _parsePolygons(node.geometryJson!);
-    if (polygons.isEmpty) return {};
+    if (polygons.isEmpty) {
+      debugPrint('[DetectionZone] failed to parse polygons for $districtId '
+          '(geom ${node.geometryJson!.length} bytes)');
+      return {};
+    }
 
     // Find all cell centers inside any polygon
     final cellIds = <String>{};
     for (final polygon in polygons) {
       final bbox = _boundingBox(polygon);
+      debugPrint('[DetectionZone] scanning $districtId: '
+          '${polygon.length} vertices, '
+          'bbox lat [${bbox.minLat.toStringAsFixed(4)}, ${bbox.maxLat.toStringAsFixed(4)}], '
+          'lon [${bbox.minLon.toStringAsFixed(4)}, ${bbox.maxLon.toStringAsFixed(4)}]');
       // Scan at grid resolution (0.002° ≈ 180m, matching Voronoi grid step)
       const gridStep = 0.002;
       for (var lat = bbox.minLat; lat <= bbox.maxLat; lat += gridStep) {
@@ -188,6 +196,9 @@ class DetectionZoneService {
         }
       }
     }
+
+    debugPrint(
+        '[DetectionZone] scan result for $districtId: ${cellIds.length} cells');
 
     // Cache the result on the LocationNode
     if (cellIds.isNotEmpty) {
