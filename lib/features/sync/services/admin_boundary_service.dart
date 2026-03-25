@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 
 /// Fetches admin boundary polygons from the `resolve-admin-boundaries`
 /// Edge Function and caches them locally via [LocationNodeRepository].
@@ -43,8 +44,12 @@ class AdminBoundaryService {
   Future<void> requestBoundaries(double lat, double lon) async {
     // Primary deduplication: same location (rounded to 4 decimal places).
     final locationKey = '${lat.toStringAsFixed(4)}_${lon.toStringAsFixed(4)}';
-    if (locationKey == _lastRequestedLocation) return;
+    if (locationKey == _lastRequestedLocation) {
+      debugPrint('[AdminBoundary] dedup skip: $locationKey');
+      return;
+    }
 
+    final sw = Stopwatch()..start();
     try {
       // Secondary deduplication removed — the old check looked at ALL nodes
       // globally, so once any single district had geometry, it skipped
@@ -127,6 +132,15 @@ class AdminBoundaryService {
 
       // Only mark location as done after successful response with results.
       if (nodeIds.isNotEmpty) {
+        sw.stop();
+        debugPrint('[AdminBoundary] resolved ${nodeIds.length} nodes '
+            '(${sw.elapsedMilliseconds}ms)');
+        ObservabilityBuffer.instance?.event('admin_boundaries_resolved', {
+          'node_count': nodeIds.length,
+          'duration_ms': sw.elapsedMilliseconds,
+          'lat': lat,
+          'lon': lon,
+        });
         _lastRequestedLocation = locationKey;
         _boundariesResolvedController.add(nodeIds);
       }

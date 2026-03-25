@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:flutter/foundation.dart';
 
 /// Computes detection zones from district GeoJSON boundaries.
@@ -61,6 +62,7 @@ class DetectionZoneService {
     if (districtId == _currentDistrictId) return;
     _currentDistrictId = districtId;
 
+    final sw = Stopwatch()..start();
     final zone = <String>{};
 
     // Compute cells for current district.
@@ -109,6 +111,19 @@ class DetectionZoneService {
       }
     }
 
+    sw.stop();
+    debugPrint(
+        '[DetectionZone] district=$districtId zone=${zone.length} cells, '
+        'current=${currentCells.length}, adjacent=${adjacentDistrictIds.length} districts '
+        '(${sw.elapsedMilliseconds}ms)');
+    ObservabilityBuffer.instance?.event('detection_zone_changed', {
+      'district_id': districtId,
+      'zone_size': zone.length,
+      'current_cells': currentCells.length,
+      'adjacent_districts': adjacentDistrictIds.length,
+      'duration_ms': sw.elapsedMilliseconds,
+    });
+
     _detectionZoneCellIds = zone;
     if (!_zoneChangedController.isClosed) {
       _zoneChangedController.add(Set.unmodifiable(zone));
@@ -131,7 +146,10 @@ class DetectionZoneService {
     }
 
     // Parse GeoJSON geometry
-    if (node.geometryJson == null) return {};
+    if (node.geometryJson == null) {
+      debugPrint('[DetectionZone] no geometry for district $districtId');
+      return {};
+    }
 
     final polygons = _parsePolygons(node.geometryJson!);
     if (polygons.isEmpty) return {};

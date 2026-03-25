@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/models/fog_state.dart';
@@ -20,6 +21,10 @@ import 'package:earth_nova/core/models/fog_state.dart';
 /// All coordinates use GeoJSON convention: **[longitude, latitude]**.
 class FogGeoJsonBuilder {
   const FogGeoJsonBuilder._();
+
+  static int _baseFogLogCounter = 0;
+  static int _midFogLogCounter = 0;
+  static int _cellBordersLogCounter = 0;
 
   /// Builds the "fog-base" GeoJSON: a world polygon with holes punched for
   /// every cell that is NOT fully opaque (i.e., explored, nearby, current).
@@ -44,6 +49,7 @@ class FogGeoJsonBuilder {
         '[-180,-85.06],[180,-85.06],[180,85.06],[-180,85.06],[-180,-85.06]';
 
     final holes = StringBuffer();
+    var holeCount = 0;
 
     for (final entry in cellStates.entries) {
       final state = entry.value;
@@ -56,6 +62,7 @@ class FogGeoJsonBuilder {
       final boundary = getBoundary(entry.key);
       if (boundary.length < 3) continue;
 
+      holeCount++;
       holes.write(',[');
       for (var i = 0; i < boundary.length; i++) {
         if (i > 0) holes.write(',');
@@ -64,6 +71,11 @@ class FogGeoJsonBuilder {
       // Close the ring (GeoJSON requires first == last).
       holes.write(',[${boundary[0].lon},${boundary[0].lat}]');
       holes.write(']');
+    }
+
+    if (++_baseFogLogCounter % 100 == 1) {
+      debugPrint(
+          '[FOG-GEO] base: $holeCount holes from ${cellStates.length} cells');
     }
 
     return '{"type":"FeatureCollection","features":[{"type":"Feature",'
@@ -89,6 +101,7 @@ class FogGeoJsonBuilder {
   }) {
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final entry in cellStates.entries) {
       final state = entry.value;
@@ -101,6 +114,7 @@ class FogGeoJsonBuilder {
 
       if (!first) features.write(',');
       first = false;
+      featureCount++;
 
       features.write('{"type":"Feature","geometry":{"type":"Polygon",'
           '"coordinates":[[');
@@ -112,6 +126,11 @@ class FogGeoJsonBuilder {
       features.write(',[${boundary[0].lon},${boundary[0].lat}]');
       final density = state.density;
       features.write(']]},"properties":{"density":$density}}');
+    }
+
+    if (++_midFogLogCounter % 100 == 1) {
+      debugPrint(
+          '[FOG-GEO] mid: $featureCount features from ${cellStates.length} cells');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';
@@ -172,6 +191,7 @@ class FogGeoJsonBuilder {
   }) {
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final entry in cellStates.entries) {
       final double opacity;
@@ -189,6 +209,7 @@ class FogGeoJsonBuilder {
 
       if (!first) features.write(',');
       first = false;
+      featureCount++;
 
       features.write('{"type":"Feature","geometry":{"type":"Polygon",'
           '"coordinates":[[');
@@ -199,6 +220,11 @@ class FogGeoJsonBuilder {
       // Close ring.
       features.write(',[${boundary[0].lon},${boundary[0].lat}]');
       features.write(']]},"properties":{"opacity":$opacity}}');
+    }
+
+    if (++_cellBordersLogCounter % 100 == 1) {
+      debugPrint(
+          '[FOG-GEO] borders: $featureCount features from ${cellStates.length} cells');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';

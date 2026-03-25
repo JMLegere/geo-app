@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:earth_nova/core/models/cell_properties.dart';
@@ -95,6 +96,7 @@ class TerritoryBorderGeoJsonBuilder {
     // Step 5: Emit polygon features.
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final cellId in visibleCellIds) {
       final boundary = getBoundary(cellId);
@@ -121,6 +123,7 @@ class TerritoryBorderGeoJsonBuilder {
 
       if (!first) features.write(',');
       first = false;
+      featureCount++;
 
       features.write('{"type":"Feature","geometry":{"type":"Polygon",'
           '"coordinates":[[');
@@ -134,21 +137,31 @@ class TerritoryBorderGeoJsonBuilder {
       features.write('"properties":${jsonEncode(props)}}');
     }
 
+    debugPrint(
+        '[BORDERS] fill: $featureCount features from ${visibleCellIds.length} cells');
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
   /// Builds a GeoJSON FeatureCollection of LineString features for border
   /// edges between adjacent cells in different admin regions.
   ///
-  /// Each feature represents a shared Voronoi edge (2-vertex line) with
-  /// properties:
+  /// Each shared edge emits **two** features — one per side — so each half
+  /// can be colored with its respective district's color and offset to its
+  /// own side via MapLibre's `line-offset` paint property.
+  ///
+  /// Feature properties:
   /// ```json
   /// {
   ///   "admin_level": "country",
   ///   "border_color": "#3B7DD8",
-  ///   "line_weight": 3.0
+  ///   "line_weight": 3.0,
+  ///   "side": 1
   /// }
   /// ```
+  ///
+  /// `side` is `1` (cell's own side) or `-1` (neighbor's side). Combine
+  /// with `line-offset: ['*', ['get', 'side'], ['/', ['get', 'line_weight'], 2]]`
+  /// to push each half to its respective side.
   ///
   /// Only the lowest-level differing border is emitted per cell pair.
   ///
@@ -157,12 +170,14 @@ class TerritoryBorderGeoJsonBuilder {
   /// [visibleCellIds] are cell IDs currently in the viewport.
   /// [getNeighborIds] resolves a cell ID to its neighbor cell IDs.
   /// [getBoundary] resolves a cell ID to its boundary polygon vertices.
+  /// [getCellCenter] resolves a cell ID to its geographic center point.
   static String buildBorderLines({
     required Map<String, CellProperties> cellProperties,
     required Map<String, LocationNode> locationNodes,
     required Set<String> visibleCellIds,
     required List<String> Function(String cellId) getNeighborIds,
     required List<Geographic> Function(String cellId) getBoundary,
+    required Geographic Function(String cellId) getCellCenter,
   }) {
     final cellAncestors = _buildCellAncestors(
       cellProperties: cellProperties,
@@ -172,6 +187,8 @@ class TerritoryBorderGeoJsonBuilder {
 
     final features = StringBuffer();
     var first = true;
+    var edgesProcessed = 0;
+    var dualLinesEmitted = 0;
 
     // Track processed pairs to avoid duplicate edges.
     final processedPairs = <String>{};
@@ -202,28 +219,56 @@ class TerritoryBorderGeoJsonBuilder {
           getBoundary(neighborId),
         );
         if (edge == null) continue;
+        edgesProcessed++;
 
-        // Determine border color (from the cell's own region).
-        final nodeId = cellAnc[differingLevel];
-        final node = nodeId != null ? locationNodes[nodeId] : null;
-        final color = node != null ? _nodeColor(node) : '#888888';
+        // Resolve colors for both sides.
+        final cellNodeId = cellAnc[differingLevel];
+        final neighborNodeId = neighborAnc[differingLevel];
+        final cellNode = cellNodeId != null ? locationNodes[cellNodeId] : null;
+        final neighborNode =
+            neighborNodeId != null ? locationNodes[neighborNodeId] : null;
+        final cellColor = cellNode != null ? _nodeColor(cellNode) : '#888888';
+        final neighborColor =
+            neighborNode != null ? _nodeColor(neighborNode) : '#888888';
         final weight = _lineWeight(differingLevel);
 
+        // Determine which side of the edge the cell center is on using the
+        // cross product of (edge direction) × (edge midpoint → cell center).
+        // Positive cross → cell is on the left (positive offset side).
+        final edgeMidLon = (edge.$1.lon + edge.$2.lon) / 2;
+        final edgeMidLat = (edge.$1.lat + edge.$2.lat) / 2;
+        final edgeDx = edge.$2.lon - edge.$1.lon;
+        final edgeDy = edge.$2.lat - edge.$1.lat;
+        final cellCenter = getCellCenter(cellId);
+        final toCellDx = cellCenter.lon - edgeMidLon;
+        final toCellDy = cellCenter.lat - edgeMidLat;
+        final cross = edgeDx * toCellDy - edgeDy * toCellDx;
+        final cellSide = cross >= 0 ? 1 : -1;
+
+        // Emit two features — one per side.
+        final lineCoords =
+            '[[${edge.$1.lon},${edge.$1.lat}],[${edge.$2.lon},${edge.$2.lat}]]';
+
+        // Cell's side.
         if (!first) features.write(',');
         first = false;
-
         features.write('{"type":"Feature","geometry":{"type":"LineString",'
-            '"coordinates":['
-            '[${edge.$1.lon},${edge.$1.lat}],'
-            '[${edge.$2.lon},${edge.$2.lat}]'
-            ']},"properties":{'
-            '"admin_level":"${differingLevel.name}",'
-            '"border_color":"$color",'
-            '"line_weight":$weight'
-            '}}');
+            '"coordinates":$lineCoords},'
+            '"properties":{"admin_level":"${differingLevel.name}",'
+            '"border_color":"$cellColor","line_weight":$weight,"side":$cellSide}}');
+
+        // Neighbor's side.
+        features.write(',');
+        features.write('{"type":"Feature","geometry":{"type":"LineString",'
+            '"coordinates":$lineCoords},'
+            '"properties":{"admin_level":"${differingLevel.name}",'
+            '"border_color":"$neighborColor","line_weight":$weight,"side":${-cellSide}}}');
+        dualLinesEmitted += 2;
       }
     }
 
+    debugPrint(
+        '[BORDERS] lines: $dualLinesEmitted features from $edgesProcessed edges, ${visibleCellIds.length} cells');
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
