@@ -54,6 +54,7 @@ class FogOverlayController {
   /// of the GeoJSON. MapLibre clips off-screen polygons natively, so
   /// including out-of-viewport cells has negligible rendering cost.
   final Set<String> _discoveredCellIds = {};
+  int _fogComputeCounter = 0;
 
   /// Callback fired the first time a cell is added to [_discoveredCellIds].
   ///
@@ -71,6 +72,7 @@ class FogOverlayController {
     }
     if (added > 0) {
       _buildGeoJson(_discoveredCellIds);
+      _rebuildTerritoryBorders();
       _renderVersion++;
       debugPrint('[FOG] added $added detection zone cells '
           '(total: ${_discoveredCellIds.length})');
@@ -290,7 +292,11 @@ class FogOverlayController {
     _renderVersion++;
 
     sw.stop();
-    if (sw.elapsedMilliseconds > 8) {
+    // Emit fog_computed every 50th frame OR when slow (>8ms).
+    // Previous bug: >8ms gate meant fast frames never logged state counts,
+    // hiding whether detection zone cells were included.
+    _fogComputeCounter++;
+    if (sw.elapsedMilliseconds > 8 || _fogComputeCounter % 50 == 1) {
       final stateCounts = <String, int>{};
       for (final state in _lastCellStates.values) {
         stateCounts[state.name] = (stateCounts[state.name] ?? 0) + 1;
