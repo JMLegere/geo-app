@@ -44,9 +44,22 @@ enum LogLevel {
         line.contains('[Auth]') ||
         line.contains('[NAV]') ||
         line.contains('[ACTION]') ||
+        line.contains('[EVENT]') ||
+        line.contains('[DetectionZone]') ||
+        line.contains('[AdminBoundary]') ||
+        line.contains('[GameCoordinator]') ||
+        line.contains('[FOG] added') ||
+        line.contains('[BORDERS]') ||
         line.contains('[CRASH-STACK]') ||
         line.contains('[RENDER-STALL]')) {
       return LogLevel.info;
+    }
+
+    // ── Suppress (high-frequency noise that drowns critical events) ──
+    if (line.contains('fog_sources_updated') ||
+        line.contains('fog_computed') ||
+        line.contains('updateFogSources #')) {
+      return LogLevel.debug;
     }
 
     // ── Debug (everything else: hydration, enrichment, per-cell ops) ──
