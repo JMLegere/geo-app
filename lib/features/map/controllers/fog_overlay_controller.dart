@@ -62,6 +62,21 @@ class FogOverlayController {
   /// cell service.
   void Function(String cellId, double lat, double lon)? onCellBecameVisible;
 
+  /// Adds detection zone cells to the discovered set so they are included
+  /// in GeoJSON builds. Called when the detection zone changes.
+  void addDetectionZoneCells(Set<String> zoneCellIds) {
+    var added = 0;
+    for (final cellId in zoneCellIds) {
+      if (_discoveredCellIds.add(cellId)) added++;
+    }
+    if (added > 0) {
+      _buildGeoJson(_discoveredCellIds);
+      _renderVersion++;
+      debugPrint('[FOG] added $added detection zone cells '
+          '(total: ${_discoveredCellIds.length})');
+    }
+  }
+
   /// GeoJSON string for the base fog layer (world polygon with holes).
   String _baseFogGeoJson = FogGeoJsonBuilder.fullWorldFog;
 
