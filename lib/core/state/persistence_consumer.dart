@@ -13,9 +13,11 @@ import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/season.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
+import 'package:earth_nova/core/persistence/location_node_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
@@ -381,6 +383,7 @@ Future<void> hydrateFromSupabase({
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
   required CellPropertyRepository cellPropertyRepo,
+  required LocationNodeRepository locationNodeRepo,
   AppDatabase? db,
   SpeciesCache? speciesCache,
   ObservabilityBuffer? obs,
@@ -664,6 +667,41 @@ Future<void> hydrateFromSupabase({
         '[GameCoordinator] hydrated $cellPropsHydrated cell properties '
         'from Supabase',
       );
+    }
+
+    // 6. Location nodes → SQLite (globally shared admin hierarchy with geometry)
+    try {
+      final locationNodeRows = await persistence.fetchLocationNodes();
+      var nodesHydrated = 0;
+      for (final row in locationNodeRows) {
+        try {
+          final adjacentRaw = row['adjacent_location_ids'];
+          final cellIdsRaw = row['cell_ids'];
+          final node = LocationNode(
+            id: row['id'] as String,
+            name: row['name'] as String? ?? '',
+            adminLevel: AdminLevel.fromString(
+                row['admin_level'] as String? ?? 'district'),
+            parentId: row['parent_id'] as String?,
+            osmId: row['osm_id'] is int ? (row['osm_id'] as int) : null,
+            colorHex: row['color_hex'] as String?,
+            geometryJson: row['geometry_json'] as String?,
+            adjacentLocationIds:
+                adjacentRaw is List ? List<String>.from(adjacentRaw) : null,
+            cellIds: cellIdsRaw is List ? List<String>.from(cellIdsRaw) : null,
+          );
+          await locationNodeRepo.upsert(node);
+          nodesHydrated++;
+        } catch (e) {
+          // Skip invalid rows
+        }
+      }
+      if (nodesHydrated > 0) {
+        debugPrint(
+            '[GameCoordinator] hydrated $nodesHydrated location nodes from Supabase');
+      }
+    } catch (e) {
+      debugPrint('[GameCoordinator] location node hydration failed: $e');
     }
 
     debugPrint(

@@ -395,6 +395,19 @@ class SupabasePersistence {
     }
   }
 
+  /// Fetches all location nodes from Supabase.
+  /// Location nodes are globally shared (not per-user).
+  Future<List<Map<String, dynamic>>> fetchLocationNodes() async {
+    try {
+      final response =
+          await _client.from('location_nodes').select().limit(1000);
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchLocationNodes failed: $e');
+      throw SyncException('Failed to load location nodes.', cause: e);
+    }
+  }
+
   /// Fetches species rows with enrichment data updated since [since].
   /// Used for delta-sync: pulls classification + art URLs from the
   /// server-side `species` table into the local Drift table.
