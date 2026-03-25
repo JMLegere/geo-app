@@ -405,31 +405,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
     fogResolver.setDetectionZone(zoneCellIds);
-    // Feed zone cells + latest cell properties into the fog overlay controller
-    // so they're included in GeoJSON builds (fog-base holes + mid-fog polygons
-    // + territory borders with locationId).
-    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(
-          zoneCellIds,
-          coordinator.cellPropertiesCache,
-        );
-    // Warm species cache for all unique combos in the new zone.
-    final speciesCache = ref.read(speciesCacheProvider);
-    if (!speciesCache.isEmpty) {
-      final seen = <String>{};
-      for (final cellId in zoneCellIds) {
-        final props = coordinator.cellPropertiesCache[cellId];
-        if (props == null) continue;
-        final key = SpeciesCache.cacheKey(props.habitats, props.continent);
-        if (seen.add(key)) {
-          speciesCache.warmUp(
-              habitats: props.habitats, continent: props.continent);
-        }
-      }
-    }
-    // Pre-resolve cell properties for zone cells not yet in cache.
-    // CellPropertyResolver.resolve() is synchronous — safe to call here.
-    // This ensures territory border rendering has habitat/climate/continent
-    // data for all detection zone cells.
+
+    // 1. Pre-resolve cell properties for zone cells not yet in cache.
+    //    CellPropertyResolver.resolve() is synchronous — safe to call here.
     final resolver = ref.read(cellPropertyResolverProvider);
     if (resolver != null) {
       var resolved = 0;
@@ -458,16 +436,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     }
 
-    // Stamp locationId from geometry ray-casting attribution.
-    // This is authoritative — geometry proves which district each cell belongs to.
+    // 2. Stamp locationId from geometry ray-casting attribution.
+    //    This is authoritative — geometry proves which district each cell belongs to.
     final attribution = detectionZoneService.cellDistrictAttribution;
     var locationIdStamped = 0;
     for (final entry in attribution.entries) {
       final cellId = entry.key;
       final districtId = entry.value;
       var props = coordinator.cellPropertiesCache[cellId];
-      if (props == null) continue; // Skip cells without base properties.
-      if (props.locationId == districtId) continue; // Already correct.
+      if (props == null) continue;
+      if (props.locationId == districtId) continue;
 
       props = props.copyWith(locationId: districtId);
       coordinator.loadCellProperties({cellId: props});
@@ -488,6 +466,29 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'from geometry attribution',
       );
     }
+
+    // 3. Warm species cache for all unique combos in the new zone.
+    final speciesCache = ref.read(speciesCacheProvider);
+    if (!speciesCache.isEmpty) {
+      final seen = <String>{};
+      for (final cellId in zoneCellIds) {
+        final props = coordinator.cellPropertiesCache[cellId];
+        if (props == null) continue;
+        final key = SpeciesCache.cacheKey(props.habitats, props.continent);
+        if (seen.add(key)) {
+          speciesCache.warmUp(
+              habitats: props.habitats, continent: props.continent);
+        }
+      }
+    }
+
+    // 4. LAST: feed zone cells + fully-populated cell properties into the fog
+    //    overlay controller. Must run AFTER pre-resolve + stamp so the cache
+    //    has locationId for all zone cells (needed for territory borders).
+    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(
+          zoneCellIds,
+          coordinator.cellPropertiesCache,
+        );
 
     debugPrint(
       '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
