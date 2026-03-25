@@ -237,6 +237,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           .get(event.locationId)
           .then((node) {
         if (node != null && mounted) {
+          _locationNodesMap[node.id] = node;
           ref.read(fogOverlayControllerProvider).addLocationNode(node);
         }
       }).catchError((Object e) {
@@ -255,8 +256,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Wire admin boundary service — fetch polygons on district change.
     _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
     _adminBoundarySubscription =
-        _adminBoundaryService?.onBoundariesResolved.listen((nodeIds) {
+        _adminBoundaryService?.onBoundariesResolved.listen((nodeIds) async {
       if (!mounted) return;
+      // Reload location nodes so territory border builder sees new geometry.
+      await _loadLocationNodes();
+      if (!mounted) return;
+      ref.read(fogOverlayControllerProvider).locationNodesCache =
+          _locationNodesMap;
       _rebuildAdminBoundaryGeoJson();
     });
   }
