@@ -166,16 +166,25 @@ class DetectionZoneService {
   /// LocationNode, and returns it.
   Future<Set<String>> computeCellIdsForDistrict(String districtId) async {
     final node = await _locationNodeRepo.get(districtId);
-    if (node == null) return {};
+    if (node == null) {
+      debugPrint('[DetectionZone] node not found: $districtId');
+      return {};
+    }
+
+    debugPrint('[DetectionZone] compute $districtId: '
+        'cellIds=${node.cellIds?.length ?? "null"}, '
+        'geom=${node.geometryJson?.length ?? "null"} bytes');
 
     // Return cached cellIds if available
     if (node.cellIds != null && node.cellIds!.isNotEmpty) {
+      debugPrint(
+          '[DetectionZone] using cached ${node.cellIds!.length} cellIds');
       return node.cellIds!.toSet();
     }
 
     // Parse GeoJSON geometry
     if (node.geometryJson == null) {
-      debugPrint('[DetectionZone] no geometry for district $districtId');
+      debugPrint('[DetectionZone] no geometry for $districtId');
       return {};
     }
 
