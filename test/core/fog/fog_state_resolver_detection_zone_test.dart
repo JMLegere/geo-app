@@ -125,10 +125,10 @@ void main() {
         resolver.onLocationUpdate(gridLat(3), gridLon(3));
 
         // Cells in detection zone should be unexplored (not undetected)
-        expect(resolver.resolve('v_5_5'), equals(FogState.unexplored));
+        expect(resolver.resolve('v_5_5'), equals(FogState.detected));
 
         // Cells outside detection zone should be undetected
-        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
+        expect(resolver.resolve('v_0_0'), equals(FogState.unknown));
       });
 
       test('detection zone expands when new cells are added', () {
@@ -139,8 +139,8 @@ void main() {
         resolver.setDetectionZone(initialZone);
 
         // Verify initial zone
-        expect(resolver.resolve('v_5_5'), equals(FogState.unexplored));
-        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
+        expect(resolver.resolve('v_5_5'), equals(FogState.detected));
+        expect(resolver.resolve('v_0_0'), equals(FogState.unknown));
 
         // Expand detection zone
         final expandedZone = <String>{};
@@ -152,8 +152,8 @@ void main() {
         resolver.setDetectionZone(expandedZone);
 
         // Verify expanded zone
-        expect(resolver.resolve('v_4_4'), equals(FogState.unexplored));
-        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
+        expect(resolver.resolve('v_4_4'), equals(FogState.detected));
+        expect(resolver.resolve('v_0_0'), equals(FogState.unknown));
       });
 
       test('visited cells remain hidden even outside detection zone', () {
@@ -161,7 +161,7 @@ void main() {
 
         // Visit v_0_0 first (before setting detection zone)
         resolver.onLocationUpdate(gridLat(0), gridLon(0));
-        expect(resolver.resolve('v_0_0'), equals(FogState.observed));
+        expect(resolver.resolve('v_0_0'), equals(FogState.present));
 
         // Move away from v_0_0
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
@@ -170,7 +170,7 @@ void main() {
         resolver.setDetectionZone({'v_5_5'});
 
         // v_0_0 should be hidden (visited), not undetected
-        expect(resolver.resolve('v_0_0'), equals(FogState.hidden));
+        expect(resolver.resolve('v_0_0'), equals(FogState.explored));
         expect(resolver.visitedCellIds, contains('v_0_0'));
       });
     });
@@ -184,7 +184,7 @@ void main() {
         // Move to v_5_5
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
-        expect(resolver.resolve('v_5_5'), equals(FogState.observed));
+        expect(resolver.resolve('v_5_5'), equals(FogState.present));
       });
 
       test('returns hidden for visited cells outside current position', () {
@@ -199,7 +199,7 @@ void main() {
         resolver.onLocationUpdate(gridLat(6), gridLon(6));
 
         // v_5_5 should be hidden (visited but not current)
-        expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
+        expect(resolver.resolve('v_5_5'), equals(FogState.explored));
       });
 
       test('returns concealed for neighbors of current cell', () {
@@ -211,8 +211,8 @@ void main() {
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // Neighbors of v_5_5 are v_4_5, v_6_5, v_5_4, v_5_6
-        expect(resolver.resolve('v_5_6'), equals(FogState.concealed));
-        expect(resolver.resolve('v_6_5'), equals(FogState.concealed));
+        expect(resolver.resolve('v_5_6'), equals(FogState.nearby));
+        expect(resolver.resolve('v_6_5'), equals(FogState.nearby));
       });
 
       test(
@@ -227,7 +227,7 @@ void main() {
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // v_8_8 is in detection zone but not visited or adjacent
-        expect(resolver.resolve('v_8_8'), equals(FogState.unexplored));
+        expect(resolver.resolve('v_8_8'), equals(FogState.detected));
       });
 
       test('returns undetected for cells outside detection zone', () {
@@ -239,7 +239,7 @@ void main() {
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // v_0_0 is outside detection zone and not visited/adjacent
-        expect(resolver.resolve('v_0_0'), equals(FogState.undetected));
+        expect(resolver.resolve('v_0_0'), equals(FogState.unknown));
       });
     });
 
@@ -260,26 +260,26 @@ void main() {
         resolver.onLocationUpdate(gridLat(5), gridLon(5));
 
         // Current cell: observed
-        expect(resolver.resolve('v_5_5'), equals(FogState.observed));
+        expect(resolver.resolve('v_5_5'), equals(FogState.present));
 
         // Move to v_6_6
         resolver.onLocationUpdate(gridLat(6), gridLon(6));
 
         // Visited cell (not current): hidden
-        expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
+        expect(resolver.resolve('v_5_5'), equals(FogState.explored));
 
         // Adjacent to current: concealed
         // v_6_5 is a neighbor of v_6_6
-        expect(resolver.resolve('v_6_5'), equals(FogState.concealed));
+        expect(resolver.resolve('v_6_5'), equals(FogState.nearby));
 
         // In detection zone but not visited/adjacent: unexplored
-        expect(resolver.resolve('v_0_0'), equals(FogState.unexplored));
+        expect(resolver.resolve('v_0_0'), equals(FogState.detected));
 
         // Shrink detection zone — v_0_0 should become undetected
         resolver.setDetectionZone({'v_6_6'});
         // But v_0_0 was already in _everDetectedCellIds, so it stays unexplored
         // This is correct behavior: once detected, never reverts
-        expect(resolver.resolve('v_0_0'), equals(FogState.unexplored));
+        expect(resolver.resolve('v_0_0'), equals(FogState.detected));
       });
     });
 
@@ -315,8 +315,8 @@ void main() {
         resolver.onLocationUpdate(gridLat(6), gridLon(6));
 
         // Previously visited cells should be hidden
-        expect(resolver.resolve('v_5_5'), equals(FogState.hidden));
-        expect(resolver.resolve('v_5_6'), equals(FogState.hidden));
+        expect(resolver.resolve('v_5_5'), equals(FogState.explored));
+        expect(resolver.resolve('v_5_6'), equals(FogState.explored));
       });
     });
   });

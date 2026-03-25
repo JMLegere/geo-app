@@ -183,14 +183,14 @@ void main() {
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
       expect(cell1, isNotNull);
-      expect(cell1!.fogState, equals('observed'));
+      expect(cell1!.fogState, equals('present'));
       expect(cell1.visitCount, equals(5));
       expect(cell1.distanceWalked, equals(120.5));
       expect(cell1.restorationLevel, equals(0.67));
 
       final cell2 = await cellProgressRepo.read(_userId, 'cell-2');
       expect(cell2, isNotNull);
-      expect(cell2!.fogState, equals('hidden'));
+      expect(cell2!.fogState, equals('explored'));
       expect(cell2.visitCount, equals(1));
     });
 
@@ -288,7 +288,7 @@ void main() {
       // Cell progress
       final cell = await cellProgressRepo.read(_userId, 'cell-A');
       expect(cell, isNotNull);
-      expect(cell!.fogState, equals('observed'));
+      expect(cell!.fogState, equals('present'));
 
       // Item
       final items = await itemRepo.getItemsByUser(_userId);
@@ -414,7 +414,7 @@ void main() {
 
       final cell = await cellProgressRepo.read(_userId, 'cell-sparse');
       expect(cell, isNotNull);
-      expect(cell!.fogState, equals('observed')); // Default fog state
+      expect(cell!.fogState, equals('present')); // Default fog state
 
       final items = await itemRepo.getItemsByUser(_userId);
       expect(items.length, equals(1));

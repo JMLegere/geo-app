@@ -175,7 +175,7 @@ class SyncNotifier extends Notifier<SyncStatus> {
               // undetected on the next render cycle.
               ref
                   .read(fogProvider.notifier)
-                  .updateCellFogState(cellId, FogState.undetected);
+                  .updateCellFogState(cellId, FogState.unknown);
               debugPrint(
                 '[SyncNotifier] rolled back cell progress: $cellId',
               );

@@ -630,7 +630,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         final visitedCellIds = <String>{};
         for (final row in cellRows) {
           final fog = FogState.fromString(row.fogState);
-          if (fog == FogState.observed || fog == FogState.hidden) {
+          if (fog == FogState.present || fog == FogState.explored) {
             visitedCellIds.add(row.cellId);
           }
         }
@@ -644,7 +644,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // stored in the profile table (which has no such column).
       final cellsObserved = cellRows.where((row) {
         final fog = FogState.fromString(row.fogState);
-        return fog == FogState.observed || fog == FogState.hidden;
+        return fog == FogState.present || fog == FogState.explored;
       }).length;
 
       // Capture the in-memory onboarding flag before hydration overwrites

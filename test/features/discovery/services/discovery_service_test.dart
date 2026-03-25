@@ -174,7 +174,7 @@ List<DiscoveryEvent> collectDiscoveries(
 void main() {
   group('DiscoveryService', () {
     test(
-        'emits DiscoveryEvent when resolver fires FogState.observed for new cell',
+        'emits DiscoveryEvent when resolver fires FogState.present for new cell',
         () {
       final resolver = _makeResolver();
       final speciesService = _makeSpeciesService();

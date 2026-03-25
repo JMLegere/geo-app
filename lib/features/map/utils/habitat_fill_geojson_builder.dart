@@ -31,8 +31,8 @@ class HabitatFillGeoJsonBuilder {
   /// [cellStates] maps cell IDs to their current [FogState].
   /// [getCellBoundary] resolves a cell ID to its geographic boundary vertices.
   ///
-  /// Only cells in [FogState.observed], [FogState.hidden], or
-  /// [FogState.concealed] that also have an entry in [cellProperties] are
+  /// Only cells in [FogState.present], [FogState.explored], or
+  /// [FogState.nearby] that also have an entry in [cellProperties] are
   /// rendered. Undetected and unexplored cells are skipped.
   ///
   /// Returns a GeoJSON FeatureCollection string. Each eligible cell contributes
@@ -49,7 +49,7 @@ class HabitatFillGeoJsonBuilder {
       final state = entry.value;
 
       // Only render for cells the player has some awareness of.
-      if (state == FogState.undetected || state == FogState.unexplored) {
+      if (state == FogState.unknown || state == FogState.detected) {
         continue;
       }
 

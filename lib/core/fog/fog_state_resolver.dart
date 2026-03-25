@@ -14,23 +14,23 @@ import 'package:flutter/foundation.dart';
 ///
 /// ## Priority table for [resolve]
 ///
-/// | Priority | State        | Condition                                          | Fog Density |
-/// |----------|--------------|----------------------------------------------------|-------------|
-/// | 1        | Observed     | Player is currently in this cell                   | 0.0         |
-/// | 2        | Hidden       | Previously visited, not in current view            | 0.5         |
-/// | 3        | Concealed    | Adjacent to player's current cell                  | 0.95        |
-/// | 4        | Unexplored   | Frontier cell OR in detection zone                 | 0.75        |
-/// | 5        | Undetected   | >50 km from player and none of the above           | 1.0         |
+/// | Priority | State    | Condition                                          | Fog Density |
+/// |----------|----------|----------------------------------------------------|-------------|
+/// | 1        | current  | Player is currently in this cell                   | 0.0         |
+/// | 2        | explored | Previously visited, not in current view            | 0.5         |
+/// | 3        | nearby   | Adjacent to player's current cell                  | 0.95        |
+/// | 4        | detected | Frontier cell OR in detection zone                 | 0.97        |
+/// | 5        | unknown  | Far from player and none of the above              | 1.0         |
 ///
 /// ## Key behaviours
 ///
-/// - **Dynamic state**: Leaving a cell transitions it from Observed → Hidden
+/// - **Dynamic state**: Leaving a cell transitions it from current → explored
 ///   the moment the player moves away. This is not a bug — it's the design.
 /// - **No forward-only constraint**: States can go "backward" because they
 ///   are computed, not stored.
-/// - **50 km detection**: On every [onLocationUpdate] call, cells within
-///   the detection zone that are not already Observed/Concealed/Hidden/
-///   frontier resolve as [FogState.unexplored] via [resolve].
+/// - **Detection zone**: On every [onLocationUpdate] call, cells within
+///   the detection zone that are not already current/nearby/explored/
+///   frontier resolve as [FogState.detected] via [resolve].
 /// - **Event emission**: [onVisitedCellAdded] fires only when a NEW cell is
 ///   added to [visitedCellIds]. Dynamic state changes never emit events.
 class FogStateResolver {
@@ -43,9 +43,9 @@ class FogStateResolver {
   /// Maintained incrementally on each new cell visit.
   final Set<String> _explorationFrontier = {};
 
-  /// All cells that have ever resolved as anything other than undetected.
+  /// All cells that have ever resolved as anything other than unknown.
   /// Once a cell is detected (via proximity, frontier, or visit), it stays
-  /// at least [FogState.unexplored] permanently — fog never re-closes.
+  /// at least [FogState.detected] permanently — fog never re-closes.
   final Set<String> _everDetectedCellIds = {};
 
   /// The cell containing the player, or null before any location update.
@@ -61,7 +61,7 @@ class FogStateResolver {
   double? _playerLon;
 
   /// Detection zone cell IDs, or null if using distance-based detection.
-  /// When set, cells in the zone resolve as at least [FogState.unexplored].
+  /// When set, cells in the zone resolve as at least [FogState.detected].
   Set<String>? _detectionZoneCellIds;
 
   // sync: true ensures events are delivered synchronously during onLocationUpdate,
@@ -98,7 +98,7 @@ class FogStateResolver {
   Set<String> get explorationFrontier => Set.unmodifiable(_explorationFrontier);
 
   /// Sets the detection zone — cells that should resolve as at least
-  /// [FogState.unexplored] instead of [FogState.undetected].
+  /// [FogState.detected] instead of [FogState.unknown].
   ///
   /// Called by DetectionZoneService when the player enters a new district.
   void setDetectionZone(Set<String> cellIds) {
@@ -114,29 +114,29 @@ class FogStateResolver {
   FogState resolve(String cellId) {
     if (cellId == _currentCellId) {
       _everDetectedCellIds.add(cellId);
-      return FogState.observed;
+      return FogState.present;
     }
     if (_visitedCellIds.contains(cellId)) {
       _everDetectedCellIds.add(cellId);
-      return FogState.hidden;
+      return FogState.explored;
     }
     if (_currentNeighborIds.contains(cellId)) {
       _everDetectedCellIds.add(cellId);
-      return FogState.concealed;
+      return FogState.nearby;
     }
     if (_explorationFrontier.contains(cellId)) {
       _everDetectedCellIds.add(cellId);
-      return FogState.unexplored;
+      return FogState.detected;
     }
     // Detection zone membership — cells in current + adjacent districts.
     if (_detectionZoneCellIds != null &&
         _detectionZoneCellIds!.contains(cellId)) {
       _everDetectedCellIds.add(cellId);
-      return FogState.unexplored;
+      return FogState.detected;
     }
     // Once detected, a cell never reverts to undetected.
-    if (_everDetectedCellIds.contains(cellId)) return FogState.unexplored;
-    return FogState.undetected;
+    if (_everDetectedCellIds.contains(cellId)) return FogState.detected;
+    return FogState.unknown;
   }
 
   /// Core game-loop entry point. Called on every player location update.
@@ -145,7 +145,7 @@ class FogStateResolver {
   /// 2. Resolves the current cell and its immediate neighbors.
   /// 3. If the current cell is new (first visit), adds it to [visitedCellIds],
   ///    updates [explorationFrontier], and emits a [FogStateChangedEvent] with
-  ///    [FogState.observed] (player is physically present).
+  ///    [FogState.present] (player is physically present).
   void onLocationUpdate(double lat, double lon) {
     _playerLat = lat;
     _playerLon = lon;
@@ -155,7 +155,7 @@ class FogStateResolver {
     _currentNeighborIds = _cellService.getNeighborIds(newCellId).toSet();
 
     if (!_visitedCellIds.contains(newCellId)) {
-      _markCellVisited(newCellId, FogState.observed);
+      _markCellVisited(newCellId, FogState.present);
     }
   }
 
@@ -168,7 +168,7 @@ class FogStateResolver {
   /// already-visited cells can be unlocked remotely. This enforces geographic
   /// reachability: players cannot jump over unexplored territory.
   ///
-  /// Emits a [FogStateChangedEvent] with [FogState.hidden] (not observed —
+  /// Emits a [FogStateChangedEvent] with [FogState.explored] (not current —
   /// the player is not physically present). Downstream listeners such as
   /// [DiscoveryService] can react to this event identically to physical visits.
   ///
@@ -190,7 +190,7 @@ class FogStateResolver {
     }
 
     // Remote visit = hidden (player is not there — just revealed).
-    _markCellVisited(cellId, FogState.hidden);
+    _markCellVisited(cellId, FogState.explored);
   }
 
   /// Restores visited cells from persistence.
@@ -266,7 +266,7 @@ class FogStateResolver {
   void _markCellVisited(String cellId, FogState newState) {
     // Capture old computed state before mutating the visited set.
     final wasInFrontier = _explorationFrontier.contains(cellId);
-    final oldState = wasInFrontier ? FogState.unexplored : FogState.undetected;
+    final oldState = wasInFrontier ? FogState.detected : FogState.unknown;
 
     _visitedCellIds.add(cellId);
     _explorationFrontier.remove(cellId);

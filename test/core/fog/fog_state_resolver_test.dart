@@ -119,8 +119,8 @@ void main() {
     test(
         '1. resolve() returns undetected for unknown cells with no location update',
         () {
-      expect(resolver.resolve('cell_0_0'), equals(FogState.undetected));
-      expect(resolver.resolve('cell_5_5'), equals(FogState.undetected));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.unknown));
+      expect(resolver.resolve('cell_5_5'), equals(FogState.unknown));
     });
 
     // -------------------------------------------------------------------------
@@ -130,7 +130,7 @@ void main() {
         '2. resolve() returns observed for the current cell after onLocationUpdate',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
-      expect(resolver.resolve('cell_0_0'), equals(FogState.observed));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.present));
     });
 
     // -------------------------------------------------------------------------
@@ -141,10 +141,10 @@ void main() {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // The 8 immediate integer neighbors of cell_0_0 are all concealed.
-      expect(resolver.resolve('cell_1_0'), equals(FogState.concealed));
-      expect(resolver.resolve('cell_0_1'), equals(FogState.concealed));
-      expect(resolver.resolve('cell_-1_0'), equals(FogState.concealed));
-      expect(resolver.resolve('cell_1_1'), equals(FogState.concealed));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.nearby));
+      expect(resolver.resolve('cell_0_1'), equals(FogState.nearby));
+      expect(resolver.resolve('cell_-1_0'), equals(FogState.nearby));
+      expect(resolver.resolve('cell_1_1'), equals(FogState.nearby));
     });
 
     // -------------------------------------------------------------------------
@@ -158,7 +158,7 @@ void main() {
       // Move far away — cell_0_0 is now visited but not current or adjacent.
       resolver.onLocationUpdate(10.0, 10.0);
 
-      expect(resolver.resolve('cell_0_0'), equals(FogState.hidden));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.explored));
     });
 
     // -------------------------------------------------------------------------
@@ -173,8 +173,8 @@ void main() {
       resolver.onLocationUpdate(10.0, 10.0);
 
       // cell_1_0 is a neighbor of visited cell_0_0 but has never been visited.
-      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
-      expect(resolver.resolve('cell_0_1'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.detected));
+      expect(resolver.resolve('cell_0_1'), equals(FogState.detected));
     });
 
     // -------------------------------------------------------------------------
@@ -190,7 +190,7 @@ void main() {
 
       // "cell_0.005_0" is in the detection zone but is NOT in the frontier
       // (mock frontier uses integer-coordinate cells only).
-      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.detected));
     });
 
     // -------------------------------------------------------------------------
@@ -203,7 +203,7 @@ void main() {
 
       // cell_3_0 center at (3°, 0°) ≈ 333 km from player.
       // It is NOT in the frontier (only immediate neighbors ±1° are frontier).
-      expect(resolver.resolve('cell_3_0'), equals(FogState.undetected));
+      expect(resolver.resolve('cell_3_0'), equals(FogState.unknown));
     });
 
     // -------------------------------------------------------------------------
@@ -261,7 +261,7 @@ void main() {
 
       expect(events.length, equals(1));
       expect(events[0].cellId, equals('cell_0_0'));
-      expect(events[0].newState, equals(FogState.observed));
+      expect(events[0].newState, equals(FogState.present));
     });
 
     // -------------------------------------------------------------------------
@@ -316,12 +316,12 @@ void main() {
         '15. state changes dynamically — observed cell becomes hidden when player moves away',
         () {
       resolver.onLocationUpdate(0.0, 0.0);
-      expect(resolver.resolve('cell_0_0'), equals(FogState.observed));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.present));
 
       // Move far away.
       resolver.onLocationUpdate(10.0, 10.0);
       // cell_0_0 is now visited but not current or adjacent → hidden.
-      expect(resolver.resolve('cell_0_0'), equals(FogState.hidden));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.explored));
     });
 
     // -------------------------------------------------------------------------
@@ -331,12 +331,12 @@ void main() {
         () {
       resolver.onLocationUpdate(0.0, 0.0);
       // cell_1_0 is adjacent to cell_0_0 → concealed.
-      expect(resolver.resolve('cell_1_0'), equals(FogState.concealed));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.nearby));
 
       // Move far away — cell_1_0 is still in frontier (adjacent to visited
       // cell_0_0 but never visited), so it resolves as unexplored.
       resolver.onLocationUpdate(10.0, 10.0);
-      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.detected));
     });
 
     // -------------------------------------------------------------------------
@@ -373,10 +373,10 @@ void main() {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // cell_0.005_0 is in the detection zone.
-      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.detected));
 
       // cell_0.008_0 is also in the detection zone.
-      expect(resolver.resolve('cell_0.008_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_0.008_0'), equals(FogState.detected));
     });
 
     // -------------------------------------------------------------------------
@@ -387,10 +387,10 @@ void main() {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // cell_3_0 is not in the zone, not visited, not frontier.
-      expect(resolver.resolve('cell_3_0'), equals(FogState.undetected));
+      expect(resolver.resolve('cell_3_0'), equals(FogState.unknown));
 
       // cell_0.6_0 is not in the zone, not in integer-coordinate frontier.
-      expect(resolver.resolve('cell_0.6_0'), equals(FogState.undetected));
+      expect(resolver.resolve('cell_0.6_0'), equals(FogState.unknown));
     });
 
     // -------------------------------------------------------------------------
@@ -442,8 +442,8 @@ void main() {
 
       expect(events.length, equals(1));
       expect(events[0].cellId, equals('cell_1_0'));
-      expect(events[0].oldState, equals(FogState.unexplored));
-      expect(events[0].newState, equals(FogState.observed));
+      expect(events[0].oldState, equals(FogState.detected));
+      expect(events[0].newState, equals(FogState.present));
     });
 
     // -------------------------------------------------------------------------
@@ -457,24 +457,24 @@ void main() {
       resolver.onLocationUpdate(0.0, 0.0);
 
       // cell_0.005_0 is in detection zone → unexplored.
-      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.detected));
 
       // Move far away — cell_0.005_0 is now outside the detection zone AND
       // not in the exploration frontier. But once detected, a cell should
       // stay unexplored (never revert to undetected).
       resolver.setDetectionZone({}); // Clear detection zone
       resolver.onLocationUpdate(50.0, 50.0);
-      expect(resolver.resolve('cell_0.005_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_0.005_0'), equals(FogState.detected));
     });
 
     test('frontier cells stay unexplored when player moves far away', () {
       // Visit cell_0_0 → cell_1_0 becomes frontier (neighbor of visited).
       resolver.onLocationUpdate(0.0, 0.0);
-      expect(resolver.resolve('cell_1_0'), equals(FogState.concealed));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.nearby));
 
       // Move far away — cell_1_0 is still in frontier.
       resolver.onLocationUpdate(50.0, 50.0);
-      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.detected));
     });
 
     test(
@@ -483,11 +483,11 @@ void main() {
       resolver.loadVisitedCells({'cell_0_0'});
 
       // cell_1_0 is in the frontier (neighbor of visited cell_0_0).
-      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.detected));
 
       // Move player far away — frontier cell should remain unexplored.
       resolver.onLocationUpdate(50.0, 50.0);
-      expect(resolver.resolve('cell_1_0'), equals(FogState.unexplored));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.detected));
     });
 
     test('event oldState is undetected when entering a never-detected cell',
@@ -499,8 +499,8 @@ void main() {
 
       expect(events.length, equals(1));
       expect(events[0].cellId, equals('cell_20_20'));
-      expect(events[0].oldState, equals(FogState.undetected));
-      expect(events[0].newState, equals(FogState.observed));
+      expect(events[0].oldState, equals(FogState.unknown));
+      expect(events[0].newState, equals(FogState.present));
     });
 
     // =========================================================================
@@ -540,8 +540,8 @@ void main() {
       expect(events.length, equals(1));
       expect(events[0].cellId, equals('cell_1_0'));
       // Remote visit = hidden, NOT observed (player is NOT there).
-      expect(events[0].newState, equals(FogState.hidden));
-      expect(events[0].oldState, equals(FogState.unexplored));
+      expect(events[0].newState, equals(FogState.explored));
+      expect(events[0].oldState, equals(FogState.detected));
       // Cell is now in visited set.
       expect(resolver.visitedCellIds, contains('cell_1_0'));
     });
@@ -605,7 +605,7 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
-    // visitCellRemotely: resolve() returns FogState.hidden for the remote cell
+    // visitCellRemotely: resolve() returns FogState.explored for the remote cell
     // (NOT observed), confirming player is not present.
     // -------------------------------------------------------------------------
     test(
@@ -617,9 +617,9 @@ void main() {
 
       // Player is at cell_0_0 → cell_1_0 is visited but NOT current cell.
       // resolve() should return hidden (the permanent visit state).
-      expect(resolver.resolve('cell_1_0'), equals(FogState.hidden));
+      expect(resolver.resolve('cell_1_0'), equals(FogState.explored));
       // Current cell is still observed.
-      expect(resolver.resolve('cell_0_0'), equals(FogState.observed));
+      expect(resolver.resolve('cell_0_0'), equals(FogState.present));
     });
 
     // -------------------------------------------------------------------------
@@ -640,7 +640,7 @@ void main() {
 
       expect(received.length, equals(1));
       expect(received[0].cellId, equals('cell_1_0'));
-      expect(received[0].newState, equals(FogState.hidden));
+      expect(received[0].newState, equals(FogState.explored));
     });
 
     // -------------------------------------------------------------------------
@@ -656,7 +656,7 @@ void main() {
 
       // Still emits observed (not hidden) for physical location visits.
       expect(events.length, equals(1));
-      expect(events[0].newState, equals(FogState.observed));
+      expect(events[0].newState, equals(FogState.present));
       expect(resolver.currentCellId, equals('cell_0_0'));
       expect(resolver.visitedCellIds, contains('cell_0_0'));
     });

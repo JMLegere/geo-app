@@ -83,7 +83,7 @@ void main() {
 
     test('returns empty features when no cell properties provided', () {
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {'cell_0_0': FogState.observed},
+        cellStates: {'cell_0_0': FogState.present},
         cellProperties: {},
         currentCellId: 'cell_0_0',
         adjacentCellIds: {},
@@ -98,8 +98,8 @@ void main() {
     test('excludes undetected and unexplored cells', () {
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
         cellStates: {
-          'cell_0_0': FogState.undetected,
-          'cell_1_0': FogState.unexplored,
+          'cell_0_0': FogState.unknown,
+          'cell_1_0': FogState.detected,
         },
         cellProperties: {
           'cell_0_0': _makeProps('cell_0_0'),
@@ -120,7 +120,7 @@ void main() {
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.observed},
+        cellStates: {cellId: FogState.present},
         cellProperties: {
           cellId: _makeProps(cellId,
               habitats: {Habitat.forest}, climate: Climate.temperate),
@@ -143,7 +143,7 @@ void main() {
       final event = EventResolver.resolve(seedWithEvent, cellId)!;
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.observed},
+        cellStates: {cellId: FogState.present},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: cellId,
         adjacentCellIds: {},
@@ -170,7 +170,7 @@ void main() {
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.hidden},
+        cellStates: {cellId: FogState.explored},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: 'other_cell',
         adjacentCellIds: {},
@@ -189,7 +189,7 @@ void main() {
       final seedWithEvent = _findSeedWithEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.concealed},
+        cellStates: {cellId: FogState.nearby},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: 'cell_0_0',
         adjacentCellIds: {cellId},
@@ -210,7 +210,7 @@ void main() {
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.concealed},
+        cellStates: {cellId: FogState.nearby},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: 'cell_0_0',
         adjacentCellIds: {cellId},
@@ -227,7 +227,7 @@ void main() {
       const cellId = 'cell_45_10';
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.concealed},
+        cellStates: {cellId: FogState.nearby},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: 'cell_0_0',
         adjacentCellIds: {},
@@ -245,7 +245,7 @@ void main() {
       final seedWithEvent = _findSeedWithEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.observed},
+        cellStates: {cellId: FogState.present},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: cellId,
         adjacentCellIds: {},
@@ -272,7 +272,7 @@ void main() {
       final seedNoEvent = _findSeedWithoutEvent(cellId);
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: {cellId: FogState.observed},
+        cellStates: {cellId: FogState.present},
         cellProperties: {cellId: _makeProps(cellId)},
         currentCellId: cellId,
         adjacentCellIds: {},
@@ -307,8 +307,8 @@ void main() {
 
       final json = CellPropertyGeoJsonBuilder.buildCellIcons(
         cellStates: {
-          'cell_45_10': FogState.observed,
-          'cell_46_11': FogState.hidden,
+          'cell_45_10': FogState.present,
+          'cell_46_11': FogState.explored,
         },
         cellProperties: {
           'cell_45_10': _makeProps('cell_45_10'),

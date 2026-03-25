@@ -12,7 +12,7 @@ void main() {
       final cellData = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
         speciesIds: ['species_1', 'species_2'],
         restorationLevel: 0.5,
         distanceWalked: 150.0,
@@ -23,7 +23,7 @@ void main() {
       expect(cellData.id, equals('cell_001'));
       expect(cellData.center.lat, equals(37.7749));
       expect(cellData.center.lon, equals(-122.4194));
-      expect(cellData.fogState, equals(FogState.unexplored));
+      expect(cellData.fogState, equals(FogState.detected));
       expect(cellData.speciesIds, equals(['species_1', 'species_2']));
       expect(cellData.restorationLevel, equals(0.5));
       expect(cellData.distanceWalked, equals(150.0));
@@ -35,7 +35,7 @@ void main() {
       final original = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.unexplored,
+        fogState: FogState.detected,
         speciesIds: [],
         restorationLevel: 0.0,
         distanceWalked: 0.0,
@@ -44,7 +44,7 @@ void main() {
       );
 
       final updated = original.copyWith(
-        fogState: FogState.hidden,
+        fogState: FogState.explored,
         visitCount: 1,
         distanceWalked: 50.0,
         lastVisited: testDateTime,
@@ -52,13 +52,13 @@ void main() {
 
       expect(updated.id, equals(original.id));
       expect(updated.center, equals(original.center));
-      expect(updated.fogState, equals(FogState.hidden));
+      expect(updated.fogState, equals(FogState.explored));
       expect(updated.visitCount, equals(1));
       expect(updated.distanceWalked, equals(50.0));
       expect(updated.lastVisited, equals(testDateTime));
       
       // Original unchanged
-      expect(original.fogState, equals(FogState.unexplored));
+      expect(original.fogState, equals(FogState.detected));
       expect(original.visitCount, equals(0));
     });
 
@@ -66,7 +66,7 @@ void main() {
       final original = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.concealed,
+        fogState: FogState.nearby,
         speciesIds: ['sp_1', 'sp_2', 'sp_3'],
         restorationLevel: 0.75,
         distanceWalked: 250.5,
@@ -92,7 +92,7 @@ void main() {
       final cellData = CellData(
         id: 'cell_002',
         center: testLatLng,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
         speciesIds: [],
         restorationLevel: 0.0,
         distanceWalked: 0.0,
@@ -110,7 +110,7 @@ void main() {
       final cell1 = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.hidden,
+        fogState: FogState.explored,
         speciesIds: ['sp_1'],
         restorationLevel: 0.5,
         distanceWalked: 100.0,
@@ -121,7 +121,7 @@ void main() {
       final cell2 = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.hidden,
+        fogState: FogState.explored,
         speciesIds: ['sp_1'],
         restorationLevel: 0.5,
         distanceWalked: 100.0,
@@ -132,7 +132,7 @@ void main() {
       final cell3 = CellData(
         id: 'cell_002',
         center: testLatLng,
-        fogState: FogState.hidden,
+        fogState: FogState.explored,
         speciesIds: ['sp_1'],
         restorationLevel: 0.5,
         distanceWalked: 100.0,
@@ -148,7 +148,7 @@ void main() {
       final cellData = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.observed,
+        fogState: FogState.present,
         speciesIds: [],
         restorationLevel: 1.5, // Should be clamped to 1.0
         distanceWalked: 0.0,
@@ -163,7 +163,7 @@ void main() {
       final cellData = CellData(
         id: 'cell_001',
         center: testLatLng,
-        fogState: FogState.undetected,
+        fogState: FogState.unknown,
         speciesIds: [],
         restorationLevel: 0.0,
         distanceWalked: 0.0,
