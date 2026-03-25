@@ -1067,11 +1067,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Trigger an initial admin boundary request for the current player
       // position so borders load even for returning players who won't visit
       // any new cells (onCellVisited alone is insufficient for 145+ cell users).
-      final playerPos = ref.read(locationProvider).currentPosition;
+      final playerPos = _gameCoordinator.playerPosition;
       if (playerPos != null && mounted) {
         _adminBoundaryService?.requestBoundaries(
-          playerPos.lat.toDouble(),
-          playerPos.lon.toDouble(),
+          playerPos.lat,
+          playerPos.lon,
         );
       }
     } catch (e, stack) {
