@@ -232,6 +232,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _enrichmentSubscription =
         _locationEnrichmentService.onLocationEnriched.listen((event) {
       if (!mounted) return;
+      debugPrint('[MAP] enrichment → boundary fetch: cell=${event.cellId} '
+          'location=${event.locationId}');
       ref
           .read(locationNodeRepositoryProvider)
           .get(event.locationId)
@@ -450,9 +452,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
         id: _borderLinesLayerId,
         sourceId: _borderLinesSrcId,
         paint: {
-          'line-color': ['get', 'border_color'],
-          'line-width': ['get', 'line_weight'],
+          'line-color': [
+            'coalesce',
+            ['get', 'border_color'],
+            '#888888'
+          ],
+          'line-width': [
+            'coalesce',
+            ['get', 'line_weight'],
+            1.0
+          ],
           'line-opacity': 0.7,
+          // Each feature has side=1 or side=-1. Offset pushes each half-line
+          // to its own side so both colors sit flush against the boundary.
+          'line-offset': [
+            '*',
+            ['get', 'side'],
+            [
+              '/',
+              ['get', 'line_weight'],
+              2
+            ]
+          ],
         },
       ));
 
@@ -638,6 +659,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
             '(fog=$fogDirty, admin=$adminDirty, habitat=$habitatDirty, '
             'border=$borderDirty, icons=$iconsDirty)');
       }
+      ObservabilityBuffer.instance?.event('fog_sources_updated', {
+        'duration_ms': sw.elapsedMilliseconds,
+        'fog': fogDirty,
+        'admin': adminDirty,
+        'habitat': habitatDirty,
+        'border': borderDirty,
+        'icons': iconsDirty,
+      });
     } catch (e, stack) {
       MapLogger.fogUpdateError(e, stack);
     }
@@ -901,6 +930,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
       if (!mounted) return;
       _locationNodesMap = {for (final n in nodes) n.id: n};
       MapLogger.locationNodesLoaded(_locationNodesMap.length);
+      final withGeom = nodes.where((n) => n.geometryJson != null).length;
+      final geomBytes =
+          nodes.fold<int>(0, (sum, n) => sum + (n.geometryJson?.length ?? 0));
+      debugPrint('[MAP] Loaded ${nodes.length} location nodes '
+          '($withGeom with geometry, ${geomBytes ~/ 1024}KB)');
     } catch (e) {
       MapLogger.locationNodesLoadError(e);
     }
@@ -915,13 +949,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
 
     try {
+      final sw = Stopwatch()..start();
       final repo = ref.read(locationNodeRepositoryProvider);
       final nodes = await repo.getAll();
       if (!mounted) return;
 
       final nodesMap = <String, LocationNode>{for (final n in nodes) n.id: n};
+      final withGeom = nodes.where((n) => n.geometryJson != null).length;
       ref.read(fogOverlayControllerProvider).updateAdminBoundaries(nodesMap);
       _updateFogSources();
+      sw.stop();
+      debugPrint('[ADMIN] rebuilt boundaries: ${nodes.length} nodes '
+          '($withGeom with geometry) in ${sw.elapsedMilliseconds}ms');
     } catch (e) {
       debugPrint('[MapScreen] _rebuildAdminBoundaryGeoJson failed: $e');
     }

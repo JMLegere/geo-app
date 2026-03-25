@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart' show Geographic;
 
 import 'package:earth_nova/features/world/services/event_resolver.dart';
@@ -24,6 +25,8 @@ import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 class CellPropertyGeoJsonBuilder {
   const CellPropertyGeoJsonBuilder._();
 
+  static int _iconLogCounter = 0;
+
   /// Builds a GeoJSON FeatureCollection of Point features for cell property icons.
   ///
   /// [cellStates] maps cell IDs to their current fog state.
@@ -44,6 +47,7 @@ class CellPropertyGeoJsonBuilder {
   }) {
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final entry in cellProperties.entries) {
       final cellId = entry.key;
@@ -79,12 +83,18 @@ class CellPropertyGeoJsonBuilder {
       for (final icon in icons) {
         if (!first) features.write(',');
         first = false;
+        featureCount++;
 
         features.write('{"type":"Feature","geometry":{"type":"Point",'
             '"coordinates":[${center.lon},${center.lat}]},'
             '"properties":{"icon":"${icon.iconId}",'
             '"offset":[${icon.dx},${icon.dy}]}}');
       }
+    }
+
+    if (++_iconLogCounter % 100 == 1) {
+      debugPrint(
+          '[ICONS-GEO] $featureCount icons from ${cellProperties.length} cells');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';

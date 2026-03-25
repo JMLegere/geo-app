@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
@@ -113,6 +115,10 @@ class FogOverlayController {
   /// Cached visible cell IDs from the last [_buildGeoJson] call.
   /// Used by [_rebuildTerritoryBorders] so it doesn't need fog resolution.
   Set<String> _lastVisibleCellIds = const {};
+
+  /// Cached fog states from the last [_buildGeoJson] call.
+  /// Used for observability (state distribution counts).
+  Map<String, FogState> _lastCellStates = const {};
 
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
@@ -270,10 +276,15 @@ class FogOverlayController {
 
     sw.stop();
     if (sw.elapsedMilliseconds > 8) {
+      final stateCounts = <String, int>{};
+      for (final state in _lastCellStates.values) {
+        stateCounts[state.name] = (stateCounts[state.name] ?? 0) + 1;
+      }
       ObservabilityBuffer.instance?.event('fog_computed', {
         'duration_ms': sw.elapsedMilliseconds,
         'cell_count': _discoveredCellIds.length,
         'dirty': _fogDirty,
+        'states': stateCounts,
       });
     }
   }
@@ -348,6 +359,7 @@ class FogOverlayController {
 
     // Cache visible cell IDs for territory border rebuilds.
     _lastVisibleCellIds = cellStates.keys.toSet();
+    _lastCellStates = cellStates;
 
     // Fog layers (base + mid + border outlines).
     _baseFogGeoJson = FogGeoJsonBuilder.buildBaseFog(
@@ -401,6 +413,7 @@ class FogOverlayController {
   /// setters — NOT from the 10 Hz [_buildGeoJson] loop.
   void _rebuildTerritoryBorders() {
     if (_locationNodesCache.isNotEmpty && _cellPropertiesCache.isNotEmpty) {
+      final sw = Stopwatch()..start();
       _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
         cellProperties: _cellPropertiesCache,
         locationNodes: _locationNodesCache,
@@ -414,7 +427,12 @@ class FogOverlayController {
         visibleCellIds: _lastVisibleCellIds,
         getNeighborIds: cellService.getNeighborIds,
         getBoundary: cellService.getCellBoundary,
+        getCellCenter: cellService.getCellCenter,
       );
+      sw.stop();
+      debugPrint('[BORDERS] rebuilt: ${sw.elapsedMilliseconds}ms, '
+          '${_locationNodesCache.length} nodes, '
+          '${_cellPropertiesCache.length} cells');
     } else {
       _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
       _borderLinesGeoJson =

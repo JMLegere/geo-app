@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -54,6 +55,7 @@ class AdminBoundaryGeoJsonBuilder {
 
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final node in nodes.values) {
       if (!_renderableLevels.contains(node.adminLevel)) continue;
@@ -65,6 +67,7 @@ class AdminBoundaryGeoJsonBuilder {
 
       if (!first) features.write(',');
       first = false;
+      featureCount++;
 
       final color = _nodeColor(node);
       final opacity = _fillOpacity(node.adminLevel);
@@ -80,6 +83,8 @@ class AdminBoundaryGeoJsonBuilder {
         ..write('}}');
     }
 
+    debugPrint(
+        '[ADMIN-GEO] fills: $featureCount features from ${nodes.length} nodes');
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
@@ -104,6 +109,7 @@ class AdminBoundaryGeoJsonBuilder {
 
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final node in nodes.values) {
       if (!_renderableLevels.contains(node.adminLevel)) continue;
@@ -126,18 +132,22 @@ class AdminBoundaryGeoJsonBuilder {
         final ring = coords[0] as List<dynamic>;
         if (!first) features.write(',');
         first = false;
+        featureCount++;
         _writeLineString(features, ring, levelName, color, weight, escapedName);
       } else if (type == 'MultiPolygon') {
         for (final polygon in coords) {
           final ring = (polygon as List<dynamic>)[0] as List<dynamic>;
           if (!first) features.write(',');
           first = false;
+          featureCount++;
           _writeLineString(
               features, ring, levelName, color, weight, escapedName);
         }
       }
     }
 
+    debugPrint(
+        '[ADMIN-GEO] lines: $featureCount features from ${nodes.length} nodes');
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 

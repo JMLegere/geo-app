@@ -32,6 +32,14 @@ List<Geographic> _boundary(String cellId) {
   ];
 }
 
+/// Returns the center point for a cell (matches the _boundary convention).
+Geographic _cellCenter(String cellId) {
+  final parts = cellId.split('_');
+  final row = int.parse(parts[1]);
+  final col = int.parse(parts[2]);
+  return Geographic(lat: row * 0.001, lon: col * 0.001);
+}
+
 /// Returns neighbor IDs for a grid cell. Simple 4-connected grid.
 List<String> _neighbors(String cellId) {
   final parts = cellId.split('_');
@@ -380,6 +388,7 @@ void main() {
           visibleCellIds: {'cell_0_0'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         expect(_features(json), isEmpty);
@@ -396,6 +405,7 @@ void main() {
           visibleCellIds: {'cell_0_0', 'cell_0_1'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         expect(_features(json), isEmpty);
@@ -412,6 +422,7 @@ void main() {
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         final features = _features(json);
@@ -423,6 +434,8 @@ void main() {
           expect(fProps['admin_level'], 'country');
           expect(fProps['line_weight'], 12.0);
           expect(fProps.containsKey('border_color'), isTrue);
+          // Each feature has a side (+1 or -1) for line-offset.
+          expect(fProps['side'], anyOf(1, -1));
 
           final geometry = fMap['geometry'] as Map;
           expect(geometry['type'], 'LineString');
@@ -431,7 +444,7 @@ void main() {
         }
       });
 
-      test('no duplicate edges for same cell pair', () {
+      test('emits two features per shared edge (one per side)', () {
         final nodes = _twoCountryNodes();
         final props = {
           'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
@@ -444,11 +457,24 @@ void main() {
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         final features = _features(json);
-        // Only 1 shared edge between cell_0_0 and cell_1_0.
-        expect(features.length, 1);
+        // 1 shared edge → 2 features (one per side).
+        expect(features.length, 2);
+
+        // The two features should have opposite sides.
+        final sides = features
+            .map((f) => (f as Map)['properties']['side'] as int)
+            .toList();
+        expect(sides.toSet(), {1, -1});
+
+        // Both colors should be present (one per country).
+        final colors = features
+            .map((f) => (f as Map)['properties']['border_color'] as String)
+            .toSet();
+        expect(colors, containsAll(['#FF0000', '#0000FF']));
       });
 
       test('lowest differing level renders (stacking rules)', () {
@@ -496,15 +522,20 @@ void main() {
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         final features = _features(json);
-        expect(features.length, 1);
+        // 1 edge → 2 features (one per side).
+        expect(features.length, 2);
 
-        final fProps = (features.first as Map)['properties'] as Map;
-        // Should render as state border (lowest differing), not country.
-        expect(fProps['admin_level'], 'state');
-        expect(fProps['line_weight'], 8.0);
+        // Both features should report state-level border.
+        for (final f in features) {
+          final fProps = (f as Map)['properties'] as Map;
+          // Should render as state border (lowest differing), not country.
+          expect(fProps['admin_level'], 'state');
+          expect(fProps['line_weight'], 8.0);
+        }
       });
 
       test('line weight varies by admin level', () {
@@ -565,14 +596,18 @@ void main() {
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         final features = _features(json);
-        expect(features.length, 1);
+        // 1 edge → 2 features (one per side).
+        expect(features.length, 2);
 
-        final fProps = (features.first as Map)['properties'] as Map;
-        expect(fProps['admin_level'], 'district');
-        expect(fProps['line_weight'], 4.0);
+        for (final f in features) {
+          final fProps = (f as Map)['properties'] as Map;
+          expect(fProps['admin_level'], 'district');
+          expect(fProps['line_weight'], 4.0);
+        }
       });
 
       test('border line coordinates use lon,lat GeoJSON convention', () {
@@ -588,6 +623,7 @@ void main() {
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
 
         final features = _features(json);
@@ -627,6 +663,7 @@ void main() {
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
         expect(_features(lineJson), isEmpty);
       });
@@ -668,6 +705,7 @@ void main() {
           visibleCellIds: {},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
+          getCellCenter: _cellCenter,
         );
         expect(_features(lineJson), isEmpty);
       });

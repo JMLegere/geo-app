@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/models/cell_properties.dart';
@@ -22,6 +23,8 @@ import 'package:earth_nova/core/models/habitat.dart';
 class HabitatFillGeoJsonBuilder {
   const HabitatFillGeoJsonBuilder._();
 
+  static int _habitatLogCounter = 0;
+
   static const String emptyFeatureCollection =
       '{"type":"FeatureCollection","features":[]}';
 
@@ -44,6 +47,7 @@ class HabitatFillGeoJsonBuilder {
   }) {
     final features = StringBuffer();
     var first = true;
+    var featureCount = 0;
 
     for (final entry in cellStates.entries) {
       final state = entry.value;
@@ -82,6 +86,7 @@ class HabitatFillGeoJsonBuilder {
       for (final ring in ringDefs) {
         if (!first) features.write(',');
         first = false;
+        featureCount++;
 
         features.write('{"type":"Feature","geometry":{"type":"Polygon",'
             '"coordinates":[[');
@@ -104,6 +109,11 @@ class HabitatFillGeoJsonBuilder {
         features.write(
             '"properties":{"color":"$color","opacity":${ring.opacity}}}');
       }
+    }
+
+    if (++_habitatLogCounter % 100 == 1) {
+      debugPrint(
+          '[HABITAT-GEO] $featureCount fills from ${cellStates.length} cells');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';
