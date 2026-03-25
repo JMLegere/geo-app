@@ -72,18 +72,29 @@ class FogOverlayController {
     Set<String> zoneCellIds,
     Map<String, CellProperties> cellProperties,
   ) {
+    final sw = Stopwatch()..start();
     var added = 0;
     for (final cellId in zoneCellIds) {
       if (_discoveredCellIds.add(cellId)) added++;
     }
     if (added > 0 || cellProperties.length != _cellPropertiesCache.length) {
       _cellPropertiesCache = cellProperties;
-      _buildGeoJson(_discoveredCellIds);
-      _rebuildTerritoryBorders();
+      try {
+        _buildGeoJson(_discoveredCellIds);
+      } catch (e) {
+        debugPrint('[FOG] _buildGeoJson failed after zone add: $e');
+      }
+      try {
+        _rebuildTerritoryBorders();
+      } catch (e) {
+        debugPrint('[FOG] _rebuildTerritoryBorders failed after zone add: $e');
+      }
       _renderVersion++;
+      sw.stop();
       debugPrint('[FOG] added $added detection zone cells '
           '(total: ${_discoveredCellIds.length}, '
-          'props: ${_cellPropertiesCache.length})');
+          'props: ${_cellPropertiesCache.length}, '
+          '${sw.elapsedMilliseconds}ms)');
     }
   }
 
