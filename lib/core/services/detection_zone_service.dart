@@ -24,6 +24,10 @@ class DetectionZoneService {
   /// Current detection zone cell IDs (current district + adjacent districts).
   Set<String> _detectionZoneCellIds = {};
 
+  /// Maps cell ID → district location ID for all cells in the current zone.
+  /// Used to set locationId on cell properties without async enrichment.
+  Map<String, String> _cellDistrictAttribution = {};
+
   /// Current district location ID, or null if not set.
   String? _currentDistrictId;
 
@@ -50,6 +54,10 @@ class DetectionZoneService {
   /// Current district location ID, or null if not set.
   String? get currentDistrictId => _currentDistrictId;
 
+  /// District attribution for all zone cells (cellId → districtId).
+  Map<String, String> get cellDistrictAttribution =>
+      Map.unmodifiable(_cellDistrictAttribution);
+
   /// Stream that fires when the detection zone changes.
   Stream<Set<String>> get onDetectionZoneChanged =>
       _zoneChangedController.stream;
@@ -68,6 +76,11 @@ class DetectionZoneService {
     // Compute cells for current district.
     final currentCells = await computeCellIdsForDistrict(districtId);
     zone.addAll(currentCells);
+
+    final attribution = <String, String>{};
+    for (final cellId in currentCells) {
+      attribution[cellId] = districtId;
+    }
 
     // Discover adjacent districts from border cell Voronoi neighbors.
     // A neighbor cell with a different locationId → that's an adjacent district.
@@ -97,6 +110,9 @@ class DetectionZoneService {
     for (final adjId in adjacentDistrictIds) {
       final adjCells = await computeCellIdsForDistrict(adjId);
       zone.addAll(adjCells);
+      for (final cellId in adjCells) {
+        attribution[cellId] = adjId;
+      }
     }
 
     // Persist discovered adjacency for future sessions.
@@ -124,6 +140,7 @@ class DetectionZoneService {
       'duration_ms': sw.elapsedMilliseconds,
     });
 
+    _cellDistrictAttribution = attribution;
     _detectionZoneCellIds = zone;
     if (!_zoneChangedController.isClosed) {
       _zoneChangedController.add(Set.unmodifiable(zone));
