@@ -372,6 +372,29 @@ class SupabasePersistence {
     }
   }
 
+  /// Fetches cell properties for specific cell IDs from Supabase.
+  /// Cell properties are globally shared (not per-user).
+  /// Batches requests in chunks of 500 to stay within Supabase IN filter limits.
+  Future<List<Map<String, dynamic>>> fetchCellProperties(
+      List<String> cellIds) async {
+    if (cellIds.isEmpty) return [];
+    try {
+      final results = <Map<String, dynamic>>[];
+      for (var i = 0; i < cellIds.length; i += 500) {
+        final chunk = cellIds.sublist(i, (i + 500).clamp(0, cellIds.length));
+        final response = await _client
+            .from('cell_properties')
+            .select()
+            .inFilter('cell_id', chunk);
+        results.addAll(List<Map<String, dynamic>>.from(response as List));
+      }
+      return results;
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchCellProperties failed: $e');
+      throw SyncException('Failed to load cell properties.', cause: e);
+    }
+  }
+
   /// Fetches species rows with enrichment data updated since [since].
   /// Used for delta-sync: pulls classification + art URLs from the
   /// server-side `species` table into the local Drift table.

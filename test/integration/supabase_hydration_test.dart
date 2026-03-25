@@ -20,6 +20,7 @@ import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
+import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/state/persistence_consumer.dart';
@@ -65,6 +66,13 @@ class _MockSupabasePersistence extends SupabasePersistence {
     if (shouldThrow) throw SyncException(errorMessage);
     return itemInstanceData;
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchCellProperties(
+      List<String> cellIds) async {
+    if (shouldThrow) throw SyncException(errorMessage);
+    return [];
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -87,6 +95,7 @@ void main() {
     late ProfileRepository profileRepo;
     late CellProgressRepository cellProgressRepo;
     late ItemInstanceRepository itemRepo;
+    late CellPropertyRepository cellPropertyRepo;
     late _MockSupabasePersistence mockPersistence;
 
     setUp(() {
@@ -94,6 +103,7 @@ void main() {
       profileRepo = ProfileRepository(db);
       cellProgressRepo = CellProgressRepository(db);
       itemRepo = ItemInstanceRepository(db);
+      cellPropertyRepo = CellPropertyRepository(db);
       mockPersistence = _MockSupabasePersistence();
     });
 
@@ -116,6 +126,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       // Existing local data should be untouched.
@@ -140,6 +151,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -179,6 +191,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
@@ -223,6 +236,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final items = await itemRepo.getItemsByUser(_userId);
@@ -277,6 +291,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       // Profile
@@ -307,6 +322,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       // Nothing written to SQLite.
@@ -326,6 +342,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -370,6 +387,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       // Item still exists — no duplication.
@@ -404,6 +422,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       // Verify defaults were applied.
@@ -441,6 +460,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -467,6 +487,7 @@ void main() {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
       );
 
       final profile = await profileRepo.read(_userId);

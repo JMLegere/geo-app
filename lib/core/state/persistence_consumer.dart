@@ -4,7 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/models/cell_properties.dart';
+import 'package:earth_nova/core/models/climate.dart';
+import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
+import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
@@ -377,6 +380,7 @@ Future<void> hydrateFromSupabase({
   required ProfileRepository profileRepo,
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
+  required CellPropertyRepository cellPropertyRepo,
   AppDatabase? db,
   SpeciesCache? speciesCache,
   ObservabilityBuffer? obs,
@@ -402,6 +406,11 @@ Future<void> hydrateFromSupabase({
     final profileMap = results[0] as Map<String, dynamic>?;
     final cellRows = results[1]! as List<Map<String, dynamic>>;
     final itemRows = results[2]! as List<Map<String, dynamic>>;
+
+    // Fetch cell properties for visited cells (sequential — depends on cellRows).
+    final visitedCellIds = cellRows.map((r) => r['cell_id'] as String).toList();
+    final cellPropertyRows =
+        await persistence.fetchCellProperties(visitedCellIds);
 
     // 1. Profile → SQLite
     if (profileMap != null) {
@@ -620,6 +629,42 @@ Future<void> hydrateFromSupabase({
           'error': e.toString(),
         });
       }
+
+    // 5. Cell properties → SQLite (upsert globally shared cell data).
+    var cellPropsHydrated = 0;
+    for (final row in cellPropertyRows) {
+      try {
+        final cellId = row['cell_id'] as String;
+        final habitatsList = row['habitats'];
+        final climate = row['climate'] as String?;
+        final continent = row['continent'] as String?;
+        final locationId = row['location_id'] as String?;
+
+        if (climate != null && continent != null && habitatsList != null) {
+          final habitats = (habitatsList as List)
+              .map((h) => Habitat.fromString(h.toString()))
+              .toSet();
+          final props = CellProperties(
+            cellId: cellId,
+            habitats: habitats,
+            climate: Climate.fromString(climate),
+            continent: Continent.fromString(continent),
+            locationId: locationId,
+            createdAt: DateTime.now(),
+          );
+          await cellPropertyRepo.upsert(props);
+          cellPropsHydrated++;
+        }
+      } catch (e) {
+        // Skip invalid rows silently.
+      }
+    }
+    if (cellPropsHydrated > 0) {
+      debugPrint(
+        '[GameCoordinator] hydrated $cellPropsHydrated cell properties '
+        'from Supabase',
+      );
+    }
 
     debugPrint(
       '[GameCoordinator] Supabase hydration complete: '

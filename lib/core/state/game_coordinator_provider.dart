@@ -447,6 +447,37 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     }
 
+    // Stamp locationId from geometry ray-casting attribution.
+    // This is authoritative — geometry proves which district each cell belongs to.
+    final attribution = detectionZoneService.cellDistrictAttribution;
+    var locationIdStamped = 0;
+    for (final entry in attribution.entries) {
+      final cellId = entry.key;
+      final districtId = entry.value;
+      var props = coordinator.cellPropertiesCache[cellId];
+      if (props == null) continue; // Skip cells without base properties.
+      if (props.locationId == districtId) continue; // Already correct.
+
+      props = props.copyWith(locationId: districtId);
+      coordinator.loadCellProperties({cellId: props});
+
+      // Persist to SQLite + enqueue for Supabase sync.
+      persistCellProperties(
+        properties: props,
+        cellPropertyRepo: cellPropertyRepo,
+        queueProcessor: queueProcessor,
+        userId: ref.read(authProvider).user?.id,
+        obs: obs,
+      );
+      locationIdStamped++;
+    }
+    if (locationIdStamped > 0) {
+      debugPrint(
+        '[DetectionZone] stamped locationId on $locationIdStamped cells '
+        'from geometry attribution',
+      );
+    }
+
     debugPrint(
       '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
       'district=${detectionZoneService.currentDistrictId}',
@@ -945,6 +976,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         profileRepo: profileRepo,
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
+        cellPropertyRepo: cellPropertyRepo,
         db: ref.read(appDatabaseProvider),
         speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
@@ -952,6 +984,34 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         if (_providerDisposed) return;
 
         obs.event('background_sync_complete', {'user_id': userId});
+
+        // Reload cell properties cache from SQLite (now includes Supabase data).
+        final freshProps = await cellPropertyRepo.getAll();
+        if (freshProps.isNotEmpty) {
+          coordinator.loadCellProperties({
+            for (final p in freshProps) p.cellId: p,
+          });
+          debugPrint(
+            '[GameCoordinator] reloaded ${freshProps.length} cell properties '
+            'after Supabase sync',
+          );
+        }
+
+        // Refresh detection zone with Supabase-hydrated cell properties.
+        // SQLite seed may have lacked locationId; Supabase data is richer.
+        final currentCell = fogResolver.currentCellId;
+        if (currentCell != null) {
+          final props = coordinator.cellPropertiesCache[currentCell];
+          if (props?.locationId != null &&
+              props!.locationId != _lastDistrictId) {
+            _lastDistrictId = null; // Allow re-trigger
+            detectionZoneService.onDistrictChange(props.locationId!);
+            debugPrint(
+              '[DetectionZone] refreshed after Supabase hydration, '
+              'district=${props.locationId}',
+            );
+          }
+        }
 
         // Species cache is already refreshed inside hydrateFromSupabase()
         // via speciesCache.refresh() — no additional warmUp needed here.
