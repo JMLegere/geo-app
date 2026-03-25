@@ -415,6 +415,38 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         }
       }
     }
+    // Pre-resolve cell properties for zone cells not yet in cache.
+    // CellPropertyResolver.resolve() is synchronous — safe to call here.
+    // This ensures territory border rendering has habitat/climate/continent
+    // data for all detection zone cells.
+    final resolver = ref.read(cellPropertyResolverProvider);
+    if (resolver != null) {
+      var resolved = 0;
+      for (final cellId in zoneCellIds) {
+        if (coordinator.cellPropertiesCache.containsKey(cellId)) continue;
+        final center = cellService.getCellCenter(cellId);
+        final props = resolver.resolve(
+          cellId: cellId,
+          lat: center.lat,
+          lon: center.lon,
+        );
+        coordinator.loadCellProperties({cellId: props});
+        // Persist + enqueue
+        persistCellProperties(
+          properties: props,
+          cellPropertyRepo: cellPropertyRepo,
+          queueProcessor: queueProcessor,
+          userId: ref.read(authProvider).user?.id,
+          obs: obs,
+        );
+        resolved++;
+      }
+      if (resolved > 0) {
+        debugPrint('[DetectionZone] pre-resolved $resolved cell properties '
+            'for ${zoneCellIds.length} zone cells');
+      }
+    }
+
     debugPrint(
       '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
       'district=${detectionZoneService.currentDistrictId}',
@@ -854,10 +886,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           }
         }
 
-        // Seed detection zone
+        // Seed detection zone + fetch admin boundary geometry.
         if (seedDistrictId != null) {
-          _lastDistrictId = seedDistrictId;
+          _lastDistrictId = null; // Allow re-trigger when geometry arrives
           detectionZoneService.onDistrictChange(seedDistrictId);
+
+          // Fetch geometry so detection zone can be computed.
+          // onBoundariesResolved listener will re-trigger onDistrictChange
+          // once geometry is available.
+          if (currentCellId != null) {
+            final center = cellService.getCellCenter(currentCellId);
+            final adminBoundaryService = ref.read(adminBoundaryServiceProvider);
+            adminBoundaryService?.requestBoundaries(center.lat, center.lon);
+          }
           debugPrint(
             '[DetectionZone] seeded from cache, district=$seedDistrictId',
           );
