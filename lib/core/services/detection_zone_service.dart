@@ -62,6 +62,17 @@ class DetectionZoneService {
   Stream<Set<String>> get onDetectionZoneChanged =>
       _zoneChangedController.stream;
 
+  /// Recomputes the detection zone for the current district.
+  ///
+  /// Use when geometry arrives after the initial (empty) computation.
+  /// Skips the dedup check in [onDistrictChange].
+  Future<void> recomputeCurrentZone() async {
+    final districtId = _currentDistrictId;
+    if (districtId == null) return;
+    _currentDistrictId = null; // Clear to bypass dedup
+    await onDistrictChange(districtId);
+  }
+
   /// Called when the player enters a new district.
   ///
   /// Computes cell IDs for the district + adjacent districts, updates
