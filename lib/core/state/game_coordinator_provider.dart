@@ -405,9 +405,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
     fogResolver.setDetectionZone(zoneCellIds);
-    // Feed zone cells into the fog overlay controller so they're included
-    // in GeoJSON builds (fog-base holes + mid-fog polygons).
-    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(zoneCellIds);
+    // Feed zone cells + latest cell properties into the fog overlay controller
+    // so they're included in GeoJSON builds (fog-base holes + mid-fog polygons
+    // + territory borders with locationId).
+    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(
+          zoneCellIds,
+          coordinator.cellPropertiesCache,
+        );
     // Warm species cache for all unique combos in the new zone.
     final speciesCache = ref.read(speciesCacheProvider);
     if (!speciesCache.isEmpty) {

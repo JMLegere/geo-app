@@ -65,17 +65,25 @@ class FogOverlayController {
 
   /// Adds detection zone cells to the discovered set so they are included
   /// in GeoJSON builds. Called when the detection zone changes.
-  void addDetectionZoneCells(Set<String> zoneCellIds) {
+  ///
+  /// Also accepts the latest [cellProperties] snapshot so territory borders
+  /// can be rebuilt with locationId data for the zone cells.
+  void addDetectionZoneCells(
+    Set<String> zoneCellIds,
+    Map<String, CellProperties> cellProperties,
+  ) {
     var added = 0;
     for (final cellId in zoneCellIds) {
       if (_discoveredCellIds.add(cellId)) added++;
     }
-    if (added > 0) {
+    if (added > 0 || cellProperties.length != _cellPropertiesCache.length) {
+      _cellPropertiesCache = cellProperties;
       _buildGeoJson(_discoveredCellIds);
       _rebuildTerritoryBorders();
       _renderVersion++;
       debugPrint('[FOG] added $added detection zone cells '
-          '(total: ${_discoveredCellIds.length})');
+          '(total: ${_discoveredCellIds.length}, '
+          'props: ${_cellPropertiesCache.length})');
     }
   }
 
