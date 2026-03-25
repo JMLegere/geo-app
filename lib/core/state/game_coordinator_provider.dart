@@ -976,6 +976,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        locationNodeRepo: ref.read(locationNodeRepositoryProvider),
         db: ref.read(appDatabaseProvider),
         speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
