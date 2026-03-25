@@ -391,11 +391,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final adminBoundaryServiceForZone = ref.read(adminBoundaryServiceProvider);
   adminBoundaryServiceForZone?.onBoundariesResolved.listen((nodeIds) {
     if (_providerDisposed) return;
-    final currentDistrict = detectionZoneService.currentDistrictId;
-    if (currentDistrict != null) {
-      _lastDistrictId = null; // Allow re-entry
-      detectionZoneService.onDistrictChange(currentDistrict);
-    }
+    // Geometry just arrived — recompute detection zone (initial computation
+    // likely returned 0 cells because geometry wasn't available yet).
+    _lastDistrictId = null; // Allow re-entry in provider dedup
+    detectionZoneService.recomputeCurrentZone();
   });
 
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
