@@ -28,6 +28,7 @@ import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
 import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
@@ -404,6 +405,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
     fogResolver.setDetectionZone(zoneCellIds);
+    // Feed zone cells into the fog overlay controller so they're included
+    // in GeoJSON builds (fog-base holes + mid-fog polygons).
+    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(zoneCellIds);
     // Warm species cache for all unique combos in the new zone.
     final speciesCache = ref.read(speciesCacheProvider);
     if (!speciesCache.isEmpty) {
