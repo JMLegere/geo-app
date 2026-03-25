@@ -159,7 +159,7 @@ Future<void> _hydrateForUser(ProviderContainer container, String userId) async {
   // 2. Count observed cells (same logic as gameCoordinatorProvider).
   final cellsObserved = cellRows.where((row) {
     final fog = FogState.fromString(row.fogState);
-    return fog == FogState.observed || fog == FogState.hidden;
+    return fog == FogState.present || fog == FogState.explored;
   }).length;
 
   // 3. Hydrate player profile.
@@ -199,7 +199,7 @@ Future<void> _hydrateAll(ProviderContainer container) async {
   // 2. Count observed cells (same logic as gameCoordinatorProvider).
   final cellsObserved = cellRows.where((row) {
     final fog = FogState.fromString(row.fogState);
-    return fog == FogState.observed || fog == FogState.hidden;
+    return fog == FogState.present || fog == FogState.explored;
   }).length;
 
   // 3. Hydrate player profile.
@@ -274,13 +274,13 @@ void main() {
     test('hydrates explored cells into player profile', () async {
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed);
+          cellId: 'cell-1', fogState: FogState.present);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-2', fogState: FogState.hidden);
+          cellId: 'cell-2', fogState: FogState.explored);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-3', fogState: FogState.concealed);
+          cellId: 'cell-3', fogState: FogState.nearby);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-4', fogState: FogState.observed);
+          cellId: 'cell-4', fogState: FogState.present);
 
       // Need a profile row for loadProfile to fire.
       final profileRepo = container.read(profileRepositoryProvider);
@@ -318,9 +318,9 @@ void main() {
       // Seed cells.
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed);
+          cellId: 'cell-1', fogState: FogState.present);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-2', fogState: FogState.hidden);
+          cellId: 'cell-2', fogState: FogState.explored);
 
       // Seed profile.
       final profileRepo = container.read(profileRepositoryProvider);
@@ -380,7 +380,7 @@ void main() {
 
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed);
+          cellId: 'cell-1', fogState: FogState.present);
 
       final profileRepo = container.read(profileRepositoryProvider);
       await _seedProfile(profileRepo,
@@ -416,7 +416,7 @@ void main() {
 
       final cellsObserved = cellRows.where((row) {
         final fog = FogState.fromString(row.fogState);
-        return fog == FogState.observed || fog == FogState.hidden;
+        return fog == FogState.present || fog == FogState.explored;
       }).length;
 
       if (profile != null) {
@@ -454,9 +454,9 @@ void main() {
 
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed);
+          cellId: 'cell-1', fogState: FogState.present);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-2', fogState: FogState.observed);
+          cellId: 'cell-2', fogState: FogState.present);
 
       final profileRepo = container.read(profileRepositoryProvider);
       await _seedProfile(profileRepo,
@@ -512,7 +512,7 @@ void main() {
           id: 'a-2', definitionId: 'fauna_panthera_leo', userId: _userId);
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed, userId: _userId);
+          cellId: 'cell-1', fogState: FogState.present, userId: _userId);
       final profileRepo = container.read(profileRepositoryProvider);
       await _seedProfile(profileRepo,
           currentStreak: 5,
@@ -524,11 +524,11 @@ void main() {
       await _seedItem(db,
           id: 'b-1', definitionId: 'fauna_ursus_arctos', userId: _userId2);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-10', fogState: FogState.observed, userId: _userId2);
+          cellId: 'cell-10', fogState: FogState.present, userId: _userId2);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-11', fogState: FogState.observed, userId: _userId2);
+          cellId: 'cell-11', fogState: FogState.present, userId: _userId2);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-12', fogState: FogState.hidden, userId: _userId2);
+          cellId: 'cell-12', fogState: FogState.explored, userId: _userId2);
       await _seedProfile(profileRepo,
           currentStreak: 12,
           longestStreak: 20,
@@ -595,7 +595,7 @@ void main() {
           userId: _userId);
       final cellRepo = container.read(cellProgressRepositoryProvider);
       await _seedCellProgress(cellRepo,
-          cellId: 'cell-1', fogState: FogState.observed, userId: _userId);
+          cellId: 'cell-1', fogState: FogState.present, userId: _userId);
 
       // Hydrate as User A.
       await _hydrateForUser(container, _userId);

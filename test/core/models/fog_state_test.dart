@@ -4,37 +4,37 @@ import 'package:earth_nova/core/models/fog_state.dart';
 void main() {
   group('FogState', () {
     test('all 5 states exist', () {
-      expect(FogState.undetected, isNotNull);
-      expect(FogState.unexplored, isNotNull);
-      expect(FogState.hidden, isNotNull);
-      expect(FogState.concealed, isNotNull);
-      expect(FogState.observed, isNotNull);
+      expect(FogState.unknown, isNotNull);
+      expect(FogState.detected, isNotNull);
+      expect(FogState.explored, isNotNull);
+      expect(FogState.nearby, isNotNull);
+      expect(FogState.present, isNotNull);
     });
 
     test('density mapping is correct', () {
-      expect(FogState.undetected.density, equals(1.0));
-      expect(FogState.unexplored.density, equals(1.0));
-      expect(FogState.concealed.density, equals(0.95));
-      expect(FogState.hidden.density, equals(0.5));
-      expect(FogState.observed.density, equals(0.0));
+      expect(FogState.unknown.density, equals(1.0));
+      expect(FogState.detected.density, equals(0.97));
+      expect(FogState.nearby.density, equals(0.95));
+      expect(FogState.explored.density, equals(0.5));
+      expect(FogState.present.density, equals(0.0));
     });
 
-    test('isObserved is true only for observed state', () {
-      expect(FogState.observed.isObserved, isTrue);
-      expect(FogState.concealed.isObserved, isFalse);
-      expect(FogState.hidden.isObserved, isFalse);
-      expect(FogState.unexplored.isObserved, isFalse);
-      expect(FogState.undetected.isObserved, isFalse);
+    test('isCurrent is true only for current state', () {
+      expect(FogState.present.isPresent, isTrue);
+      expect(FogState.nearby.isPresent, isFalse);
+      expect(FogState.explored.isPresent, isFalse);
+      expect(FogState.detected.isPresent, isFalse);
+      expect(FogState.unknown.isPresent, isFalse);
     });
 
-    test('isVisited is true only for hidden and observed', () {
+    test('isVisited is true only for explored and current', () {
       // States that imply the player has physically visited the cell.
-      expect(FogState.hidden.isVisited, isTrue);
-      expect(FogState.observed.isVisited, isTrue);
+      expect(FogState.explored.isVisited, isTrue);
+      expect(FogState.present.isVisited, isTrue);
       // States that do NOT imply a visit.
-      expect(FogState.undetected.isVisited, isFalse);
-      expect(FogState.unexplored.isVisited, isFalse);
-      expect(FogState.concealed.isVisited, isFalse);
+      expect(FogState.unknown.isVisited, isFalse);
+      expect(FogState.detected.isVisited, isFalse);
+      expect(FogState.nearby.isVisited, isFalse);
     });
 
     test('density ordering is non-increasing with state index', () {
@@ -43,27 +43,34 @@ void main() {
         expect(
           FogState.values[i].density,
           greaterThanOrEqualTo(FogState.values[i + 1].density),
-          reason:
-              '${FogState.values[i].name} should have >= density than '
+          reason: '${FogState.values[i].name} should have >= density than '
               '${FogState.values[i + 1].name}',
         );
       }
     });
 
-    test('fromString parses all states correctly', () {
-      expect(FogState.fromString('undetected'), equals(FogState.undetected));
-      expect(FogState.fromString('unexplored'), equals(FogState.unexplored));
-      expect(FogState.fromString('hidden'), equals(FogState.hidden));
-      expect(FogState.fromString('concealed'), equals(FogState.concealed));
-      expect(FogState.fromString('observed'), equals(FogState.observed));
+    test('fromString parses legacy names for backward compatibility', () {
+      expect(FogState.fromString('undetected'), equals(FogState.unknown));
+      expect(FogState.fromString('unexplored'), equals(FogState.detected));
+      expect(FogState.fromString('hidden'), equals(FogState.explored));
+      expect(FogState.fromString('concealed'), equals(FogState.nearby));
+      expect(FogState.fromString('observed'), equals(FogState.present));
     });
 
-    test('toString returns state name', () {
-      expect(FogState.undetected.toString(), equals('undetected'));
-      expect(FogState.unexplored.toString(), equals('unexplored'));
-      expect(FogState.hidden.toString(), equals('hidden'));
-      expect(FogState.concealed.toString(), equals('concealed'));
-      expect(FogState.observed.toString(), equals('observed'));
+    test('fromString parses new names correctly', () {
+      expect(FogState.fromString('unknown'), equals(FogState.unknown));
+      expect(FogState.fromString('detected'), equals(FogState.detected));
+      expect(FogState.fromString('explored'), equals(FogState.explored));
+      expect(FogState.fromString('nearby'), equals(FogState.nearby));
+      expect(FogState.fromString('present'), equals(FogState.present));
+    });
+
+    test('toString returns new state name', () {
+      expect(FogState.unknown.toString(), equals('unknown'));
+      expect(FogState.detected.toString(), equals('detected'));
+      expect(FogState.explored.toString(), equals('explored'));
+      expect(FogState.nearby.toString(), equals('nearby'));
+      expect(FogState.present.toString(), equals('present'));
     });
   });
 }

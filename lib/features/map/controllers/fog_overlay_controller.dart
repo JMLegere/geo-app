@@ -342,7 +342,7 @@ class FogOverlayController {
     final cellStates = <String, FogState>{};
     for (final cellId in cellIds) {
       final state = fogResolver.resolve(cellId);
-      if (state == FogState.undetected) continue;
+      if (state == FogState.unknown) continue;
       cellStates[cellId] = state;
     }
 
