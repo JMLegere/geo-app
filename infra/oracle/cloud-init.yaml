@@ -1,0 +1,53 @@
+#cloud-config
+# Cloud-init for Oracle Cloud free-tier ARM (Ampere A1) VM
+# Ubuntu 22.04 / 24.04 minimal
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - docker-compose-v2
+  - git
+  - tmux
+  - htop
+  - curl
+  - wget
+  - unzip
+  - jq
+  - fail2ban
+  - ufw
+  - sqlite3
+
+runcmd:
+  # Enable and start Docker
+  - systemctl enable docker
+  - systemctl start docker
+  - usermod -aG docker ubuntu
+
+  # Firewall: allow SSH only (add more ports as needed)
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw --force enable
+
+  # Enable fail2ban for SSH brute-force protection
+  - systemctl enable fail2ban
+  - systemctl start fail2ban
+
+  # Set timezone (adjust as needed)
+  - timedatectl set-timezone UTC
+
+  # Create a swap file (useful on limited-memory instances)
+  - fallocate -l 4G /swapfile
+  - chmod 600 /swapfile
+  - mkswap /swapfile
+  - swapon /swapfile
+  - echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+  # Harden SSH: disable password auth (key-only)
+  - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  - systemctl restart sshd
+
+final_message: "Cloud-init complete. System ready for use."
