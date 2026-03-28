@@ -157,8 +157,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Fog rendering runs at ~10 Hz, not 60 fps.
   int _renderFrame = 0;
 
-  /// Render logic runs every Nth display-update frame (~10 Hz at 60 fps).
-  static const _kRenderInterval = 6;
+  /// Render logic runs every Nth display-update frame.
+  /// Desktop: every 6th frame (~10 Hz at 60 fps).
+  /// Mobile web: every 30th frame (~2 Hz at 60 fps) — iOS WebKit builds
+  /// take ~100ms per frame, so 10Hz = 100% CPU. 2Hz gives headroom.
+  static final _kRenderInterval = kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.iOS ||
+              defaultTargetPlatform == TargetPlatform.android)
+      ? 30
+      : 6;
 
   /// Whether the MapLibre fog sources/layers have been added to the map.
   bool _fogLayersInitialized = false;
