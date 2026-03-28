@@ -5,6 +5,9 @@
 -- one table: debugPrint → DebugLogBuffer → LogFlushService → app_logs.
 -- Structured events get text representation in `lines`; optional `event` and
 -- `data` columns exist for backend use (Edge Functions).
+--
+-- This was originally 022_unify_observability but was never applied to remote.
+-- Renumbered to 024 to follow the actual remote migration history.
 
 -- 1. Add structured event columns to app_logs (nullable — text-only rows omit them).
 ALTER TABLE app_logs ADD COLUMN IF NOT EXISTS category text;

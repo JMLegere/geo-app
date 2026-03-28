@@ -423,6 +423,7 @@ Additional directories:
 - **No monolithic bootstrap**: App uses `ProviderScope` → `ConsumerWidget`. Never create a single class that initializes all systems.
 - **No direct SQLite queries**: Always use repository abstractions. Never call `database.rawQuery()`.
 - **No blocking main thread**: All I/O (GPS, network, SQLite) must be async.
+- **No unbounded synchronous loops over I/O**: Any loop that awaits SQLite/network per iteration (hydration, bulk sync, batch persist) MUST yield to the event loop periodically (`await Future.delayed(Duration.zero)` every ~50 iterations). On iOS WebKit, each IndexedDB-backed SQLite write takes 10-15ms — 700 sequential writes without yielding freezes the UI for 7-10 seconds.
 - **No hardcoded constants**: All game-balance values go in `lib/shared/constants.dart`.
 - **No `StateNotifier`**: Use Riverpod v3 `Notifier` pattern exclusively.
 - **No stored fog state**: Fog is computed from player position + visit history. Never persist per-cell FogState.
