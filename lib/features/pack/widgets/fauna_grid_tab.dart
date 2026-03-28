@@ -39,6 +39,9 @@ class FaunaGridTab extends ConsumerWidget {
     return PrismaticAnimationScope(
       child: GridView.builder(
         padding: EdgeInsets.all(Spacing.sm),
+        cacheExtent:
+            100, // Reduced from default 250 — limits off-screen pre-builds on iOS
+        addAutomaticKeepAlives: false, // Reduce memory pressure on iOS
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 6,
           childAspectRatio: 0.85,

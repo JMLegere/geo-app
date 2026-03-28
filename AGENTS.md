@@ -466,11 +466,24 @@ When a feature misbehaves:
 4. **Check constraints** — verify no scope ceiling violations
 5. **Verify reversibility** — ensure any fix can be toggled off
 
+### Infrastructure Investigation Protocol
+
+When diagnosing infrastructure issues (stalled pipelines, deploy failures, schema mismatches):
+
+1. **Verify live state first** — always query the production database/service before comparing against local files. Local files may have diverged from remote. A single `curl` to the REST API can disprove a hypothesis in seconds.
+2. **Test your hypothesis before implementing** — run one verification query/command to confirm the suspected root cause before writing any fix code. Never write a migration without first checking if the columns already exist.
+3. **Check migration sync status early** — run `supabase migration list --linked` BEFORE assuming local migrations reflect remote schema. Remote may have migrations applied directly that aren't in local files.
+4. **Distinguish code bugs from operational issues** — a stalled pipeline could be: schema mismatch (code), API key expiry (ops), rate limiting (ops), deploy failure (ops), cron stopped (ops), or env var change (ops). Check operational causes before assuming code bugs.
+5. **Check deploy history** — when did the last successful Edge Function deploy happen? Did a recent deploy change `PIPELINE_VERSION` or other env vars? Use `gh api repos/.../deployments` to check.
+6. **Time-box investigation** — 15 min max per hypothesis before pivoting. If you can't confirm a root cause in 15 min, you're likely chasing the wrong lead.
+
 > **Observability architecture** — two parallel systems:
 > - **`app_logs`** table: Raw debug text blobs from `DebugLogBuffer` via `LogFlushService` (debounced 5s). Severity-filtered (warning+ and always-pass tags).
 > - **`app_events`** table: Structured typed events from `ObservabilityBuffer` (30s batch flush). Categories: event, log, js, ui.
 >
 > See `docs/target-architecture.md` for the full observability design.
+
+> **Investigation postmortem (2026-03-28):** Enrichment pipeline stalled for 3 days. Initially misdiagnosed as "missing DB columns" by comparing local migration files against Edge Function code. Columns already existed on remote (added via direct migrations). Root cause: `PIPELINE_VERSION` env var matched existing enrichver stamps, so no candidates looked stale. A deploy with a new commit SHA changed the version and unblocked the pipeline. Lesson: always verify live state before diagnosing.
 
 ### Supabase App Logs
 

@@ -282,6 +282,12 @@ Future<void> persistProfileState({
   double? lastLon,
   ObservabilityBuffer? obs,
 }) async {
+  // Yield to the event loop before starting heavy DB work.
+  // On iOS WebKit, IndexedDB-backed SQLite writes take 1.5–3s.
+  // Without this yield, the write blocks the current frame and
+  // causes visible UI jank.
+  await Future<void>.delayed(Duration.zero);
+
   final season = Season.fromDate(DateTime.now());
 
   // 1. Persist to SQLite.

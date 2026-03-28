@@ -30,10 +30,15 @@ import 'package:earth_nova/shared/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Increase image cache for species grid — default 100 images / 100MB is
-  // too small for a 293+ item grid that scrolls and rebuilds during hydration.
-  PaintingBinding.instance.imageCache.maximumSize = 500;
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 * 1024 * 1024;
+  // Scale image cache based on platform. iOS WebKit has aggressive memory
+  // limits (~300-500MB heap on older iPhones) — 200MB cache risks OOM and
+  // WebGL context loss. Desktop browsers can handle 200MB easily.
+  final isWebMobile = kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+  PaintingBinding.instance.imageCache.maximumSize = isWebMobile ? 200 : 500;
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      isWebMobile ? 50 * 1024 * 1024 : 200 * 1024 * 1024;
 
   StartupBeacon.emit('supabase_init');
   await SupabaseBootstrap.initialize(
