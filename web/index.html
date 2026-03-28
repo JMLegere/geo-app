@@ -181,8 +181,16 @@
             push('js', 'webgl_unhealthy', msg);
             _lastHealthy = false;
           } else if (!_lastHealthy) {
-            push('js', 'webgl_recovered', 'context healthy again');
+            push('js', 'webgl_recovered', 'context healthy again wasmHeap=' + wasmHeap);
             _lastHealthy = true;
+          }
+
+          // Log heap size every 30s (every 15th poll) so we can see memory
+          // growth leading up to a page kill. Only when healthy — unhealthy
+          // path already includes wasmHeap.
+          if (!_heapCounter) _heapCounter = 0;
+          if (++_heapCounter % 15 === 0 && !lost) {
+            push('js', 'heap_sample', 'wasmHeap=' + Math.round(wasmHeap / 1048576) + 'MB canvas=' + canvas.width + 'x' + canvas.height);
           }
         } catch(_) {}
       }, 2000);
@@ -218,10 +226,23 @@
         } catch(_) {}
       }
 
+      // --- Page lifecycle observability ---
+      // Log visibility transitions so we can distinguish iOS killing a
+      // backgrounded page (hidden → gap → reboot) from memory pressure
+      // during active use (visible → gap → reboot).
       document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'hidden') sendBeacon();
+        var state = document.visibilityState;
+        var heapMB = 0;
+        try { heapMB = Math.round((window.flutterCanvasKit.HEAPU8.buffer.byteLength || 0) / 1048576); } catch(_) {}
+        push('js', 'visibility_' + state, 'heap=' + heapMB + 'MB');
+        if (state === 'hidden') sendBeacon();
       });
-      document.addEventListener('pagehide', sendBeacon);
+      document.addEventListener('pagehide', function() {
+        var heapMB = 0;
+        try { heapMB = Math.round((window.flutterCanvasKit.HEAPU8.buffer.byteLength || 0) / 1048576); } catch(_) {}
+        push('js', 'pagehide', 'heap=' + heapMB + 'MB');
+        sendBeacon();
+      });
     })();
   </script>
 
