@@ -294,7 +294,9 @@ void main() {
           reason: 'Same cell should not trigger tick_skipped',
         );
 
-        // Now move to different cell during throttled frame
+        // Throttled frames no longer call getCellId or log tick_skipped.
+        // This avoids 1000+ Voronoi lookups + debugPrint spam on iOS where
+        // rubber-band interpolation sweeps across hundreds of cells.
         final skipLogs = _captureDebugPrints(() {
           // Frame 6 will process, but 7 is throttled
           coordinator.updatePlayerPosition(45.0, -66.0); // frame 6 - processes
@@ -305,9 +307,9 @@ void main() {
         expect(
           skipLogs.any(
               (l) => l.contains('[DISCOVERY]') && l.contains('tick_skipped')),
-          isTrue,
+          isFalse,
           reason:
-              'Expected [DISCOVERY] tick_skipped when cell changes during throttle, got: $skipLogs',
+              'Throttled frames should NOT call getCellId or log tick_skipped',
         );
       });
     });
