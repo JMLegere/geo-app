@@ -41,9 +41,20 @@ class BiomeFeatureIndex {
     List<List<(double, double)>> parsePolygons(String key) {
       final list = raw[key] as List? ?? [];
       return list.map((ring) {
-        final coords = ring as List;
-        return coords.map((e) {
-          final pt = e as List;
+        if (ring is! List) {
+          throw FormatException(
+            'biome_features.json: expected polygon ring in "$key" to be a List, '
+            'got ${ring.runtimeType} ($ring). Asset may be a Git LFS pointer.',
+          );
+        }
+        return ring.map((e) {
+          if (e is! List) {
+            throw FormatException(
+              'biome_features.json: expected coordinate pair in "$key" ring, '
+              'got ${e.runtimeType} ($e). Asset may be a Git LFS pointer.',
+            );
+          }
+          final pt = e;
           return ((pt[0] as num).toDouble(), (pt[1] as num).toDouble());
         }).toList();
       }).toList();

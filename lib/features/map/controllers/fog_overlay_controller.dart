@@ -56,6 +56,12 @@ class FogOverlayController {
   final Set<String> _discoveredCellIds = {};
   int _fogComputeCounter = 0;
 
+  /// Number of cells at time of last GeoJSON build.
+  int _lastBuildCellCount = 0;
+
+  /// Visited set size at time of last GeoJSON build.
+  int _lastBuildVisitedCount = 0;
+
   /// Callback fired the first time a cell is added to [_discoveredCellIds].
   ///
   /// Provides the cell ID and the geographic center of the cell so the caller
@@ -307,7 +313,17 @@ class FogOverlayController {
       }
     }
 
-    _buildGeoJson(_discoveredCellIds);
+    // Skip expensive GeoJSON rebuild if nothing changed: no new cells
+    // discovered and no new cells visited (fog state transitions).
+    final currentVisitedCount = fogResolver.visitedCellIds.length;
+    final needsRebuild = _discoveredCellIds.length != _lastBuildCellCount ||
+        currentVisitedCount != _lastBuildVisitedCount;
+
+    if (needsRebuild) {
+      _buildGeoJson(_discoveredCellIds);
+      _lastBuildCellCount = _discoveredCellIds.length;
+      _lastBuildVisitedCount = currentVisitedCount;
+    }
     _renderVersion++;
 
     sw.stop();
@@ -324,6 +340,7 @@ class FogOverlayController {
         'duration_ms': sw.elapsedMilliseconds,
         'cell_count': _discoveredCellIds.length,
         'dirty': _fogDirty,
+        'skipped_rebuild': !needsRebuild,
         'states': stateCounts,
       });
     }
