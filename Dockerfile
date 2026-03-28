@@ -9,6 +9,8 @@ COPY . .
 # Verify critical assets are real JSON, not Git LFS pointers.
 RUN head -c 1 assets/species_data.json | grep -q '\[' || \
     (echo "ERROR: species_data.json is a Git LFS pointer, not JSON" && exit 1)
+RUN head -c 1 assets/biome_features.json | grep -q '{' || \
+    (echo "ERROR: biome_features.json is a Git LFS pointer, not JSON" && exit 1)
 RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     BUILD_TS="β $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \

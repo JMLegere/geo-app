@@ -820,15 +820,17 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         final cachedProps = coordinator.cellPropertiesCache.values;
         if (cachedProps.isNotEmpty) {
           final seen = <String>{};
+          final warmUpFutures = <Future<void>>[];
           for (final props in cachedProps) {
             final key = SpeciesCache.cacheKey(props.habitats, props.continent);
             if (seen.add(key)) {
-              await speciesCache.warmUp(
+              warmUpFutures.add(speciesCache.warmUp(
                 habitats: props.habitats,
                 continent: props.continent,
-              );
+              ));
             }
           }
+          await Future.wait(warmUpFutures);
         } else {
           // No cached cells yet — warm default habitats for a common area.
           await speciesCache.warmUp(
@@ -1097,9 +1099,15 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         obs.event('database_corruption_recovery', {
           'error': e.toString(),
           'trigger': 'hydration_failure',
+          'error_type': 'sqlite_corruption',
         });
         _triggerWebDatabaseRecovery();
         return; // Page will reload — don't start the loop.
+      } else if (kIsWeb) {
+        obs.event('hydration_error_non_corruption', {
+          'error': e.toString(),
+          'trigger': 'hydration_failure',
+        });
       }
 
       if (!_providerDisposed) {
@@ -1280,11 +1288,34 @@ GameEngine? _latestEngine;
 /// like: `FormatException: SyntaxError: JSON Parse error: Unexpected
 /// identifier "version"`. These are unrecoverable — the only fix is to
 /// wipe browser storage and start fresh.
+///
+/// We must distinguish real database corruption from network JSON parse
+/// errors (e.g. ad blockers intercepting Supabase API calls and returning
+/// HTML). Network errors contain 'postgrest', 'SupabaseClient', or
+/// 'supabase' in the stack trace. Real corruption doesn't.
 bool _looksLikeDatabaseCorruption(Object error) {
   final msg = error.toString();
-  return msg.contains('FormatException') && msg.contains('SyntaxError') ||
-      msg.contains('JSON Parse error') ||
-      msg.contains('database disk image is malformed');
+
+  // Definitive SQLite corruption — always trigger recovery.
+  if (msg.contains('database disk image is malformed')) return true;
+  if (msg.contains('SqliteException')) return true;
+
+  // FormatException with SyntaxError could be either corrupt DB or
+  // network interception. Check that it does NOT look like a network
+  // error by inspecting the full error chain.
+  if ((msg.contains('FormatException') && msg.contains('SyntaxError')) ||
+      msg.contains('JSON Parse error')) {
+    // Network errors from the Supabase client include these markers.
+    final isNetworkError = msg.contains('postgrest') ||
+        msg.contains('SupabaseClient') ||
+        msg.contains('GoTrueClient') ||
+        msg.contains('realtime') ||
+        msg.contains('FetchClient') ||
+        msg.contains('http_client');
+    return !isNetworkError;
+  }
+
+  return false;
 }
 
 /// Max number of automatic database wipe+reload cycles allowed per session.
