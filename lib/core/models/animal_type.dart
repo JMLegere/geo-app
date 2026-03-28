@@ -14,6 +14,14 @@ enum AnimalType {
         AnimalType.bug => 'Bug',
       };
 
+  String get icon => switch (this) {
+        AnimalType.mammal => '🐻',
+        AnimalType.bird => '🐦',
+        AnimalType.fish => '🐟',
+        AnimalType.reptile => '🦎',
+        AnimalType.bug => '🐛',
+      };
+
   /// Deterministic mapping from IUCN taxonomicClass string.
   /// Returns null for unrecognized classes.
   static AnimalType? fromTaxonomicClass(String taxonomicClass) {
