@@ -1042,6 +1042,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           try {
             await rehydrateData(userId);
             obs.event('cold_start_rehydration', {'user_id': userId});
+
+            // Force MapScreen to rebuild fog overlay with the newly-hydrated
+            // visited cells. Without this, the fog controller's
+            // _discoveredCellIds remains empty (initialized before data
+            // arrived) and the map stays black.
+            ref.invalidate(fogOverlayControllerProvider);
           } catch (e) {
             debugPrint(
               '[GameCoordinator] cold start rehydration failed: $e',
