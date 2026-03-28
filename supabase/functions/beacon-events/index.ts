@@ -8,7 +8,7 @@ const CORS_HEADERS = {
 
 // Unauthenticated endpoint for navigator.sendBeacon() crash telemetry.
 // Beacon API cannot set custom headers, so this function uses the service
-// role key to insert into app_events. Payload is validated and capped.
+// role key to insert into app_logs. Payload is validated and capped.
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -39,14 +39,21 @@ serve(async (req: Request) => {
       });
     }
 
-    // Validate each event has required fields.
+    // Validate each event and map to app_logs schema.
+    // app_logs requires `lines` (NOT NULL) and `session_id` (uuid NOT NULL).
+    // We store the event as a structured log line in `lines`, and also
+    // populate the structured columns (category, event, data) added in 024.
     const rows = [];
     for (const e of events) {
       if (!e.session_id || !e.category || !e.event) continue;
+      const msg = e.data?.msg || "";
+      const line = `[${e.created_at || new Date().toISOString()}] [${e.category}] ${e.event}: ${msg}`;
       rows.push({
         session_id: String(e.session_id).slice(0, 100),
         user_id: e.user_id || null,
         device_id: e.device_id ? String(e.device_id).slice(0, 50) : null,
+        lines: line,
+        platform: "web",
         category: String(e.category).slice(0, 50),
         event: String(e.event).slice(0, 100),
         data: typeof e.data === "object" ? e.data : {},
@@ -66,7 +73,7 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const { error } = await supabase.from("app_events").insert(rows);
+    const { error } = await supabase.from("app_logs").insert(rows);
     if (error) {
       console.error("insert error:", error);
       return new Response("insert failed", {
