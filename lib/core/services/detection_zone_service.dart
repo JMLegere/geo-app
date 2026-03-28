@@ -168,6 +168,10 @@ class DetectionZoneService {
     final node = await _locationNodeRepo.get(districtId);
     if (node == null) {
       debugPrint('[DetectionZone] node not found: $districtId');
+      ObservabilityBuffer.instance?.event('detection_zone_failure', {
+        'district_id': districtId,
+        'reason': 'node_not_found',
+      });
       return {};
     }
 
@@ -185,6 +189,11 @@ class DetectionZoneService {
     // Parse GeoJSON geometry
     if (node.geometryJson == null) {
       debugPrint('[DetectionZone] no geometry for $districtId');
+      ObservabilityBuffer.instance?.event('detection_zone_failure', {
+        'district_id': districtId,
+        'reason': 'no_geometry',
+        'has_cached_cellIds': node.cellIds?.isNotEmpty ?? false,
+      });
       return {};
     }
 
@@ -192,6 +201,11 @@ class DetectionZoneService {
     if (polygons.isEmpty) {
       debugPrint('[DetectionZone] failed to parse polygons for $districtId '
           '(geom ${node.geometryJson!.length} bytes)');
+      ObservabilityBuffer.instance?.event('detection_zone_failure', {
+        'district_id': districtId,
+        'reason': 'polygon_parse_failed',
+        'geom_bytes': node.geometryJson!.length,
+      });
       return {};
     }
 
@@ -220,11 +234,19 @@ class DetectionZoneService {
     debugPrint(
         '[DetectionZone] scan result for $districtId: ${cellIds.length} cells');
 
-    // Cache the result on the LocationNode
-    if (cellIds.isNotEmpty) {
-      final updated = node.copyWith(cellIds: cellIds.toList());
-      await _locationNodeRepo.upsert(updated);
+    if (cellIds.isEmpty) {
+      ObservabilityBuffer.instance?.event('detection_zone_failure', {
+        'district_id': districtId,
+        'reason': 'scan_found_zero_cells',
+        'polygon_count': polygons.length,
+        'geom_bytes': node.geometryJson!.length,
+      });
+      return {};
     }
+
+    // Cache the result on the LocationNode
+    final updated = node.copyWith(cellIds: cellIds.toList());
+    await _locationNodeRepo.upsert(updated);
 
     return cellIds;
   }
