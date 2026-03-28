@@ -1009,10 +1009,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             // will fire recomputeCurrentZone() as the one allowed re-trigger.
             if (detectionZoneService.detectionZoneCellIds.isEmpty) {
               final center = cellService.getCellCenter(currentCell);
-              ref
-                  .read(adminBoundaryServiceProvider)
-                  ?.requestBoundaries(center.lat, center.lon);
-              debugPrint('[DetectionZone] zone empty — fetching geometry');
+              debugPrint(
+                  '[DetectionZone] zone empty — fetching geometry (deferred)');
+              // Defer to avoid blocking hydration — the 12s Nominatim round-trip
+              // shouldn't hold up the game loop starting.
+              Future.microtask(() {
+                if (!ref.mounted) return;
+                ref
+                    .read(adminBoundaryServiceProvider)
+                    ?.requestBoundaries(center.lat, center.lon);
+              });
             }
           } else {
             _zoneHydrationComplete = true;

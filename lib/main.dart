@@ -157,7 +157,7 @@ Future<void> main() async {
           child: EarthNovaApp(),
         ),
       ));
-      _setupPerfMonitoring();
+      _setupPerfMonitoring(container);
     },
     (Object error, StackTrace stack) {
       DebugLogBuffer.instance.add('[CRASH] Unhandled: $error');
@@ -182,11 +182,12 @@ Future<void> main() async {
 
 /// Performance monitoring — must be called inside runZonedGuarded so that
 /// print() goes through the zone's print override → DebugLogBuffer.
-void _setupPerfMonitoring() {
+void _setupPerfMonitoring(ProviderContainer container) {
   print('[PERF] heartbeat initialized (10s interval)');
   var lastFrameTime = DateTime.now();
   var slowFrameCount = 0;
   var worstFrameMs = 0;
+  var hasTriggeredRehydration = false;
 
   SchedulerBinding.instance.addTimingsCallback((List<FrameTiming> timings) {
     lastFrameTime = DateTime.now();
@@ -230,6 +231,25 @@ void _setupPerfMonitoring() {
       ObservabilityBuffer.instance?.event('rendering_stalled', {
         'gap_seconds': gap.inSeconds,
       });
+
+      // If the page has been suspended for 60+ seconds, iOS likely killed
+      // and restored the WKWebView process. Force re-hydration by
+      // invalidating the game coordinator — this resets isHydrated to
+      // false, which causes _resolveHome to show LoadingScreen while
+      // hydration re-runs.
+      if (gap.inSeconds >= 60 && !hasTriggeredRehydration) {
+        hasTriggeredRehydration = true;
+        debugPrint(
+            '[RECOVERY] page resumed after ${gap.inSeconds}s — forcing re-hydration');
+        ObservabilityBuffer.instance?.event('page_resume_rehydration', {
+          'gap_seconds': gap.inSeconds,
+        });
+        container.invalidate(gameCoordinatorProvider);
+        // Reset flag after 5s so future suspensions also trigger recovery.
+        Future.delayed(const Duration(seconds: 5), () {
+          hasTriggeredRehydration = false;
+        });
+      }
     }
   });
 }
