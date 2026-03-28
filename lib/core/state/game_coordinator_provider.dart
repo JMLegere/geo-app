@@ -1181,8 +1181,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // --- Wire profile write-through: persist on PlayerState changes ---
   //
   // When PlayerNotifier state changes (cells observed, distance, streaks),
-  // persist to SQLite and enqueue for Supabase sync. Uses a debounced
-  // listener to avoid hammering the DB on rapid increments.
+  // persist to SQLite and enqueue for Supabase sync. Debounced to 5s to
+  // avoid hammering IndexedDB-backed SQLite on iOS (where each write
+  // takes 1.5–3s via the WASM→IndexedDB bridge).
+
+  Timer? profileDebounceTimer;
+
+  ref.onDispose(() => profileDebounceTimer?.cancel());
 
   ref.listen<PlayerState>(playerProvider, (previous, next) {
     if (previous == null) return; // Skip initial build.
@@ -1193,18 +1198,24 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
     lastPersistedProfile = next;
 
-    // Capture current position for session restore.
-    final currentPos = ref.read(locationProvider).currentPosition;
-
-    persistProfileState(
-      userId: userId,
-      playerState: next,
-      profileRepo: profileRepo,
-      queueProcessor: queueProcessor,
-      lastLat: currentPos?.lat,
-      lastLon: currentPos?.lon,
-      obs: obs,
-    );
+    // Debounce: accumulate rapid changes (distance ticks, cell visits)
+    // and persist once after 5 seconds of calm. On iOS WebKit, each
+    // IndexedDB-backed SQLite write takes 1.5–3s — without debounce,
+    // every state change triggers a blocking write that freezes the UI.
+    profileDebounceTimer?.cancel();
+    profileDebounceTimer = Timer(const Duration(seconds: 5), () {
+      if (_providerDisposed) return;
+      final currentPos = ref.read(locationProvider).currentPosition;
+      persistProfileState(
+        userId: userId,
+        playerState: next,
+        profileRepo: profileRepo,
+        queueProcessor: queueProcessor,
+        lastLat: currentPos?.lat,
+        lastLon: currentPos?.lon,
+        obs: obs,
+      );
+    });
   });
 
   // --- Re-resolve cells when biome data becomes available ---
