@@ -21,127 +21,20 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
-      - name: Apply migration 018 via Management API
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ env.PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: |
-          API="https://api.supabase.com/v1/projects/$PROJECT_REF/database/query"
-          AUTH="Authorization: Bearer $SUPABASE_ACCESS_TOKEN"
 
-          check() {
-            local v=$1
-            curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"query\": \"SELECT version FROM supabase_migrations.schema_migrations WHERE version = '$v'\"}" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print('FOUND' if d else 'MISSING')"
-          }
-
-          insert_version() {
-            local v=$1
-            local name=$2
-            curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"query\": \"INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES ('$v', '$name') ON CONFLICT (version) DO NOTHING\"}" \
-              | python3 -c "import json,sys; print('recorded')"
-          }
-
-          run_sql() {
-            local sql=$1
-            local body
-            body=$(python3 -c "import json,sys; print(json.dumps({'query': sys.argv[1]}))" "$sql")
-            curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" \
-              -d "$body" \
-              | python3 -c "import json,sys; d=json.load(sys.stdin); print('ERROR: '+str(d.get('error',''))) if isinstance(d,dict) and d.get('error') else print('OK')"
-          }
-
-          # Insert 016 if missing (applied via SQL Editor earlier)
-          if [ "$(check '016_app_events')" = "MISSING" ]; then
-            echo "Recording migration 016..."
-            insert_version "016_app_events" "app_events"
-          else
-            echo "Migration 016 already recorded."
-          fi
-
-          # Insert 017 if missing
-          if [ "$(check '017_app_events_retention')" = "MISSING" ]; then
-            echo "Recording migration 017..."
-            insert_version "017_app_events_retention" "app_events_retention"
-          else
-            echo "Migration 017 already recorded."
-          fi
-
-          # Apply 018 statements individually (multi-statement JSON breaks on quotes)
-          echo "Applying migration 018 statements..."
-          run_sql "ALTER TABLE species_enrichment ADD COLUMN IF NOT EXISTS icon_url text"
-          run_sql "INSERT INTO storage.buckets (id, name, public) VALUES ('species-art', 'species-art', true) ON CONFLICT (id) DO NOTHING"
-          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Public read access'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Public read access" ON storage.objects FOR SELECT USING (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
-          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Service role upload'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Service role upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
-          run_sql 'DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = '"'"'Service role update'"'"' AND tablename = '"'"'objects'"'"') THEN CREATE POLICY "Service role update" ON storage.objects FOR UPDATE USING (bucket_id = '"'"'species-art'"'"'); END IF; END $$'
-          insert_version "018_species_art" "species_art"
-          echo "Migration 018 applied and recorded."
-
-          # Apply 019: species table
-          echo "Applying migration 019 (species table)..."
-          run_sql "CREATE TABLE IF NOT EXISTS species (definition_id TEXT PRIMARY KEY, scientific_name TEXT NOT NULL DEFAULT '', common_name TEXT NOT NULL DEFAULT '', taxonomic_class TEXT NOT NULL DEFAULT '', iucn_status TEXT NOT NULL DEFAULT '', habitats_json TEXT NOT NULL DEFAULT '[]', continents_json TEXT NOT NULL DEFAULT '[]', animal_class TEXT, food_preference TEXT, climate TEXT, brawn INTEGER, wit INTEGER, speed INTEGER, size TEXT, icon_url TEXT, art_url TEXT, enriched_at TIMESTAMPTZ)"
-          run_sql "INSERT INTO species (definition_id, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, enriched_at) SELECT definition_id, animal_class, food_preference, climate, brawn, wit, speed, size, icon_url, art_url, enriched_at FROM species_enrichment ON CONFLICT (definition_id) DO UPDATE SET animal_class = EXCLUDED.animal_class, food_preference = EXCLUDED.food_preference, climate = EXCLUDED.climate, brawn = EXCLUDED.brawn, wit = EXCLUDED.wit, speed = EXCLUDED.speed, size = EXCLUDED.size, icon_url = EXCLUDED.icon_url, art_url = EXCLUDED.art_url, enriched_at = EXCLUDED.enriched_at"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_classification ON species (definition_id) WHERE animal_class IS NULL"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_art ON species (definition_id) WHERE animal_class IS NOT NULL AND (icon_url IS NULL OR art_url IS NULL)"
-          run_sql "ALTER TABLE species ENABLE ROW LEVEL SECURITY"
-          run_sql 'DROP POLICY IF EXISTS "Public read" ON species'
-          run_sql 'CREATE POLICY "Public read" ON species FOR SELECT USING (true)'
-          run_sql "GRANT SELECT ON species TO anon, authenticated"
-          run_sql "GRANT ALL ON species TO service_role"
-          run_sql "NOTIFY pgrst, 'reload schema'"
-          insert_version "019_species_table" "species_table"
-          echo "Migration 019 applied and recorded."
-
-          # Apply 020: drop old species_enrichment table
-          echo "Applying migration 020..."
-          run_sql "DROP TABLE IF EXISTS species_enrichment"
-          insert_version "020_drop_species_enrichment" "drop_species_enrichment"
-          echo "Migration 020 applied."
-
-          # Apply 021: enrichment observability + pg_cron
-          # Apply 022: 2-stage art prompt columns
-          echo "Applying migration 022 (icon_prompt + art_prompt columns)..."
-          run_sql "ALTER TABLE species ADD COLUMN IF NOT EXISTS icon_prompt TEXT"
-          run_sql "ALTER TABLE species ADD COLUMN IF NOT EXISTS art_prompt TEXT"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_species_needs_prompt ON species (definition_id) WHERE animal_class IS NOT NULL AND (icon_prompt IS NULL OR art_prompt IS NULL)"
-          insert_version "022_art_prompt_columns" "art_prompt_columns"
-          echo "Migration 022 applied."
-
-          # Apply 023: Item instance denormalization + per-field enrichment versions
-          echo "Applying migration 023 (item instance denorm + enrichment versions)..."
-
-          # Item instance table: icon_url/art_url (may not exist on Supabase
-          # even though they existed in Drift) + 15 data + 17 version columns
-          for col in icon_url art_url animal_class_name animal_class_name_enrichver food_preference_name food_preference_name_enrichver climate_name climate_name_enrichver size_name size_name_enrichver brawn_enrichver wit_enrichver speed_enrichver icon_url_enrichver art_url_enrichver cell_habitat_name cell_habitat_name_enrichver cell_climate_name cell_climate_name_enrichver cell_continent_name cell_continent_name_enrichver location_district location_district_enrichver location_city location_city_enrichver location_state location_state_enrichver location_country location_country_enrichver location_country_code location_country_code_enrichver; do
-            run_sql "ALTER TABLE item_instances ADD COLUMN IF NOT EXISTS $col TEXT"
-          done
-          for col in brawn wit speed; do
-            run_sql "ALTER TABLE item_instances ADD COLUMN IF NOT EXISTS $col INTEGER"
-          done
-
-          # Species table: 11 version columns
-          for col in animal_class_enrichver food_preference_enrichver climate_enrichver brawn_enrichver wit_enrichver speed_enrichver size_enrichver icon_prompt_enrichver art_prompt_enrichver icon_url_enrichver art_url_enrichver; do
-            run_sql "ALTER TABLE species ADD COLUMN IF NOT EXISTS $col TEXT"
-          done
-
-          insert_version "023_item_denorm_enrichver" "item_denorm_enrichver"
-          echo "Migration 023 applied."
-
-          echo "Applying migration 021 (enrichment_events + pg_cron)..."
-          run_sql "CREATE EXTENSION IF NOT EXISTS pg_cron"
-          run_sql "CREATE EXTENSION IF NOT EXISTS pg_net"
-          run_sql "CREATE TABLE IF NOT EXISTS enrichment_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), event_type TEXT NOT NULL, definition_id TEXT, provider_name TEXT, asset_type TEXT, duration_ms INTEGER, error_message TEXT, metadata JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT now())"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_type ON enrichment_events (event_type)"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_created ON enrichment_events (created_at)"
-          run_sql "CREATE INDEX IF NOT EXISTS idx_enrichment_events_definition ON enrichment_events (definition_id) WHERE definition_id IS NOT NULL"
-          run_sql "ALTER TABLE enrichment_events ENABLE ROW LEVEL SECURITY"
-          run_sql "GRANT ALL ON enrichment_events TO service_role"
-          run_sql "GRANT SELECT ON enrichment_events TO authenticated"
-          run_sql "SELECT cron.schedule('process-enrichment-queue', '*/5 * * * *', \$\$SELECT net.http_post(url := 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/process-enrichment-queue', headers := '{\"Content-Type\": \"application/json\"}'::jsonb, body := '{}'::jsonb);\$\$)"
-          run_sql "NOTIFY pgrst, 'reload schema'"
-          insert_version "021_enrichment_observability" "enrichment_observability"
-          echo "Migration 021 applied (enrichment_events table + pg_cron)."
+      - name: Apply pending migrations
+        run: supabase db push --linked
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Seed species table from assets/species_data.json
         env:
@@ -217,16 +110,6 @@ jobs:
           PYEOF
           fi
 
-      - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Link Supabase project
-        run: supabase link --project-ref ${{ env.PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
       - name: Deploy Edge Functions
         run: |
           # Inject pipeline version (commit SHA) for enrichment versioning
@@ -244,6 +127,7 @@ jobs:
       - name: Deployment summary
         run: |
           echo "✅ Supabase deployment complete"
-          echo "  - Migrations: applied via Management API"
+          echo "  - Migrations: applied via supabase db push"
+          echo "  - Species: seeded if empty"
           echo "  - Edge Functions: deployed"
           echo "  - Project: ${{ env.PROJECT_REF }}"
