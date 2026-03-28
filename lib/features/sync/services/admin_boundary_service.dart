@@ -34,6 +34,9 @@ class AdminBoundaryService {
   /// places (~11 m). Repeated calls at the same location are no-ops.
   String? _lastRequestedLocation;
 
+  /// Whether a request is currently in-flight.
+  bool _requestInFlight = false;
+
   /// Fetches admin boundary polygons for [lat]/[lon] from the Edge Function
   /// and upserts them into the local [LocationNodeRepository].
   ///
@@ -42,12 +45,14 @@ class AdminBoundaryService {
   ///   the Edge Function call is skipped.
   /// - Error-safe: all exceptions are caught and logged; never throws.
   Future<void> requestBoundaries(double lat, double lon) async {
-    // Primary deduplication: same location (rounded to 4 decimal places).
+    // Dedup: skip if a request is already in-flight OR same location.
+    if (_requestInFlight) return;
     final locationKey = '${lat.toStringAsFixed(4)}_${lon.toStringAsFixed(4)}';
     if (locationKey == _lastRequestedLocation) {
       debugPrint('[AdminBoundary] dedup skip: $locationKey');
       return;
     }
+    _requestInFlight = true;
 
     final sw = Stopwatch()..start();
     try {
@@ -146,6 +151,13 @@ class AdminBoundaryService {
       }
     } catch (e) {
       debugPrint('[AdminBoundary] requestBoundaries failed: $e');
+      ObservabilityBuffer.instance?.event('admin_boundary_failure', {
+        'lat': lat,
+        'lon': lon,
+        'error': e.toString().substring(0, (e.toString().length).clamp(0, 200)),
+      });
+    } finally {
+      _requestInFlight = false;
     }
   }
 

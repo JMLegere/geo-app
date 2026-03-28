@@ -1010,15 +1010,29 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
             if (detectionZoneService.detectionZoneCellIds.isEmpty) {
               final center = cellService.getCellCenter(currentCell);
               debugPrint(
-                  '[DetectionZone] zone empty — fetching geometry (deferred)');
-              // Defer to avoid blocking hydration — the 12s Nominatim round-trip
-              // shouldn't hold up the game loop starting.
-              Future.microtask(() {
-                if (!ref.mounted) return;
-                ref
-                    .read(adminBoundaryServiceProvider)
-                    ?.requestBoundaries(center.lat, center.lon);
+                  '[DetectionZone] zone empty — fetching geometry with retry');
+              ObservabilityBuffer.instance
+                  ?.event('detection_zone_empty_retry', {
+                'cell_id': currentCell,
+                'district_id': props.locationId,
               });
+              // Retry with backoff: 0s, 10s, 30s. The onBoundariesResolved
+              // listener will recompute the zone when geometry arrives.
+              for (final delay in [
+                Duration.zero,
+                const Duration(seconds: 10),
+                const Duration(seconds: 30)
+              ]) {
+                Future.delayed(delay, () {
+                  if (_providerDisposed) return;
+                  if (detectionZoneService.detectionZoneCellIds.isNotEmpty)
+                    return;
+                  debugPrint('[DetectionZone] retry after ${delay.inSeconds}s');
+                  ref
+                      .read(adminBoundaryServiceProvider)
+                      ?.requestBoundaries(center.lat, center.lon);
+                });
+              }
             }
           } else {
             _zoneHydrationComplete = true;
