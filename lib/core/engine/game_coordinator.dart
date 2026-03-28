@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart';
 import 'package:uuid/uuid.dart';
 
@@ -179,10 +178,6 @@ class GameCoordinator {
   Geographic? _rawGpsPosition;
   double _rawGpsAccuracy = 0.0;
   Geographic? _playerPosition;
-
-  /// Last cell ID that was fully processed by _processGameLogic.
-  /// Used to detect cell transitions during throttled frames.
-  String? _lastProcessedCellId;
 
   /// Raw GPS position from the location service (1 Hz).
   Geographic? get rawGpsPosition => _rawGpsPosition;
@@ -370,13 +365,6 @@ class GameCoordinator {
     _gameLogicFrame++;
     if (_gameLogicFrame == 1 || _gameLogicFrame % _kGameLogicInterval == 0) {
       _processGameLogic(lat, lon);
-    } else if (_lastProcessedCellId != null) {
-      // Detect cell boundary crossings during throttled frames.
-      final currentCellId = _cellService.getCellId(lat, lon);
-      if (currentCellId != _lastProcessedCellId) {
-        debugPrint(
-            '[DISCOVERY] tick_skipped prev_cell=$_lastProcessedCellId new_cell=$currentCellId');
-      }
     }
   }
 
@@ -566,8 +554,6 @@ class GameCoordinator {
       Geographic(lat: lat, lon: lon),
       _rawGpsAccuracy,
     );
-
-    _lastProcessedCellId = _cellService.getCellId(lat, lon);
   }
 
   // ---------------------------------------------------------------------------
