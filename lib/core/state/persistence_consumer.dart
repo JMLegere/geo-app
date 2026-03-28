@@ -436,8 +436,10 @@ Future<void> hydrateFromSupabase({
       );
     }
 
-    // 2. Cell progress → SQLite (upsert each row)
-    for (final row in cellRows) {
+    // 2. Cell progress → SQLite (upsert each row).
+    // Yield every 50 rows so the UI can render on iOS.
+    for (var i = 0; i < cellRows.length; i++) {
+      final row = cellRows[i];
       final cellId = row['cell_id'] as String;
       final id = row['id'] as String? ?? '${userId}_$cellId';
       final fogState = FogState.fromString(
@@ -462,10 +464,13 @@ Future<void> hydrateFromSupabase({
         restorationLevel: restorationLevel,
         lastVisited: lastVisited,
       );
+      if (i % 50 == 49) await Future<void>.delayed(Duration.zero);
     }
 
-    // 3. Item instances → SQLite (upsert each row)
-    for (final row in itemRows) {
+    // 3. Item instances → SQLite (upsert each row).
+    // Yield every 50 rows so the UI can render on iOS.
+    for (var i = 0; i < itemRows.length; i++) {
+      final row = itemRows[i];
       final acquiredAtStr = row['acquired_at'] as String?;
       final acquiredAt = acquiredAtStr != null
           ? DateTime.parse(acquiredAtStr)
@@ -554,6 +559,7 @@ Future<void> hydrateFromSupabase({
         // Upsert so that server-side updates (new badges, status changes)
         // are applied to items that already exist locally.
         await itemRepo.upsertItem(instance, userId);
+        if (i % 50 == 49) await Future<void>.delayed(Duration.zero);
       } catch (e) {
         debugPrint('[GameCoordinator] failed to upsert hydrated item: $e');
       }
@@ -640,6 +646,9 @@ Future<void> hydrateFromSupabase({
       }
 
     // 5. Cell properties → SQLite (upsert globally shared cell data).
+    // Yield to the event loop every 50 rows to prevent blocking the UI.
+    // On iOS IndexedDB-backed SQLite, each upsert takes ~10-15ms — without
+    // yielding, 700 upserts would freeze the UI for 7-10 seconds.
     var cellPropsHydrated = 0;
     for (final row in cellPropertyRows) {
       try {
@@ -663,6 +672,11 @@ Future<void> hydrateFromSupabase({
           );
           await cellPropertyRepo.upsert(props);
           cellPropsHydrated++;
+
+          // Yield every 50 rows so the UI can render frames.
+          if (cellPropsHydrated % 50 == 0) {
+            await Future<void>.delayed(Duration.zero);
+          }
         }
       } catch (e) {
         // Skip invalid rows silently.
