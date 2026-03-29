@@ -42,6 +42,7 @@ class FogGeoJsonBuilder {
   static String buildBaseFog({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
   }) {
     // World exterior ring (must be counter-clockwise for GeoJSON exterior).
     // Using ±180 lon, ±85.06 lat (Web Mercator limits).
@@ -59,18 +60,25 @@ class FogGeoJsonBuilder {
         continue;
       }
 
-      final boundary = getBoundary(entry.key);
-      if (boundary.length < 3) continue;
-
       holeCount++;
-      holes.write(',[');
-      for (var i = 0; i < boundary.length; i++) {
-        if (i > 0) holes.write(',');
-        holes.write('[${boundary[i].lon},${boundary[i].lat}]');
+      if (getFragment != null) {
+        holes.write(',');
+        holes.write(getFragment(entry.key));
+      } else {
+        final boundary = getBoundary(entry.key);
+        if (boundary.length < 3) {
+          holeCount--;
+          continue;
+        }
+        holes.write(',[');
+        for (var i = 0; i < boundary.length; i++) {
+          if (i > 0) holes.write(',');
+          holes.write('[${boundary[i].lon},${boundary[i].lat}]');
+        }
+        // Close the ring (GeoJSON requires first == last).
+        holes.write(',[${boundary[0].lon},${boundary[0].lat}]');
+        holes.write(']');
       }
-      // Close the ring (GeoJSON requires first == last).
-      holes.write(',[${boundary[0].lon},${boundary[0].lat}]');
-      holes.write(']');
     }
 
     if (++_baseFogLogCounter % 100 == 1) {
@@ -98,6 +106,7 @@ class FogGeoJsonBuilder {
   static String buildMidFog({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
   }) {
     final features = StringBuffer();
     var first = true;
@@ -109,23 +118,32 @@ class FogGeoJsonBuilder {
       // Unknown and current are excluded.
       if (state == FogState.unknown || state == FogState.present) continue;
 
-      final boundary = getBoundary(entry.key);
-      if (boundary.length < 3) continue;
-
-      if (!first) features.write(',');
-      first = false;
-      featureCount++;
-
-      features.write('{"type":"Feature","geometry":{"type":"Polygon",'
-          '"coordinates":[[');
-      for (var i = 0; i < boundary.length; i++) {
-        if (i > 0) features.write(',');
-        features.write('[${boundary[i].lon},${boundary[i].lat}]');
+      if (getFragment != null) {
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[');
+        features.write(getFragment(entry.key));
+        final density = state.density;
+        features.write(']},"properties":{"density":$density}}');
+      } else {
+        final boundary = getBoundary(entry.key);
+        if (boundary.length < 3) continue;
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[[');
+        for (var i = 0; i < boundary.length; i++) {
+          if (i > 0) features.write(',');
+          features.write('[${boundary[i].lon},${boundary[i].lat}]');
+        }
+        // Close ring.
+        features.write(',[${boundary[0].lon},${boundary[0].lat}]');
+        final density = state.density;
+        features.write(']]},"properties":{"density":$density}}');
       }
-      // Close ring.
-      features.write(',[${boundary[0].lon},${boundary[0].lat}]');
-      final density = state.density;
-      features.write(']]},"properties":{"density":$density}}');
     }
 
     if (++_midFogLogCounter % 100 == 1) {
@@ -147,6 +165,7 @@ class FogGeoJsonBuilder {
     required Map<String, FogState> cellStates,
     required Map<String, double> restorationLevels,
     required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
   }) {
     final features = StringBuffer();
     var first = true;
@@ -157,20 +176,27 @@ class FogGeoJsonBuilder {
       final state = cellStates[entry.key];
       if (state != FogState.present) continue;
 
-      final boundary = getBoundary(entry.key);
-      if (boundary.length < 3) continue;
-
-      if (!first) features.write(',');
-      first = false;
-
-      features.write('{"type":"Feature","geometry":{"type":"Polygon",'
-          '"coordinates":[[');
-      for (var i = 0; i < boundary.length; i++) {
-        if (i > 0) features.write(',');
-        features.write('[${boundary[i].lon},${boundary[i].lat}]');
+      if (getFragment != null) {
+        if (!first) features.write(',');
+        first = false;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[');
+        features.write(getFragment(entry.key));
+        features.write(']},"properties":{"level":${entry.value}}}');
+      } else {
+        final boundary = getBoundary(entry.key);
+        if (boundary.length < 3) continue;
+        if (!first) features.write(',');
+        first = false;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[[');
+        for (var i = 0; i < boundary.length; i++) {
+          if (i > 0) features.write(',');
+          features.write('[${boundary[i].lon},${boundary[i].lat}]');
+        }
+        features.write(',[${boundary[0].lon},${boundary[0].lat}]');
+        features.write(']]},"properties":{"level":${entry.value}}}');
       }
-      features.write(',[${boundary[0].lon},${boundary[0].lat}]');
-      features.write(']]},"properties":{"level":${entry.value}}}');
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';
@@ -188,6 +214,7 @@ class FogGeoJsonBuilder {
   static String buildCellBorders({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
   }) {
     final features = StringBuffer();
     var first = true;
@@ -208,22 +235,30 @@ class FogGeoJsonBuilder {
           continue;
       }
 
-      final boundary = getBoundary(entry.key);
-      if (boundary.length < 3) continue;
-
-      if (!first) features.write(',');
-      first = false;
-      featureCount++;
-
-      features.write('{"type":"Feature","geometry":{"type":"Polygon",'
-          '"coordinates":[[');
-      for (var i = 0; i < boundary.length; i++) {
-        if (i > 0) features.write(',');
-        features.write('[${boundary[i].lon},${boundary[i].lat}]');
+      if (getFragment != null) {
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[');
+        features.write(getFragment(entry.key));
+        features.write(']},"properties":{"opacity":$opacity}}');
+      } else {
+        final boundary = getBoundary(entry.key);
+        if (boundary.length < 3) continue;
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
+            '"coordinates":[[');
+        for (var i = 0; i < boundary.length; i++) {
+          if (i > 0) features.write(',');
+          features.write('[${boundary[i].lon},${boundary[i].lat}]');
+        }
+        // Close ring.
+        features.write(',[${boundary[0].lon},${boundary[0].lat}]');
+        features.write(']]},"properties":{"opacity":$opacity}}');
       }
-      // Close ring.
-      features.write(',[${boundary[0].lon},${boundary[0].lat}]');
-      features.write(']]},"properties":{"opacity":$opacity}}');
     }
 
     if (++_cellBordersLogCounter % 100 == 1) {
