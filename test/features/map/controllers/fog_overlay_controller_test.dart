@@ -91,7 +91,7 @@ class MockCellService implements CellService {
 
 /// Small viewport for predictable sampling counts.
 const _viewport = Size(400, 800);
-const _zoom = 6.0; // Low zoom to cover 1° mock grid cells in viewport filter
+const _zoom = 13.0;
 
 /// San Francisco area — approximately 37–38°N, -123 to -122°E.
 const _cameraLat = 37.7;
