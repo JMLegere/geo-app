@@ -133,6 +133,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
+  bool _isClamping = false;
 
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
@@ -1148,6 +1149,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
 
     if (event is MapEventCameraIdle) {
+      if (_isClamping) return; // Prevent re-entrant clamping loop
       final boundsCtrl = ref.read(cameraBoundsProvider);
       if (!boundsCtrl.hasBounds) return;
       final camera = _mapController?.getCamera();
@@ -1159,11 +1161,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
         0.05, // ~20fps equivalent dt
       );
       if (correction != null) {
-        _mapController?.animateCamera(
+        _isClamping = true;
+        _mapController?.moveCamera(
           center: Position(correction.lon, correction.lat),
           zoom: correction.zoom,
-          nativeDuration: const Duration(milliseconds: 300),
         );
+        // Reset guard after a frame to allow future clamping
+        Future.microtask(() => _isClamping = false);
       }
     }
   }
