@@ -490,16 +490,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       if (_providerDisposed) return;
       final centroids = <Geographic>[];
 
-      // Collect all district IDs (current + adjacent from detection zone)
-      final districtIds = <String>{};
-      final currentDistrictId = detectionZoneService.currentDistrictId;
-      if (currentDistrictId != null) districtIds.add(currentDistrictId);
-
-      // Get adjacent IDs from the current district's LocationNode
-      final currentNode = await locationNodeRepo.get(currentDistrictId ?? '');
-      if (currentNode?.adjacentLocationIds != null) {
-        districtIds.addAll(currentNode!.adjacentLocationIds!);
-      }
+      // Collect all district IDs from the detection zone attribution map.
+      // cellDistrictAttribution contains {cellId: districtId} for ALL cells
+      // in the current zone (current + adjacent districts), so the unique
+      // values are exactly the set of districts we need centroids for.
+      // This replaces the previous approach of reading adjacentLocationIds
+      // from the LocationNode, which may be null.
+      final districtIds =
+          detectionZoneService.cellDistrictAttribution.values.toSet();
 
       // Compute centroid for each district from geometryJson
       for (final districtId in districtIds) {
