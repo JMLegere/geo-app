@@ -163,6 +163,11 @@ class FogOverlayController {
   /// Used for observability (state distribution counts).
   Map<String, FogState> _lastCellStates = const {};
 
+  /// Cached GeoJSON coordinate ring strings per cell. Built lazily from
+  /// getCellBoundary(). Never invalidated — Voronoi boundaries are immutable.
+  /// Eliminates ~250K double.toString() calls per fog rebuild.
+  final Map<String, String> _boundaryFragmentCache = {};
+
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
 
@@ -403,6 +408,26 @@ class FogOverlayController {
 
   int _asyncUpdateGeneration = 0;
 
+  /// Returns a cached GeoJSON coordinate ring string for the given cell.
+  /// Format: `[[-66.64,45.96],[-66.63,45.97],...,[-66.64,45.96]]`
+  /// (closed ring with first vertex repeated at end).
+  String _getFragment(String cellId) {
+    return _boundaryFragmentCache[cellId] ??= _buildFragment(cellId);
+  }
+
+  String _buildFragment(String cellId) {
+    final boundary = cellService.getCellBoundary(cellId);
+    if (boundary.length < 3) return '[]';
+    final buf = StringBuffer('[');
+    for (var i = 0; i < boundary.length; i++) {
+      if (i > 0) buf.write(',');
+      buf.write('[${boundary[i].lon},${boundary[i].lat}]');
+    }
+    buf.write(',[${boundary[0].lon},${boundary[0].lat}]');
+    buf.write(']');
+    return buf.toString();
+  }
+
   /// Builds all GeoJSON strings from the given set of visible cell IDs.
   ///
   /// Sets dirty flags for each source group that was rebuilt so that
@@ -428,16 +453,19 @@ class FogOverlayController {
     _baseFogGeoJson = FogGeoJsonBuilder.buildBaseFog(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
+      getFragment: _getFragment,
     );
 
     _midFogGeoJson = FogGeoJsonBuilder.buildMidFog(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
+      getFragment: _getFragment,
     );
 
     _cellBorderGeoJson = FogGeoJsonBuilder.buildCellBorders(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
+      getFragment: _getFragment,
     );
     _fogDirty = true;
 
