@@ -13,7 +13,7 @@ import 'package:earth_nova/shared/widgets/empty_state_widget.dart';
 import 'package:earth_nova/shared/widgets/prismatic_border.dart';
 
 /// 6-column grid of all fauna ItemInstances the player owns, organised into
-/// AnimalType subtabs: All + Mammal | Bird | Fish | Reptile | Bug.
+/// AnimalType subtabs: Mammal | Bird | Fish | Reptile | Bug.
 ///
 /// Reads from [packProvider]. Tapping a slot opens the species card modal.
 /// Shows [EmptyStateWidget] when the player has no fauna, or per-type when a
@@ -31,8 +31,8 @@ class FaunaGridTab extends ConsumerStatefulWidget {
 
 class _FaunaGridTabState extends ConsumerState<FaunaGridTab>
     with SingleTickerProviderStateMixin {
-  // 6 tabs: All + 5 AnimalType values.
-  static const int _tabCount = 1 + 5;
+  // 5 tabs: one per AnimalType.
+  static const int _tabCount = 5; // AnimalType.values.length
 
   late final TabController _subtabController;
 
@@ -49,8 +49,7 @@ class _FaunaGridTabState extends ConsumerState<FaunaGridTab>
   }
 
   /// Groups [items] into a map keyed by [AnimalType].
-  /// Items whose [taxonomicClass] maps to no known type are excluded from
-  /// per-type tabs but still appear in "All".
+  /// Items whose [taxonomicClass] maps to no known type are excluded.
   Map<AnimalType, List<ItemInstance>> _groupByType(List<ItemInstance> items) {
     final map = {for (final t in AnimalType.values) t: <ItemInstance>[]};
     for (final item in items) {
@@ -90,41 +89,18 @@ class _FaunaGridTabState extends ConsumerState<FaunaGridTab>
           color: cs.surfaceContainerLow,
           child: TabBar(
             controller: _subtabController,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
+            isScrollable: false,
             indicatorColor: cs.primary,
             labelColor: cs.primary,
             unselectedLabelColor: cs.onSurfaceVariant,
-            labelStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
+            labelStyle: const TextStyle(fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontSize: 13),
             indicatorWeight: 1.5,
             dividerColor: cs.outlineVariant.withValues(alpha: 0.4),
             padding: EdgeInsets.zero,
-            tabs: [
-              // "All" tab — total fauna count
-              Tab(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-                  child: Text('🐾 All (${items.length})'),
-                ),
-              ),
-              // One tab per AnimalType with per-type count
-              ...AnimalType.values.map(
-                (type) => Tab(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Spacing.xs),
-                    child: Text(
-                        '${type.icon} ${type.displayName} (${byType[type]!.length})'),
-                  ),
-                ),
-              ),
-            ],
+            tabs: AnimalType.values
+                .map((type) => Tab(icon: Text(type.icon), height: 36))
+                .toList(),
           ),
         ),
 
@@ -133,9 +109,6 @@ class _FaunaGridTabState extends ConsumerState<FaunaGridTab>
           child: TabBarView(
             controller: _subtabController,
             children: [
-              // All — unfiltered
-              _buildGrid(items),
-              // Per type — filtered; shows empty state when the type has 0 items
               ...AnimalType.values.map((type) {
                 final typeItems = byType[type]!;
                 if (typeItems.isEmpty) {
