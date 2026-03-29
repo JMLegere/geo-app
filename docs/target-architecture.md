@@ -75,6 +75,40 @@ These are constraints, not guidelines. The architecture must satisfy them.
 | species_definitions | Static | Pre-compiled, read-only |
 | write_queue | Transient | Deleted after server confirms |
 
+### Rendering Principles — The GBA Rule
+
+> If GameFreak could run Pokemon Fire Red at 60fps on a 16MHz Game Boy Advance
+> with 256KB RAM, we can run EarthNova at 60fps on a 2GHz mobile browser with
+> gigabytes of RAM. When we can't, the problem is wasted work, not the platform.
+
+The GBA achieved 60fps by never doing work that doesn't change the screen this
+frame. No off-screen precomputation, no speculative caching, no background
+widget reconciliation. If a sprite isn't on screen, it doesn't exist in memory.
+If a tile hasn't changed, it isn't redrawn.
+
+**Core constraint: never do work that doesn't change a pixel visible to the user
+this frame.** Every violation costs frame budget on mobile web, where CanvasKit +
+WebKit already consume ~4ms of baseline overhead.
+
+#### 5 Rules
+
+| # | Rule | Violation | Fix |
+|---|------|-----------|-----|
+| 1 | **Only compute fog for visible cells** | Rebuilding GeoJSON for 6000+ cells when ~30 are on screen | Viewport-scoped fog: build GeoJSON only for cells in the current viewport, not the entire discovered set |
+| 2 | **Only build the active tab** | `IndexedStack` keeps all 4 tab widget trees alive simultaneously | Lazy tab construction: build on select, dispose on deselect. The Pokedex doesn't exist in memory while you're walking around. |
+| 3 | **Resolve eagerly, render lazily** | Detection zone resolves 6000+ cells synchronously in one frame, blocking UI | Resolve the full district in batched chunks (yield every 50). Render only the viewport subset. Game logic needs spatial awareness of the full zone; the GPU only needs to draw what's on screen. |
+| 4 | **Only animate what's visible** | `PrismaticAnimationScope` ticks every frame even when Pack tab is hidden | Gate animations on tab visibility. If the user can't see it, don't compute it. |
+| 5 | **Only allocate strings when state changes** | Fog GeoJSON rebuilt as new String objects every 500ms even when no cells changed | Cache GeoJSON strings. Only rebuild when the visible cell set or fog states actually change. MapLibre v0.1.2 only supports full source replacement — so minimize rebuild frequency, not granularity. |
+
+#### Implementation Phases
+
+| Phase | Change | Waste eliminated | Effort |
+|-------|--------|-----------------|--------|
+| A | Lazy tabs — replace `IndexedStack` with builder that constructs/disposes on tab switch | 3 invisible tab widget trees + animation controllers ticking | S |
+| B | Viewport-scoped fog — `_buildGeoJson()` filters to cells in camera viewport | GeoJSON for 6000 cells when 30 are visible | M |
+| C | Pre-decoded image atlas — decode species icons during hydration, not on scroll | Image load/decode/dispose churn (28 loads + 27 disposes per minute) | L |
+| D | Visibility-gated animation — stop `PrismaticAnimationScope` controller when Pack tab not active | AnimationController ticking 60fps for invisible tab | S |
+
 ---
 
 ## System Diagram
