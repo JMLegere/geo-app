@@ -89,11 +89,12 @@ class FogOverlayController {
     }
     if (added > 0 || cellProperties.length != _cellPropertiesCache.length) {
       _cellPropertiesCache = cellProperties;
-      try {
-        _buildGeoJson(_discoveredCellIds);
-      } catch (e) {
-        debugPrint('[FOG] _buildGeoJson failed after zone add: $e');
-      }
+      // Do NOT call _buildGeoJson() here — it would process all 6000+
+      // discovered cells synchronously, causing a 114ms+ JANK frame that
+      // triggers iOS page kills. Instead, reset the dirty tracking so the
+      // next throttled update() call rebuilds with the viewport filter.
+      _lastBuildCellCount = 0; // Force needsRebuild=true on next update()
+      _fogDirty = true;
       try {
         _rebuildTerritoryBorders();
       } catch (e) {
