@@ -404,13 +404,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
     if (_providerDisposed) return;
+
+    // ── Phase 1: In-memory resolution (synchronous, <50ms) ──
+    // Resolve cell properties + stamp locationId into the in-memory cache
+    // WITHOUT persisting to SQLite. This gives the fog overlay everything
+    // it needs to render the detection zone immediately.
+
     fogResolver.setDetectionZone(zoneCellIds);
 
-    // 1. Pre-resolve cell properties for zone cells not yet in cache.
-    //    CellPropertyResolver.resolve() is synchronous — safe to call here.
+    // 1a. Pre-resolve cell properties into memory cache (no persist).
     final resolver = ref.read(cellPropertyResolverProvider);
+    final cellsToPersist = <CellProperties>[];
     if (resolver != null) {
-      var resolved = 0;
       for (final cellId in zoneCellIds) {
         if (coordinator.cellPropertiesCache.containsKey(cellId)) continue;
         final center = cellService.getCellCenter(cellId);
@@ -420,26 +425,17 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           lon: center.lon,
         );
         coordinator.loadCellProperties({cellId: props});
-        // Persist + enqueue
-        persistCellProperties(
-          properties: props,
-          cellPropertyRepo: cellPropertyRepo,
-          queueProcessor: queueProcessor,
-          userId: ref.read(authProvider).user?.id,
-          obs: obs,
-        );
-        resolved++;
+        cellsToPersist.add(props);
       }
-      if (resolved > 0) {
-        debugPrint('[DetectionZone] pre-resolved $resolved cell properties '
-            'for ${zoneCellIds.length} zone cells');
+      if (cellsToPersist.isNotEmpty) {
+        debugPrint('[DetectionZone] pre-resolved ${cellsToPersist.length} '
+            'cell properties into memory');
       }
     }
 
-    // 2. Stamp locationId from geometry ray-casting attribution.
-    //    This is authoritative — geometry proves which district each cell belongs to.
+    // 1b. Stamp locationId into memory cache (no persist).
     final attribution = detectionZoneService.cellDistrictAttribution;
-    var locationIdStamped = 0;
+    final locationIdUpdates = <CellProperties>[];
     for (final entry in attribution.entries) {
       final cellId = entry.key;
       final districtId = entry.value;
@@ -449,25 +445,21 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
       props = props.copyWith(locationId: districtId);
       coordinator.loadCellProperties({cellId: props});
-
-      // Persist to SQLite + enqueue for Supabase sync.
-      persistCellProperties(
-        properties: props,
-        cellPropertyRepo: cellPropertyRepo,
-        queueProcessor: queueProcessor,
-        userId: ref.read(authProvider).user?.id,
-        obs: obs,
-      );
-      locationIdStamped++;
+      locationIdUpdates.add(props);
     }
-    if (locationIdStamped > 0) {
-      debugPrint(
-        '[DetectionZone] stamped locationId on $locationIdStamped cells '
-        'from geometry attribution',
-      );
+    if (locationIdUpdates.isNotEmpty) {
+      debugPrint('[DetectionZone] stamped locationId on '
+          '${locationIdUpdates.length} cells in memory');
     }
 
-    // 3. Warm species cache for all unique combos in the new zone.
+    // 1c. Feed fog overlay with fully-populated cache — triggers dirty flag
+    // so the next 2Hz fog tick renders all zone cells.
+    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(
+          zoneCellIds,
+          coordinator.cellPropertiesCache,
+        );
+
+    // 1d. Warm species cache (fire-and-forget, no await needed).
     final speciesCache = ref.read(speciesCacheProvider);
     if (!speciesCache.isEmpty) {
       final seen = <String>{};
@@ -482,18 +474,39 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       }
     }
 
-    // 4. LAST: feed zone cells + fully-populated cell properties into the fog
-    //    overlay controller. Must run AFTER pre-resolve + stamp so the cache
-    //    has locationId for all zone cells (needed for territory borders).
-    ref.read(fogOverlayControllerProvider).addDetectionZoneCells(
-          zoneCellIds,
-          coordinator.cellPropertiesCache,
-        );
-
     debugPrint(
       '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
       'district=${detectionZoneService.currentDistrictId}',
     );
+
+    // ── Phase 2: Deferred persistence (batched microtask, ~75ms/batch) ──
+    // Persist to SQLite + enqueue for Supabase in batches of 5 with yields
+    // between batches. Each SQLite write takes 10-15ms on iOS IndexedDB,
+    // so batches of 5 = ~75ms per batch — under the JANK threshold.
+    final allToPersist = [...cellsToPersist, ...locationIdUpdates];
+    if (allToPersist.isNotEmpty) {
+      final userId = ref.read(authProvider).user?.id;
+      Future.microtask(() async {
+        var persisted = 0;
+        for (var i = 0; i < allToPersist.length; i++) {
+          if (_providerDisposed) return;
+          await persistCellProperties(
+            properties: allToPersist[i],
+            cellPropertyRepo: cellPropertyRepo,
+            queueProcessor: queueProcessor,
+            userId: userId,
+            obs: obs,
+          );
+          persisted++;
+          // Yield every 5 writes so the UI can render frames.
+          if (persisted % 5 == 0) {
+            await Future<void>.delayed(Duration.zero);
+          }
+        }
+        debugPrint('[DetectionZone] persisted $persisted cell properties '
+            '(batched, ${allToPersist.length} total)');
+      });
+    }
   });
 
   final engineOnCellProps = coordinator.onCellPropertiesResolved;
