@@ -13,9 +13,9 @@ enum FogState {
   /// Player has never been near this cell.
   unknown(1.0),
 
-  /// Fog density: 0.97 (nearly opaque — territory borders visible)
+  /// Fog density: 0.85 (district structure visible through fog)
   /// Within detection zone or on exploration frontier, never visited.
-  detected(0.97),
+  detected(0.85),
 
   /// Fog density: 0.95
   /// Adjacent to current cell — barely visible through thick fog.
