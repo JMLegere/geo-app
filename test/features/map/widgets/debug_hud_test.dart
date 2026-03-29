@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
 
@@ -15,7 +14,6 @@ void main() {
               mapState: MapState(isReady: true, zoom: 15.0),
               visibleCells: 0,
               visitedCells: 0,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),
@@ -38,7 +36,6 @@ void main() {
               mapState: mapState,
               visibleCells: 42,
               visitedCells: 10,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),
@@ -57,7 +54,6 @@ void main() {
               mapState: MapState(isReady: true, zoom: 14.5),
               visibleCells: 0,
               visitedCells: 0,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),
@@ -65,7 +61,7 @@ void main() {
       expect(find.textContaining('14.5'), findsOneWidget);
     });
 
-    testWidgets('shows following camera mode', (tester) async {
+    testWidgets('shows free camera mode', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -73,23 +69,6 @@ void main() {
               mapState: MapState(isReady: true, zoom: 15.0),
               visibleCells: 0,
               visitedCells: 0,
-              cameraMode: CameraMode.following,
-            ),
-          ),
-        ),
-      );
-      expect(find.textContaining('following'), findsOneWidget);
-    });
-
-    testWidgets('shows free camera mode', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: DebugHud(
-              mapState: MapState(isReady: false, zoom: 15.0),
-              visibleCells: 0,
-              visitedCells: 0,
-              cameraMode: CameraMode.free,
             ),
           ),
         ),
@@ -105,7 +84,6 @@ void main() {
               mapState: MapState(isReady: true, zoom: 15.0),
               visibleCells: 37,
               visitedCells: 13,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),
@@ -122,7 +100,6 @@ void main() {
               mapState: MapState(isReady: false, zoom: 15.0),
               visibleCells: 0,
               visitedCells: 0,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),
@@ -139,7 +116,6 @@ void main() {
               mapState: MapState(isReady: true, zoom: 15.0),
               visibleCells: 0,
               visitedCells: 0,
-              cameraMode: CameraMode.following,
             ),
           ),
         ),

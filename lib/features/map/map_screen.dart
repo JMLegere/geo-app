@@ -27,8 +27,7 @@ import 'package:earth_nova/features/discovery/widgets/discovery_notification.dar
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
 import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
-import 'package:earth_nova/features/map/providers/camera_controller_provider.dart';
-import 'package:earth_nova/features/map/providers/camera_mode_provider.dart';
+import 'package:earth_nova/features/map/providers/camera_bounds_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
@@ -852,11 +851,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // 1. Update marker position via ValueNotifier (60 fps smooth, no full rebuild).
     _markerPosition.value = (lat: lat, lon: lon);
 
-    // 2. Move camera to the interpolated position (instant snap).
-    final cameraController = ref.read(cameraControllerProvider);
-    cameraController.onLocationUpdate(lat, lon);
-
-    // 3. Feed player position to engine via EngineRunner (60 fps — coordinator
+    // 2. Feed player position to engine via EngineRunner (60 fps — coordinator
     //    throttles internally to ~10 Hz for game logic).
     _engineRunner.send(PositionUpdate(lat, lon, 0));
 
@@ -980,32 +975,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _onMapCreated(MapController controller) {
     MapLogger.mapCreated();
     _mapController = controller;
-    final cameraController = ref.read(cameraControllerProvider);
 
-    cameraController.onCameraMove = (lat, lon) {
-      // Position(lng, lat) — longitude first!
-      // Use moveCamera (jumpTo on web) instead of animateCamera (flyTo).
-      // The rubber-band controller calls this at 60 fps — animateCamera
-      // starts a new flyTo animation each frame which causes cascading
-      // errors in MapLibre's web runtime. moveCamera is an instant jump
-      // with no animation overhead, perfect for high-frequency updates.
-      //
-      // CRITICAL: Always pass zoom explicitly. When zoom is null in the
-      // Dart→JS interop, MapLibre GL JS may receive `zoom: null` (not
-      // `undefined`), which can reset zoom to a default. We read the
-      // map's ACTUAL current zoom and pass it back — this prevents both
-      // the null→blowout AND jitter from forcing a hardcoded value.
+    // Move camera to restored player position on map creation.
+    // Camera is free-pan after this — no follow mode.
+    final loc = ref.read(locationProvider);
+    if (loc.currentPosition != null) {
       try {
-        final actualZoom = controller.getCamera().zoom;
-        MapLogger.cameraMove(lat, lon, zoom: actualZoom);
         controller.moveCamera(
-          center: Position(lon, lat),
-          zoom: actualZoom,
+          center: Position(loc.currentPosition!.lon, loc.currentPosition!.lat),
+          zoom: 14,
         );
-      } catch (e, stack) {
-        MapLogger.cameraMoveError(lat, lon, e, stack);
+      } catch (e) {
+        debugPrint('[MAP] initial camera move failed: $e');
       }
-    };
+    }
   }
 
   void _onStyleLoaded() {
@@ -1163,6 +1146,26 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final cellId = cellService.getCellId(lat, lon);
       _onCellTapped(cellId);
     }
+
+    if (event is MapEventCameraIdle) {
+      final boundsCtrl = ref.read(cameraBoundsProvider);
+      if (!boundsCtrl.hasBounds) return;
+      final camera = _mapController?.getCamera();
+      if (camera == null) return;
+      final correction = boundsCtrl.clamp(
+        camera.center.lat.toDouble(),
+        camera.center.lng.toDouble(),
+        camera.zoom,
+        0.05, // ~20fps equivalent dt
+      );
+      if (correction != null) {
+        _mapController?.animateCamera(
+          center: Position(correction.lon, correction.lat),
+          zoom: correction.zoom,
+          nativeDuration: const Duration(milliseconds: 300),
+        );
+      }
+    }
   }
 
   /// Called when the user long-presses the map and a cell ID has been resolved.
@@ -1199,7 +1202,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // The DebugHud receives mapState as a parameter; no widget needs
     // reactive zoom tracking.
     final mapState = ref.read(mapStateProvider);
-    final cameraMode = ref.watch(cameraModeProvider);
     final fogOverlayController = ref.read(fogOverlayControllerProvider);
     final fogResolver = ref.read(fogResolverProvider);
 
@@ -1401,7 +1403,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   mapState: mapState,
                   visibleCells: fogOverlayController.visibleCellCount,
                   visitedCells: fogResolver.visitedCellIds.length,
-                  cameraMode: cameraMode,
                 ),
               ),
 
@@ -1434,14 +1435,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 isWorldZoom: _zoomLevel == ZoomLevel.world,
                 onRecenter: () {
                   final loc = ref.read(locationProvider);
-                  final cameraController = ref.read(cameraControllerProvider);
-                  if (loc.currentPosition != null) {
-                    cameraController.recenter(
-                      loc.currentPosition!.lat,
-                      loc.currentPosition!.lon,
+                  if (loc.currentPosition != null && _mapController != null) {
+                    _mapController!.animateCamera(
+                      center: Position(
+                        loc.currentPosition!.lon,
+                        loc.currentPosition!.lat,
+                      ),
+                      zoom: 14,
+                      nativeDuration: const Duration(milliseconds: 500),
                     );
                   }
-                  ref.read(cameraModeProvider.notifier).setFollowing();
                 },
                 onToggleZoom: () {
                   setState(() {
