@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -11,7 +10,6 @@ import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
-import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
@@ -40,7 +38,13 @@ class FogOverlayController {
   /// Fog state computer.
   final FogStateResolver fogResolver;
 
-  /// Sampling step in logical pixels. Lower = more samples, more CPU.
+  /// Sampling step in logical pixels.
+  ///
+  /// @deprecated Viewport sampling has been removed. This field is retained
+  /// for API compatibility with existing tests but has no effect.
+  // ignore: deprecated_member_use_from_same_package
+  @Deprecated('Viewport sampling removed — addDetectionZoneCells() is the '
+      'canonical way to populate discovered cells.')
   final double sampleStepPx;
 
   int _renderVersion = 0;
@@ -289,9 +293,11 @@ class FogOverlayController {
   /// Updates the daily seed used for event resolution.
   set dailySeed(String seed) => _dailySeed = seed;
 
+  // ignore: deprecated_member_use_from_same_package
   FogOverlayController({
     required this.cellService,
     required this.fogResolver,
+    @Deprecated('Viewport sampling removed — has no effect.')
     this.sampleStepPx = 25.0,
   });
 
@@ -308,22 +314,10 @@ class FogOverlayController {
   }) {
     final sw = Stopwatch()..start();
 
-    final visibleCellIds = _findVisibleCells(
-      cameraLat: cameraLat,
-      cameraLon: cameraLon,
-      zoom: zoom,
-      viewportSize: viewportSize,
-    );
-
-    // Accumulate — never remove cells from the discovered set.
-    // This prevents flickering caused by viewport sampling aliasing.
-    // Fire onCellBecameVisible for each cell added for the first time.
-    for (final cellId in visibleCellIds) {
-      if (_discoveredCellIds.add(cellId)) {
-        final center = cellService.getCellCenter(cellId);
-        onCellBecameVisible?.call(cellId, center.lat, center.lon);
-      }
-    }
+    // No viewport sampling — _discoveredCellIds is populated exclusively
+    // by addDetectionZoneCells(). The detection zone provides the canonical
+    // cell set; viewport sampling was removed because it caused unbounded
+    // cell growth (13K+ cells from wrong camera position).
 
     // Skip expensive GeoJSON rebuild if nothing changed: no new cells
     // discovered and no new cells visited (fog state transitions).
@@ -362,8 +356,10 @@ class FogOverlayController {
 
   /// Non-blocking version of [update] for initial map load.
   ///
-  /// Processes visible cells in batches, yielding to the event loop between
-  /// each chunk. The [onBatchReady] callback fires after each batch.
+  /// Builds GeoJSON from all discovered cells (populated by
+  /// [addDetectionZoneCells] during the loading screen). Viewport sampling
+  /// has been removed — cell discovery is driven exclusively by the detection
+  /// zone.
   Future<int> updateAsync({
     required double cameraLat,
     required double cameraLon,
@@ -372,47 +368,14 @@ class FogOverlayController {
     void Function()? onBatchReady,
     int chunkSize = 20,
   }) async {
-    _asyncUpdateGeneration++;
-    final myGeneration = _asyncUpdateGeneration;
+    // Build GeoJSON from all discovered cells (populated by
+    // addDetectionZoneCells during loading screen).
+    _buildGeoJson(_discoveredCellIds);
+    _renderVersion++;
+    onBatchReady?.call();
 
-    final visibleCellIds = _findVisibleCells(
-      cameraLat: cameraLat,
-      cameraLon: cameraLon,
-      zoom: zoom,
-      viewportSize: viewportSize,
-    ).toList();
-
-    var addedCount = 0;
-
-    for (var i = 0; i < visibleCellIds.length; i += chunkSize) {
-      if (_asyncUpdateGeneration != myGeneration) return addedCount;
-
-      final end = min(i + chunkSize, visibleCellIds.length);
-      final chunk = visibleCellIds.sublist(i, end);
-      // Accumulate into the persistent set — never remove.
-      // Fire onCellBecameVisible for each cell added for the first time.
-      for (final cellId in chunk) {
-        if (_discoveredCellIds.add(cellId)) {
-          addedCount++;
-          final center = cellService.getCellCenter(cellId);
-          onCellBecameVisible?.call(cellId, center.lat, center.lon);
-        }
-      }
-
-      // Build GeoJSON from all discovered cells so far.
-      _buildGeoJson(_discoveredCellIds);
-      _renderVersion++;
-      onBatchReady?.call();
-
-      if (end < visibleCellIds.length) {
-        await Future<void>.delayed(Duration.zero);
-      }
-    }
-
-    return addedCount;
+    return _discoveredCellIds.length;
   }
-
-  int _asyncUpdateGeneration = 0;
 
   /// Returns a cached GeoJSON coordinate ring string for the given cell.
   /// Format: `[[-66.64,45.96],[-66.63,45.97],...,[-66.64,45.96]]`
@@ -536,43 +499,5 @@ class FogOverlayController {
           TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
     }
     _borderDirty = true;
-  }
-
-  /// Discovers cell IDs visible in the current viewport via grid sampling.
-  Set<String> _findVisibleCells({
-    required double cameraLat,
-    required double cameraLon,
-    required double zoom,
-    required Size viewportSize,
-  }) {
-    final padX = viewportSize.width * 0.2;
-    final padY = viewportSize.height * 0.2;
-
-    final sampled = <String>{};
-
-    var y = -padY;
-    while (y <= viewportSize.height + padY) {
-      var x = -padX;
-      while (x <= viewportSize.width + padX) {
-        final geo = MercatorProjection.screenToGeo(
-          screenPoint: Offset(x, y),
-          cameraLat: cameraLat,
-          cameraLon: cameraLon,
-          zoom: zoom,
-          viewportSize: viewportSize,
-        );
-        final cellId = cellService.getCellId(geo.lat, geo.lon);
-        sampled.add(cellId);
-        x += sampleStepPx;
-      }
-      y += sampleStepPx;
-    }
-
-    final expanded = <String>{...sampled};
-    for (final cellId in sampled) {
-      expanded.addAll(cellService.getNeighborIds(cellId));
-    }
-
-    return expanded;
   }
 }
