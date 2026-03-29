@@ -200,6 +200,10 @@ class FogGeoJsonBuilder {
           opacity = 0.4;
         case FogState.nearby:
           opacity = 0.25;
+        case FogState.unknown:
+          // Detection zone cells that haven't been explored yet.
+          // Subtle border so the district grid is visible under fog.
+          opacity = 0.1;
         default:
           continue;
       }

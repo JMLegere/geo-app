@@ -413,12 +413,15 @@ class FogOverlayController {
     final cellStates = <String, FogState>{};
     for (final cellId in cellIds) {
       final state = fogResolver.resolve(cellId);
-      if (state == FogState.unknown) continue;
+      // Include ALL cells — even unknown. Detection zone cells need borders
+      // and territory rendering even when not yet explored.
       cellStates[cellId] = state;
     }
 
-    // Cache visible cell IDs for territory border rebuilds.
-    _lastVisibleCellIds = cellStates.keys.toSet();
+    // Cache ALL discovered cell IDs for territory border rebuilds — not just
+    // cells with non-unknown fog state. Detection zone cells need borders
+    // even when they haven't been explored yet.
+    _lastVisibleCellIds = cellIds is Set<String> ? cellIds : cellIds.toSet();
     _lastCellStates = cellStates;
 
     // Fog layers (base + mid + border outlines).
