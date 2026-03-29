@@ -91,6 +91,10 @@ class FogOverlayController {
       // next throttled update() call rebuilds with the viewport filter.
       _lastBuildCellCount = 0; // Force needsRebuild=true on next update()
       _fogDirty = true;
+      // Update _lastVisibleCellIds to include zone cells BEFORE rebuilding
+      // territory borders. Without this, the border builder only sees the
+      // ~240 viewport cells from the previous _buildGeoJson() call.
+      _lastVisibleCellIds = Set<String>.from(_discoveredCellIds);
       try {
         _rebuildTerritoryBorders();
       } catch (e) {
