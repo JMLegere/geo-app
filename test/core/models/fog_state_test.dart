@@ -13,7 +13,7 @@ void main() {
 
     test('density mapping is correct', () {
       expect(FogState.unknown.density, equals(1.0));
-      expect(FogState.detected.density, equals(0.97));
+      expect(FogState.detected.density, equals(0.85));
       expect(FogState.nearby.density, equals(0.95));
       expect(FogState.explored.density, equals(0.5));
       expect(FogState.present.density, equals(0.0));
@@ -37,14 +37,15 @@ void main() {
       expect(FogState.nearby.isVisited, isFalse);
     });
 
-    test('density ordering is non-increasing with state index', () {
-      // Higher index states have equal or lower (more transparent) fog density.
-      for (var i = 0; i < FogState.values.length - 1; i++) {
+    test('all densities are within valid [0.0, 1.0] range', () {
+      // Note: enum declaration order does NOT match fog density order.
+      // detected (0.85) is intentionally MORE visible than nearby (0.95) —
+      // detected cells show district shape clearly under lighter fog.
+      for (final state in FogState.values) {
         expect(
-          FogState.values[i].density,
-          greaterThanOrEqualTo(FogState.values[i + 1].density),
-          reason: '${FogState.values[i].name} should have >= density than '
-              '${FogState.values[i + 1].name}',
+          state.density,
+          inInclusiveRange(0.0, 1.0),
+          reason: '${state.name}.density must be in [0.0, 1.0]',
         );
       }
     });

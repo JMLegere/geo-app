@@ -280,7 +280,7 @@ void main() {
       expect(_features(result), isEmpty);
     });
 
-    test('includes detected cells at their own density 0.97', () {
+    test('includes detected cells at their own density 0.85', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
@@ -290,7 +290,7 @@ void main() {
       expect(features.length, equals(1));
 
       final props = features[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.97),
+      expect(props['density'], equals(0.85),
           reason: 'Detected cells render at their own density');
     });
 
@@ -333,7 +333,7 @@ void main() {
 
       final props = features[0]['properties'] as Map<String, dynamic>;
       expect(props['density'], equals(FogState.detected.density),
-          reason: 'Detected cells render at 0.97 density');
+          reason: 'Detected cells render at 0.85 density');
     });
 
     test('detected cell: base-fog has hole, mid-fog has polygon', () {
@@ -357,7 +357,7 @@ void main() {
           reason: 'Unexplored cell is pre-rendered in mid fog');
 
       final props = midFeatures[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.97),
+      expect(props['density'], equals(0.85),
           reason: 'Detected cells render at their own density');
     });
 
