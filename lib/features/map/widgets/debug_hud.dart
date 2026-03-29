@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 
 /// Toggle-able debug overlay for the map screen.
@@ -26,7 +25,6 @@ import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 ///       mapState: ref.watch(mapStateProvider),
 ///       visibleCells: _fogOverlayController.renderData.length,
 ///       visitedCells: _fogResolver.visitedCellIds.length,
-///       cameraMode: ref.watch(cameraModeProvider),
 ///     ),
 ///   )
 /// ```
@@ -40,15 +38,11 @@ class DebugHud extends StatelessWidget {
   /// Number of cells the player has physically visited.
   final int visitedCells;
 
-  /// Current camera follow/free mode.
-  final CameraMode cameraMode;
-
   const DebugHud({
     super.key,
     required this.mapState,
     required this.visibleCells,
     required this.visitedCells,
-    required this.cameraMode,
   });
 
   @override
@@ -84,7 +78,7 @@ class DebugHud extends StatelessWidget {
           children: [
             Text('cam: ($lat, $lon)'),
             Text('zoom: $zoom'),
-            Text('mode: ${cameraMode.name}'),
+            const Text('mode: free'),
             Text('visible: $visibleCells cells'),
             Text('visited: $visitedCells cells'),
             Text('map: $ready'),
