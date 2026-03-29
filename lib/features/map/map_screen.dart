@@ -995,17 +995,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapLogger.mapCreated();
     _mapController = controller;
 
-    // Move camera to restored player position on map creation.
-    // Camera is free-pan after this — no follow mode.
-    final loc = ref.read(locationProvider);
-    if (loc.currentPosition != null) {
+    // Position camera at detection zone center (computed during loading screen).
+    // Fall back to player location if zone bounds aren't set yet (timeout case).
+    final boundsCtrl = ref.read(cameraBoundsProvider);
+    if (boundsCtrl.hasBounds) {
       try {
-        controller.moveCamera(
-          center: Position(loc.currentPosition!.lon, loc.currentPosition!.lat),
-          zoom: 14,
+        controller.fitBounds(
+          bounds: boundsCtrl.bounds!,
+          padding: const EdgeInsets.all(20),
         );
       } catch (e) {
-        debugPrint('[MAP] initial camera move failed: $e');
+        debugPrint('[MAP] initial fitBounds failed: $e');
+      }
+    } else {
+      final loc = ref.read(locationProvider);
+      if (loc.currentPosition != null) {
+        try {
+          controller.moveCamera(
+            center:
+                Position(loc.currentPosition!.lon, loc.currentPosition!.lat),
+            zoom: 14,
+          );
+        } catch (e) {
+          debugPrint('[MAP] initial camera move failed: $e');
+        }
       }
     }
   }

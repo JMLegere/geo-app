@@ -15,6 +15,7 @@ import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/features/sync/services/observable_http_client.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/screens/loading_screen.dart';
@@ -267,11 +268,43 @@ void _setupPerfMonitoring(ProviderContainer container) {
 /// Wrapped in [AnimatedSwitcher] for smooth 300ms cross-fades between states.
 /// otpSent and otpVerifying share the same [ValueKey] so the OTP screen does
 /// not rebuild (and lose input state) when verification starts.
-class EarthNovaApp extends ConsumerWidget {
+class EarthNovaApp extends ConsumerStatefulWidget {
   const EarthNovaApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EarthNovaApp> createState() => _EarthNovaAppState();
+}
+
+class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
+  Timer? _zoneReadyTimeoutTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Zone resolution timeout — if the detection zone hasn't resolved
+    // after 15 seconds, dismiss the loading screen with whatever data
+    // is available. This prevents infinite loading on cold start with
+    // no network, or when Nominatim is slow.
+    _zoneReadyTimeoutTimer = Timer(const Duration(seconds: 15), () {
+      if (!mounted) return;
+      if (!ref.read(zoneReadyProvider)) {
+        debugPrint(
+            '[TIMEOUT] zone not ready after 15s — dismissing loading screen');
+        ObservabilityBuffer.instance?.event('zone_ready_timeout', {});
+        ref.read(zoneReadyProvider.notifier).markReady();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _zoneReadyTimeoutTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Eagerly create GameCoordinator so hydration starts immediately on auth.
     // Without this, the provider is only accessed by MapScreen (inside TabShell),
     // which is gated behind isHydrated — causing a deadlock.
@@ -279,6 +312,7 @@ class EarthNovaApp extends ConsumerWidget {
 
     final authState = ref.watch(authProvider);
     final playerState = ref.watch(playerProvider);
+    final isZoneReady = ref.watch(zoneReadyProvider);
 
     return MaterialApp(
       title: 'EarthNova',
@@ -287,12 +321,13 @@ class EarthNovaApp extends ConsumerWidget {
       themeMode: ThemeMode.dark,
       home: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
-        child: _resolveHome(authState, playerState),
+        child: _resolveHome(authState, playerState, isZoneReady),
       ),
     );
   }
 
-  Widget _resolveHome(AuthState authState, PlayerState playerState) {
+  Widget _resolveHome(
+      AuthState authState, PlayerState playerState, bool isZoneReady) {
     final widget = switch (authState.status) {
       AuthStatus.loading => const LoadingScreen(
           key: ValueKey('loading'),
@@ -301,9 +336,10 @@ class EarthNovaApp extends ConsumerWidget {
           key: const ValueKey('otp'),
           phone: authState.phone!,
         ),
-      // Wait for profile hydration before routing — prevents flashing
-      // OnboardingScreen while loadProfile() hasn't run yet.
-      AuthStatus.authenticated when !playerState.isHydrated =>
+      // Wait for profile hydration AND zone resolution before routing —
+      // prevents flashing OnboardingScreen while loadProfile() hasn't run
+      // yet, and ensures the map opens in steady state (detection zone ready).
+      AuthStatus.authenticated when !playerState.isHydrated || !isZoneReady =>
         const LoadingScreen(key: ValueKey('loading')),
       AuthStatus.authenticated => playerState.hasCompletedOnboarding
           ? const TabShell(key: ValueKey('tabshell'))
@@ -316,7 +352,7 @@ class EarthNovaApp extends ConsumerWidget {
     final pageName = switch (authState.status) {
       AuthStatus.loading => 'LoadingScreen',
       AuthStatus.otpSent || AuthStatus.otpVerifying => 'OtpVerificationScreen',
-      AuthStatus.authenticated when !playerState.isHydrated =>
+      AuthStatus.authenticated when !playerState.isHydrated || !isZoneReady =>
         'LoadingScreen (hydrating)',
       AuthStatus.authenticated =>
         playerState.hasCompletedOnboarding ? 'TabShell' : 'OnboardingScreen',

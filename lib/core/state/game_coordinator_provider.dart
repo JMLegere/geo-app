@@ -28,6 +28,7 @@ import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
 import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
+import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/features/map/providers/camera_bounds_provider.dart';
@@ -481,6 +482,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       '[DetectionZone] zone updated: ${zoneCellIds.length} cells, '
       'district=${detectionZoneService.currentDistrictId}',
     );
+
+    // Signal that the detection zone is ready — dismisses loading screen.
+    if (zoneCellIds.isNotEmpty && !ref.read(zoneReadyProvider)) {
+      ref.read(zoneReadyProvider.notifier).markReady();
+      debugPrint('[GameCoordinator] zone ready — loading screen will dismiss');
+      ObservabilityBuffer.instance?.event('zone_ready', {
+        'cell_count': zoneCellIds.length,
+        'district': detectionZoneService.currentDistrictId,
+      });
+    }
 
     // 1e. Update camera bounds from district centroids.
     //     Compute centroids from current + adjacent district LocationNodes.

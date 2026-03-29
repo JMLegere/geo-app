@@ -242,6 +242,14 @@ void main() {
         sampleStepPx: 80.0,
       );
 
+      // Populate discovered cells via detection zone (viewport sampling removed).
+      final currentCellId = cellService.getCellId(_cameraLat, _cameraLon);
+      final zoneCells = {
+        currentCellId,
+        ...cellService.getNeighborIds(currentCellId),
+      };
+      controller.addDetectionZoneCells(zoneCells, const {});
+
       controller.update(
         cameraLat: _cameraLat,
         cameraLon: _cameraLon,
@@ -270,6 +278,14 @@ void main() {
         fogResolver: fogResolver,
         sampleStepPx: 80.0,
       );
+
+      // Populate discovered cells via detection zone (viewport sampling removed).
+      final currentCellId = cellService.getCellId(_cameraLat, _cameraLon);
+      final zoneCells = {
+        currentCellId,
+        ...cellService.getNeighborIds(currentCellId),
+      };
+      controller.addDetectionZoneCells(zoneCells, const {});
 
       controller.update(
         cameraLat: _cameraLat,
@@ -327,6 +343,14 @@ void main() {
         fogResolver: fogResolver,
         sampleStepPx: 80.0,
       );
+
+      // Populate discovered cells via detection zone (viewport sampling removed).
+      final currentCellId = cellService.getCellId(_cameraLat, _cameraLon);
+      final zoneCells = {
+        currentCellId,
+        ...cellService.getNeighborIds(currentCellId),
+      };
+      controller.addDetectionZoneCells(zoneCells, const {});
 
       controller.update(
         cameraLat: _cameraLat,
