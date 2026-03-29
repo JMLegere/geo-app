@@ -62,6 +62,10 @@ class FogOverlayController {
   /// Visited set size at time of last GeoJSON build.
   int _lastBuildVisitedCount = 0;
 
+  /// Camera position at time of last GeoJSON build.
+  double _lastBuildLat = 0;
+  double _lastBuildLon = 0;
+
   /// Callback fired the first time a cell is added to [_discoveredCellIds].
   ///
   /// Provides the cell ID and the geographic center of the cell so the caller
@@ -314,15 +318,27 @@ class FogOverlayController {
     }
 
     // Skip expensive GeoJSON rebuild if nothing changed: no new cells
-    // discovered and no new cells visited (fog state transitions).
+    // discovered, no new cells visited (fog state transitions), and camera
+    // hasn't moved significantly (viewport-filtered rebuild).
     final currentVisitedCount = fogResolver.visitedCellIds.length;
+    final cameraMoved = (cameraLat - _lastBuildLat).abs() > 0.001 ||
+        (cameraLon - _lastBuildLon).abs() > 0.001;
     final needsRebuild = _discoveredCellIds.length != _lastBuildCellCount ||
-        currentVisitedCount != _lastBuildVisitedCount;
+        currentVisitedCount != _lastBuildVisitedCount ||
+        cameraMoved;
 
     if (needsRebuild) {
-      _buildGeoJson(_discoveredCellIds);
+      final viewportCells = _filterToViewport(
+        cameraLat: cameraLat,
+        cameraLon: cameraLon,
+        zoom: zoom,
+        viewportSize: viewportSize,
+      );
+      _buildGeoJson(viewportCells);
       _lastBuildCellCount = _discoveredCellIds.length;
       _lastBuildVisitedCount = currentVisitedCount;
+      _lastBuildLat = cameraLat;
+      _lastBuildLon = cameraLon;
     }
     _renderVersion++;
 
@@ -496,6 +512,39 @@ class FogOverlayController {
           TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
     }
     _borderDirty = true;
+  }
+
+  /// Filters cell IDs to those whose centers are within the camera viewport.
+  /// Adds padding of ~1 cell width to avoid pop-in at edges.
+  Set<String> _filterToViewport({
+    required double cameraLat,
+    required double cameraLon,
+    required double zoom,
+    required Size viewportSize,
+  }) {
+    // At zoom 14, ~0.02° per pixel. At zoom 10, ~0.3° per pixel.
+    // Approximate degrees-per-pixel from zoom level.
+    final degreesPerPixel = 360.0 / (256 * (1 << zoom.round().clamp(0, 20)));
+    final halfLatSpan =
+        (viewportSize.height / 2) * degreesPerPixel * 1.5; // 1.5x padding
+    final halfLonSpan = (viewportSize.width / 2) * degreesPerPixel * 1.5;
+
+    final minLat = cameraLat - halfLatSpan;
+    final maxLat = cameraLat + halfLatSpan;
+    final minLon = cameraLon - halfLonSpan;
+    final maxLon = cameraLon + halfLonSpan;
+
+    final visible = <String>{};
+    for (final cellId in _discoveredCellIds) {
+      final center = cellService.getCellCenter(cellId);
+      if (center.lat >= minLat &&
+          center.lat <= maxLat &&
+          center.lon >= minLon &&
+          center.lon <= maxLon) {
+        visible.add(cellId);
+      }
+    }
+    return visible;
   }
 
   /// Discovers cell IDs visible in the current viewport via grid sampling.

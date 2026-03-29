@@ -119,6 +119,8 @@ These are **locked in** — do not revisit without explicit instruction.
 
 11. **Backend-driven enrichment** — Unified enrichment pipeline runs server-side via `process-enrichment-queue` Edge Function (1-minute pg_cron). Processes species AND items per tick. Species: classify → icon prompt → art prompt → icon image → art image (2-stage LLM → image pipeline with per-field version stamps). Items: denormalizes species fields, icon/art URLs, cell properties, and location hierarchy onto instances. Priority: count fields needing work (null or stale enrichver), process closest-to-done first. No client-side enrichment.
 
+12. **GBA rendering principle** — Never do work that doesn't change a pixel visible this frame. Lazy tabs, viewport-only fog, eager-resolve/lazy-render for districts, visibility-gated animations. The GBA ran Pokemon at 60fps on 16MHz/256KB by never computing invisible work. We have 10,000x the hardware — the problem is always wasted work, not the platform. See `docs/target-architecture.md` > Rendering Principles.
+
 ---
 
 ## Product Architecture (Design Jam Decisions — 2026-03-06, updated 2026-03-06 Jam 2)
@@ -428,6 +430,7 @@ Additional directories:
 - **No `StateNotifier`**: Use Riverpod v3 `Notifier` pattern exclusively.
 - **No stored fog state**: Fog is computed from player position + visit history. Never persist per-cell FogState.
 - **No platform-specific code in business logic**: GPS/platform code is isolated in `features/location/`.
+- **No invisible computation**: Never rebuild widgets, allocate strings, or run animations for tabs/screens the user isn't viewing. Gate all computation on visibility. See "The GBA Rule" in `docs/target-architecture.md`.
 
 ---
 

@@ -158,6 +158,18 @@ class _PrismaticAnimationScopeState extends State<PrismaticAnimationScope>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Respect TickerMode — stop animation when ticker is muted
+    // (e.g., when the tab is offstage or app is backgrounded).
+    if (!TickerMode.of(context) && _controller.isAnimating) {
+      _controller.stop();
+    } else if (TickerMode.of(context) && !_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PrismaticAnimationInherited(
       animation: _controller,

@@ -21,8 +21,10 @@ import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
 ///
-/// Uses [IndexedStack] so all tab children remain mounted — MapScreen's
-/// GPS, fog, and ticker state persist across tab switches.
+/// MapScreen (tab 0) is kept alive via [Offstage] — MapLibre's GPS, fog, and
+/// ticker state is expensive to recreate. All other tabs (Sanctuary, Town,
+/// Pack) are built on demand and disposed when not selected, eliminating
+/// their widget trees and animation controllers while they're invisible.
 ///
 /// On web, [MapVisibility] hides/reveals the MapLibre HTML container when
 /// switching away from or back to the Map tab (index 0). On native platforms,
@@ -118,22 +120,31 @@ class _TabShellState extends ConsumerState<TabShell>
     return Scaffold(
       body: Stack(
         children: [
-          // Single ErrorBoundary wraps the IndexedStack. Per-tab boundaries
-          // caused a cascade bug: FlutterError.onError is global, so all 4
-          // boundaries caught the same error simultaneously, blanking every
+          // Single ErrorBoundary wraps the tab content. Per-tab boundaries
+          // caused a cascade bug: FlutterError.onError is global, so all
+          // boundaries catch the same error simultaneously, blanking every
           // tab. One boundary avoids the cascade while still protecting the
           // bottom nav bar (which lives outside in the Scaffold).
+          //
+          // MapScreen stays alive via Offstage — MapLibre state (GPS, fog,
+          // tickers) is expensive to recreate. The other tabs build on demand
+          // and dispose when deselected, eliminating their widget trees and
+          // animation controllers while invisible.
           ErrorBoundary(
             onError: (details, reset) => DefaultErrorFallback(
               onRetry: reset,
             ),
-            child: IndexedStack(
-              index: currentIndex,
-              children: const [
-                MapScreen(),
-                SanctuaryScreen(),
-                TownPlaceholderScreen(),
-                PackScreen(),
+            child: Stack(
+              children: [
+                // MapScreen always mounted; hidden when not on tab 0.
+                // Offstage preserves MapLibre state across tab switches.
+                Offstage(
+                  offstage: currentIndex != 0,
+                  child: const MapScreen(),
+                ),
+                if (currentIndex == 1) const SanctuaryScreen(),
+                if (currentIndex == 2) const TownPlaceholderScreen(),
+                if (currentIndex == 3) const PackScreen(),
               ],
             ),
           ),

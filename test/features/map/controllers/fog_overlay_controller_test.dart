@@ -91,7 +91,7 @@ class MockCellService implements CellService {
 
 /// Small viewport for predictable sampling counts.
 const _viewport = Size(400, 800);
-const _zoom = 13.0;
+const _zoom = 6.0; // Low zoom to cover 1° mock grid cells in viewport filter
 
 /// San Francisco area — approximately 37–38°N, -123 to -122°E.
 const _cameraLat = 37.7;
@@ -256,7 +256,8 @@ void main() {
       final coordinates = geometry['coordinates'] as List<dynamic>;
       // Should have more than just the exterior ring (holes for revealed cells).
       expect(coordinates.length, greaterThan(1),
-          reason: 'Holes should be punched for observed/hidden/concealed cells');
+          reason:
+              'Holes should be punched for observed/hidden/concealed cells');
     });
 
     test('baseFogGeoJson hole coordinates are valid closed rings', () {

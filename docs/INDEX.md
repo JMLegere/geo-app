@@ -20,6 +20,7 @@ Cross-cutting architecture docs. AGENTS.md files are per-directory; these are sy
 | **Item system / inventory** | `item-system-design.md` | `target-architecture.md` (server-authoritative context) |
 | **Species stats / art / crowdsourcing** | `species-community-system.md` | `item-system-design.md` (item model context) |
 | **Cell properties / events / borders** | `cell-properties-design.md` | `data-model.md` (persistence) + `game-loop.md` (integration) |
+| **Performance / rendering** | `target-architecture.md` (Rendering Principles + Hardware Budgets) | Feature AGENTS.md for specific widget |
 | **UI/widget work** | `target-architecture.md` (layer rules) | Feature AGENTS.md |
 | **Test writing** | `test/AGENTS.md` | `data-model.md` (for fixtures) |
 
