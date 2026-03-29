@@ -91,6 +91,12 @@ class FogOverlayController {
       // next throttled update() call rebuilds with the viewport filter.
       _lastBuildCellCount = 0; // Force needsRebuild=true on next update()
       _fogDirty = true;
+      // Sync _lastVisibleCellIds with all discovered cells so that
+      // _rebuildTerritoryBorders sees the newly added zone cells.
+      // Without this, if location nodes load before the next _buildGeoJson
+      // cycle, the territory builder processes stale visible cells (which
+      // may have null locationId) and produces 0 border features.
+      _lastVisibleCellIds = _discoveredCellIds;
       try {
         _rebuildTerritoryBorders();
       } catch (e) {
