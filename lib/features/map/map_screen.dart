@@ -133,7 +133,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
-  bool _isClamping = false;
+  LngLatBounds? _cameraBounds;
 
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
@@ -912,6 +912,24 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ref.read(mapStateProvider.notifier).updateCameraPosition(lat, lon);
       _updateFogSources();
 
+      // Update camera bounds from detection zone (native MapLibre constraint).
+      final boundsCtrl = ref.read(cameraBoundsProvider);
+      if (boundsCtrl.bounds != _cameraBounds) {
+        final isFirstBounds =
+            _cameraBounds == null && boundsCtrl.bounds != null;
+        setState(() {
+          _cameraBounds = boundsCtrl.bounds;
+        });
+        if (isFirstBounds &&
+            _mapController != null &&
+            boundsCtrl.bounds != null) {
+          _mapController!.fitBounds(
+            bounds: boundsCtrl.bounds!,
+            padding: const EdgeInsets.all(20),
+          );
+        }
+      }
+
       sw.stop();
       if (sw.elapsedMilliseconds > 10) {
         debugPrint('[FOG-PERF] render took ${sw.elapsedMilliseconds}ms');
@@ -1147,29 +1165,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final cellId = cellService.getCellId(lat, lon);
       _onCellTapped(cellId);
     }
-
-    if (event is MapEventCameraIdle) {
-      if (_isClamping) return; // Prevent re-entrant clamping loop
-      final boundsCtrl = ref.read(cameraBoundsProvider);
-      if (!boundsCtrl.hasBounds) return;
-      final camera = _mapController?.getCamera();
-      if (camera == null) return;
-      final correction = boundsCtrl.clamp(
-        camera.center.lat.toDouble(),
-        camera.center.lng.toDouble(),
-        camera.zoom,
-        0.05, // ~20fps equivalent dt
-      );
-      if (correction != null) {
-        _isClamping = true;
-        _mapController?.moveCamera(
-          center: Position(correction.lon, correction.lat),
-          zoom: correction.zoom,
-        );
-        // Reset guard after a frame to allow future clamping
-        Future.microtask(() => _isClamping = false);
-      }
-    }
   }
 
   /// Called when the user long-presses the map and a cell ID has been resolved.
@@ -1257,8 +1252,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   initStyle: 'https://tiles.openfreemap.org/styles/positron',
                   initZoom: kDefaultZoom,
                   initCenter: Position(kDefaultMapLon, kDefaultMapLat),
-                  minZoom: kMinZoom,
+                  minZoom: _cameraBounds != null
+                      ? ref.read(cameraBoundsProvider).minZoom ?? kMinZoom
+                      : kMinZoom,
                   maxZoom: kMaxZoom,
+                  maxBounds: _cameraBounds,
                   attribution: false,
                   nativeLogo: false,
                   // Disable pitch (tilt) — we never use it, and it's a 2D game.
