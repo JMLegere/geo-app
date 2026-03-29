@@ -484,13 +484,17 @@ void main() {
       expect(props['opacity'], equals(0.25));
     });
 
-    test('excludes undetected cells', () {
+    test('includes undetected cells at low opacity', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {'cell_37_-122': FogState.unknown},
         getBoundary: _getBoundary,
       );
 
-      expect(_features(result), isEmpty);
+      final features = _features(result);
+      expect(features, hasLength(1));
+      final opacity =
+          (features[0]['properties'] as Map<String, dynamic>)['opacity'];
+      expect(opacity, equals(0.1));
     });
 
     test('excludes observed and hidden cells', () {
@@ -505,25 +509,25 @@ void main() {
       expect(_features(result), isEmpty);
     });
 
-    test('mixed states only includes unexplored and concealed', () {
+    test('mixed states includes detected, nearby, and unknown', () {
       final result = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {
-          'cell_37_-122': FogState.present,
-          'cell_38_-122': FogState.detected,
-          'cell_37_-121': FogState.unknown,
-          'cell_38_-121': FogState.nearby,
-          'cell_39_-122': FogState.explored,
+          'cell_37_-122': FogState.present, // excluded
+          'cell_38_-122': FogState.detected, // 0.4
+          'cell_37_-121': FogState.unknown, // 0.1 (detection zone)
+          'cell_38_-121': FogState.nearby, // 0.25
+          'cell_39_-122': FogState.explored, // excluded
         },
         getBoundary: _getBoundary,
       );
 
       final features = _features(result);
-      expect(features.length, equals(2));
+      expect(features.length, equals(3));
 
       final opacities = features
           .map((f) => (f['properties'] as Map<String, dynamic>)['opacity'])
           .toSet();
-      expect(opacities, containsAll([0.4, 0.25]));
+      expect(opacities, containsAll([0.4, 0.25, 0.1]));
     });
 
     test('polygon rings are closed', () {
