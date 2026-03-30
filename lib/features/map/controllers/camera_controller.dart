@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart';
 
+import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/constants.dart';
 
 /// Camera modes for the map screen.
@@ -69,6 +70,7 @@ class CameraController {
   void onUserGesture() {
     _isAnimating = false;
     if (mode.value != CameraMode.free) {
+      MapLogger.cameraModeChanged(mode.value.name, 'free', 'gesture');
       mode.value = CameraMode.free;
     }
   }
@@ -86,6 +88,7 @@ class CameraController {
     Future.delayed(kRecenterDuration, () {
       _isAnimating = false;
       if (mode.value != CameraMode.following) {
+        MapLogger.cameraModeChanged(mode.value.name, 'following', 'recenter');
         mode.value = CameraMode.following;
       }
     });
@@ -93,11 +96,13 @@ class CameraController {
 
   /// Called when the user requests the overview mode (zoom toggle).
   void enterOverview() {
+    MapLogger.cameraModeChanged(mode.value.name, 'overview', 'zoomToggle');
     mode.value = CameraMode.overview;
   }
 
   /// Called when the user exits overview (gesture or recenter).
   void exitOverview() {
+    MapLogger.cameraModeChanged(mode.value.name, 'free', 'exitOverview');
     mode.value = CameraMode.free;
   }
 

@@ -19,6 +19,7 @@ import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
+import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
@@ -1151,6 +1152,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
 
     ref.read(mapStateProvider.notifier).markReady();
+    StartupBeacon.emit('map_interactive');
+    debugPrint('[BOOT] map interactive — fog layers ready');
 
     // Force player marker repaint after fog initialization.
     // Ensures the marker recalculates its screen position after the first frame.

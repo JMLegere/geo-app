@@ -103,6 +103,7 @@ Future<void> main() async {
         .read(authProvider.notifier)
         .setState(const AuthState.unauthenticated());
   }
+  StartupBeacon.emit('session_restore_done');
 
   // 6. Bridge auth service stream → auth provider for token refresh,
   //    session expiry, and external sign-out events.
@@ -378,11 +379,18 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
 /// zone cells are added to the fog, guaranteeing the fog has real data.
 ///
 /// The loading screen fades out with a 400ms animation when ready.
-class _SteadyStateShell extends ConsumerWidget {
+class _SteadyStateShell extends ConsumerStatefulWidget {
   const _SteadyStateShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SteadyStateShell> createState() => _SteadyStateShellState();
+}
+
+class _SteadyStateShellState extends ConsumerState<_SteadyStateShell> {
+  bool _wasDismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final isZoneReady = ref.watch(zoneReadyProvider);
 
@@ -392,6 +400,12 @@ class _SteadyStateShell extends ConsumerWidget {
     }
 
     final allReady = playerState.isHydrated && isZoneReady;
+
+    if (allReady && !_wasDismissed) {
+      _wasDismissed = true;
+      StartupBeacon.emit('loading_dismissed');
+      debugPrint('[BOOT] loading screen dismissed — map visible');
+    }
 
     return Stack(
       children: [

@@ -79,7 +79,20 @@ class MapLogger {
     );
   }
 
+  static void rubberBandPaused(double lat, double lon) {
+    _log('RUBBER', 'PAUSED at ($lat, $lon) — ticker stopped');
+  }
+
+  static void rubberBandResumed(double lat, double lon, double distM) {
+    _log('RUBBER',
+        'RESUMED target ($lat, $lon) dist=${distM.toStringAsFixed(1)}m');
+  }
+
   // -- Camera --
+
+  static void cameraModeChanged(String from, String to, String trigger) {
+    _log('CAMERA', 'MODE $from → $to ($trigger)');
+  }
 
   static void cameraMove(double lat, double lon, {double? zoom}) {
     stats.cameraCount++;
