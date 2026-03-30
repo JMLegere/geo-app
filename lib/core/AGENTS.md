@@ -135,7 +135,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 **Purpose**: Immutable value objects for domain entities.
 
 **Public API** (23 models):
-- `FogState`: enum with 5 values (undetected, unexplored, concealed, hidden, observed). `density` getter returns doubles for shader (1.0, 1.0, 0.95, 0.5, 0.0).
+- `FogState`: enum with 5 values (unknown, detected, nearby, explored, present). `density` getter returns doubles (1.0, 0.85, 0.95, 0.5, 0.0).
 - `IucnStatus`: enum (leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct). `weight` getter follows 3^x progression: LC=243, NT=81, VU=27, EN=9, CR=3, EX=1.
 - `ItemDefinition` (sealed): Base class for all 7 item types. Subclasses: `FaunaDefinition`, `FloraDefinition`, `MineralDefinition`, `FossilDefinition`, `ArtifactDefinition`, `FoodDefinition`, `OrbDefinition`.
 - `FaunaDefinition`: `scientificName`, `displayName`, `taxonomicClass`, `animalType`, `animalClass`, `foodPreference`, `climate`, `continents`, `habitats`, `rarity`. Equality by `id`. `animalType` auto-computed from `taxonomicClass`.
