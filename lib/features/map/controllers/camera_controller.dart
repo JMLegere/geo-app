@@ -1,117 +1,32 @@
-import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart';
 
-import 'package:earth_nova/features/map/utils/map_logger.dart';
-import 'package:earth_nova/shared/constants.dart';
-
-/// Camera modes for the map screen.
+/// Simplified camera controller — always follows the player.
 ///
-/// Three states: following the player, free exploration, or overview.
-/// No heading mode (no compass data yet) and no "returning" mode
-/// (animation tracked by [isAnimating], not a separate mode).
-enum CameraMode {
-  /// Camera locked to player position, north-up.
-  /// Updated on each rubber-band display tick.
-  following,
-
-  /// User has panned/zoomed. Camera is free. Recenter FAB visible.
-  free,
-
-  /// fitBounds showing explored area or detection zone.
-  overview,
-}
-
-/// Pure Dart camera controller — no Flutter widgets, no Riverpod.
+/// No free mode, no overview, no panning. The camera is locked to the
+/// player position at all times. Zoom is constrained to z15–z16.
 ///
-/// Processes inputs (GPS updates, user gestures, mode changes) and
-/// emits camera move commands via callbacks. The map screen wires
-/// these callbacks to [MapController.animateCamera] / [fitBounds].
-///
-/// Exposes [mode] as a [ValueNotifier] so the recenter FAB can
-/// react via [ValueListenableBuilder] — consistent with the
-/// [_markerPosition] pattern already in use.
+/// The hierarchy views (district/city/state/country/world) are separate
+/// screens accessed via pinch-out transition, not camera zoom modes.
 class CameraController {
-  CameraController({
-    required this.onMoveToPlayer,
-    required this.onAnimateToPlayer,
-  });
+  CameraController({required this.onMoveToPlayer});
 
-  /// Callback: instant camera move (no animation). Used for GPS follow
-  /// (~30Hz) — rubber-band already provides smooth interpolation.
+  /// Callback: instant camera move to player position.
   final void Function(Geographic center) onMoveToPlayer;
-
-  /// Callback: animated camera move. Used for recenter only (single
-  /// invocation on FAB tap, not repeated at high frequency).
-  final void Function(Geographic center, Duration duration) onAnimateToPlayer;
-
-  /// Current camera mode — consumed by RecenterFab.
-  final ValueNotifier<CameraMode> mode = ValueNotifier(CameraMode.following);
 
   /// Last known player position from rubber-band.
   Geographic? _playerPosition;
 
-  /// Whether a programmatic camera animation is in progress.
-  /// When true, we suppress additional moves to prevent jitter.
-  bool _isAnimating = false;
-
-  /// The last player position — exposed for the recenter FAB.
+  /// The last player position.
   Geographic? get playerPosition => _playerPosition;
 
   /// Called on each rubber-band display update.
-  ///
-  /// In [CameraMode.following], emits a camera move to track the player.
-  /// In other modes, just caches the position for later recenter.
+  /// Always moves the camera to track the player.
   void onPlayerPositionUpdate(Geographic position) {
     _playerPosition = position;
-    if (mode.value == CameraMode.following && !_isAnimating) {
-      onMoveToPlayer(position);
-    }
-  }
-
-  /// Called when MapLibre detects a user gesture (pan/pinch/rotate).
-  ///
-  /// Transitions to [CameraMode.free] and cancels any in-progress
-  /// animation. Idempotent — multiple gestures in free mode are no-ops.
-  void onUserGesture() {
-    _isAnimating = false;
-    if (mode.value != CameraMode.free) {
-      MapLogger.cameraModeChanged(mode.value.name, 'free', 'gesture');
-      mode.value = CameraMode.free;
-    }
-  }
-
-  /// Called when user taps the recenter FAB.
-  ///
-  /// Animates camera back to player position and transitions to
-  /// [CameraMode.following]. No-op if player position is unknown.
-  void recenter() {
-    final pos = _playerPosition;
-    if (pos == null) return;
-    _isAnimating = true;
-    onAnimateToPlayer(pos, kRecenterDuration);
-    // Schedule mode change after animation completes.
-    Future.delayed(kRecenterDuration, () {
-      _isAnimating = false;
-      if (mode.value != CameraMode.following) {
-        MapLogger.cameraModeChanged(mode.value.name, 'following', 'recenter');
-        mode.value = CameraMode.following;
-      }
-    });
-  }
-
-  /// Called when the user requests the overview mode (zoom toggle).
-  void enterOverview() {
-    MapLogger.cameraModeChanged(mode.value.name, 'overview', 'zoomToggle');
-    mode.value = CameraMode.overview;
-  }
-
-  /// Called when the user exits overview (gesture or recenter).
-  void exitOverview() {
-    MapLogger.cameraModeChanged(mode.value.name, 'free', 'exitOverview');
-    mode.value = CameraMode.free;
+    onMoveToPlayer(position);
   }
 
   void dispose() {
-    mode.dispose();
+    // No resources to clean up.
   }
 }

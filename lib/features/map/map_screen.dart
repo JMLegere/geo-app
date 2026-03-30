@@ -30,7 +30,6 @@ import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
 import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
-import 'package:earth_nova/features/map/providers/camera_bounds_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/map/providers/map_state_provider.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
@@ -42,7 +41,6 @@ import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.d
 import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
-import 'package:earth_nova/features/map/widgets/recenter_fab.dart';
 import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
@@ -140,7 +138,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
-  LngLatBounds? _cameraBounds;
 
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
@@ -231,13 +228,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _mapController?.moveCamera(
           center: Position(center.lon, center.lat),
           zoom: _currentZoom,
-        );
-      },
-      onAnimateToPlayer: (center, duration) {
-        _mapController?.animateCamera(
-          center: Position(center.lon, center.lat),
-          zoom: _currentZoom,
-          nativeDuration: duration,
         );
       },
     );
@@ -971,24 +961,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ref.read(mapStateProvider.notifier).updateCameraPosition(lat, lon);
       _updateFogSources();
 
-      // Update camera bounds from detection zone (native MapLibre constraint).
-      final boundsCtrl = ref.read(cameraBoundsProvider);
-      if (boundsCtrl.bounds != _cameraBounds) {
-        final isFirstBounds =
-            _cameraBounds == null && boundsCtrl.bounds != null;
-        setState(() {
-          _cameraBounds = boundsCtrl.bounds;
-        });
-        if (isFirstBounds &&
-            _mapController != null &&
-            boundsCtrl.bounds != null) {
-          _mapController!.fitBounds(
-            bounds: boundsCtrl.bounds!,
-            padding: const EdgeInsets.all(20),
-          );
-        }
-      }
-
       sw.stop();
       if (sw.elapsedMilliseconds > 10) {
         debugPrint('[FOG-PERF] render took ${sw.elapsedMilliseconds}ms');
@@ -1065,30 +1037,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapLogger.mapCreated();
     _mapController = controller;
 
-    // Position camera at detection zone center (computed during loading screen).
-    // Fall back to player location if zone bounds aren't set yet (timeout case).
-    final boundsCtrl = ref.read(cameraBoundsProvider);
-    if (boundsCtrl.hasBounds) {
+    // Position camera at player's last known location.
+    final loc = ref.read(locationProvider);
+    if (loc.currentPosition != null) {
       try {
-        controller.fitBounds(
-          bounds: boundsCtrl.bounds!,
-          padding: const EdgeInsets.all(20),
+        controller.moveCamera(
+          center: Position(loc.currentPosition!.lon, loc.currentPosition!.lat),
+          zoom: kDefaultZoom,
         );
       } catch (e) {
-        debugPrint('[MAP] initial fitBounds failed: $e');
-      }
-    } else {
-      final loc = ref.read(locationProvider);
-      if (loc.currentPosition != null) {
-        try {
-          controller.moveCamera(
-            center:
-                Position(loc.currentPosition!.lon, loc.currentPosition!.lat),
-            zoom: 14,
-          );
-        } catch (e) {
-          debugPrint('[MAP] initial camera move failed: $e');
-        }
+        debugPrint('[MAP] initial camera move failed: $e');
       }
     }
   }
@@ -1241,10 +1199,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     //
     // Only MapEventLongClick triggers cell selection — tap is reserved for
     // future interactions (e.g. species, markers). Long press shows cell details.
-    if (event is MapEventStartMoveCamera &&
-        event.reason == CameraChangeReason.apiGesture) {
-      _cameraController.onUserGesture();
-    }
     if (event is MapEventLongClick) {
       // MapLibre Position is (lng, lat) — longitude first.
       // event.point.lat/lng return num, so cast to double for getCellId.
@@ -1341,11 +1295,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   initStyle: 'https://tiles.openfreemap.org/styles/positron',
                   initZoom: kDefaultZoom,
                   initCenter: _initialCenter(),
-                  minZoom: _cameraBounds != null
-                      ? ref.read(cameraBoundsProvider).minZoom ?? kMinZoom
-                      : kMinZoom,
-                  maxZoom: kMaxZoom,
-                  maxBounds: _cameraBounds,
+                  minZoom: 15.0,
+                  maxZoom: 16.0,
                   attribution: false,
                   nativeLogo: false,
                   // Disable pitch (tilt) — we never use it, and it's a 2D game.
@@ -1354,7 +1305,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   // processed by BOTH our KeyboardLocationService AND MapLibre's
                   // native pan handler, causing rapid oscillation when opposing
                   // keys are held or jitter during normal movement.
-                  gestures: const MapGestures.all(pitch: false),
+                  gestures: const MapGestures.all(pitch: false, pan: false),
                 ),
                 onMapCreated: _onMapCreated,
                 onStyleLoaded: _onStyleLoaded,
@@ -1518,37 +1469,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
               },
             ),
 
-            // ── Layer 4.8: Recenter FAB ─────────────────────────────────────
-            Positioned(
-              right: 16,
-              bottom: 80,
-              child: RecenterFab(
-                modeNotifier: _cameraController.mode,
-                onRecenter: _cameraController.recenter,
-              ),
-            ),
-
-            // ── Layer 5: Map controls (recenter + debug) ──────────────────────
+            // ── Layer 5: Map controls (zoom toggle + debug) ──────────────────
             Positioned(
               right: 16,
               bottom: 16,
               child: MapControls(
                 isWorldZoom: _zoomLevel == ZoomLevel.world,
-                onRecenter: _cameraController.recenter,
+                onRecenter: () {
+                  final pos = _cameraController.playerPosition;
+                  if (pos != null) {
+                    _mapController?.moveCamera(
+                      center: Position(pos.lon, pos.lat),
+                      zoom: _currentZoom,
+                    );
+                  }
+                },
                 onToggleZoom: () {
                   final goingToWorld = _zoomLevel == ZoomLevel.player;
                   setState(() {
                     _zoomLevel =
                         goingToWorld ? ZoomLevel.world : ZoomLevel.player;
                   });
-                  if (goingToWorld) {
-                    _cameraController.enterOverview();
-                    _applyZoomLevel();
-                  } else {
-                    _cameraController.exitOverview();
-                    _cameraController.recenter();
-                    _applyZoomLevel();
-                  }
+                  _applyZoomLevel();
                 },
                 onToggleDebug: () =>
                     setState(() => _showDebugHud = !_showDebugHud),

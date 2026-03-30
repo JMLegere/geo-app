@@ -88,12 +88,11 @@ const int kVoronoiGlobalSeed = 42;
 const int kVoronoiNeighborRadius = 3;
 
 // Map & Location
-/// Minimum map zoom level. Set to 10 to prevent extreme zoom-out which
-/// causes rendering issues and is not useful for walking-speed exploration.
-const double kMinZoom = 10.0;
+/// Minimum map zoom level.
+const double kMinZoom = 15.0;
 
 /// Maximum map zoom level.
-const double kMaxZoom = 18.0;
+const double kMaxZoom = 16.0;
 
 /// Default map zoom level.
 const double kDefaultZoom = 15.0;
@@ -117,19 +116,6 @@ const double kCameraFollowDistance = 50.0;
 
 /// Camera zoom animation duration (milliseconds).
 const int kCameraZoomDurationMs = 300;
-
-/// Duration for GPS-follow camera updates (linear interpolation).
-/// Slightly less than 1 GPS tick (1000ms) so the camera arrives
-/// before the next update, preventing visible lag.
-const Duration kGpsFollowDuration = Duration(milliseconds: 250);
-
-/// Duration for recenter animation (free → following).
-/// Ease-out cubic: fast start, gentle landing. Feels responsive.
-const Duration kRecenterDuration = Duration(milliseconds: 400);
-
-/// Duration for overview fitBounds animation.
-/// Ease-in-out cubic: deliberate, cinematic.
-const Duration kOverviewDuration = Duration(milliseconds: 1000);
 
 // Rubber-Band Marker Interpolation
 //
