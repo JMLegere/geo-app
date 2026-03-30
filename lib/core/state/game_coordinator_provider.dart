@@ -275,11 +275,24 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // so BOTH event emission and Riverpod state mutations fire on each callback.
   // Engine handler fires first (event emission), then provider logic follows.
 
+  // Zone bootstrap closure — assigned after detectionZoneService and
+  // _lastDistrictId are declared (below). Called from onPlayerLocationUpdate
+  // to handle the GPS-arrives-after-hydration race condition.
+  void Function()? _maybeBootstrapZone;
+
   final engineOnLocation = coordinator.onPlayerLocationUpdate;
   coordinator.onPlayerLocationUpdate = (Geographic position, double accuracy) {
     engineOnLocation?.call(position, accuracy);
     if (_providerDisposed) return;
     ref.read(locationProvider.notifier).updateLocation(position, accuracy);
+
+    // ── Zone bootstrap on first GPS fix ──────────────────────────────────
+    // If Supabase hydration completed before GPS was available, the zone
+    // computation (post-hydration block) was skipped (currentCell was null).
+    // For returning users, onCellVisited also won't fire (cell already in
+    // visitedCellIds). This catch-up triggers zone computation on the
+    // first GPS update after hydration.
+    _maybeBootstrapZone?.call();
   };
 
   final engineOnGpsError = coordinator.onGpsErrorChanged;
@@ -350,6 +363,43 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   detectionZoneService.cellPropertiesLookup =
       (cellId) => coordinator.cellPropertiesCache[cellId];
   String? _lastDistrictId;
+
+  // ── Zone bootstrap closure ─────────────────────────────────────────────
+  // Handles the race where GPS arrives after Supabase hydration completes.
+  // On web, browser Geolocation takes 5-30s while hydration finishes in 2-5s.
+  // The post-hydration block (line ~1115) skips zone computation when
+  // currentCell is null. For returning users, onCellVisited also won't fire
+  // (cell already in visitedCellIds). This closure catches up.
+  _maybeBootstrapZone = () {
+    if (!_zoneHydrationComplete) return;
+    if (detectionZoneService.detectionZoneCellIds.isNotEmpty) return;
+    final currentCell = fogResolver.currentCellId;
+    if (currentCell == null || _lastDistrictId != null) return;
+
+    final props = coordinator.cellPropertiesCache[currentCell];
+    if (props?.locationId != null) {
+      // locationId cached from SQLite — compute zone immediately.
+      _lastDistrictId = props!.locationId;
+      detectionZoneService.onDistrictChange(props.locationId!);
+      debugPrint('[DetectionZone] bootstrap from GPS fix: '
+          'district=${props.locationId}');
+    } else {
+      // No locationId yet — request enrichment + admin boundaries.
+      // The onLocationEnriched / onBoundariesResolved listeners will
+      // trigger zone computation when data arrives.
+      final center = cellService.getCellCenter(currentCell);
+      ref.read(locationEnrichmentServiceProvider).requestEnrichment(
+            cellId: currentCell,
+            lat: center.lat,
+            lon: center.lon,
+          );
+      ref
+          .read(adminBoundaryServiceProvider)
+          ?.requestBoundaries(center.lat, center.lon);
+      debugPrint('[DetectionZone] bootstrap: no locationId — '
+          'requesting enrichment for $currentCell');
+    }
+  };
 
   // When enrichment resolves a locationId for a cell, update the in-memory
   // cache, flood-fill nearby cached cells with the same district (spatial
