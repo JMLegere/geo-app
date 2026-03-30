@@ -121,6 +121,7 @@ class RubberBandController {
         _tickerPaused = false;
         _lastTickTime = Duration.zero;
         _ticker.start();
+        MapLogger.rubberBandResumed(lat, lon, distM);
       } else {
         // GPS jitter — stay paused, just update target silently.
         _targetLat = lat;
@@ -177,10 +178,7 @@ class RubberBandController {
       if (!_tickerPaused) {
         _tickerPaused = true;
         _ticker.stop();
-        MapLogger.rubberBandInitialized(
-          _displayLat,
-          _displayLon,
-        ); // Reuse for debug output
+        MapLogger.rubberBandPaused(_displayLat, _displayLon);
       }
       return;
     }
