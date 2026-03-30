@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,9 @@ import 'package:earth_nova/core/services/log_flush_service.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/features/sync/services/observable_http_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
@@ -53,14 +57,24 @@ Future<void> main() async {
   final AuthService authService =
       SupabaseBootstrap.initialized ? SupabaseAuthService() : MockAuthService();
 
-  // 2. Create the ProviderContainer so we can inject the service and
-  //    restore the session before the first frame.
-  final container = ProviderContainer();
+  // 2. Pre-load cached fun facts for the loading screen (must be sync at display time).
+  final prefs = await SharedPreferences.getInstance();
+  final cachedFactsJson = prefs.getString('fun_facts_cache');
+  final cachedFacts = cachedFactsJson != null
+      ? (jsonDecode(cachedFactsJson) as List).cast<String>()
+      : <String>[];
 
-  // 3. Inject auth service into the provider graph.
+  // 3. Create the ProviderContainer with fun facts pre-loaded.
+  final container = ProviderContainer(
+    overrides: [
+      cachedFunFactsProvider.overrideWithValue(cachedFacts),
+    ],
+  );
+
+  // 4. Inject auth service into the provider graph.
   container.read(authServiceProvider.notifier).set(authService);
 
-  // 4. Attempt session restore. AuthNotifier starts at `loading` so
+  // 5. Attempt session restore. AuthNotifier starts at `loading` so
   //    LoadingScreen shows while this runs.
   StartupBeacon.emit('session_restore');
   try {
@@ -90,7 +104,7 @@ Future<void> main() async {
         .setState(const AuthState.unauthenticated());
   }
 
-  // 5. Bridge auth service stream → auth provider for token refresh,
+  // 6. Bridge auth service stream → auth provider for token refresh,
   //    session expiry, and external sign-out events.
   // ignore: cancel_subscriptions, unused_local_variable — lives for app lifetime
   final authStreamSub = authService.authStateChanges.listen((user) {
@@ -127,7 +141,7 @@ Future<void> main() async {
     return _GlobalErrorFallback(details: details);
   };
 
-  // 6. Drain DebugLogBuffer pending lines periodically and feed them to
+  // 7. Drain DebugLogBuffer pending lines periodically and feed them to
   //    LogFlushService for debounced shipping to the app_logs table.
   //    These are NOT mirrored to ObservabilityBuffer — debugPrint output
   //    is high-volume text noise that drowns structured events in

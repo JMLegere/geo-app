@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io show Platform;
+
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -1034,6 +1036,40 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // after Supabase hydration (cold start = fresh browser / cleared storage).
       final wasEmptyCache = ref.read(itemsProvider).items.isEmpty;
 
+      // Fun facts cache refresh — defined here so it's in scope for the
+      // .then() callback below.
+      void refreshFunFactsCache() async {
+        try {
+          final supabase = ref.read(supabaseClientProvider);
+          if (supabase == null) return;
+
+          // Fetch up to 50 facts from the pool
+          final response =
+              await supabase.from('fun_facts').select('fact_text').limit(50);
+
+          if (_providerDisposed) return;
+
+          final facts =
+              (response as List).map((r) => r['fact_text'] as String).toList();
+
+          if (facts.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('fun_facts_cache', jsonEncode(facts));
+            debugPrint(
+                '[FunFacts] cached ${facts.length} facts for next session');
+          }
+
+          // Trigger pool growth (fire-and-forget)
+          unawaited(supabase.functions.invoke('generate-fun-facts').then((_) {
+            debugPrint('[FunFacts] generation triggered');
+          }).catchError((e) {
+            debugPrint('[FunFacts] generation failed (non-critical): $e');
+          }));
+        } catch (e) {
+          debugPrint('[FunFacts] cache refresh failed (non-critical): $e');
+        }
+      }
+
       // Phase 2: Fetch from Supabase in background → write to SQLite.
       // Non-blocking. If it fails, cached data is still valid.
       if (_providerDisposed) return;
@@ -1173,6 +1209,10 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           queueProcessor: queueProcessor,
           userId: userId,
         );
+
+        // Fun facts: refresh cache for next session + trigger pool growth.
+        // Fire-and-forget — errors are irrelevant to gameplay.
+        refreshFunFactsCache();
       }).catchError((Object e) {
         debugPrint(
           '[GameCoordinator] background Supabase sync failed: $e',
