@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/spinning_globe.dart';
 
-/// Fun species facts shown during loading — picked randomly each session.
-const _funFacts = [
+/// Hardcoded fallback fun facts — used when no cached facts are available.
+const _fallbackFacts = [
   'The Arctic Tern migrates 44,000 miles every year — the longest migration of any animal.',
   'A group of flamingos is called a "flamboyance."',
   'Octopuses have three hearts and blue blood.',
@@ -43,7 +44,9 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
   void initState() {
     super.initState();
 
-    _funFact = (_funFacts.toList()..shuffle()).first;
+    final cached = ref.read(cachedFunFactsProvider);
+    final allFacts = {..._fallbackFacts, ...cached}.toList();
+    _funFact = (allFacts..shuffle()).first;
 
     _entranceCtrl = AnimationController(
       vsync: this,
