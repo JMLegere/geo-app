@@ -280,14 +280,26 @@ serve(async (req: Request) => {
     );
 
     if (currentCount >= TARGET_POOL_SIZE) {
-      return new Response(
-        JSON.stringify({
-          generated: 0,
-          total: currentCount,
-          message: "Pool is full",
-        }),
-        { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      // Rotate: delete the 50 oldest facts to make room for fresh ones.
+      const { data: oldest } = await supabase
+        .from("fun_facts")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .limit(50);
+
+      if (oldest && oldest.length > 0) {
+        const ids = oldest.map((r: { id: number }) => r.id);
+        const { error: delErr } = await supabase
+          .from("fun_facts")
+          .delete()
+          .in_("id", ids);
+
+        if (delErr) {
+          console.error(`[facts] rotation delete failed: ${delErr.message}`);
+        } else {
+          console.log(`[facts] rotated out ${ids.length} oldest facts`);
+        }
+      }
     }
 
     // Fetch existing facts to pass as dedup context to the LLM
