@@ -757,11 +757,16 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       debugPrint('[GameCoordinator] daily seed fetch failed: $e');
     }).whenComplete(() {
       if (_providerDisposed) return;
-      locationService.start();
+      // Subscribe coordinator to GPS stream BEFORE starting the location
+      // service. In keyboard mode, kb.start() emits the initial position
+      // synchronously on a broadcast stream. If the coordinator subscribes
+      // after locationService.start(), that initial emission is lost —
+      // causing a blank map until the user presses a key.
       coordinator.start(
         gpsStream: gpsStream,
         discoveryStream: discoveryService.onDiscovery,
       );
+      locationService.start();
     });
   }
 
@@ -983,15 +988,19 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // Restore last known position before starting the game loop.
       // This ensures the map and keyboard service start at the player's
       // previous location instead of the hardcoded Fredericton default.
+      // Captured for defense-in-depth: if the keyboard's initial GPS
+      // emission is lost (broadcast stream timing), the post-hydration
+      // block can seed the fog resolver from this position.
+      double? restoredLat;
+      double? restoredLon;
       final profile = await profileRepo.read(userId);
       if (profile?.lastLat != null && profile?.lastLon != null) {
-        locationService.setInitialPosition(
-          profile!.lastLat!,
-          profile.lastLon!,
-        );
+        restoredLat = profile!.lastLat;
+        restoredLon = profile.lastLon;
+        locationService.setInitialPosition(restoredLat!, restoredLon!);
         debugPrint(
           '[GameCoordinator] restored position: '
-          '${profile.lastLat}, ${profile.lastLon}',
+          '$restoredLat, $restoredLon',
         );
       }
 
@@ -1198,9 +1207,27 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
               }
             }
           } else {
-            _zoneHydrationComplete = true;
+            // locationId not yet available — delegate to bootstrap closure
+            // which will request enrichment + admin boundaries.
+            _maybeBootstrapZone?.call();
             debugPrint('[DetectionZone] no locationId after hydration — '
-                'awaiting enrichment');
+                'bootstrap triggered for enrichment');
+          }
+        } else {
+          // currentCell is null — GPS hasn't arrived yet. On web with
+          // keyboard mode, the initial emission may have been lost on the
+          // broadcast stream despite the subscription ordering fix.
+          // Seed the fog resolver from the restored profile position so
+          // zone computation can proceed without waiting for GPS.
+          if (restoredLat != null && restoredLon != null) {
+            fogResolver.onLocationUpdate(restoredLat, restoredLon);
+            debugPrint('[DetectionZone] seeded fog resolver from restored '
+                'position: $restoredLat, $restoredLon');
+            _maybeBootstrapZone?.call();
+          } else {
+            _maybeBootstrapZone?.call();
+            debugPrint('[DetectionZone] no currentCell or restored position — '
+                'bootstrap deferred to next GPS update');
           }
         }
 

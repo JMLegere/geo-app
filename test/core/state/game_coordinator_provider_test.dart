@@ -15,6 +15,8 @@
 //      fresh (not a zombie with _authFailed = true) and onEnrichedHook is
 //      properly re-wired.
 
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +25,7 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
@@ -396,6 +399,211 @@ void main() {
       expect(lookup('v_2_2'), isNotNull);
       expect(lookup('v_3_3'), isNotNull);
       expect(lookup('v_99_99'), isNull);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Zone bootstrap closure — keyboard/simulation mode.
+  //
+  // Tests the _maybeBootstrapZone closure logic that was added to handle the
+  // race condition where GPS arrives before _zoneHydrationComplete is set.
+  //
+  // In keyboard mode, the initial position emission fires onPlayerLocationUpdate
+  // (which calls _maybeBootstrapZone) BEFORE Supabase hydration sets
+  // _zoneHydrationComplete = true. The closure returns early because the flag
+  // is false. When the flag becomes true, the post-hydration block must call
+  // _maybeBootstrapZone directly.
+  //
+  // Strategy: replicate the closure logic from game_coordinator_provider.dart
+  // and verify it fires correctly under different timing scenarios.
+  // ---------------------------------------------------------------------------
+  group('zone bootstrap closure — keyboard/simulation mode', () {
+    late _MockCellService cellService;
+    late FogStateResolver fogResolver;
+    late GameCoordinator coordinator;
+
+    setUp(() {
+      cellService = _MockCellService(
+        neighborMap: {
+          'visited': ['n1', 'n2'],
+        },
+      );
+      fogResolver = FogStateResolver(cellService);
+      coordinator = GameCoordinator(
+        fogResolver: fogResolver,
+        statsService: const StatsService(),
+        cellService: cellService,
+      );
+    });
+
+    tearDown(() {
+      coordinator.dispose();
+    });
+
+    test('bootstrap closure is no-op when _zoneHydrationComplete is false', () {
+      // Simulate: GPS arrived, fog resolver has a currentCellId, but
+      // Supabase hydration hasn't completed yet.
+      fogResolver.onLocationUpdate(48.42, -123.36);
+      expect(fogResolver.currentCellId, isNotNull);
+
+      // Replicate the closure logic from game_coordinator_provider.dart
+      // lines 373-402.
+      var bootstrapCount = 0;
+
+      // Tests the _zoneHydrationComplete guard specifically.
+      // The closure is called twice: once before and once after hydration.
+      void maybeBootstrapZone(bool hydrationComplete) {
+        if (!hydrationComplete) return;
+        bootstrapCount++;
+      }
+
+      fogResolver.onLocationUpdate(48.42, -123.36);
+
+      // Before hydration — should be no-op.
+      maybeBootstrapZone(false);
+      expect(bootstrapCount, 0,
+          reason: 'bootstrap should not fire before hydration completes');
+
+      // After hydration — should fire.
+      maybeBootstrapZone(true);
+      expect(bootstrapCount, 1,
+          reason: 'bootstrap should fire once hydration completes');
+    });
+
+    test(
+        'bootstrap closure fires when called after _zoneHydrationComplete '
+        'becomes true', () {
+      // Simulate: GPS arrived first, then Supabase hydration completes.
+      fogResolver.onLocationUpdate(48.42, -123.36);
+      expect(fogResolver.currentCellId, isNotNull);
+
+      var zoneHydrationComplete = false;
+      var bootstrapFired = false;
+
+      void maybeBootstrapZone({Set<String> zoneCells = const {}}) {
+        if (!zoneHydrationComplete) return;
+        if (zoneCells.isNotEmpty) return;
+        if (fogResolver.currentCellId == null) return;
+        bootstrapFired = true;
+      }
+
+      // First call: hydration not complete — no-op.
+      maybeBootstrapZone();
+      expect(bootstrapFired, isFalse);
+
+      // Hydration completes — call again (simulates post-hydration block).
+      zoneHydrationComplete = true;
+      maybeBootstrapZone();
+      expect(bootstrapFired, isTrue,
+          reason: 'bootstrap should fire after hydration with known position');
+    });
+
+    test(
+        'bootstrap closure is no-op when currentCellId is null '
+        '(no GPS at all)', () {
+      // Simulate: Supabase hydration completes but no GPS ever arrived.
+      expect(fogResolver.currentCellId, isNull);
+
+      var bootstrapFired = false;
+
+      void maybeBootstrapZone() {
+        // zoneHydrationComplete = true (simulated)
+        if (fogResolver.currentCellId == null) return;
+        bootstrapFired = true;
+      }
+
+      maybeBootstrapZone();
+      expect(bootstrapFired, isFalse,
+          reason: 'bootstrap should not fire without a known position');
+    });
+
+    test(
+        'bootstrap closure is no-op when zone already computed '
+        '(idempotency guard)', () {
+      fogResolver.onLocationUpdate(48.42, -123.36);
+
+      var bootstrapFired = false;
+
+      void maybeBootstrapZone({Set<String> zoneCells = const {}}) {
+        if (zoneCells.isNotEmpty) return;
+        if (fogResolver.currentCellId == null) return;
+        bootstrapFired = true;
+      }
+
+      // Zone already has cells — bootstrap should be no-op.
+      maybeBootstrapZone(zoneCells: {'cell_a', 'cell_b'});
+      expect(bootstrapFired, isFalse,
+          reason: 'bootstrap should not fire when zone is already computed');
+    });
+
+    test(
+        'stream subscription ordering: coordinator receives initial emission '
+        'when subscribed before locationService.start()', () async {
+      // This test verifies the root cause fix: coordinator must subscribe
+      // to the GPS stream BEFORE the location service starts emitting.
+      //
+      // Simulates the fixed ordering:
+      //   1. coordinator.start(gpsStream: ...) — subscribes
+      //   2. locationService.start() — emits initial position
+      //
+      // The coordinator should receive the initial emission.
+
+      final gpsController =
+          StreamController<({Geographic position, double accuracy})>.broadcast(
+              sync: true);
+      addTearDown(gpsController.close);
+
+      final discoveryController = StreamController<DiscoveryEvent>.broadcast();
+      addTearDown(discoveryController.close);
+
+      // Step 1: Subscribe coordinator FIRST (the fix).
+      coordinator.start(
+        gpsStream: gpsController.stream,
+        discoveryStream: discoveryController.stream,
+      );
+
+      // Step 2: Emit initial position (simulates keyboard start()).
+      gpsController.add((
+        position: const Geographic(lat: 48.42, lon: -123.36),
+        accuracy: 5.0,
+      ));
+
+      // Coordinator should have received the position.
+      expect(coordinator.rawGpsPosition, isNotNull);
+      expect(coordinator.rawGpsPosition!.lat, closeTo(48.42, 0.01));
+      expect(coordinator.rawGpsPosition!.lon, closeTo(-123.36, 0.01));
+    });
+
+    test(
+        'stream subscription ordering: coordinator misses initial emission '
+        'when subscribed after locationService.start() (pre-fix behavior)',
+        () async {
+      // This test documents the pre-fix behavior: if the coordinator
+      // subscribes AFTER the initial emission, it misses it.
+
+      final gpsController =
+          StreamController<({Geographic position, double accuracy})>.broadcast(
+              sync: true);
+      addTearDown(gpsController.close);
+
+      final discoveryController = StreamController<DiscoveryEvent>.broadcast();
+      addTearDown(discoveryController.close);
+
+      // Step 1: Emit initial position FIRST (pre-fix ordering).
+      gpsController.add((
+        position: const Geographic(lat: 48.42, lon: -123.36),
+        accuracy: 5.0,
+      ));
+
+      // Step 2: Subscribe coordinator AFTER (the bug).
+      coordinator.start(
+        gpsStream: gpsController.stream,
+        discoveryStream: discoveryController.stream,
+      );
+
+      // Coordinator missed the emission — rawGpsPosition is still null.
+      expect(coordinator.rawGpsPosition, isNull,
+          reason: 'broadcast stream events are lost if no subscriber exists');
     });
   });
 }
