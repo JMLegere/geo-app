@@ -292,7 +292,7 @@ serve(async (req: Request) => {
         const { error: delErr } = await supabase
           .from("fun_facts")
           .delete()
-          .in_("id", ids);
+          .in("id", ids);
 
         if (delErr) {
           console.error(`[facts] rotation delete failed: ${delErr.message}`);
