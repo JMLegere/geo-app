@@ -936,12 +936,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
       // Feed cell properties + daily seed for icon rendering.
-      // Only set when the cache identity changes — the setter triggers a
-      // territory border rebuild (38ms BFS), so calling it every frame at
-      // 10Hz wastes 380ms/s of CPU.
+      // Only set when the cache size changes — the setter triggers a
+      // territory border rebuild (48-57ms BFS). The coordinator's getter
+      // returns Map.unmodifiable() which creates a NEW object each call,
+      // so identical() always fails. Length comparison catches new cells.
       final currentProps = _gameCoordinator.cellPropertiesCache;
-      if (!identical(
-          fogOverlayController.cellPropertiesCacheRef, currentProps)) {
+      if (currentProps.length !=
+          fogOverlayController.cellPropertiesCacheRef.length) {
         fogOverlayController.cellPropertiesCache = currentProps;
       }
       final seedState = ref.read(dailySeedServiceProvider).currentSeed;
