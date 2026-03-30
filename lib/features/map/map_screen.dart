@@ -26,6 +26,7 @@ import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
+import 'package:earth_nova/features/map/controllers/camera_controller.dart';
 import 'package:earth_nova/features/map/controllers/rubber_band_controller.dart';
 import 'package:earth_nova/features/map/providers/camera_bounds_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
@@ -39,6 +40,7 @@ import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.d
 import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
+import 'package:earth_nova/features/map/widgets/recenter_fab.dart';
 import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
@@ -127,6 +129,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Updated via [ValueNotifier] so only [PlayerMarkerLayer] rebuilds on each
   /// 60fps frame — the rest of [MapScreen] stays stable.
   late final ValueNotifier<({double lat, double lon})?> _markerPosition;
+
+  /// Camera mode controller — manages following/free/overview transitions.
+  late final CameraController _cameraController;
 
   /// Subscription to raw GPS updates from GameCoordinator.
   StreamSubscription<({Geographic position, double accuracy})>?
@@ -219,6 +224,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
       onDisplayUpdate: _onDisplayPositionUpdate,
     );
 
+    _cameraController = CameraController(
+      onMoveToPlayer: (center, duration) {
+        _mapController?.animateCamera(
+          center: Position(center.lon, center.lat),
+          zoom: _currentZoom,
+          nativeDuration: duration,
+        );
+      },
+    );
+
     // Read GameCoordinator — it's already started by the provider.
     _gameCoordinator = ref.read(gameCoordinatorProvider);
     _engineRunner = ref.read(engineRunnerProvider);
@@ -283,6 +298,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _adminBoundarySubscription?.cancel();
     _rubberBand.dispose();
     _markerPosition.dispose();
+    _cameraController.dispose();
     _rawGpsSubscription?.cancel();
     super.dispose();
   }
@@ -852,6 +868,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // 1. Update marker position via ValueNotifier (60 fps smooth, no full rebuild).
     _markerPosition.value = (lat: lat, lon: lon);
 
+    // 1b. Feed updated position to camera controller (follows in following mode).
+    _cameraController.onPlayerPositionUpdate(Geographic(lat: lat, lon: lon));
+
     // 2. Feed player position to engine via EngineRunner (60 fps — coordinator
     //    throttles internally to ~10 Hz for game logic).
     _engineRunner.send(PositionUpdate(lat, lon, 0));
@@ -1169,6 +1188,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     //
     // Only MapEventLongClick triggers cell selection — tap is reserved for
     // future interactions (e.g. species, markers). Long press shows cell details.
+    if (event is MapEventStartMoveCamera &&
+        event.reason == CameraChangeReason.apiGesture) {
+      _cameraController.onUserGesture();
+    }
     if (event is MapEventLongClick) {
       // MapLibre Position is (lng, lat) — longitude first.
       // event.point.lat/lng return num, so cast to double for getCellId.
@@ -1442,32 +1465,37 @@ class _MapScreenState extends ConsumerState<MapScreen>
               },
             ),
 
+            // ── Layer 4.8: Recenter FAB ─────────────────────────────────────
+            Positioned(
+              right: 16,
+              bottom: 80,
+              child: RecenterFab(
+                modeNotifier: _cameraController.mode,
+                onRecenter: _cameraController.recenter,
+              ),
+            ),
+
             // ── Layer 5: Map controls (recenter + debug) ──────────────────────
             Positioned(
               right: 16,
               bottom: 16,
               child: MapControls(
                 isWorldZoom: _zoomLevel == ZoomLevel.world,
-                onRecenter: () {
-                  final loc = ref.read(locationProvider);
-                  if (loc.currentPosition != null && _mapController != null) {
-                    _mapController!.animateCamera(
-                      center: Position(
-                        loc.currentPosition!.lon,
-                        loc.currentPosition!.lat,
-                      ),
-                      zoom: 14,
-                      nativeDuration: const Duration(milliseconds: 500),
-                    );
-                  }
-                },
+                onRecenter: _cameraController.recenter,
                 onToggleZoom: () {
+                  final goingToWorld = _zoomLevel == ZoomLevel.player;
                   setState(() {
-                    _zoomLevel = _zoomLevel == ZoomLevel.player
-                        ? ZoomLevel.world
-                        : ZoomLevel.player;
+                    _zoomLevel =
+                        goingToWorld ? ZoomLevel.world : ZoomLevel.player;
                   });
-                  _applyZoomLevel();
+                  if (goingToWorld) {
+                    _cameraController.enterOverview();
+                    _applyZoomLevel();
+                  } else {
+                    _cameraController.exitOverview();
+                    _cameraController.recenter();
+                    _applyZoomLevel();
+                  }
                 },
                 onToggleDebug: () =>
                     setState(() => _showDebugHud = !_showDebugHud),
