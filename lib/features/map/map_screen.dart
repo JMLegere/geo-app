@@ -57,6 +57,7 @@ import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
 import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
+import 'package:earth_nova/features/map/widgets/district_infographic_overlay.dart';
 
 /// Fixed zoom presets for the map camera.
 enum ZoomLevel {
@@ -138,6 +139,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
+  bool _showDistrictInfographic = false;
 
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
@@ -1264,61 +1266,71 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // feedback, and onLongPressStart when the hold completes (~500 ms).
             // MercatorProjection converts screen coords → geo for cell lookup.
             GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onLongPressDown: (details) {
-                HapticFeedback.selectionClick();
-                setState(() => _longPressPoint = details.localPosition);
+              onScaleUpdate: (details) {
+                if (!_showDistrictInfographic &&
+                    details.pointerCount >= 2 &&
+                    details.scale < kInfographicPinchOutThreshold) {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _showDistrictInfographic = true);
+                }
               },
-              onLongPressStart: (details) {
-                HapticFeedback.mediumImpact();
-                setState(() => _longPressPoint = null);
-                final mapState = ref.read(mapStateProvider);
-                final cameraLat = mapState.cameraLat ?? kDefaultMapLat;
-                final cameraLon = mapState.cameraLon ?? kDefaultMapLon;
-                final size = MediaQuery.sizeOf(context);
-                final geo = MercatorProjection.screenToGeo(
-                  screenPoint: details.localPosition,
-                  cameraLat: cameraLat,
-                  cameraLon: cameraLon,
-                  zoom: _currentZoom,
-                  viewportSize: size,
-                );
-                final cellService = ref.read(cellServiceProvider);
-                final cellId = cellService.getCellId(geo.lat, geo.lon);
-                _onCellTapped(cellId);
-              },
-              onLongPressCancel: () {
-                setState(() => _longPressPoint = null);
-              },
-              child: MapLibreMap(
-                options: MapOptions(
-                  initStyle: 'https://tiles.openfreemap.org/styles/positron',
-                  initZoom: kDefaultZoom,
-                  initCenter: _initialCenter(),
-                  minZoom: 15.0,
-                  maxZoom: 16.0,
-                  attribution: false,
-                  nativeLogo: false,
-                  // Disable pitch (tilt) — we never use it, and it's a 2D game.
-                  // This also disables MapLibre's built-in KeyboardHandler (which
-                  // requires allEnabled=true). Without this, arrow keys are
-                  // processed by BOTH our KeyboardLocationService AND MapLibre's
-                  // native pan handler, causing rapid oscillation when opposing
-                  // keys are held or jitter during normal movement.
-                  gestures: const MapGestures.all(pitch: false, pan: false),
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onLongPressDown: (details) {
+                  HapticFeedback.selectionClick();
+                  setState(() => _longPressPoint = details.localPosition);
+                },
+                onLongPressStart: (details) {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _longPressPoint = null);
+                  final mapState = ref.read(mapStateProvider);
+                  final cameraLat = mapState.cameraLat ?? kDefaultMapLat;
+                  final cameraLon = mapState.cameraLon ?? kDefaultMapLon;
+                  final size = MediaQuery.sizeOf(context);
+                  final geo = MercatorProjection.screenToGeo(
+                    screenPoint: details.localPosition,
+                    cameraLat: cameraLat,
+                    cameraLon: cameraLon,
+                    zoom: _currentZoom,
+                    viewportSize: size,
+                  );
+                  final cellService = ref.read(cellServiceProvider);
+                  final cellId = cellService.getCellId(geo.lat, geo.lon);
+                  _onCellTapped(cellId);
+                },
+                onLongPressCancel: () {
+                  setState(() => _longPressPoint = null);
+                },
+                child: MapLibreMap(
+                  options: MapOptions(
+                    initStyle: 'https://tiles.openfreemap.org/styles/positron',
+                    initZoom: kDefaultZoom,
+                    initCenter: _initialCenter(),
+                    minZoom: 15.0,
+                    maxZoom: 16.0,
+                    attribution: false,
+                    nativeLogo: false,
+                    // Disable pitch (tilt) — we never use it, and it's a 2D game.
+                    // This also disables MapLibre's built-in KeyboardHandler (which
+                    // requires allEnabled=true). Without this, arrow keys are
+                    // processed by BOTH our KeyboardLocationService AND MapLibre's
+                    // native pan handler, causing rapid oscillation when opposing
+                    // keys are held or jitter during normal movement.
+                    gestures: const MapGestures.all(pitch: false, pan: false),
+                  ),
+                  onMapCreated: _onMapCreated,
+                  onStyleLoaded: _onStyleLoaded,
+                  onEvent: _onMapEvent,
+                  children: [
+                    // ── Layer 2: Player marker (geo-anchored to display position) ─
+                    // PlayerMarkerLayer uses ValueListenableBuilder internally so
+                    // only it rebuilds on each 60fps rubber-band update — the rest
+                    // of MapScreen stays stable.
+                    PlayerMarkerLayer(position: _markerPosition),
+                  ],
                 ),
-                onMapCreated: _onMapCreated,
-                onStyleLoaded: _onStyleLoaded,
-                onEvent: _onMapEvent,
-                children: [
-                  // ── Layer 2: Player marker (geo-anchored to display position) ─
-                  // PlayerMarkerLayer uses ValueListenableBuilder internally so
-                  // only it rebuilds on each 60fps rubber-band update — the rest
-                  // of MapScreen stays stable.
-                  PlayerMarkerLayer(position: _markerPosition),
-                ],
               ),
-            ),
+            ), // close outer pinch-out GestureDetector
 
             // ── Layer 1.5: Long press ring indicator ──────────────────────────
             // Appears immediately on finger-down, grows over kLongPressTimeout.
@@ -1435,6 +1447,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 child: StepRecap(),
               ),
             ),
+
+            // ── Layer 3.9: District infographic overlay ──────────────────
+            if (_showDistrictInfographic)
+              Positioned.fill(
+                child: DistrictInfographicOverlay(
+                  onDismiss: () =>
+                      setState(() => _showDistrictInfographic = false),
+                  locationNodesMap: _locationNodesMap,
+                  cellService: ref.read(cellServiceProvider),
+                ),
+              ),
 
             // ── Layer 4: Debug HUD (toggle-able) ──────────────────────────────
             if (_showDebugHud)
