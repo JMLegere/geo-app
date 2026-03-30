@@ -304,3 +304,10 @@ const double kBorderLineWeightCity = 1.5;
 
 /// Border line weight for district-level boundaries.
 const double kBorderLineWeightDistrict = 1.0;
+
+// District Infographic
+/// Pinch scale threshold to trigger district infographic (< 1.0 = zoom-out).
+const double kInfographicPinchOutThreshold = 0.7;
+
+/// Pinch scale threshold to dismiss district infographic (> 1.0 = zoom-in).
+const double kInfographicPinchInThreshold = 1.3;
