@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/map_ready_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
@@ -260,6 +261,7 @@ void _setupPerfMonitoring(ProviderContainer container) {
           'gap_seconds': gap.inSeconds,
         });
         container.invalidate(gameCoordinatorProvider);
+        container.read(mapReadyProvider.notifier).reset();
         // Reset flag after 5s so future suspensions also trigger recovery.
         Future.delayed(const Duration(seconds: 5), () {
           hasTriggeredRehydration = false;
@@ -302,11 +304,17 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
     // no network, or when Nominatim is slow.
     _zoneReadyTimeoutTimer = Timer(const Duration(seconds: 15), () {
       if (!mounted) return;
-      if (!ref.read(zoneReadyProvider)) {
+      final zoneReady = ref.read(zoneReadyProvider);
+      final mapReady = ref.read(mapReadyProvider);
+      if (!zoneReady || !mapReady) {
         debugPrint(
-            '[TIMEOUT] zone not ready after 15s — dismissing loading screen');
-        ObservabilityBuffer.instance?.event('zone_ready_timeout', {});
-        ref.read(zoneReadyProvider.notifier).markReady();
+            '[TIMEOUT] not ready after 15s (zone=$zoneReady, map=$mapReady) — dismissing loading screen');
+        ObservabilityBuffer.instance?.event('steady_state_timeout', {
+          'zone_ready': zoneReady,
+          'map_ready': mapReady,
+        });
+        if (!zoneReady) ref.read(zoneReadyProvider.notifier).markReady();
+        if (!mapReady) ref.read(mapReadyProvider.notifier).markReady();
       }
     });
   }
@@ -320,13 +328,9 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
   @override
   Widget build(BuildContext context) {
     // Eagerly create GameCoordinator so hydration starts immediately on auth.
-    // Without this, the provider is only accessed by MapScreen (inside TabShell),
-    // which is gated behind isHydrated — causing a deadlock.
     ref.read(gameCoordinatorProvider);
 
     final authState = ref.watch(authProvider);
-    final playerState = ref.watch(playerProvider);
-    final isZoneReady = ref.watch(zoneReadyProvider);
 
     return MaterialApp(
       title: 'EarthNova',
@@ -335,13 +339,13 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
       themeMode: ThemeMode.dark,
       home: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
-        child: _resolveHome(authState, playerState, isZoneReady),
+        child: _resolveHome(authState),
       ),
     );
   }
 
-  Widget _resolveHome(
-      AuthState authState, PlayerState playerState, bool isZoneReady) {
+  Widget _resolveHome(AuthState authState) {
+    // Non-authenticated states route normally (no map needed).
     final widget = switch (authState.status) {
       AuthStatus.loading => const LoadingScreen(
           key: ValueKey('loading'),
@@ -350,32 +354,70 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
           key: const ValueKey('otp'),
           phone: authState.phone!,
         ),
-      // Wait for profile hydration AND zone resolution before routing —
-      // prevents flashing OnboardingScreen while loadProfile() hasn't run
-      // yet, and ensures the map opens in steady state (detection zone ready).
-      AuthStatus.authenticated when !playerState.isHydrated || !isZoneReady =>
-        const LoadingScreen(key: ValueKey('loading')),
-      AuthStatus.authenticated => playerState.hasCompletedOnboarding
-          ? const TabShell(key: ValueKey('tabshell'))
-          : const OnboardingScreen(key: ValueKey('onboarding')),
       AuthStatus.unauthenticated => const LoginScreen(
           key: ValueKey('login'),
+        ),
+      // Authenticated: use the steady-state shell that mounts map behind loading.
+      AuthStatus.authenticated => const _SteadyStateShell(
+          key: ValueKey('steady_state'),
         ),
     };
 
     final pageName = switch (authState.status) {
       AuthStatus.loading => 'LoadingScreen',
       AuthStatus.otpSent || AuthStatus.otpVerifying => 'OtpVerificationScreen',
-      AuthStatus.authenticated when !playerState.isHydrated || !isZoneReady =>
-        'LoadingScreen (hydrating)',
-      AuthStatus.authenticated =>
-        playerState.hasCompletedOnboarding ? 'TabShell' : 'OnboardingScreen',
       AuthStatus.unauthenticated => 'LoginScreen',
+      AuthStatus.authenticated => 'SteadyStateShell',
     };
     debugPrint('[NAV] resolveHome → $pageName');
     StartupBeacon.emit('resolve_home', {'route': pageName});
 
     return widget;
+  }
+}
+
+/// Mounts TabShell immediately (map initializes behind the scenes) and
+/// overlays LoadingScreen until all steady-state conditions are met:
+/// isHydrated, isZoneReady, isMapReady.
+///
+/// The loading screen fades out with a 400ms animation when ready.
+/// This eliminates the flash of uninitialized map that occurred with
+/// route-switching (where MapScreen only mounted after loading dismissed).
+class _SteadyStateShell extends ConsumerWidget {
+  const _SteadyStateShell({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playerState = ref.watch(playerProvider);
+    final isZoneReady = ref.watch(zoneReadyProvider);
+    final isMapReady = ref.watch(mapReadyProvider);
+
+    // Check onboarding first — if not complete, show onboarding (no map).
+    if (playerState.isHydrated && !playerState.hasCompletedOnboarding) {
+      return const OnboardingScreen(key: ValueKey('onboarding'));
+    }
+
+    final allReady = playerState.isHydrated && isZoneReady && isMapReady;
+
+    return Stack(
+      children: [
+        // TabShell (with MapScreen) is ALWAYS mounted — initializes behind
+        // the loading screen. MapScreen's _initFogAndReveal() runs during
+        // this time and signals mapReadyProvider when complete.
+        const TabShell(),
+
+        // Loading screen overlay — fades out when all conditions met.
+        // IgnorePointer when invisible so map gestures work immediately.
+        IgnorePointer(
+          ignoring: allReady,
+          child: AnimatedOpacity(
+            opacity: allReady ? 0.0 : 1.0,
+            duration: const Duration(milliseconds: 400),
+            child: allReady ? const SizedBox.shrink() : const LoadingScreen(),
+          ),
+        ),
+      ],
+    );
   }
 }
 
