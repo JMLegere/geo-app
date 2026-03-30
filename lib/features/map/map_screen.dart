@@ -21,6 +21,7 @@ import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
+import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/core/state/location_node_repository_provider.dart';
@@ -256,6 +257,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
         loc.currentPosition!.lon,
       );
     }
+
+    // When the detection zone resolves, trigger one fog rebuild cycle.
+    // The zone cells arrive AFTER the rubber-band pauses (player is
+    // stationary), so _onDisplayPositionUpdate stops firing and the fog
+    // never rebuilds with the new 6K cells. This listener catches that.
+    ref.listenManual(zoneReadyProvider, (previous, next) {
+      if (next == true && previous != true && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final pos = _markerPosition.value;
+          if (pos != null) _updateFogRendering(pos.lat, pos.lon);
+        });
+      }
+    });
 
     // Wire exploration-disabled banner.
     _gameCoordinator.onExplorationDisabledChanged = (disabled) {
@@ -924,8 +939,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
 
       // Feed cell properties + daily seed for icon rendering.
-      fogOverlayController.cellPropertiesCache =
-          _gameCoordinator.cellPropertiesCache;
+      // Only set when the cache identity changes — the setter triggers a
+      // territory border rebuild (38ms BFS), so calling it every frame at
+      // 10Hz wastes 380ms/s of CPU.
+      final currentProps = _gameCoordinator.cellPropertiesCache;
+      if (!identical(
+          fogOverlayController.cellPropertiesCacheRef, currentProps)) {
+        fogOverlayController.cellPropertiesCache = currentProps;
+      }
       final seedState = ref.read(dailySeedServiceProvider).currentSeed;
       fogOverlayController.dailySeed = seedState?.seed ?? '';
 

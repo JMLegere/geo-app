@@ -405,7 +405,7 @@ Additional directories:
 | Species | 32,752 (real IUCN dataset) | Full biodiversity catalog |
 | Habitats | 7 | Forest, Plains, Freshwater, Saltwater, Swamp, Mountain, Desert |
 | IUCN rarity tiers | 6 | LC, NT, VU, EN, CR, EX — with 3^x loot weights |
-| Fog levels | 5 | Undetected (1.0), Unexplored (1.0), Concealed (0.95), Hidden (0.5), Observed (0.0) |
+| Fog levels | 5 | Unknown (1.0), Detected (0.85), Nearby (0.95), Explored (0.5), Present (0.0) |
 | Seasons | 2 | Summer (May–Oct), Winter (Nov–Apr) |
 | Continents | 6 | Asia, North America, South America, Africa, Oceania, Europe |
 | Detection radius | 1000 m | kDetectionRadiusMeters — cells within this radius are at least "unexplored" |

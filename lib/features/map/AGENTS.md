@@ -299,7 +299,7 @@ The following issues were resolved in the service injection refactoring:
 
 - **System:** 3-layer GeoJSON (base fog world polygon + mid-fog semi-transparent fills + border outlines)
 - **Update trigger:** Only on fog state change or camera move (not every frame)
-- **Opacity:** Derived from FogState density values (Undetected/Unexplored: 1.0, Concealed: 0.95, Hidden: 0.5, Observed: 0.0)
+- **Opacity:** Derived from FogState density values (Unknown: 1.0, Detected: 0.85, Nearby: 0.95, Explored: 0.5, Present: 0.0)
 
 ### Mercator Projection
 

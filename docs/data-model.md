@@ -8,7 +8,7 @@ All domain models, database schema, and persistence contracts.
 
 | Enum | Values | Key Getter |
 |------|--------|-----------|
-| `FogState` | undetected, unexplored, concealed, hidden, observed | `density` → 1.0, 1.0, 0.95, 0.5, 0.0 |
+| `FogState` | unknown, detected, nearby, explored, present | `density` → 1.0, 0.85, 0.95, 0.5, 0.0 |
 | `IucnStatus` | leastConcern, nearThreatened, vulnerable, endangered, criticallyEndangered, extinct | `weight` → 100000, 10000, 1000, 100, 10, 1 |
 | `Habitat` | forest, plains, freshwater, saltwater, swamp, mountain, desert | `displayName`, `colorHex` |
 | `Season` | summer (May-Oct), winter (Nov-Apr) | `fromDate(DateTime)`, `opposite` |

@@ -136,6 +136,11 @@ class FogOverlayController {
   /// Cell properties cache — set externally from GameCoordinator.
   Map<String, CellProperties> _cellPropertiesCache = const {};
 
+  /// Identity reference for the current cache — used by map_screen to
+  /// avoid calling the setter every frame (setter triggers border rebuild).
+  Map<String, CellProperties> get cellPropertiesCacheRef =>
+      _cellPropertiesCache;
+
   /// Location nodes cache — set externally when enrichment data is loaded.
   Map<String, LocationNode> _locationNodesCache = {};
 
