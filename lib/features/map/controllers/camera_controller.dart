@@ -33,11 +33,16 @@ enum CameraMode {
 class CameraController {
   CameraController({
     required this.onMoveToPlayer,
+    required this.onAnimateToPlayer,
   });
 
-  /// Callback: animate camera to player position.
-  /// Map screen implements this as `mapController.animateCamera(...)`.
-  final void Function(Geographic center, Duration duration) onMoveToPlayer;
+  /// Callback: instant camera move (no animation). Used for GPS follow
+  /// (~30Hz) — rubber-band already provides smooth interpolation.
+  final void Function(Geographic center) onMoveToPlayer;
+
+  /// Callback: animated camera move. Used for recenter only (single
+  /// invocation on FAB tap, not repeated at high frequency).
+  final void Function(Geographic center, Duration duration) onAnimateToPlayer;
 
   /// Current camera mode — consumed by RecenterFab.
   final ValueNotifier<CameraMode> mode = ValueNotifier(CameraMode.following);
@@ -59,7 +64,7 @@ class CameraController {
   void onPlayerPositionUpdate(Geographic position) {
     _playerPosition = position;
     if (mode.value == CameraMode.following && !_isAnimating) {
-      onMoveToPlayer(position, kGpsFollowDuration);
+      onMoveToPlayer(position);
     }
   }
 
@@ -83,7 +88,7 @@ class CameraController {
     final pos = _playerPosition;
     if (pos == null) return;
     _isAnimating = true;
-    onMoveToPlayer(pos, kRecenterDuration);
+    onAnimateToPlayer(pos, kRecenterDuration);
     // Schedule mode change after animation completes.
     Future.delayed(kRecenterDuration, () {
       _isAnimating = false;

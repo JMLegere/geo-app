@@ -226,7 +226,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
 
     _cameraController = CameraController(
-      onMoveToPlayer: (center, duration) {
+      onMoveToPlayer: (center) {
+        _mapController?.moveCamera(
+          center: Position(center.lon, center.lat),
+          zoom: _currentZoom,
+        );
+      },
+      onAnimateToPlayer: (center, duration) {
         _mapController?.animateCamera(
           center: Position(center.lon, center.lat),
           zoom: _currentZoom,
