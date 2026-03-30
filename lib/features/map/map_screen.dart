@@ -9,7 +9,6 @@ import 'package:maplibre/maplibre.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
-import 'package:earth_nova/core/state/map_ready_provider.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
@@ -1152,7 +1151,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
 
     ref.read(mapStateProvider.notifier).markReady();
-    ref.read(mapReadyProvider.notifier).markReady();
 
     // Force player marker repaint after fog initialization.
     // Ensures the marker recalculates its screen position after the first frame.
