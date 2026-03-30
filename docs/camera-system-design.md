@@ -2,7 +2,7 @@
 
 > Replaces the ad-hoc camera code scattered across `map_screen.dart` and `camera_bounds_controller.dart`. Designed from Pokémon Go, Ingress, Google Maps, Apple Maps, Civilization, and Fog of World reference analysis.
 
-## Status: Design Document (not yet implemented)
+## Status: Superseded by locked-follow camera. See docs/district-hierarchy-design.md
 
 ---
 

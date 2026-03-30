@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:io' as io show Platform;
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
@@ -33,7 +31,6 @@ import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
-import 'package:earth_nova/features/map/providers/camera_bounds_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
@@ -544,56 +541,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         'district': detectionZoneService.currentDistrictId,
       });
     }
-
-    // 1e. Update camera bounds from district centroids.
-    //     Compute centroids from current + adjacent district LocationNodes.
-    final locationNodeRepo = ref.read(locationNodeRepositoryProvider);
-    final boundsCtrl = ref.read(cameraBoundsProvider);
-    Future.microtask(() async {
-      if (_providerDisposed) return;
-      final centroids = <Geographic>[];
-
-      // Collect all district IDs from the detection zone attribution map.
-      // cellDistrictAttribution contains {cellId: districtId} for ALL cells
-      // in the current zone (current + adjacent districts), so the unique
-      // values are exactly the set of districts we need centroids for.
-      // This replaces the previous approach of reading adjacentLocationIds
-      // from the LocationNode, which may be null.
-      final districtIds =
-          detectionZoneService.cellDistrictAttribution.values.toSet();
-
-      // Compute centroid for each district from geometryJson
-      for (final districtId in districtIds) {
-        final node = await locationNodeRepo.get(districtId);
-        if (node?.geometryJson == null) continue;
-        try {
-          final geo = jsonDecode(node!.geometryJson!);
-          final coords = (geo['coordinates'][0] as List);
-          double sumLat = 0, sumLon = 0;
-          for (final point in coords) {
-            sumLon += (point[0] as num).toDouble();
-            sumLat += (point[1] as num).toDouble();
-          }
-          if (coords.isNotEmpty) {
-            centroids.add(Geographic(
-              lat: sumLat / coords.length,
-              lon: sumLon / coords.length,
-            ));
-          }
-        } catch (e) {
-          debugPrint(
-              '[CameraBounds] failed to parse centroid for $districtId: $e');
-        }
-      }
-
-      if (centroids.isNotEmpty && !_providerDisposed) {
-        // Use a reasonable screen size estimate — actual size is widget-level
-        // and not accessible here. 390x844 = iPhone 14 logical pixels.
-        boundsCtrl.updateBounds(centroids, const Size(390, 844));
-        debugPrint('[CameraBounds] updated: ${centroids.length} districts, '
-            'minZoom=${boundsCtrl.minZoom?.toStringAsFixed(1)}');
-      }
-    });
 
     // ── Phase 2: Deferred persistence (batched microtask, ~75ms/batch) ──
     // Persist to SQLite + enqueue for Supabase in batches of 5 with yields
