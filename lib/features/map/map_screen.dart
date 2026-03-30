@@ -21,7 +21,6 @@ import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
-import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/core/state/location_node_repository_provider.dart';
@@ -57,6 +56,7 @@ import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
 import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
+import 'package:earth_nova/core/state/detection_zone_provider.dart';
 import 'package:earth_nova/features/map/widgets/district_infographic_overlay.dart';
 
 /// Fixed zoom presets for the map camera.
@@ -254,14 +254,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // The zone cells arrive AFTER the rubber-band pauses (player is
     // stationary), so _onDisplayPositionUpdate stops firing and the fog
     // never rebuilds with the new 6K cells. This listener catches that.
-    ref.listenManual(zoneReadyProvider, (previous, next) {
-      if (next == true && previous != true && mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          final pos = _markerPosition.value;
-          if (pos != null) _updateFogRendering(pos.lat, pos.lon);
-        });
-      }
+    // When the detection zone changes (cells added/removed), trigger a fog
+    // rebuild. This is needed because _updateFogRendering only runs during
+    // rubber-band ticks, and zone cells often arrive AFTER the rubber-band
+    // pauses (player is stationary). The zoneReadyProvider listener was
+    // insufficient — it only fires on false→true transition, but the 15s
+    // timeout can set it to true before the real zone resolves.
+    ref.read(detectionZoneServiceProvider).onDetectionZoneChanged.listen((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final pos = _markerPosition.value;
+        if (pos != null) _updateFogRendering(pos.lat, pos.lon);
+      });
     });
 
     // Wire exploration-disabled banner.
