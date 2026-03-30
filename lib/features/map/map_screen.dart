@@ -1010,6 +1010,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // MapLibre callbacks
   // ---------------------------------------------------------------------------
 
+  /// Returns the initial map center — player's last known position if
+  /// available, otherwise the Fredericton default. Prevents the map from
+  /// flashing Fredericton before the camera follow moves to the player.
+  Position _initialCenter() {
+    final loc = ref.read(locationProvider);
+    if (loc.currentPosition != null) {
+      return Position(loc.currentPosition!.lon, loc.currentPosition!.lat);
+    }
+    return Position(kDefaultMapLon, kDefaultMapLat);
+  }
+
   void _onMapCreated(MapController controller) {
     MapLogger.mapCreated();
     _mapController = controller;
@@ -1287,7 +1298,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 options: MapOptions(
                   initStyle: 'https://tiles.openfreemap.org/styles/positron',
                   initZoom: kDefaultZoom,
-                  initCenter: Position(kDefaultMapLon, kDefaultMapLat),
+                  initCenter: _initialCenter(),
                   minZoom: _cameraBounds != null
                       ? ref.read(cameraBoundsProvider).minZoom ?? kMinZoom
                       : kMinZoom,
