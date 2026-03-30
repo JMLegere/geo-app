@@ -118,6 +118,19 @@ const double kCameraFollowDistance = 50.0;
 /// Camera zoom animation duration (milliseconds).
 const int kCameraZoomDurationMs = 300;
 
+/// Duration for GPS-follow camera updates (linear interpolation).
+/// Slightly less than 1 GPS tick (1000ms) so the camera arrives
+/// before the next update, preventing visible lag.
+const Duration kGpsFollowDuration = Duration(milliseconds: 250);
+
+/// Duration for recenter animation (free → following).
+/// Ease-out cubic: fast start, gentle landing. Feels responsive.
+const Duration kRecenterDuration = Duration(milliseconds: 400);
+
+/// Duration for overview fitBounds animation.
+/// Ease-in-out cubic: deliberate, cinematic.
+const Duration kOverviewDuration = Duration(milliseconds: 1000);
+
 // Rubber-Band Marker Interpolation
 //
 // The player marker is decoupled from raw GPS coordinates and smoothly
