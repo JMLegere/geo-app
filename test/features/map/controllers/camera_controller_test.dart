@@ -7,13 +7,18 @@ import 'package:earth_nova/shared/constants.dart';
 void main() {
   group('CameraController', () {
     late CameraController controller;
-    late List<(Geographic, Duration)> moves;
+    late List<Geographic> moves;
+    late List<(Geographic, Duration)> animates;
 
     setUp(() {
       moves = [];
+      animates = [];
       controller = CameraController(
-        onMoveToPlayer: (center, duration) {
-          moves.add((center, duration));
+        onMoveToPlayer: (center) {
+          moves.add(center);
+        },
+        onAnimateToPlayer: (center, duration) {
+          animates.add((center, duration));
         },
       );
     });
@@ -24,12 +29,12 @@ void main() {
       expect(controller.mode.value, CameraMode.following);
     });
 
-    test('GPS update in following mode emits onMoveToPlayer', () {
+    test('GPS update in following mode emits onMoveToPlayer (instant)', () {
       final pos = Geographic(lat: 48.42, lon: -123.36);
       controller.onPlayerPositionUpdate(pos);
       expect(moves, hasLength(1));
-      expect(moves.first.$1.lat, 48.42);
-      expect(moves.first.$2, kGpsFollowDuration);
+      expect(moves.first.lat, 48.42);
+      expect(animates, isEmpty, reason: 'follow uses moveCamera, not animate');
     });
 
     test('GPS update in free mode does not emit', () {
@@ -67,8 +72,9 @@ void main() {
       controller.onUserGesture(); // → free
       controller.recenter();
 
-      expect(moves, hasLength(1));
-      expect(moves.first.$2, kRecenterDuration);
+      expect(animates, hasLength(1),
+          reason: 'recenter uses animateCamera, not moveCamera');
+      expect(animates.first.$2, kRecenterDuration);
 
       // Wait for delayed mode transition
       await Future.delayed(
