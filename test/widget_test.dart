@@ -27,6 +27,7 @@ import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/game_event.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
+import 'package:earth_nova/core/state/map_ready_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/main.dart';
 
@@ -85,6 +86,13 @@ class _StubLocationEnrichmentService implements LocationEnrichmentService {
 /// 15-second timeout. Without this override the loading screen never
 /// dismisses in headless CI (no GPS → no detection zone → zoneReady stays false).
 class _ReadyZoneNotifier extends ZoneReadyNotifier {
+  @override
+  bool build() => true;
+}
+
+/// Stub notifier that reports map as ready immediately, bypassing the
+/// _initFogAndReveal() flow that requires MapLibre (unavailable in headless CI).
+class _ReadyMapNotifier extends MapReadyNotifier {
   @override
   bool build() => true;
 }
@@ -156,6 +164,7 @@ void main() {
           speciesCacheProvider.overrideWithValue(SpeciesCache.empty()),
           engineRunnerProvider.overrideWithValue(_StubEngineRunner()),
           zoneReadyProvider.overrideWith(_ReadyZoneNotifier.new),
+          mapReadyProvider.overrideWith(_ReadyMapNotifier.new),
         ],
         child: const EarthNovaApp(),
       ),

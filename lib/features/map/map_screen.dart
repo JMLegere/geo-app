@@ -9,6 +9,7 @@ import 'package:maplibre/maplibre.dart';
 
 import 'package:geobase/geobase.dart' show Geographic;
 
+import 'package:earth_nova/core/state/map_ready_provider.dart';
 import 'package:earth_nova/core/engine/engine_input.dart';
 import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
@@ -237,6 +238,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Read GameCoordinator — it's already started by the provider.
     _gameCoordinator = ref.read(gameCoordinatorProvider);
     _engineRunner = ref.read(engineRunnerProvider);
+
+    // Seed rubber-band + camera from restored position. By the time MapScreen
+    // mounts, the loading screen has already gated on isHydrated && isZoneReady,
+    // so the position is known. Without this, the marker and camera are absent
+    // until the first real GPS fix (5-30s on web).
+    final loc = ref.read(locationProvider);
+    if (loc.currentPosition != null) {
+      _rubberBand.setTarget(
+        loc.currentPosition!.lat,
+        loc.currentPosition!.lon,
+      );
+    }
 
     // Wire exploration-disabled banner.
     _gameCoordinator.onExplorationDisabledChanged = (disabled) {
@@ -1139,6 +1152,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (!mounted) return;
 
     ref.read(mapStateProvider.notifier).markReady();
+    ref.read(mapReadyProvider.notifier).markReady();
 
     // Force player marker repaint after fog initialization.
     // Ensures the marker recalculates its screen position after the first frame.
