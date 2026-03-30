@@ -18,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
-import 'package:earth_nova/core/state/map_ready_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
@@ -261,7 +260,6 @@ void _setupPerfMonitoring(ProviderContainer container) {
           'gap_seconds': gap.inSeconds,
         });
         container.invalidate(gameCoordinatorProvider);
-        container.read(mapReadyProvider.notifier).reset();
         // Reset flag after 5s so future suspensions also trigger recovery.
         Future.delayed(const Duration(seconds: 5), () {
           hasTriggeredRehydration = false;
@@ -304,17 +302,11 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
     // no network, or when Nominatim is slow.
     _zoneReadyTimeoutTimer = Timer(const Duration(seconds: 15), () {
       if (!mounted) return;
-      final zoneReady = ref.read(zoneReadyProvider);
-      final mapReady = ref.read(mapReadyProvider);
-      if (!zoneReady || !mapReady) {
+      if (!ref.read(zoneReadyProvider)) {
         debugPrint(
-            '[TIMEOUT] not ready after 15s (zone=$zoneReady, map=$mapReady) — dismissing loading screen');
-        ObservabilityBuffer.instance?.event('steady_state_timeout', {
-          'zone_ready': zoneReady,
-          'map_ready': mapReady,
-        });
-        if (!zoneReady) ref.read(zoneReadyProvider.notifier).markReady();
-        if (!mapReady) ref.read(mapReadyProvider.notifier).markReady();
+            '[TIMEOUT] zone not ready after 15s — dismissing loading screen');
+        ObservabilityBuffer.instance?.event('zone_ready_timeout', {});
+        ref.read(zoneReadyProvider.notifier).markReady();
       }
     });
   }
@@ -377,12 +369,15 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
 }
 
 /// Mounts TabShell immediately (map initializes behind the scenes) and
-/// overlays LoadingScreen until all steady-state conditions are met:
-/// isHydrated, isZoneReady, isMapReady.
+/// overlays LoadingScreen until steady-state conditions are met:
+/// isHydrated && isZoneReady.
+///
+/// mapReady is NOT needed as a separate gate — with the Stack overlay
+/// architecture, MapLibre fog layers initialize in ~41ms (always before
+/// zone resolution at ~3-8s). The zone_ready signal fires after detection
+/// zone cells are added to the fog, guaranteeing the fog has real data.
 ///
 /// The loading screen fades out with a 400ms animation when ready.
-/// This eliminates the flash of uninitialized map that occurred with
-/// route-switching (where MapScreen only mounted after loading dismissed).
 class _SteadyStateShell extends ConsumerWidget {
   const _SteadyStateShell({super.key});
 
@@ -390,20 +385,19 @@ class _SteadyStateShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final playerState = ref.watch(playerProvider);
     final isZoneReady = ref.watch(zoneReadyProvider);
-    final isMapReady = ref.watch(mapReadyProvider);
 
     // Check onboarding first — if not complete, show onboarding (no map).
     if (playerState.isHydrated && !playerState.hasCompletedOnboarding) {
       return const OnboardingScreen(key: ValueKey('onboarding'));
     }
 
-    final allReady = playerState.isHydrated && isZoneReady && isMapReady;
+    final allReady = playerState.isHydrated && isZoneReady;
 
     return Stack(
       children: [
         // TabShell (with MapScreen) is ALWAYS mounted — initializes behind
-        // the loading screen. MapScreen's _initFogAndReveal() runs during
-        // this time and signals mapReadyProvider when complete.
+        // the loading screen. Fog layers initialize in ~41ms, always before
+        // zone resolution (3-8s). No separate mapReady gate needed.
         const TabShell(),
 
         // Loading screen overlay — fades out when all conditions met.
