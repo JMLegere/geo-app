@@ -21,6 +21,7 @@ import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/state/persistence_consumer.dart';
@@ -73,6 +74,15 @@ class _MockSupabasePersistence extends SupabasePersistence {
     if (shouldThrow) throw SyncException(errorMessage);
     return [];
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchCountries() async => [];
+  @override
+  Future<List<Map<String, dynamic>>> fetchStates() async => [];
+  @override
+  Future<List<Map<String, dynamic>>> fetchCities() async => [];
+  @override
+  Future<List<Map<String, dynamic>>> fetchDistricts() async => [];
 }
 
 // ---------------------------------------------------------------------------
@@ -127,6 +137,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       // Existing local data should be untouched.
@@ -152,6 +163,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final profile = await profileRepo.read(_userId);
@@ -192,6 +204,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
@@ -237,6 +250,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final items = await itemRepo.getItemsByUser(_userId);
@@ -292,6 +306,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       // Profile
@@ -323,6 +338,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       // Nothing written to SQLite.
@@ -343,6 +359,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final profile = await profileRepo.read(_userId);
@@ -388,6 +405,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       // Item still exists — no duplication.
@@ -423,6 +441,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       // Verify defaults were applied.
@@ -461,6 +480,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final profile = await profileRepo.read(_userId);
@@ -488,6 +508,7 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: HierarchyRepository(db),
       );
 
       final profile = await profileRepo.read(_userId);

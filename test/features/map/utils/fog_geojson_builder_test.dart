@@ -280,7 +280,7 @@ void main() {
       expect(_features(result), isEmpty);
     });
 
-    test('includes detected cells at their own density 0.85', () {
+    test('includes detected cells at their own density 1.0', () {
       final result = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
@@ -290,8 +290,8 @@ void main() {
       expect(features.length, equals(1));
 
       final props = features[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.85),
-          reason: 'Detected cells render at their own density');
+      expect(props['density'], equals(1.0),
+          reason: 'Detected cells are fully opaque');
     });
 
     test('multiple cells produce multiple features', () {
@@ -333,32 +333,35 @@ void main() {
 
       final props = features[0]['properties'] as Map<String, dynamic>;
       expect(props['density'], equals(FogState.detected.density),
-          reason: 'Detected cells render at 0.85 density');
+          reason: 'Detected cells render at 1.0 density');
     });
 
-    test('detected cell: base-fog has hole, mid-fog has polygon', () {
-      // Base fog SHOULD punch a hole for detected
+    test('detected cell: fully opaque — no base hole, mid-fog pre-rendered',
+        () {
+      // Base fog should NOT punch a hole for detected (density 1.0 = opaque).
+      // However, buildBaseFog punches holes for ALL non-unknown cells.
       final baseFog = FogGeoJsonBuilder.buildBaseFog(
         cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
       final baseCoordinates =
           _features(baseFog)[0]['geometry']['coordinates'] as List<dynamic>;
+      // Base fog punches holes for all non-unknown states (detected included).
       expect(baseCoordinates.length, equals(2),
-          reason: 'Detected cells get holes so district is visible');
+          reason: 'Base fog punches hole for detected cells');
 
-      // Mid fog SHOULD include the unexplored cell
+      // Mid fog includes detected cell (pre-rendered behind base fog).
       final midFog = FogGeoJsonBuilder.buildMidFog(
         cellStates: {'cell_37_-122': FogState.detected},
         getBoundary: _getBoundary,
       );
       final midFeatures = _features(midFog);
       expect(midFeatures.length, equals(1),
-          reason: 'Unexplored cell is pre-rendered in mid fog');
+          reason: 'Detected cell is pre-rendered in mid fog');
 
       final props = midFeatures[0]['properties'] as Map<String, dynamic>;
-      expect(props['density'], equals(0.85),
-          reason: 'Detected cells render at their own density');
+      expect(props['density'], equals(1.0),
+          reason: 'Detected cells are fully opaque');
     });
 
     test('mixed states includes unexplored, concealed, and hidden', () {

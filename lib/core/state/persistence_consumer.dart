@@ -13,8 +13,10 @@ import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/season.dart';
 import 'package:earth_nova/core/models/write_queue_entry.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/database/app_database.dart';
@@ -387,6 +389,7 @@ Future<void> hydrateFromSupabase({
   required CellProgressRepository cellProgressRepo,
   required ItemInstanceRepository itemRepo,
   required CellPropertyRepository cellPropertyRepo,
+  HierarchyRepository? hierarchyRepo,
   AppDatabase? db,
   SpeciesCache? speciesCache,
   ObservabilityBuffer? obs,
@@ -684,6 +687,74 @@ Future<void> hydrateFromSupabase({
         '[GameCoordinator] hydrated $cellPropsHydrated cell properties '
         'from Supabase',
       );
+    }
+
+    // 7. Hierarchy tables → SQLite (globally shared location hierarchy)
+    if (hierarchyRepo != null) {
+      try {
+        final hierarchyResults = await Future.wait([
+          persistence.fetchCountries(),
+          persistence.fetchStates(),
+          persistence.fetchCities(),
+          persistence.fetchDistricts(),
+        ]);
+
+        final countryRows = hierarchyResults[0];
+        final stateRows = hierarchyResults[1];
+        final cityRows = hierarchyResults[2];
+        final districtRows = hierarchyResults[3];
+
+        for (final row in countryRows) {
+          await hierarchyRepo.upsertCountry(HCountry(
+            id: row['id'] as String,
+            name: row['name'] as String? ?? '',
+            centroidLat: (row['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+            centroidLon: (row['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+            continent: row['continent'] as String? ?? '',
+            boundaryJson: row['boundary_json'] as String?,
+          ));
+        }
+        for (final row in stateRows) {
+          await hierarchyRepo.upsertState(HState(
+            id: row['id'] as String,
+            name: row['name'] as String? ?? '',
+            centroidLat: (row['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+            centroidLon: (row['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+            countryId: row['country_id'] as String? ?? '',
+            boundaryJson: row['boundary_json'] as String?,
+          ));
+        }
+        for (final row in cityRows) {
+          await hierarchyRepo.upsertCity(HCity(
+            id: row['id'] as String,
+            name: row['name'] as String? ?? '',
+            centroidLat: (row['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+            centroidLon: (row['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+            stateId: row['state_id'] as String? ?? '',
+            boundaryJson: row['boundary_json'] as String?,
+          ));
+        }
+        for (final row in districtRows) {
+          await hierarchyRepo.upsertDistrict(HDistrict(
+            id: row['id'] as String,
+            name: row['name'] as String? ?? '',
+            centroidLat: (row['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+            centroidLon: (row['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+            cityId: row['city_id'] as String? ?? '',
+            boundaryJson: row['boundary_json'] as String?,
+          ));
+        }
+
+        if (countryRows.isNotEmpty || districtRows.isNotEmpty) {
+          debugPrint(
+            '[GameCoordinator] hydrated hierarchy: '
+            '${countryRows.length} countries, ${stateRows.length} states, '
+            '${cityRows.length} cities, ${districtRows.length} districts',
+          );
+        }
+      } catch (e) {
+        debugPrint('[GameCoordinator] hierarchy hydration failed: $e');
+      }
     }
 
     debugPrint(

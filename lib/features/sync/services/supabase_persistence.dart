@@ -413,4 +413,49 @@ class SupabasePersistence {
       throw SyncException('Failed to load species updates.', cause: e);
     }
   }
+
+  /// Fetches all countries from Supabase.
+  /// Hierarchy data is globally shared (not per-user).
+  Future<List<Map<String, dynamic>>> fetchCountries() async {
+    try {
+      final response = await _client.from('countries').select();
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchCountries failed: $e');
+      throw SyncException('Failed to load countries.', cause: e);
+    }
+  }
+
+  /// Fetches all states from Supabase.
+  Future<List<Map<String, dynamic>>> fetchStates() async {
+    try {
+      final response = await _client.from('states').select();
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchStates failed: $e');
+      throw SyncException('Failed to load states.', cause: e);
+    }
+  }
+
+  /// Fetches all cities from Supabase.
+  Future<List<Map<String, dynamic>>> fetchCities() async {
+    try {
+      final response = await _client.from('cities').select();
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchCities failed: $e');
+      throw SyncException('Failed to load cities.', cause: e);
+    }
+  }
+
+  /// Fetches all districts from Supabase.
+  Future<List<Map<String, dynamic>>> fetchDistricts() async {
+    try {
+      final response = await _client.from('districts').select();
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('[SupabasePersistence] fetchDistricts failed: $e');
+      throw SyncException('Failed to load districts.', cause: e);
+    }
+  }
 }
