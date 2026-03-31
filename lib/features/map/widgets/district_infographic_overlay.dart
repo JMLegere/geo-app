@@ -26,10 +26,14 @@ class DistrictInfographicOverlay extends ConsumerStatefulWidget {
     required this.onDismiss,
     required this.locationNodesMap,
     required this.cellService,
+    this.onNavigateUp,
     super.key,
   });
 
   final VoidCallback onDismiss;
+
+  /// Called when the user pinch-outs to navigate up to city level.
+  final VoidCallback? onNavigateUp;
 
   /// Cached location nodes map from map_screen (already loaded).
   final Map<String, LocationNode> locationNodesMap;
@@ -215,10 +219,16 @@ class _DistrictInfographicOverlayState
     return FadeTransition(
       opacity: _fadeAnim,
       child: GestureDetector(
-        // Pinch-out (scale > threshold) to dismiss back to map.
+        // Pinch-in (scale > threshold) to dismiss back to map.
+        // Pinch-out (scale < threshold) to navigate up to city level.
         onScaleUpdate: (details) {
           if (details.scale > kInfographicPinchInThreshold) {
             _dismiss();
+          }
+          if (details.pointerCount >= 2 &&
+              details.scale < kInfographicPinchOutThreshold &&
+              widget.onNavigateUp != null) {
+            widget.onNavigateUp!();
           }
         },
         child: Container(

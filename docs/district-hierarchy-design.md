@@ -2,7 +2,7 @@
 
 > Replaces the ad-hoc `LocationNode` system with a first-class geographic hierarchy. Districts are the core game concept — exploration progress, detection zones, and the hierarchy view system all build on this.
 
-## Status: Design Document (not yet implemented)
+## Status: Phase 1 (camera) DONE, Phase 2 (migration) DONE, Phase 6 (district infographic) DONE, Phase 7 (hierarchy navigation) DONE (stubs)
 
 ---
 

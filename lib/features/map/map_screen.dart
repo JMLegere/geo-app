@@ -60,7 +60,9 @@ import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dar
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
+import 'package:earth_nova/features/map/models/hierarchy_level.dart';
 import 'package:earth_nova/features/map/widgets/district_infographic_overlay.dart';
+import 'package:earth_nova/features/map/widgets/hierarchy_stub_overlay.dart';
 
 /// Fixed zoom presets for the map camera.
 enum ZoomLevel {
@@ -142,7 +144,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
-  bool _showDistrictInfographic = false;
+  HierarchyLevel? _activeHierarchyLevel;
 
   /// JavaScript debug bridge for Playwright E2E tests.
   /// Exposes `window.__earthNovaDebug` on web; no-op on native.
@@ -338,9 +340,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // JavaScript debug bridge for Playwright E2E tests.
     _debugBridge = DebugBridge(
-      getInfographicState: () => _showDistrictInfographic,
+      getInfographicState: () => _activeHierarchyLevel != null,
       setInfographicState: (value) {
-        if (mounted) setState(() => _showDistrictInfographic = value);
+        if (mounted) {
+          setState(() {
+            _activeHierarchyLevel = value ? HierarchyLevel.district : null;
+          });
+        }
       },
     );
     _debugBridge.install();
@@ -366,9 +372,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (event is! KeyDownEvent) return false;
 
     if (event.logicalKey == LogicalKeyboardKey.keyI) {
-      setState(() => _showDistrictInfographic = !_showDistrictInfographic);
-      debugPrint(
-          '[MAP] keyboard shortcut: infographic=$_showDistrictInfographic');
+      setState(() {
+        if (_activeHierarchyLevel == null) {
+          _activeHierarchyLevel = HierarchyLevel.district;
+        } else {
+          _activeHierarchyLevel = null;
+        }
+      });
+      debugPrint('[MAP] keyboard shortcut: hierarchy=$_activeHierarchyLevel');
       return true;
     }
     return false;
@@ -1325,11 +1336,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // MercatorProjection converts screen coords → geo for cell lookup.
             GestureDetector(
               onScaleUpdate: (details) {
-                if (!_showDistrictInfographic &&
+                if (_activeHierarchyLevel == null &&
                     details.pointerCount >= 2 &&
                     details.scale < kInfographicPinchOutThreshold) {
                   HapticFeedback.mediumImpact();
-                  setState(() => _showDistrictInfographic = true);
+                  setState(
+                      () => _activeHierarchyLevel = HierarchyLevel.district);
                 }
               },
               child: GestureDetector(
@@ -1506,14 +1518,25 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ),
             ),
 
-            // ── Layer 3.9: District infographic overlay ──────────────────
-            if (_showDistrictInfographic)
+            // ── Layer 3.9: Hierarchy overlays ──────────────────────────
+            if (_activeHierarchyLevel == HierarchyLevel.district)
               Positioned.fill(
                 child: DistrictInfographicOverlay(
-                  onDismiss: () =>
-                      setState(() => _showDistrictInfographic = false),
+                  onDismiss: () => setState(() => _activeHierarchyLevel = null),
+                  onNavigateUp: () => setState(
+                      () => _activeHierarchyLevel = HierarchyLevel.city),
                   locationNodesMap: _locationNodesMap,
                   cellService: ref.read(cellServiceProvider),
+                ),
+              ),
+            if (_activeHierarchyLevel != null &&
+                _activeHierarchyLevel != HierarchyLevel.district)
+              Positioned.fill(
+                child: HierarchyStubOverlay(
+                  level: _activeHierarchyLevel!,
+                  onNavigate: (level) =>
+                      setState(() => _activeHierarchyLevel = level),
+                  onDismiss: () => setState(() => _activeHierarchyLevel = null),
                 ),
               ),
 
