@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
 | Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
-| Tests | 1835 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1962 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | info-level issues only (0 errors, 0 warnings) |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |

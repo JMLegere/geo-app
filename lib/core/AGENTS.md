@@ -225,7 +225,7 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 
 **Purpose**: Riverpod v3 state management. Global app state providers.
 
-**Public API** (19 providers):
+**Public API** (21 providers):
 - `tabIndexProvider`: `NotifierProvider<TabIndexNotifier, int>` — selected tab index (0=Map, 1=Home, 2=Town, 3=Pack). Persists to SharedPreferences.
 - `fogProvider`: `NotifierProvider<FogNotifier, Map<String, FogState>>` — per-cell fog state cache
 - `locationProvider`: `NotifierProvider<LocationNotifier, LocationState>` — current position, accuracy, tracking status, errors
@@ -245,6 +245,8 @@ Shared domain logic, models, state management, and persistence for the geo-game.
 - `cellPropertyRepositoryProvider`: `Provider<CellPropertyRepository>` — watches appDatabaseProvider. Cell property CRUD (get, upsert, updateLocationId, getAll).
 - `locationNodeRepositoryProvider`: `Provider<LocationNodeRepository>` — watches appDatabaseProvider. Location hierarchy node CRUD (get, upsert, getChildren, getByOsmId).
 - `countryResolverProvider`: `FutureProvider<CountryResolver>` — loads `assets/country_boundaries.json`. Offline country→continent resolution via ray-casting.
+- `zoneReadyProvider`: `NotifierProvider<ZoneReadyNotifier, bool>` — detection zone resolution gate. Set `true` by gameCoordinatorProvider when zone resolves, or by 15s timeout. Used by `_SteadyStateShell` to gate loading screen.
+- `playerLocatedProvider`: `NotifierProvider<PlayerLocatedNotifier, bool>` — rubber-band convergence gate. Set `true` by MapScreen when display position within 1000m of raw GPS, or by 15s timeout. Third loading gate after hydration + zone.
 - `cellPropertyResolverProvider`: `Provider<CellPropertyResolver>` — watches habitatServiceProvider + countryResolverProvider. Falls back to DefaultHabitatLookup + legacy ContinentResolver during loading.
 - `gameCoordinatorProvider`: `Provider<GameCoordinator>` — central game loop, bridges core + features (justified exception to dependency rule). Hydrates inventory + cell progress + profile + cell properties from SQLite on startup. Fetches daily seed on startup. Persists discoveries, cell visits, profile changes, and cell properties to SQLite + write queue. Listens to `playerProvider` for profile write-through. Wires `cellPropertiesLookup` on DiscoveryService. Triggers `locationEnrichmentServiceProvider` for cells without locationId. Enrichment cache type: `Map<String, ({int speed, int brawn, int wit, AnimalSize? size})>`. Rolls weight when size is available during discovery/backfill.
 

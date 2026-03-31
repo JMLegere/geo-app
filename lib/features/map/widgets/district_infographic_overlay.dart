@@ -44,7 +44,7 @@ class DistrictInfographicOverlay extends ConsumerStatefulWidget {
 
 class _DistrictInfographicOverlayState
     extends ConsumerState<DistrictInfographicOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   DistrictInfographicData? _data;
   bool _isDismissing = false;
 

@@ -91,6 +91,7 @@ UI components overlaid on the map:
   - Required because MapLibre cannot render emoji in `text-field` (BMP-only limitation)
 - **mercator_projection.dart**: Pure Web Mercator math. `geoToScreen`/`screenToGeo`/`visibleBounds`. Lat clamped ±85.051129°.
 - **map_visibility.dart**: CSS-based MapLibre container visibility control for web. `AnimatedOpacity` cannot hide `HtmlElementView` — CSS injection required.
+- **debug_bridge.dart**: Conditional import hub → `debug_bridge_stub.dart` (no-op) or `debug_bridge_web.dart` (exposes `window.__earthNovaDebug`). Methods: `toggleInfographic()`, `isInfographicOpen()`. Used by Playwright E2E tests.
 - **map_logger.dart**: Rate-limited logger with channels (RUBBER, CAMERA, FOG, KEY, LOC). Errors always log immediately. **Known debt:** mutable static variables.
 
 ---
@@ -335,9 +336,35 @@ The following issues were resolved in the service injection refactoring:
 
 ---
 
+## Keyboard Shortcuts
+
+| Key | Action | Scope |
+|-----|--------|-------|
+| `W/A/S/D` + Arrows | Player movement (10m/step) | `KeyboardLocationService` (web only) |
+| `I` | Toggle district infographic | `_MapScreenState._onKeyEvent` (all platforms) |
+
+The `I` shortcut uses `HardwareKeyboard.instance.addHandler()` registered in `initState()`, removed in `dispose()`.
+
+---
+
+## E2E Debug Bridge
+
+`window.__earthNovaDebug` JS object (web only) — created by `DebugBridge` in `initState()`, disposed in `dispose()`.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `toggleInfographic()` | void | Toggles `_showDistrictInfographic` via `setState()` |
+| `isInfographicOpen()` | bool | Current infographic visibility state |
+
+Playwright tests in `e2e/tests/` use this bridge for automated testing. See `e2e/playwright.config.ts`.
+
+---
+
 ## Testing
 
 - **Controllers:** Unit test with mock callbacks. No Riverpod needed.
 - **Painters:** Widget test with mock Canvas. Verify draw calls.
 - **Providers:** Test with ProviderContainer. Verify state transitions.
 - **Projection:** Unit test with known lat/lon ↔ x/y pairs.
+- **Infographic:** 34 tests across data model (15), painter (11), and overlay (8).
+- **E2E:** Playwright tests in `e2e/tests/` — requires running Flutter web build.

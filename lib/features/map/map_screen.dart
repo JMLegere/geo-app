@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
@@ -23,6 +24,7 @@ import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
+import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
@@ -37,6 +39,7 @@ import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart'
 import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/debug_bridge.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
@@ -141,6 +144,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   bool _showDebugHud = false;
   bool _showDistrictInfographic = false;
 
+  /// JavaScript debug bridge for Playwright E2E tests.
+  /// Exposes `window.__earthNovaDebug` on web; no-op on native.
+  late final DebugBridge _debugBridge;
+
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
   Offset? _longPressPoint;
@@ -162,6 +169,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Frame counter for throttling fog rendering in [_onDisplayPositionUpdate].
   /// Fog rendering runs at ~10 Hz, not 60 fps.
   int _renderFrame = 0;
+
+  /// Last raw GPS position received. Used to compute convergence distance
+  /// for the playerLocatedProvider gate.
+  ({double lat, double lon})? _lastRawGps;
+  bool _playerLocatedFired = false;
 
   /// Render logic runs every Nth display-update frame.
   /// Desktop: every 6th frame (~10 Hz at 60 fps).
@@ -320,10 +332,24 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _locationNodesMap;
       _rebuildAdminBoundaryGeoJson();
     });
+
+    // Keyboard shortcut: 'I' toggles district infographic.
+    HardwareKeyboard.instance.addHandler(_onKeyEvent);
+
+    // JavaScript debug bridge for Playwright E2E tests.
+    _debugBridge = DebugBridge(
+      getInfographicState: () => _showDistrictInfographic,
+      setInfographicState: (value) {
+        if (mounted) setState(() => _showDistrictInfographic = value);
+      },
+    );
+    _debugBridge.install();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    _debugBridge.dispose();
     _gameCoordinator.onExplorationDisabledChanged = null;
     _enrichmentSubscription?.cancel();
     _adminBoundarySubscription?.cancel();
@@ -332,6 +358,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _cameraController.dispose();
     _rawGpsSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Handles keyboard events for debug shortcuts.
+  /// Returns true if the event was handled (consumed).
+  bool _onKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    if (event.logicalKey == LogicalKeyboardKey.keyI) {
+      setState(() => _showDistrictInfographic = !_showDistrictInfographic);
+      debugPrint(
+          '[MAP] keyboard shortcut: infographic=$_showDistrictInfographic');
+      return true;
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -881,6 +921,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       source: _gameCoordinator.isRealGps ? 'realGps' : 'simulated',
     );
 
+    _lastRawGps = (lat: update.position.lat, lon: update.position.lon);
+
     _rubberBand.setTarget(update.position.lat, update.position.lon);
   }
 
@@ -901,6 +943,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // 1b. Feed updated position to camera controller (follows in following mode).
     _cameraController.onPlayerPositionUpdate(Geographic(lat: lat, lon: lon));
+
+    // 1c. Check rubber-band convergence for loading gate (once only).
+    if (!_playerLocatedFired && _lastRawGps != null) {
+      final dist =
+          _haversineMeters(lat, lon, _lastRawGps!.lat, _lastRawGps!.lon);
+      if (dist < kPlayerLocatedThresholdMeters) {
+        _playerLocatedFired = true;
+        ref.read(playerLocatedProvider.notifier).markLocated();
+      }
+    }
 
     // 2. Feed player position to engine via EngineRunner (60 fps — coordinator
     //    throttles internally to ~10 Hz for game logic).
@@ -1529,6 +1581,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ),
       ),
     );
+  }
+
+  /// Haversine distance in meters between two geographic points.
+  static double _haversineMeters(
+      double lat1, double lon1, double lat2, double lon2) {
+    const earthRadius = 6371000.0;
+    final dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final dLon = (lon2 - lon1) * (math.pi / 180.0);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180.0) *
+            math.cos(lat2 * math.pi / 180.0) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    return earthRadius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/spinning_globe.dart';
@@ -75,9 +76,11 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
   String _loadingMessage() {
     final isHydrated = ref.watch(playerProvider).isHydrated;
     final isZoneReady = ref.watch(zoneReadyProvider);
+    final isPlayerLocated = ref.watch(playerLocatedProvider);
 
     if (!isHydrated) return 'Unpacking your backpack...';
     if (!isZoneReady) return 'Scouting the area...';
+    if (!isPlayerLocated) return 'Finding the player...';
     return 'Ready to explore!';
   }
 
