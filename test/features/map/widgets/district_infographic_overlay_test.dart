@@ -8,10 +8,11 @@ import 'package:geobase/geobase.dart';
 import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
 import 'package:earth_nova/core/models/location_node.dart';
-import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/services/detection_zone_service.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
@@ -68,6 +69,21 @@ List<Geographic> _makeRing() => const [
       Geographic(lat: 45.0, lon: -65.99),
     ];
 
+// ── MockHierarchyRepository ───────────────────────────────────────────────
+
+class _MockHierarchyRepository extends HierarchyRepository {
+  _MockHierarchyRepository() : super(AppDatabase(NativeDatabase.memory()));
+
+  @override
+  Future<List<HCountry>> getAllCountries() async => [];
+  @override
+  Future<List<HState>> getStatesForCountry(String countryId) async => [];
+  @override
+  Future<List<HCity>> getCitiesForState(String stateId) async => [];
+  @override
+  Future<List<HDistrict>> getDistrictsForCity(String cityId) async => [];
+}
+
 // ── _FakeDetectionZoneService ──────────────────────────────────────────────
 
 /// DetectionZoneService subclass with pre-configured test data.
@@ -79,10 +95,12 @@ class _FakeDetectionZoneService extends DetectionZoneService {
     String? districtId,
     Map<String, String>? attribution,
     required CellService cellService,
-    required LocationNodeRepository locationNodeRepo,
   })  : _fakeDistrictId = districtId,
         _fakeAttribution = attribution ?? {},
-        super(cellService: cellService, locationNodeRepo: locationNodeRepo);
+        super(
+          cellService: cellService,
+          hierarchyRepo: _MockHierarchyRepository(),
+        );
 
   @override
   String? get currentDistrictId => _fakeDistrictId;
@@ -111,8 +129,6 @@ class _MockItemsNotifier extends ItemsNotifier {
 }
 
 // ── Factories ──────────────────────────────────────────────────────────────
-
-AppDatabase _makeDb() => AppDatabase(NativeDatabase.memory());
 
 FogStateResolver _makeFogResolver({
   required CellService cellService,
@@ -146,15 +162,11 @@ void main() {
   group('no data fallback', () {
     testWidgets('renders fallback when no districtId available',
         (tester) async {
-      final db = _makeDb();
-      addTearDown(db.close);
-      final repo = LocationNodeRepository(db);
       final cellService = MockCellService();
 
       final fakeZone = _FakeDetectionZoneService(
         districtId: null,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       await tester.pumpWidget(ProviderScope(
@@ -183,15 +195,11 @@ void main() {
     });
 
     testWidgets('tapping fallback dismisses overlay', (tester) async {
-      final db = _makeDb();
-      addTearDown(db.close);
-      final repo = LocationNodeRepository(db);
       final cellService = MockCellService();
 
       final fakeZone = _FakeDetectionZoneService(
         districtId: null,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       var dismissed = false;
@@ -271,26 +279,19 @@ void main() {
       ),
     };
 
-    late AppDatabase db;
-    late LocationNodeRepository repo;
     late MockCellService cellService;
 
     setUp(() {
-      db = _makeDb();
-      repo = LocationNodeRepository(db);
       cellService = MockCellService(centers: cellCenters);
     });
 
-    tearDown(() async {
-      await db.close();
-    });
+    tearDown(() async {});
 
     testWidgets('renders district name in header', (tester) async {
       final fakeZone = _FakeDetectionZoneService(
         districtId: districtId,
         attribution: attribution,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       await tester.pumpWidget(ProviderScope(
@@ -327,7 +328,6 @@ void main() {
         districtId: districtId,
         attribution: attribution,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       await tester.pumpWidget(ProviderScope(
@@ -364,7 +364,6 @@ void main() {
         districtId: districtId,
         attribution: attribution,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       await tester.pumpWidget(ProviderScope(
@@ -400,7 +399,6 @@ void main() {
         districtId: districtId,
         attribution: attribution,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       final fakeItems = ItemsState(
@@ -440,7 +438,6 @@ void main() {
         districtId: districtId,
         attribution: attribution,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       var dismissed = false;
@@ -485,15 +482,11 @@ void main() {
   group('dispose', () {
     testWidgets('clears painter cache on dispose without crashing',
         (tester) async {
-      final db = _makeDb();
-      addTearDown(db.close);
-      final repo = LocationNodeRepository(db);
       final cellService = MockCellService();
 
       final fakeZone = _FakeDetectionZoneService(
         districtId: null,
         cellService: cellService,
-        locationNodeRepo: repo,
       );
 
       await tester.pumpWidget(ProviderScope(

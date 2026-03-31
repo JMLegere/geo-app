@@ -1,57 +1,60 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/models/cell_properties.dart';
-import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:flutter/foundation.dart';
 
-/// Computes detection zones from district GeoJSON boundaries.
+/// Radius-based detection zone centered on the player position.
 ///
-/// The detection zone = current district + adjacent districts. All cells
-/// in this zone become "known" (resolved, SpeciesCache warmed, fog rendered).
+/// The detection zone is the set of cells within [_ringCount] Voronoi rings
+/// of the player's current cell. All cells in this zone have fog computed,
+/// species caches warmed, and cell properties resolved.
 ///
-/// Adjacent districts are discovered automatically: after computing cells
-/// for the current district, border cells' Voronoi neighbors are checked
-/// for different `locationId`s via [cellPropertiesLookup].
-///
-/// Pure Dart service — no Flutter widgets, no Riverpod dependency.
+/// District assignment is computed via nearest-centroid matching against
+/// the hierarchy tables (not GeoJSON polygon scanning).
 class DetectionZoneService {
   final CellService _cellService;
-  final LocationNodeRepository _locationNodeRepo;
+  final HierarchyRepository _hierarchyRepo;
 
-  /// Current detection zone cell IDs (current district + adjacent districts).
+  /// Number of Voronoi rings from the player cell. ~180m per ring.
+  /// 15 rings ≈ 2.7km radius — covers a good walking area.
+  static const int _ringCount = 15;
+
+  /// Current detection zone cell IDs.
   Set<String> _detectionZoneCellIds = {};
 
-  /// Maps cell ID → district location ID for all cells in the current zone.
-  /// Used to set locationId on cell properties without async enrichment.
+  /// Maps cell ID → district ID for all cells in the current zone.
   Map<String, String> _cellDistrictAttribution = {};
 
-  /// Current district location ID, or null if not set.
+  /// Current district ID (district containing the player).
   String? _currentDistrictId;
+
+  /// The cell ID the zone is currently centered on.
+  /// Used to avoid recomputing when the player hasn't moved to a new cell.
+  String? _centeredOnCellId;
+
+  /// Cached district centroids for nearest-centroid matching.
+  List<HDistrict>? _districtCache;
 
   /// Stream that fires when the detection zone changes.
   final StreamController<Set<String>> _zoneChangedController =
       StreamController<Set<String>>.broadcast();
 
-  /// Lookup callback for cell properties (wired by gameCoordinatorProvider).
-  /// Returns the CellProperties for a given cellId, or null if not cached.
-  CellProperties? Function(String cellId)? cellPropertiesLookup;
-
   DetectionZoneService({
     required CellService cellService,
-    required LocationNodeRepository locationNodeRepo,
+    required HierarchyRepository hierarchyRepo,
   })  : _cellService = cellService,
-        _locationNodeRepo = locationNodeRepo;
+        _hierarchyRepo = hierarchyRepo;
 
   // ── Public API ──────────────────────────────────────────────────────────
 
-  /// Current detection zone cell IDs. Empty before any district is set.
+  /// Current detection zone cell IDs. Empty before first position update.
   Set<String> get detectionZoneCellIds =>
       Set.unmodifiable(_detectionZoneCellIds);
 
-  /// Current district location ID, or null if not set.
+  /// Current district location ID, or null if not determined.
   String? get currentDistrictId => _currentDistrictId;
 
   /// District attribution for all zone cells (cellId → districtId).
@@ -62,193 +65,85 @@ class DetectionZoneService {
   Stream<Set<String>> get onDetectionZoneChanged =>
       _zoneChangedController.stream;
 
-  /// Recomputes the detection zone for the current district.
+  /// Updates the detection zone based on the player's current position.
   ///
-  /// Use when geometry arrives after the initial (empty) computation.
-  /// Skips the dedup check in [onDistrictChange].
-  Future<void> recomputeCurrentZone() async {
-    final districtId = _currentDistrictId;
-    if (districtId == null) return;
-    _currentDistrictId = null; // Clear to bypass dedup
-    await onDistrictChange(districtId);
-  }
+  /// Computes cells within [_ringCount] rings of the player cell.
+  /// Only recomputes if the player has moved to a different cell.
+  /// Also assigns each cell to its nearest district centroid.
+  Future<void> updatePlayerPosition(double lat, double lon) async {
+    final currentCellId = _cellService.getCellId(lat, lon);
 
-  /// Called when the player enters a new district.
-  ///
-  /// Computes cell IDs for the district + adjacent districts, updates
-  /// [detectionZoneCellIds], and emits on [onDetectionZoneChanged].
-  Future<void> onDistrictChange(String districtId) async {
-    if (districtId == _currentDistrictId) return;
-    _currentDistrictId = districtId;
+    // Skip if player hasn't moved to a new cell.
+    if (currentCellId == _centeredOnCellId) return;
+    _centeredOnCellId = currentCellId;
 
     final sw = Stopwatch()..start();
-    final zone = <String>{};
 
-    // Compute cells for current district.
-    final currentCells = await computeCellIdsForDistrict(districtId);
-    zone.addAll(currentCells);
+    // Expand zone from player cell.
+    final zoneCells = <String>{};
+    for (var k = 0; k <= _ringCount; k++) {
+      zoneCells.addAll(_cellService.getCellsInRing(currentCellId, k));
+    }
 
+    // Load district centroids (cached after first load).
+    _districtCache ??= await _loadAllDistricts();
+
+    // Assign each cell to nearest district centroid.
     final attribution = <String, String>{};
-    for (final cellId in currentCells) {
-      attribution[cellId] = districtId;
-    }
-
-    // Discover adjacent districts from border cell Voronoi neighbors.
-    // A neighbor cell with a different locationId → that's an adjacent district.
-    final adjacentDistrictIds = <String>{};
-
-    // Check explicitly stored adjacency first.
-    final node = await _locationNodeRepo.get(districtId);
-    if (node?.adjacentLocationIds != null) {
-      adjacentDistrictIds.addAll(node!.adjacentLocationIds!);
-    }
-
-    // Auto-discover from cached cell properties: scan border cells for
-    // neighbors with a different locationId.
-    if (cellPropertiesLookup != null && currentCells.isNotEmpty) {
-      for (final cellId in currentCells) {
-        for (final neighborId in _cellService.getNeighborIds(cellId)) {
-          if (currentCells.contains(neighborId)) continue;
-          final props = cellPropertiesLookup!(neighborId);
-          if (props?.locationId != null && props!.locationId != districtId) {
-            adjacentDistrictIds.add(props.locationId!);
+    if (_districtCache!.isNotEmpty) {
+      for (final cellId in zoneCells) {
+        final center = _cellService.getCellCenter(cellId);
+        String? nearestId;
+        double nearestDist = double.infinity;
+        for (final district in _districtCache!) {
+          final dLat = center.lat - district.centroidLat;
+          final dLon = center.lon - district.centroidLon;
+          final dist = dLat * dLat + dLon * dLon;
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestId = district.id;
           }
+        }
+        if (nearestId != null) {
+          attribution[cellId] = nearestId;
         }
       }
     }
 
-    // Expand zone with cells from adjacent districts.
-    for (final adjId in adjacentDistrictIds) {
-      final adjCells = await computeCellIdsForDistrict(adjId);
-      zone.addAll(adjCells);
-      for (final cellId in adjCells) {
-        attribution[cellId] = adjId;
-      }
-    }
-
-    // Persist discovered adjacency for future sessions.
-    if (adjacentDistrictIds.isNotEmpty && node != null) {
-      final merged = <String>{
-        ...?node.adjacentLocationIds,
-        ...adjacentDistrictIds,
-      };
-      if (merged.length != (node.adjacentLocationIds?.length ?? 0)) {
-        final updated = node.copyWith(adjacentLocationIds: merged.toList());
-        await _locationNodeRepo.upsert(updated);
-      }
-    }
+    // Determine player's district.
+    final playerDistrict = attribution[currentCellId];
 
     sw.stop();
     debugPrint(
-        '[DetectionZone] district=$districtId zone=${zone.length} cells, '
-        'current=${currentCells.length}, adjacent=${adjacentDistrictIds.length} districts '
+        '[DetectionZone] radius=$_ringCount zone=${zoneCells.length} cells, '
+        'district=$playerDistrict '
         '(${sw.elapsedMilliseconds}ms)');
     ObservabilityBuffer.instance?.event('detection_zone_changed', {
-      'district_id': districtId,
-      'zone_size': zone.length,
-      'current_cells': currentCells.length,
-      'adjacent_districts': adjacentDistrictIds.length,
+      'zone_size': zoneCells.length,
+      'district_id': playerDistrict,
+      'ring_count': _ringCount,
       'duration_ms': sw.elapsedMilliseconds,
     });
 
+    _currentDistrictId = playerDistrict;
     _cellDistrictAttribution = attribution;
-    _detectionZoneCellIds = zone;
+    _detectionZoneCellIds = zoneCells;
     if (!_zoneChangedController.isClosed) {
-      _zoneChangedController.add(Set.unmodifiable(zone));
+      _zoneChangedController.add(Set.unmodifiable(zoneCells));
     }
   }
 
-  /// Computes cell IDs whose centers fall within a district's GeoJSON boundary.
-  ///
-  /// Returns cached cellIds from the LocationNode if available. Otherwise,
-  /// scans the bounding box at grid resolution, tests each cell center
-  /// against the polygon via ray-casting, caches the result on the
-  /// LocationNode, and returns it.
-  Future<Set<String>> computeCellIdsForDistrict(String districtId) async {
-    final node = await _locationNodeRepo.get(districtId);
-    if (node == null) {
-      debugPrint('[DetectionZone] node not found: $districtId');
-      ObservabilityBuffer.instance?.event('detection_zone_failure', {
-        'district_id': districtId,
-        'reason': 'node_not_found',
-      });
-      return {};
+  /// Forces a zone recomputation even if the player hasn't moved cells.
+  /// Used when hierarchy data arrives after the initial computation.
+  Future<void> recomputeCurrentZone() async {
+    _centeredOnCellId = null; // Clear to bypass dedup
+    _districtCache = null; // Reload districts
+    // Re-derive position from the existing zone center if available.
+    // If no zone yet, this is a no-op.
+    if (_detectionZoneCellIds.isNotEmpty) {
+      final center = _cellService.getCellCenter(_detectionZoneCellIds.first);
+      await updatePlayerPosition(center.lat, center.lon);
     }
-
-    debugPrint('[DetectionZone] compute $districtId: '
-        'cellIds=${node.cellIds?.length ?? "null"}, '
-        'geom=${node.geometryJson?.length ?? "null"} bytes');
-
-    // Return cached cellIds if available
-    if (node.cellIds != null && node.cellIds!.isNotEmpty) {
-      debugPrint(
-          '[DetectionZone] using cached ${node.cellIds!.length} cellIds');
-      return node.cellIds!.toSet();
-    }
-
-    // Parse GeoJSON geometry
-    if (node.geometryJson == null) {
-      debugPrint('[DetectionZone] no geometry for $districtId');
-      ObservabilityBuffer.instance?.event('detection_zone_failure', {
-        'district_id': districtId,
-        'reason': 'no_geometry',
-        'has_cached_cellIds': node.cellIds?.isNotEmpty ?? false,
-      });
-      return {};
-    }
-
-    final polygons = _parsePolygons(node.geometryJson!);
-    if (polygons.isEmpty) {
-      debugPrint('[DetectionZone] failed to parse polygons for $districtId '
-          '(geom ${node.geometryJson!.length} bytes)');
-      ObservabilityBuffer.instance?.event('detection_zone_failure', {
-        'district_id': districtId,
-        'reason': 'polygon_parse_failed',
-        'geom_bytes': node.geometryJson!.length,
-      });
-      return {};
-    }
-
-    // Find all cell centers inside any polygon
-    final cellIds = <String>{};
-    for (final polygon in polygons) {
-      final bbox = _boundingBox(polygon);
-      debugPrint('[DetectionZone] scanning $districtId: '
-          '${polygon.length} vertices, '
-          'bbox lat [${bbox.minLat.toStringAsFixed(4)}, ${bbox.maxLat.toStringAsFixed(4)}], '
-          'lon [${bbox.minLon.toStringAsFixed(4)}, ${bbox.maxLon.toStringAsFixed(4)}]');
-      // Scan at grid resolution (0.002° ≈ 180m, matching Voronoi grid step)
-      const gridStep = 0.002;
-      for (var lat = bbox.minLat; lat <= bbox.maxLat; lat += gridStep) {
-        for (var lon = bbox.minLon; lon <= bbox.maxLon; lon += gridStep) {
-          final cellId = _cellService.getCellId(lat, lon);
-          if (cellIds.contains(cellId)) continue;
-          final center = _cellService.getCellCenter(cellId);
-          if (_pointInPolygon(center.lat, center.lon, polygon)) {
-            cellIds.add(cellId);
-          }
-        }
-      }
-    }
-
-    debugPrint(
-        '[DetectionZone] scan result for $districtId: ${cellIds.length} cells');
-
-    if (cellIds.isEmpty) {
-      ObservabilityBuffer.instance?.event('detection_zone_failure', {
-        'district_id': districtId,
-        'reason': 'scan_found_zero_cells',
-        'polygon_count': polygons.length,
-        'geom_bytes': node.geometryJson!.length,
-      });
-      return {};
-    }
-
-    // Cache the result on the LocationNode
-    final updated = node.copyWith(cellIds: cellIds.toList());
-    await _locationNodeRepo.upsert(updated);
-
-    return cellIds;
   }
 
   /// Releases the stream controller.
@@ -256,83 +151,27 @@ class DetectionZoneService {
     _zoneChangedController.close();
   }
 
-  // ── GeoJSON Parsing ─────────────────────────────────────────────────────
+  // ── Private ─────────────────────────────────────────────────────────────
 
-  /// Parses GeoJSON geometry into a list of polygon rings.
-  /// Each polygon is a list of (lat, lon) pairs.
-  /// Supports both Polygon and MultiPolygon types.
-  List<List<({double lat, double lon})>> _parsePolygons(String geometryJson) {
+  /// Loads all districts from all cities from all states from all countries.
+  Future<List<HDistrict>> _loadAllDistricts() async {
+    final allDistricts = <HDistrict>[];
     try {
-      final json = jsonDecode(geometryJson) as Map<String, dynamic>;
-      final type = json['type'] as String?;
-      final coordinates = json['coordinates'];
-
-      if (type == 'Polygon' && coordinates is List) {
-        final ring = _parseRing(coordinates[0] as List);
-        return ring != null ? [ring] : [];
-      } else if (type == 'MultiPolygon' && coordinates is List) {
-        final result = <List<({double lat, double lon})>>[];
-        for (final polygon in coordinates) {
-          if (polygon is List && polygon.isNotEmpty) {
-            final ring = _parseRing(polygon[0] as List);
-            if (ring != null) result.add(ring);
+      final countries = await _hierarchyRepo.getAllCountries();
+      for (final country in countries) {
+        final states = await _hierarchyRepo.getStatesForCountry(country.id);
+        for (final state in states) {
+          final cities = await _hierarchyRepo.getCitiesForState(state.id);
+          for (final city in cities) {
+            final districts = await _hierarchyRepo.getDistrictsForCity(city.id);
+            allDistricts.addAll(districts);
           }
         }
-        return result;
       }
-      return [];
+      debugPrint('[DetectionZone] loaded ${allDistricts.length} districts');
     } catch (e) {
-      debugPrint('[DetectionZone] failed to parse geometry: $e');
-      return [];
+      debugPrint('[DetectionZone] failed to load districts: $e');
     }
-  }
-
-  /// Parses a GeoJSON coordinate ring into (lat, lon) pairs.
-  /// GeoJSON uses [lon, lat] order.
-  List<({double lat, double lon})>? _parseRing(List<dynamic> coordinates) {
-    try {
-      return coordinates.map((coord) {
-        final c = coord as List;
-        return (lat: (c[1] as num).toDouble(), lon: (c[0] as num).toDouble());
-      }).toList();
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // ── Geometry Helpers ────────────────────────────────────────────────────
-
-  /// Bounding box for a polygon ring.
-  ({double minLat, double maxLat, double minLon, double maxLon}) _boundingBox(
-      List<({double lat, double lon})> polygon) {
-    var minLat = double.infinity;
-    var maxLat = double.negativeInfinity;
-    var minLon = double.infinity;
-    var maxLon = double.negativeInfinity;
-    for (final p in polygon) {
-      if (p.lat < minLat) minLat = p.lat;
-      if (p.lat > maxLat) maxLat = p.lat;
-      if (p.lon < minLon) minLon = p.lon;
-      if (p.lon > maxLon) maxLon = p.lon;
-    }
-    return (minLat: minLat, maxLat: maxLat, minLon: minLon, maxLon: maxLon);
-  }
-
-  /// Ray-casting point-in-polygon test.
-  bool _pointInPolygon(
-      double lat, double lon, List<({double lat, double lon})> polygon) {
-    var inside = false;
-    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      final yi = polygon[i].lat;
-      final xi = polygon[i].lon;
-      final yj = polygon[j].lat;
-      final xj = polygon[j].lon;
-
-      if (((yi > lat) != (yj > lat)) &&
-          (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) {
-        inside = !inside;
-      }
-    }
-    return inside;
+    return allDistricts;
   }
 }
