@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
-import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
@@ -81,14 +80,10 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
       final district = await hierarchyRepo.getDistrict(props!.locationId!);
       if (district != null) {
         names.add(district.name);
-        final city = district.cityId != null
-            ? await hierarchyRepo.getCity(district.cityId!)
-            : null;
+        final city = await hierarchyRepo.getCity(district.cityId);
         if (city != null) {
           names.add(city.name);
-          final state = city.stateId != null
-              ? await hierarchyRepo.getState(city.stateId!)
-              : null;
+          final state = await hierarchyRepo.getState(city.stateId);
           if (state != null) {
             names.add(state.name);
             final country = await hierarchyRepo.getCountry(state.countryId);
