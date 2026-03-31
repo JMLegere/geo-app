@@ -759,12 +759,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _zoomFrozen = false;
         _infographicZoomArmed = false;
       });
-      // Smooth zoom reset instead of snap.
+      // Restore zoom to player level. Cannot use animateCamera here —
+      // the 60 Hz rubber-band moveCamera (instant/jumpTo) cancels it every
+      // frame, leaving zoom stuck at kInfographicTriggerZoom. Instead, update
+      // _currentZoom directly so the next rubber-band tick uses the right level
+      // and snaps the camera back to the player marker.
       if (_currentZoom < kMinZoom) {
-        _mapController?.animateCamera(
-          zoom: kMinZoom,
-          nativeDuration: Durations.infographicSnap,
-        );
+        _currentZoom = kMinZoom;
       }
     });
   }
@@ -797,11 +798,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _activeHierarchyLevel = null;
           _zoomFrozen = false;
         });
+        // Same fix as _dismissInfographic: update _currentZoom directly so
+        // the rubber-band picks it up on the next tick instead of using
+        // animateCamera which it would immediately cancel.
         if (_currentZoom < kMinZoom) {
-          _mapController?.animateCamera(
-            zoom: kMinZoom,
-            nativeDuration: Durations.infographicSnap,
-          );
+          _currentZoom = kMinZoom;
         }
       });
     }
