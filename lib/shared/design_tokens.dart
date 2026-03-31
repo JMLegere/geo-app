@@ -178,6 +178,9 @@ abstract final class Durations {
 
   /// District infographic scale+fade transition.
   static const Duration infographicTransition = Duration(milliseconds: 300);
+
+  /// Snap animation after gesture release (shorter than full transition).
+  static const Duration infographicSnap = Duration(milliseconds: 200);
 }
 
 /// Standard animation curves.

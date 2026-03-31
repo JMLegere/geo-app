@@ -11,7 +11,6 @@ import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/features/map/models/district_infographic_data.dart';
 import 'package:earth_nova/features/map/widgets/district_infographic_painter.dart';
-import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Full-screen district infographic overlay.
@@ -27,6 +26,8 @@ class DistrictInfographicOverlay extends ConsumerStatefulWidget {
     required this.districtDataMap,
     required this.cellService,
     this.onNavigateUp,
+    this.onCloseGestureUpdate,
+    this.onCloseGestureEnd,
     super.key,
   });
 
@@ -34,6 +35,12 @@ class DistrictInfographicOverlay extends ConsumerStatefulWidget {
 
   /// Called when the user pinch-outs to navigate up to city level.
   final VoidCallback? onNavigateUp;
+
+  /// Called on each scale update during a close gesture (pinch-spread on overlay).
+  final void Function(double scale)? onCloseGestureUpdate;
+
+  /// Called when the close gesture ends. Reports scale velocity (units/sec).
+  final void Function(double scaleVelocity)? onCloseGestureEnd;
 
   /// Cached district data map from map_screen (already loaded).
   final Map<String, HDistrict> districtDataMap;
@@ -51,6 +58,11 @@ class _DistrictInfographicOverlayState
     with TickerProviderStateMixin {
   DistrictInfographicData? _data;
   bool _isDismissing = false;
+
+  // Scale velocity tracking for close gesture.
+  double _prevScale = 1.0;
+  int _prevScaleTimeMs = 0;
+  double _scaleVelocity = 0.0;
 
   // Player marker pulse (2s loop = Durations.markerPulse).
   late final AnimationController _pulseCtrl;
@@ -203,17 +215,38 @@ class _DistrictInfographicOverlayState
     final data = _data;
 
     return GestureDetector(
-      // Pinch-in (scale > threshold) to dismiss back to map.
-      // Pinch-out (scale < threshold) to navigate up to city level.
+      onScaleStart: (details) {
+        _prevScale = 1.0;
+        _prevScaleTimeMs = DateTime.now().millisecondsSinceEpoch;
+        _scaleVelocity = 0.0;
+      },
       onScaleUpdate: (details) {
-        if (details.scale > kInfographicPinchInThreshold) {
-          _dismiss();
+        if (details.pointerCount >= 2) {
+          // Compute scale velocity.
+          final now = DateTime.now().millisecondsSinceEpoch;
+          final dt = (now - _prevScaleTimeMs) / 1000.0;
+          if (dt > 0 && _prevScaleTimeMs > 0) {
+            _scaleVelocity = (details.scale - _prevScale) / dt;
+          }
+          _prevScale = details.scale;
+          _prevScaleTimeMs = now;
+
+          // Report close gesture (spreading = scale > 1.0).
+          if (details.scale > 1.0) {
+            widget.onCloseGestureUpdate?.call(details.scale);
+          }
+
+          // Navigate up on extreme squeeze (scale < 0.5).
+          if (details.scale < 0.5 && widget.onNavigateUp != null) {
+            widget.onNavigateUp!();
+          }
         }
-        if (details.pointerCount >= 2 &&
-            details.scale < kInfographicPinchOutThreshold &&
-            widget.onNavigateUp != null) {
-          widget.onNavigateUp!();
-        }
+      },
+      onScaleEnd: (_) {
+        widget.onCloseGestureEnd?.call(_scaleVelocity);
+        _prevScale = 1.0;
+        _prevScaleTimeMs = 0;
+        _scaleVelocity = 0.0;
       },
       child: Container(
         color: _screenBg,
