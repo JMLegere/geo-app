@@ -15,7 +15,6 @@ import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
 
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
@@ -25,7 +24,8 @@ import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
 import 'package:earth_nova/core/state/player_located_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
+import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
@@ -51,12 +51,9 @@ import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
-import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
-import 'package:earth_nova/features/sync/services/admin_boundary_service.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
-import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
@@ -121,9 +118,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   late final LocationEnrichmentService _locationEnrichmentService;
   StreamSubscription<({String cellId, String locationId})>?
       _enrichmentSubscription;
-
-  /// Subscription to admin boundary resolution events.
-  StreamSubscription<List<String>>? _adminBoundarySubscription;
 
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
@@ -202,12 +196,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _cellIconsSrcId = 'cell-icons-src';
   static const _cellIconsLayerId = 'cell-icons';
 
-  // -- MapLibre source/layer IDs for admin boundary polygons --
-  static const _adminBoundaryFillSrcId = 'admin-boundary-fill-src';
-  static const _adminBoundaryFillLayerId = 'admin-boundary-fill';
-  static const _adminBoundaryLinesSrcId = 'admin-boundary-lines-src';
-  static const _adminBoundaryLinesLayerId = 'admin-boundary-lines';
-
   // -- MapLibre source/layer IDs for habitat fill --
   static const _habitatFillSrcId = 'habitat-fill-src';
   static const _habitatFillLayerId = 'habitat-fill';
@@ -221,12 +209,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the cell property icon images have been registered with MapLibre.
   bool _iconImagesRegistered = false;
 
-  /// Admin boundary service — may be null when Supabase is not configured.
-  AdminBoundaryService? _adminBoundaryService;
+  /// District ancestry cache — loaded once, refreshed when enrichment completes.
+  Map<String, ({String? cityId, String? stateId, String? countryId})>
+      _districtAncestryMap = {};
+  bool _districtAncestryLoaded = false;
 
-  /// Cached location nodes — loaded once, refreshed when enrichment completes.
-  Map<String, LocationNode> _locationNodesMap = {};
-  bool _locationNodesLoaded = false;
+  /// District data cache for infographic overlay.
+  Map<String, HDistrict> _districtDataMap = {};
 
   @override
   void initState() {
@@ -292,47 +281,24 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
 
-    // When enrichment completes, fetch the saved LocationNode and push it into
-    // the fog overlay cache so territory borders update without an app restart.
+    // When enrichment completes, reload district ancestry so territory borders
+    // update without an app restart.
     // Save reference to field — ref.read() in dispose() is unsafe (Bad state: Using ref).
     _locationEnrichmentService = ref.read(locationEnrichmentServiceProvider);
     _enrichmentSubscription =
         _locationEnrichmentService.onLocationEnriched.listen((event) {
       if (!mounted) return;
-      debugPrint('[MAP] enrichment → boundary fetch: cell=${event.cellId} '
+      debugPrint('[MAP] enrichment resolved: cell=${event.cellId} '
           'location=${event.locationId}');
-      ref
-          .read(locationNodeRepositoryProvider)
-          .get(event.locationId)
-          .then((node) {
-        if (node != null && mounted) {
-          _locationNodesMap[node.id] = node;
-          ref.read(fogOverlayControllerProvider).addLocationNode(node);
-        }
-      }).catchError((Object e) {
-        debugPrint(
-            '[MapScreen] failed to load location node ${event.locationId}: $e');
+      // Reload district ancestry when enrichment resolves a new locationId.
+      _loadDistrictAncestry().then((_) {
+        if (!mounted) return;
+        final fogCtrl = ref.read(fogOverlayControllerProvider);
+        final detectionZone = ref.read(detectionZoneServiceProvider);
+        fogCtrl.cellDistrictIds = detectionZone.cellDistrictAttribution;
+        fogCtrl.districtAncestry = _districtAncestryMap;
+        _updateFogSources();
       });
-
-      // Trigger admin boundary fetch when enrichment resolves — the district
-      // locationId may have changed, so requestBoundaries will check and fetch
-      // polygon data if needed (deduplicates internally by location).
-      final cellService = ref.read(cellServiceProvider);
-      final center = cellService.getCellCenter(event.cellId);
-      _adminBoundaryService?.requestBoundaries(center.lat, center.lon);
-    });
-
-    // Wire admin boundary service — fetch polygons on district change.
-    _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-    _adminBoundarySubscription =
-        _adminBoundaryService?.onBoundariesResolved.listen((nodeIds) async {
-      if (!mounted) return;
-      // Reload location nodes so territory border builder sees new geometry.
-      await _loadLocationNodes();
-      if (!mounted) return;
-      ref.read(fogOverlayControllerProvider).locationNodesCache =
-          _locationNodesMap;
-      _rebuildAdminBoundaryGeoJson();
     });
 
     // Keyboard shortcut: 'I' toggles district infographic.
@@ -358,7 +324,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _debugBridge.dispose();
     _gameCoordinator.onExplorationDisabledChanged = null;
     _enrichmentSubscription?.cancel();
-    _adminBoundarySubscription?.cancel();
     _rubberBand.dispose();
     _markerPosition.dispose();
     _cameraController.dispose();
@@ -402,55 +367,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || _fogLayersInitialized) return;
 
     try {
-      // Admin boundary fills: polygon fills for admin regions.
-      // Added BEFORE fog layers so they render below the fog.
-      await controller.addSource(
-        GeoJsonSource(
-            id: _adminBoundaryFillSrcId,
-            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
-      );
-      await controller.addLayer(FillLayer(
-        id: _adminBoundaryFillLayerId,
-        sourceId: _adminBoundaryFillSrcId,
-        paint: {
-          'fill-color': [
-            'coalesce',
-            ['get', 'color'],
-            '#888888'
-          ],
-          'fill-opacity': [
-            'coalesce',
-            ['get', 'opacity'],
-            0.0
-          ],
-        },
-      ));
-
-      // Admin boundary lines: outlines for admin regions.
-      await controller.addSource(
-        GeoJsonSource(
-            id: _adminBoundaryLinesSrcId,
-            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
-      );
-      await controller.addLayer(LineLayer(
-        id: _adminBoundaryLinesLayerId,
-        sourceId: _adminBoundaryLinesSrcId,
-        paint: {
-          'line-color': [
-            'coalesce',
-            ['get', 'color'],
-            '#888888'
-          ],
-          'line-width': [
-            'coalesce',
-            ['get', 'line_weight'],
-            1.0
-          ],
-          'line-dasharray': [6.0, 3.0],
-          'line-opacity': 0.7,
-        },
-      ));
-
       // Habitat fill: subtle radial gradient tint per revealed cell.
       await controller.addSource(
         GeoJsonSource(
@@ -680,17 +596,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Consume all dirty flags independently — the old exclusive stagger
     // starved border/icon updates because habitat was dirty every frame.
     final fogDirty = fogCtrl.consumeFogDirty();
-    final adminDirty = fogCtrl.consumeAdminDirty();
     final habitatDirty = fogCtrl.consumeHabitatDirty();
     final borderDirty = fogCtrl.consumeBorderDirty();
     final iconsDirty = fogCtrl.consumeIconsDirty();
 
     // Nothing changed — skip entirely.
-    if (!fogDirty &&
-        !adminDirty &&
-        !habitatDirty &&
-        !borderDirty &&
-        !iconsDirty) {
+    if (!fogDirty && !habitatDirty && !borderDirty && !iconsDirty) {
       return;
     }
 
@@ -720,16 +631,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Push all dirty non-fog groups in parallel.
       final updates = <Future<void>>[];
 
-      if (adminDirty) {
-        updates.add(controller.updateGeoJsonSource(
-          id: _adminBoundaryFillSrcId,
-          data: fogCtrl.adminBoundaryFillGeoJson,
-        ));
-        updates.add(controller.updateGeoJsonSource(
-          id: _adminBoundaryLinesSrcId,
-          data: fogCtrl.adminBoundaryLinesGeoJson,
-        ));
-      }
       if (habitatDirty) {
         updates.add(controller.updateGeoJsonSource(
           id: _habitatFillSrcId,
@@ -761,13 +662,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Log slow frames for performance debugging.
       if (sw.elapsedMilliseconds > 10) {
         debugPrint('[FOG-PERF] source update took ${sw.elapsedMilliseconds}ms '
-            '(fog=$fogDirty, admin=$adminDirty, habitat=$habitatDirty, '
+            '(fog=$fogDirty, habitat=$habitatDirty, '
             'border=$borderDirty, icons=$iconsDirty)');
       }
       ObservabilityBuffer.instance?.event('fog_sources_updated', {
         'duration_ms': sw.elapsedMilliseconds,
         'fog': fogDirty,
-        'admin': adminDirty,
         'habitat': habitatDirty,
         'border': borderDirty,
         'icons': iconsDirty,
@@ -1011,13 +911,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final seedState = ref.read(dailySeedServiceProvider).currentSeed;
       fogOverlayController.dailySeed = seedState?.seed ?? '';
 
-      // Lazy-load location nodes for territory border rendering.
+      // Feed cell district attribution for territory border rendering.
+      // Only set when the map size changes — the setter triggers BFS rebuild.
+      final detectionZone = ref.read(detectionZoneServiceProvider);
+      final currentAttribution = detectionZone.cellDistrictAttribution;
+      if (currentAttribution.length !=
+          fogOverlayController.cellDistrictIdsCount) {
+        fogOverlayController.cellDistrictIds = currentAttribution;
+      }
+
+      // Lazy-load district ancestry for territory border rendering.
       // Set once when loaded — not every frame (setter triggers BFS rebuild).
-      if (!_locationNodesLoaded) {
-        _locationNodesLoaded = true;
-        _loadLocationNodes().then((_) {
+      if (!_districtAncestryLoaded) {
+        _districtAncestryLoaded = true;
+        _loadDistrictAncestry().then((_) {
           if (mounted) {
-            fogOverlayController.locationNodesCache = _locationNodesMap;
+            fogOverlayController.districtAncestry = _districtAncestryMap;
             _updateFogSources();
           }
         });
@@ -1039,53 +948,67 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
-  /// Loads all location nodes from the database and caches them.
+  /// Loads district ancestry from the hierarchy repository.
   ///
-  /// Called lazily on the first fog render frame. Runs async but the map
-  /// continues rendering without borders until the load completes (same
-  /// pattern as cell properties lazy loading).
-  Future<void> _loadLocationNodes() async {
+  /// Called lazily on the first fog render frame (and on enrichment events).
+  /// Loads each district in [cellDistrictAttribution], then walks up to city,
+  /// state, and country — building the ancestry map for territory borders.
+  /// Also populates [_districtDataMap] for the infographic overlay.
+  Future<void> _loadDistrictAncestry() async {
     if (!mounted) return;
 
     try {
-      final repo = ref.read(locationNodeRepositoryProvider);
-      final nodes = await repo.getAll();
-      if (!mounted) return;
-      _locationNodesMap = {for (final n in nodes) n.id: n};
-      MapLogger.locationNodesLoaded(_locationNodesMap.length);
-      final withGeom = nodes.where((n) => n.geometryJson != null).length;
-      final geomBytes =
-          nodes.fold<int>(0, (sum, n) => sum + (n.geometryJson?.length ?? 0));
-      debugPrint('[MAP] Loaded ${nodes.length} location nodes '
-          '($withGeom with geometry, ${geomBytes ~/ 1024}KB)');
+      final detectionZone = ref.read(detectionZoneServiceProvider);
+      final districtIds = detectionZone.cellDistrictAttribution.values.toSet();
+      if (districtIds.isEmpty) return;
+
+      final repo = ref.read(hierarchyRepositoryProvider);
+
+      // Step 1: districts → cityIds + cache district data
+      final districtCity = <String, String>{}; // districtId → cityId
+      final districtData = <String, HDistrict>{};
+      for (final id in districtIds) {
+        final d = await repo.getDistrict(id);
+        if (!mounted) return;
+        if (d != null) {
+          districtCity[id] = d.cityId;
+          districtData[id] = d;
+        }
+      }
+
+      // Step 2: cities → stateIds
+      final cityState = <String, String>{}; // cityId → stateId
+      for (final cityId in districtCity.values.toSet()) {
+        final c = await repo.getCity(cityId);
+        if (!mounted) return;
+        if (c != null) cityState[cityId] = c.stateId;
+      }
+
+      // Step 3: states → countryIds
+      final stateCountry = <String, String>{}; // stateId → countryId
+      for (final stateId in cityState.values.toSet()) {
+        final s = await repo.getState(stateId);
+        if (!mounted) return;
+        if (s != null) stateCountry[stateId] = s.countryId;
+      }
+
+      // Step 4: assemble ancestry map
+      final ancestry =
+          <String, ({String? cityId, String? stateId, String? countryId})>{};
+      for (final districtId in districtIds) {
+        final cityId = districtCity[districtId];
+        final stateId = cityId != null ? cityState[cityId] : null;
+        final countryId = stateId != null ? stateCountry[stateId] : null;
+        ancestry[districtId] =
+            (cityId: cityId, stateId: stateId, countryId: countryId);
+      }
+
+      _districtAncestryMap = ancestry;
+      _districtDataMap = districtData;
+      debugPrint('[MAP] loaded ancestry: ${ancestry.length} districts, '
+          '${districtData.length} district data');
     } catch (e) {
-      MapLogger.locationNodesLoadError(e);
-    }
-  }
-
-  /// Rebuilds admin boundary GeoJSON from the repository and pushes to map.
-  ///
-  /// Called EVENT-DRIVEN when [AdminBoundaryService.onBoundariesResolved] fires.
-  /// Loads all location nodes from the repository, feeds them to the fog
-  /// overlay controller, then schedules a fog source update on the next frame.
-  Future<void> _rebuildAdminBoundaryGeoJson() async {
-    if (!mounted) return;
-
-    try {
-      final sw = Stopwatch()..start();
-      final repo = ref.read(locationNodeRepositoryProvider);
-      final nodes = await repo.getAll();
-      if (!mounted) return;
-
-      final nodesMap = <String, LocationNode>{for (final n in nodes) n.id: n};
-      final withGeom = nodes.where((n) => n.geometryJson != null).length;
-      ref.read(fogOverlayControllerProvider).updateAdminBoundaries(nodesMap);
-      _updateFogSources();
-      sw.stop();
-      debugPrint('[ADMIN] rebuilt boundaries: ${nodes.length} nodes '
-          '($withGeom with geometry) in ${sw.elapsedMilliseconds}ms');
-    } catch (e) {
-      debugPrint('[MapScreen] _rebuildAdminBoundaryGeoJson failed: $e');
+      debugPrint('[MapScreen] _loadDistrictAncestry failed: $e');
     }
   }
 
@@ -1184,17 +1107,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _markMapReady();
 
       MapLogger.fogInitComplete();
-
-      // Trigger an initial admin boundary request for the current player
-      // position so borders load even for returning players who won't visit
-      // any new cells (onCellVisited alone is insufficient for 145+ cell users).
-      final playerPos = _gameCoordinator.playerPosition;
-      if (playerPos != null && mounted) {
-        _adminBoundaryService?.requestBoundaries(
-          playerPos.lat,
-          playerPos.lon,
-        );
-      }
     } catch (e, stack) {
       MapLogger.fogInitFailed(e, stack);
       // On error, still mark ready so the base map is usable.
@@ -1525,7 +1437,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   onDismiss: () => setState(() => _activeHierarchyLevel = null),
                   onNavigateUp: () => setState(
                       () => _activeHierarchyLevel = HierarchyLevel.city),
-                  locationNodesMap: _locationNodesMap,
+                  districtDataMap: _districtDataMap,
                   cellService: ref.read(cellServiceProvider),
                 ),
               ),

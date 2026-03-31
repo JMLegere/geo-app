@@ -11,7 +11,6 @@ import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/models/item_instance.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/core/services/detection_zone_service.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
@@ -182,7 +181,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: {},
+              districtDataMap: {},
               cellService: cellService,
             ),
           ),
@@ -217,7 +216,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () => dismissed = true,
-              locationNodesMap: {},
+              districtDataMap: {},
               cellService: cellService,
             ),
           ),
@@ -267,15 +266,13 @@ void main() {
       'cell_41_-66': const Geographic(lat: 41.0, lon: -66.0),
     };
 
-    const locationNodesMap = {
-      districtId: LocationNode(
+    final districtDataMap = {
+      districtId: HDistrict(
         id: districtId,
-        osmId: null,
         name: 'Test District',
-        adminLevel: AdminLevel.district,
-        parentId: null,
-        colorHex: null,
-        geometryJson: null,
+        centroidLat: 45.0,
+        centroidLon: -66.0,
+        cityId: 'city_1',
       ),
     };
 
@@ -310,7 +307,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: locationNodesMap,
+              districtDataMap: districtDataMap,
               cellService: cellService,
             ),
           ),
@@ -346,7 +343,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: locationNodesMap,
+              districtDataMap: districtDataMap,
               cellService: cellService,
             ),
           ),
@@ -382,7 +379,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: locationNodesMap,
+              districtDataMap: districtDataMap,
               cellService: cellService,
             ),
           ),
@@ -421,7 +418,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: locationNodesMap,
+              districtDataMap: districtDataMap,
               cellService: cellService,
             ),
           ),
@@ -458,7 +455,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () => dismissed = true,
-              locationNodesMap: locationNodesMap,
+              districtDataMap: districtDataMap,
               cellService: cellService,
             ),
           ),
@@ -502,7 +499,7 @@ void main() {
           home: Scaffold(
             body: DistrictInfographicOverlay(
               onDismiss: () {},
-              locationNodesMap: {},
+              districtDataMap: {},
               cellService: cellService,
             ),
           ),

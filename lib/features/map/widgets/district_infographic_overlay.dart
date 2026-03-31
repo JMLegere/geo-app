@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geobase/geobase.dart';
 
 import 'package:earth_nova/core/cells/cell_service.dart';
-import 'package:earth_nova/core/models/location_node.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
@@ -24,7 +24,7 @@ import 'package:earth_nova/shared/design_tokens.dart';
 class DistrictInfographicOverlay extends ConsumerStatefulWidget {
   const DistrictInfographicOverlay({
     required this.onDismiss,
-    required this.locationNodesMap,
+    required this.districtDataMap,
     required this.cellService,
     this.onNavigateUp,
     super.key,
@@ -35,8 +35,8 @@ class DistrictInfographicOverlay extends ConsumerStatefulWidget {
   /// Called when the user pinch-outs to navigate up to city level.
   final VoidCallback? onNavigateUp;
 
-  /// Cached location nodes map from map_screen (already loaded).
-  final Map<String, LocationNode> locationNodesMap;
+  /// Cached district data map from map_screen (already loaded).
+  final Map<String, HDistrict> districtDataMap;
 
   /// Cell service for looking up cell boundaries.
   final CellService cellService;
@@ -119,10 +119,10 @@ class _DistrictInfographicOverlayState
     final loc = ref.read(locationProvider);
     final itemsState = ref.read(itemsProvider);
 
-    // Get district node for name + geometry.
-    final node = widget.locationNodesMap[districtId];
-    final districtName = node?.name ?? 'District';
-    final geometryJson = node?.geometryJson;
+    // Get district data for name + geometry.
+    final district = widget.districtDataMap[districtId];
+    final districtName = district?.name ?? 'District';
+    final geometryJson = district?.boundaryJson;
 
     // Get all cells attributed to this district.
     final attribution = detectionZone.cellDistrictAttribution;
@@ -280,9 +280,9 @@ class _DistrictInfographicOverlayState
     TextTheme theme,
     DistrictInfographicData data,
   ) {
-    // Build breadcrumb from location node if available.
-    final node = widget.locationNodesMap[data.districtId];
-    final breadcrumb = node != null ? 'DISTRICT · ${data.districtId}' : '';
+    // Build breadcrumb from district data if available.
+    final district = widget.districtDataMap[data.districtId];
+    final breadcrumb = district != null ? 'DISTRICT · ${data.districtId}' : '';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
