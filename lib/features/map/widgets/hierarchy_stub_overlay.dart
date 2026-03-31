@@ -67,7 +67,7 @@ class _HierarchyStubOverlayState extends ConsumerState<HierarchyStubOverlay>
 
   Future<void> _loadData() async {
     final repo = ref.read(hierarchyRepositoryProvider);
-    final stats = ref.read(explorationStatsProvider);
+    final stats = ref.read(explorationStatsProvider).asData?.value ?? const {};
 
     List<_SubRegion> regions = [];
     String name = widget.level.label;
