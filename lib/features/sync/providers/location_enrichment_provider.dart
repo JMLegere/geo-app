@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
+import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 
@@ -15,12 +15,12 @@ import 'package:earth_nova/features/sync/services/location_enrichment_service.da
 final locationEnrichmentServiceProvider =
     Provider<LocationEnrichmentService>((ref) {
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
-  final locationNodeRepo = ref.watch(locationNodeRepositoryProvider);
+  final hierarchyRepo = ref.watch(hierarchyRepositoryProvider);
   final client = ref.watch(supabaseClientProvider);
 
   final service = LocationEnrichmentService(
     cellPropertyRepo: cellPropertyRepo,
-    locationNodeRepo: locationNodeRepo,
+    hierarchyRepo: hierarchyRepo,
     supabaseClient: client,
   );
 

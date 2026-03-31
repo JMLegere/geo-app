@@ -40,7 +40,6 @@ All domain models, database schema, and persistence contracts.
 | `ItemInstanceStatus` | enum: active, donated, placed, released, traded | — | Lifecycle state |
 | `CellProperties` | cellId, habitats: Set\<Habitat\>, climate: Climate, continent: Continent, locationId: String?, createdAt | cellId | Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` |
 | `CellEvent` | type: CellEventType, cellId, dailySeed | — | Rotating daily event (not persisted, recomputable). ~12% of cells per day |
-| `LocationNode` | id, name, adminLevel: AdminLevel, parentId, osmId, geometry | id | Location hierarchy node. 6 levels: world→continent→country→state→city→district |
 | `DiscoveryEvent` | *(existing)* + `cellEventType: CellEventType?` | — | Added nullable field to indicate which cell event triggered the encounter (null = normal) |
 | `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |
@@ -96,7 +95,7 @@ Supabase `species` table (32,752 rows, global/shared) mirrors IUCN data plus AI-
 
 ## Database Schema (Drift SQLite)
 
-Schema version: **18** (v10→v11 adds `LocalCellPropertiesTable` + `LocalLocationNodeTable`, v11→v12 osmId nullable, v12→v13 `geometry_json`, v13→v18 drops `LocalSpeciesEnrichmentTable` + adds `LocalSpeciesTable`).
+Schema version: **24** (v10→v11 adds `LocalCellPropertiesTable`, v13→v18 drops `LocalSpeciesEnrichmentTable` + adds `LocalSpeciesTable`, v18→v24 adds hierarchy tables + drops `LocalLocationNodeTable`).
 
 ### LocalCellProgressTable
 
@@ -195,18 +194,6 @@ Unique constraint: `{userId, cellId}`
 
 Cell properties are **globally shared** (not per-user). No userId column.
 
-### LocalLocationNodeTable
-
-| Column | Type | Default | Notes |
-|--------|------|---------|-------|
-| `id` | text PK | — | Unique location ID |
-| `name` | text | — | Display name (e.g., "New Brunswick") |
-| `adminLevel` | text | — | AdminLevel enum name |
-| `parentId` | text | nullable | FK → parent LocationNode |
-| `osmId` | text | nullable | OpenStreetMap ID |
-| `geometryJson` | text | nullable | GeoJSON geometry (optional) |
-| `createdAt` | datetime | — | When node was created |
-
 ## Repositories (lib/core/persistence/)
 
 | Repository | Table | Key Operations |
@@ -216,7 +203,6 @@ Cell properties are **globally shared** (not per-user). No userId column.
 | `ItemInstanceRepository` | LocalItemInstance | `create`, `read(id)`, `readAll(userId)`, `update`, `deleteItem(id)`, `readByStatus(userId, status)` |
 | `WriteQueueRepository` | LocalWriteQueue | `enqueue(entry)`, `getPending(limit)`, `getRejected()`, `countPending()`, `deleteEntry(id)`, `markRejected(id, error)`, `incrementAttempts(id, error)`, `deleteStale(cutoff)`, `clearUser(userId)` |
 | `CellPropertyRepository` | LocalCellProperties | `get(cellId)`, `upsert(CellProperties)`, `updateLocationId(cellId, locationId)`, `getAll()` |
-| `LocationNodeRepository` | LocalLocationNode | `get(id)`, `getByOsmId(osmId)`, `upsert(LocationNode)`, `getChildren(parentId)` |
 
 All methods return `Future<T>`. Read-modify-write pattern for incremental updates. Drift `Value<T>` wrappers for nullable fields.
 

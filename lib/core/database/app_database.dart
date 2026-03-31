@@ -267,29 +267,6 @@ class LocalCellPropertiesTable extends Table {
   Set<Column> get primaryKey => {cellId};
 }
 
-/// A node in the administrative location hierarchy (country, state, city, etc.).
-/// Globally shared — not per-user.
-@DataClassName('LocalLocationNode')
-class LocalLocationNodeTable extends Table {
-  TextColumn get id => text()(); // UUID (PK)
-  IntColumn get osmId =>
-      integer().nullable()(); // OSM relation ID (null for synthetic nodes)
-  TextColumn get name => text()(); // "Fredericton"
-  TextColumn get adminLevel => text()(); // AdminLevel enum name
-  TextColumn get parentId => text().nullable()(); // FK → parent node
-  TextColumn get colorHex => text().nullable()(); // hex from flag, or null
-  TextColumn get geometryJson =>
-      text().nullable()(); // GeoJSON polygon, null if not fetched
-  TextColumn get adjacentLocationIds =>
-      text().nullable()(); // JSON list of adjacent location IDs
-  TextColumn get cellIds =>
-      text().nullable()(); // JSON list of pre-computed cell IDs
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
 /// Country in the geographic hierarchy.
 /// Pre-populated from Natural Earth dataset.
 @DataClassName('LocalCountry')
@@ -434,7 +411,6 @@ const kExpectedTableNames = [
   'local_player_profile_table',
   'local_write_queue_table',
   'local_cell_properties_table',
-  'local_location_node_table',
   'local_app_events_table',
   'local_country_table',
   'local_state_table',
@@ -449,7 +425,6 @@ const kExpectedTableNames = [
   LocalSpeciesTable,
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
-  LocalLocationNodeTable,
   LocalCountryTable,
   LocalStateTable,
   LocalCityTable,
@@ -465,7 +440,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration {
@@ -566,11 +541,9 @@ class AppDatabase extends _$AppDatabase {
             }
             if (from < 11) {
               await m.createTable(localCellPropertiesTable);
-              await m.createTable(localLocationNodeTable);
-            }
-            if (from < 12) {
+              // LocalLocationNodeTable was created here — dropped in v24.
               await customStatement('''
-                CREATE TABLE local_location_node_table_new (
+                CREATE TABLE IF NOT EXISTS local_location_node_table (
                   id TEXT NOT NULL PRIMARY KEY,
                   osm_id INTEGER,
                   name TEXT NOT NULL,
@@ -580,20 +553,8 @@ class AppDatabase extends _$AppDatabase {
                   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
                 )
               ''');
-              await customStatement('''
-                INSERT INTO local_location_node_table_new
-                  (id, osm_id, name, admin_level, parent_id, color_hex, created_at)
-                SELECT id, osm_id, name, admin_level, parent_id, color_hex, created_at
-                FROM local_location_node_table
-              ''');
-              await customStatement('DROP TABLE local_location_node_table');
-              await customStatement(
-                  'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
             }
-            if (from < 13) {
-              await m.addColumn(
-                  localLocationNodeTable, localLocationNodeTable.geometryJson);
-            }
+            // v12, v13: legacy LocalLocationNodeTable migrations — table dropped in v24.
             if (from < 14) {
               // localAppEventsTable was here — dropped in v21.
               // Create it only if upgrading from <14, so v21 drop succeeds.
@@ -783,6 +744,11 @@ class AppDatabase extends _$AppDatabase {
               'ALTER TABLE local_cell_properties_table ADD COLUMN district_id TEXT',
             );
           }
+        }
+        if (from < 24) {
+          // v24: Drop legacy LocalLocationNodeTable (replaced by 4-table hierarchy).
+          await customStatement(
+              'DROP TABLE IF EXISTS local_location_node_table');
         }
       },
       beforeOpen: (details) async {
@@ -1138,37 +1104,6 @@ class AppDatabase extends _$AppDatabase {
               .write(LocalCellPropertiesTableCompanion(
             locationId: Value(locationId),
           )));
-
-  // ========================================================================
-  // LOCATION NODE QUERIES
-  // ========================================================================
-
-  Future<LocalLocationNode?> getLocationNode(String id) {
-    return (select(localLocationNodeTable)..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
-
-  Future<LocalLocationNode?> getLocationNodeByOsmId(int osmId) {
-    return (select(localLocationNodeTable)
-          ..where((tbl) => tbl.osmId.equals(osmId)))
-        .getSingleOrNull();
-  }
-
-  Future<void> upsertLocationNode(LocalLocationNode node) =>
-      _writer.run(() => into(localLocationNodeTable).insert(
-            node,
-            onConflict: DoUpdate((_) => node),
-          ));
-
-  Future<List<LocalLocationNode>> getLocationNodeChildren(String parentId) {
-    return (select(localLocationNodeTable)
-          ..where((tbl) => tbl.parentId.equals(parentId)))
-        .get();
-  }
-
-  Future<List<LocalLocationNode>> getAllLocationNodes() {
-    return select(localLocationNodeTable).get();
-  }
 
   // ========================================================================
   // HIERARCHY TABLE QUERIES

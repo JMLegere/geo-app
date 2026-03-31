@@ -24,7 +24,6 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `profileRepositoryProvider` | `Provider<ProfileRepository>` | singleton | watches: appDatabaseProvider |
 | `dailySeedServiceProvider` | `Provider<DailySeedService>` | singleton | reads: supabaseClientProvider. Wires Supabase RPC `ensure_daily_seed()` as `SeedFetcher` callback. Returns null-safe service (works without Supabase). |
 | `cellPropertyRepositoryProvider` | `Provider<CellPropertyRepository>` | singleton | watches: appDatabaseProvider. Cell properties CRUD (get, upsert, updateLocationId, getAll). |
-| `locationNodeRepositoryProvider` | `Provider<LocationNodeRepository>` | singleton | watches: appDatabaseProvider. Location hierarchy node CRUD (get, upsert, getChildren, getByOsmId). |
 | `countryResolverProvider` | `FutureProvider<CountryResolver>` | singleton | Loads `assets/country_boundaries.json` via rootBundle. Returns `CountryResolver` for offline country→continent resolution. |
 | `cellPropertyResolverProvider` | `Provider<CellPropertyResolver>` | singleton | watches: habitatServiceProvider, countryResolverProvider. Falls back to DefaultHabitatLookup + legacy ContinentResolver during loading. |
 | `gameCoordinatorProvider` | `Provider<GameCoordinator>` | singleton (runs forever) | watches: fogResolverProvider, locationServiceProvider, discoveryServiceProvider, itemInstanceRepositoryProvider, writeQueueRepositoryProvider, cellProgressRepositoryProvider, profileRepositoryProvider, cellPropertyRepositoryProvider, cellPropertyResolverProvider, locationEnrichmentServiceProvider. reads: authProvider, dailySeedServiceProvider. listens: playerProvider. Wires cellPropertiesLookup on discoveryService. Triggers location enrichment for cells without locationId. Wiring exception: imports features/ |
@@ -50,7 +49,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence, queueProcessorProvider. reads: writeQueueRepositoryProvider, itemsProvider, itemInstanceRepositoryProvider |
 | `queueProcessorProvider` | sync | `Provider<QueueProcessor>` | watches: writeQueueRepositoryProvider, supabasePersistenceProvider |
 | `supabaseClientProvider` | sync | `Provider<SupabaseClient?>` | reads: supabaseBootstrapProvider. Returns null when Supabase not configured |
-| `locationEnrichmentServiceProvider` | sync | `Provider<LocationEnrichmentService>` | watches: cellPropertyRepositoryProvider, locationNodeRepositoryProvider, supabaseClientProvider. Async location hierarchy enrichment via Nominatim Edge Function. Rate-limited 1 req/1.2s. |
+| `locationEnrichmentServiceProvider` | sync | `Provider<LocationEnrichmentService>` | watches: cellPropertyRepositoryProvider, supabaseClientProvider. Async location hierarchy enrichment via Nominatim Edge Function. Rate-limited 1 req/1.2s. |
 | `habitatServiceProvider` | biome | `Provider<HabitatService>` | watches: biomeFeatureIndexProvider |
 | `biomeFeatureIndexProvider` | biome | `FutureProvider<BiomeFeatureIndex>` | async asset load |
 | `seasonServiceProvider` | seasonal | `Provider<SeasonService>` | none |
@@ -97,14 +96,12 @@ appDatabaseProvider ──→ writeQueueRepositoryProvider
 appDatabaseProvider ──→ cellProgressRepositoryProvider
 appDatabaseProvider ──→ profileRepositoryProvider
 appDatabaseProvider ──→ cellPropertyRepositoryProvider
-appDatabaseProvider ──→ locationNodeRepositoryProvider
 
 habitatServiceProvider ──→ cellPropertyResolverProvider
 countryResolverProvider ──→ cellPropertyResolverProvider
 cellPropertyResolverProvider ──→ gameCoordinatorProvider (cell property resolution)
 cellPropertyRepositoryProvider ──→ gameCoordinatorProvider (cell property persistence)
 cellPropertyRepositoryProvider ──→ locationEnrichmentServiceProvider
-locationNodeRepositoryProvider ──→ locationEnrichmentServiceProvider
 supabaseClientProvider ──→ locationEnrichmentServiceProvider
 locationEnrichmentServiceProvider ──→ gameCoordinatorProvider (location enrichment trigger)
 

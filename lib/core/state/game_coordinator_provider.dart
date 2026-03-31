@@ -47,7 +47,6 @@ import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
-import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
@@ -58,7 +57,6 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/affix_backfill.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -328,15 +326,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         lon: center.lon,
       );
     }
-
-    // Trigger admin boundary polygon fetch for the visited cell.
-    // AdminBoundaryService deduplicates by rounded lat/lon and only calls the
-    // Edge Function when admin levels are missing geometry.
-    final adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-    adminBoundaryService?.requestBoundaries(
-      visitedCenter.lat,
-      visitedCenter.lon,
-    );
   };
 
   // When enrichment resolves a locationId for a cell, update the in-memory
@@ -972,7 +961,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: ref.read(locationNodeRepositoryProvider),
         db: ref.read(appDatabaseProvider),
         speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
