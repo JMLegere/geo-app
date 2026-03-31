@@ -26,6 +26,7 @@ import 'package:earth_nova/features/items/services/stats_service.dart';
 import 'package:earth_nova/core/state/app_database_provider.dart';
 import 'package:earth_nova/core/state/cell_progress_repository_provider.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
+import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
 import 'package:earth_nova/features/world/services/cell_property_resolver.dart';
 import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
@@ -961,6 +962,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: ref.read(hierarchyRepositoryProvider),
         db: ref.read(appDatabaseProvider),
         speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
@@ -991,6 +993,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           debugPrint('[DetectionZone] seeded from restored position: '
               '$restoredLat, $restoredLon');
         }
+
+        // Hierarchy data now available — recompute zone to pick up districts.
+        await detectionZoneService.recomputeCurrentZone();
 
         // Species cache is already refreshed inside hydrateFromSupabase()
         // via speciesCache.refresh() — no additional warmUp needed here.

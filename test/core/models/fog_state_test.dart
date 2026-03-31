@@ -13,7 +13,7 @@ void main() {
 
     test('density mapping is correct', () {
       expect(FogState.unknown.density, equals(1.0));
-      expect(FogState.detected.density, equals(0.85));
+      expect(FogState.detected.density, equals(1.0));
       expect(FogState.nearby.density, equals(0.95));
       expect(FogState.explored.density, equals(0.5));
       expect(FogState.present.density, equals(0.0));
@@ -39,8 +39,8 @@ void main() {
 
     test('all densities are within valid [0.0, 1.0] range', () {
       // Note: enum declaration order does NOT match fog density order.
-      // detected (0.85) is intentionally MORE visible than nearby (0.95) —
-      // detected cells show district shape clearly under lighter fog.
+      // detected (1.0) is fully opaque — cells in detection zone are invisible
+      // until the player gets close enough to be adjacent or enters them.
       for (final state in FogState.values) {
         expect(
           state.density,

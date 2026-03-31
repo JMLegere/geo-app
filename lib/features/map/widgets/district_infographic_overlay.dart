@@ -52,10 +52,6 @@ class _DistrictInfographicOverlayState
   DistrictInfographicData? _data;
   bool _isDismissing = false;
 
-  // Entry fade animation (350ms = Durations.slow).
-  late final AnimationController _fadeCtrl;
-  late final Animation<double> _fadeAnim;
-
   // Player marker pulse (2s loop = Durations.markerPulse).
   late final AnimationController _pulseCtrl;
   late final Animation<double> _pulseAnim;
@@ -73,12 +69,6 @@ class _DistrictInfographicOverlayState
   void initState() {
     super.initState();
 
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: Durations.slow,
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: AppCurves.fadeIn);
-
     _pulseCtrl = AnimationController(
       vsync: this,
       duration: Durations.markerPulse,
@@ -86,12 +76,10 @@ class _DistrictInfographicOverlayState
     _pulseAnim = _pulseCtrl;
 
     _buildSnapshot();
-    _fadeCtrl.forward();
   }
 
   @override
   void dispose() {
-    _fadeCtrl.dispose();
     _pulseCtrl.dispose();
     DistrictInfographicPainter.clearCache();
     super.dispose();
@@ -102,9 +90,7 @@ class _DistrictInfographicOverlayState
     _isDismissing = true;
     HapticFeedback.mediumImpact();
     debugPrint('[DistrictInfographic] dismissed');
-    _fadeCtrl.reverse().then((_) {
-      if (mounted) widget.onDismiss();
-    });
+    widget.onDismiss();
   }
 
   void _buildSnapshot() {
@@ -216,49 +202,46 @@ class _DistrictInfographicOverlayState
     final theme = Theme.of(context).textTheme;
     final data = _data;
 
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: GestureDetector(
-        // Pinch-in (scale > threshold) to dismiss back to map.
-        // Pinch-out (scale < threshold) to navigate up to city level.
-        onScaleUpdate: (details) {
-          if (details.scale > kInfographicPinchInThreshold) {
-            _dismiss();
-          }
-          if (details.pointerCount >= 2 &&
-              details.scale < kInfographicPinchOutThreshold &&
-              widget.onNavigateUp != null) {
-            widget.onNavigateUp!();
-          }
-        },
-        child: Container(
-          color: _screenBg,
-          child: data == null
-              ? _buildNoData(context)
-              : SafeArea(
-                  child: Column(
-                    children: [
-                      _buildHeader(context, theme, data),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: AnimatedBuilder(
-                            animation: _pulseAnim,
-                            builder: (_, __) => CustomPaint(
-                              painter: DistrictInfographicPainter(
-                                data: data,
-                                pulseProgress: _pulseAnim.value,
-                              ),
-                              size: Size.infinite,
+    return GestureDetector(
+      // Pinch-in (scale > threshold) to dismiss back to map.
+      // Pinch-out (scale < threshold) to navigate up to city level.
+      onScaleUpdate: (details) {
+        if (details.scale > kInfographicPinchInThreshold) {
+          _dismiss();
+        }
+        if (details.pointerCount >= 2 &&
+            details.scale < kInfographicPinchOutThreshold &&
+            widget.onNavigateUp != null) {
+          widget.onNavigateUp!();
+        }
+      },
+      child: Container(
+        color: _screenBg,
+        child: data == null
+            ? _buildNoData(context)
+            : SafeArea(
+                child: Column(
+                  children: [
+                    _buildHeader(context, theme, data),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: AnimatedBuilder(
+                          animation: _pulseAnim,
+                          builder: (_, __) => CustomPaint(
+                            painter: DistrictInfographicPainter(
+                              data: data,
+                              pulseProgress: _pulseAnim.value,
                             ),
+                            size: Size.infinite,
                           ),
                         ),
                       ),
-                      _buildStatsBar(context, theme, data),
-                    ],
-                  ),
+                    ),
+                    _buildStatsBar(context, theme, data),
+                  ],
                 ),
-        ),
+              ),
       ),
     );
   }

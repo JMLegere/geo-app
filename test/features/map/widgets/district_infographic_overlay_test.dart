@@ -226,9 +226,8 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('District data not available'));
-      // Advance past the 350ms fade-out (Durations.slow). Cannot use
-      // pumpAndSettle because _pulseCtrl repeats forever.
-      await tester.pump(const Duration(milliseconds: 500));
+      // onDismiss fires immediately — no fade-out animation in the overlay.
+      await tester.pump();
 
       expect(dismissed, isTrue);
     });
@@ -468,9 +467,8 @@ void main() {
       expect(backButton, findsOneWidget);
 
       await tester.tap(backButton);
-      // Advance past the 350ms fade-out (Durations.slow). Cannot use
-      // pumpAndSettle because _pulseCtrl repeats forever.
-      await tester.pump(const Duration(milliseconds: 500));
+      // onDismiss fires immediately — no fade-out animation in the overlay.
+      await tester.pump();
 
       expect(dismissed, isTrue);
     });
