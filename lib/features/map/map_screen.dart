@@ -154,6 +154,23 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Pointer count for multitouch detection.
   int _pointerCount = 0;
 
+  /// Raw pointer positions for computing gesture scale during Phase 2.
+  final Map<int, Offset> _activePointers = {};
+
+  /// Distance between the two fingers at the moment Phase 2 triggered.
+  double? _triggerPointerDistance;
+
+  /// Whether a gesture is actively driving the overlay animation.
+  bool _infographicGestureActive = false;
+
+  /// Last pointer-move timestamp for velocity computation (ms since epoch).
+  // ignore: unused_field
+  int _lastPointerMoveTimeMs = 0;
+
+  /// Last inter-pointer distance for velocity computation.
+  // ignore: unused_field
+  double _lastPointerDistance = 0;
+
   /// JavaScript debug bridge for Playwright E2E tests.
   /// Exposes `window.__earthNovaDebug` on web; no-op on native.
   late final DebugBridge _debugBridge;
@@ -711,27 +728,115 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // ---------------------------------------------------------------------------
 
   /// Triggers the district infographic overlay with scale+fade animation.
+  /// Used for keyboard shortcut and debug only — gesture path is via
+  /// [_onInfographicGestureEnd].
   void _triggerInfographicOpen() {
     HapticFeedback.mediumImpact();
     setState(() {
       _zoomFrozen = true;
       _activeHierarchyLevel = HierarchyLevel.district;
     });
-    _infographicTransitionCtrl.forward(from: 0.0);
+    _infographicTransitionCtrl.value = 0.0;
+    _infographicTransitionCtrl.animateTo(
+      1.0,
+      duration: Durations.infographicTransition,
+      curve: AppCurves.standard,
+    );
   }
 
-  /// Dismisses the district infographic with reverse animation.
+  /// Dismisses the district infographic with forward animation.
   void _dismissInfographic() {
-    _infographicTransitionCtrl.reverse().then((_) {
+    _infographicTransitionCtrl
+        .animateTo(
+      0.0,
+      duration: Durations.infographicTransition,
+      curve: AppCurves.standard,
+    )
+        .then((_) {
       if (!mounted) return;
       setState(() {
         _activeHierarchyLevel = null;
         _zoomFrozen = false;
         _infographicZoomArmed = false;
       });
-      // Snap map back to normal zoom.
-      _mapController?.moveCamera(zoom: kMinZoom);
+      // Smooth zoom reset instead of snap.
+      if (_currentZoom < kMinZoom) {
+        _mapController?.animateCamera(
+          zoom: kMinZoom,
+          nativeDuration: Durations.infographicSnap,
+        );
+      }
     });
+  }
+
+  /// Called when fingers release during a gesture-driven overlay transition.
+  /// Snaps to open or closed based on threshold and velocity.
+  void _onInfographicGestureEnd() {
+    _infographicGestureActive = false;
+    final currentValue = _infographicTransitionCtrl.value;
+
+    // Determine intent: snap open or snap back.
+    final shouldOpen = currentValue >= kInfographicSnapThreshold;
+
+    if (shouldOpen) {
+      _infographicTransitionCtrl.animateTo(
+        1.0,
+        duration: Durations.infographicSnap,
+        curve: AppCurves.standard,
+      );
+    } else {
+      _infographicTransitionCtrl
+          .animateTo(
+        0.0,
+        duration: Durations.infographicSnap,
+        curve: AppCurves.standard,
+      )
+          .then((_) {
+        if (!mounted) return;
+        setState(() {
+          _activeHierarchyLevel = null;
+          _zoomFrozen = false;
+        });
+        if (_currentZoom < kMinZoom) {
+          _mapController?.animateCamera(
+            zoom: kMinZoom,
+            nativeDuration: Durations.infographicSnap,
+          );
+        }
+      });
+    }
+
+    _triggerPointerDistance = null;
+  }
+
+  /// Called by overlay when user pinch-spreads (closing gesture).
+  void _onOverlayCloseGestureUpdate(double scale) {
+    // scale > 1.0 = spreading = closing. Map 1.0→∞ to progress 1.0→0.0.
+    final progress = 1.0 - ((scale - 1.0) * kInfographicGestureSensitivity);
+    _infographicTransitionCtrl.value = progress.clamp(0.0, 1.0);
+  }
+
+  /// Called by overlay when close gesture ends.
+  void _onOverlayCloseGestureEnd(double scaleVelocity) {
+    final currentValue = _infographicTransitionCtrl.value;
+
+    // Positive velocity = spreading = closing intent.
+    bool shouldStayOpen;
+    if (scaleVelocity.abs() > kInfographicVelocityCommitThreshold) {
+      shouldStayOpen = scaleVelocity < 0; // squeezing back = stay open
+    } else {
+      shouldStayOpen = currentValue >= kInfographicSnapThreshold;
+    }
+
+    if (shouldStayOpen) {
+      _infographicTransitionCtrl.animateTo(
+        1.0,
+        duration: Durations.infographicSnap,
+        curve: AppCurves.standard,
+      );
+    } else {
+      _dismissInfographic();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1243,11 +1348,26 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final zoom = event.camera.zoom;
       _currentZoom = zoom;
 
-      // If armed and zoom hit the trigger floor, open the infographic.
+      // If armed and zoom hit the trigger floor, switch to gesture-driven mode.
       if (_infographicZoomArmed &&
           _currentZoom <= kInfographicTriggerZoom + 0.05) {
         _infographicZoomArmed = false;
-        _triggerInfographicOpen();
+
+        // Compute trigger pointer distance for gesture tracking.
+        if (_activePointers.length >= 2) {
+          final pointers = _activePointers.values.toList();
+          _triggerPointerDistance = (pointers[0] - pointers[1]).distance;
+          _lastPointerDistance = _triggerPointerDistance!;
+          _lastPointerMoveTimeMs = DateTime.now().millisecondsSinceEpoch;
+        }
+
+        HapticFeedback.mediumImpact();
+        setState(() {
+          _zoomFrozen = true;
+          _infographicGestureActive = true;
+          _activeHierarchyLevel = HierarchyLevel.district;
+        });
+        _infographicTransitionCtrl.value = 0.0;
       }
     }
 
@@ -1316,7 +1436,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // feedback, and onLongPressStart when the hold completes (~500 ms).
             // MercatorProjection converts screen coords → geo for cell lookup.
             Listener(
-              onPointerDown: (_) {
+              onPointerDown: (event) {
+                _activePointers[event.pointer] = event.position;
                 _pointerCount++;
                 if (_pointerCount >= 2 &&
                     _activeHierarchyLevel == null &&
@@ -1324,21 +1445,58 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   setState(() => _infographicZoomArmed = true);
                 }
               },
-              onPointerUp: (_) {
+              onPointerMove: (event) {
+                _activePointers[event.pointer] = event.position;
+                if (_infographicGestureActive &&
+                    _activePointers.length >= 2 &&
+                    _triggerPointerDistance != null &&
+                    _triggerPointerDistance! > 0) {
+                  final pointers = _activePointers.values.toList();
+                  final currentDist = (pointers[0] - pointers[1]).distance;
+                  final progress = ((_triggerPointerDistance! - currentDist) /
+                          _triggerPointerDistance!) *
+                      kInfographicGestureSensitivity;
+                  _infographicTransitionCtrl.value = progress.clamp(0.0, 1.0);
+
+                  // Track for velocity computation.
+                  final now = DateTime.now().millisecondsSinceEpoch;
+                  _lastPointerMoveTimeMs = now;
+                  _lastPointerDistance = currentDist;
+                }
+              },
+              onPointerUp: (event) {
+                _activePointers.remove(event.pointer);
                 _pointerCount = (_pointerCount - 1).clamp(0, 99);
-                if (_pointerCount < 2 && _infographicZoomArmed) {
+                if (_infographicGestureActive && _activePointers.length < 2) {
+                  _onInfographicGestureEnd();
+                } else if (_pointerCount < 2 &&
+                    _infographicZoomArmed &&
+                    !_infographicGestureActive) {
                   setState(() => _infographicZoomArmed = false);
+                  // Smooth zoom reset instead of snap.
                   if (_currentZoom < kMinZoom) {
-                    _mapController?.moveCamera(zoom: kMinZoom);
+                    _mapController?.animateCamera(
+                      zoom: kMinZoom,
+                      nativeDuration: Durations.infographicSnap,
+                    );
                   }
                 }
               },
-              onPointerCancel: (_) {
+              onPointerCancel: (event) {
+                _activePointers.remove(event.pointer);
                 _pointerCount = (_pointerCount - 1).clamp(0, 99);
-                if (_pointerCount < 2 && _infographicZoomArmed) {
+                if (_infographicGestureActive && _activePointers.length < 2) {
+                  _onInfographicGestureEnd();
+                } else if (_pointerCount < 2 &&
+                    _infographicZoomArmed &&
+                    !_infographicGestureActive) {
                   setState(() => _infographicZoomArmed = false);
+                  // Smooth zoom reset instead of snap.
                   if (_currentZoom < kMinZoom) {
-                    _mapController?.moveCamera(zoom: kMinZoom);
+                    _mapController?.animateCamera(
+                      zoom: kMinZoom,
+                      nativeDuration: Durations.infographicSnap,
+                    );
                   }
                 }
               },
@@ -1533,6 +1691,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       onDismiss: _dismissInfographic,
                       onNavigateUp: () => setState(
                           () => _activeHierarchyLevel = HierarchyLevel.city),
+                      onCloseGestureUpdate: _onOverlayCloseGestureUpdate,
+                      onCloseGestureEnd: _onOverlayCloseGestureEnd,
                       districtDataMap: _districtDataMap,
                       cellService: ref.read(cellServiceProvider),
                     ),

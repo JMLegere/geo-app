@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/state/exploration_stats_provider.dart';
 import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
 import 'package:earth_nova/features/map/models/hierarchy_level.dart';
-import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
 /// Hierarchy screen for levels above district.
@@ -184,13 +183,13 @@ class _HierarchyStubOverlayState extends ConsumerState<HierarchyStubOverlay>
       opacity: _fadeAnim,
       child: GestureDetector(
         onScaleUpdate: (details) {
-          // Pinch in → navigate down
-          if (details.scale > kInfographicPinchInThreshold) {
+          // Pinch in (spread, scale > 1.5) → navigate down
+          if (details.scale > 1.5) {
             _navigateDown();
           }
-          // Pinch out → navigate up (only if not at top)
+          // Pinch out (squeeze, scale < 0.5) → navigate up (only if not at top)
           if (details.pointerCount >= 2 &&
-              details.scale < kInfographicPinchOutThreshold &&
+              details.scale < 0.5 &&
               widget.level.above != null) {
             _navigateUp();
           }

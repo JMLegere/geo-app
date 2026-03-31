@@ -317,9 +317,15 @@ const double kBorderLineWeightCity = 1.5;
 /// Border line weight for district-level boundaries.
 const double kBorderLineWeightDistrict = 1.0;
 
-// District Infographic
-/// Pinch scale threshold to trigger district infographic (< 1.0 = zoom-out).
-const double kInfographicPinchOutThreshold = 0.7;
+// District Infographic — Gesture-Driven Transition
+/// Multiplier: how aggressively pinch distance delta maps to overlay progress.
+/// Higher = less pinch needed. At 3.0, reducing pointer distance by ~33% of
+/// trigger distance reaches 100% overlay progress.
+const double kInfographicGestureSensitivity = 3.0;
 
-/// Pinch scale threshold to dismiss district infographic (> 1.0 = zoom-in).
-const double kInfographicPinchInThreshold = 1.3;
+/// Release threshold: overlay progress above this snaps open, below snaps back.
+const double kInfographicSnapThreshold = 0.5;
+
+/// Pointer velocity (pixels/sec) above which a gesture commits regardless
+/// of current progress. Enables fast flick to complete the transition.
+const double kInfographicVelocityCommitThreshold = 800.0;
