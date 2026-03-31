@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
@@ -14,7 +15,6 @@ import 'package:earth_nova/core/engine/engine_runner.dart';
 import 'package:earth_nova/core/engine/game_coordinator.dart';
 import 'package:earth_nova/core/models/cell_event.dart';
 
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_service_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
@@ -23,7 +23,9 @@ import 'package:earth_nova/core/services/startup_beacon.dart';
 import 'package:earth_nova/core/state/fog_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/location_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
+import 'package:earth_nova/core/state/player_located_provider.dart';
+import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/features/discovery/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/steps/widgets/step_recap.dart';
 import 'package:earth_nova/features/location/widgets/location_permission_banner.dart';
@@ -37,6 +39,7 @@ import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart'
 import 'package:earth_nova/features/map/utils/map_icon_renderer.dart';
 import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/debug_bridge.dart';
 import 'package:earth_nova/features/map/utils/map_logger.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
@@ -48,16 +51,15 @@ import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/providers/cell_selection_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/map/widgets/cell_info_sheet.dart';
-import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
-import 'package:earth_nova/features/sync/services/admin_boundary_service.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
-import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
+import 'package:earth_nova/features/map/models/hierarchy_level.dart';
 import 'package:earth_nova/features/map/widgets/district_infographic_overlay.dart';
+import 'package:earth_nova/features/map/widgets/hierarchy_stub_overlay.dart';
 
 /// Fixed zoom presets for the map camera.
 enum ZoomLevel {
@@ -117,9 +119,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   StreamSubscription<({String cellId, String locationId})>?
       _enrichmentSubscription;
 
-  /// Subscription to admin boundary resolution events.
-  StreamSubscription<List<String>>? _adminBoundarySubscription;
-
   /// Rubber-band interpolation controller. Decouples the visible marker
   /// position from raw GPS coordinates and drives 60fps camera + marker
   /// updates via a Ticker.
@@ -139,7 +138,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _rawGpsSubscription;
 
   bool _showDebugHud = false;
-  bool _showDistrictInfographic = false;
+  HierarchyLevel? _activeHierarchyLevel;
+
+  /// JavaScript debug bridge for Playwright E2E tests.
+  /// Exposes `window.__earthNovaDebug` on web; no-op on native.
+  late final DebugBridge _debugBridge;
 
   /// Screen position of an in-progress long press, for the visual ring indicator.
   /// Null when no long press is active.
@@ -162,6 +165,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Frame counter for throttling fog rendering in [_onDisplayPositionUpdate].
   /// Fog rendering runs at ~10 Hz, not 60 fps.
   int _renderFrame = 0;
+
+  /// Last raw GPS position received. Used to compute convergence distance
+  /// for the playerLocatedProvider gate.
+  ({double lat, double lon})? _lastRawGps;
+  bool _playerLocatedFired = false;
 
   /// Render logic runs every Nth display-update frame.
   /// Desktop: every 6th frame (~10 Hz at 60 fps).
@@ -188,12 +196,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _cellIconsSrcId = 'cell-icons-src';
   static const _cellIconsLayerId = 'cell-icons';
 
-  // -- MapLibre source/layer IDs for admin boundary polygons --
-  static const _adminBoundaryFillSrcId = 'admin-boundary-fill-src';
-  static const _adminBoundaryFillLayerId = 'admin-boundary-fill';
-  static const _adminBoundaryLinesSrcId = 'admin-boundary-lines-src';
-  static const _adminBoundaryLinesLayerId = 'admin-boundary-lines';
-
   // -- MapLibre source/layer IDs for habitat fill --
   static const _habitatFillSrcId = 'habitat-fill-src';
   static const _habitatFillLayerId = 'habitat-fill';
@@ -207,12 +209,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Whether the cell property icon images have been registered with MapLibre.
   bool _iconImagesRegistered = false;
 
-  /// Admin boundary service — may be null when Supabase is not configured.
-  AdminBoundaryService? _adminBoundaryService;
+  /// District ancestry cache — loaded once, refreshed when enrichment completes.
+  Map<String, ({String? cityId, String? stateId, String? countryId})>
+      _districtAncestryMap = {};
+  bool _districtAncestryLoaded = false;
 
-  /// Cached location nodes — loaded once, refreshed when enrichment completes.
-  Map<String, LocationNode> _locationNodesMap = {};
-  bool _locationNodesLoaded = false;
+  /// District data cache for infographic overlay.
+  Map<String, HDistrict> _districtDataMap = {};
 
   @override
   void initState() {
@@ -278,60 +281,73 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
 
-    // When enrichment completes, fetch the saved LocationNode and push it into
-    // the fog overlay cache so territory borders update without an app restart.
+    // When enrichment completes, reload district ancestry so territory borders
+    // update without an app restart.
     // Save reference to field — ref.read() in dispose() is unsafe (Bad state: Using ref).
     _locationEnrichmentService = ref.read(locationEnrichmentServiceProvider);
     _enrichmentSubscription =
         _locationEnrichmentService.onLocationEnriched.listen((event) {
       if (!mounted) return;
-      debugPrint('[MAP] enrichment → boundary fetch: cell=${event.cellId} '
+      debugPrint('[MAP] enrichment resolved: cell=${event.cellId} '
           'location=${event.locationId}');
-      ref
-          .read(locationNodeRepositoryProvider)
-          .get(event.locationId)
-          .then((node) {
-        if (node != null && mounted) {
-          _locationNodesMap[node.id] = node;
-          ref.read(fogOverlayControllerProvider).addLocationNode(node);
-        }
-      }).catchError((Object e) {
-        debugPrint(
-            '[MapScreen] failed to load location node ${event.locationId}: $e');
+      // Reload district ancestry when enrichment resolves a new locationId.
+      _loadDistrictAncestry().then((_) {
+        if (!mounted) return;
+        final fogCtrl = ref.read(fogOverlayControllerProvider);
+        final detectionZone = ref.read(detectionZoneServiceProvider);
+        fogCtrl.cellDistrictIds = detectionZone.cellDistrictAttribution;
+        fogCtrl.districtAncestry = _districtAncestryMap;
+        _updateFogSources();
       });
-
-      // Trigger admin boundary fetch when enrichment resolves — the district
-      // locationId may have changed, so requestBoundaries will check and fetch
-      // polygon data if needed (deduplicates internally by location).
-      final cellService = ref.read(cellServiceProvider);
-      final center = cellService.getCellCenter(event.cellId);
-      _adminBoundaryService?.requestBoundaries(center.lat, center.lon);
     });
 
-    // Wire admin boundary service — fetch polygons on district change.
-    _adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-    _adminBoundarySubscription =
-        _adminBoundaryService?.onBoundariesResolved.listen((nodeIds) async {
-      if (!mounted) return;
-      // Reload location nodes so territory border builder sees new geometry.
-      await _loadLocationNodes();
-      if (!mounted) return;
-      ref.read(fogOverlayControllerProvider).locationNodesCache =
-          _locationNodesMap;
-      _rebuildAdminBoundaryGeoJson();
-    });
+    // Keyboard shortcut: 'I' toggles district infographic.
+    HardwareKeyboard.instance.addHandler(_onKeyEvent);
+
+    // JavaScript debug bridge for Playwright E2E tests.
+    _debugBridge = DebugBridge(
+      getInfographicState: () => _activeHierarchyLevel != null,
+      setInfographicState: (value) {
+        if (mounted) {
+          setState(() {
+            _activeHierarchyLevel = value ? HierarchyLevel.district : null;
+          });
+        }
+      },
+    );
+    _debugBridge.install();
   }
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKeyEvent);
+    _debugBridge.dispose();
     _gameCoordinator.onExplorationDisabledChanged = null;
     _enrichmentSubscription?.cancel();
-    _adminBoundarySubscription?.cancel();
     _rubberBand.dispose();
     _markerPosition.dispose();
     _cameraController.dispose();
     _rawGpsSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Handles keyboard events for debug shortcuts.
+  /// Returns true if the event was handled (consumed).
+  bool _onKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+
+    if (event.logicalKey == LogicalKeyboardKey.keyI) {
+      setState(() {
+        if (_activeHierarchyLevel == null) {
+          _activeHierarchyLevel = HierarchyLevel.district;
+        } else {
+          _activeHierarchyLevel = null;
+        }
+      });
+      debugPrint('[MAP] keyboard shortcut: hierarchy=$_activeHierarchyLevel');
+      return true;
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -351,55 +367,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || _fogLayersInitialized) return;
 
     try {
-      // Admin boundary fills: polygon fills for admin regions.
-      // Added BEFORE fog layers so they render below the fog.
-      await controller.addSource(
-        GeoJsonSource(
-            id: _adminBoundaryFillSrcId,
-            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
-      );
-      await controller.addLayer(FillLayer(
-        id: _adminBoundaryFillLayerId,
-        sourceId: _adminBoundaryFillSrcId,
-        paint: {
-          'fill-color': [
-            'coalesce',
-            ['get', 'color'],
-            '#888888'
-          ],
-          'fill-opacity': [
-            'coalesce',
-            ['get', 'opacity'],
-            0.0
-          ],
-        },
-      ));
-
-      // Admin boundary lines: outlines for admin regions.
-      await controller.addSource(
-        GeoJsonSource(
-            id: _adminBoundaryLinesSrcId,
-            data: AdminBoundaryGeoJsonBuilder.emptyFeatureCollection),
-      );
-      await controller.addLayer(LineLayer(
-        id: _adminBoundaryLinesLayerId,
-        sourceId: _adminBoundaryLinesSrcId,
-        paint: {
-          'line-color': [
-            'coalesce',
-            ['get', 'color'],
-            '#888888'
-          ],
-          'line-width': [
-            'coalesce',
-            ['get', 'line_weight'],
-            1.0
-          ],
-          'line-dasharray': [6.0, 3.0],
-          'line-opacity': 0.7,
-        },
-      ));
-
       // Habitat fill: subtle radial gradient tint per revealed cell.
       await controller.addSource(
         GeoJsonSource(
@@ -629,17 +596,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Consume all dirty flags independently — the old exclusive stagger
     // starved border/icon updates because habitat was dirty every frame.
     final fogDirty = fogCtrl.consumeFogDirty();
-    final adminDirty = fogCtrl.consumeAdminDirty();
     final habitatDirty = fogCtrl.consumeHabitatDirty();
     final borderDirty = fogCtrl.consumeBorderDirty();
     final iconsDirty = fogCtrl.consumeIconsDirty();
 
     // Nothing changed — skip entirely.
-    if (!fogDirty &&
-        !adminDirty &&
-        !habitatDirty &&
-        !borderDirty &&
-        !iconsDirty) {
+    if (!fogDirty && !habitatDirty && !borderDirty && !iconsDirty) {
       return;
     }
 
@@ -669,16 +631,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Push all dirty non-fog groups in parallel.
       final updates = <Future<void>>[];
 
-      if (adminDirty) {
-        updates.add(controller.updateGeoJsonSource(
-          id: _adminBoundaryFillSrcId,
-          data: fogCtrl.adminBoundaryFillGeoJson,
-        ));
-        updates.add(controller.updateGeoJsonSource(
-          id: _adminBoundaryLinesSrcId,
-          data: fogCtrl.adminBoundaryLinesGeoJson,
-        ));
-      }
       if (habitatDirty) {
         updates.add(controller.updateGeoJsonSource(
           id: _habitatFillSrcId,
@@ -710,13 +662,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // Log slow frames for performance debugging.
       if (sw.elapsedMilliseconds > 10) {
         debugPrint('[FOG-PERF] source update took ${sw.elapsedMilliseconds}ms '
-            '(fog=$fogDirty, admin=$adminDirty, habitat=$habitatDirty, '
+            '(fog=$fogDirty, habitat=$habitatDirty, '
             'border=$borderDirty, icons=$iconsDirty)');
       }
       ObservabilityBuffer.instance?.event('fog_sources_updated', {
         'duration_ms': sw.elapsedMilliseconds,
         'fog': fogDirty,
-        'admin': adminDirty,
         'habitat': habitatDirty,
         'border': borderDirty,
         'icons': iconsDirty,
@@ -881,6 +832,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       source: _gameCoordinator.isRealGps ? 'realGps' : 'simulated',
     );
 
+    _lastRawGps = (lat: update.position.lat, lon: update.position.lon);
+
     _rubberBand.setTarget(update.position.lat, update.position.lon);
   }
 
@@ -901,6 +854,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     // 1b. Feed updated position to camera controller (follows in following mode).
     _cameraController.onPlayerPositionUpdate(Geographic(lat: lat, lon: lon));
+
+    // 1c. Check rubber-band convergence for loading gate (once only).
+    if (!_playerLocatedFired && _lastRawGps != null) {
+      final dist =
+          _haversineMeters(lat, lon, _lastRawGps!.lat, _lastRawGps!.lon);
+      if (dist < kPlayerLocatedThresholdMeters) {
+        _playerLocatedFired = true;
+        ref.read(playerLocatedProvider.notifier).markLocated();
+      }
+    }
 
     // 2. Feed player position to engine via EngineRunner (60 fps — coordinator
     //    throttles internally to ~10 Hz for game logic).
@@ -948,13 +911,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final seedState = ref.read(dailySeedServiceProvider).currentSeed;
       fogOverlayController.dailySeed = seedState?.seed ?? '';
 
-      // Lazy-load location nodes for territory border rendering.
+      // Feed cell district attribution for territory border rendering.
+      // Only set when the map size changes — the setter triggers BFS rebuild.
+      final detectionZone = ref.read(detectionZoneServiceProvider);
+      final currentAttribution = detectionZone.cellDistrictAttribution;
+      if (currentAttribution.length !=
+          fogOverlayController.cellDistrictIdsCount) {
+        fogOverlayController.cellDistrictIds = currentAttribution;
+      }
+
+      // Lazy-load district ancestry for territory border rendering.
       // Set once when loaded — not every frame (setter triggers BFS rebuild).
-      if (!_locationNodesLoaded) {
-        _locationNodesLoaded = true;
-        _loadLocationNodes().then((_) {
+      if (!_districtAncestryLoaded) {
+        _districtAncestryLoaded = true;
+        _loadDistrictAncestry().then((_) {
           if (mounted) {
-            fogOverlayController.locationNodesCache = _locationNodesMap;
+            fogOverlayController.districtAncestry = _districtAncestryMap;
             _updateFogSources();
           }
         });
@@ -976,53 +948,67 @@ class _MapScreenState extends ConsumerState<MapScreen>
     }
   }
 
-  /// Loads all location nodes from the database and caches them.
+  /// Loads district ancestry from the hierarchy repository.
   ///
-  /// Called lazily on the first fog render frame. Runs async but the map
-  /// continues rendering without borders until the load completes (same
-  /// pattern as cell properties lazy loading).
-  Future<void> _loadLocationNodes() async {
+  /// Called lazily on the first fog render frame (and on enrichment events).
+  /// Loads each district in [cellDistrictAttribution], then walks up to city,
+  /// state, and country — building the ancestry map for territory borders.
+  /// Also populates [_districtDataMap] for the infographic overlay.
+  Future<void> _loadDistrictAncestry() async {
     if (!mounted) return;
 
     try {
-      final repo = ref.read(locationNodeRepositoryProvider);
-      final nodes = await repo.getAll();
-      if (!mounted) return;
-      _locationNodesMap = {for (final n in nodes) n.id: n};
-      MapLogger.locationNodesLoaded(_locationNodesMap.length);
-      final withGeom = nodes.where((n) => n.geometryJson != null).length;
-      final geomBytes =
-          nodes.fold<int>(0, (sum, n) => sum + (n.geometryJson?.length ?? 0));
-      debugPrint('[MAP] Loaded ${nodes.length} location nodes '
-          '($withGeom with geometry, ${geomBytes ~/ 1024}KB)');
+      final detectionZone = ref.read(detectionZoneServiceProvider);
+      final districtIds = detectionZone.cellDistrictAttribution.values.toSet();
+      if (districtIds.isEmpty) return;
+
+      final repo = ref.read(hierarchyRepositoryProvider);
+
+      // Step 1: districts → cityIds + cache district data
+      final districtCity = <String, String>{}; // districtId → cityId
+      final districtData = <String, HDistrict>{};
+      for (final id in districtIds) {
+        final d = await repo.getDistrict(id);
+        if (!mounted) return;
+        if (d != null) {
+          districtCity[id] = d.cityId;
+          districtData[id] = d;
+        }
+      }
+
+      // Step 2: cities → stateIds
+      final cityState = <String, String>{}; // cityId → stateId
+      for (final cityId in districtCity.values.toSet()) {
+        final c = await repo.getCity(cityId);
+        if (!mounted) return;
+        if (c != null) cityState[cityId] = c.stateId;
+      }
+
+      // Step 3: states → countryIds
+      final stateCountry = <String, String>{}; // stateId → countryId
+      for (final stateId in cityState.values.toSet()) {
+        final s = await repo.getState(stateId);
+        if (!mounted) return;
+        if (s != null) stateCountry[stateId] = s.countryId;
+      }
+
+      // Step 4: assemble ancestry map
+      final ancestry =
+          <String, ({String? cityId, String? stateId, String? countryId})>{};
+      for (final districtId in districtIds) {
+        final cityId = districtCity[districtId];
+        final stateId = cityId != null ? cityState[cityId] : null;
+        final countryId = stateId != null ? stateCountry[stateId] : null;
+        ancestry[districtId] =
+            (cityId: cityId, stateId: stateId, countryId: countryId);
+      }
+
+      _districtAncestryMap = ancestry;
+      _districtDataMap = districtData;
+      debugPrint('[MAP] loaded ancestry: ${ancestry.length} districts, '
+          '${districtData.length} district data');
     } catch (e) {
-      MapLogger.locationNodesLoadError(e);
-    }
-  }
-
-  /// Rebuilds admin boundary GeoJSON from the repository and pushes to map.
-  ///
-  /// Called EVENT-DRIVEN when [AdminBoundaryService.onBoundariesResolved] fires.
-  /// Loads all location nodes from the repository, feeds them to the fog
-  /// overlay controller, then schedules a fog source update on the next frame.
-  Future<void> _rebuildAdminBoundaryGeoJson() async {
-    if (!mounted) return;
-
-    try {
-      final sw = Stopwatch()..start();
-      final repo = ref.read(locationNodeRepositoryProvider);
-      final nodes = await repo.getAll();
-      if (!mounted) return;
-
-      final nodesMap = <String, LocationNode>{for (final n in nodes) n.id: n};
-      final withGeom = nodes.where((n) => n.geometryJson != null).length;
-      ref.read(fogOverlayControllerProvider).updateAdminBoundaries(nodesMap);
-      _updateFogSources();
-      sw.stop();
-      debugPrint('[ADMIN] rebuilt boundaries: ${nodes.length} nodes '
-          '($withGeom with geometry) in ${sw.elapsedMilliseconds}ms');
-    } catch (e) {
-      debugPrint('[MapScreen] _rebuildAdminBoundaryGeoJson failed: $e');
+      debugPrint('[MapScreen] _loadDistrictAncestry failed: $e');
     }
   }
 
@@ -1121,17 +1107,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _markMapReady();
 
       MapLogger.fogInitComplete();
-
-      // Trigger an initial admin boundary request for the current player
-      // position so borders load even for returning players who won't visit
-      // any new cells (onCellVisited alone is insufficient for 145+ cell users).
-      final playerPos = _gameCoordinator.playerPosition;
-      if (playerPos != null && mounted) {
-        _adminBoundaryService?.requestBoundaries(
-          playerPos.lat,
-          playerPos.lon,
-        );
-      }
     } catch (e, stack) {
       MapLogger.fogInitFailed(e, stack);
       // On error, still mark ready so the base map is usable.
@@ -1273,11 +1248,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // MercatorProjection converts screen coords → geo for cell lookup.
             GestureDetector(
               onScaleUpdate: (details) {
-                if (!_showDistrictInfographic &&
+                if (_activeHierarchyLevel == null &&
                     details.pointerCount >= 2 &&
                     details.scale < kInfographicPinchOutThreshold) {
                   HapticFeedback.mediumImpact();
-                  setState(() => _showDistrictInfographic = true);
+                  setState(
+                      () => _activeHierarchyLevel = HierarchyLevel.district);
                 }
               },
               child: GestureDetector(
@@ -1454,14 +1430,25 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ),
             ),
 
-            // ── Layer 3.9: District infographic overlay ──────────────────
-            if (_showDistrictInfographic)
+            // ── Layer 3.9: Hierarchy overlays ──────────────────────────
+            if (_activeHierarchyLevel == HierarchyLevel.district)
               Positioned.fill(
                 child: DistrictInfographicOverlay(
-                  onDismiss: () =>
-                      setState(() => _showDistrictInfographic = false),
-                  locationNodesMap: _locationNodesMap,
+                  onDismiss: () => setState(() => _activeHierarchyLevel = null),
+                  onNavigateUp: () => setState(
+                      () => _activeHierarchyLevel = HierarchyLevel.city),
+                  districtDataMap: _districtDataMap,
                   cellService: ref.read(cellServiceProvider),
+                ),
+              ),
+            if (_activeHierarchyLevel != null &&
+                _activeHierarchyLevel != HierarchyLevel.district)
+              Positioned.fill(
+                child: HierarchyStubOverlay(
+                  level: _activeHierarchyLevel!,
+                  onNavigate: (level) =>
+                      setState(() => _activeHierarchyLevel = level),
+                  onDismiss: () => setState(() => _activeHierarchyLevel = null),
                 ),
               ),
 
@@ -1529,6 +1516,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ),
       ),
     );
+  }
+
+  /// Haversine distance in meters between two geographic points.
+  static double _haversineMeters(
+      double lat1, double lon1, double lat2, double lon2) {
+    const earthRadius = 6371000.0;
+    final dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final dLon = (lon2 - lon1) * (math.pi / 180.0);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180.0) *
+            math.cos(lat2 * math.pi / 180.0) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    return earthRadius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 }
 

@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
+import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/features/auth/models/auth_state.dart';
 import 'package:earth_nova/features/auth/providers/auth_provider.dart';
@@ -309,6 +310,12 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
         ObservabilityBuffer.instance?.event('zone_ready_timeout', {});
         ref.read(zoneReadyProvider.notifier).markReady();
       }
+      // Also force player located — if GPS hasn't arrived or rubber-band
+      // hasn't converged, dismiss anyway to prevent infinite loading.
+      if (!ref.read(playerLocatedProvider)) {
+        debugPrint('[TIMEOUT] player not located after 15s — forcing located');
+        ref.read(playerLocatedProvider.notifier).markLocated();
+      }
     });
   }
 
@@ -371,7 +378,7 @@ class _EarthNovaAppState extends ConsumerState<EarthNovaApp> {
 
 /// Mounts TabShell immediately (map initializes behind the scenes) and
 /// overlays LoadingScreen until steady-state conditions are met:
-/// isHydrated && isZoneReady.
+/// isHydrated && isZoneReady && isPlayerLocated.
 ///
 /// mapReady is NOT needed as a separate gate — with the Stack overlay
 /// architecture, MapLibre fog layers initialize in ~41ms (always before
@@ -393,13 +400,14 @@ class _SteadyStateShellState extends ConsumerState<_SteadyStateShell> {
   Widget build(BuildContext context) {
     final playerState = ref.watch(playerProvider);
     final isZoneReady = ref.watch(zoneReadyProvider);
+    final isPlayerLocated = ref.watch(playerLocatedProvider);
 
     // Check onboarding first — if not complete, show onboarding (no map).
     if (playerState.isHydrated && !playerState.hasCompletedOnboarding) {
       return const OnboardingScreen(key: ValueKey('onboarding'));
     }
 
-    final allReady = playerState.isHydrated && isZoneReady;
+    final allReady = playerState.isHydrated && isZoneReady && isPlayerLocated;
 
     if (allReady && !_wasDismissed) {
       _wasDismissed = true;

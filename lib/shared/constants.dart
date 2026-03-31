@@ -117,6 +117,11 @@ const double kCameraFollowDistance = 50.0;
 /// Camera zoom animation duration (milliseconds).
 const int kCameraZoomDurationMs = 300;
 
+/// Distance threshold (meters) for "player located" loading gate.
+/// Rubber-band display position must be within this distance of raw GPS
+/// before the loading screen dismisses.
+const double kPlayerLocatedThresholdMeters = 1000.0;
+
 // Rubber-Band Marker Interpolation
 //
 // The player marker is decoupled from raw GPS coordinates and smoothly

@@ -1,6 +1,6 @@
 # Test Suite
 
-1832 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
+1962 tests. flutter_test only — no mockito, no mocktail. All mocks hand-written.
 
 ## Run Commands
 
@@ -102,4 +102,12 @@ Defined per-file (not shared). Each test file has its own factories.
 
 ## Coverage Gaps
 
-No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/map/models/`, `features/sync/providers/` (SyncNotifier rollback), `features/map/utils/map_icon_renderer.dart` (requires Flutter Canvas — widget test needed), `features/world/`, `features/calendar/`.
+No tests for: `core/config/`, `core/database/` (schema), `shared/`, `features/onboarding/`, `features/sync/providers/` (SyncNotifier rollback), `features/map/utils/map_icon_renderer.dart` (requires Flutter Canvas — widget test needed), `features/world/`, `features/calendar/`.
+
+## District Infographic Tests
+
+| File | Tests | What it covers |
+|------|-------|---------------|
+| `test/features/map/models/district_infographic_data_test.dart` | 15 | explorationPercent, hasBoundary, parseBoundaryRings (Polygon/MultiPolygon/null/invalid) |
+| `test/features/map/widgets/district_infographic_painter_test.dart` | 11 | shouldRepaint, clearCache, paint with/without boundary, degenerate bbox, bloom threshold |
+| `test/features/map/widgets/district_infographic_overlay_test.dart` | 8 | No-data fallback, district name/stats rendering, dismiss via back button, dispose cleanup |

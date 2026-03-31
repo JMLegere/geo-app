@@ -4,11 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/core/state/cell_property_repository_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
+import 'package:earth_nova/core/state/hierarchy_repository_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
@@ -70,7 +69,7 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
 
   Future<void> _loadCellData() async {
     final cellPropRepo = ref.read(cellPropertyRepositoryProvider);
-    final locationNodeRepo = ref.read(locationNodeRepositoryProvider);
+    final hierarchyRepo = ref.read(hierarchyRepositoryProvider);
 
     final props = await cellPropRepo.get(widget.cellId);
     if (!mounted) return;
@@ -78,15 +77,21 @@ class _CellInfoSheetState extends ConsumerState<CellInfoSheet> {
     List<String>? breadcrumb;
     if (props?.locationId != null) {
       final names = <String>[];
-      String? currentId = props!.locationId;
-      while (currentId != null) {
-        final node = await locationNodeRepo.get(currentId);
-        if (node == null) break;
-        if (node.adminLevel != AdminLevel.world &&
-            node.adminLevel != AdminLevel.continent) {
-          names.add(node.name);
+      final district = await hierarchyRepo.getDistrict(props!.locationId!);
+      if (district != null) {
+        names.add(district.name);
+        final city = await hierarchyRepo.getCity(district.cityId);
+        if (city != null) {
+          names.add(city.name);
+          final state = await hierarchyRepo.getState(city.stateId);
+          if (state != null) {
+            names.add(state.name);
+            final country = await hierarchyRepo.getCountry(state.countryId);
+            if (country != null) {
+              names.add(country.name);
+            }
+          }
         }
-        currentId = node.parentId;
       }
       breadcrumb = names.reversed.toList();
     }

@@ -260,29 +260,72 @@ class LocalCellPropertiesTable extends Table {
   TextColumn get climate => text()(); // Climate enum name
   TextColumn get continent => text()(); // Continent enum name
   TextColumn get locationId => text().nullable()(); // FK → location_nodes
+  TextColumn get districtId => text().nullable()(); // FK → districts
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {cellId};
 }
 
-/// A node in the administrative location hierarchy (country, state, city, etc.).
-/// Globally shared — not per-user.
-@DataClassName('LocalLocationNode')
-class LocalLocationNodeTable extends Table {
-  TextColumn get id => text()(); // UUID (PK)
-  IntColumn get osmId =>
-      integer().nullable()(); // OSM relation ID (null for synthetic nodes)
-  TextColumn get name => text()(); // "Fredericton"
-  TextColumn get adminLevel => text()(); // AdminLevel enum name
-  TextColumn get parentId => text().nullable()(); // FK → parent node
-  TextColumn get colorHex => text().nullable()(); // hex from flag, or null
-  TextColumn get geometryJson =>
-      text().nullable()(); // GeoJSON polygon, null if not fetched
-  TextColumn get adjacentLocationIds =>
-      text().nullable()(); // JSON list of adjacent location IDs
-  TextColumn get cellIds =>
-      text().nullable()(); // JSON list of pre-computed cell IDs
+/// Country in the geographic hierarchy.
+/// Pre-populated from Natural Earth dataset.
+@DataClassName('LocalCountry')
+class LocalCountryTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get continent => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// State / Province / Region in the geographic hierarchy.
+@DataClassName('LocalState')
+class LocalStateTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get countryId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// City / Locality in the geographic hierarchy.
+@DataClassName('LocalCity')
+class LocalCityTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get stateId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  IntColumn get cellsTotal => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// District / Neighbourhood in the geographic hierarchy.
+@DataClassName('LocalDistrict')
+class LocalDistrictTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get cityId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  IntColumn get cellsTotal => integer().nullable()();
+  TextColumn get source => text().withDefault(const Constant('whosonfirst'))();
+  TextColumn get sourceId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -368,8 +411,11 @@ const kExpectedTableNames = [
   'local_player_profile_table',
   'local_write_queue_table',
   'local_cell_properties_table',
-  'local_location_node_table',
   'local_app_events_table',
+  'local_country_table',
+  'local_state_table',
+  'local_city_table',
+  'local_district_table',
 ];
 
 @DriftDatabase(tables: [
@@ -379,7 +425,10 @@ const kExpectedTableNames = [
   LocalSpeciesTable,
   LocalWriteQueueTable,
   LocalCellPropertiesTable,
-  LocalLocationNodeTable,
+  LocalCountryTable,
+  LocalStateTable,
+  LocalCityTable,
+  LocalDistrictTable,
 ])
 class AppDatabase extends _$AppDatabase {
   /// Optional loader for species data JSON. Null in tests (manual seeding).
@@ -391,7 +440,7 @@ class AppDatabase extends _$AppDatabase {
   final _writer = _WriteSerializer();
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration {
@@ -492,11 +541,9 @@ class AppDatabase extends _$AppDatabase {
             }
             if (from < 11) {
               await m.createTable(localCellPropertiesTable);
-              await m.createTable(localLocationNodeTable);
-            }
-            if (from < 12) {
+              // LocalLocationNodeTable was created here — dropped in v24.
               await customStatement('''
-                CREATE TABLE local_location_node_table_new (
+                CREATE TABLE IF NOT EXISTS local_location_node_table (
                   id TEXT NOT NULL PRIMARY KEY,
                   osm_id INTEGER,
                   name TEXT NOT NULL,
@@ -506,20 +553,8 @@ class AppDatabase extends _$AppDatabase {
                   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
                 )
               ''');
-              await customStatement('''
-                INSERT INTO local_location_node_table_new
-                  (id, osm_id, name, admin_level, parent_id, color_hex, created_at)
-                SELECT id, osm_id, name, admin_level, parent_id, color_hex, created_at
-                FROM local_location_node_table
-              ''');
-              await customStatement('DROP TABLE local_location_node_table');
-              await customStatement(
-                  'ALTER TABLE local_location_node_table_new RENAME TO local_location_node_table');
             }
-            if (from < 13) {
-              await m.addColumn(
-                  localLocationNodeTable, localLocationNodeTable.geometryJson);
-            }
+            // v12, v13: legacy LocalLocationNodeTable migrations — table dropped in v24.
             if (from < 14) {
               // localAppEventsTable was here — dropped in v21.
               // Create it only if upgrading from <14, so v21 drop succeeds.
@@ -690,6 +725,30 @@ class AppDatabase extends _$AppDatabase {
             await customStatement(
                 'ALTER TABLE local_location_node_table ADD COLUMN cell_ids TEXT');
           }
+        }
+        if (from < 23) {
+          // v23: Add hierarchy tables (countries, states, cities, districts)
+          // and district_id column to cell_properties.
+          await m.createTable(localCountryTable);
+          await m.createTable(localStateTable);
+          await m.createTable(localCityTable);
+          await m.createTable(localDistrictTable);
+
+          // Add district_id to cell_properties (may already exist on fresh DB).
+          final cols23 = await customSelect(
+            "PRAGMA table_info(local_cell_properties_table)",
+          ).get();
+          final colNames23 = cols23.map((r) => r.read<String>('name')).toSet();
+          if (!colNames23.contains('district_id')) {
+            await customStatement(
+              'ALTER TABLE local_cell_properties_table ADD COLUMN district_id TEXT',
+            );
+          }
+        }
+        if (from < 24) {
+          // v24: Drop legacy LocalLocationNodeTable (replaced by 4-table hierarchy).
+          await customStatement(
+              'DROP TABLE IF EXISTS local_location_node_table');
         }
       },
       beforeOpen: (details) async {
@@ -1047,35 +1106,48 @@ class AppDatabase extends _$AppDatabase {
           )));
 
   // ========================================================================
-  // LOCATION NODE QUERIES
+  // HIERARCHY TABLE QUERIES
   // ========================================================================
 
-  Future<LocalLocationNode?> getLocationNode(String id) {
-    return (select(localLocationNodeTable)..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
+  Future<List<LocalCountry>> getAllCountries() =>
+      select(localCountryTable).get();
 
-  Future<LocalLocationNode?> getLocationNodeByOsmId(int osmId) {
-    return (select(localLocationNodeTable)
-          ..where((tbl) => tbl.osmId.equals(osmId)))
-        .getSingleOrNull();
-  }
+  Future<List<LocalState>> getStatesForCountry(String countryId) =>
+      (select(localStateTable)..where((t) => t.countryId.equals(countryId)))
+          .get();
 
-  Future<void> upsertLocationNode(LocalLocationNode node) =>
-      _writer.run(() => into(localLocationNodeTable).insert(
-            node,
-            onConflict: DoUpdate((_) => node),
-          ));
+  Future<List<LocalCity>> getCitiesForState(String stateId) =>
+      (select(localCityTable)..where((t) => t.stateId.equals(stateId))).get();
 
-  Future<List<LocalLocationNode>> getLocationNodeChildren(String parentId) {
-    return (select(localLocationNodeTable)
-          ..where((tbl) => tbl.parentId.equals(parentId)))
-        .get();
-  }
+  Future<List<LocalDistrict>> getDistrictsForCity(String cityId) =>
+      (select(localDistrictTable)..where((t) => t.cityId.equals(cityId))).get();
 
-  Future<List<LocalLocationNode>> getAllLocationNodes() {
-    return select(localLocationNodeTable).get();
-  }
+  Future<LocalCountry?> getCountry(String id) =>
+      (select(localCountryTable)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  Future<LocalState?> getState(String id) =>
+      (select(localStateTable)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  Future<LocalCity?> getCity(String id) =>
+      (select(localCityTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<LocalDistrict?> getDistrict(String id) =>
+      (select(localDistrictTable)..where((t) => t.id.equals(id)))
+          .getSingleOrNull();
+
+  Future<void> upsertCountry(LocalCountryTableCompanion entry) =>
+      into(localCountryTable).insertOnConflictUpdate(entry);
+
+  Future<void> upsertState(LocalStateTableCompanion entry) =>
+      into(localStateTable).insertOnConflictUpdate(entry);
+
+  Future<void> upsertCity(LocalCityTableCompanion entry) =>
+      into(localCityTable).insertOnConflictUpdate(entry);
+
+  Future<void> upsertDistrict(LocalDistrictTableCompanion entry) =>
+      into(localDistrictTable).insertOnConflictUpdate(entry);
 
   // App Events table removed in v21 — observability unified into app_logs.
 }

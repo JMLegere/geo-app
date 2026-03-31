@@ -5,9 +5,10 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:earth_nova/core/models/location_node.dart';
+import 'package:earth_nova/core/models/admin_level.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
-import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 
 class _EnrichRequest {
   final String cellId;
@@ -33,14 +34,14 @@ class _EnrichRequest {
 class LocationEnrichmentService {
   LocationEnrichmentService({
     required this.cellPropertyRepo,
-    required this.locationNodeRepo,
+    required this.hierarchyRepo,
     this.supabaseClient,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 1200,
   });
 
   final CellPropertyRepository cellPropertyRepo;
-  final LocationNodeRepository locationNodeRepo;
+  final HierarchyRepository hierarchyRepo;
   final SupabaseClient? supabaseClient;
   final int maxRetries;
   final int baseDelayMs;
@@ -195,9 +196,12 @@ class LocationEnrichmentService {
               final hierarchy = resultMap['hierarchy'] as List<dynamic>?;
               if (hierarchy != null) {
                 for (final nodeData in hierarchy) {
-                  final node = _parseHierarchyNode(nodeData);
-                  if (node != null) {
-                    await locationNodeRepo.upsert(node);
+                  try {
+                    await _upsertHierarchyNode(
+                        nodeData as Map<String, dynamic>);
+                  } catch (e) {
+                    debugPrint(
+                        '[LocationEnrichment] failed to upsert hierarchy node: $e');
                   }
                 }
               }
@@ -333,9 +337,11 @@ class LocationEnrichmentService {
             final hierarchy = data['hierarchy'] as List<dynamic>?;
             if (hierarchy != null) {
               for (final nodeData in hierarchy) {
-                final node = _parseHierarchyNode(nodeData);
-                if (node != null) {
-                  await locationNodeRepo.upsert(node);
+                try {
+                  await _upsertHierarchyNode(nodeData as Map<String, dynamic>);
+                } catch (e) {
+                  debugPrint(
+                      '[LocationEnrichment] failed to upsert hierarchy node: $e');
                 }
               }
             }
@@ -409,25 +415,50 @@ class LocationEnrichmentService {
         'dropped $dropped queued requests');
   }
 
-  LocationNode? _parseHierarchyNode(dynamic nodeData) {
-    if (nodeData is! Map<String, dynamic>) return null;
-    try {
-      final id = nodeData['id'] as String;
-      final name = nodeData['name'] as String;
-      final level = nodeData['level'] as String;
-      final parentId = nodeData['parent_id'] as String?;
-      return LocationNode(
-        id: id,
-        osmId: null,
-        name: name,
-        adminLevel: AdminLevel.fromString(level),
-        parentId: parentId,
-        colorHex: null,
-        geometryJson: null,
-      );
-    } catch (e) {
-      debugPrint('[LocationEnrichment] failed to parse node: $e');
-      return null;
+  Future<void> _upsertHierarchyNode(Map<String, dynamic> nodeData) async {
+    final id = nodeData['id'] as String;
+    final name = nodeData['name'] as String;
+    final levelStr = nodeData['level'] as String;
+    final parentId = nodeData['parent_id'] as String?;
+    final level = AdminLevel.fromString(levelStr);
+
+    // The Edge Function doesn't provide centroid coords for hierarchy nodes,
+    // so use 0.0 as placeholder — real values come from Supabase sync.
+    switch (level) {
+      case AdminLevel.country:
+        await hierarchyRepo.upsertCountry(HCountry(
+          id: id,
+          name: name,
+          centroidLat: 0.0,
+          centroidLon: 0.0,
+          continent: '',
+        ));
+      case AdminLevel.state:
+        await hierarchyRepo.upsertState(HState(
+          id: id,
+          name: name,
+          centroidLat: 0.0,
+          centroidLon: 0.0,
+          countryId: parentId ?? '',
+        ));
+      case AdminLevel.city:
+        await hierarchyRepo.upsertCity(HCity(
+          id: id,
+          name: name,
+          centroidLat: 0.0,
+          centroidLon: 0.0,
+          stateId: parentId ?? '',
+        ));
+      case AdminLevel.district:
+        await hierarchyRepo.upsertDistrict(HDistrict(
+          id: id,
+          name: name,
+          centroidLat: 0.0,
+          centroidLon: 0.0,
+          cityId: parentId ?? '',
+        ));
+      default:
+        break; // Skip world/continent levels
     }
   }
 

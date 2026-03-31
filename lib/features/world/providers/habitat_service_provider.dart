@@ -23,6 +23,19 @@ final biomeFeatureIndexProvider =
   try {
     final jsonString =
         await rootBundle.loadString('assets/biome_features.json');
+
+    // Guard: detect Git LFS pointers or other non-JSON content.
+    // A valid file starts with '{'. LFS pointers start with 'version'.
+    if (jsonString.isEmpty || !jsonString.startsWith('{')) {
+      final preview =
+          jsonString.length > 120 ? jsonString.substring(0, 120) : jsonString;
+      throw FormatException(
+        'biome_features.json is not valid JSON. '
+        'First 120 chars: $preview. '
+        'If this starts with "version", run: git lfs pull',
+      );
+    }
+
     return BiomeFeatureIndex.load(jsonString);
   } catch (e) {
     debugPrint('[BiomeFeatureIndex] failed to load asset: $e');

@@ -4,9 +4,12 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:earth_nova/core/models/location_node.dart';
+import 'package:drift/native.dart';
+import 'package:earth_nova/core/database/app_database.dart';
+import 'package:earth_nova/core/models/admin_level.dart';
+import 'package:earth_nova/core/models/hierarchy.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
-import 'package:earth_nova/core/persistence/location_node_repository.dart';
+import 'package:earth_nova/core/persistence/hierarchy_repository.dart';
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 
 // =============================================================================
@@ -26,17 +29,22 @@ class MockCellPropertyRepository implements CellPropertyRepository {
       'MockCellPropertyRepository.${invocation.memberName}');
 }
 
-class MockLocationNodeRepository implements LocationNodeRepository {
-  final List<LocationNode> upsertedNodes = [];
+class _MockHierarchyRepository extends HierarchyRepository {
+  _MockHierarchyRepository() : super(AppDatabase(NativeDatabase.memory()));
+
+  final List<String> upsertedNodes = [];
 
   @override
-  Future<void> upsert(LocationNode node) async {
-    upsertedNodes.add(node);
-  }
-
+  Future<void> upsertCountry(HCountry c) async =>
+      upsertedNodes.add('country:${c.id}');
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
-      'MockLocationNodeRepository.${invocation.memberName}');
+  Future<void> upsertState(HState s) async =>
+      upsertedNodes.add('state:${s.id}');
+  @override
+  Future<void> upsertCity(HCity c) async => upsertedNodes.add('city:${c.id}');
+  @override
+  Future<void> upsertDistrict(HDistrict d) async =>
+      upsertedNodes.add('district:${d.id}');
 }
 
 /// Mock [FunctionsClient] that records `invoke()` calls and returns
@@ -115,18 +123,18 @@ class MockSupabaseClient implements SupabaseClient {
 
 void main() {
   late MockCellPropertyRepository cellPropertyRepo;
-  late MockLocationNodeRepository locationNodeRepo;
+  late _MockHierarchyRepository hierarchyRepo;
 
   setUp(() {
     cellPropertyRepo = MockCellPropertyRepository();
-    locationNodeRepo = MockLocationNodeRepository();
+    hierarchyRepo = _MockHierarchyRepository();
   });
 
   group('LocationEnrichmentService', () {
     test('requestEnrichment is no-op when supabaseClient is null', () {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
       );
       addTearDown(service.dispose);
@@ -136,7 +144,7 @@ void main() {
 
       // No crash, no calls to repos.
       expect(cellPropertyRepo.updateLocationIdCalls, isEmpty);
-      expect(locationNodeRepo.upsertedNodes, isEmpty);
+      expect(hierarchyRepo.upsertedNodes, isEmpty);
     });
 
     test('deduplicates concurrent requests for same cellId', () {
@@ -144,7 +152,7 @@ void main() {
       // guard (_inFlight) prevents even adding to the queue.
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
       );
       addTearDown(service.dispose);
@@ -160,7 +168,7 @@ void main() {
     test('onLocationEnriched stream emits enrichment events', () async {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
       );
       addTearDown(service.dispose);
@@ -172,7 +180,7 @@ void main() {
     test('dispose cancels drain timer without error', () {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
       );
 
@@ -183,7 +191,7 @@ void main() {
     test('dispose can be called multiple times safely', () {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
       );
 
@@ -194,7 +202,7 @@ void main() {
     test('accepts custom maxRetries and baseDelayMs', () {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
         supabaseClient: null,
         maxRetries: 5,
         baseDelayMs: 500,
@@ -208,7 +216,7 @@ void main() {
     test('defaults maxRetries to 3 and baseDelayMs to 1200', () {
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
       );
       addTearDown(service.dispose);
 
@@ -222,7 +230,7 @@ void main() {
 
       final service = LocationEnrichmentService(
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
+        hierarchyRepo: hierarchyRepo,
       );
       addTearDown(service.dispose);
 
@@ -271,7 +279,7 @@ void main() {
 
     setUp(() {
       cellPropertyRepo = MockCellPropertyRepository();
-      locationNodeRepo = MockLocationNodeRepository();
+      hierarchyRepo = _MockHierarchyRepository();
       mockFunctions = MockFunctionsClient();
       mockClient = MockSupabaseClient(
         mockFunctions: mockFunctions,
@@ -306,7 +314,7 @@ void main() {
 
         final service = LocationEnrichmentService(
           cellPropertyRepo: cellPropertyRepo,
-          locationNodeRepo: locationNodeRepo,
+          hierarchyRepo: hierarchyRepo,
           supabaseClient: mockClient,
         );
         addTearDown(service.dispose);
@@ -348,7 +356,7 @@ void main() {
 
         final service = LocationEnrichmentService(
           cellPropertyRepo: cellPropertyRepo,
-          locationNodeRepo: locationNodeRepo,
+          hierarchyRepo: hierarchyRepo,
           supabaseClient: mockClient,
         );
         addTearDown(service.dispose);
@@ -383,7 +391,7 @@ void main() {
 
         final service = LocationEnrichmentService(
           cellPropertyRepo: cellPropertyRepo,
-          locationNodeRepo: locationNodeRepo,
+          hierarchyRepo: hierarchyRepo,
           supabaseClient: mockClient,
         );
         addTearDown(service.dispose);
@@ -425,9 +433,9 @@ void main() {
                   'location_id': 'loc_a',
                   'hierarchy': <Object>[
                     <String, Object?>{
-                      'id': 'world',
-                      'name': 'World',
-                      'level': 'world',
+                      'id': 'can',
+                      'name': 'Canada',
+                      'level': 'country',
                       'parent_id': null,
                     },
                   ],
@@ -452,7 +460,7 @@ void main() {
 
         final service = LocationEnrichmentService(
           cellPropertyRepo: cellPropertyRepo,
-          locationNodeRepo: locationNodeRepo,
+          hierarchyRepo: hierarchyRepo,
           supabaseClient: mockClient,
         );
         addTearDown(service.dispose);
@@ -472,8 +480,8 @@ void main() {
         expect(enrichedCells[1], ('cell_b', 'loc_b'));
 
         // Hierarchy node from cell_a was persisted.
-        expect(locationNodeRepo.upsertedNodes, hasLength(1));
-        expect(locationNodeRepo.upsertedNodes.first.id, 'world');
+        expect(hierarchyRepo.upsertedNodes, hasLength(1));
+        expect(hierarchyRepo.upsertedNodes.first, 'country:can');
 
         // Both enriched cells updated in cell_properties.
         expect(cellPropertyRepo.updateLocationIdCalls, hasLength(2));
@@ -501,7 +509,7 @@ void main() {
 
         final service = LocationEnrichmentService(
           cellPropertyRepo: cellPropertyRepo,
-          locationNodeRepo: locationNodeRepo,
+          hierarchyRepo: hierarchyRepo,
           supabaseClient: mockClient,
         );
         addTearDown(service.dispose);

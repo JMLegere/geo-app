@@ -22,7 +22,6 @@ import 'package:earth_nova/core/models/item_category.dart';
 import 'package:earth_nova/core/persistence/cell_progress_repository.dart';
 import 'package:earth_nova/core/persistence/cell_property_repository.dart';
 import 'package:earth_nova/core/persistence/item_instance_repository.dart';
-import 'package:earth_nova/core/persistence/location_node_repository.dart';
 import 'package:earth_nova/core/persistence/profile_repository.dart';
 import 'package:earth_nova/core/state/persistence_consumer.dart';
 import 'package:earth_nova/features/sync/services/supabase_persistence.dart';
@@ -74,12 +73,6 @@ class _MockSupabasePersistence extends SupabasePersistence {
     if (shouldThrow) throw SyncException(errorMessage);
     return [];
   }
-
-  @override
-  Future<List<Map<String, dynamic>>> fetchLocationNodes() async {
-    if (shouldThrow) throw SyncException(errorMessage);
-    return [];
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +96,6 @@ void main() {
     late CellProgressRepository cellProgressRepo;
     late ItemInstanceRepository itemRepo;
     late CellPropertyRepository cellPropertyRepo;
-    late LocationNodeRepository locationNodeRepo;
     late _MockSupabasePersistence mockPersistence;
 
     setUp(() {
@@ -112,7 +104,6 @@ void main() {
       cellProgressRepo = CellProgressRepository(db);
       itemRepo = ItemInstanceRepository(db);
       cellPropertyRepo = CellPropertyRepository(db);
-      locationNodeRepo = LocationNodeRepository(db);
       mockPersistence = _MockSupabasePersistence();
     });
 
@@ -136,7 +127,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       // Existing local data should be untouched.
@@ -162,7 +152,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -203,7 +192,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final cell1 = await cellProgressRepo.read(_userId, 'cell-1');
@@ -249,7 +237,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final items = await itemRepo.getItemsByUser(_userId);
@@ -305,7 +292,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       // Profile
@@ -337,7 +323,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       // Nothing written to SQLite.
@@ -358,7 +343,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -404,7 +388,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       // Item still exists — no duplication.
@@ -440,7 +423,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       // Verify defaults were applied.
@@ -479,7 +461,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final profile = await profileRepo.read(_userId);
@@ -507,7 +488,6 @@ void main() {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: locationNodeRepo,
       );
 
       final profile = await profileRepo.read(_userId);

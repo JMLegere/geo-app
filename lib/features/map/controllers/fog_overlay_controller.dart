@@ -7,10 +7,8 @@ import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
-import 'package:earth_nova/features/map/utils/admin_boundary_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
@@ -141,8 +139,15 @@ class FogOverlayController {
   Map<String, CellProperties> get cellPropertiesCacheRef =>
       _cellPropertiesCache;
 
-  /// Location nodes cache — set externally when enrichment data is loaded.
-  Map<String, LocationNode> _locationNodesCache = {};
+  /// District attribution map: cellId → districtId.
+  Map<String, String> _cellDistrictIds = {};
+
+  /// Number of cells currently in the district attribution map.
+  int get cellDistrictIdsCount => _cellDistrictIds.length;
+
+  /// District ancestry map: districtId → {cityId, stateId, countryId}.
+  Map<String, ({String? cityId, String? stateId, String? countryId})>
+      _districtAncestry = {};
 
   /// GeoJSON string for territory border fill (gradient polygons).
   String _borderFillGeoJson =
@@ -152,14 +157,6 @@ class FogOverlayController {
   String _borderLinesGeoJson =
       TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;
 
-  /// GeoJSON string for admin boundary polygon fills (event-driven, NOT 10Hz).
-  String _adminBoundaryFillGeoJson =
-      AdminBoundaryGeoJsonBuilder.emptyFeatureCollection;
-
-  /// GeoJSON string for admin boundary polygon outlines (event-driven, NOT 10Hz).
-  String _adminBoundaryLinesGeoJson =
-      AdminBoundaryGeoJsonBuilder.emptyFeatureCollection;
-
   /// Current daily seed for event resolution.
   String _dailySeed = '';
 
@@ -167,7 +164,6 @@ class FogOverlayController {
   bool _fogDirty = false;
   bool _iconsDirty = false;
   bool _borderDirty = false;
-  bool _adminDirty = false;
   bool _habitatDirty = false;
 
   /// Cached visible cell IDs from the last [_buildGeoJson] call.
@@ -213,12 +209,6 @@ class FogOverlayController {
   /// GeoJSON for territory border lines (admin boundary edges).
   String get borderLinesGeoJson => _borderLinesGeoJson;
 
-  /// GeoJSON for admin boundary polygon fills (event-driven).
-  String get adminBoundaryFillGeoJson => _adminBoundaryFillGeoJson;
-
-  /// GeoJSON for admin boundary polygon outlines (event-driven).
-  String get adminBoundaryLinesGeoJson => _adminBoundaryLinesGeoJson;
-
   // -- Per-group dirty flag consumers. Each returns the current flag and
   //    clears it atomically. Non-fog groups stay dirty until consumed,
   //    enabling staggered updates across frames. --
@@ -244,13 +234,6 @@ class FogOverlayController {
     return v;
   }
 
-  /// Returns `true` if admin boundary fill/lines changed.
-  bool consumeAdminDirty() {
-    final v = _adminDirty;
-    _adminDirty = false;
-    return v;
-  }
-
   /// Returns `true` if habitat fill gradient rings changed.
   bool consumeHabitatDirty() {
     final v = _habitatDirty;
@@ -267,32 +250,22 @@ class FogOverlayController {
     _rebuildTerritoryBorders();
   }
 
-  /// Updates the location nodes cache from the database.
+  /// Updates the district attribution map (cellId → districtId).
   ///
-  /// Triggers a territory border rebuild when location nodes change.
-  set locationNodesCache(Map<String, LocationNode> cache) {
-    _locationNodesCache = cache;
+  /// Triggers a territory border rebuild when the attribution changes.
+  set cellDistrictIds(Map<String, String> ids) {
+    _cellDistrictIds = ids;
     _rebuildTerritoryBorders();
   }
 
-  /// Adds a single [LocationNode] to the location nodes cache.
+  /// Updates the district ancestry map (districtId → {cityId, stateId, countryId}).
   ///
-  /// Called when new enrichment data arrives mid-session so newly enriched
-  /// territory borders appear without requiring an app restart.
-  void addLocationNode(LocationNode node) {
-    _locationNodesCache[node.id] = node;
-  }
-
-  /// Rebuilds admin boundary GeoJSON from the given location nodes.
-  ///
-  /// Called EVENT-DRIVEN when [AdminBoundaryService.onBoundariesResolved]
-  /// fires — NOT from the 10Hz [_buildGeoJson] loop.
-  void updateAdminBoundaries(Map<String, LocationNode> nodes) {
-    _adminBoundaryFillGeoJson =
-        AdminBoundaryGeoJsonBuilder.buildBoundaryFills(nodes);
-    _adminBoundaryLinesGeoJson =
-        AdminBoundaryGeoJsonBuilder.buildBoundaryLines(nodes);
-    _adminDirty = true;
+  /// Triggers a territory border rebuild when ancestry data changes.
+  set districtAncestry(
+      Map<String, ({String? cityId, String? stateId, String? countryId})>
+          ancestry) {
+    _districtAncestry = ancestry;
+    _rebuildTerritoryBorders();
   }
 
   /// Updates the daily seed used for event resolution.
@@ -474,21 +447,23 @@ class FogOverlayController {
 
   /// Rebuilds territory border GeoJSON from cached data.
   ///
-  /// Called EVENT-DRIVEN from [locationNodesCache] and [cellPropertiesCache]
-  /// setters — NOT from the 10 Hz [_buildGeoJson] loop.
+  /// Called EVENT-DRIVEN from [cellDistrictIds], [districtAncestry], and
+  /// [cellPropertiesCache] setters — NOT from the 10 Hz [_buildGeoJson] loop.
   void _rebuildTerritoryBorders() {
-    if (_locationNodesCache.isNotEmpty && _cellPropertiesCache.isNotEmpty) {
+    if (_cellDistrictIds.isNotEmpty && _districtAncestry.isNotEmpty) {
       final sw = Stopwatch()..start();
       _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
         cellProperties: _cellPropertiesCache,
-        locationNodes: _locationNodesCache,
+        cellDistrictIds: _cellDistrictIds,
+        districtAncestry: _districtAncestry,
         visibleCellIds: _lastVisibleCellIds,
         getNeighborIds: cellService.getNeighborIds,
         getBoundary: cellService.getCellBoundary,
       );
       _borderLinesGeoJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
         cellProperties: _cellPropertiesCache,
-        locationNodes: _locationNodesCache,
+        cellDistrictIds: _cellDistrictIds,
+        districtAncestry: _districtAncestry,
         visibleCellIds: _lastVisibleCellIds,
         getNeighborIds: cellService.getNeighborIds,
         getBoundary: cellService.getCellBoundary,
@@ -496,7 +471,7 @@ class FogOverlayController {
       );
       sw.stop();
       debugPrint('[BORDERS] rebuilt: ${sw.elapsedMilliseconds}ms, '
-          '${_locationNodesCache.length} nodes, '
+          '${_cellDistrictIds.length} district attributions, '
           '${_cellPropertiesCache.length} cells');
     } else {
       _borderFillGeoJson = TerritoryBorderGeoJsonBuilder.emptyFeatureCollection;

@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:geobase/geobase.dart' show Geographic;
 
+import 'package:earth_nova/core/models/admin_level.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 
 /// Builds GeoJSON FeatureCollections for Stellaris-style territory borders.
 ///
@@ -49,22 +49,25 @@ class TerritoryBorderGeoJsonBuilder {
   /// Cells with `border_distance >= 3` at all levels get no border properties
   /// (clean map — 95% of surface).
   ///
-  /// [cellProperties] maps cell IDs to their resolved properties (with locationId).
-  /// [locationNodes] maps node IDs to their LocationNode (full hierarchy).
+  /// [cellProperties] maps cell IDs to their resolved properties.
+  /// [cellDistrictIds] maps cell ID to district ID (lowest-level location).
+  /// [districtAncestry] maps district ID to its parent chain (city, state, country).
   /// [visibleCellIds] are cell IDs currently in the viewport.
   /// [getNeighborIds] resolves a cell ID to its neighbor cell IDs.
   /// [getBoundary] resolves a cell ID to its boundary polygon vertices.
   static String buildBorderFill({
     required Map<String, CellProperties> cellProperties,
-    required Map<String, LocationNode> locationNodes,
+    required Map<String, String> cellDistrictIds,
+    required Map<String, ({String? cityId, String? stateId, String? countryId})>
+        districtAncestry,
     required Set<String> visibleCellIds,
     required List<String> Function(String cellId) getNeighborIds,
     required List<Geographic> Function(String cellId) getBoundary,
   }) {
     // Step 1: Build ancestor chains for all cells with location data.
     final cellAncestors = _buildCellAncestors(
-      cellProperties: cellProperties,
-      locationNodes: locationNodes,
+      cellDistrictIds: cellDistrictIds,
+      districtAncestry: districtAncestry,
       cellIds: visibleCellIds,
     );
 
@@ -88,10 +91,7 @@ class TerritoryBorderGeoJsonBuilder {
     }
 
     // Step 4: Resolve colors per cell per admin level.
-    final cellColors = _resolveCellColors(
-      cellAncestors: cellAncestors,
-      locationNodes: locationNodes,
-    );
+    final cellColors = _resolveCellColors(cellAncestors: cellAncestors);
 
     // Step 5: Emit polygon features.
     final features = StringBuffer();
@@ -164,24 +164,19 @@ class TerritoryBorderGeoJsonBuilder {
   /// to push each half to its respective side.
   ///
   /// Only the lowest-level differing border is emitted per cell pair.
-  ///
-  /// [cellProperties] maps cell IDs to their resolved properties.
-  /// [locationNodes] maps node IDs to their LocationNode (full hierarchy).
-  /// [visibleCellIds] are cell IDs currently in the viewport.
-  /// [getNeighborIds] resolves a cell ID to its neighbor cell IDs.
-  /// [getBoundary] resolves a cell ID to its boundary polygon vertices.
-  /// [getCellCenter] resolves a cell ID to its geographic center point.
   static String buildBorderLines({
     required Map<String, CellProperties> cellProperties,
-    required Map<String, LocationNode> locationNodes,
+    required Map<String, String> cellDistrictIds,
+    required Map<String, ({String? cityId, String? stateId, String? countryId})>
+        districtAncestry,
     required Set<String> visibleCellIds,
     required List<String> Function(String cellId) getNeighborIds,
     required List<Geographic> Function(String cellId) getBoundary,
     required Geographic Function(String cellId) getCellCenter,
   }) {
     final cellAncestors = _buildCellAncestors(
-      cellProperties: cellProperties,
-      locationNodes: locationNodes,
+      cellDistrictIds: cellDistrictIds,
+      districtAncestry: districtAncestry,
       cellIds: visibleCellIds,
     );
 
@@ -221,15 +216,13 @@ class TerritoryBorderGeoJsonBuilder {
         if (edge == null) continue;
         edgesProcessed++;
 
-        // Resolve colors for both sides.
+        // Resolve colors for both sides via FNV-1a hash of the region ID.
         final cellNodeId = cellAnc[differingLevel];
         final neighborNodeId = neighborAnc[differingLevel];
-        final cellNode = cellNodeId != null ? locationNodes[cellNodeId] : null;
-        final neighborNode =
-            neighborNodeId != null ? locationNodes[neighborNodeId] : null;
-        final cellColor = cellNode != null ? _nodeColor(cellNode) : '#888888';
+        final cellColor =
+            cellNodeId != null ? _fnvColor(cellNodeId) : '#888888';
         final neighborColor =
-            neighborNode != null ? _nodeColor(neighborNode) : '#888888';
+            neighborNodeId != null ? _fnvColor(neighborNodeId) : '#888888';
         final weight = _lineWeight(differingLevel);
 
         // Determine which side of the edge the cell center is on using the
@@ -299,30 +292,36 @@ class TerritoryBorderGeoJsonBuilder {
 
   /// Builds ancestor chain (nodeId per admin level) for each cell.
   ///
-  /// Returns `{cellId: {AdminLevel: nodeId}}` — walking from the cell's
-  /// leaf LocationNode up to the root, recording the node ID at each level.
+  /// Returns `{cellId: {AdminLevel: regionId}}` — using [cellDistrictIds] to
+  /// find each cell's district, then [districtAncestry] to walk up the tree.
   static Map<String, Map<AdminLevel, String>> _buildCellAncestors({
-    required Map<String, CellProperties> cellProperties,
-    required Map<String, LocationNode> locationNodes,
+    required Map<String, String> cellDistrictIds,
+    required Map<String, ({String? cityId, String? stateId, String? countryId})>
+        districtAncestry,
     required Set<String> cellIds,
   }) {
     final result = <String, Map<AdminLevel, String>>{};
 
     for (final cellId in cellIds) {
-      final props = cellProperties[cellId];
-      if (props == null || props.locationId == null) continue;
+      final districtId = cellDistrictIds[cellId];
+      if (districtId == null) continue;
 
-      final ancestors = <AdminLevel, String>{};
-      var current = locationNodes[props.locationId!];
-      while (current != null) {
-        ancestors[current.adminLevel] = current.id;
-        if (current.parentId == null) break;
-        current = locationNodes[current.parentId!];
+      final ancestry = districtAncestry[districtId];
+      if (ancestry == null) continue;
+
+      final ancestors = <AdminLevel, String>{
+        AdminLevel.district: districtId,
+      };
+      if (ancestry.cityId != null)
+        ancestors[AdminLevel.city] = ancestry.cityId!;
+      if (ancestry.stateId != null) {
+        ancestors[AdminLevel.state] = ancestry.stateId!;
+      }
+      if (ancestry.countryId != null) {
+        ancestors[AdminLevel.country] = ancestry.countryId!;
       }
 
-      if (ancestors.isNotEmpty) {
-        result[cellId] = ancestors;
-      }
+      result[cellId] = ancestors;
     }
 
     return result;
@@ -407,13 +406,11 @@ class TerritoryBorderGeoJsonBuilder {
 
   /// Resolves the border color for each cell at each admin level.
   ///
-  /// Color comes from `LocationNode.colorHex`, or deterministic SHA-256 of
-  /// osmId if null.
+  /// Color is a deterministic FNV-1a hash of the region ID string.
   ///
   /// Returns `{cellId: {AdminLevel: "#RRGGBB"}}`.
   static Map<String, Map<AdminLevel, String>> _resolveCellColors({
     required Map<String, Map<AdminLevel, String>> cellAncestors,
-    required Map<String, LocationNode> locationNodes,
   }) {
     final result = <String, Map<AdminLevel, String>>{};
 
@@ -425,11 +422,7 @@ class TerritoryBorderGeoJsonBuilder {
       for (final level in _renderableLevels) {
         final nodeId = ancestors[level];
         if (nodeId == null) continue;
-
-        final node = locationNodes[nodeId];
-        if (node == null) continue;
-
-        colors[level] = _nodeColor(node);
+        colors[level] = _fnvColor(nodeId);
       }
 
       if (colors.isNotEmpty) {
@@ -440,15 +433,8 @@ class TerritoryBorderGeoJsonBuilder {
     return result;
   }
 
-  /// Returns the display color for a LocationNode.
-  ///
-  /// Uses `colorHex` if set, otherwise generates a deterministic color from
-  /// the osmId via simple hash-based generation.
-  static String _nodeColor(LocationNode node) {
-    if (node.colorHex != null) return node.colorHex!;
-
-    // Deterministic color from osmId (or node ID as fallback).
-    final source = node.osmId?.toString() ?? node.id;
+  /// Generates a deterministic hex color from a string via FNV-1a 32-bit hash.
+  static String _fnvColor(String source) {
     var hash = 0x811c9dc5; // FNV-1a 32-bit offset basis.
     for (var i = 0; i < source.length; i++) {
       hash ^= source.codeUnitAt(i);

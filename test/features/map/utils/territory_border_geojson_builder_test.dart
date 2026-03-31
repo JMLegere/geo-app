@@ -7,7 +7,6 @@ import 'package:earth_nova/core/models/cell_properties.dart';
 import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/models/location_node.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
 // ---------------------------------------------------------------------------
@@ -53,33 +52,14 @@ List<String> _neighbors(String cellId) {
   ];
 }
 
-CellProperties _makeProps(String cellId, {String? locationId}) {
+CellProperties _makeProps(String cellId) {
   return CellProperties(
     cellId: cellId,
     habitats: {Habitat.forest},
     climate: Climate.temperate,
     continent: Continent.northAmerica,
-    locationId: locationId,
+    locationId: null,
     createdAt: DateTime.utc(2026, 1, 1),
-  );
-}
-
-LocationNode _makeNode({
-  required String id,
-  required String name,
-  required AdminLevel adminLevel,
-  String? parentId,
-  int? osmId,
-  String? colorHex,
-}) {
-  return LocationNode(
-    id: id,
-    osmId: osmId,
-    name: name,
-    adminLevel: adminLevel,
-    parentId: parentId,
-    colorHex: colorHex,
-    geometryJson: null,
   );
 }
 
@@ -97,38 +77,29 @@ List<dynamic> _features(String geoJson) =>
 /// [cell_0_0] [cell_0_1]   ← Country A (both)
 /// [cell_1_0] [cell_1_1]   ← Country B (both)
 /// ```
-Map<String, LocationNode> _twoCountryNodes() {
+Map<String, String> _twoCountryCellDistrictIds() {
   return {
-    'world': _makeNode(
-      id: 'world',
-      name: 'World',
-      adminLevel: AdminLevel.world,
-    ),
-    'country_a': _makeNode(
-      id: 'country_a',
-      name: 'Country A',
-      adminLevel: AdminLevel.country,
-      parentId: 'world',
-      osmId: 100,
-      colorHex: '#FF0000',
-    ),
-    'country_b': _makeNode(
-      id: 'country_b',
-      name: 'Country B',
-      adminLevel: AdminLevel.country,
-      parentId: 'world',
-      osmId: 200,
-      colorHex: '#0000FF',
-    ),
+    'cell_0_0': 'dist_a',
+    'cell_0_1': 'dist_a',
+    'cell_1_0': 'dist_b',
+    'cell_1_1': 'dist_b',
+  };
+}
+
+Map<String, ({String? cityId, String? stateId, String? countryId})>
+    _twoCountryDistrictAncestry() {
+  return {
+    'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+    'dist_b': (cityId: null, stateId: null, countryId: 'country_b'),
   };
 }
 
 Map<String, CellProperties> _twoCountryProps() {
   return {
-    'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-    'cell_0_1': _makeProps('cell_0_1', locationId: 'country_a'),
-    'cell_1_0': _makeProps('cell_1_0', locationId: 'country_b'),
-    'cell_1_1': _makeProps('cell_1_1', locationId: 'country_b'),
+    'cell_0_0': _makeProps('cell_0_0'),
+    'cell_0_1': _makeProps('cell_0_1'),
+    'cell_1_0': _makeProps('cell_1_0'),
+    'cell_1_1': _makeProps('cell_1_1'),
   };
 }
 
@@ -148,12 +119,14 @@ void main() {
     });
 
     group('buildBorderFill', () {
-      test('returns empty features when no cells have location data', () {
+      test('returns empty features when no cells have district attribution',
+          () {
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: {
-            'cell_0_0': _makeProps('cell_0_0'), // no locationId
+            'cell_0_0': _makeProps('cell_0_0'),
           },
-          locationNodes: {},
+          cellDistrictIds: {}, // no attribution
+          districtAncestry: {},
           visibleCellIds: {'cell_0_0'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -163,13 +136,18 @@ void main() {
       });
 
       test('returns empty features when all cells are in same region', () {
-        final nodes = _twoCountryNodes();
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: {
-            'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-            'cell_0_1': _makeProps('cell_0_1', locationId: 'country_a'),
+            'cell_0_0': _makeProps('cell_0_0'),
+            'cell_0_1': _makeProps('cell_0_1'),
           },
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_0_1': 'dist_a',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+          },
           visibleCellIds: {'cell_0_0', 'cell_0_1'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -179,13 +157,13 @@ void main() {
       });
 
       test('produces border features for cells at country boundary', () {
-        final nodes = _twoCountryNodes();
         final props = _twoCountryProps();
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: _twoCountryCellDistrictIds(),
+          districtAncestry: _twoCountryDistrictAncestry(),
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -206,17 +184,24 @@ void main() {
 
       test('border cells have distance 0, neighbors have distance 1', () {
         // 3-row grid: top=A, middle=A (border), bottom=B
-        final nodes = _twoCountryNodes();
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'country_a'),
-          'cell_2_0': _makeProps('cell_2_0', locationId: 'country_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
+          'cell_2_0': _makeProps('cell_2_0'),
         };
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_1_0': 'dist_a',
+            'cell_2_0': 'dist_b',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+            'dist_b': (cityId: null, stateId: null, countryId: 'country_b'),
+          },
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -238,22 +223,24 @@ void main() {
       });
 
       test('cells beyond max distance (3) are not included', () {
-        // 6-row column: rows 0-2 = A, rows 3-5 = B.
-        // Border is between row 2 and row 3.
-        // Row 0 is 2 cells from border. Row 5 is 2 cells from border.
-        // With max distance 3, all should be included in this case.
-        // But let's test with a longer chain.
-        final nodes = _twoCountryNodes();
+        // 8-row column: rows 0-3 = A, rows 4-7 = B.
+        // Border is between row 3 and row 4.
+        final districtIds = <String, String>{};
         final props = <String, CellProperties>{};
         for (var r = 0; r < 8; r++) {
-          final locId = r < 4 ? 'country_a' : 'country_b';
-          props['cell_${r}_0'] = _makeProps('cell_${r}_0', locationId: locId);
+          final distId = r < 4 ? 'dist_a' : 'dist_b';
+          districtIds['cell_${r}_0'] = distId;
+          props['cell_${r}_0'] = _makeProps('cell_${r}_0');
         }
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: districtIds,
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+            'dist_b': (cityId: null, stateId: null, countryId: 'country_b'),
+          },
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -266,7 +253,7 @@ void main() {
           byId[fProps['cell_id'] as String] = fProps;
         }
 
-        // Border at row 3/4: row 3 = dist 0, row 4 = dist 0
+        // Border at row 3/4: both at distance 0.
         expect(byId['cell_3_0']?['border_distance_country'], 0);
         expect(byId['cell_4_0']?['border_distance_country'], 0);
 
@@ -277,40 +264,56 @@ void main() {
         expect(byId.containsKey('cell_7_0'), isFalse);
       });
 
-      test('border fill features include region color from node', () {
-        final nodes = _twoCountryNodes();
+      test('border fill features include region color from FNV hash', () {
         final props = _twoCountryProps();
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: _twoCountryCellDistrictIds(),
+          districtAncestry: _twoCountryDistrictAncestry(),
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
         );
 
         final features = _features(json);
+        final colorsByCell = <String, String>{};
         for (final f in features) {
           final fProps = (f as Map)['properties'] as Map;
           final cellId = fProps['cell_id'] as String;
-          final color = fProps['region_color_country'] as String;
-          if (cellId == 'cell_0_0' || cellId == 'cell_0_1') {
-            expect(color, '#FF0000'); // Country A
-          } else {
-            expect(color, '#0000FF'); // Country B
+          if (fProps.containsKey('region_color_country')) {
+            colorsByCell[cellId] = fProps['region_color_country'] as String;
           }
         }
+
+        expect(colorsByCell, isNotEmpty);
+
+        // All cells in the same country should have the same color.
+        final colorA = colorsByCell['cell_0_0'];
+        final colorB = colorsByCell['cell_1_0'];
+        expect(colorA, isNotNull);
+        expect(colorB, isNotNull);
+        // Colors are valid hex strings.
+        expect(colorA!, startsWith('#'));
+        expect(colorA.length, 7);
+        expect(colorB!, startsWith('#'));
+        expect(colorB.length, 7);
+        // Different countries get different colors.
+        expect(colorA, isNot(equals(colorB)));
+
+        // cell_0_1 (same country as cell_0_0) should have the same color.
+        expect(colorsByCell['cell_0_1'], equals(colorA));
       });
 
       test('border fill polygons have valid GeoJSON geometry', () {
-        final nodes = _twoCountryNodes();
         final props = _twoCountryProps();
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: _twoCountryCellDistrictIds(),
+          districtAncestry: _twoCountryDistrictAncestry(),
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -329,37 +332,22 @@ void main() {
         }
       });
 
-      test('deterministic color generated when node has no colorHex', () {
-        final nodes = {
-          'world': _makeNode(
-            id: 'world',
-            name: 'World',
-            adminLevel: AdminLevel.world,
-          ),
-          'country_a': _makeNode(
-            id: 'country_a',
-            name: 'Country A',
-            adminLevel: AdminLevel.country,
-            parentId: 'world',
-            osmId: 12345,
-            // No colorHex — should generate deterministic color.
-          ),
-          'country_b': _makeNode(
-            id: 'country_b',
-            name: 'Country B',
-            adminLevel: AdminLevel.country,
-            parentId: 'world',
-            osmId: 67890,
-          ),
-        };
+      test('deterministic color generated for any region ID', () {
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'country_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_1_0': 'dist_b',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'any_country_a'),
+            'dist_b': (cityId: null, stateId: null, countryId: 'any_country_b'),
+          },
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -379,12 +367,14 @@ void main() {
     });
 
     group('buildBorderLines', () {
-      test('returns empty features when no cells have location data', () {
+      test('returns empty features when no cells have district attribution',
+          () {
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: {
             'cell_0_0': _makeProps('cell_0_0'),
           },
-          locationNodes: {},
+          cellDistrictIds: {},
+          districtAncestry: {},
           visibleCellIds: {'cell_0_0'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -395,13 +385,18 @@ void main() {
       });
 
       test('returns empty features when all cells in same region', () {
-        final nodes = _twoCountryNodes();
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: {
-            'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-            'cell_0_1': _makeProps('cell_0_1', locationId: 'country_a'),
+            'cell_0_0': _makeProps('cell_0_0'),
+            'cell_0_1': _makeProps('cell_0_1'),
           },
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_0_1': 'dist_a',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+          },
           visibleCellIds: {'cell_0_0', 'cell_0_1'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -412,13 +407,13 @@ void main() {
       });
 
       test('produces border lines at country boundary', () {
-        final nodes = _twoCountryNodes();
         final props = _twoCountryProps();
         final allCells = props.keys.toSet();
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: _twoCountryCellDistrictIds(),
+          districtAncestry: _twoCountryDistrictAncestry(),
           visibleCellIds: allCells,
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -431,8 +426,10 @@ void main() {
         for (final f in features) {
           final fMap = f as Map;
           final fProps = fMap['properties'] as Map;
-          expect(fProps['admin_level'], 'country');
-          expect(fProps['line_weight'], 12.0);
+          // Districts differ (dist_a vs dist_b), so border is at district level
+          // even though countries also differ. Lowest differing level wins.
+          expect(fProps['admin_level'], 'district');
+          expect(fProps['line_weight'], 4.0);
           expect(fProps.containsKey('border_color'), isTrue);
           // Each feature has a side (+1 or -1) for line-offset.
           expect(fProps['side'], anyOf(1, -1));
@@ -445,15 +442,21 @@ void main() {
       });
 
       test('emits two features per shared edge (one per side)', () {
-        final nodes = _twoCountryNodes();
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'country_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_1_0': 'dist_b',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+            'dist_b': (cityId: null, stateId: null, countryId: 'country_b'),
+          },
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -470,55 +473,42 @@ void main() {
             .toList();
         expect(sides.toSet(), {1, -1});
 
-        // Both colors should be present (one per country).
+        // Both colors should be deterministic hex strings.
         final colors = features
             .map((f) => (f as Map)['properties']['border_color'] as String)
             .toSet();
-        expect(colors, containsAll(['#FF0000', '#0000FF']));
+        expect(colors.length, 2); // Two different country colors.
+        for (final c in colors) {
+          expect(c, startsWith('#'));
+          expect(c.length, 7);
+        }
       });
 
       test('lowest differing level renders (stacking rules)', () {
         // Two cells in same country, different states.
-        final nodes = {
-          'world': _makeNode(
-            id: 'world',
-            name: 'World',
-            adminLevel: AdminLevel.world,
-          ),
-          'country': _makeNode(
-            id: 'country',
-            name: 'Country',
-            adminLevel: AdminLevel.country,
-            parentId: 'world',
-            osmId: 100,
-            colorHex: '#FF0000',
-          ),
-          'state_a': _makeNode(
-            id: 'state_a',
-            name: 'State A',
-            adminLevel: AdminLevel.state,
-            parentId: 'country',
-            osmId: 110,
-            colorHex: '#00FF00',
-          ),
-          'state_b': _makeNode(
-            id: 'state_b',
-            name: 'State B',
-            adminLevel: AdminLevel.state,
-            parentId: 'country',
-            osmId: 120,
-            colorHex: '#0000FF',
-          ),
-        };
-
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'state_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'state_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_state_a',
+            'cell_1_0': 'dist_state_b',
+          },
+          districtAncestry: {
+            'dist_state_a': (
+              cityId: null,
+              stateId: 'state_a',
+              countryId: 'country'
+            ),
+            'dist_state_b': (
+              cityId: null,
+              stateId: 'state_b',
+              countryId: 'country'
+            ),
+          },
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -529,70 +519,41 @@ void main() {
         // 1 edge → 2 features (one per side).
         expect(features.length, 2);
 
-        // Both features should report state-level border.
+        // Both features should report district-level border.
+        // Districts differ (dist_state_a vs dist_state_b), so border is at
+        // district level even though states also differ. Lowest differing level wins.
         for (final f in features) {
           final fProps = (f as Map)['properties'] as Map;
-          // Should render as state border (lowest differing), not country.
-          expect(fProps['admin_level'], 'state');
-          expect(fProps['line_weight'], 8.0);
+          expect(fProps['admin_level'], 'district');
+          expect(fProps['line_weight'], 4.0);
         }
       });
 
       test('line weight varies by admin level', () {
-        // Create district-level difference.
-        final nodes = {
-          'world': _makeNode(
-            id: 'world',
-            name: 'World',
-            adminLevel: AdminLevel.world,
-          ),
-          'country': _makeNode(
-            id: 'country',
-            name: 'Country',
-            adminLevel: AdminLevel.country,
-            parentId: 'world',
-            osmId: 100,
-          ),
-          'state': _makeNode(
-            id: 'state',
-            name: 'State',
-            adminLevel: AdminLevel.state,
-            parentId: 'country',
-            osmId: 110,
-          ),
-          'city': _makeNode(
-            id: 'city',
-            name: 'City',
-            adminLevel: AdminLevel.city,
-            parentId: 'state',
-            osmId: 1000,
-          ),
-          'district_a': _makeNode(
-            id: 'district_a',
-            name: 'District A',
-            adminLevel: AdminLevel.district,
-            parentId: 'city',
-            osmId: 2000,
-            colorHex: '#AABB00',
-          ),
-          'district_b': _makeNode(
-            id: 'district_b',
-            name: 'District B',
-            adminLevel: AdminLevel.district,
-            parentId: 'city',
-            osmId: 3000,
-            colorHex: '#00BBAA',
-          ),
-        };
-
+        // Two cells in different districts of the same city/state/country.
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'district_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'district_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'district_a',
+            'cell_1_0': 'district_b',
+          },
+          districtAncestry: {
+            'district_a': (
+              cityId: 'city',
+              stateId: 'state',
+              countryId: 'country'
+            ),
+            'district_b': (
+              cityId: 'city',
+              stateId: 'state',
+              countryId: 'country'
+            ),
+          },
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -611,15 +572,21 @@ void main() {
       });
 
       test('border line coordinates use lon,lat GeoJSON convention', () {
-        final nodes = _twoCountryNodes();
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'country_b'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {
+            'cell_0_0': 'dist_a',
+            'cell_1_0': 'dist_b',
+          },
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+            'dist_b': (cityId: null, stateId: null, countryId: 'country_b'),
+          },
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -642,15 +609,21 @@ void main() {
     });
 
     group('edge cases', () {
-      test('cells with missing location node are skipped gracefully', () {
+      test(
+          'cells with missing ancestry data (districtId not in ancestry) are skipped',
+          () {
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'nonexistent_node'),
-          'cell_1_0': _makeProps('cell_1_0', locationId: 'also_nonexistent'),
+          'cell_0_0': _makeProps('cell_0_0'),
+          'cell_1_0': _makeProps('cell_1_0'),
         };
 
         final fillJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: {}, // Empty — nodes don't exist.
+          cellDistrictIds: {
+            'cell_0_0': 'nonexistent_dist',
+            'cell_1_0': 'also_nonexistent',
+          },
+          districtAncestry: {}, // Empty — ancestry doesn't exist.
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -659,7 +632,11 @@ void main() {
 
         final lineJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: props,
-          locationNodes: {},
+          cellDistrictIds: {
+            'cell_0_0': 'nonexistent_dist',
+            'cell_1_0': 'also_nonexistent',
+          },
+          districtAncestry: {},
           visibleCellIds: props.keys.toSet(),
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -668,15 +645,18 @@ void main() {
         expect(_features(lineJson), isEmpty);
       });
 
-      test('single cell with location data but no neighbors in viewport', () {
-        final nodes = _twoCountryNodes();
+      test('single cell with district attribution but no neighbors in viewport',
+          () {
         final props = {
-          'cell_0_0': _makeProps('cell_0_0', locationId: 'country_a'),
+          'cell_0_0': _makeProps('cell_0_0'),
         };
 
         final json = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: props,
-          locationNodes: nodes,
+          cellDistrictIds: {'cell_0_0': 'dist_a'},
+          districtAncestry: {
+            'dist_a': (cityId: null, stateId: null, countryId: 'country_a'),
+          },
           visibleCellIds: {'cell_0_0'},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -684,7 +664,6 @@ void main() {
 
         // No border because neighbors have no location data — they're
         // outside mapped territory, not an actual admin boundary.
-        // _findBorderCells skips neighbors with no ancestor data.
         final features = _features(json);
         expect(features.length, 0);
       });
@@ -692,7 +671,8 @@ void main() {
       test('empty visible cell set returns empty features', () {
         final fillJson = TerritoryBorderGeoJsonBuilder.buildBorderFill(
           cellProperties: {},
-          locationNodes: {},
+          cellDistrictIds: {},
+          districtAncestry: {},
           visibleCellIds: {},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,
@@ -701,7 +681,8 @@ void main() {
 
         final lineJson = TerritoryBorderGeoJsonBuilder.buildBorderLines(
           cellProperties: {},
-          locationNodes: {},
+          cellDistrictIds: {},
+          districtAncestry: {},
           visibleCellIds: {},
           getNeighborIds: _neighbors,
           getBoundary: _boundary,

@@ -5728,6 +5728,12 @@ class $LocalCellPropertiesTableTable extends LocalCellPropertiesTable
   late final GeneratedColumn<String> locationId = GeneratedColumn<String>(
       'location_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _districtIdMeta =
+      const VerificationMeta('districtId');
+  @override
+  late final GeneratedColumn<String> districtId = GeneratedColumn<String>(
+      'district_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -5738,7 +5744,7 @@ class $LocalCellPropertiesTableTable extends LocalCellPropertiesTable
       defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
-      [cellId, habitats, climate, continent, locationId, createdAt];
+      [cellId, habitats, climate, continent, locationId, districtId, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -5780,6 +5786,12 @@ class $LocalCellPropertiesTableTable extends LocalCellPropertiesTable
           locationId.isAcceptableOrUnknown(
               data['location_id']!, _locationIdMeta));
     }
+    if (data.containsKey('district_id')) {
+      context.handle(
+          _districtIdMeta,
+          districtId.isAcceptableOrUnknown(
+              data['district_id']!, _districtIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -5803,6 +5815,8 @@ class $LocalCellPropertiesTableTable extends LocalCellPropertiesTable
           .read(DriftSqlType.string, data['${effectivePrefix}continent'])!,
       locationId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}location_id']),
+      districtId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}district_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -5821,6 +5835,7 @@ class LocalCellProperties extends DataClass
   final String climate;
   final String continent;
   final String? locationId;
+  final String? districtId;
   final DateTime createdAt;
   const LocalCellProperties(
       {required this.cellId,
@@ -5828,6 +5843,7 @@ class LocalCellProperties extends DataClass
       required this.climate,
       required this.continent,
       this.locationId,
+      this.districtId,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5838,6 +5854,9 @@ class LocalCellProperties extends DataClass
     map['continent'] = Variable<String>(continent);
     if (!nullToAbsent || locationId != null) {
       map['location_id'] = Variable<String>(locationId);
+    }
+    if (!nullToAbsent || districtId != null) {
+      map['district_id'] = Variable<String>(districtId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -5852,6 +5871,9 @@ class LocalCellProperties extends DataClass
       locationId: locationId == null && nullToAbsent
           ? const Value.absent()
           : Value(locationId),
+      districtId: districtId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(districtId),
       createdAt: Value(createdAt),
     );
   }
@@ -5865,6 +5887,7 @@ class LocalCellProperties extends DataClass
       climate: serializer.fromJson<String>(json['climate']),
       continent: serializer.fromJson<String>(json['continent']),
       locationId: serializer.fromJson<String?>(json['locationId']),
+      districtId: serializer.fromJson<String?>(json['districtId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -5877,6 +5900,7 @@ class LocalCellProperties extends DataClass
       'climate': serializer.toJson<String>(climate),
       'continent': serializer.toJson<String>(continent),
       'locationId': serializer.toJson<String?>(locationId),
+      'districtId': serializer.toJson<String?>(districtId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -5887,6 +5911,7 @@ class LocalCellProperties extends DataClass
           String? climate,
           String? continent,
           Value<String?> locationId = const Value.absent(),
+          Value<String?> districtId = const Value.absent(),
           DateTime? createdAt}) =>
       LocalCellProperties(
         cellId: cellId ?? this.cellId,
@@ -5894,6 +5919,7 @@ class LocalCellProperties extends DataClass
         climate: climate ?? this.climate,
         continent: continent ?? this.continent,
         locationId: locationId.present ? locationId.value : this.locationId,
+        districtId: districtId.present ? districtId.value : this.districtId,
         createdAt: createdAt ?? this.createdAt,
       );
   LocalCellProperties copyWithCompanion(
@@ -5905,6 +5931,8 @@ class LocalCellProperties extends DataClass
       continent: data.continent.present ? data.continent.value : this.continent,
       locationId:
           data.locationId.present ? data.locationId.value : this.locationId,
+      districtId:
+          data.districtId.present ? data.districtId.value : this.districtId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -5917,14 +5945,15 @@ class LocalCellProperties extends DataClass
           ..write('climate: $climate, ')
           ..write('continent: $continent, ')
           ..write('locationId: $locationId, ')
+          ..write('districtId: $districtId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(cellId, habitats, climate, continent, locationId, createdAt);
+  int get hashCode => Object.hash(
+      cellId, habitats, climate, continent, locationId, districtId, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5934,6 +5963,7 @@ class LocalCellProperties extends DataClass
           other.climate == this.climate &&
           other.continent == this.continent &&
           other.locationId == this.locationId &&
+          other.districtId == this.districtId &&
           other.createdAt == this.createdAt);
 }
 
@@ -5944,6 +5974,7 @@ class LocalCellPropertiesTableCompanion
   final Value<String> climate;
   final Value<String> continent;
   final Value<String?> locationId;
+  final Value<String?> districtId;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const LocalCellPropertiesTableCompanion({
@@ -5952,6 +5983,7 @@ class LocalCellPropertiesTableCompanion
     this.climate = const Value.absent(),
     this.continent = const Value.absent(),
     this.locationId = const Value.absent(),
+    this.districtId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -5961,6 +5993,7 @@ class LocalCellPropertiesTableCompanion
     required String climate,
     required String continent,
     this.locationId = const Value.absent(),
+    this.districtId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : cellId = Value(cellId),
@@ -5973,6 +6006,7 @@ class LocalCellPropertiesTableCompanion
     Expression<String>? climate,
     Expression<String>? continent,
     Expression<String>? locationId,
+    Expression<String>? districtId,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -5982,6 +6016,7 @@ class LocalCellPropertiesTableCompanion
       if (climate != null) 'climate': climate,
       if (continent != null) 'continent': continent,
       if (locationId != null) 'location_id': locationId,
+      if (districtId != null) 'district_id': districtId,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -5993,6 +6028,7 @@ class LocalCellPropertiesTableCompanion
       Value<String>? climate,
       Value<String>? continent,
       Value<String?>? locationId,
+      Value<String?>? districtId,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return LocalCellPropertiesTableCompanion(
@@ -6001,6 +6037,7 @@ class LocalCellPropertiesTableCompanion
       climate: climate ?? this.climate,
       continent: continent ?? this.continent,
       locationId: locationId ?? this.locationId,
+      districtId: districtId ?? this.districtId,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -6024,6 +6061,9 @@ class LocalCellPropertiesTableCompanion
     if (locationId.present) {
       map['location_id'] = Variable<String>(locationId.value);
     }
+    if (districtId.present) {
+      map['district_id'] = Variable<String>(districtId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -6041,6 +6081,7 @@ class LocalCellPropertiesTableCompanion
           ..write('climate: $climate, ')
           ..write('continent: $continent, ')
           ..write('locationId: $locationId, ')
+          ..write('districtId: $districtId, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -6048,62 +6089,45 @@ class LocalCellPropertiesTableCompanion
   }
 }
 
-class $LocalLocationNodeTableTable extends LocalLocationNodeTable
-    with TableInfo<$LocalLocationNodeTableTable, LocalLocationNode> {
+class $LocalCountryTableTable extends LocalCountryTable
+    with TableInfo<$LocalCountryTableTable, LocalCountry> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $LocalLocationNodeTableTable(this.attachedDatabase, [this._alias]);
+  $LocalCountryTableTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _osmIdMeta = const VerificationMeta('osmId');
-  @override
-  late final GeneratedColumn<int> osmId = GeneratedColumn<int>(
-      'osm_id', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _adminLevelMeta =
-      const VerificationMeta('adminLevel');
+  static const VerificationMeta _centroidLatMeta =
+      const VerificationMeta('centroidLat');
   @override
-  late final GeneratedColumn<String> adminLevel = GeneratedColumn<String>(
-      'admin_level', aliasedName, false,
+  late final GeneratedColumn<double> centroidLat = GeneratedColumn<double>(
+      'centroid_lat', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLonMeta =
+      const VerificationMeta('centroidLon');
+  @override
+  late final GeneratedColumn<double> centroidLon = GeneratedColumn<double>(
+      'centroid_lon', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _continentMeta =
+      const VerificationMeta('continent');
+  @override
+  late final GeneratedColumn<String> continent = GeneratedColumn<String>(
+      'continent', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _parentIdMeta =
-      const VerificationMeta('parentId');
+  static const VerificationMeta _boundaryJsonMeta =
+      const VerificationMeta('boundaryJson');
   @override
-  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
-      'parent_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _colorHexMeta =
-      const VerificationMeta('colorHex');
-  @override
-  late final GeneratedColumn<String> colorHex = GeneratedColumn<String>(
-      'color_hex', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _geometryJsonMeta =
-      const VerificationMeta('geometryJson');
-  @override
-  late final GeneratedColumn<String> geometryJson = GeneratedColumn<String>(
-      'geometry_json', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _adjacentLocationIdsMeta =
-      const VerificationMeta('adjacentLocationIds');
-  @override
-  late final GeneratedColumn<String> adjacentLocationIds =
-      GeneratedColumn<String>('adjacent_location_ids', aliasedName, true,
-          type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _cellIdsMeta =
-      const VerificationMeta('cellIds');
-  @override
-  late final GeneratedColumn<String> cellIds = GeneratedColumn<String>(
-      'cell_ids', aliasedName, true,
+  late final GeneratedColumn<String> boundaryJson = GeneratedColumn<String>(
+      'boundary_json', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
@@ -6114,25 +6138,15 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        osmId,
-        name,
-        adminLevel,
-        parentId,
-        colorHex,
-        geometryJson,
-        adjacentLocationIds,
-        cellIds,
-        createdAt
-      ];
+  List<GeneratedColumn> get $columns =>
+      [id, name, centroidLat, centroidLon, continent, boundaryJson, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'local_location_node_table';
+  static const String $name = 'local_country_table';
   @override
-  VerificationContext validateIntegrity(Insertable<LocalLocationNode> instance,
+  VerificationContext validateIntegrity(Insertable<LocalCountry> instance,
       {bool isInserting = false}) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
@@ -6141,47 +6155,39 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
     } else if (isInserting) {
       context.missing(_idMeta);
     }
-    if (data.containsKey('osm_id')) {
-      context.handle(
-          _osmIdMeta, osmId.isAcceptableOrUnknown(data['osm_id']!, _osmIdMeta));
-    }
     if (data.containsKey('name')) {
       context.handle(
           _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('admin_level')) {
+    if (data.containsKey('centroid_lat')) {
       context.handle(
-          _adminLevelMeta,
-          adminLevel.isAcceptableOrUnknown(
-              data['admin_level']!, _adminLevelMeta));
+          _centroidLatMeta,
+          centroidLat.isAcceptableOrUnknown(
+              data['centroid_lat']!, _centroidLatMeta));
     } else if (isInserting) {
-      context.missing(_adminLevelMeta);
+      context.missing(_centroidLatMeta);
     }
-    if (data.containsKey('parent_id')) {
-      context.handle(_parentIdMeta,
-          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
-    }
-    if (data.containsKey('color_hex')) {
-      context.handle(_colorHexMeta,
-          colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta));
-    }
-    if (data.containsKey('geometry_json')) {
+    if (data.containsKey('centroid_lon')) {
       context.handle(
-          _geometryJsonMeta,
-          geometryJson.isAcceptableOrUnknown(
-              data['geometry_json']!, _geometryJsonMeta));
+          _centroidLonMeta,
+          centroidLon.isAcceptableOrUnknown(
+              data['centroid_lon']!, _centroidLonMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLonMeta);
     }
-    if (data.containsKey('adjacent_location_ids')) {
+    if (data.containsKey('continent')) {
+      context.handle(_continentMeta,
+          continent.isAcceptableOrUnknown(data['continent']!, _continentMeta));
+    } else if (isInserting) {
+      context.missing(_continentMeta);
+    }
+    if (data.containsKey('boundary_json')) {
       context.handle(
-          _adjacentLocationIdsMeta,
-          adjacentLocationIds.isAcceptableOrUnknown(
-              data['adjacent_location_ids']!, _adjacentLocationIdsMeta));
-    }
-    if (data.containsKey('cell_ids')) {
-      context.handle(_cellIdsMeta,
-          cellIds.isAcceptableOrUnknown(data['cell_ids']!, _cellIdsMeta));
+          _boundaryJsonMeta,
+          boundaryJson.isAcceptableOrUnknown(
+              data['boundary_json']!, _boundaryJsonMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -6193,129 +6199,87 @@ class $LocalLocationNodeTableTable extends LocalLocationNodeTable
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  LocalLocationNode map(Map<String, dynamic> data, {String? tablePrefix}) {
+  LocalCountry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return LocalLocationNode(
+    return LocalCountry(
       id: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      osmId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}osm_id']),
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
-      adminLevel: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}admin_level'])!,
-      parentId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
-      colorHex: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}color_hex']),
-      geometryJson: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}geometry_json']),
-      adjacentLocationIds: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}adjacent_location_ids']),
-      cellIds: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}cell_ids']),
+      centroidLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lat'])!,
+      centroidLon: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lon'])!,
+      continent: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}continent'])!,
+      boundaryJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}boundary_json']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
   }
 
   @override
-  $LocalLocationNodeTableTable createAlias(String alias) {
-    return $LocalLocationNodeTableTable(attachedDatabase, alias);
+  $LocalCountryTableTable createAlias(String alias) {
+    return $LocalCountryTableTable(attachedDatabase, alias);
   }
 }
 
-class LocalLocationNode extends DataClass
-    implements Insertable<LocalLocationNode> {
+class LocalCountry extends DataClass implements Insertable<LocalCountry> {
   final String id;
-  final int? osmId;
   final String name;
-  final String adminLevel;
-  final String? parentId;
-  final String? colorHex;
-  final String? geometryJson;
-  final String? adjacentLocationIds;
-  final String? cellIds;
+  final double centroidLat;
+  final double centroidLon;
+  final String continent;
+  final String? boundaryJson;
   final DateTime createdAt;
-  const LocalLocationNode(
+  const LocalCountry(
       {required this.id,
-      this.osmId,
       required this.name,
-      required this.adminLevel,
-      this.parentId,
-      this.colorHex,
-      this.geometryJson,
-      this.adjacentLocationIds,
-      this.cellIds,
+      required this.centroidLat,
+      required this.centroidLon,
+      required this.continent,
+      this.boundaryJson,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
-    if (!nullToAbsent || osmId != null) {
-      map['osm_id'] = Variable<int>(osmId);
-    }
     map['name'] = Variable<String>(name);
-    map['admin_level'] = Variable<String>(adminLevel);
-    if (!nullToAbsent || parentId != null) {
-      map['parent_id'] = Variable<String>(parentId);
-    }
-    if (!nullToAbsent || colorHex != null) {
-      map['color_hex'] = Variable<String>(colorHex);
-    }
-    if (!nullToAbsent || geometryJson != null) {
-      map['geometry_json'] = Variable<String>(geometryJson);
-    }
-    if (!nullToAbsent || adjacentLocationIds != null) {
-      map['adjacent_location_ids'] = Variable<String>(adjacentLocationIds);
-    }
-    if (!nullToAbsent || cellIds != null) {
-      map['cell_ids'] = Variable<String>(cellIds);
+    map['centroid_lat'] = Variable<double>(centroidLat);
+    map['centroid_lon'] = Variable<double>(centroidLon);
+    map['continent'] = Variable<String>(continent);
+    if (!nullToAbsent || boundaryJson != null) {
+      map['boundary_json'] = Variable<String>(boundaryJson);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
 
-  LocalLocationNodeTableCompanion toCompanion(bool nullToAbsent) {
-    return LocalLocationNodeTableCompanion(
+  LocalCountryTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalCountryTableCompanion(
       id: Value(id),
-      osmId:
-          osmId == null && nullToAbsent ? const Value.absent() : Value(osmId),
       name: Value(name),
-      adminLevel: Value(adminLevel),
-      parentId: parentId == null && nullToAbsent
+      centroidLat: Value(centroidLat),
+      centroidLon: Value(centroidLon),
+      continent: Value(continent),
+      boundaryJson: boundaryJson == null && nullToAbsent
           ? const Value.absent()
-          : Value(parentId),
-      colorHex: colorHex == null && nullToAbsent
-          ? const Value.absent()
-          : Value(colorHex),
-      geometryJson: geometryJson == null && nullToAbsent
-          ? const Value.absent()
-          : Value(geometryJson),
-      adjacentLocationIds: adjacentLocationIds == null && nullToAbsent
-          ? const Value.absent()
-          : Value(adjacentLocationIds),
-      cellIds: cellIds == null && nullToAbsent
-          ? const Value.absent()
-          : Value(cellIds),
+          : Value(boundaryJson),
       createdAt: Value(createdAt),
     );
   }
 
-  factory LocalLocationNode.fromJson(Map<String, dynamic> json,
+  factory LocalCountry.fromJson(Map<String, dynamic> json,
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return LocalLocationNode(
+    return LocalCountry(
       id: serializer.fromJson<String>(json['id']),
-      osmId: serializer.fromJson<int?>(json['osmId']),
       name: serializer.fromJson<String>(json['name']),
-      adminLevel: serializer.fromJson<String>(json['adminLevel']),
-      parentId: serializer.fromJson<String?>(json['parentId']),
-      colorHex: serializer.fromJson<String?>(json['colorHex']),
-      geometryJson: serializer.fromJson<String?>(json['geometryJson']),
-      adjacentLocationIds:
-          serializer.fromJson<String?>(json['adjacentLocationIds']),
-      cellIds: serializer.fromJson<String?>(json['cellIds']),
+      centroidLat: serializer.fromJson<double>(json['centroidLat']),
+      centroidLon: serializer.fromJson<double>(json['centroidLon']),
+      continent: serializer.fromJson<String>(json['continent']),
+      boundaryJson: serializer.fromJson<String?>(json['boundaryJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -6324,192 +6288,150 @@ class LocalLocationNode extends DataClass
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
-      'osmId': serializer.toJson<int?>(osmId),
       'name': serializer.toJson<String>(name),
-      'adminLevel': serializer.toJson<String>(adminLevel),
-      'parentId': serializer.toJson<String?>(parentId),
-      'colorHex': serializer.toJson<String?>(colorHex),
-      'geometryJson': serializer.toJson<String?>(geometryJson),
-      'adjacentLocationIds': serializer.toJson<String?>(adjacentLocationIds),
-      'cellIds': serializer.toJson<String?>(cellIds),
+      'centroidLat': serializer.toJson<double>(centroidLat),
+      'centroidLon': serializer.toJson<double>(centroidLon),
+      'continent': serializer.toJson<String>(continent),
+      'boundaryJson': serializer.toJson<String?>(boundaryJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
 
-  LocalLocationNode copyWith(
+  LocalCountry copyWith(
           {String? id,
-          Value<int?> osmId = const Value.absent(),
           String? name,
-          String? adminLevel,
-          Value<String?> parentId = const Value.absent(),
-          Value<String?> colorHex = const Value.absent(),
-          Value<String?> geometryJson = const Value.absent(),
-          Value<String?> adjacentLocationIds = const Value.absent(),
-          Value<String?> cellIds = const Value.absent(),
+          double? centroidLat,
+          double? centroidLon,
+          String? continent,
+          Value<String?> boundaryJson = const Value.absent(),
           DateTime? createdAt}) =>
-      LocalLocationNode(
+      LocalCountry(
         id: id ?? this.id,
-        osmId: osmId.present ? osmId.value : this.osmId,
         name: name ?? this.name,
-        adminLevel: adminLevel ?? this.adminLevel,
-        parentId: parentId.present ? parentId.value : this.parentId,
-        colorHex: colorHex.present ? colorHex.value : this.colorHex,
-        geometryJson:
-            geometryJson.present ? geometryJson.value : this.geometryJson,
-        adjacentLocationIds: adjacentLocationIds.present
-            ? adjacentLocationIds.value
-            : this.adjacentLocationIds,
-        cellIds: cellIds.present ? cellIds.value : this.cellIds,
+        centroidLat: centroidLat ?? this.centroidLat,
+        centroidLon: centroidLon ?? this.centroidLon,
+        continent: continent ?? this.continent,
+        boundaryJson:
+            boundaryJson.present ? boundaryJson.value : this.boundaryJson,
         createdAt: createdAt ?? this.createdAt,
       );
-  LocalLocationNode copyWithCompanion(LocalLocationNodeTableCompanion data) {
-    return LocalLocationNode(
+  LocalCountry copyWithCompanion(LocalCountryTableCompanion data) {
+    return LocalCountry(
       id: data.id.present ? data.id.value : this.id,
-      osmId: data.osmId.present ? data.osmId.value : this.osmId,
       name: data.name.present ? data.name.value : this.name,
-      adminLevel:
-          data.adminLevel.present ? data.adminLevel.value : this.adminLevel,
-      parentId: data.parentId.present ? data.parentId.value : this.parentId,
-      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
-      geometryJson: data.geometryJson.present
-          ? data.geometryJson.value
-          : this.geometryJson,
-      adjacentLocationIds: data.adjacentLocationIds.present
-          ? data.adjacentLocationIds.value
-          : this.adjacentLocationIds,
-      cellIds: data.cellIds.present ? data.cellIds.value : this.cellIds,
+      centroidLat:
+          data.centroidLat.present ? data.centroidLat.value : this.centroidLat,
+      centroidLon:
+          data.centroidLon.present ? data.centroidLon.value : this.centroidLon,
+      continent: data.continent.present ? data.continent.value : this.continent,
+      boundaryJson: data.boundaryJson.present
+          ? data.boundaryJson.value
+          : this.boundaryJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('LocalLocationNode(')
+    return (StringBuffer('LocalCountry(')
           ..write('id: $id, ')
-          ..write('osmId: $osmId, ')
           ..write('name: $name, ')
-          ..write('adminLevel: $adminLevel, ')
-          ..write('parentId: $parentId, ')
-          ..write('colorHex: $colorHex, ')
-          ..write('geometryJson: $geometryJson, ')
-          ..write('adjacentLocationIds: $adjacentLocationIds, ')
-          ..write('cellIds: $cellIds, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('continent: $continent, ')
+          ..write('boundaryJson: $boundaryJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, osmId, name, adminLevel, parentId,
-      colorHex, geometryJson, adjacentLocationIds, cellIds, createdAt);
+  int get hashCode => Object.hash(
+      id, name, centroidLat, centroidLon, continent, boundaryJson, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is LocalLocationNode &&
+      (other is LocalCountry &&
           other.id == this.id &&
-          other.osmId == this.osmId &&
           other.name == this.name &&
-          other.adminLevel == this.adminLevel &&
-          other.parentId == this.parentId &&
-          other.colorHex == this.colorHex &&
-          other.geometryJson == this.geometryJson &&
-          other.adjacentLocationIds == this.adjacentLocationIds &&
-          other.cellIds == this.cellIds &&
+          other.centroidLat == this.centroidLat &&
+          other.centroidLon == this.centroidLon &&
+          other.continent == this.continent &&
+          other.boundaryJson == this.boundaryJson &&
           other.createdAt == this.createdAt);
 }
 
-class LocalLocationNodeTableCompanion
-    extends UpdateCompanion<LocalLocationNode> {
+class LocalCountryTableCompanion extends UpdateCompanion<LocalCountry> {
   final Value<String> id;
-  final Value<int?> osmId;
   final Value<String> name;
-  final Value<String> adminLevel;
-  final Value<String?> parentId;
-  final Value<String?> colorHex;
-  final Value<String?> geometryJson;
-  final Value<String?> adjacentLocationIds;
-  final Value<String?> cellIds;
+  final Value<double> centroidLat;
+  final Value<double> centroidLon;
+  final Value<String> continent;
+  final Value<String?> boundaryJson;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
-  const LocalLocationNodeTableCompanion({
+  const LocalCountryTableCompanion({
     this.id = const Value.absent(),
-    this.osmId = const Value.absent(),
     this.name = const Value.absent(),
-    this.adminLevel = const Value.absent(),
-    this.parentId = const Value.absent(),
-    this.colorHex = const Value.absent(),
-    this.geometryJson = const Value.absent(),
-    this.adjacentLocationIds = const Value.absent(),
-    this.cellIds = const Value.absent(),
+    this.centroidLat = const Value.absent(),
+    this.centroidLon = const Value.absent(),
+    this.continent = const Value.absent(),
+    this.boundaryJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
-  LocalLocationNodeTableCompanion.insert({
+  LocalCountryTableCompanion.insert({
     required String id,
-    this.osmId = const Value.absent(),
     required String name,
-    required String adminLevel,
-    this.parentId = const Value.absent(),
-    this.colorHex = const Value.absent(),
-    this.geometryJson = const Value.absent(),
-    this.adjacentLocationIds = const Value.absent(),
-    this.cellIds = const Value.absent(),
+    required double centroidLat,
+    required double centroidLon,
+    required String continent,
+    this.boundaryJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
-        adminLevel = Value(adminLevel);
-  static Insertable<LocalLocationNode> custom({
+        centroidLat = Value(centroidLat),
+        centroidLon = Value(centroidLon),
+        continent = Value(continent);
+  static Insertable<LocalCountry> custom({
     Expression<String>? id,
-    Expression<int>? osmId,
     Expression<String>? name,
-    Expression<String>? adminLevel,
-    Expression<String>? parentId,
-    Expression<String>? colorHex,
-    Expression<String>? geometryJson,
-    Expression<String>? adjacentLocationIds,
-    Expression<String>? cellIds,
+    Expression<double>? centroidLat,
+    Expression<double>? centroidLon,
+    Expression<String>? continent,
+    Expression<String>? boundaryJson,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (osmId != null) 'osm_id': osmId,
       if (name != null) 'name': name,
-      if (adminLevel != null) 'admin_level': adminLevel,
-      if (parentId != null) 'parent_id': parentId,
-      if (colorHex != null) 'color_hex': colorHex,
-      if (geometryJson != null) 'geometry_json': geometryJson,
-      if (adjacentLocationIds != null)
-        'adjacent_location_ids': adjacentLocationIds,
-      if (cellIds != null) 'cell_ids': cellIds,
+      if (centroidLat != null) 'centroid_lat': centroidLat,
+      if (centroidLon != null) 'centroid_lon': centroidLon,
+      if (continent != null) 'continent': continent,
+      if (boundaryJson != null) 'boundary_json': boundaryJson,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
-  LocalLocationNodeTableCompanion copyWith(
+  LocalCountryTableCompanion copyWith(
       {Value<String>? id,
-      Value<int?>? osmId,
       Value<String>? name,
-      Value<String>? adminLevel,
-      Value<String?>? parentId,
-      Value<String?>? colorHex,
-      Value<String?>? geometryJson,
-      Value<String?>? adjacentLocationIds,
-      Value<String?>? cellIds,
+      Value<double>? centroidLat,
+      Value<double>? centroidLon,
+      Value<String>? continent,
+      Value<String?>? boundaryJson,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
-    return LocalLocationNodeTableCompanion(
+    return LocalCountryTableCompanion(
       id: id ?? this.id,
-      osmId: osmId ?? this.osmId,
       name: name ?? this.name,
-      adminLevel: adminLevel ?? this.adminLevel,
-      parentId: parentId ?? this.parentId,
-      colorHex: colorHex ?? this.colorHex,
-      geometryJson: geometryJson ?? this.geometryJson,
-      adjacentLocationIds: adjacentLocationIds ?? this.adjacentLocationIds,
-      cellIds: cellIds ?? this.cellIds,
+      centroidLat: centroidLat ?? this.centroidLat,
+      centroidLon: centroidLon ?? this.centroidLon,
+      continent: continent ?? this.continent,
+      boundaryJson: boundaryJson ?? this.boundaryJson,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -6521,30 +6443,20 @@ class LocalLocationNodeTableCompanion
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
-    if (osmId.present) {
-      map['osm_id'] = Variable<int>(osmId.value);
-    }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (adminLevel.present) {
-      map['admin_level'] = Variable<String>(adminLevel.value);
+    if (centroidLat.present) {
+      map['centroid_lat'] = Variable<double>(centroidLat.value);
     }
-    if (parentId.present) {
-      map['parent_id'] = Variable<String>(parentId.value);
+    if (centroidLon.present) {
+      map['centroid_lon'] = Variable<double>(centroidLon.value);
     }
-    if (colorHex.present) {
-      map['color_hex'] = Variable<String>(colorHex.value);
+    if (continent.present) {
+      map['continent'] = Variable<String>(continent.value);
     }
-    if (geometryJson.present) {
-      map['geometry_json'] = Variable<String>(geometryJson.value);
-    }
-    if (adjacentLocationIds.present) {
-      map['adjacent_location_ids'] =
-          Variable<String>(adjacentLocationIds.value);
-    }
-    if (cellIds.present) {
-      map['cell_ids'] = Variable<String>(cellIds.value);
+    if (boundaryJson.present) {
+      map['boundary_json'] = Variable<String>(boundaryJson.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -6557,16 +6469,1367 @@ class LocalLocationNodeTableCompanion
 
   @override
   String toString() {
-    return (StringBuffer('LocalLocationNodeTableCompanion(')
+    return (StringBuffer('LocalCountryTableCompanion(')
           ..write('id: $id, ')
-          ..write('osmId: $osmId, ')
           ..write('name: $name, ')
-          ..write('adminLevel: $adminLevel, ')
-          ..write('parentId: $parentId, ')
-          ..write('colorHex: $colorHex, ')
-          ..write('geometryJson: $geometryJson, ')
-          ..write('adjacentLocationIds: $adjacentLocationIds, ')
-          ..write('cellIds: $cellIds, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('continent: $continent, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalStateTableTable extends LocalStateTable
+    with TableInfo<$LocalStateTableTable, LocalState> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalStateTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLatMeta =
+      const VerificationMeta('centroidLat');
+  @override
+  late final GeneratedColumn<double> centroidLat = GeneratedColumn<double>(
+      'centroid_lat', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLonMeta =
+      const VerificationMeta('centroidLon');
+  @override
+  late final GeneratedColumn<double> centroidLon = GeneratedColumn<double>(
+      'centroid_lon', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _countryIdMeta =
+      const VerificationMeta('countryId');
+  @override
+  late final GeneratedColumn<String> countryId = GeneratedColumn<String>(
+      'country_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _boundaryJsonMeta =
+      const VerificationMeta('boundaryJson');
+  @override
+  late final GeneratedColumn<String> boundaryJson = GeneratedColumn<String>(
+      'boundary_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, centroidLat, centroidLon, countryId, boundaryJson, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_state_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalState> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('centroid_lat')) {
+      context.handle(
+          _centroidLatMeta,
+          centroidLat.isAcceptableOrUnknown(
+              data['centroid_lat']!, _centroidLatMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLatMeta);
+    }
+    if (data.containsKey('centroid_lon')) {
+      context.handle(
+          _centroidLonMeta,
+          centroidLon.isAcceptableOrUnknown(
+              data['centroid_lon']!, _centroidLonMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLonMeta);
+    }
+    if (data.containsKey('country_id')) {
+      context.handle(_countryIdMeta,
+          countryId.isAcceptableOrUnknown(data['country_id']!, _countryIdMeta));
+    } else if (isInserting) {
+      context.missing(_countryIdMeta);
+    }
+    if (data.containsKey('boundary_json')) {
+      context.handle(
+          _boundaryJsonMeta,
+          boundaryJson.isAcceptableOrUnknown(
+              data['boundary_json']!, _boundaryJsonMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalState map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalState(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      centroidLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lat'])!,
+      centroidLon: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lon'])!,
+      countryId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}country_id'])!,
+      boundaryJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}boundary_json']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $LocalStateTableTable createAlias(String alias) {
+    return $LocalStateTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalState extends DataClass implements Insertable<LocalState> {
+  final String id;
+  final String name;
+  final double centroidLat;
+  final double centroidLon;
+  final String countryId;
+  final String? boundaryJson;
+  final DateTime createdAt;
+  const LocalState(
+      {required this.id,
+      required this.name,
+      required this.centroidLat,
+      required this.centroidLon,
+      required this.countryId,
+      this.boundaryJson,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['centroid_lat'] = Variable<double>(centroidLat);
+    map['centroid_lon'] = Variable<double>(centroidLon);
+    map['country_id'] = Variable<String>(countryId);
+    if (!nullToAbsent || boundaryJson != null) {
+      map['boundary_json'] = Variable<String>(boundaryJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalStateTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalStateTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      centroidLat: Value(centroidLat),
+      centroidLon: Value(centroidLon),
+      countryId: Value(countryId),
+      boundaryJson: boundaryJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boundaryJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalState.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalState(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      centroidLat: serializer.fromJson<double>(json['centroidLat']),
+      centroidLon: serializer.fromJson<double>(json['centroidLon']),
+      countryId: serializer.fromJson<String>(json['countryId']),
+      boundaryJson: serializer.fromJson<String?>(json['boundaryJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'centroidLat': serializer.toJson<double>(centroidLat),
+      'centroidLon': serializer.toJson<double>(centroidLon),
+      'countryId': serializer.toJson<String>(countryId),
+      'boundaryJson': serializer.toJson<String?>(boundaryJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalState copyWith(
+          {String? id,
+          String? name,
+          double? centroidLat,
+          double? centroidLon,
+          String? countryId,
+          Value<String?> boundaryJson = const Value.absent(),
+          DateTime? createdAt}) =>
+      LocalState(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        centroidLat: centroidLat ?? this.centroidLat,
+        centroidLon: centroidLon ?? this.centroidLon,
+        countryId: countryId ?? this.countryId,
+        boundaryJson:
+            boundaryJson.present ? boundaryJson.value : this.boundaryJson,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  LocalState copyWithCompanion(LocalStateTableCompanion data) {
+    return LocalState(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      centroidLat:
+          data.centroidLat.present ? data.centroidLat.value : this.centroidLat,
+      centroidLon:
+          data.centroidLon.present ? data.centroidLon.value : this.centroidLon,
+      countryId: data.countryId.present ? data.countryId.value : this.countryId,
+      boundaryJson: data.boundaryJson.present
+          ? data.boundaryJson.value
+          : this.boundaryJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalState(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('countryId: $countryId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, name, centroidLat, centroidLon, countryId, boundaryJson, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalState &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.centroidLat == this.centroidLat &&
+          other.centroidLon == this.centroidLon &&
+          other.countryId == this.countryId &&
+          other.boundaryJson == this.boundaryJson &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalStateTableCompanion extends UpdateCompanion<LocalState> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double> centroidLat;
+  final Value<double> centroidLon;
+  final Value<String> countryId;
+  final Value<String?> boundaryJson;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalStateTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.centroidLat = const Value.absent(),
+    this.centroidLon = const Value.absent(),
+    this.countryId = const Value.absent(),
+    this.boundaryJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalStateTableCompanion.insert({
+    required String id,
+    required String name,
+    required double centroidLat,
+    required double centroidLon,
+    required String countryId,
+    this.boundaryJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        centroidLat = Value(centroidLat),
+        centroidLon = Value(centroidLon),
+        countryId = Value(countryId);
+  static Insertable<LocalState> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? centroidLat,
+    Expression<double>? centroidLon,
+    Expression<String>? countryId,
+    Expression<String>? boundaryJson,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (centroidLat != null) 'centroid_lat': centroidLat,
+      if (centroidLon != null) 'centroid_lon': centroidLon,
+      if (countryId != null) 'country_id': countryId,
+      if (boundaryJson != null) 'boundary_json': boundaryJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalStateTableCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<double>? centroidLat,
+      Value<double>? centroidLon,
+      Value<String>? countryId,
+      Value<String?>? boundaryJson,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return LocalStateTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      centroidLat: centroidLat ?? this.centroidLat,
+      centroidLon: centroidLon ?? this.centroidLon,
+      countryId: countryId ?? this.countryId,
+      boundaryJson: boundaryJson ?? this.boundaryJson,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (centroidLat.present) {
+      map['centroid_lat'] = Variable<double>(centroidLat.value);
+    }
+    if (centroidLon.present) {
+      map['centroid_lon'] = Variable<double>(centroidLon.value);
+    }
+    if (countryId.present) {
+      map['country_id'] = Variable<String>(countryId.value);
+    }
+    if (boundaryJson.present) {
+      map['boundary_json'] = Variable<String>(boundaryJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalStateTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('countryId: $countryId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalCityTableTable extends LocalCityTable
+    with TableInfo<$LocalCityTableTable, LocalCity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalCityTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLatMeta =
+      const VerificationMeta('centroidLat');
+  @override
+  late final GeneratedColumn<double> centroidLat = GeneratedColumn<double>(
+      'centroid_lat', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLonMeta =
+      const VerificationMeta('centroidLon');
+  @override
+  late final GeneratedColumn<double> centroidLon = GeneratedColumn<double>(
+      'centroid_lon', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _stateIdMeta =
+      const VerificationMeta('stateId');
+  @override
+  late final GeneratedColumn<String> stateId = GeneratedColumn<String>(
+      'state_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _boundaryJsonMeta =
+      const VerificationMeta('boundaryJson');
+  @override
+  late final GeneratedColumn<String> boundaryJson = GeneratedColumn<String>(
+      'boundary_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellsTotalMeta =
+      const VerificationMeta('cellsTotal');
+  @override
+  late final GeneratedColumn<int> cellsTotal = GeneratedColumn<int>(
+      'cells_total', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        centroidLat,
+        centroidLon,
+        stateId,
+        boundaryJson,
+        cellsTotal,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_city_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalCity> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('centroid_lat')) {
+      context.handle(
+          _centroidLatMeta,
+          centroidLat.isAcceptableOrUnknown(
+              data['centroid_lat']!, _centroidLatMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLatMeta);
+    }
+    if (data.containsKey('centroid_lon')) {
+      context.handle(
+          _centroidLonMeta,
+          centroidLon.isAcceptableOrUnknown(
+              data['centroid_lon']!, _centroidLonMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLonMeta);
+    }
+    if (data.containsKey('state_id')) {
+      context.handle(_stateIdMeta,
+          stateId.isAcceptableOrUnknown(data['state_id']!, _stateIdMeta));
+    } else if (isInserting) {
+      context.missing(_stateIdMeta);
+    }
+    if (data.containsKey('boundary_json')) {
+      context.handle(
+          _boundaryJsonMeta,
+          boundaryJson.isAcceptableOrUnknown(
+              data['boundary_json']!, _boundaryJsonMeta));
+    }
+    if (data.containsKey('cells_total')) {
+      context.handle(
+          _cellsTotalMeta,
+          cellsTotal.isAcceptableOrUnknown(
+              data['cells_total']!, _cellsTotalMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalCity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCity(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      centroidLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lat'])!,
+      centroidLon: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lon'])!,
+      stateId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}state_id'])!,
+      boundaryJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}boundary_json']),
+      cellsTotal: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}cells_total']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $LocalCityTableTable createAlias(String alias) {
+    return $LocalCityTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalCity extends DataClass implements Insertable<LocalCity> {
+  final String id;
+  final String name;
+  final double centroidLat;
+  final double centroidLon;
+  final String stateId;
+  final String? boundaryJson;
+  final int? cellsTotal;
+  final DateTime createdAt;
+  const LocalCity(
+      {required this.id,
+      required this.name,
+      required this.centroidLat,
+      required this.centroidLon,
+      required this.stateId,
+      this.boundaryJson,
+      this.cellsTotal,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['centroid_lat'] = Variable<double>(centroidLat);
+    map['centroid_lon'] = Variable<double>(centroidLon);
+    map['state_id'] = Variable<String>(stateId);
+    if (!nullToAbsent || boundaryJson != null) {
+      map['boundary_json'] = Variable<String>(boundaryJson);
+    }
+    if (!nullToAbsent || cellsTotal != null) {
+      map['cells_total'] = Variable<int>(cellsTotal);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalCityTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalCityTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      centroidLat: Value(centroidLat),
+      centroidLon: Value(centroidLon),
+      stateId: Value(stateId),
+      boundaryJson: boundaryJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boundaryJson),
+      cellsTotal: cellsTotal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellsTotal),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalCity.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      centroidLat: serializer.fromJson<double>(json['centroidLat']),
+      centroidLon: serializer.fromJson<double>(json['centroidLon']),
+      stateId: serializer.fromJson<String>(json['stateId']),
+      boundaryJson: serializer.fromJson<String?>(json['boundaryJson']),
+      cellsTotal: serializer.fromJson<int?>(json['cellsTotal']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'centroidLat': serializer.toJson<double>(centroidLat),
+      'centroidLon': serializer.toJson<double>(centroidLon),
+      'stateId': serializer.toJson<String>(stateId),
+      'boundaryJson': serializer.toJson<String?>(boundaryJson),
+      'cellsTotal': serializer.toJson<int?>(cellsTotal),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalCity copyWith(
+          {String? id,
+          String? name,
+          double? centroidLat,
+          double? centroidLon,
+          String? stateId,
+          Value<String?> boundaryJson = const Value.absent(),
+          Value<int?> cellsTotal = const Value.absent(),
+          DateTime? createdAt}) =>
+      LocalCity(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        centroidLat: centroidLat ?? this.centroidLat,
+        centroidLon: centroidLon ?? this.centroidLon,
+        stateId: stateId ?? this.stateId,
+        boundaryJson:
+            boundaryJson.present ? boundaryJson.value : this.boundaryJson,
+        cellsTotal: cellsTotal.present ? cellsTotal.value : this.cellsTotal,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  LocalCity copyWithCompanion(LocalCityTableCompanion data) {
+    return LocalCity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      centroidLat:
+          data.centroidLat.present ? data.centroidLat.value : this.centroidLat,
+      centroidLon:
+          data.centroidLon.present ? data.centroidLon.value : this.centroidLon,
+      stateId: data.stateId.present ? data.stateId.value : this.stateId,
+      boundaryJson: data.boundaryJson.present
+          ? data.boundaryJson.value
+          : this.boundaryJson,
+      cellsTotal:
+          data.cellsTotal.present ? data.cellsTotal.value : this.cellsTotal,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('stateId: $stateId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('cellsTotal: $cellsTotal, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, centroidLat, centroidLon, stateId,
+      boundaryJson, cellsTotal, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.centroidLat == this.centroidLat &&
+          other.centroidLon == this.centroidLon &&
+          other.stateId == this.stateId &&
+          other.boundaryJson == this.boundaryJson &&
+          other.cellsTotal == this.cellsTotal &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalCityTableCompanion extends UpdateCompanion<LocalCity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double> centroidLat;
+  final Value<double> centroidLon;
+  final Value<String> stateId;
+  final Value<String?> boundaryJson;
+  final Value<int?> cellsTotal;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalCityTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.centroidLat = const Value.absent(),
+    this.centroidLon = const Value.absent(),
+    this.stateId = const Value.absent(),
+    this.boundaryJson = const Value.absent(),
+    this.cellsTotal = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalCityTableCompanion.insert({
+    required String id,
+    required String name,
+    required double centroidLat,
+    required double centroidLon,
+    required String stateId,
+    this.boundaryJson = const Value.absent(),
+    this.cellsTotal = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        centroidLat = Value(centroidLat),
+        centroidLon = Value(centroidLon),
+        stateId = Value(stateId);
+  static Insertable<LocalCity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? centroidLat,
+    Expression<double>? centroidLon,
+    Expression<String>? stateId,
+    Expression<String>? boundaryJson,
+    Expression<int>? cellsTotal,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (centroidLat != null) 'centroid_lat': centroidLat,
+      if (centroidLon != null) 'centroid_lon': centroidLon,
+      if (stateId != null) 'state_id': stateId,
+      if (boundaryJson != null) 'boundary_json': boundaryJson,
+      if (cellsTotal != null) 'cells_total': cellsTotal,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalCityTableCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<double>? centroidLat,
+      Value<double>? centroidLon,
+      Value<String>? stateId,
+      Value<String?>? boundaryJson,
+      Value<int?>? cellsTotal,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return LocalCityTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      centroidLat: centroidLat ?? this.centroidLat,
+      centroidLon: centroidLon ?? this.centroidLon,
+      stateId: stateId ?? this.stateId,
+      boundaryJson: boundaryJson ?? this.boundaryJson,
+      cellsTotal: cellsTotal ?? this.cellsTotal,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (centroidLat.present) {
+      map['centroid_lat'] = Variable<double>(centroidLat.value);
+    }
+    if (centroidLon.present) {
+      map['centroid_lon'] = Variable<double>(centroidLon.value);
+    }
+    if (stateId.present) {
+      map['state_id'] = Variable<String>(stateId.value);
+    }
+    if (boundaryJson.present) {
+      map['boundary_json'] = Variable<String>(boundaryJson.value);
+    }
+    if (cellsTotal.present) {
+      map['cells_total'] = Variable<int>(cellsTotal.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCityTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('stateId: $stateId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('cellsTotal: $cellsTotal, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalDistrictTableTable extends LocalDistrictTable
+    with TableInfo<$LocalDistrictTableTable, LocalDistrict> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalDistrictTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLatMeta =
+      const VerificationMeta('centroidLat');
+  @override
+  late final GeneratedColumn<double> centroidLat = GeneratedColumn<double>(
+      'centroid_lat', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _centroidLonMeta =
+      const VerificationMeta('centroidLon');
+  @override
+  late final GeneratedColumn<double> centroidLon = GeneratedColumn<double>(
+      'centroid_lon', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _cityIdMeta = const VerificationMeta('cityId');
+  @override
+  late final GeneratedColumn<String> cityId = GeneratedColumn<String>(
+      'city_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _boundaryJsonMeta =
+      const VerificationMeta('boundaryJson');
+  @override
+  late final GeneratedColumn<String> boundaryJson = GeneratedColumn<String>(
+      'boundary_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _cellsTotalMeta =
+      const VerificationMeta('cellsTotal');
+  @override
+  late final GeneratedColumn<int> cellsTotal = GeneratedColumn<int>(
+      'cells_total', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('whosonfirst'));
+  static const VerificationMeta _sourceIdMeta =
+      const VerificationMeta('sourceId');
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+      'source_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        centroidLat,
+        centroidLon,
+        cityId,
+        boundaryJson,
+        cellsTotal,
+        source,
+        sourceId,
+        createdAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_district_table';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalDistrict> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('centroid_lat')) {
+      context.handle(
+          _centroidLatMeta,
+          centroidLat.isAcceptableOrUnknown(
+              data['centroid_lat']!, _centroidLatMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLatMeta);
+    }
+    if (data.containsKey('centroid_lon')) {
+      context.handle(
+          _centroidLonMeta,
+          centroidLon.isAcceptableOrUnknown(
+              data['centroid_lon']!, _centroidLonMeta));
+    } else if (isInserting) {
+      context.missing(_centroidLonMeta);
+    }
+    if (data.containsKey('city_id')) {
+      context.handle(_cityIdMeta,
+          cityId.isAcceptableOrUnknown(data['city_id']!, _cityIdMeta));
+    } else if (isInserting) {
+      context.missing(_cityIdMeta);
+    }
+    if (data.containsKey('boundary_json')) {
+      context.handle(
+          _boundaryJsonMeta,
+          boundaryJson.isAcceptableOrUnknown(
+              data['boundary_json']!, _boundaryJsonMeta));
+    }
+    if (data.containsKey('cells_total')) {
+      context.handle(
+          _cellsTotalMeta,
+          cellsTotal.isAcceptableOrUnknown(
+              data['cells_total']!, _cellsTotalMeta));
+    }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(_sourceIdMeta,
+          sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalDistrict map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalDistrict(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      centroidLat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lat'])!,
+      centroidLon: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}centroid_lon'])!,
+      cityId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}city_id'])!,
+      boundaryJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}boundary_json']),
+      cellsTotal: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}cells_total']),
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
+      sourceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $LocalDistrictTableTable createAlias(String alias) {
+    return $LocalDistrictTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalDistrict extends DataClass implements Insertable<LocalDistrict> {
+  final String id;
+  final String name;
+  final double centroidLat;
+  final double centroidLon;
+  final String cityId;
+  final String? boundaryJson;
+  final int? cellsTotal;
+  final String source;
+  final String? sourceId;
+  final DateTime createdAt;
+  const LocalDistrict(
+      {required this.id,
+      required this.name,
+      required this.centroidLat,
+      required this.centroidLon,
+      required this.cityId,
+      this.boundaryJson,
+      this.cellsTotal,
+      required this.source,
+      this.sourceId,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['centroid_lat'] = Variable<double>(centroidLat);
+    map['centroid_lon'] = Variable<double>(centroidLon);
+    map['city_id'] = Variable<String>(cityId);
+    if (!nullToAbsent || boundaryJson != null) {
+      map['boundary_json'] = Variable<String>(boundaryJson);
+    }
+    if (!nullToAbsent || cellsTotal != null) {
+      map['cells_total'] = Variable<int>(cellsTotal);
+    }
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || sourceId != null) {
+      map['source_id'] = Variable<String>(sourceId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  LocalDistrictTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalDistrictTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      centroidLat: Value(centroidLat),
+      centroidLon: Value(centroidLon),
+      cityId: Value(cityId),
+      boundaryJson: boundaryJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(boundaryJson),
+      cellsTotal: cellsTotal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(cellsTotal),
+      source: Value(source),
+      sourceId: sourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory LocalDistrict.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalDistrict(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      centroidLat: serializer.fromJson<double>(json['centroidLat']),
+      centroidLon: serializer.fromJson<double>(json['centroidLon']),
+      cityId: serializer.fromJson<String>(json['cityId']),
+      boundaryJson: serializer.fromJson<String?>(json['boundaryJson']),
+      cellsTotal: serializer.fromJson<int?>(json['cellsTotal']),
+      source: serializer.fromJson<String>(json['source']),
+      sourceId: serializer.fromJson<String?>(json['sourceId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'centroidLat': serializer.toJson<double>(centroidLat),
+      'centroidLon': serializer.toJson<double>(centroidLon),
+      'cityId': serializer.toJson<String>(cityId),
+      'boundaryJson': serializer.toJson<String?>(boundaryJson),
+      'cellsTotal': serializer.toJson<int?>(cellsTotal),
+      'source': serializer.toJson<String>(source),
+      'sourceId': serializer.toJson<String?>(sourceId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  LocalDistrict copyWith(
+          {String? id,
+          String? name,
+          double? centroidLat,
+          double? centroidLon,
+          String? cityId,
+          Value<String?> boundaryJson = const Value.absent(),
+          Value<int?> cellsTotal = const Value.absent(),
+          String? source,
+          Value<String?> sourceId = const Value.absent(),
+          DateTime? createdAt}) =>
+      LocalDistrict(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        centroidLat: centroidLat ?? this.centroidLat,
+        centroidLon: centroidLon ?? this.centroidLon,
+        cityId: cityId ?? this.cityId,
+        boundaryJson:
+            boundaryJson.present ? boundaryJson.value : this.boundaryJson,
+        cellsTotal: cellsTotal.present ? cellsTotal.value : this.cellsTotal,
+        source: source ?? this.source,
+        sourceId: sourceId.present ? sourceId.value : this.sourceId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  LocalDistrict copyWithCompanion(LocalDistrictTableCompanion data) {
+    return LocalDistrict(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      centroidLat:
+          data.centroidLat.present ? data.centroidLat.value : this.centroidLat,
+      centroidLon:
+          data.centroidLon.present ? data.centroidLon.value : this.centroidLon,
+      cityId: data.cityId.present ? data.cityId.value : this.cityId,
+      boundaryJson: data.boundaryJson.present
+          ? data.boundaryJson.value
+          : this.boundaryJson,
+      cellsTotal:
+          data.cellsTotal.present ? data.cellsTotal.value : this.cellsTotal,
+      source: data.source.present ? data.source.value : this.source,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDistrict(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('cityId: $cityId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('cellsTotal: $cellsTotal, ')
+          ..write('source: $source, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, centroidLat, centroidLon, cityId,
+      boundaryJson, cellsTotal, source, sourceId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalDistrict &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.centroidLat == this.centroidLat &&
+          other.centroidLon == this.centroidLon &&
+          other.cityId == this.cityId &&
+          other.boundaryJson == this.boundaryJson &&
+          other.cellsTotal == this.cellsTotal &&
+          other.source == this.source &&
+          other.sourceId == this.sourceId &&
+          other.createdAt == this.createdAt);
+}
+
+class LocalDistrictTableCompanion extends UpdateCompanion<LocalDistrict> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double> centroidLat;
+  final Value<double> centroidLon;
+  final Value<String> cityId;
+  final Value<String?> boundaryJson;
+  final Value<int?> cellsTotal;
+  final Value<String> source;
+  final Value<String?> sourceId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const LocalDistrictTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.centroidLat = const Value.absent(),
+    this.centroidLon = const Value.absent(),
+    this.cityId = const Value.absent(),
+    this.boundaryJson = const Value.absent(),
+    this.cellsTotal = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalDistrictTableCompanion.insert({
+    required String id,
+    required String name,
+    required double centroidLat,
+    required double centroidLon,
+    required String cityId,
+    this.boundaryJson = const Value.absent(),
+    this.cellsTotal = const Value.absent(),
+    this.source = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        centroidLat = Value(centroidLat),
+        centroidLon = Value(centroidLon),
+        cityId = Value(cityId);
+  static Insertable<LocalDistrict> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? centroidLat,
+    Expression<double>? centroidLon,
+    Expression<String>? cityId,
+    Expression<String>? boundaryJson,
+    Expression<int>? cellsTotal,
+    Expression<String>? source,
+    Expression<String>? sourceId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (centroidLat != null) 'centroid_lat': centroidLat,
+      if (centroidLon != null) 'centroid_lon': centroidLon,
+      if (cityId != null) 'city_id': cityId,
+      if (boundaryJson != null) 'boundary_json': boundaryJson,
+      if (cellsTotal != null) 'cells_total': cellsTotal,
+      if (source != null) 'source': source,
+      if (sourceId != null) 'source_id': sourceId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalDistrictTableCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<double>? centroidLat,
+      Value<double>? centroidLon,
+      Value<String>? cityId,
+      Value<String?>? boundaryJson,
+      Value<int?>? cellsTotal,
+      Value<String>? source,
+      Value<String?>? sourceId,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return LocalDistrictTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      centroidLat: centroidLat ?? this.centroidLat,
+      centroidLon: centroidLon ?? this.centroidLon,
+      cityId: cityId ?? this.cityId,
+      boundaryJson: boundaryJson ?? this.boundaryJson,
+      cellsTotal: cellsTotal ?? this.cellsTotal,
+      source: source ?? this.source,
+      sourceId: sourceId ?? this.sourceId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (centroidLat.present) {
+      map['centroid_lat'] = Variable<double>(centroidLat.value);
+    }
+    if (centroidLon.present) {
+      map['centroid_lon'] = Variable<double>(centroidLon.value);
+    }
+    if (cityId.present) {
+      map['city_id'] = Variable<String>(cityId.value);
+    }
+    if (boundaryJson.present) {
+      map['boundary_json'] = Variable<String>(boundaryJson.value);
+    }
+    if (cellsTotal.present) {
+      map['cells_total'] = Variable<int>(cellsTotal.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalDistrictTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('centroidLat: $centroidLat, ')
+          ..write('centroidLon: $centroidLon, ')
+          ..write('cityId: $cityId, ')
+          ..write('boundaryJson: $boundaryJson, ')
+          ..write('cellsTotal: $cellsTotal, ')
+          ..write('source: $source, ')
+          ..write('sourceId: $sourceId, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -6589,8 +7852,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalWriteQueueTableTable(this);
   late final $LocalCellPropertiesTableTable localCellPropertiesTable =
       $LocalCellPropertiesTableTable(this);
-  late final $LocalLocationNodeTableTable localLocationNodeTable =
-      $LocalLocationNodeTableTable(this);
+  late final $LocalCountryTableTable localCountryTable =
+      $LocalCountryTableTable(this);
+  late final $LocalStateTableTable localStateTable =
+      $LocalStateTableTable(this);
+  late final $LocalCityTableTable localCityTable = $LocalCityTableTable(this);
+  late final $LocalDistrictTableTable localDistrictTable =
+      $LocalDistrictTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6602,7 +7870,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         localSpeciesTable,
         localWriteQueueTable,
         localCellPropertiesTable,
-        localLocationNodeTable
+        localCountryTable,
+        localStateTable,
+        localCityTable,
+        localDistrictTable
       ];
 }
 
@@ -8974,6 +10245,7 @@ typedef $$LocalCellPropertiesTableTableCreateCompanionBuilder
   required String climate,
   required String continent,
   Value<String?> locationId,
+  Value<String?> districtId,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -8984,6 +10256,7 @@ typedef $$LocalCellPropertiesTableTableUpdateCompanionBuilder
   Value<String> climate,
   Value<String> continent,
   Value<String?> locationId,
+  Value<String?> districtId,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -9011,6 +10284,9 @@ class $$LocalCellPropertiesTableTableFilterComposer
 
   ColumnFilters<String> get locationId => $composableBuilder(
       column: $table.locationId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get districtId => $composableBuilder(
+      column: $table.districtId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -9040,6 +10316,9 @@ class $$LocalCellPropertiesTableTableOrderingComposer
   ColumnOrderings<String> get locationId => $composableBuilder(
       column: $table.locationId, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get districtId => $composableBuilder(
+      column: $table.districtId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -9067,6 +10346,9 @@ class $$LocalCellPropertiesTableTableAnnotationComposer
 
   GeneratedColumn<String> get locationId => $composableBuilder(
       column: $table.locationId, builder: (column) => column);
+
+  GeneratedColumn<String> get districtId => $composableBuilder(
+      column: $table.districtId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -9108,6 +10390,7 @@ class $$LocalCellPropertiesTableTableTableManager extends RootTableManager<
             Value<String> climate = const Value.absent(),
             Value<String> continent = const Value.absent(),
             Value<String?> locationId = const Value.absent(),
+            Value<String?> districtId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -9117,6 +10400,7 @@ class $$LocalCellPropertiesTableTableTableManager extends RootTableManager<
             climate: climate,
             continent: continent,
             locationId: locationId,
+            districtId: districtId,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -9126,6 +10410,7 @@ class $$LocalCellPropertiesTableTableTableManager extends RootTableManager<
             required String climate,
             required String continent,
             Value<String?> locationId = const Value.absent(),
+            Value<String?> districtId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -9135,6 +10420,7 @@ class $$LocalCellPropertiesTableTableTableManager extends RootTableManager<
             climate: climate,
             continent: continent,
             locationId: locationId,
+            districtId: districtId,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -9162,38 +10448,32 @@ typedef $$LocalCellPropertiesTableTableProcessedTableManager
         ),
         LocalCellProperties,
         PrefetchHooks Function()>;
-typedef $$LocalLocationNodeTableTableCreateCompanionBuilder
-    = LocalLocationNodeTableCompanion Function({
+typedef $$LocalCountryTableTableCreateCompanionBuilder
+    = LocalCountryTableCompanion Function({
   required String id,
-  Value<int?> osmId,
   required String name,
-  required String adminLevel,
-  Value<String?> parentId,
-  Value<String?> colorHex,
-  Value<String?> geometryJson,
-  Value<String?> adjacentLocationIds,
-  Value<String?> cellIds,
+  required double centroidLat,
+  required double centroidLon,
+  required String continent,
+  Value<String?> boundaryJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
-typedef $$LocalLocationNodeTableTableUpdateCompanionBuilder
-    = LocalLocationNodeTableCompanion Function({
+typedef $$LocalCountryTableTableUpdateCompanionBuilder
+    = LocalCountryTableCompanion Function({
   Value<String> id,
-  Value<int?> osmId,
   Value<String> name,
-  Value<String> adminLevel,
-  Value<String?> parentId,
-  Value<String?> colorHex,
-  Value<String?> geometryJson,
-  Value<String?> adjacentLocationIds,
-  Value<String?> cellIds,
+  Value<double> centroidLat,
+  Value<double> centroidLon,
+  Value<String> continent,
+  Value<String?> boundaryJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
 
-class $$LocalLocationNodeTableTableFilterComposer
-    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
-  $$LocalLocationNodeTableTableFilterComposer({
+class $$LocalCountryTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalCountryTableTable> {
+  $$LocalCountryTableTableFilterComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9203,38 +10483,28 @@ class $$LocalLocationNodeTableTableFilterComposer
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get osmId => $composableBuilder(
-      column: $table.osmId, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get adminLevel => $composableBuilder(
-      column: $table.adminLevel, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get parentId => $composableBuilder(
-      column: $table.parentId, builder: (column) => ColumnFilters(column));
+  ColumnFilters<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get colorHex => $composableBuilder(
-      column: $table.colorHex, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get continent => $composableBuilder(
+      column: $table.continent, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<String> get geometryJson => $composableBuilder(
-      column: $table.geometryJson, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get adjacentLocationIds => $composableBuilder(
-      column: $table.adjacentLocationIds,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get cellIds => $composableBuilder(
-      column: $table.cellIds, builder: (column) => ColumnFilters(column));
+  ColumnFilters<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 }
 
-class $$LocalLocationNodeTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
-  $$LocalLocationNodeTableTableOrderingComposer({
+class $$LocalCountryTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalCountryTableTable> {
+  $$LocalCountryTableTableOrderingComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9244,39 +10514,29 @@ class $$LocalLocationNodeTableTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get osmId => $composableBuilder(
-      column: $table.osmId, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get adminLevel => $composableBuilder(
-      column: $table.adminLevel, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get parentId => $composableBuilder(
-      column: $table.parentId, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get colorHex => $composableBuilder(
-      column: $table.colorHex, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<String> get continent => $composableBuilder(
+      column: $table.continent, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get geometryJson => $composableBuilder(
-      column: $table.geometryJson,
+  ColumnOrderings<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson,
       builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get adjacentLocationIds => $composableBuilder(
-      column: $table.adjacentLocationIds,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get cellIds => $composableBuilder(
-      column: $table.cellIds, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
 
-class $$LocalLocationNodeTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $LocalLocationNodeTableTable> {
-  $$LocalLocationNodeTableTableAnnotationComposer({
+class $$LocalCountryTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalCountryTableTable> {
+  $$LocalCountryTableTableAnnotationComposer({
     required super.$db,
     required super.$table,
     super.joinBuilder,
@@ -9286,113 +10546,89 @@ class $$LocalLocationNodeTableTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<int> get osmId =>
-      $composableBuilder(column: $table.osmId, builder: (column) => column);
-
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<String> get adminLevel => $composableBuilder(
-      column: $table.adminLevel, builder: (column) => column);
+  GeneratedColumn<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => column);
 
-  GeneratedColumn<String> get parentId =>
-      $composableBuilder(column: $table.parentId, builder: (column) => column);
+  GeneratedColumn<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => column);
 
-  GeneratedColumn<String> get colorHex =>
-      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+  GeneratedColumn<String> get continent =>
+      $composableBuilder(column: $table.continent, builder: (column) => column);
 
-  GeneratedColumn<String> get geometryJson => $composableBuilder(
-      column: $table.geometryJson, builder: (column) => column);
-
-  GeneratedColumn<String> get adjacentLocationIds => $composableBuilder(
-      column: $table.adjacentLocationIds, builder: (column) => column);
-
-  GeneratedColumn<String> get cellIds =>
-      $composableBuilder(column: $table.cellIds, builder: (column) => column);
+  GeneratedColumn<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
-class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
+class $$LocalCountryTableTableTableManager extends RootTableManager<
     _$AppDatabase,
-    $LocalLocationNodeTableTable,
-    LocalLocationNode,
-    $$LocalLocationNodeTableTableFilterComposer,
-    $$LocalLocationNodeTableTableOrderingComposer,
-    $$LocalLocationNodeTableTableAnnotationComposer,
-    $$LocalLocationNodeTableTableCreateCompanionBuilder,
-    $$LocalLocationNodeTableTableUpdateCompanionBuilder,
+    $LocalCountryTableTable,
+    LocalCountry,
+    $$LocalCountryTableTableFilterComposer,
+    $$LocalCountryTableTableOrderingComposer,
+    $$LocalCountryTableTableAnnotationComposer,
+    $$LocalCountryTableTableCreateCompanionBuilder,
+    $$LocalCountryTableTableUpdateCompanionBuilder,
     (
-      LocalLocationNode,
-      BaseReferences<_$AppDatabase, $LocalLocationNodeTableTable,
-          LocalLocationNode>
+      LocalCountry,
+      BaseReferences<_$AppDatabase, $LocalCountryTableTable, LocalCountry>
     ),
-    LocalLocationNode,
+    LocalCountry,
     PrefetchHooks Function()> {
-  $$LocalLocationNodeTableTableTableManager(
-      _$AppDatabase db, $LocalLocationNodeTableTable table)
+  $$LocalCountryTableTableTableManager(
+      _$AppDatabase db, $LocalCountryTableTable table)
       : super(TableManagerState(
           db: db,
           table: table,
           createFilteringComposer: () =>
-              $$LocalLocationNodeTableTableFilterComposer(
-                  $db: db, $table: table),
+              $$LocalCountryTableTableFilterComposer($db: db, $table: table),
           createOrderingComposer: () =>
-              $$LocalLocationNodeTableTableOrderingComposer(
-                  $db: db, $table: table),
+              $$LocalCountryTableTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
-              $$LocalLocationNodeTableTableAnnotationComposer(
+              $$LocalCountryTableTableAnnotationComposer(
                   $db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
-            Value<int?> osmId = const Value.absent(),
             Value<String> name = const Value.absent(),
-            Value<String> adminLevel = const Value.absent(),
-            Value<String?> parentId = const Value.absent(),
-            Value<String?> colorHex = const Value.absent(),
-            Value<String?> geometryJson = const Value.absent(),
-            Value<String?> adjacentLocationIds = const Value.absent(),
-            Value<String?> cellIds = const Value.absent(),
+            Value<double> centroidLat = const Value.absent(),
+            Value<double> centroidLon = const Value.absent(),
+            Value<String> continent = const Value.absent(),
+            Value<String?> boundaryJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
-              LocalLocationNodeTableCompanion(
+              LocalCountryTableCompanion(
             id: id,
-            osmId: osmId,
             name: name,
-            adminLevel: adminLevel,
-            parentId: parentId,
-            colorHex: colorHex,
-            geometryJson: geometryJson,
-            adjacentLocationIds: adjacentLocationIds,
-            cellIds: cellIds,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            continent: continent,
+            boundaryJson: boundaryJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String id,
-            Value<int?> osmId = const Value.absent(),
             required String name,
-            required String adminLevel,
-            Value<String?> parentId = const Value.absent(),
-            Value<String?> colorHex = const Value.absent(),
-            Value<String?> geometryJson = const Value.absent(),
-            Value<String?> adjacentLocationIds = const Value.absent(),
-            Value<String?> cellIds = const Value.absent(),
+            required double centroidLat,
+            required double centroidLon,
+            required String continent,
+            Value<String?> boundaryJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
-              LocalLocationNodeTableCompanion.insert(
+              LocalCountryTableCompanion.insert(
             id: id,
-            osmId: osmId,
             name: name,
-            adminLevel: adminLevel,
-            parentId: parentId,
-            colorHex: colorHex,
-            geometryJson: geometryJson,
-            adjacentLocationIds: adjacentLocationIds,
-            cellIds: cellIds,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            continent: continent,
+            boundaryJson: boundaryJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -9403,23 +10639,691 @@ class $$LocalLocationNodeTableTableTableManager extends RootTableManager<
         ));
 }
 
-typedef $$LocalLocationNodeTableTableProcessedTableManager
-    = ProcessedTableManager<
-        _$AppDatabase,
-        $LocalLocationNodeTableTable,
-        LocalLocationNode,
-        $$LocalLocationNodeTableTableFilterComposer,
-        $$LocalLocationNodeTableTableOrderingComposer,
-        $$LocalLocationNodeTableTableAnnotationComposer,
-        $$LocalLocationNodeTableTableCreateCompanionBuilder,
-        $$LocalLocationNodeTableTableUpdateCompanionBuilder,
-        (
-          LocalLocationNode,
-          BaseReferences<_$AppDatabase, $LocalLocationNodeTableTable,
-              LocalLocationNode>
-        ),
-        LocalLocationNode,
-        PrefetchHooks Function()>;
+typedef $$LocalCountryTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalCountryTableTable,
+    LocalCountry,
+    $$LocalCountryTableTableFilterComposer,
+    $$LocalCountryTableTableOrderingComposer,
+    $$LocalCountryTableTableAnnotationComposer,
+    $$LocalCountryTableTableCreateCompanionBuilder,
+    $$LocalCountryTableTableUpdateCompanionBuilder,
+    (
+      LocalCountry,
+      BaseReferences<_$AppDatabase, $LocalCountryTableTable, LocalCountry>
+    ),
+    LocalCountry,
+    PrefetchHooks Function()>;
+typedef $$LocalStateTableTableCreateCompanionBuilder = LocalStateTableCompanion
+    Function({
+  required String id,
+  required String name,
+  required double centroidLat,
+  required double centroidLon,
+  required String countryId,
+  Value<String?> boundaryJson,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$LocalStateTableTableUpdateCompanionBuilder = LocalStateTableCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<double> centroidLat,
+  Value<double> centroidLon,
+  Value<String> countryId,
+  Value<String?> boundaryJson,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$LocalStateTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalStateTableTable> {
+  $$LocalStateTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get countryId => $composableBuilder(
+      column: $table.countryId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalStateTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalStateTableTable> {
+  $$LocalStateTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get countryId => $composableBuilder(
+      column: $table.countryId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalStateTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalStateTableTable> {
+  $$LocalStateTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => column);
+
+  GeneratedColumn<String> get countryId =>
+      $composableBuilder(column: $table.countryId, builder: (column) => column);
+
+  GeneratedColumn<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalStateTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalStateTableTable,
+    LocalState,
+    $$LocalStateTableTableFilterComposer,
+    $$LocalStateTableTableOrderingComposer,
+    $$LocalStateTableTableAnnotationComposer,
+    $$LocalStateTableTableCreateCompanionBuilder,
+    $$LocalStateTableTableUpdateCompanionBuilder,
+    (
+      LocalState,
+      BaseReferences<_$AppDatabase, $LocalStateTableTable, LocalState>
+    ),
+    LocalState,
+    PrefetchHooks Function()> {
+  $$LocalStateTableTableTableManager(
+      _$AppDatabase db, $LocalStateTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalStateTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalStateTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalStateTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<double> centroidLat = const Value.absent(),
+            Value<double> centroidLon = const Value.absent(),
+            Value<String> countryId = const Value.absent(),
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalStateTableCompanion(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            countryId: countryId,
+            boundaryJson: boundaryJson,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required double centroidLat,
+            required double centroidLon,
+            required String countryId,
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalStateTableCompanion.insert(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            countryId: countryId,
+            boundaryJson: boundaryJson,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalStateTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalStateTableTable,
+    LocalState,
+    $$LocalStateTableTableFilterComposer,
+    $$LocalStateTableTableOrderingComposer,
+    $$LocalStateTableTableAnnotationComposer,
+    $$LocalStateTableTableCreateCompanionBuilder,
+    $$LocalStateTableTableUpdateCompanionBuilder,
+    (
+      LocalState,
+      BaseReferences<_$AppDatabase, $LocalStateTableTable, LocalState>
+    ),
+    LocalState,
+    PrefetchHooks Function()>;
+typedef $$LocalCityTableTableCreateCompanionBuilder = LocalCityTableCompanion
+    Function({
+  required String id,
+  required String name,
+  required double centroidLat,
+  required double centroidLon,
+  required String stateId,
+  Value<String?> boundaryJson,
+  Value<int?> cellsTotal,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$LocalCityTableTableUpdateCompanionBuilder = LocalCityTableCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<double> centroidLat,
+  Value<double> centroidLon,
+  Value<String> stateId,
+  Value<String?> boundaryJson,
+  Value<int?> cellsTotal,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$LocalCityTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalCityTableTable> {
+  $$LocalCityTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get stateId => $composableBuilder(
+      column: $table.stateId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalCityTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalCityTableTable> {
+  $$LocalCityTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get stateId => $composableBuilder(
+      column: $table.stateId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalCityTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalCityTableTable> {
+  $$LocalCityTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => column);
+
+  GeneratedColumn<String> get stateId =>
+      $composableBuilder(column: $table.stateId, builder: (column) => column);
+
+  GeneratedColumn<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => column);
+
+  GeneratedColumn<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalCityTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalCityTableTable,
+    LocalCity,
+    $$LocalCityTableTableFilterComposer,
+    $$LocalCityTableTableOrderingComposer,
+    $$LocalCityTableTableAnnotationComposer,
+    $$LocalCityTableTableCreateCompanionBuilder,
+    $$LocalCityTableTableUpdateCompanionBuilder,
+    (LocalCity, BaseReferences<_$AppDatabase, $LocalCityTableTable, LocalCity>),
+    LocalCity,
+    PrefetchHooks Function()> {
+  $$LocalCityTableTableTableManager(
+      _$AppDatabase db, $LocalCityTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalCityTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalCityTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalCityTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<double> centroidLat = const Value.absent(),
+            Value<double> centroidLon = const Value.absent(),
+            Value<String> stateId = const Value.absent(),
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<int?> cellsTotal = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalCityTableCompanion(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            stateId: stateId,
+            boundaryJson: boundaryJson,
+            cellsTotal: cellsTotal,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required double centroidLat,
+            required double centroidLon,
+            required String stateId,
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<int?> cellsTotal = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalCityTableCompanion.insert(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            stateId: stateId,
+            boundaryJson: boundaryJson,
+            cellsTotal: cellsTotal,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalCityTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalCityTableTable,
+    LocalCity,
+    $$LocalCityTableTableFilterComposer,
+    $$LocalCityTableTableOrderingComposer,
+    $$LocalCityTableTableAnnotationComposer,
+    $$LocalCityTableTableCreateCompanionBuilder,
+    $$LocalCityTableTableUpdateCompanionBuilder,
+    (LocalCity, BaseReferences<_$AppDatabase, $LocalCityTableTable, LocalCity>),
+    LocalCity,
+    PrefetchHooks Function()>;
+typedef $$LocalDistrictTableTableCreateCompanionBuilder
+    = LocalDistrictTableCompanion Function({
+  required String id,
+  required String name,
+  required double centroidLat,
+  required double centroidLon,
+  required String cityId,
+  Value<String?> boundaryJson,
+  Value<int?> cellsTotal,
+  Value<String> source,
+  Value<String?> sourceId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$LocalDistrictTableTableUpdateCompanionBuilder
+    = LocalDistrictTableCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<double> centroidLat,
+  Value<double> centroidLon,
+  Value<String> cityId,
+  Value<String?> boundaryJson,
+  Value<int?> cellsTotal,
+  Value<String> source,
+  Value<String?> sourceId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$LocalDistrictTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalDistrictTableTable> {
+  $$LocalDistrictTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get cityId => $composableBuilder(
+      column: $table.cityId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+      column: $table.sourceId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalDistrictTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalDistrictTableTable> {
+  $$LocalDistrictTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get cityId => $composableBuilder(
+      column: $table.cityId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+      column: $table.sourceId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalDistrictTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalDistrictTableTable> {
+  $$LocalDistrictTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLat => $composableBuilder(
+      column: $table.centroidLat, builder: (column) => column);
+
+  GeneratedColumn<double> get centroidLon => $composableBuilder(
+      column: $table.centroidLon, builder: (column) => column);
+
+  GeneratedColumn<String> get cityId =>
+      $composableBuilder(column: $table.cityId, builder: (column) => column);
+
+  GeneratedColumn<String> get boundaryJson => $composableBuilder(
+      column: $table.boundaryJson, builder: (column) => column);
+
+  GeneratedColumn<int> get cellsTotal => $composableBuilder(
+      column: $table.cellsTotal, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$LocalDistrictTableTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalDistrictTableTable,
+    LocalDistrict,
+    $$LocalDistrictTableTableFilterComposer,
+    $$LocalDistrictTableTableOrderingComposer,
+    $$LocalDistrictTableTableAnnotationComposer,
+    $$LocalDistrictTableTableCreateCompanionBuilder,
+    $$LocalDistrictTableTableUpdateCompanionBuilder,
+    (
+      LocalDistrict,
+      BaseReferences<_$AppDatabase, $LocalDistrictTableTable, LocalDistrict>
+    ),
+    LocalDistrict,
+    PrefetchHooks Function()> {
+  $$LocalDistrictTableTableTableManager(
+      _$AppDatabase db, $LocalDistrictTableTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalDistrictTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalDistrictTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalDistrictTableTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<double> centroidLat = const Value.absent(),
+            Value<double> centroidLon = const Value.absent(),
+            Value<String> cityId = const Value.absent(),
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<int?> cellsTotal = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<String?> sourceId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalDistrictTableCompanion(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            cityId: cityId,
+            boundaryJson: boundaryJson,
+            cellsTotal: cellsTotal,
+            source: source,
+            sourceId: sourceId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required double centroidLat,
+            required double centroidLon,
+            required String cityId,
+            Value<String?> boundaryJson = const Value.absent(),
+            Value<int?> cellsTotal = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<String?> sourceId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalDistrictTableCompanion.insert(
+            id: id,
+            name: name,
+            centroidLat: centroidLat,
+            centroidLon: centroidLon,
+            cityId: cityId,
+            boundaryJson: boundaryJson,
+            cellsTotal: cellsTotal,
+            source: source,
+            sourceId: sourceId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalDistrictTableTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalDistrictTableTable,
+    LocalDistrict,
+    $$LocalDistrictTableTableFilterComposer,
+    $$LocalDistrictTableTableOrderingComposer,
+    $$LocalDistrictTableTableAnnotationComposer,
+    $$LocalDistrictTableTableCreateCompanionBuilder,
+    $$LocalDistrictTableTableUpdateCompanionBuilder,
+    (
+      LocalDistrict,
+      BaseReferences<_$AppDatabase, $LocalDistrictTableTable, LocalDistrict>
+    ),
+    LocalDistrict,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -9440,7 +11344,12 @@ class $AppDatabaseManager {
   $$LocalCellPropertiesTableTableTableManager get localCellPropertiesTable =>
       $$LocalCellPropertiesTableTableTableManager(
           _db, _db.localCellPropertiesTable);
-  $$LocalLocationNodeTableTableTableManager get localLocationNodeTable =>
-      $$LocalLocationNodeTableTableTableManager(
-          _db, _db.localLocationNodeTable);
+  $$LocalCountryTableTableTableManager get localCountryTable =>
+      $$LocalCountryTableTableTableManager(_db, _db.localCountryTable);
+  $$LocalStateTableTableTableManager get localStateTable =>
+      $$LocalStateTableTableTableManager(_db, _db.localStateTable);
+  $$LocalCityTableTableTableManager get localCityTable =>
+      $$LocalCityTableTableTableManager(_db, _db.localCityTable);
+  $$LocalDistrictTableTableTableManager get localDistrictTable =>
+      $$LocalDistrictTableTableTableManager(_db, _db.localDistrictTable);
 }

@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
 | Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
-| Tests | 1835 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 1962 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | info-level issues only (0 errors, 0 warnings) |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
@@ -332,7 +332,7 @@ class FogNotifier extends Notifier<Map<String, FogState>> {
 
 ### Drift (SQLite) ORM
 
-6 tables: `LocalCellProgressTable`, `LocalItemInstanceTable`, `LocalPlayerProfileTable`, `LocalSpeciesTable`, `LocalWriteQueueTable`, `LocalCellPropertiesTable`, `LocalLocationNodeTable`. Schema v20.
+6 tables: `LocalCellProgressTable`, `LocalItemInstanceTable`, `LocalPlayerProfileTable`, `LocalSpeciesTable`, `LocalWriteQueueTable`, `LocalCellPropertiesTable`. Plus 4 hierarchy tables: `LocalCountryTable`, `LocalStateTable`, `LocalCityTable`, `LocalDistrictTable`. Schema v24.
 
 `LocalItemInstanceTable` has 32 denormalized enrichment columns (15 data + 17 per-field version stamps). `LocalSpeciesTable` has 11 per-field version stamps. Each enrichable field has a companion `_enrichver` column tracking the pipeline commit that produced the value.
 

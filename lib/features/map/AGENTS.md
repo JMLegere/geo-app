@@ -30,7 +30,7 @@ Pure logic controllers with callback injection. **NOT Riverpod Notifiers.** Plai
 **3 controllers:**
 
 - **CameraController**: Follow/free mode switching, zoom constraints (min/max), camera movement logic. Calls `onCameraMove(lat, lon)`, `onZoomChanged(zoom)` callbacks.
-- **FogOverlayController**: Manages fog render state + cell property icon GeoJSON + territory border GeoJSON. Has `cellPropertiesCache`, `dailySeed`, and `locationNodesCache` setters. Getters: `cellIconsGeoJson` (SymbolLayer), `borderFillGeoJson` (FillLayer), `borderLinesGeoJson` (LineLayer). Territory border build is guarded by non-empty `cellPropertiesCache` and `locationNodesCache`.
+- **FogOverlayController**: Manages fog render state + cell property icon GeoJSON + territory border GeoJSON. Has `cellPropertiesCache`, `dailySeed`, `cellDistrictIds`, and `districtAncestry` setters. Getters: `cellIconsGeoJson` (SymbolLayer), `borderFillGeoJson` (FillLayer), `borderLinesGeoJson` (LineLayer). Territory border build is guarded by non-empty `cellDistrictIds` and `districtAncestry`.
 - **MapOverlayController**: Coordinates multiple overlays (fog, player marker, debug HUD).
 
 **Controller Pattern:**
@@ -79,8 +79,9 @@ UI components overlaid on the map:
   - `buildBorderFill()` — Polygon FeatureCollection with BFS-computed `border_distance_<level>` and `region_color_<level>` properties for quadratic opacity falloff (0.15 → 0.04 → 0.01 → 0.00 over 3 cells)
   - `buildBorderLines()` — LineString FeatureCollection on shared Voronoi edges where adjacent cells belong to different admin regions. Properties: `border_color`, `line_weight`, `admin_level`
   - Stacking rule: only lowest-level differing border renders between adjacent cells (district > city > state > country)
-  - Color: from `LocationNode.colorHex`, or deterministic FNV-1a hash of `osmId` when null
-  - Line weights: country 3px, state 2px, city 1.5px, district 1px (constants in `shared/constants.dart`)
+  - Input: `cellDistrictIds` (cellId→districtId) + `districtAncestry` (districtId→{cityId, stateId, countryId})
+  - Color: deterministic FNV-1a hash of region ID string
+  - Line weights: country 12px, state 8px, city 6px, district 4px
 - **cell_property_geojson_builder.dart**: Builds Point FeatureCollection for cell property icons:
   - `buildCellIcons()` — GeoJSON Point features with `icon`, `offsetX`, `offsetY` properties
   - Visibility rules: current/visited → full grid (habitat + climate + event), adjacent unvisited with event → "?" icon, else → nothing
@@ -91,6 +92,7 @@ UI components overlaid on the map:
   - Required because MapLibre cannot render emoji in `text-field` (BMP-only limitation)
 - **mercator_projection.dart**: Pure Web Mercator math. `geoToScreen`/`screenToGeo`/`visibleBounds`. Lat clamped ±85.051129°.
 - **map_visibility.dart**: CSS-based MapLibre container visibility control for web. `AnimatedOpacity` cannot hide `HtmlElementView` — CSS injection required.
+- **debug_bridge.dart**: Conditional import hub → `debug_bridge_stub.dart` (no-op) or `debug_bridge_web.dart` (exposes `window.__earthNovaDebug`). Methods: `toggleInfographic()`, `isInfographicOpen()`. Used by Playwright E2E tests.
 - **map_logger.dart**: Rate-limited logger with channels (RUBBER, CAMERA, FOG, KEY, LOC). Errors always log immediately. **Known debt:** mutable static variables.
 
 ---
@@ -148,10 +150,11 @@ GameIcons emoji → MapIconRenderer.renderEmoji() → PNG bytes
 **Layer ordering:** Rendered between `fog-border` and `cell-icons` layers.
 
 **Data flow:**
-1. `_loadLocationNodes()` lazily loads all `LocationNode` records from `LocationNodeRepository.getAll()` on first fog render
-2. `fogOverlayController.locationNodesCache` receives the node map
-3. `_buildGeoJson()` calls `TerritoryBorderGeoJsonBuilder.buildBorderFill()` / `.buildBorderLines()`
-4. GeoJSON sources updated via `setGeoJsonSource()` in `_updateFogSources()`
+1. `_loadDistrictAncestry()` loads district ancestry from `HierarchyRepository` on first fog render
+2. `fogOverlayController.cellDistrictIds` receives cell→district attribution from detection zone
+3. `fogOverlayController.districtAncestry` receives district→{city, state, country} ancestry map
+4. `_rebuildTerritoryBorders()` calls `TerritoryBorderGeoJsonBuilder.buildBorderFill()` / `.buildBorderLines()`
+5. GeoJSON sources updated via `setGeoJsonSource()` in `_updateFogSources()`
 
 **Fill layer properties per feature:**
 ```json
@@ -169,28 +172,9 @@ GameIcons emoji → MapIconRenderer.renderEmoji() → PNG bytes
 - Distance 2: ~0.01
 - Distance 3+: 0.00
 
-**Location node loading:** Lazy, fires once. Does not refresh during gameplay. Cache won't update until app restart if new cells are enriched.
+**Color generation:** Deterministic FNV-1a hash of region ID string. No database lookup needed.
 
----
-
-## Admin Boundary Polygon Layers
-
-7th and 8th MapLibre layers — GeoJSON fill + line layers rendering resolved admin boundaries fetched from Nominatim.
-
-**Source/Layer IDs:**
-- `admin-boundary-fill-src` / `admin-boundary-fill` — FillLayer with boundary polygon fill
-- `admin-boundary-lines-src` / `admin-boundary-lines` — LineLayer outlining the boundary
-
-**Layer ordering:** Rendered BELOW fog layers — boundaries are visible through fog.
-
-**GeoJSON builder:** `AdminBoundaryGeoJsonBuilder` — builds FeatureCollections from `LocationNode.geometryJson` strings.
-
-**Data flow (event-driven, NOT 10Hz):**
-1. `AdminBoundaryService.requestBoundaries(locationNodeId)` triggers fetch via `resolve-admin-boundaries` Edge Function
-2. `AdminBoundaryService.onBoundariesResolved` stream fires when geometry arrives
-3. `FogOverlayController.updateAdminBoundaries()` rebuilds GeoJSON and calls `setGeoJsonSource()`
-
-**Anti-pattern:** Never rebuild admin boundary GeoJSON in the 10Hz render loop. Boundaries only change on cell enrichment events.
+**Hierarchy data:** Loaded lazily from `HierarchyRepository` (4-table system: countries, states, cities, districts). Refreshes when enrichment completes.
 
 ---
 
@@ -261,7 +245,7 @@ All services injected via Riverpod providers. The widget manages:
 - `_gameCoordinator` (read from gameCoordinatorProvider, already started)
 - `_rawGpsSubscription` (subscribes to coordinator.onRawGpsUpdate for rubber-band)
 - `_showDebugHud` toggle state
-- `_locationNodesMap` / `_locationNodesLoaded` (lazy-loaded LocationNode cache for territory borders)
+- `_districtAncestryMap` / `_districtDataMap` (lazy-loaded hierarchy data for territory borders and infographic)
 - Fog GeoJSON rendering (throttled ~10 Hz via `_renderFrame`)
 
 **Removed from map_screen (now in GameCoordinator):**
@@ -335,9 +319,35 @@ The following issues were resolved in the service injection refactoring:
 
 ---
 
+## Keyboard Shortcuts
+
+| Key | Action | Scope |
+|-----|--------|-------|
+| `W/A/S/D` + Arrows | Player movement (10m/step) | `KeyboardLocationService` (web only) |
+| `I` | Toggle district infographic | `_MapScreenState._onKeyEvent` (all platforms) |
+
+The `I` shortcut uses `HardwareKeyboard.instance.addHandler()` registered in `initState()`, removed in `dispose()`.
+
+---
+
+## E2E Debug Bridge
+
+`window.__earthNovaDebug` JS object (web only) — created by `DebugBridge` in `initState()`, disposed in `dispose()`.
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `toggleInfographic()` | void | Toggles `_showDistrictInfographic` via `setState()` |
+| `isInfographicOpen()` | bool | Current infographic visibility state |
+
+Playwright tests in `e2e/tests/` use this bridge for automated testing. See `e2e/playwright.config.ts`.
+
+---
+
 ## Testing
 
 - **Controllers:** Unit test with mock callbacks. No Riverpod needed.
 - **Painters:** Widget test with mock Canvas. Verify draw calls.
 - **Providers:** Test with ProviderContainer. Verify state transitions.
 - **Projection:** Unit test with known lat/lon ↔ x/y pairs.
+- **Infographic:** 34 tests across data model (15), painter (11), and overlay (8).
+- **E2E:** Playwright tests in `e2e/tests/` — requires running Flutter web build.

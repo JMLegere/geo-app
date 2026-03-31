@@ -47,7 +47,6 @@ import 'package:earth_nova/features/location/services/real_gps_service.dart';
 import 'package:earth_nova/features/map/providers/discovery_service_provider.dart';
 import 'package:earth_nova/features/map/providers/location_service_provider.dart';
 import 'package:earth_nova/features/steps/providers/step_provider.dart';
-import 'package:earth_nova/features/sync/providers/admin_boundary_provider.dart';
 import 'package:earth_nova/features/sync/providers/location_enrichment_provider.dart';
 import 'package:earth_nova/features/sync/providers/queue_processor_provider.dart';
 import 'package:earth_nova/features/sync/providers/sync_provider.dart';
@@ -58,7 +57,6 @@ import 'package:earth_nova/core/models/habitat.dart';
 import 'package:earth_nova/core/state/affix_backfill.dart';
 import 'package:earth_nova/core/species/species_cache.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
-import 'package:earth_nova/core/state/location_node_repository_provider.dart';
 import 'package:earth_nova/core/state/species_repository_provider.dart';
 
 /// Bridges [GameEngine] (core, pure Dart) with feature-layer services.
@@ -95,10 +93,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
 
   final cellPropertyResolver = ref.read(cellPropertyResolverProvider);
   final cellPropertyRepo = ref.watch(cellPropertyRepositoryProvider);
-
-  // Gate flag: set true after Supabase hydration so that zone computation
-  // fires exactly once (post-hydration) rather than 5 times during startup.
-  var _zoneHydrationComplete = false;
 
   // Structured event telemetry — thin debugPrint wrapper.
   // Events flow through DebugLogBuffer → LogFlushService → app_logs.
@@ -272,24 +266,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // so BOTH event emission and Riverpod state mutations fire on each callback.
   // Engine handler fires first (event emission), then provider logic follows.
 
-  // Zone bootstrap closure — assigned after detectionZoneService and
-  // _lastDistrictId are declared (below). Called from onPlayerLocationUpdate
-  // to handle the GPS-arrives-after-hydration race condition.
-  void Function()? _maybeBootstrapZone;
+  final detectionZoneService = ref.read(detectionZoneServiceProvider);
 
   final engineOnLocation = coordinator.onPlayerLocationUpdate;
   coordinator.onPlayerLocationUpdate = (Geographic position, double accuracy) {
     engineOnLocation?.call(position, accuracy);
     if (_providerDisposed) return;
     ref.read(locationProvider.notifier).updateLocation(position, accuracy);
-
-    // ── Zone bootstrap on first GPS fix ──────────────────────────────────
-    // If Supabase hydration completed before GPS was available, the zone
-    // computation (post-hydration block) was skipped (currentCell was null).
-    // For returning users, onCellVisited also won't fire (cell already in
-    // visitedCellIds). This catch-up triggers zone computation on the
-    // first GPS update after hydration.
-    _maybeBootstrapZone?.call();
+    detectionZoneService.updatePlayerPosition(position.lat, position.lon);
   };
 
   final engineOnGpsError = coordinator.onGpsErrorChanged;
@@ -342,67 +326,11 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         lon: center.lon,
       );
     }
-
-    // Trigger admin boundary polygon fetch for the visited cell.
-    // AdminBoundaryService deduplicates by rounded lat/lon and only calls the
-    // Edge Function when admin levels are missing geometry.
-    final adminBoundaryService = ref.read(adminBoundaryServiceProvider);
-    adminBoundaryService?.requestBoundaries(
-      visitedCenter.lat,
-      visitedCenter.lon,
-    );
-  };
-
-  // ── Detection zone wiring ──────────────────────────────────────────────
-  // When a cell's locationId (district) changes, recompute the detection zone
-  // (current district + adjacent districts) and forward to the fog resolver.
-  final detectionZoneService = ref.read(detectionZoneServiceProvider);
-  detectionZoneService.cellPropertiesLookup =
-      (cellId) => coordinator.cellPropertiesCache[cellId];
-  String? _lastDistrictId;
-
-  // ── Zone bootstrap closure ─────────────────────────────────────────────
-  // Handles the race where GPS arrives after Supabase hydration completes.
-  // On web, browser Geolocation takes 5-30s while hydration finishes in 2-5s.
-  // The post-hydration block (line ~1115) skips zone computation when
-  // currentCell is null. For returning users, onCellVisited also won't fire
-  // (cell already in visitedCellIds). This closure catches up.
-  _maybeBootstrapZone = () {
-    if (!_zoneHydrationComplete) return;
-    if (detectionZoneService.detectionZoneCellIds.isNotEmpty) return;
-    final currentCell = fogResolver.currentCellId;
-    if (currentCell == null || _lastDistrictId != null) return;
-
-    final props = coordinator.cellPropertiesCache[currentCell];
-    if (props?.locationId != null) {
-      // locationId cached from SQLite — compute zone immediately.
-      _lastDistrictId = props!.locationId;
-      detectionZoneService.onDistrictChange(props.locationId!);
-      debugPrint('[DetectionZone] bootstrap from GPS fix: '
-          'district=${props.locationId}');
-    } else {
-      // No locationId yet — request enrichment + admin boundaries.
-      // The onLocationEnriched / onBoundariesResolved listeners will
-      // trigger zone computation when data arrives.
-      final center = cellService.getCellCenter(currentCell);
-      ref.read(locationEnrichmentServiceProvider).requestEnrichment(
-            cellId: currentCell,
-            lat: center.lat,
-            lon: center.lon,
-          );
-      ref
-          .read(adminBoundaryServiceProvider)
-          ?.requestBoundaries(center.lat, center.lon);
-      debugPrint('[DetectionZone] bootstrap: no locationId — '
-          'requesting enrichment for $currentCell');
-    }
   };
 
   // When enrichment resolves a locationId for a cell, update the in-memory
-  // cache, flood-fill nearby cached cells with the same district (spatial
-  // dedup — avoids 100s of Nominatim calls), and trigger detection zone.
+  // cache. Detection zone now uses radius-based expansion from GPS position.
   final locationEnrichmentSvc = ref.read(locationEnrichmentServiceProvider);
-  final enrichLocationNodeRepo = ref.read(locationNodeRepositoryProvider);
 
   locationEnrichmentSvc.onLocationEnriched.listen((event) async {
     if (_providerDisposed) return;
@@ -412,47 +340,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     if (cached != null && cached.locationId == null) {
       coordinator.updateCellPropertyLocationId(event.cellId, event.locationId);
     }
-
-    // ── Spatial dedup: flood-fill locationId to nearby cached cells ──────
-    // When this district has geometry, compute all cells inside the polygon
-    // and assign them the same locationId — no Nominatim call needed.
-    final node = await enrichLocationNodeRepo.get(event.locationId);
-    if (node?.geometryJson != null) {
-      final districtCellIds = await detectionZoneService
-          .computeCellIdsForDistrict(event.locationId);
-      var floodFilled = 0;
-      for (final cellId in districtCellIds) {
-        final props = coordinator.cellPropertiesCache[cellId];
-        if (props != null && props.locationId == null) {
-          coordinator.updateCellPropertyLocationId(cellId, event.locationId);
-          await cellPropertyRepo.updateLocationId(cellId, event.locationId);
-          floodFilled++;
-        }
-      }
-      if (floodFilled > 0) {
-        debugPrint('[DetectionZone] flood-filled $floodFilled cells '
-            'with district=${event.locationId}');
-      }
-    }
-
-    // Trigger detection zone if this is a new district (only after hydration).
-    if (event.locationId != _lastDistrictId && _zoneHydrationComplete) {
-      _lastDistrictId = event.locationId;
-      detectionZoneService.onDistrictChange(event.locationId);
-    }
-  });
-
-  // When admin boundary geometry arrives (async, after Nominatim fetch),
-  // re-trigger detection zone computation. The initial onDistrictChange()
-  // likely ran before geometry was available → returned empty zone. Now
-  // that geometry exists, recompute. Clear _lastDistrictId to bypass dedup.
-  final adminBoundaryServiceForZone = ref.read(adminBoundaryServiceProvider);
-  adminBoundaryServiceForZone?.onBoundariesResolved.listen((nodeIds) {
-    if (_providerDisposed) return;
-    // Geometry just arrived — recompute detection zone (initial computation
-    // likely returned 0 cells because geometry wasn't available yet).
-    _lastDistrictId = null; // Allow re-entry in provider dedup
-    detectionZoneService.recomputeCurrentZone();
   });
 
   detectionZoneService.onDetectionZoneChanged.listen((zoneCellIds) {
@@ -586,18 +473,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       userId: ref.read(authProvider).user?.id,
       obs: obs,
     );
-
-    // Detect district change: only trigger for the player's CURRENT cell.
-    // Neighbor cells resolving in a different district should not hijack the
-    // detection zone — only the cell the player is standing in matters.
-    final districtId = properties.locationId;
-    if (districtId != null &&
-        districtId != _lastDistrictId &&
-        properties.cellId == fogResolver.currentCellId &&
-        _zoneHydrationComplete) {
-      _lastDistrictId = districtId;
-      detectionZoneService.onDistrictChange(districtId);
-    }
   };
 
   final engineOnDiscovery = coordinator.onItemDiscovered;
@@ -1086,7 +961,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         itemRepo: itemRepo,
         cellPropertyRepo: cellPropertyRepo,
-        locationNodeRepo: ref.read(locationNodeRepositoryProvider),
         db: ref.read(appDatabaseProvider),
         speciesCache: ref.read(speciesCacheProvider),
         obs: obs,
@@ -1107,75 +981,15 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           );
         }
 
-        // Detection zone: single computation after all data is ready.
-        // Supabase hydration provides locationId on cells + location nodes with
-        // geometry. This is the ONE authoritative trigger.
-        _zoneHydrationComplete = true;
-
-        final currentCell = fogResolver.currentCellId;
-        if (currentCell != null) {
-          final props = coordinator.cellPropertiesCache[currentCell];
-          if (props?.locationId != null) {
-            _lastDistrictId = props!.locationId;
-            await detectionZoneService.onDistrictChange(props.locationId!);
-
-            debugPrint('[DetectionZone] computed after hydration: '
-                'district=${props.locationId}, '
-                'zone=${detectionZoneService.detectionZoneCellIds.length} cells');
-
-            // Fallback: if zone is empty (no cached cellIds, no geometry),
-            // fetch geometry from Nominatim. The onBoundariesResolved listener
-            // will fire recomputeCurrentZone() as the one allowed re-trigger.
-            if (detectionZoneService.detectionZoneCellIds.isEmpty) {
-              final center = cellService.getCellCenter(currentCell);
-              debugPrint(
-                  '[DetectionZone] zone empty — fetching geometry with retry');
-              ObservabilityBuffer.instance
-                  ?.event('detection_zone_empty_retry', {
-                'cell_id': currentCell,
-                'district_id': props.locationId,
-              });
-              // Retry with backoff: 0s, 10s, 30s. The onBoundariesResolved
-              // listener will recompute the zone when geometry arrives.
-              for (final delay in [
-                Duration.zero,
-                const Duration(seconds: 10),
-                const Duration(seconds: 30)
-              ]) {
-                Future.delayed(delay, () {
-                  if (_providerDisposed) return;
-                  if (detectionZoneService.detectionZoneCellIds.isNotEmpty)
-                    return;
-                  debugPrint('[DetectionZone] retry after ${delay.inSeconds}s');
-                  ref
-                      .read(adminBoundaryServiceProvider)
-                      ?.requestBoundaries(center.lat, center.lon);
-                });
-              }
-            }
-          } else {
-            // locationId not yet available — delegate to bootstrap closure
-            // which will request enrichment + admin boundaries.
-            _maybeBootstrapZone?.call();
-            debugPrint('[DetectionZone] no locationId after hydration — '
-                'bootstrap triggered for enrichment');
-          }
-        } else {
-          // currentCell is null — GPS hasn't arrived yet. On web with
-          // keyboard mode, the initial emission may have been lost on the
-          // broadcast stream despite the subscription ordering fix.
-          // Seed the fog resolver from the restored profile position so
-          // zone computation can proceed without waiting for GPS.
-          if (restoredLat != null && restoredLon != null) {
-            fogResolver.onLocationUpdate(restoredLat, restoredLon);
-            debugPrint('[DetectionZone] seeded fog resolver from restored '
-                'position: $restoredLat, $restoredLon');
-            _maybeBootstrapZone?.call();
-          } else {
-            _maybeBootstrapZone?.call();
-            debugPrint('[DetectionZone] no currentCell or restored position — '
-                'bootstrap deferred to next GPS update');
-          }
+        // Detection zone now computes automatically from GPS position via
+        // updatePlayerPosition. Seed the fog resolver from the restored
+        // position if GPS hasn't arrived yet so the map starts correctly.
+        if (restoredLat != null && restoredLon != null) {
+          fogResolver.onLocationUpdate(restoredLat, restoredLon);
+          await detectionZoneService.updatePlayerPosition(
+              restoredLat, restoredLon);
+          debugPrint('[DetectionZone] seeded from restored position: '
+              '$restoredLat, $restoredLon');
         }
 
         // Species cache is already refreshed inside hydrateFromSupabase()
