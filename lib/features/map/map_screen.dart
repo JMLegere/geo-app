@@ -1348,6 +1348,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final zoom = event.camera.zoom;
       _currentZoom = zoom;
 
+      // If zoom is frozen (overlay open), snap back to frozen zoom.
+      // This prevents the user from zooming while the overlay is visible.
+      if (_zoomFrozen && _currentZoom != kInfographicTriggerZoom) {
+        _mapController?.moveCamera(
+          zoom: kInfographicTriggerZoom,
+        );
+        _currentZoom = kInfographicTriggerZoom;
+        return; // Skip further processing
+      }
+
       // If armed and zoom hit the trigger floor, switch to gesture-driven mode.
       if (_infographicZoomArmed &&
           _currentZoom <= kInfographicTriggerZoom + 0.05) {
@@ -1442,7 +1452,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 if (_pointerCount >= 2 &&
                     _activeHierarchyLevel == null &&
                     !_zoomFrozen) {
-                  setState(() => _infographicZoomArmed = true);
+                  _infographicZoomArmed = true;
                 }
               },
               onPointerMove: (event) {
@@ -1532,9 +1542,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     initStyle: 'https://tiles.openfreemap.org/styles/positron',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
-                    minZoom: _infographicZoomArmed
-                        ? kInfographicTriggerZoom
-                        : kMinZoom,
+                    // Allow zooming down to infographic trigger level so the user
+                    // can smoothly pinch into the overlay. Zoom freeze is handled
+                    // in _onMapEvent by snapping back to frozen zoom.
+                    minZoom: kInfographicTriggerZoom,
                     maxZoom: kMaxZoom,
                     attribution: false,
                     nativeLogo: false,
@@ -1547,7 +1558,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     gestures: MapGestures.all(
                       pitch: false,
                       pan: false,
-                      zoom: !_zoomFrozen,
                     ),
                   ),
                   onMapCreated: _onMapCreated,
