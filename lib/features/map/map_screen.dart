@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:earth_nova/shared/mixins/observable_lifecycle.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre/maplibre.dart';
@@ -55,6 +55,7 @@ import 'package:earth_nova/features/sync/providers/location_enrichment_provider.
 import 'package:earth_nova/features/sync/services/location_enrichment_service.dart';
 import 'package:earth_nova/features/sync/widgets/sync_toast_overlay.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/error_boundary.dart';
 import 'package:earth_nova/core/state/detection_zone_provider.dart';
 import 'package:earth_nova/features/map/models/hierarchy_level.dart';
@@ -123,6 +124,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// position from raw GPS coordinates and drives 60fps camera + marker
   /// updates via a Ticker.
   late final RubberBandController _rubberBand;
+  late final AnimationController _infographicTransitionCtrl;
+  late final Animation<double> _infographicFade;
+  late final Animation<double> _infographicScale;
 
   /// Interpolated display position for the player marker (updated at 60fps).
   ///
@@ -139,6 +143,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   bool _showDebugHud = false;
   HierarchyLevel? _activeHierarchyLevel;
+
+  /// Whether the map is in "zooming toward infographic" mode.
+  /// When true, minZoom is temporarily lowered to kInfographicTriggerZoom.
+  bool _infographicZoomArmed = false;
+
+  /// Whether zoom gestures are frozen (during overlay animation or while open).
+  bool _zoomFrozen = false;
+
+  /// Pointer count for multitouch detection.
+  int _pointerCount = 0;
 
   /// JavaScript debug bridge for Playwright E2E tests.
   /// Exposes `window.__earthNovaDebug` on web; no-op on native.
@@ -237,6 +251,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
       },
     );
 
+    _infographicTransitionCtrl = AnimationController(
+      vsync: this,
+      duration: Durations.infographicTransition,
+    );
+    _infographicFade = CurvedAnimation(
+      parent: _infographicTransitionCtrl,
+      curve: AppCurves.fadeIn,
+    );
+    _infographicScale = Tween<double>(
+      begin: kInfographicEntryScale,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _infographicTransitionCtrl,
+      curve: AppCurves.standard,
+    ));
+
     // Read GameCoordinator — it's already started by the provider.
     _gameCoordinator = ref.read(gameCoordinatorProvider);
     _engineRunner = ref.read(engineRunnerProvider);
@@ -328,6 +358,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _markerPosition.dispose();
     _cameraController.dispose();
     _rawGpsSubscription?.cancel();
+    _infographicTransitionCtrl.dispose();
     super.dispose();
   }
 
@@ -337,13 +368,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (event is! KeyDownEvent) return false;
 
     if (event.logicalKey == LogicalKeyboardKey.keyI) {
-      setState(() {
-        if (_activeHierarchyLevel == null) {
-          _activeHierarchyLevel = HierarchyLevel.district;
-        } else {
-          _activeHierarchyLevel = null;
-        }
-      });
+      if (_activeHierarchyLevel == null) {
+        _triggerInfographicOpen();
+      } else {
+        _dismissInfographic();
+      }
       debugPrint('[MAP] keyboard shortcut: hierarchy=$_activeHierarchyLevel');
       return true;
     }
@@ -675,6 +704,34 @@ class _MapScreenState extends ConsumerState<MapScreen>
     } catch (e, stack) {
       MapLogger.fogUpdateError(e, stack);
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Infographic open/dismiss
+  // ---------------------------------------------------------------------------
+
+  /// Triggers the district infographic overlay with scale+fade animation.
+  void _triggerInfographicOpen() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _zoomFrozen = true;
+      _activeHierarchyLevel = HierarchyLevel.district;
+    });
+    _infographicTransitionCtrl.forward(from: 0.0);
+  }
+
+  /// Dismisses the district infographic with reverse animation.
+  void _dismissInfographic() {
+    _infographicTransitionCtrl.reverse().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _activeHierarchyLevel = null;
+        _zoomFrozen = false;
+        _infographicZoomArmed = false;
+      });
+      // Snap map back to normal zoom.
+      _mapController?.moveCamera(zoom: kMinZoom);
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1182,6 +1239,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
     //
     // Only MapEventLongClick triggers cell selection — tap is reserved for
     // future interactions (e.g. species, markers). Long press shows cell details.
+    if (event is MapEventMoveCamera) {
+      final zoom = event.camera.zoom;
+      _currentZoom = zoom;
+
+      // If armed and zoom hit the trigger floor, open the infographic.
+      if (_infographicZoomArmed &&
+          _currentZoom <= kInfographicTriggerZoom + 0.05) {
+        _infographicZoomArmed = false;
+        _triggerInfographicOpen();
+      }
+    }
+
     if (event is MapEventLongClick) {
       // MapLibre Position is (lng, lat) — longitude first.
       // event.point.lat/lng return num, so cast to double for getCellId.
@@ -1246,14 +1315,31 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // fires onLongPressDown immediately (0 ms) for instant haptic
             // feedback, and onLongPressStart when the hold completes (~500 ms).
             // MercatorProjection converts screen coords → geo for cell lookup.
-            GestureDetector(
-              onScaleUpdate: (details) {
-                if (_activeHierarchyLevel == null &&
-                    details.pointerCount >= 2 &&
-                    details.scale < kInfographicPinchOutThreshold) {
-                  HapticFeedback.mediumImpact();
-                  setState(
-                      () => _activeHierarchyLevel = HierarchyLevel.district);
+            Listener(
+              onPointerDown: (_) {
+                _pointerCount++;
+                if (_pointerCount >= 2 &&
+                    _activeHierarchyLevel == null &&
+                    !_zoomFrozen) {
+                  setState(() => _infographicZoomArmed = true);
+                }
+              },
+              onPointerUp: (_) {
+                _pointerCount = (_pointerCount - 1).clamp(0, 99);
+                if (_pointerCount < 2 && _infographicZoomArmed) {
+                  setState(() => _infographicZoomArmed = false);
+                  if (_currentZoom < kMinZoom) {
+                    _mapController?.moveCamera(zoom: kMinZoom);
+                  }
+                }
+              },
+              onPointerCancel: (_) {
+                _pointerCount = (_pointerCount - 1).clamp(0, 99);
+                if (_pointerCount < 2 && _infographicZoomArmed) {
+                  setState(() => _infographicZoomArmed = false);
+                  if (_currentZoom < kMinZoom) {
+                    _mapController?.moveCamera(zoom: kMinZoom);
+                  }
                 }
               },
               child: GestureDetector(
@@ -1288,8 +1374,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     initStyle: 'https://tiles.openfreemap.org/styles/positron',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
-                    minZoom: 15.0,
-                    maxZoom: 16.0,
+                    minZoom: _infographicZoomArmed
+                        ? kInfographicTriggerZoom
+                        : kMinZoom,
+                    maxZoom: kMaxZoom,
                     attribution: false,
                     nativeLogo: false,
                     // Disable pitch (tilt) — we never use it, and it's a 2D game.
@@ -1298,7 +1386,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     // processed by BOTH our KeyboardLocationService AND MapLibre's
                     // native pan handler, causing rapid oscillation when opposing
                     // keys are held or jitter during normal movement.
-                    gestures: const MapGestures.all(pitch: false, pan: false),
+                    gestures: MapGestures.all(
+                      pitch: false,
+                      pan: false,
+                      zoom: !_zoomFrozen,
+                    ),
                   ),
                   onMapCreated: _onMapCreated,
                   onStyleLoaded: _onStyleLoaded,
@@ -1312,7 +1404,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   ],
                 ),
               ),
-            ), // close outer pinch-out GestureDetector
+            ), // close outer Listener
 
             // ── Layer 1.5: Long press ring indicator ──────────────────────────
             // Appears immediately on finger-down, grows over kLongPressTimeout.
@@ -1433,12 +1525,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
             // ── Layer 3.9: Hierarchy overlays ──────────────────────────
             if (_activeHierarchyLevel == HierarchyLevel.district)
               Positioned.fill(
-                child: DistrictInfographicOverlay(
-                  onDismiss: () => setState(() => _activeHierarchyLevel = null),
-                  onNavigateUp: () => setState(
-                      () => _activeHierarchyLevel = HierarchyLevel.city),
-                  districtDataMap: _districtDataMap,
-                  cellService: ref.read(cellServiceProvider),
+                child: FadeTransition(
+                  opacity: _infographicFade,
+                  child: ScaleTransition(
+                    scale: _infographicScale,
+                    child: DistrictInfographicOverlay(
+                      onDismiss: _dismissInfographic,
+                      onNavigateUp: () => setState(
+                          () => _activeHierarchyLevel = HierarchyLevel.city),
+                      districtDataMap: _districtDataMap,
+                      cellService: ref.read(cellServiceProvider),
+                    ),
+                  ),
                 ),
               ),
             if (_activeHierarchyLevel != null &&

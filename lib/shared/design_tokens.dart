@@ -175,6 +175,9 @@ abstract final class Durations {
 
   /// Full cycle for the sprite idle breathing animation.
   static const Duration spriteIdle = Duration(milliseconds: 1800);
+
+  /// District infographic scale+fade transition.
+  static const Duration infographicTransition = Duration(milliseconds: 300);
 }
 
 /// Standard animation curves.

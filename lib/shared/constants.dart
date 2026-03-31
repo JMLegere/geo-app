@@ -97,6 +97,13 @@ const double kMaxZoom = 16.0;
 /// Default map zoom level.
 const double kDefaultZoom = 15.0;
 
+/// Temporary minZoom when transitioning to district infographic.
+/// 1.0 zoom level below kMinZoom gives enough pinch travel to feel intentional.
+const double kInfographicTriggerZoom = 14.0;
+
+/// Scale factor the overlay starts at (shrinks in to 1.0).
+const double kInfographicEntryScale = 1.3;
+
 /// GPS accuracy threshold (meters). If accuracy exceeds this, fall back to simulation.
 const double kGpsAccuracyThreshold = 50.0;
 
