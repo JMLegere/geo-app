@@ -38,7 +38,6 @@ Future<void> persistItemDiscovery({
   required ItemInstanceRepository itemRepo,
   required QueueProcessor queueProcessor,
   ObservabilityBuffer? obs,
-  CellProgressRepository? cellProgressRepo,
 }) async {
   // 1. Write to SQLite (local cache).
   try {
@@ -59,32 +58,6 @@ Future<void> persistItemDiscovery({
       'error': e.toString(),
     });
     return; // Do not enqueue — item was not persisted locally.
-  }
-
-  // 1b. Recompute restoration level if cell ID is known.
-  final cellId = instance.acquiredInCellId;
-  if (cellId != null && cellProgressRepo != null) {
-    try {
-      final cellItems = await itemRepo.getItemsByCell(userId, cellId);
-      final uniqueCount = cellItems.map((i) => i.definitionId).toSet().length;
-      final newLevel = (uniqueCount.clamp(0, 3) / 3.0);
-      final existing = await cellProgressRepo.read(userId, cellId);
-      final oldLevel = existing?.restorationLevel ?? 0.0;
-      if ((newLevel - oldLevel).abs() > 0.001) {
-        await cellProgressRepo.update(
-          userId: userId,
-          cellId: cellId,
-          restorationLevel: newLevel,
-        );
-        obs?.event('cell_restored', {
-          'cell_id': cellId,
-          'restoration_level': newLevel,
-          'unique_species': uniqueCount,
-        });
-      }
-    } catch (e) {
-      debugPrint('[GameCoordinator] failed to update restoration level: $e');
-    }
   }
 
   // 2. Enqueue for Supabase sync (auto-schedules flush).
@@ -196,7 +169,6 @@ Future<void> persistCellVisit({
   final now = DateTime.now();
   int visitCount = 1;
   double distanceWalked = 0.0;
-  double restorationLevel = 0.0;
   // 1. Upsert cell progress in SQLite (create if first visit, update if returning).
   try {
     final sw = Stopwatch()..start();
@@ -206,7 +178,6 @@ Future<void> persistCellVisit({
       await cellProgressRepo.incrementVisitCount(userId, cellId);
       visitCount = existing.visitCount + 1;
       distanceWalked = existing.distanceWalked;
-      restorationLevel = existing.restorationLevel;
     } else {
       // First visit — create new record.
       final progressId = uuid.v4();
@@ -243,7 +214,6 @@ Future<void> persistCellVisit({
       'fog_state': FogState.present.name,
       'visit_count': visitCount,
       'distance_walked': distanceWalked,
-      'restoration_level': restorationLevel,
       'last_visited': now.toIso8601String(),
     });
 
@@ -448,8 +418,6 @@ Future<void> hydrateFromSupabase({
       final visitCount = row['visit_count'] as int? ?? 1;
       final distanceWalked =
           (row['distance_walked'] as num?)?.toDouble() ?? 0.0;
-      final restorationLevel =
-          (row['restoration_level'] as num?)?.toDouble() ?? 0.0;
       final lastVisitedStr = row['last_visited'] as String?;
       final lastVisited =
           lastVisitedStr != null ? DateTime.tryParse(lastVisitedStr) : null;
@@ -461,7 +429,6 @@ Future<void> hydrateFromSupabase({
         fogState: fogState,
         distanceWalked: distanceWalked,
         visitCount: visitCount,
-        restorationLevel: restorationLevel,
         lastVisited: lastVisited,
       );
       if (i % 50 == 49) await Future<void>.delayed(Duration.zero);

@@ -41,7 +41,7 @@ All domain models, database schema, and persistence contracts.
 | `CellProperties` | cellId, habitats: Set\<Habitat\>, climate: Climate, continent: Continent, locationId: String?, createdAt | cellId | Permanent geo-derived cell properties. `fromDrift()`/`toDriftRow()`/`toDriftCompanion()` |
 | `CellEvent` | type: CellEventType, cellId, dailySeed | — | Rotating daily event (not persisted, recomputable). ~12% of cells per day |
 | `DiscoveryEvent` | *(existing)* + `cellEventType: CellEventType?` | — | Added nullable field to indicate which cell event triggered the encounter (null = normal) |
-| `CellData` | id, center: Geographic, fogState, speciesIds, restorationLevel, distanceWalked, visitCount, lastVisited | — | `restorationLevel` clamped [0.0, 1.0] |
+| `CellData` | id, center: Geographic, fogState, speciesIds, distanceWalked, visitCount, lastVisited | — | |
 | `PlayerProgress` | userId, cellsObserved, speciesCollected, currentStreak, longestStreak, totalDistanceKm | — | Player stats aggregate |
 
 ### Auth Models (lib/features/auth/models/)
@@ -107,7 +107,6 @@ Schema version: **24** (v10→v11 adds `LocalCellPropertiesTable`, v13→v18 dro
 | `fogState` | text | — | Stored as enum name string: "observed", "concealed", etc. |
 | `distanceWalked` | real | 0.0 | |
 | `visitCount` | int | 0 | |
-| `restorationLevel` | real | 0.0 | |
 | `lastVisited` | datetime | nullable | |
 | `createdAt` | datetime | — | |
 | `updatedAt` | datetime | — | |

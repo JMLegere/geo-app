@@ -430,7 +430,6 @@ Community features for sharing and interaction.
 
 | Mechanic | Current State | Status |
 |----------|--------------|--------|
-| Restoration | 3 unique species = restored cell | **Tentative** — designer questions value, may rework |
 | Economy/Shops | Not designed | **Deferred** |
 | Session arc shape | Not defined | **Deferred** |
 | Reasons NOT to collect | Not explored | **Deferred** |
@@ -462,7 +461,7 @@ Current: in-memory Riverpod notifiers with write-through Supabase. No queue, no 
 ### TR-3: GameCoordinator Extraction (blocks: tab-independent game loop, background discoveries)
 Current: `map/` is a "god feature" (25 files) that orchestrates fog, discovery, location, biome, seasonal, camera, GeoJSON rendering. Game stops when map unmounts.
 - Extract GameCoordinator as pure Dart service at ProviderScope level (runs forever)
-- Owns: GPS subscription, game loop tick, fog computation, discovery processing, write queue, daily seed cache, streaks, restoration
+- Owns: GPS subscription, game loop tick, fog computation, discovery processing, write queue, daily seed cache, streaks
 - Does NOT own: map rendering, camera, widget state, toast UI
 - Map screen becomes renderer only: reads GameCoordinator state → renders GeoJSON layers
 - New directory: `lib/core/game/` (game_coordinator.dart, game_state.dart, write_queue.dart, daily_seed_service.dart)

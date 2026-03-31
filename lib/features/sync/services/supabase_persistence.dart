@@ -116,7 +116,6 @@ class SupabasePersistence {
     required String fogState,
     double distanceWalked = 0,
     int visitCount = 0,
-    double restorationLevel = 0,
     DateTime? lastVisited,
   }) async {
     try {
@@ -127,7 +126,6 @@ class SupabasePersistence {
           'fog_state': fogState,
           'distance_walked': distanceWalked,
           'visit_count': visitCount,
-          'restoration_level': restorationLevel,
           'last_visited': lastVisited?.toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         },

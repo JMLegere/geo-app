@@ -48,7 +48,7 @@
 | Feature | Type | Cross-Feature Imports |
 |---------|------|----------------------|
 | **map** | Leaf (renderer) | Reads gameCoordinatorProvider only (no longer orchestrates) |
-| **achievements** | Hub | discovery, restoration, player, collection, species |
+| **achievements** | Hub | discovery, player, collection, species |
 | **pack** | Composite | discovery, collection, species |
 | **navigation** | Hub | map, sanctuary, pack (TabShell orchestrates all tabs) |
 | **sanctuary** | Composite | discovery, collection, player, caretaking |
@@ -58,7 +58,6 @@
 | **biome** | Leaf | none (pure services) |
 | **caretaking** | Leaf | none (reads playerProvider) |
 | **seasonal** | Leaf | none (pure services) |
-| **restoration** | Leaf | none |
 | **discovery** | Leaf | none (provider in map/) |
 | **onboarding** | Leaf | none |
 
@@ -118,7 +117,6 @@ gameCoordinatorProvider.build()
 | **Fog-of-war** | Visibility system that reveals the map as you explore — Civilization style |
 | **Encounter** | A species appearing in a cell when you visit it (3 per cell, deterministic) |
 | **Loot table** | Weighted random selection (3^x progression) |
-| **Restoration** | Collecting 3 unique species in a cell = fully restored habitat |
 | **Sanctuary** | Personal species collection, grouped by habitat |
 | **Caretaking** | Daily visit streak tracking |
 | **Detection radius** | 1000m — cells within this radius become at least Unexplored |

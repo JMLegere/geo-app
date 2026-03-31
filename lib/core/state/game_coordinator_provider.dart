@@ -516,7 +516,6 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
         obs: obs,
-        cellProgressRepo: cellProgressRepo,
       );
     }
   };

@@ -12,7 +12,6 @@ enum AchievementId {
   dedicated,
   devoted,
   marathon,
-  restorer,
 }
 
 /// Static metadata for a single achievement.
@@ -123,12 +122,5 @@ const Map<AchievementId, AchievementDefinition> kAchievementDefinitions = {
     description: 'Walk 10km total',
     icon: '🏃',
     targetValue: 10,
-  ),
-  AchievementId.restorer: AchievementDefinition(
-    id: AchievementId.restorer,
-    title: 'Restorer',
-    description: 'Fully restore 5 cells',
-    icon: '🌱',
-    targetValue: 5,
   ),
 };

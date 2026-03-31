@@ -518,8 +518,6 @@ class QueueProcessor {
           fogState: data['fog_state'] as String,
           distanceWalked: (data['distance_walked'] as num?)?.toDouble() ?? 0,
           visitCount: (data['visit_count'] as num?)?.toInt() ?? 0,
-          restorationLevel:
-              (data['restoration_level'] as num?)?.toDouble() ?? 0,
           lastVisited: data['last_visited'] != null
               ? DateTime.parse(data['last_visited'] as String)
               : null,

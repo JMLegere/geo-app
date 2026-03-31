@@ -6,7 +6,6 @@ import 'package:earth_nova/features/achievements/models/achievement.dart';
 import 'package:earth_nova/features/achievements/models/achievement_state.dart';
 import 'package:earth_nova/features/achievements/services/achievement_service.dart';
 import 'package:earth_nova/features/discovery/providers/discovery_provider.dart';
-import 'package:earth_nova/features/world/providers/restoration_provider.dart';
 
 // ---------------------------------------------------------------------------
 // AchievementNotification state + notifier
@@ -44,8 +43,7 @@ class AchievementNotificationState {
 class AchievementNotificationNotifier
     extends Notifier<AchievementNotificationState> {
   @override
-  AchievementNotificationState build() =>
-      const AchievementNotificationState();
+  AchievementNotificationState build() => const AchievementNotificationState();
 
   /// Queues [id] as the active notification.
   void showNotification(AchievementId id) {
@@ -82,12 +80,10 @@ final achievementServiceProvider = Provider<AchievementService>(
 /// Riverpod notifier that owns the achievement progress state.
 ///
 /// Call [AchievementNotifier.checkAchievements] after any state-changing action
-/// (cell observed, species collected, streak updated, distance added, cell
-/// restored) to re-evaluate all achievements and emit toast notifications for
-/// new unlocks.
+/// (cell observed, species collected, streak updated, distance added) to
+/// re-evaluate all achievements and emit toast notifications for new unlocks.
 
 class AchievementNotifier extends Notifier<AchievementsState> {
-
   @override
   AchievementsState build() {
     // Initialise all achievements as locked with zero progress.
@@ -106,16 +102,14 @@ class AchievementNotifier extends Notifier<AchievementsState> {
 
   /// Re-evaluates all achievements using current provider state.
   ///
-  /// Builds an [AchievementContext] from [playerProvider],
-  /// [itemsProvider], and [restorationProvider], then calls the pure
-  /// service to compute new progress. Any newly unlocked achievements trigger
-  /// a toast notification via [achievementNotificationProvider].
+  /// Builds an [AchievementContext] from [playerProvider] and [itemsProvider],
+  /// then calls the pure service to compute new progress. Any newly unlocked
+  /// achievements trigger a toast notification via [achievementNotificationProvider].
   ///
   /// Pass [now] in tests to keep timestamps deterministic.
   void checkAchievements({DateTime? now}) {
     final playerState = ref.read(playerProvider);
     final inventoryState = ref.read(itemsProvider);
-    final restorationState = ref.read(restorationProvider);
     final speciesService = ref.read(speciesServiceProvider);
 
     // Build habitat counts: total species available per habitat from service.
@@ -137,16 +131,11 @@ class AchievementNotifier extends Notifier<AchievementsState> {
       }
     }
 
-    // Count fully-restored cells (level >= 1.0).
-    final restoredCellCount =
-        restorationState.levels.values.where((lvl) => lvl >= 1.0).length;
-
     final context = AchievementContext(
       cellsObserved: playerState.cellsObserved,
       speciesCollected: inventoryState.uniqueDefinitionsCount,
       currentStreak: playerState.currentStreak,
       totalDistanceKm: playerState.totalDistanceKm,
-      restoredCellCount: restoredCellCount,
       collectedByHabitat: collectedByHabitat,
       totalByHabitat: totalByHabitat,
     );

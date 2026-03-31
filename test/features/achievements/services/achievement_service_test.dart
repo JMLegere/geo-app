@@ -29,7 +29,6 @@ AchievementContext _ctx({
   int speciesCollected = 0,
   int currentStreak = 0,
   double totalDistanceKm = 0.0,
-  int restoredCellCount = 0,
   Map<String, int>? collectedByHabitat,
   Map<String, int>? totalByHabitat,
 }) {
@@ -38,7 +37,6 @@ AchievementContext _ctx({
     speciesCollected: speciesCollected,
     currentStreak: currentStreak,
     totalDistanceKm: totalDistanceKm,
-    restoredCellCount: restoredCellCount,
     collectedByHabitat: collectedByHabitat ?? const {},
     totalByHabitat: totalByHabitat ?? const {},
   );
@@ -68,8 +66,7 @@ void main() {
     test('"First Steps" does NOT unlock when cellsObserved == 0', () {
       final before = _initialState();
       final after = _service.evaluate(before, _ctx(cellsObserved: 0));
-      expect(
-          after.achievements[AchievementId.firstSteps]!.isUnlocked, isFalse);
+      expect(after.achievements[AchievementId.firstSteps]!.isUnlocked, isFalse);
     });
 
     test('"Explorer" unlocks at exactly 10 cells', () {
@@ -114,8 +111,7 @@ void main() {
     test('"Naturalist" does NOT unlock at 4 species', () {
       final before = _initialState();
       final after = _service.evaluate(before, _ctx(speciesCollected: 4));
-      expect(
-          after.achievements[AchievementId.naturalist]!.isUnlocked, isFalse);
+      expect(after.achievements[AchievementId.naturalist]!.isUnlocked, isFalse);
     });
 
     test('"Biologist" unlocks at 15 species', () {
@@ -153,8 +149,7 @@ void main() {
     test('"Dedicated" does NOT unlock at 6 days', () {
       final before = _initialState();
       final after = _service.evaluate(before, _ctx(currentStreak: 6));
-      expect(
-          after.achievements[AchievementId.dedicated]!.isUnlocked, isFalse);
+      expect(after.achievements[AchievementId.dedicated]!.isUnlocked, isFalse);
     });
 
     test('"Devoted" unlocks at 30-day streak', () {
@@ -188,26 +183,8 @@ void main() {
     test('"Marathon" progress reflects floored km', () {
       final before = _initialState();
       final after = _service.evaluate(before, _ctx(totalDistanceKm: 6.7));
-      expect(after.achievements[AchievementId.marathon]!.currentValue,
-          equals(6));
-    });
-  });
-
-  group('AchievementService.evaluate — restoration achievements', () {
-    test('"Restorer" unlocks at 5 restored cells', () {
-      final before = _initialState();
-      final after = _service.evaluate(
-        before,
-        _ctx(restoredCellCount: 5),
-        now: _fixedNow,
-      );
-      expect(after.achievements[AchievementId.restorer]!.isUnlocked, isTrue);
-    });
-
-    test('"Restorer" does NOT unlock at 4 restored cells', () {
-      final before = _initialState();
-      final after = _service.evaluate(before, _ctx(restoredCellCount: 4));
-      expect(after.achievements[AchievementId.restorer]!.isUnlocked, isFalse);
+      expect(
+          after.achievements[AchievementId.marathon]!.currentValue, equals(6));
     });
   });
 
@@ -289,7 +266,8 @@ void main() {
       expect(p.unlockedAt, equals(_fixedNow));
     });
 
-    test('unlocked achievement does not appear in findNewUnlocks on re-evaluate',
+    test(
+        'unlocked achievement does not appear in findNewUnlocks on re-evaluate',
         () {
       final initial = _initialState();
       final after1 = _service.evaluate(
@@ -332,10 +310,12 @@ void main() {
         now: _fixedNow,
       );
       final newUnlocks = _service.findNewUnlocks(before, after);
-      expect(newUnlocks, containsAll([
-        AchievementId.firstSteps,
-        AchievementId.naturalist,
-      ]));
+      expect(
+          newUnlocks,
+          containsAll([
+            AchievementId.firstSteps,
+            AchievementId.naturalist,
+          ]));
     });
 
     test('returns only newly unlocked (not previously unlocked)', () {

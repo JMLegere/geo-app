@@ -5,7 +5,7 @@ Achievement tracking with toast notifications. Full feature: models/, providers/
 ## Architecture
 
 - `AchievementService` — Pure Dart class, no Riverpod. `evaluate(AchievementContext)` returns list of newly unlocked achievements.
-- `AchievementNotifier` — reads playerProvider, inventoryProvider, restorationProvider, speciesServiceProvider. Calls `checkAchievements()` after state changes.
+- `AchievementNotifier` — reads playerProvider, inventoryProvider, speciesServiceProvider. Calls `checkAchievements()` after state changes.
 - `AchievementNotificationNotifier` — manages toast queue (separate from main state).
 
 ## Dual Notifier Pattern
@@ -20,7 +20,7 @@ This separation prevents UI toast state from polluting domain achievement state.
 
 1. Game state changes (species collected, cell explored, streak updated)
 2. Feature that changed state calls `achievementProvider.notifier.checkAchievements()`
-3. AchievementNotifier builds AchievementContext from current state (reads 4 providers)
+3. AchievementNotifier builds AchievementContext from current state (reads 3 providers)
 4. AchievementService.evaluate(context) returns newly unlocked achievements
 5. If any new → updates state + pushes to notification queue
 6. AchievementNotificationOverlay (widget) displays stacked toasts
@@ -39,7 +39,7 @@ AchievementService is a pure function container:
 - AchievementContext is built at check time by reading 4 providers — stale data is possible if providers haven't updated yet
 - Toast queue is FIFO — achievements display in unlock order
 - Achievement definitions are hardcoded in service (no external config or JSON)
-- Hub feature: imports from discovery/, restoration/ — cannot be tested in isolation without those features
+- Hub feature: imports from discovery/ — cannot be tested in isolation without those features
 
 ## Testing
 
@@ -53,7 +53,6 @@ AchievementService is a pure function container:
 | Feature | Dependency | Why |
 |---------|-----------|-----|
 | discovery/ | DiscoveryEvent model | Achievement context includes recent discoveries |
-| restoration/ | Restoration progress | Tracks restoration-based achievements |
 | inventory/ | Item instance state | Tracks collection milestones |
 | player/ | Player profile | Tracks exploration/streak achievements |
 

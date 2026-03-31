@@ -388,66 +388,6 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // buildRestorationOverlay
-  // -------------------------------------------------------------------------
-
-  group('FogGeoJsonBuilder.buildRestorationOverlay', () {
-    test('with empty inputs returns empty features', () {
-      final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {},
-        restorationLevels: {},
-        getBoundary: _getBoundary,
-      );
-
-      expect(_features(result), isEmpty);
-    });
-
-    test('includes observed cells with restoration level > 0', () {
-      final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.present},
-        restorationLevels: {'cell_37_-122': 0.67},
-        getBoundary: _getBoundary,
-      );
-
-      final features = _features(result);
-      expect(features.length, equals(1));
-
-      final props = features[0]['properties'] as Map<String, dynamic>;
-      expect(props['level'], equals(0.67));
-    });
-
-    test('excludes non-observed cells even with restoration level', () {
-      final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.explored},
-        restorationLevels: {'cell_37_-122': 0.5},
-        getBoundary: _getBoundary,
-      );
-
-      expect(_features(result), isEmpty);
-    });
-
-    test('excludes cells with restoration level 0', () {
-      final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.present},
-        restorationLevels: {'cell_37_-122': 0.0},
-        getBoundary: _getBoundary,
-      );
-
-      expect(_features(result), isEmpty);
-    });
-
-    test('excludes cells with no restoration entry', () {
-      final result = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.present},
-        restorationLevels: {},
-        getBoundary: _getBoundary,
-      );
-
-      expect(_features(result), isEmpty);
-    });
-  });
-
-  // -------------------------------------------------------------------------
   // buildCellBorders
   // -------------------------------------------------------------------------
 
@@ -568,14 +508,6 @@ void main() {
       );
       expect(() => jsonDecode(mid), returnsNormally);
 
-      // buildRestorationOverlay
-      final rest = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {'cell_37_-122': FogState.present},
-        restorationLevels: {'cell_37_-122': 1.0},
-        getBoundary: _getBoundary,
-      );
-      expect(() => jsonDecode(rest), returnsNormally);
-
       // buildCellBorders
       final border = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {'cell_37_-122': FogState.detected},
@@ -601,13 +533,6 @@ void main() {
         getBoundary: _getBoundary,
       );
       expect(_parse(mid)['type'], equals('FeatureCollection'));
-
-      final rest = FogGeoJsonBuilder.buildRestorationOverlay(
-        cellStates: {},
-        restorationLevels: {},
-        getBoundary: _getBoundary,
-      );
-      expect(_parse(rest)['type'], equals('FeatureCollection'));
 
       final border = FogGeoJsonBuilder.buildCellBorders(
         cellStates: {},

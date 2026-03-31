@@ -35,7 +35,7 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `authProvider` | auth | `NotifierProvider<AuthNotifier, AuthState>` | Thin state holder. `build()` returns `AuthState.initial()`. State pushed by `gameCoordinatorProvider` via `setState()`. Action wrappers delegate to `authServiceProvider`. |
 | `upgradePromptProvider` | auth | `NotifierProvider<UpgradePromptNotifier, UpgradePromptState>` | watches: authProvider, itemsProvider. Triggers save-progress banner at 5 collected species for anonymous users |
 | `onboardingProvider` | onboarding | `NotifierProvider<OnboardingNotifier, bool?>` | none (SharedPreferences) |
-| `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, restoration, speciesService |
+| `achievementProvider` | achievements | `NotifierProvider<AchievementNotifier, AchievementsState>` | reads: player, collection, speciesService |
 | `achievementNotificationProvider` | achievements | `NotifierProvider` | none (toast queue) |
 | `achievementServiceProvider` | achievements | `Provider<AchievementService>` | none (pure service) |
 | `caretakingProvider` | caretaking | `NotifierProvider<CaretakingNotifier, CaretakingState>` | reads: playerProvider.notifier |
@@ -43,7 +43,6 @@ All Riverpod providers, their types, state shapes, and dependency wiring.
 | `speciesServiceProvider` | discovery | `Provider<SpeciesService>` | watches: speciesCacheProvider. Cache-backed. Empty service until Drift DB loads. Enrichment fields come from `LocalSpeciesTable` — no separate enrichment merge. |
 | `packProvider` | pack | `NotifierProvider<PackNotifier, PackState>` | watches: speciesService; listens: inventory |
 | `tabIndexProvider` | navigation | `NotifierProvider<TabIndexNotifier, int>` | none (SharedPreferences) |
-| `restorationProvider` | restoration | `NotifierProvider<RestorationNotifier, RestorationState>` | none |
 | `sanctuaryProvider` | sanctuary | `NotifierProvider<SanctuaryNotifier, SanctuaryState>` | watches: speciesService; listens: inventory, player |
 | `supabasePersistenceProvider` | sync | `Provider<SupabasePersistence?>` | reads: supabaseBootstrapProvider |
 | `syncProvider` | sync | `NotifierProvider<SyncNotifier, SyncStatus>` | watches: supabasePersistence, queueProcessorProvider. reads: writeQueueRepositoryProvider, itemsProvider, itemInstanceRepositoryProvider |

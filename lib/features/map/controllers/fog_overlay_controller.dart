@@ -18,7 +18,7 @@ import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.d
 /// their fog states resolved, and GeoJSON strings built for 3 layers:
 /// - [baseFogGeoJson]: opaque world polygon with holes for revealed cells
 /// - [midFogGeoJson]: semi-transparent polygons for hidden/concealed cells
-/// - [restorationGeoJson]: green tint for restored observed cells
+/// - cell borders: outline cells at fog boundaries
 ///
 /// ## Usage
 ///
@@ -122,9 +122,6 @@ class FogOverlayController {
   /// GeoJSON string for the cell border outlines (unexplored + concealed).
   String _cellBorderGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
 
-  /// GeoJSON string for the restoration overlay layer.
-  final String _restorationGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
-
   /// GeoJSON string for cell property icon Point features.
   String _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
 
@@ -193,9 +190,6 @@ class FogOverlayController {
 
   /// GeoJSON for cell border outlines (unexplored + concealed).
   String get cellBorderGeoJson => _cellBorderGeoJson;
-
-  /// GeoJSON for the green restoration overlay.
-  String get restorationGeoJson => _restorationGeoJson;
 
   /// GeoJSON for cell property icon Points (habitat, climate, event icons).
   String get cellIconsGeoJson => _cellIconsGeoJson;

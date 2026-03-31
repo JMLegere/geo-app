@@ -226,12 +226,11 @@ lib/
 │   ├── world/                     # 🌍 What's here — terrain, cell state, events
 │   │   │                          #   SHARED STATE — same for all players.
 │   │   │                          #   Every player in the same cell sees the
-│   │   │                          #   same habitat, restoration, events.
+│   │   │                          #   same habitat, events.
 │   │   ├── services/              #   Biome resolver (ESA → habitat)
 │   │   │                          #   Cell property resolver
-│   │   │                          #   Restoration service (cell healing formula)
 │   │   ├── models/                #   ESA land cover, cell events
-│   │   └── providers/             #   Habitat service, restoration, cell properties
+│   │   └── providers/             #   Habitat service, cell properties
 │   │
 │   ├── calendar/                  # 📅 When — time of day, season, daily schedule
 │   │   ├── services/              #   Season filter, time-of-day resolver
@@ -283,7 +282,7 @@ lib/
 | Current Location | Target Location | Rationale |
 |------------------|-----------------|-----------|
 | `features/biome/` | `features/world/` | Biome is one aspect of "what's here" — terrain type |
-| `features/restoration/` | `features/world/` | Restoration is cell state — another aspect of "what's here" |
+
 | `features/seasonal/` | `features/calendar/` | Seasons are one aspect of "when" — grows into time-of-day, daily schedule |
 | `features/enrichment/` (1 file) | `features/sync/` | Not a concept. The enrichment service already lives in sync/. |
 | `features/navigation/` | `main.dart` | Not a concept. TabShell is app infrastructure. |
@@ -318,7 +317,7 @@ Moving an item is changing its location. No transfer logic, no container managem
 
 **`pack/` and `sanctuary/` are pure views.** They query items by location and render them. They own zero item state.
 
-**`world/` is shared state.** Same cell = same terrain, restoration, events for all players. No userId.
+**`world/` is shared state.** Same cell = same terrain, events for all players. No userId.
 
 **`items/` is per-player state.** Each player's items are their own. userId on every row.
 
@@ -462,7 +461,7 @@ See `engine-architecture.md` § Event Catalog for the full list. Key events:
 
 | Category | Events |
 |----------|--------|
-| **State** | cell_entered, cell_exited, species_discovered, fog_changed, cell_restored, seed_rotated, enrichment_complete |
+| **State** | cell_entered, cell_exited, species_discovered, fog_changed, seed_rotated, enrichment_complete |
 | **User** | session_started, session_ended, tab_switched, cell_tapped |
 | **System** | hydration_complete, auth_restored, auth_expired, network_error, crash |
 | **Performance** | fog_computed, geojson_built, api_call, sqlite_op |

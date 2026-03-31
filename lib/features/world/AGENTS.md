@@ -1,6 +1,6 @@
 # World Feature
 
-Shared geo-contextual state for the game world: biome classification, cell restoration, cell property resolution, and daily cell events. Consolidated from `features/biome/`, `features/restoration/`, and `core/cells/` (CellPropertyResolver + EventResolver).
+Shared geo-contextual state for the game world: biome classification, cell property resolution, and daily cell events. Consolidated from `features/biome/` and `core/cells/` (CellPropertyResolver + EventResolver).
 
 ---
 
@@ -12,8 +12,6 @@ Shared geo-contextual state for the game world: biome classification, cell resto
 - `BiomeFeatureIndex`: Spatial index of ESA land cover polygons loaded from `assets/biome_features.json`. Point-in-polygon lookup. Falls back to `DefaultHabitatLookup` (plains) while loading.
 - `CellPropertyResolver`: Synchronous resolution of permanent geo-derived cell properties. `resolve(cellId, lat, lon)` → `CellProperties`. Combines `HabitatLookup` + `ContinentLookup` + `Climate.fromLatitude()`. **Synchronous and instant** — safe to call in game tick.
 - `EventResolver`: Deterministic daily event assignment. `static CellEvent? resolve(dailySeed, cellId)`. ~12% hit rate via SHA-256. Events: `migration` (foreign-continent species), `nestingSite` (EN/CR/EX guaranteed). Events REPLACE base encounters.
-- `RestorationService`: `restorationLevel(uniqueSpeciesCount)` → `double`. Formula: `min(uniqueSpeciesCount, 3) / 3.0`. 3 unique species = fully restored.
-
 ### providers/
 
 - `habitatServiceProvider`: `Provider<BiomeService>` — singleton service, bridged to `HabitatLookup` for `CellPropertyResolver`.
@@ -47,4 +45,4 @@ Shared geo models used across world services. Thin — most types live in `core/
 - `CellPropertyResolver` moved here from `core/cells/`. Import path: `features/world/services/cell_property_resolver.dart`.
 - `EventResolver` moved here from `core/cells/`. Event seed format: `"${dailySeed}_event_${cellId}"` — changing this breaks event reproducibility.
 - `BiomeService` was previously `HabitatService` in `features/biome/`. Rename is intentional.
-- Restoration formula uses `min(3, count)` — more than 3 species doesn't increase level.
+

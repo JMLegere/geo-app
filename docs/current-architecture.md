@@ -129,7 +129,7 @@ App start → SupabaseBootstrap.initialize() (3s timeout)
 ### SQLite Schema (3 tables)
 
 - `LocalPlayerProfileTable` — display name, streaks, distance, season
-- `LocalCellProgressTable` — per-cell fog state, visits, restoration, distance
+- `LocalCellProgressTable` — per-cell fog state, visits, distance
 - `LocalItemInstanceTable` — item instances with affixes, status, parentage (schema v2)
 
 ### Repository Pattern

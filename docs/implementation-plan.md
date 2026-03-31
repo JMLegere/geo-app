@@ -156,13 +156,12 @@ Delete empty `features/navigation/` directory.
 
 Create directory. Move into it:
 - `features/biome/` → `features/world/services/` + `features/world/models/` + `features/world/providers/`
-- `features/restoration/` → `features/world/services/` + `features/world/providers/`
 - `core/cells/cell_property_resolver.dart` → `features/world/services/`
 - `core/cells/event_resolver.dart` → `features/world/services/`
 
 Update all imports. Tests that import these files need path updates.
 
-**Verify:** Tests pass. Commit: `♻️ refactor: create world feature from biome, restoration, cell properties`
+**Verify:** Tests pass. Commit: `♻️ refactor: create world feature from biome, cell properties`
 
 ### A.5 — Create `features/calendar/`
 
