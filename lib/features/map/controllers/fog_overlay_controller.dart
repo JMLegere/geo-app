@@ -80,6 +80,12 @@ class FogOverlayController {
     Set<String> zoneCellIds,
     Map<String, CellProperties> cellProperties,
   ) {
+    // Seed from visited cells — belt-and-suspenders for sessions where hydration
+    // races with zone computation. Visited cells must always be discoverable.
+    for (final cellId in fogResolver.visitedCellIds) {
+      _discoveredCellIds.add(cellId);
+    }
+
     final sw = Stopwatch()..start();
     var added = 0;
     for (final cellId in zoneCellIds) {
@@ -107,7 +113,7 @@ class FogOverlayController {
       _renderVersion++;
       sw.stop();
       debugPrint('[FOG] added $added detection zone cells '
-          '(total: ${_discoveredCellIds.length}, '
+          '(zone: ${zoneCellIds.length}, visited: ${fogResolver.visitedCellIds.length}, total: ${_discoveredCellIds.length}, '
           'props: ${_cellPropertiesCache.length}, '
           '${sw.elapsedMilliseconds}ms)');
     }
@@ -343,6 +349,8 @@ class FogOverlayController {
     // Build GeoJSON from all discovered cells (populated by
     // addDetectionZoneCells during loading screen).
     _buildGeoJson(_discoveredCellIds);
+    _lastBuildCellCount = _discoveredCellIds.length;
+    _lastBuildVisitedCount = fogResolver.visitedCellIds.length;
     _renderVersion++;
     onBatchReady?.call();
 
@@ -382,6 +390,35 @@ class FogOverlayController {
       // Include ALL cells — even unknown. Detection zone cells need borders
       // and territory rendering even when not yet explored.
       cellStates[cellId] = state;
+    }
+
+    // Observability: state distribution for fog pipeline debugging.
+    {
+      var explored = 0, detected = 0, nearby = 0, unknown = 0;
+      for (final s in cellStates.values) {
+        switch (s) {
+          case FogState.present:
+          case FogState.explored:
+            explored++;
+          case FogState.nearby:
+            nearby++;
+          case FogState.detected:
+            detected++;
+          case FogState.unknown:
+            unknown++;
+        }
+      }
+      debugPrint('[FOG-BUILD] cells=${cellStates.length} '
+          'explored=$explored nearby=$nearby detected=$detected unknown=$unknown '
+          'visitedLoaded=${fogResolver.visitedCellIds.length}');
+      ObservabilityBuffer.instance?.event('fog_build', {
+        'cells': cellStates.length,
+        'explored': explored,
+        'nearby': nearby,
+        'detected': detected,
+        'unknown': unknown,
+        'visited_loaded': fogResolver.visitedCellIds.length,
+      });
     }
 
     // Cache ALL discovered cell IDs for territory border rebuilds — not just
