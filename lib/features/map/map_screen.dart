@@ -1544,7 +1544,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 },
                 child: MapLibreMap(
                   options: MapOptions(
-                    initStyle: 'https://tiles.openfreemap.org/styles/positron',
+                    // Minimal inline style — black canvas only.
+                    // The fog overlay renders on top; this prevents the white
+                    // positron tile flash and gives a dark base. Replace with
+                    // a real tile provider URL when map tiles are added.
+                    initStyle:
+                        '{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#050C15"}}]}',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
                     // Allow zooming down to infographic trigger level so the user
