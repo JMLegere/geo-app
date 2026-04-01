@@ -207,6 +207,21 @@ class RubberBandController {
     onDisplayUpdate(_displayLat, _displayLon);
   }
 
+  /// Resets the controller to the uninitialized state.
+  ///
+  /// The next [setTarget] call will snap (not interpolate) to the new
+  /// position, as if this were the very first call. Used when the location
+  /// source switches (e.g. keyboard → GPS) so the first real GPS fix snaps
+  /// to the correct location instead of interpolating from a stale position.
+  void resetToUninitialized() {
+    _initialized = false;
+    if (!_tickerPaused) {
+      _tickerPaused = true;
+      _ticker.stop();
+    }
+    _lastTickTime = Duration.zero;
+  }
+
   /// Stops the ticker and releases resources.
   void dispose() {
     _ticker.stop();

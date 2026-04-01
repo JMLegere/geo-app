@@ -332,6 +332,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _rawGpsSubscription =
         _gameCoordinator.onRawGpsUpdate.listen(_onRawGpsUpdate);
 
+    // When the location source switches from keyboard → GPS (web fallback),
+    // reset the rubber-band so the first real GPS fix snaps to the correct
+    // position instead of interpolating from the stale keyboard position.
+    final locationService = ref.read(locationServiceProvider);
+    locationService.activeModeNotifier.addListener(_onLocationModeChanged);
+
     // When enrichment completes, reload district ancestry so territory borders
     // update without an app restart.
     // Save reference to field — ref.read() in dispose() is unsafe (Bad state: Using ref).
@@ -379,6 +385,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _markerPosition.dispose();
     _cameraController.dispose();
     _rawGpsSubscription?.cancel();
+    ref
+        .read(locationServiceProvider)
+        .activeModeNotifier
+        .removeListener(_onLocationModeChanged);
     _infographicTransitionCtrl.dispose();
     super.dispose();
   }
@@ -985,6 +995,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
   // ---------------------------------------------------------------------------
   // Location handling — pure rendering, no game logic
   // ---------------------------------------------------------------------------
+
+  /// Called when `activeModeNotifier` fires (keyboard → GPS switch on web).
+  ///
+  /// Resets the rubber-band so the next GPS fix snaps instead of interpolating
+  /// from the stale keyboard position (which may be hundreds of km away).
+  void _onLocationModeChanged() {
+    if (!mounted) return;
+    final mode = ref.read(locationServiceProvider).activeModeNotifier.value;
+    if (mode == LocationMode.realGps) {
+      debugPrint(
+          '[MAP] location source switched to GPS — resetting rubber-band');
+      _rubberBand.resetToUninitialized();
+    }
+  }
 
   /// Handles raw GPS updates from GameCoordinator.
   ///
