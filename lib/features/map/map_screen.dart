@@ -288,17 +288,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _gameCoordinator = ref.read(gameCoordinatorProvider);
     _engineRunner = ref.read(engineRunnerProvider);
 
-    // Seed rubber-band + camera from restored position. By the time MapScreen
-    // mounts, the loading screen has already gated on isHydrated && isZoneReady,
-    // so the position is known. Without this, the marker and camera are absent
-    // until the first real GPS fix (5-30s on web).
-    final loc = ref.read(locationProvider);
-    if (loc.currentPosition != null) {
-      _rubberBand.setTarget(
-        loc.currentPosition!.lat,
-        loc.currentPosition!.lon,
-      );
-    }
+    // Do NOT seed the rubber-band from the restored position here.
+    //
+    // The restored position (from SQLite profile.lastLat/lastLon) may be from
+    // a different city or even country (e.g. a Michigan test session when the
+    // player is in Fredericton). Pre-seeding the rubber-band with a stale
+    // position means the first real GPS fix is treated as a subsequent call
+    // (not the first), so the rubber-band interpolates across thousands of km
+    // instead of snapping. During that multi-second crawl, the exploration
+    // guard fires continuously ("MOVING TOO FAST") and fog never updates at
+    // the player's real location → white screen.
+    //
+    // Instead: let the rubber-band stay uninitialized. The first real GPS fix
+    // from _rawGpsSubscription (line below) triggers the first setTarget call,
+    // which snaps the rubber-band to the correct position. The playerLocated
+    // gate on the loading screen covers the gap until GPS arrives.
 
     // When the detection zone resolves, trigger one fog rebuild cycle.
     // The zone cells arrive AFTER the rubber-band pauses (player is
@@ -1540,7 +1544,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 },
                 child: MapLibreMap(
                   options: MapOptions(
-                    initStyle: 'https://tiles.openfreemap.org/styles/positron',
+                    // Minimal inline style — black canvas only.
+                    // The fog overlay renders on top; this prevents the white
+                    // positron tile flash and gives a dark base. Replace with
+                    // a real tile provider URL when map tiles are added.
+                    initStyle:
+                        '{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#050C15"}}]}',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
                     // Allow zooming down to infographic trigger level so the user
