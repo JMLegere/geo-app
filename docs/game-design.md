@@ -18,7 +18,6 @@ Comprehensive design reference for EarthNova (working title). Synthesized from g
 | Auth | **Done** — Anonymous auto-login, upgrade prompt, email/OAuth upgrade flow | ✓ Shipped |
 | Quests | Do not exist | Treasure maps + NPC bundles |
 | Daily rotation | Does not exist | Midnight GMT world seed |
-| Restoration | 3 species = restored | Under review, may be reworked |
 
 ---
 
@@ -172,7 +171,7 @@ Active play → more species per cell (passive = 1, active = up to 3), bonus ite
 
 **Discovery Mechanic (KEY DESIGN INSIGHT):** NPCs are discovered on the map while exploring — NOT always available. Town tab is a summary/hub of NPCs you've found so far. NPCs are part of the exploration loop — finding new NPCs is itself a discovery event. NPCs have locations/territories in the real world.
 
-**Spawn Mechanic:** Mix of milestone + location. Some NPCs unlock from achievements/progress (collected X species, restored Y cells). Others from visiting enough unique biomes/areas or real-world location types. Two discovery vectors: exploration-based AND progress-based.
+**Spawn Mechanic:** Mix of milestone + location. Some NPCs unlock from achievements/progress (collected X species). Others from visiting enough unique biomes/areas or real-world location types. Two discovery vectors: exploration-based AND progress-based.
 
 **NPC Interactions:** NPCs remember you, museum curator requests, quest givers (treasure maps, bundles), shops (deferred).
 
@@ -226,7 +225,5 @@ Break the 32k species pool into completable sub-goals:
 ---
 
 ## 16. Mechanics & Deferred Items
-
-**Restoration Mechanic (UNDER REVIEW — tentative):** Current code: 3 unique species in a cell = fully restored. Designer questions if this mechanic is pulling its weight. May be reworked or removed as inventory model and cell activities develop. Don't invest heavily here — mechanic is unstable.
 
 **Deferred Decisions (designer not ready — DO NOT plan these):** Economy/shops, NPC count, sound/music, monetization, social features, session arc shape, hardest decision in the game, reasons NOT to collect, camera AI, real-time Supabase sync, multiplayer.

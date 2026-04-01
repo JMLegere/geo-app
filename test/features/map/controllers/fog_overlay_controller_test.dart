@@ -525,19 +525,5 @@ void main() {
       final parsed = _parseGeoJson(controller.midFogGeoJson);
       expect(parsed['type'], equals('FeatureCollection'));
     });
-
-    test('restorationGeoJson is valid JSON after update', () {
-      final controller = _makeController();
-
-      controller.update(
-        cameraLat: _cameraLat,
-        cameraLon: _cameraLon,
-        zoom: _zoom,
-        viewportSize: _viewport,
-      );
-
-      final parsed = _parseGeoJson(controller.restorationGeoJson);
-      expect(parsed['type'], equals('FeatureCollection'));
-    });
   });
 }

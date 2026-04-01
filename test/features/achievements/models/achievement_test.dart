@@ -114,12 +114,5 @@ void main() {
         equals(10),
       );
     });
-
-    test('restorer has targetValue 5', () {
-      expect(
-        kAchievementDefinitions[AchievementId.restorer]!.targetValue,
-        equals(5),
-      );
-    });
   });
 }

@@ -18,9 +18,6 @@ class AchievementContext {
   /// Total distance walked in kilometres.
   final double totalDistanceKm;
 
-  /// Number of cells that have been fully restored (level == 1.0).
-  final int restoredCellCount;
-
   /// Collected species count broken down by habitat display name.
   ///
   /// Keys match `Habitat.displayName` (e.g. `'Forest'`, `'Saltwater'`).
@@ -38,7 +35,6 @@ class AchievementContext {
     required this.speciesCollected,
     required this.currentStreak,
     required this.totalDistanceKm,
-    required this.restoredCellCount,
     required this.collectedByHabitat,
     required this.totalByHabitat,
   });
@@ -115,16 +111,13 @@ class AchievementService {
       AchievementId.naturalist => ctx.speciesCollected,
       AchievementId.biologist => ctx.speciesCollected,
       AchievementId.taxonomist => ctx.speciesCollected,
-      AchievementId.forestFriend =>
-        _habitatCompleted(ctx, 'Forest') ? 1 : 0,
+      AchievementId.forestFriend => _habitatCompleted(ctx, 'Forest') ? 1 : 0,
       AchievementId.oceanExplorer =>
         _habitatCompleted(ctx, 'Saltwater') ? 1 : 0,
-      AchievementId.mountaineer =>
-        _habitatCompleted(ctx, 'Mountain') ? 1 : 0,
+      AchievementId.mountaineer => _habitatCompleted(ctx, 'Mountain') ? 1 : 0,
       AchievementId.dedicated => ctx.currentStreak,
       AchievementId.devoted => ctx.currentStreak,
       AchievementId.marathon => ctx.totalDistanceKm.floor(),
-      AchievementId.restorer => ctx.restoredCellCount,
     };
   }
 

@@ -183,7 +183,6 @@ void main() {
           'fog_state': 'observed',
           'visit_count': 5,
           'distance_walked': 120.5,
-          'restoration_level': 0.67,
           'last_visited': '2026-03-07T10:00:00Z',
         },
         {
@@ -192,7 +191,6 @@ void main() {
           'fog_state': 'hidden',
           'visit_count': 1,
           'distance_walked': 30.0,
-          'restoration_level': 0.33,
           'last_visited': '2026-03-06T14:30:00Z',
         },
       ];
@@ -212,7 +210,6 @@ void main() {
       expect(cell1!.fogState, equals('present'));
       expect(cell1.visitCount, equals(5));
       expect(cell1.distanceWalked, equals(120.5));
-      expect(cell1.restorationLevel, equals(0.67));
 
       final cell2 = await cellProgressRepo.read(_userId, 'cell-2');
       expect(cell2, isNotNull);
@@ -285,7 +282,6 @@ void main() {
             'fog_state': 'observed',
             'visit_count': 2,
             'distance_walked': 50.0,
-            'restoration_level': 1.0,
           },
         ]
         ..itemInstanceData = [

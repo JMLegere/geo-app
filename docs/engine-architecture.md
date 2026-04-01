@@ -179,7 +179,6 @@ class GameEvent {
 | `cell_exited` | cellId, previousFogState, newFogState |
 | `species_discovered` | definitionId, displayName, rarity, cellId, habitats, affixes, dailySeed |
 | `fog_changed` | cellId, oldState, newState, triggerCellId |
-| `cell_restored` | cellId, level, uniqueSpeciesCount |
 | `seed_rotated` | seedValue, seedDate, previousSeed |
 | `enrichment_complete` | definitionId, animalClass, foodPreference, climate, stats |
 | `cell_properties_resolved` | cellId, habitats, climate, continent, locationId |

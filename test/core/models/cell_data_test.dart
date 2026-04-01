@@ -14,7 +14,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.detected,
         speciesIds: ['species_1', 'species_2'],
-        restorationLevel: 0.5,
         distanceWalked: 150.0,
         visitCount: 3,
         lastVisited: testDateTime,
@@ -25,7 +24,6 @@ void main() {
       expect(cellData.center.lon, equals(-122.4194));
       expect(cellData.fogState, equals(FogState.detected));
       expect(cellData.speciesIds, equals(['species_1', 'species_2']));
-      expect(cellData.restorationLevel, equals(0.5));
       expect(cellData.distanceWalked, equals(150.0));
       expect(cellData.visitCount, equals(3));
       expect(cellData.lastVisited, equals(testDateTime));
@@ -37,7 +35,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.detected,
         speciesIds: [],
-        restorationLevel: 0.0,
         distanceWalked: 0.0,
         visitCount: 0,
         lastVisited: null,
@@ -56,7 +53,7 @@ void main() {
       expect(updated.visitCount, equals(1));
       expect(updated.distanceWalked, equals(50.0));
       expect(updated.lastVisited, equals(testDateTime));
-      
+
       // Original unchanged
       expect(original.fogState, equals(FogState.detected));
       expect(original.visitCount, equals(0));
@@ -68,7 +65,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.nearby,
         speciesIds: ['sp_1', 'sp_2', 'sp_3'],
-        restorationLevel: 0.75,
         distanceWalked: 250.5,
         visitCount: 5,
         lastVisited: testDateTime,
@@ -82,7 +78,6 @@ void main() {
       expect(restored.center.lon, equals(original.center.lon));
       expect(restored.fogState, equals(original.fogState));
       expect(restored.speciesIds, equals(original.speciesIds));
-      expect(restored.restorationLevel, equals(original.restorationLevel));
       expect(restored.distanceWalked, equals(original.distanceWalked));
       expect(restored.visitCount, equals(original.visitCount));
       expect(restored.lastVisited, equals(original.lastVisited));
@@ -94,7 +89,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.unknown,
         speciesIds: [],
-        restorationLevel: 0.0,
         distanceWalked: 0.0,
         visitCount: 0,
         lastVisited: null,
@@ -112,7 +106,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.explored,
         speciesIds: ['sp_1'],
-        restorationLevel: 0.5,
         distanceWalked: 100.0,
         visitCount: 2,
         lastVisited: testDateTime,
@@ -123,7 +116,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.explored,
         speciesIds: ['sp_1'],
-        restorationLevel: 0.5,
         distanceWalked: 100.0,
         visitCount: 2,
         lastVisited: testDateTime,
@@ -134,7 +126,6 @@ void main() {
         center: testLatLng,
         fogState: FogState.explored,
         speciesIds: ['sp_1'],
-        restorationLevel: 0.5,
         distanceWalked: 100.0,
         visitCount: 2,
         lastVisited: testDateTime,
@@ -144,28 +135,12 @@ void main() {
       expect(cell1, isNot(equals(cell3)));
     });
 
-    test('restorationLevel is clamped between 0.0 and 1.0', () {
-      final cellData = CellData(
-        id: 'cell_001',
-        center: testLatLng,
-        fogState: FogState.present,
-        speciesIds: [],
-        restorationLevel: 1.5, // Should be clamped to 1.0
-        distanceWalked: 0.0,
-        visitCount: 0,
-        lastVisited: null,
-      );
-
-      expect(cellData.restorationLevel, equals(1.0));
-    });
-
     test('speciesIds can be empty', () {
       final cellData = CellData(
         id: 'cell_001',
         center: testLatLng,
         fogState: FogState.unknown,
         speciesIds: [],
-        restorationLevel: 0.0,
         distanceWalked: 0.0,
         visitCount: 0,
         lastVisited: null,

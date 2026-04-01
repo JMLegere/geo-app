@@ -4,7 +4,7 @@
 /// exercises the full flow:
 ///
 ///   player starts → enters cells → species discovered → add to collection
-///   → record restoration → sanctuary visit → streak updated
+///   → sanctuary visit → streak updated
 ///
 /// Every step asserts the correct state change in the relevant service.
 library;
@@ -23,7 +23,6 @@ import 'package:earth_nova/features/caretaking/models/caretaking_state.dart';
 import 'package:earth_nova/features/caretaking/services/caretaking_service.dart';
 import 'package:earth_nova/core/models/discovery_event.dart';
 import 'package:earth_nova/features/discovery/services/discovery_service.dart';
-import 'package:earth_nova/features/world/services/restoration_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fixtures/species_fixture.dart';
@@ -58,7 +57,6 @@ class GameSession {
   final FogStateResolver fogResolver;
   final SpeciesService speciesService;
   final DiscoveryService discoveryService;
-  final RestorationService restorationService;
   final CaretakingService caretakingService;
   final AppDatabase db;
   final List<DiscoveryEvent> discoveryEvents;
@@ -68,7 +66,6 @@ class GameSession {
     required this.fogResolver,
     required this.speciesService,
     required this.discoveryService,
-    required this.restorationService,
     required this.caretakingService,
     required this.db,
     required this.discoveryEvents,
@@ -85,7 +82,6 @@ class GameSession {
     );
     discoveryService.onDiscovery.listen(discoveryEvents.add);
 
-    final restorationService = RestorationService();
     final caretakingService = CaretakingService();
     final db = makeDb();
 
@@ -94,7 +90,6 @@ class GameSession {
       fogResolver: fogResolver,
       speciesService: speciesService,
       discoveryService: discoveryService,
-      restorationService: restorationService,
       caretakingService: caretakingService,
       db: db,
       discoveryEvents: discoveryEvents,
@@ -258,53 +253,7 @@ void main() {
       expect(collected, isTrue);
     });
 
-    // ── Step 5: Restoration ───────────────────────────────────────────────
-
-    test('5. recording 3 species fully restores a cell', () {
-      const cellId = 'test-cell';
-
-      expect(
-          session.restorationService.getRestorationLevel(cellId), equals(0.0));
-
-      session.restorationService.recordCollection(cellId, 'species-a');
-      expect(session.restorationService.getRestorationLevel(cellId),
-          closeTo(1 / 3.0, 0.001));
-
-      session.restorationService.recordCollection(cellId, 'species-b');
-      expect(session.restorationService.getRestorationLevel(cellId),
-          closeTo(2 / 3.0, 0.001));
-
-      session.restorationService.recordCollection(cellId, 'species-c');
-      expect(
-          session.restorationService.getRestorationLevel(cellId), equals(1.0));
-      expect(session.restorationService.isFullyRestored(cellId), isTrue);
-    });
-
-    test('5. duplicate species in same cell does not double-count restoration',
-        () {
-      const cellId = 'test-cell-dup';
-
-      session.restorationService.recordCollection(cellId, 'species-a');
-      session.restorationService.recordCollection(cellId, 'species-a'); // dup
-      session.restorationService.recordCollection(cellId, 'species-a'); // dup
-
-      // Still only 1/3 restored.
-      expect(session.restorationService.getRestorationLevel(cellId),
-          closeTo(1 / 3.0, 0.001));
-    });
-
-    test('5. restoration level is clamped to 1.0 with many species', () {
-      const cellId = 'test-cell-max';
-
-      for (int i = 0; i < 10; i++) {
-        session.restorationService.recordCollection(cellId, 'species-$i');
-      }
-
-      expect(
-          session.restorationService.getRestorationLevel(cellId), equals(1.0));
-    });
-
-    // ── Step 6: Sanctuary visit / streak ─────────────────────────────────
+    // ── Step 5: Sanctuary visit / streak ─────────────────────────────────
 
     test('6. first sanctuary visit starts streak at 1', () {
       const initial = CaretakingState();
@@ -439,8 +388,7 @@ void main() {
 
     // ── Complete golden path as a single scenario ─────────────────────────
 
-    test(
-        'complete golden path: start → move → discover → restore → streak → persist',
+    test('complete golden path: start → move → discover → streak → persist',
         () async {
       // 1. Start.
       session.fogResolver.onLocationUpdate(kStartLat, kStartLon);
@@ -466,15 +414,7 @@ void main() {
         expect(event.item.displayName, isNotEmpty);
       }
 
-      // 4. Restoration: collect 3 species in a test cell.
-      const restorationCellId = 'restoration-cell';
-      session.restorationService.recordCollection(restorationCellId, 'sp-a');
-      session.restorationService.recordCollection(restorationCellId, 'sp-b');
-      session.restorationService.recordCollection(restorationCellId, 'sp-c');
-      expect(session.restorationService.isFullyRestored(restorationCellId),
-          isTrue);
-
-      // 5. Streak: 3 consecutive days.
+      // 4. Streak: 3 consecutive days.
       var caretaking = const CaretakingState();
       caretaking = session.caretakingService
           .recordVisit(caretaking, DateTime(2026, 3, 1));
@@ -505,8 +445,6 @@ void main() {
       expect(savedProfile!.currentStreak, equals(3));
       expect(
           session.fogResolver.visitedCellIds.length, greaterThanOrEqualTo(1));
-      expect(session.restorationService.getAllRestorationLevels(),
-          contains(restorationCellId));
     });
   });
 }

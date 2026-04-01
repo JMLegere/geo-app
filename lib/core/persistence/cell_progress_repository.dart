@@ -14,7 +14,6 @@ class CellProgressRepository {
     required FogState fogState,
     double distanceWalked = 0.0,
     int visitCount = 0,
-    double restorationLevel = 0.0,
     DateTime? lastVisited,
   }) async {
     final progress = LocalCellProgress(
@@ -24,7 +23,7 @@ class CellProgressRepository {
       fogState: fogState.name,
       distanceWalked: distanceWalked,
       visitCount: visitCount,
-      restorationLevel: restorationLevel,
+      restorationLevel: 0.0,
       lastVisited: lastVisited,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -46,7 +45,6 @@ class CellProgressRepository {
     FogState? fogState,
     double? distanceWalked,
     int? visitCount,
-    double? restorationLevel,
     DateTime? lastVisited,
   }) async {
     final existing = await _db.getCellProgress(userId, cellId);
@@ -58,8 +56,8 @@ class CellProgressRepository {
       fogState: fogState?.name ?? existing.fogState,
       distanceWalked: distanceWalked ?? existing.distanceWalked,
       visitCount: visitCount ?? existing.visitCount,
-      restorationLevel: restorationLevel ?? existing.restorationLevel,
-      lastVisited: lastVisited != null ? Value(lastVisited) : const Value.absent(),
+      lastVisited:
+          lastVisited != null ? Value(lastVisited) : const Value.absent(),
       updatedAt: DateTime.now(),
     );
 
@@ -128,7 +126,8 @@ class CellProgressRepository {
     FogState state,
   ) async {
     return (_db.select(_db.localCellProgressTable)
-          ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
+          ..where(
+              (t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
         .get();
   }
 
@@ -136,7 +135,8 @@ class CellProgressRepository {
     final counts = <FogState, int>{};
     for (final state in FogState.values) {
       final count = await (_db.select(_db.localCellProgressTable)
-            ..where((t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
+            ..where(
+                (t) => t.userId.equals(userId) & t.fogState.equals(state.name)))
           .get()
           .then((rows) => rows.length);
       counts[state] = count;

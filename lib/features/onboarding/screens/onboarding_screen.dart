@@ -30,7 +30,7 @@ const _kPages = [
     icon: Icons.forest_rounded,
     title: 'Build Your Sanctuary',
     subtitle:
-        'Collect species and restore habitats. Track your exploration streaks and watch your sanctuary grow.',
+        'Collect species and track your exploration. Watch your sanctuary grow.',
     accentColor: Color(0xFFF29900),
   ),
   OnboardingPageData(

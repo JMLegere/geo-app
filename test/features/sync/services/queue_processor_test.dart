@@ -286,7 +286,6 @@ class _MockSupabasePersistence extends SupabasePersistence {
     required String fogState,
     double distanceWalked = 0,
     int visitCount = 0,
-    double restorationLevel = 0,
     DateTime? lastVisited,
   }) async {
     upsertCellProgressCalls++;
@@ -391,7 +390,6 @@ String _cellProgressPayload(String cellId) => jsonEncode({
       'fog_state': 'observed',
       'distance_walked': 100.0,
       'visit_count': 1,
-      'restoration_level': 0.33,
       'last_visited': '2026-03-07T12:00:00.000Z',
     });
 

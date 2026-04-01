@@ -5,7 +5,7 @@ enum WriteQueueEntityType {
   /// A unique discovered item instance.
   itemInstance,
 
-  /// Cell progress (fog state, distance, visit count, restoration).
+  /// Cell progress (fog state, distance, visit count).
   cellProgress,
 
   /// Player profile (streaks, distance, season).

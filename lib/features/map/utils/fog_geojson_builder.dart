@@ -15,8 +15,7 @@ import 'package:earth_nova/core/models/fog_state.dart';
 ///    [FogState.nearby] density. Rendered with partial opacity on top of
 ///    the transparent holes, creating a semi-transparent fog effect.
 ///
-/// 3. **fog-restoration**: Individual polygons for current cells with
-///    restoration progress. Rendered as a green tint.
+/// 3. **fog-border**: Polygon outlines for unexplored and concealed cells.
 ///
 /// All coordinates use GeoJSON convention: **[longitude, latitude]**.
 class FogGeoJsonBuilder {
@@ -149,54 +148,6 @@ class FogGeoJsonBuilder {
     if (++_midFogLogCounter % 100 == 1) {
       debugPrint(
           '[FOG-GEO] mid: $featureCount features from ${cellStates.length} cells');
-    }
-
-    return '{"type":"FeatureCollection","features":[$features]}';
-  }
-
-  /// Builds the "fog-restoration" GeoJSON: individual polygons for observed
-  /// cells that have restoration progress > 0.
-  ///
-  /// Each Feature has a `level` property (0.0–1.0) for data-driven opacity.
-  ///
-  /// [restorationLevels] maps cell IDs to their restoration level.
-  /// Only cells that are [FogState.present] in [cellStates] are included.
-  static String buildRestorationOverlay({
-    required Map<String, FogState> cellStates,
-    required Map<String, double> restorationLevels,
-    required List<Geographic> Function(String cellId) getBoundary,
-    String Function(String cellId)? getFragment,
-  }) {
-    final features = StringBuffer();
-    var first = true;
-
-    for (final entry in restorationLevels.entries) {
-      if (entry.value <= 0.0) continue;
-
-      final state = cellStates[entry.key];
-      if (state != FogState.present) continue;
-
-      if (getFragment != null) {
-        if (!first) features.write(',');
-        first = false;
-        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
-            '"coordinates":[');
-        features.write(getFragment(entry.key));
-        features.write(']},"properties":{"level":${entry.value}}}');
-      } else {
-        final boundary = getBoundary(entry.key);
-        if (boundary.length < 3) continue;
-        if (!first) features.write(',');
-        first = false;
-        features.write('{"type":"Feature","geometry":{"type":"Polygon",'
-            '"coordinates":[[');
-        for (var i = 0; i < boundary.length; i++) {
-          if (i > 0) features.write(',');
-          features.write('[${boundary[i].lon},${boundary[i].lat}]');
-        }
-        features.write(',[${boundary[0].lon},${boundary[0].lat}]');
-        features.write(']]},"properties":{"level":${entry.value}}}');
-      }
     }
 
     return '{"type":"FeatureCollection","features":[$features]}';

@@ -115,8 +115,7 @@ OFFLINE FLOW:
 - Discover / collect items (with 24h seed-validated grace)
 - Commit fog reveals (persist visited cells)
 - Unlock achievements
-- Restore cells
-- Increment streaks
+	- Increment streaks
 - Trade with other players
 - Submit to leaderboards
 - Complete NPC bundles / quests
@@ -202,7 +201,6 @@ GameCoordinator (pure Dart, no Riverpod dependency):
     - Connectivity monitoring (online/offline state)
     - Daily seed cache (fetch on connect, use offline)
     - Streak tracking
-    - Restoration progress
 
   DOES NOT OWN:
     - Map rendering (MapLibre, GeoJSON layers)
@@ -252,7 +250,7 @@ MapScreen:
 -- Cache of server state
 item_definitions        -- static blueprints (loaded from bundled assets)
 item_instances          -- player's inventory (mirror of server)
-cell_progress           -- visited cells, fog state, restoration
+cell_progress           -- visited cells, fog state
 player_profile          -- stats, streaks, distance
 
 -- Offline write queue

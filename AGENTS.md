@@ -1,6 +1,6 @@
 # Agent Guidance — EarthNova (working title)
 
-> iNaturalist × Stardew Valley × Pokémon Go. Explore the real world via GPS, reveal fog-of-war, discover 33k real IUCN species, build a sanctuary, restore habitats. Working title: EarthNova.
+> iNaturalist × Stardew Valley × Pokémon Go. Explore the real world via GPS, reveal fog-of-war, discover 33k real IUCN species, build a sanctuary. Working title: EarthNova.
 
 ## Quick Reference
 
@@ -65,7 +65,7 @@ lib/
 │   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
 │   ├── steps/                  # 👣 Pedometer, step-based exploration
 │   ├── sync/                   # ☁️ Offline-first sync
-│   └── world/                  # 🌍 Terrain, cell state, restoration (shared state)
+│   └── world/                  # 🌍 Terrain, cell state (shared state)
 ├── shared/
 │   └── constants.dart          # All game-balance constants
 ```
@@ -113,13 +113,11 @@ These are **locked in** — do not revisit without explicit instruction.
 
 8. **2 seasons** — Summer (May–Oct), Winter (Nov–Apr). 80% of species are year-round, 10% summer-only, 10% winter-only.
 
-9. **Restoration formula** — 3 unique species in a cell = fully restored (level 1.0). Formula: `min(uniqueSpeciesCount, 3) / 3.0`.
+9. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
 
-10. **Conditional Supabase** — When `SUPABASE_URL` and `SUPABASE_ANON_KEY` are supplied via `--dart-define`, the app uses `SupabaseAuthService` (with anonymous sign-in) and `SupabasePersistence` (write-through to Supabase tables). Without credentials, `MockAuthService` is used and sync is disabled.
+10. **Backend-driven enrichment** — Unified enrichment pipeline runs server-side via `process-enrichment-queue` Edge Function (1-minute pg_cron). Processes species AND items per tick. Species: classify → icon prompt → art prompt → icon image → art image (2-stage LLM → image pipeline with per-field version stamps). Items: denormalizes species fields, icon/art URLs, cell properties, and location hierarchy onto instances. Priority: count fields needing work (null or stale enrichver), process closest-to-done first. No client-side enrichment.
 
-11. **Backend-driven enrichment** — Unified enrichment pipeline runs server-side via `process-enrichment-queue` Edge Function (1-minute pg_cron). Processes species AND items per tick. Species: classify → icon prompt → art prompt → icon image → art image (2-stage LLM → image pipeline with per-field version stamps). Items: denormalizes species fields, icon/art URLs, cell properties, and location hierarchy onto instances. Priority: count fields needing work (null or stale enrichver), process closest-to-done first. No client-side enrichment.
-
-12. **GBA rendering principle** — Never do work that doesn't change a pixel visible this frame. Lazy tabs, viewport-only fog, eager-resolve/lazy-render for districts, visibility-gated animations. The GBA ran Pokemon at 60fps on 16MHz/256KB by never computing invisible work. We have 10,000x the hardware — the problem is always wasted work, not the platform. See `docs/target-architecture.md` > Rendering Principles.
+11. **GBA rendering principle** — Never do work that doesn't change a pixel visible this frame. Lazy tabs, viewport-only fog, eager-resolve/lazy-render for districts, visibility-gated animations. The GBA ran Pokemon at 60fps on 16MHz/256KB by never computing invisible work. We have 10,000x the hardware — the problem is always wasted work, not the platform. See `docs/target-architecture.md` > Rendering Principles.
 
 ---
 
@@ -159,7 +157,7 @@ These are the target architecture decisions from two design jams. They describe 
   - **Class orbs (~35):** orb-carnivore, orb-songbird, orb-rodent, orb-crocodile, etc. (one per animal class)
   - **Climate orbs (4):** orb-tropic, orb-temperate, orb-boreal, orb-frigid
 - **Feeding produces 3 orbs:** Feed animal → 1 habitat orb + 1 class orb + 1 climate orb.
-- **Orb spend:** TBD. Candidates: restoration, breeding, lures, cosmetics, NPC shops.
+- **Orb spend:** TBD. Candidates: breeding, lures, cosmetics, NPC shops.
 - **Orbs are NOT loot drops** — only produced via sanctuary feeding.
 
 ### Wall 1d: Climate Zones
@@ -198,7 +196,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **The map is a renderer, not an orchestrator.** Game logic lives in `GameCoordinator`, a pure Dart service above the UI.
 - **Runs forever** — created at ProviderScope level, never stops on tab switch. Map screen reads its state and renders.
 - **Currently owns:** GPS subscription, game loop tick (~10 Hz), fog computation, discovery processing.
-- **Will own (Phase 3+):** write queue, daily seed cache, streaks, restoration.
+- **Will own (Phase 3+):** write queue, daily seed cache, streaks.
 - **Does NOT own:** map rendering, camera, widget state, toast UI, RubberBand interpolation.
 - **Output:** Individual callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) wired by gameCoordinatorProvider. Discovery events → UI subscribes for toasts.
 - **Target directory:** `lib/core/game/`
@@ -244,7 +242,7 @@ features/X/
 └── widgets/       # Reusable UI components
 ```
 
-### Minimal feature (biome, location, caretaking, restoration)
+### Minimal feature (biome, location, caretaking)
 ```
 features/X/
 ├── models/        # (optional)
@@ -409,7 +407,6 @@ Additional directories:
 | Seasons | 2 | Summer (May–Oct), Winter (Nov–Apr) |
 | Continents | 6 | Asia, North America, South America, Africa, Oceania, Europe |
 | Detection radius | 1000 m | kDetectionRadiusMeters — cells within this radius are at least "unexplored" |
-| Restoration threshold | 3 species | 3 unique species per cell = fully restored |
 | Encounter slots per cell | 3 | Max species rolled per cell visit |
 | Max cells per tile | 100 | Mesh generation performance |
 | Tile prefetch radius | 1 | Network bandwidth, memory cache |
@@ -595,7 +592,7 @@ AGENTS.md files (12 total):
 ├── lib/features/location/AGENTS.md          # GPS stream, simulation, filtering
 ├── lib/features/discovery/AGENTS.md         # Encounter flow, dual notifier pattern
 ├── lib/features/achievements/AGENTS.md      # Achievement evaluation, toast notifications
-├── lib/features/world/AGENTS.md             # Terrain, cell state, restoration
+├── lib/features/world/AGENTS.md             # Terrain, cell state
 ├── lib/features/calendar/AGENTS.md          # Seasons, time-of-day
 ├── lib/features/items/AGENTS.md             # Item definitions, instances, inventory
 ├── lib/shared/AGENTS.md                     # Constants, shared utilities
