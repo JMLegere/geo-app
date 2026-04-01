@@ -169,8 +169,14 @@ class DetectionZoneService {
         }
       }
       debugPrint('[DetectionZone] loaded ${allDistricts.length} districts');
+      ObservabilityBuffer.instance?.event('districts_loaded', {
+        'count': allDistricts.length,
+      });
     } catch (e) {
       debugPrint('[DetectionZone] failed to load districts: $e');
+      ObservabilityBuffer.instance?.event('districts_load_failed', {
+        'error': e.toString().substring(0, e.toString().length.clamp(0, 200)),
+      });
     }
     return allDistricts;
   }
