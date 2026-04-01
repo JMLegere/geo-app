@@ -171,6 +171,11 @@ class LocationService {
       _subscription = null;
       keyboardService?.stop();
 
+      // Notify BEFORE starting GPS stream — listeners (e.g. MapScreen)
+      // reset the rubber-band on this event so the first GPS fix snaps
+      // instead of interpolating from the stale keyboard position.
+      activeModeNotifier.value = LocationMode.realGps;
+
       // Subscribe to GPS stream.
       _subscription = webGps.locationStream
           .map((loc) => filter.filter(loc))
@@ -178,8 +183,6 @@ class LocationService {
           .cast<SimulatedLocation>()
           .listen(_outputController.add);
       webGps.start();
-
-      activeModeNotifier.value = LocationMode.realGps;
     }).catchError((Object e) {
       _switchingToGps = false;
       if (_disposed) return;
