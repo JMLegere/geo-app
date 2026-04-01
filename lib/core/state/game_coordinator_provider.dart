@@ -822,19 +822,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         await speciesCache.warmUpByIds(ownedIds);
       }
 
-      // Restore last known position before starting the game loop.
-      // This ensures the map and keyboard service start at the player's
-      // previous location instead of the hardcoded Fredericton default.
-      // Captured for defense-in-depth: if the keyboard's initial GPS
-      // emission is lost (broadcast stream timing), the post-hydration
-      // block can seed the fog resolver from this position.
+      // Read last known position for fog/zone seeding (NOT for the location
+      // stream). The restored position may be from a completely different city
+      // — feeding it into the keyboard service causes the rubber-band to
+      // initialize there, then interpolate hundreds of km when real GPS arrives.
+      // Instead: fog resolver and detection zone use it for display during
+      // loading; the location stream starts from the keyboard default or GPS.
       double? restoredLat;
       double? restoredLon;
       final profile = await profileRepo.read(userId);
       if (profile?.lastLat != null && profile?.lastLon != null) {
         restoredLat = profile!.lastLat;
         restoredLon = profile.lastLon;
-        locationService.setInitialPosition(restoredLat!, restoredLon!);
         debugPrint(
           '[GameCoordinator] restored position: '
           '$restoredLat, $restoredLon',
