@@ -996,18 +996,18 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           );
         }
 
-        // Detection zone now computes automatically from GPS position via
-        // updatePlayerPosition. Seed the fog resolver from the restored
-        // position if GPS hasn't arrived yet so the map starts correctly.
-        if (restoredLat != null && restoredLon != null) {
-          fogResolver.onLocationUpdate(restoredLat, restoredLon);
-          await detectionZoneService.updatePlayerPosition(
-              restoredLat, restoredLon);
-          debugPrint('[DetectionZone] seeded from restored position: '
-              '$restoredLat, $restoredLon');
-        }
-
         // Hierarchy data now available — recompute zone to pick up districts.
+        // Do NOT re-seed from restoredLat/restoredLon here. By the time
+        // Supabase hydration completes the loading screen has already
+        // dismissed and the detection zone has resolved at the player's
+        // real location (from the keyboard stream default or real GPS).
+        // Reseeding from the SQLite-restored position (which may be from a
+        // previous session in a different city) rebuilds the fog around the
+        // wrong location while the player marker is at the correct position,
+        // producing a fully-opaque fog at the player's real location → black
+        // screen. recomputeCurrentZone() is safe: it uses the last cell the
+        // detection zone service already resolved to, so it only picks up
+        // newly-loaded district data without moving the zone origin.
         await detectionZoneService.recomputeCurrentZone();
 
         // Species cache is already refreshed inside hydrateFromSupabase()
