@@ -274,7 +274,22 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     engineOnLocation?.call(position, accuracy);
     if (_providerDisposed) return;
     ref.read(locationProvider.notifier).updateLocation(position, accuracy);
-    detectionZoneService.updatePlayerPosition(position.lat, position.lon);
+
+    // When exploration is disabled the rubber-band is far from the real GPS
+    // position (e.g. a session where the restored position was from a different
+    // city). Feeding the rubber-band's intermediate positions into the zone
+    // service causes it to recompute ~10 times across a cross-country path,
+    // accumulating thousands of unrelated cells and triggering 800ms fog
+    // rebuilds that jank the UI thread for 10+ seconds.
+    //
+    // Fix: use the GPS position for zone updates when exploration is disabled.
+    // This gives exactly one zone recompute (at the player's real location)
+    // instead of one per Voronoi cell along the interpolation path.
+    final zonePosition = coordinator.explorationDisabled
+        ? (coordinator.rawGpsPosition ?? position)
+        : position;
+    detectionZoneService.updatePlayerPosition(
+        zonePosition.lat, zonePosition.lon);
   };
 
   final engineOnGpsError = coordinator.onGpsErrorChanged;
