@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/gps_permission_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
@@ -401,13 +402,19 @@ class _SteadyStateShellState extends ConsumerState<_SteadyStateShell> {
     final playerState = ref.watch(playerProvider);
     final isZoneReady = ref.watch(zoneReadyProvider);
     final isPlayerLocated = ref.watch(playerLocatedProvider);
+    final gpsPermissionState = ref.watch(gpsPermissionProvider);
 
     // Check onboarding first — if not complete, show onboarding (no map).
     if (playerState.isHydrated && !playerState.hasCompletedOnboarding) {
       return const OnboardingScreen(key: ValueKey('onboarding'));
     }
 
-    final allReady = playerState.isHydrated && isZoneReady && isPlayerLocated;
+    // Loading dismissal criteria: hydrated, zone ready, player located,
+    // AND GPS permission decision made (not unknown)
+    final allReady = playerState.isHydrated &&
+        isZoneReady &&
+        isPlayerLocated &&
+        gpsPermissionState != GpsPermissionState.unknown;
 
     if (allReady && !_wasDismissed) {
       _wasDismissed = true;

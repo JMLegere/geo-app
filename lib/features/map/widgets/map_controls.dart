@@ -1,10 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+
+import 'package:earth_nova/core/state/gps_permission_provider.dart';
+import 'package:earth_nova/features/location/services/location_service.dart';
 
 /// Floating action buttons for the map screen.
 ///
 /// Stacked vertically with 8 px gap:
+/// - GPS button (keyboard mode only): requests GPS permission
 /// - Recenter button (always visible): compass/crosshair icon snaps camera
 ///   back to the player and resumes follow mode.
 /// - Debug toggle (kDebugMode only): opens/closes the debug HUD overlay.
@@ -20,10 +26,11 @@ import 'package:flutter/services.dart';
 ///   child: MapControls(
 ///     onRecenter: _cameraController.recenter,
 ///     onToggleDebug: () => setState(() => _showDebug = !_showDebug),
+///     locationMode: LocationMode.realGps,
 ///   ),
 /// )
 /// ```
-class MapControls extends StatelessWidget {
+class MapControls extends ConsumerWidget {
   /// Called when the recenter button is tapped.
   final VoidCallback onRecenter;
 
@@ -36,16 +43,20 @@ class MapControls extends StatelessWidget {
   /// Whether the current zoom preset is world (true) or player (false).
   final bool isWorldZoom;
 
+  /// Current location mode (controls visibility of GPS button).
+  final LocationMode locationMode;
+
   const MapControls({
     super.key,
     required this.onRecenter,
     required this.onToggleDebug,
     required this.onToggleZoom,
     this.isWorldZoom = false,
+    required this.locationMode,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -54,6 +65,15 @@ class MapControls extends StatelessWidget {
             icon: Icons.bug_report_outlined,
             tooltip: 'Toggle debug HUD',
             onPressed: onToggleDebug,
+          ),
+          const SizedBox(height: 8),
+        ],
+        // GPS button only visible in keyboard mode
+        if (locationMode == LocationMode.keyboard) ...[
+          _ControlButton(
+            icon: Icons.location_searching,
+            tooltip: 'Use My Location',
+            onPressed: () => _requestGpsPermission(context, ref),
           ),
           const SizedBox(height: 8),
         ],
@@ -69,6 +89,58 @@ class MapControls extends StatelessWidget {
           onPressed: onRecenter,
         ),
       ],
+    );
+  }
+
+  Future<void> _requestGpsPermission(
+      BuildContext context, WidgetRef ref) async {
+    HapticFeedback.mediumImpact();
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (context.mounted) {
+          _showSnackBar(context, 'Location services are disabled');
+        }
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (context.mounted) {
+          _showSnackBar(
+              context, 'Location permission denied. Open settings to enable.');
+        }
+        await Geolocator.openAppSettings();
+      } else if (permission == LocationPermission.denied) {
+        if (context.mounted) {
+          _showSnackBar(context, 'Location permission denied');
+        }
+        ref.read(gpsPermissionProvider.notifier).markDenied();
+      } else {
+        if (context.mounted) {
+          _showSnackBar(context, 'Location permission granted!');
+        }
+        ref.read(gpsPermissionProvider.notifier).markGranted();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar(context, 'Error requesting location: $e');
+      }
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

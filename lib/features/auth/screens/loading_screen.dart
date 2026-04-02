@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
+import 'package:earth_nova/core/state/gps_permission_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
@@ -26,6 +29,82 @@ const _fallbackFacts = [
   'The Immortal Jellyfish can revert to its juvenile form indefinitely.',
   'A tardigrade can survive in the vacuum of space.',
 ];
+
+class _PermissionRequestCard extends StatelessWidget {
+  final VoidCallback onUseLocation;
+  final VoidCallback onSkip;
+  final bool isRequesting;
+
+  const _PermissionRequestCard({
+    required this.onUseLocation,
+    required this.onSkip,
+    required this.isRequesting,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
+    return Container(
+      padding: const EdgeInsets.all(Spacing.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: Radii.borderLg,
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.location_on_rounded,
+            size: 32,
+            color: cs.primary,
+          ),
+          const SizedBox(height: Spacing.md),
+          Text(
+            'Find Your Location',
+            style: tt.titleMedium?.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: Spacing.xs),
+          Text(
+            'Allow location access to explore your surroundings and discover species near you.',
+            textAlign: TextAlign.center,
+            style: tt.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: Spacing.lg),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: isRequesting ? null : onUseLocation,
+              icon: isRequesting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.my_location, size: 18),
+              label: Text(isRequesting ? 'Requesting...' : 'Use My Location'),
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: isRequesting ? null : onSkip,
+              child: const Text('Skip (Manual Mode)'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class LoadingScreen extends ConsumerStatefulWidget {
   const LoadingScreen({super.key});
@@ -84,11 +163,43 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
     return 'Ready to explore!';
   }
 
+  Future<void> _requestPermission() async {
+    HapticFeedback.mediumImpact();
+    ref.read(gpsPermissionProvider.notifier).startRequesting();
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ref.read(gpsPermissionProvider.notifier).markDenied();
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        ref.read(gpsPermissionProvider.notifier).markDenied();
+      } else {
+        ref.read(gpsPermissionProvider.notifier).markGranted();
+      }
+    } catch (e) {
+      ref.read(gpsPermissionProvider.notifier).markDenied();
+    }
+  }
+
+  void _skipToManualMode() {
+    HapticFeedback.lightImpact();
+    ref.read(gpsPermissionProvider.notifier).markSkipped();
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final gpsState = ref.watch(gpsPermissionProvider);
     final message = _loadingMessage();
+    final showPermissionUI = gpsState == GpsPermissionState.unknown ||
+        gpsState == GpsPermissionState.requesting;
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -123,6 +234,17 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen>
                 ),
               ),
               const SizedBox(height: Spacing.xxl),
+              if (showPermissionUI) ...[
+                FadeTransition(
+                  opacity: _subtitleOpacity,
+                  child: _PermissionRequestCard(
+                    onUseLocation: _requestPermission,
+                    onSkip: _skipToManualMode,
+                    isRequesting: gpsState == GpsPermissionState.requesting,
+                  ),
+                ),
+                const SizedBox(height: Spacing.xxl),
+              ],
               FadeTransition(
                 opacity: _subtitleOpacity,
                 child: Text(

@@ -219,4 +219,53 @@ class LocationService {
     if (mode != LocationMode.realGps) return null;
     return gpsService?.ensurePermission();
   }
+
+  /// Requests GPS permission and switches from keyboard mode to GPS mode.
+  ///
+  /// Returns true if permission was granted and mode switch occurred.
+  /// Returns false if permission denied or not on web/keyboard mode.
+  Future<bool> requestGpsPermission() async {
+    // Only applicable in keyboard mode on web
+    if (mode != LocationMode.keyboard || !kIsWeb) {
+      return false;
+    }
+
+    try {
+      final status = await _webGpsService?.ensurePermission() ??
+          await RealGpsService().ensurePermission();
+
+      if (status != GpsPermissionStatus.granted) {
+        debugPrint(
+            '[LocationService] GPS permission denied — staying in keyboard mode');
+        return false;
+      }
+
+      // Permission granted — switch over.
+      debugPrint(
+          '[LocationService] GPS permission granted — switching from keyboard to GPS');
+
+      // Stop keyboard.
+      _subscription?.cancel();
+      _subscription = null;
+      keyboardService?.stop();
+
+      // Notify BEFORE starting GPS stream.
+      activeModeNotifier.value = LocationMode.realGps;
+
+      // Subscribe to GPS stream.
+      final webGps = _webGpsService ?? RealGpsService();
+      _webGpsService ??= webGps;
+      _subscription = webGps.locationStream
+          .map((loc) => filter.filter(loc))
+          .where((loc) => loc != null)
+          .cast<SimulatedLocation>()
+          .listen(_outputController.add);
+      webGps.start();
+
+      return true;
+    } catch (e) {
+      debugPrint('[LocationService] Error requesting GPS permission: \$e');
+      return false;
+    }
+  }
 }
