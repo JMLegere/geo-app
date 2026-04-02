@@ -1365,25 +1365,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null) return;
 
     const symbolLayerIds = [
-      'waterway_line_label',
-      'water_name_point_label',
-      'water_name_line_label',
-      'highway-name-path',
-      'highway-name-minor',
-      'highway-name-major',
-      'highway-shield-non-us',
-      'highway-shield-us-interstate',
-      'road_shield_us',
-      'airport',
-      'label_other',
-      'label_village',
-      'label_town',
-      'label_state',
-      'label_city',
-      'label_city_capital',
-      'label_country_3',
-      'label_country_2',
-      'label_country_1',
+      'water_name',
+      'road_oneway',
+      'road_oneway_opposite',
+      'highway_name_other',
+      'highway_name_motorway',
+      'place_other',
+      'place_suburb',
+      'place_village',
+      'place_town',
+      'place_city',
+      'place_city_large',
+      'place_state',
+      'place_country_other',
+      'place_country_minor',
+      'place_country_major',
     ];
 
     for (final id in symbolLayerIds) {
@@ -1600,12 +1596,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 },
                 child: MapLibreMap(
                   options: MapOptions(
-                    // Minimal inline style — black canvas only.
-                    // The fog overlay renders on top; this prevents the white
-                    // positron tile flash and gives a dark base. Replace with
-                    // a real tile provider URL when map tiles are added.
-                    initStyle:
-                        '{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#050C15"}}]}',
+                    // OpenFreeMap dark tiles — free, no API key required.
+                    // Fog overlay renders on top with label removal.
+                    // See: https://openfreemap.org
+                    initStyle: 'https://tiles.openfreemap.org/styles/dark',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
                     // Allow zooming down to infographic trigger level so the user
