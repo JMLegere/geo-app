@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:earth_nova/core/state/fun_facts_provider.dart';
 import 'package:earth_nova/core/state/game_coordinator_provider.dart';
+import 'package:earth_nova/core/state/gps_permission_provider.dart';
 import 'package:earth_nova/core/state/player_provider.dart';
 import 'package:earth_nova/core/state/player_located_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
@@ -212,13 +213,11 @@ void _setupPerfMonitoring(ProviderContainer container) {
       final buildMs = timing.buildDuration.inMilliseconds;
       final rasterMs = timing.rasterDuration.inMilliseconds;
       final totalMs = buildMs + rasterMs;
-      if (totalMs > 16) {
+      if (totalMs > 200) {
         slowFrameCount++;
         if (totalMs > worstFrameMs) worstFrameMs = totalMs;
-        if (totalMs > 100) {
-          print(
-              '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
-        }
+        print(
+            '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
         ObservabilityBuffer.instance?.event('long_frame', {
           'build_ms': buildMs,
           'raster_ms': rasterMs,
@@ -401,13 +400,19 @@ class _SteadyStateShellState extends ConsumerState<_SteadyStateShell> {
     final playerState = ref.watch(playerProvider);
     final isZoneReady = ref.watch(zoneReadyProvider);
     final isPlayerLocated = ref.watch(playerLocatedProvider);
+    final gpsPermissionState = ref.watch(gpsPermissionProvider);
 
     // Check onboarding first — if not complete, show onboarding (no map).
     if (playerState.isHydrated && !playerState.hasCompletedOnboarding) {
       return const OnboardingScreen(key: ValueKey('onboarding'));
     }
 
-    final allReady = playerState.isHydrated && isZoneReady && isPlayerLocated;
+    // Loading dismissal criteria: hydrated, zone ready, player located,
+    // AND GPS permission decision made (not unknown)
+    final allReady = playerState.isHydrated &&
+        isZoneReady &&
+        isPlayerLocated &&
+        gpsPermissionState != GpsPermissionState.unknown;
 
     if (allReady && !_wasDismissed) {
       _wasDismissed = true;

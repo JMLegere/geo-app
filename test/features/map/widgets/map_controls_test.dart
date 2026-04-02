@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:earth_nova/features/location/services/location_service.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
 
 void main() {
@@ -14,6 +15,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () {},
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -32,6 +34,7 @@ void main() {
               onRecenter: () => recenterCalled = true,
               onToggleDebug: () {},
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -57,6 +60,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () => debugToggled = true,
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -78,6 +82,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () {},
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -95,6 +100,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () => debugToggled = true,
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -106,8 +112,7 @@ void main() {
       expect(debugToggled, isFalse);
     });
 
-    testWidgets('shows world icon by default (player zoom)',
-        (tester) async {
+    testWidgets('shows world icon by default (player zoom)', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -115,6 +120,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () {},
               onToggleZoom: () {},
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -123,8 +129,7 @@ void main() {
       expect(find.byIcon(Icons.public), findsOneWidget);
     });
 
-    testWidgets('shows player icon when in world zoom',
-        (tester) async {
+    testWidgets('shows player icon when in world zoom', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -133,6 +138,7 @@ void main() {
               onToggleDebug: () {},
               onToggleZoom: () {},
               isWorldZoom: true,
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),
@@ -152,6 +158,7 @@ void main() {
               onRecenter: () {},
               onToggleDebug: () {},
               onToggleZoom: () => zoomToggled = true,
+              locationMode: LocationMode.keyboard,
             ),
           ),
         ),

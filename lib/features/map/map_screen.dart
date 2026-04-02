@@ -45,6 +45,7 @@ import 'package:earth_nova/shared/game_icons.dart';
 import 'package:earth_nova/features/map/widgets/debug_hud.dart';
 import 'package:earth_nova/features/map/widgets/player_marker_layer.dart';
 import 'package:earth_nova/features/map/widgets/dpad_controls.dart';
+import 'package:earth_nova/features/map/widgets/keyboard_mode_banner.dart';
 import 'package:earth_nova/features/map/widgets/map_controls.dart';
 import 'package:earth_nova/features/map/widgets/status_bar.dart';
 import 'package:earth_nova/features/location/services/location_service.dart';
@@ -1813,31 +1814,52 @@ class _MapScreenState extends ConsumerState<MapScreen>
               },
             ),
 
+            // ── Layer 3.65: Keyboard mode banner ──────────────────────────────
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 120,
+              left: 0,
+              right: 0,
+              child: ValueListenableBuilder<LocationMode>(
+                valueListenable:
+                    ref.read(locationServiceProvider).activeModeNotifier,
+                builder: (context, activeMode, child) {
+                  return KeyboardModeBanner(locationMode: activeMode);
+                },
+              ),
+            ),
+
             // ── Layer 5: Map controls (zoom toggle + debug) ──────────────────
             Positioned(
               right: 16,
               bottom: 16,
-              child: MapControls(
-                isWorldZoom: _zoomLevel == ZoomLevel.world,
-                onRecenter: () {
-                  final pos = _cameraController.playerPosition;
-                  if (pos != null) {
-                    _mapController?.moveCamera(
-                      center: Position(pos.lon, pos.lat),
-                      zoom: _currentZoom,
-                    );
-                  }
+              child: ValueListenableBuilder<LocationMode>(
+                valueListenable:
+                    ref.read(locationServiceProvider).activeModeNotifier,
+                builder: (context, activeMode, child) {
+                  return MapControls(
+                    isWorldZoom: _zoomLevel == ZoomLevel.world,
+                    locationMode: activeMode,
+                    onRecenter: () {
+                      final pos = _cameraController.playerPosition;
+                      if (pos != null) {
+                        _mapController?.moveCamera(
+                          center: Position(pos.lon, pos.lat),
+                          zoom: _currentZoom,
+                        );
+                      }
+                    },
+                    onToggleZoom: () {
+                      final goingToWorld = _zoomLevel == ZoomLevel.player;
+                      setState(() {
+                        _zoomLevel =
+                            goingToWorld ? ZoomLevel.world : ZoomLevel.player;
+                      });
+                      _applyZoomLevel();
+                    },
+                    onToggleDebug: () =>
+                        setState(() => _showDebugHud = !_showDebugHud),
+                  );
                 },
-                onToggleZoom: () {
-                  final goingToWorld = _zoomLevel == ZoomLevel.player;
-                  setState(() {
-                    _zoomLevel =
-                        goingToWorld ? ZoomLevel.world : ZoomLevel.player;
-                  });
-                  _applyZoomLevel();
-                },
-                onToggleDebug: () =>
-                    setState(() => _showDebugHud = !_showDebugHud),
               ),
             ),
           ],
