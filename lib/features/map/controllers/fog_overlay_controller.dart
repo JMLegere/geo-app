@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
@@ -106,7 +107,7 @@ class FogOverlayController {
       // may have null locationId) and produces 0 border features.
       _lastVisibleCellIds = _discoveredCellIds;
       try {
-        _rebuildTerritoryBorders();
+        _scheduleBorderRebuild();
       } catch (e) {
         debugPrint('[FOG] _rebuildTerritoryBorders failed after zone add: $e');
       }
@@ -176,6 +177,12 @@ class FogOverlayController {
   /// Cached fog states from the last [_buildGeoJson] call.
   /// Used for observability (state distribution counts).
   Map<String, FogState> _lastCellStates = const {};
+
+  /// Debounce timer for territory border rebuilds.
+  ///
+  /// Multiple rapid setter updates (e.g. 25+ enrichment results in 1s) are
+  /// coalesced into a single rebuild fired 100ms after the last change.
+  Timer? _borderRebuildTimer;
 
   /// Cached GeoJSON coordinate ring strings per cell. Built lazily from
   /// getCellBoundary(). Never invalidated — Voronoi boundaries are immutable.
@@ -247,7 +254,7 @@ class FogOverlayController {
   /// (new cells enriched → border geometry may change).
   set cellPropertiesCache(Map<String, CellProperties> cache) {
     _cellPropertiesCache = cache;
-    _rebuildTerritoryBorders();
+    _scheduleBorderRebuild();
   }
 
   /// Updates the district attribution map (cellId → districtId).
@@ -255,7 +262,7 @@ class FogOverlayController {
   /// Triggers a territory border rebuild when the attribution changes.
   set cellDistrictIds(Map<String, String> ids) {
     _cellDistrictIds = ids;
-    _rebuildTerritoryBorders();
+    _scheduleBorderRebuild();
   }
 
   /// Updates the district ancestry map (districtId → {cityId, stateId, countryId}).
@@ -265,7 +272,7 @@ class FogOverlayController {
       Map<String, ({String? cityId, String? stateId, String? countryId})>
           ancestry) {
     _districtAncestry = ancestry;
-    _rebuildTerritoryBorders();
+    _scheduleBorderRebuild();
   }
 
   /// Updates the daily seed used for event resolution.
@@ -474,6 +481,18 @@ class FogOverlayController {
       _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
     }
     _habitatDirty = true;
+  }
+
+  /// Schedules a territory border rebuild 100ms from now.
+  ///
+  /// Cancels any pending rebuild — rapid-fire setter changes (e.g. 25+
+  /// enrichment results in 1s) coalesce into a single rebuild.
+  void _scheduleBorderRebuild() {
+    _borderRebuildTimer?.cancel();
+    _borderRebuildTimer = Timer(const Duration(milliseconds: 100), () {
+      _borderRebuildTimer = null;
+      _rebuildTerritoryBorders();
+    });
   }
 
   /// Rebuilds territory border GeoJSON from cached data.

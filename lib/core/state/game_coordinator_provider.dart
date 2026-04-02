@@ -32,6 +32,7 @@ import 'package:earth_nova/core/state/cell_property_resolver_provider.dart';
 import 'package:earth_nova/core/state/zone_ready_provider.dart';
 import 'package:earth_nova/core/state/daily_seed_provider.dart';
 import 'package:earth_nova/core/state/fog_resolver_provider.dart';
+import 'package:earth_nova/core/state/gps_permission_provider.dart';
 import 'package:earth_nova/features/map/providers/fog_overlay_controller_provider.dart';
 import 'package:earth_nova/features/items/providers/items_provider.dart';
 import 'package:earth_nova/core/state/item_instance_repository_provider.dart';
@@ -1343,6 +1344,20 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         }
       }
     }
+  });
+
+  // --- Bridge GPS permission grant → LocationService mode switch ---
+  //
+  // On web, LocationService starts in keyboard mode. _attemptWebGpsFallback()
+  // fires at startup but the user hasn't granted permission yet. When the
+  // user later taps "Use My Location" on the loading screen or keyboard banner,
+  // gpsPermissionProvider transitions to granted — we need to call
+  // requestGpsPermission() to actually switch LocationService to GPS mode.
+  ref.listen<GpsPermissionState>(gpsPermissionProvider, (previous, next) {
+    if (_providerDisposed) return;
+    if (next != GpsPermissionState.granted) return;
+    if (previous == GpsPermissionState.granted) return; // already switched
+    locationService.requestGpsPermission();
   });
 
   // --- Cleanup ---

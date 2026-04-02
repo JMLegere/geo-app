@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:earth_nova/core/services/observability_buffer.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/game_icons.dart';
 
@@ -61,6 +62,13 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
       // Chain to the previous handler (main.dart's crash logger) FIRST
       // so stack traces reach DebugLogBuffer before we swap UI.
       _previousOnError?.call(details);
+
+      // Emit structured event so error fallback visibility is observable.
+      final summary = details.exceptionAsString();
+      ObservabilityBuffer.instance?.event('error_boundary_triggered', {
+        'error': summary.length > 200 ? summary.substring(0, 200) : summary,
+        'library': details.library ?? 'unknown',
+      });
 
       // Schedule state update via post-frame callback — calling setState
       // directly here crashes if the error fires during a build phase.
