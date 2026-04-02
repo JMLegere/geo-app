@@ -712,15 +712,22 @@ Future<void> hydrateFromSupabase({
           ));
         }
 
-        if (countryRows.isNotEmpty || districtRows.isNotEmpty) {
-          debugPrint(
-            '[GameCoordinator] hydrated hierarchy: '
-            '${countryRows.length} countries, ${stateRows.length} states, '
-            '${cityRows.length} cities, ${districtRows.length} districts',
-          );
-        }
+        debugPrint(
+          '[GameCoordinator] hydrated hierarchy: '
+          '${countryRows.length} countries, ${stateRows.length} states, '
+          '${cityRows.length} cities, ${districtRows.length} districts',
+        );
+        obs?.event('hierarchy_hydrated', {
+          'countries': countryRows.length,
+          'states': stateRows.length,
+          'cities': cityRows.length,
+          'districts': districtRows.length,
+        });
       } catch (e) {
         debugPrint('[GameCoordinator] hierarchy hydration failed: $e');
+        obs?.event('hierarchy_hydration_failed', {
+          'error': e.toString().substring(0, e.toString().length.clamp(0, 300)),
+        });
       }
     }
 

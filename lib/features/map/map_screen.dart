@@ -581,8 +581,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       _fogLayersInitialized = true;
       MapLogger.fogLayersInitialized();
+      ObservabilityBuffer.instance?.event('fog_layers_initialized', {
+        'source_count': 7, // Number of sources added above
+      });
     } catch (e, stack) {
       MapLogger.fogLayersInitError(e, stack);
+      ObservabilityBuffer.instance?.event('fog_layers_init_failed', {
+        'error': e.toString().substring(0, e.toString().length.clamp(0, 300)),
+      });
+      rethrow;
     }
   }
 
@@ -731,9 +738,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
         'habitat': habitatDirty,
         'border': borderDirty,
         'icons': iconsDirty,
+        'fog_initialized': _fogLayersInitialized,
       });
     } catch (e, stack) {
       MapLogger.fogUpdateError(e, stack);
+      ObservabilityBuffer.instance?.event('fog_source_update_failed', {
+        'error': e.toString().substring(0, e.toString().length.clamp(0, 300)),
+        'fog_dirty': fogDirty,
+        'fog_initialized': _fogLayersInitialized,
+      });
     }
   }
 
@@ -1078,7 +1091,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
       final sw = Stopwatch()..start();
-
       final MapCamera camera;
       try {
         camera = _mapController!.getCamera();
@@ -1136,6 +1148,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
       if (sw.elapsedMilliseconds > 10) {
         debugPrint('[FOG-PERF] render took ${sw.elapsedMilliseconds}ms');
       }
+    } else if (_renderFrame % 100 == 0) {
+      // Periodic diagnostic: log why fog rendering is gated.
+      debugPrint('[FOG-RENDER] blocked at frame $_renderFrame: '
+          'isReady=${mapState.isReady} hasController=${_mapController != null} '
+          'fogInit=$_fogLayersInitialized');
+      ObservabilityBuffer.instance?.event('fog_render_blocked', {
+        'map_ready': mapState.isReady,
+        'has_controller': _mapController != null,
+        'fog_initialized': _fogLayersInitialized,
+        'frame': _renderFrame,
+      });
     }
   }
 
@@ -1264,6 +1287,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       await _initFogLayers();
       if (!mounted || _mapController == null) return;
+      if (!_fogLayersInitialized) {
+        // _initFogLayers threw and was caught above. Layers not added to MapLibre.
+        // _markMapReady() will be called in the outer catch, allowing base map to work.
+        debugPrint(
+            '[FOG-INIT] layer initialization failed — fog will be non-functional');
+        ObservabilityBuffer.instance?.event('fog_init_layers_missing', {
+          'initialized': false,
+        });
+      }
       MapLogger.fogInitLayersReady();
 
       final fogOverlayController = ref.read(fogOverlayControllerProvider);
@@ -1333,25 +1365,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null) return;
 
     const symbolLayerIds = [
-      'waterway_line_label',
-      'water_name_point_label',
-      'water_name_line_label',
-      'highway-name-path',
-      'highway-name-minor',
-      'highway-name-major',
-      'highway-shield-non-us',
-      'highway-shield-us-interstate',
-      'road_shield_us',
-      'airport',
-      'label_other',
-      'label_village',
-      'label_town',
-      'label_state',
-      'label_city',
-      'label_city_capital',
-      'label_country_3',
-      'label_country_2',
-      'label_country_1',
+      'water_name',
+      'road_oneway',
+      'road_oneway_opposite',
+      'highway_name_other',
+      'highway_name_motorway',
+      'place_other',
+      'place_suburb',
+      'place_village',
+      'place_town',
+      'place_city',
+      'place_city_large',
+      'place_state',
+      'place_country_other',
+      'place_country_minor',
+      'place_country_major',
     ];
 
     for (final id in symbolLayerIds) {
@@ -1568,12 +1596,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 },
                 child: MapLibreMap(
                   options: MapOptions(
-                    // Minimal inline style — black canvas only.
-                    // The fog overlay renders on top; this prevents the white
-                    // positron tile flash and gives a dark base. Replace with
-                    // a real tile provider URL when map tiles are added.
-                    initStyle:
-                        '{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#050C15"}}]}',
+                    // OpenFreeMap dark tiles — free, no API key required.
+                    // Fog overlay renders on top with label removal.
+                    // See: https://openfreemap.org
+                    initStyle: 'https://tiles.openfreemap.org/styles/dark',
                     initZoom: kDefaultZoom,
                     initCenter: _initialCenter(),
                     // Allow zooming down to infographic trigger level so the user
