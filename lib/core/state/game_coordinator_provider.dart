@@ -313,6 +313,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     ref.read(playerProvider.notifier).incrementCellsObserved();
 
     // Persist cell visit to SQLite + enqueue for Supabase sync.
+    // Wrapped separately so a SQLite failure doesn't prevent the state update above.
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       persistCellVisit(
@@ -321,7 +322,13 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         cellProgressRepo: cellProgressRepo,
         queueProcessor: queueProcessor,
         obs: obs,
-      );
+      ).catchError((Object e) {
+        debugPrint('[GameCoordinator] persistCellVisit failed: $e');
+        obs.event('cell_visit_persist_error', {
+          'cell_id': cellId,
+          'error': e.toString(),
+        });
+      });
     }
 
     // Enrich visited cell + ring-1 Voronoi neighbors.
@@ -523,6 +530,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     discoveryService.markCollected(badgedInstance.definitionId);
 
     // Persist to SQLite + enqueue for Supabase sync.
+    // Wrapped separately so a SQLite failure doesn't prevent the toast and state update above.
     final userId = ref.read(authProvider).user?.id;
     if (userId != null) {
       persistItemDiscovery(
@@ -531,7 +539,14 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         itemRepo: itemRepo,
         queueProcessor: queueProcessor,
         obs: obs,
-      );
+      ).catchError((Object e) {
+        debugPrint('[GameCoordinator] persistItemDiscovery failed: $e');
+        obs.event('item_discovery_persist_error', {
+          'instance_id': badgedInstance.id,
+          'definition_id': badgedInstance.definitionId,
+          'error': e.toString(),
+        });
+      });
     }
   };
 
@@ -621,111 +636,161 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   /// Load player data from SQLite into providers (inventory, cells, profile).
   /// Does NOT start the game loop — call [startLoop] separately after this completes.
   Future<void> rehydrateData(String userId) async {
+    // Initialize with empty defaults so a step-1 failure doesn't block steps 2–4.
+    List<ItemInstance> items = [];
+    List<LocalCellProgress> cellRows = [];
+    LocalPlayerProfile? profile;
+    List<CellProperties> cellProperties = [];
+    var markHydratedCalled = false;
     try {
-      final results = await Future.wait<Object?>([
-        itemRepo.getItemsByUser(userId),
-        cellProgressRepo.readByUser(userId),
-        profileRepo.read(userId),
-        cellPropertyRepo.getAll(),
-      ]);
+      // Step 1: SQLite reads + cell properties load + plains re-resolve.
+      try {
+        final results = await Future.wait<Object?>([
+          itemRepo.getItemsByUser(userId),
+          cellProgressRepo.readByUser(userId),
+          profileRepo.read(userId),
+          cellPropertyRepo.getAll(),
+        ]);
 
-      final items = results[0]! as List<ItemInstance>;
-      final cellRows = results[1]! as List<LocalCellProgress>;
-      final profile = results[2] as LocalPlayerProfile?;
-      final cellProperties = results[3]! as List<CellProperties>;
+        items = results[0]! as List<ItemInstance>;
+        cellRows = results[1]! as List<LocalCellProgress>;
+        profile = results[2] as LocalPlayerProfile?;
+        cellProperties = results[3]! as List<CellProperties>;
 
-      // 0b. Pre-populate cell properties cache from SQLite.
-      if (cellProperties.isNotEmpty) {
-        final propsMap = <String, CellProperties>{};
-        for (final cp in cellProperties) {
-          propsMap[cp.cellId] = cp;
+        // 0b. Pre-populate cell properties cache from SQLite.
+        if (cellProperties.isNotEmpty) {
+          final propsMap = <String, CellProperties>{};
+          for (final cp in cellProperties) {
+            propsMap[cp.cellId] = cp;
+          }
+          coordinator.loadCellProperties(propsMap);
         }
-        coordinator.loadCellProperties(propsMap);
-      }
 
-      // 0c. Re-resolve cells that were resolved before biome data loaded.
-      // These cells have {plains} as their only habitat due to the fallback
-      // HabitatService being active during initial loading. Now that the real
-      // resolver is available, re-resolve them to get accurate habitats.
-      final reResolved = coordinator.reResolvePlainsOnlyCells();
-      if (reResolved.isNotEmpty) {
-        debugPrint(
-          '[GameCoordinator] re-resolved ${reResolved.length} '
-          'plains-only cells with real biome data',
-        );
-        for (final props in reResolved) {
-          persistCellProperties(
-            properties: props,
-            cellPropertyRepo: cellPropertyRepo,
-            queueProcessor: queueProcessor,
-            userId: ref.read(authProvider).user?.id,
-            obs: obs,
+        // 0c. Re-resolve cells that were resolved before biome data loaded.
+        // These cells have {plains} as their only habitat due to the fallback
+        // HabitatService being active during initial loading. Now that the real
+        // resolver is available, re-resolve them to get accurate habitats.
+        final reResolved = coordinator.reResolvePlainsOnlyCells();
+        if (reResolved.isNotEmpty) {
+          debugPrint(
+            '[GameCoordinator] re-resolved ${reResolved.length} '
+            'plains-only cells with real biome data',
           );
-        }
-      }
-
-      // 1. Hydrate inventory
-      if (items.isNotEmpty) {
-        ref.read(itemsProvider.notifier).loadItems(items);
-        for (final item in items) {
-          discoveryService.markCollected(item.definitionId);
-        }
-      }
-
-      // 2. Hydrate cell progress → seed visited cells into fog resolver
-      if (cellRows.isNotEmpty) {
-        final visitedCellIds = <String>{};
-        for (final row in cellRows) {
-          final fog = FogState.fromString(row.fogState);
-          if (fog == FogState.present || fog == FogState.explored) {
-            visitedCellIds.add(row.cellId);
+          for (final props in reResolved) {
+            persistCellProperties(
+              properties: props,
+              cellPropertyRepo: cellPropertyRepo,
+              queueProcessor: queueProcessor,
+              userId: ref.read(authProvider).user?.id,
+              obs: obs,
+            );
           }
         }
-        if (visitedCellIds.isNotEmpty) {
-          fogResolver.loadVisitedCells(visitedCellIds);
-        }
+      } catch (e) {
+        debugPrint(
+            '[GameCoordinator] hydration step 1 (sqlite reads) failed: $e');
+        obs.event('hydration_step_error', {
+          'step': 'sqlite_reads',
+          'error': e.toString(),
+          'user_id': userId,
+        });
       }
 
-      // 3. Hydrate player profile
-      // cellsObserved is derived from the count of visited cell rows, NOT
-      // stored in the profile table (which has no such column).
-      final cellsObserved = cellRows.where((row) {
-        final fog = FogState.fromString(row.fogState);
-        return fog == FogState.present || fog == FogState.explored;
-      }).length;
+      // Step 2: Inventory hydration.
+      try {
+        if (items.isNotEmpty) {
+          ref.read(itemsProvider.notifier).loadItems(items);
+          for (final item in items) {
+            discoveryService.markCollected(item.definitionId);
+          }
+        }
+      } catch (e) {
+        debugPrint('[GameCoordinator] hydration step 2 (inventory) failed: $e');
+        obs.event('hydration_step_error', {
+          'step': 'inventory',
+          'error': e.toString(),
+          'user_id': userId,
+        });
+      }
 
-      // Capture the in-memory onboarding flag before hydration overwrites
-      // state. Merge monotonically: once true in-memory, never reset to false
-      // by a DB read (e.g. if DB write hadn't landed yet).
-      final currentOnboarding = ref.read(playerProvider).hasCompletedOnboarding;
+      // Step 3: Cell progress + fog resolver seeding.
+      try {
+        if (cellRows.isNotEmpty) {
+          final visitedCellIds = <String>{};
+          for (final row in cellRows) {
+            final fog = FogState.fromString(row.fogState);
+            if (fog == FogState.present || fog == FogState.explored) {
+              visitedCellIds.add(row.cellId);
+            }
+          }
+          if (visitedCellIds.isNotEmpty) {
+            fogResolver.loadVisitedCells(visitedCellIds);
+          }
+        }
+      } catch (e) {
+        debugPrint(
+            '[GameCoordinator] hydration step 3 (cell progress) failed: $e');
+        obs.event('hydration_step_error', {
+          'step': 'cell_progress',
+          'error': e.toString(),
+          'user_id': userId,
+        });
+      }
 
-      if (profile != null) {
-        ref.read(playerProvider.notifier).loadProfile(
-              cellsObserved: cellsObserved,
-              totalDistanceKm: profile.totalDistanceKm,
-              currentStreak: profile.currentStreak,
-              longestStreak: profile.longestStreak,
-              hasCompletedOnboarding:
-                  profile.hasCompletedOnboarding || currentOnboarding,
-              totalSteps: profile.totalSteps,
-              lastKnownStepCount: profile.lastKnownStepCount,
-            );
-      } else {
-        // No profile row yet — still hydrate cellsObserved from cell progress.
-        if (cellsObserved > 0) {
+      // Step 4: Player profile hydration.
+      // markHydrated() is called unconditionally after this block so it always
+      // runs even when this step throws.
+      try {
+        // cellsObserved is derived from the count of visited cell rows, NOT
+        // stored in the profile table (which has no such column).
+        final cellsObserved = cellRows.where((row) {
+          final fog = FogState.fromString(row.fogState);
+          return fog == FogState.present || fog == FogState.explored;
+        }).length;
+
+        // Capture the in-memory onboarding flag before hydration overwrites
+        // state. Merge monotonically: once true in-memory, never reset to false
+        // by a DB read (e.g. if DB write hadn't landed yet).
+        final currentOnboarding =
+            ref.read(playerProvider).hasCompletedOnboarding;
+
+        if (profile != null) {
           ref.read(playerProvider.notifier).loadProfile(
                 cellsObserved: cellsObserved,
-                totalDistanceKm: 0.0,
-                currentStreak: 0,
-                longestStreak: 0,
+                totalDistanceKm: profile.totalDistanceKm,
+                currentStreak: profile.currentStreak,
+                longestStreak: profile.longestStreak,
+                hasCompletedOnboarding:
+                    profile.hasCompletedOnboarding || currentOnboarding,
+                totalSteps: profile.totalSteps,
+                lastKnownStepCount: profile.lastKnownStepCount,
               );
+        } else {
+          // No profile row yet — still hydrate cellsObserved from cell progress.
+          if (cellsObserved > 0) {
+            ref.read(playerProvider.notifier).loadProfile(
+                  cellsObserved: cellsObserved,
+                  totalDistanceKm: 0.0,
+                  currentStreak: 0,
+                  longestStreak: 0,
+                );
+          }
         }
+      } catch (e) {
+        debugPrint('[GameCoordinator] hydration step 4 (profile) failed: $e');
+        obs.event('hydration_step_error', {
+          'step': 'profile',
+          'error': e.toString(),
+          'user_id': userId,
+        });
       }
 
       // Signal hydration complete — ensures _resolveHome() in main.dart
       // shows LoadingScreen until profile data is available (preventing
       // an OnboardingScreen flash for returning users).
+      // Placed after all individual steps so it always runs even if a step fails.
       ref.read(playerProvider.notifier).markHydrated();
+      markHydratedCalled = true;
 
       obs.event('sqlite_hydration_complete', {
         'user_id': userId,
@@ -763,6 +828,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       // swallowed), hits the same missing-table problem at profileRepo.read,
       // and produces confusing cascading error logs.
       rethrow;
+    } finally {
+      // Ensure markHydrated() is always called, even on catastrophic failure,
+      // so the loading screen never blocks indefinitely.
+      if (!markHydratedCalled && !_providerDisposed) {
+        ref.read(playerProvider.notifier).markHydrated();
+      }
     }
   }
 

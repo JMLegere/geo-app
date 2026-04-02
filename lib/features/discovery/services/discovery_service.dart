@@ -11,6 +11,7 @@ import 'package:earth_nova/core/models/climate.dart';
 import 'package:earth_nova/core/models/continent.dart';
 import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/core/models/habitat.dart';
+import 'package:earth_nova/core/models/iucn_status.dart';
 import 'package:earth_nova/core/models/item_definition.dart';
 import 'package:earth_nova/core/services/daily_seed_service.dart';
 import 'package:earth_nova/core/species/continent_resolver.dart';
@@ -298,6 +299,10 @@ class DiscoveryService {
 
     for (final s in species) {
       final isNew = !_collectedSpeciesIds.contains(s.id);
+      // Guard: skip extinct species the player already owns. EX species are
+      // extremely rare by design (weight=1) — allowing duplicates lets nesting
+      // sites flood the inventory with copies of the same extinct animal.
+      if (!isNew && s.rarity == IucnStatus.extinct) continue;
       debugPrint(
           '[DISCOVERY] emitted cell=${event.cellId} species=${s.id} is_new=$isNew');
       _discoveryController.add(
