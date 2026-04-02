@@ -213,13 +213,11 @@ void _setupPerfMonitoring(ProviderContainer container) {
       final buildMs = timing.buildDuration.inMilliseconds;
       final rasterMs = timing.rasterDuration.inMilliseconds;
       final totalMs = buildMs + rasterMs;
-      if (totalMs > 16) {
+      if (totalMs > 200) {
         slowFrameCount++;
         if (totalMs > worstFrameMs) worstFrameMs = totalMs;
-        if (totalMs > 100) {
-          print(
-              '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
-        }
+        print(
+            '[FRAME-PERF] JANK: build=${buildMs}ms raster=${rasterMs}ms total=${totalMs}ms');
         ObservabilityBuffer.instance?.event('long_frame', {
           'build_ms': buildMs,
           'raster_ms': rasterMs,
