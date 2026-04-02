@@ -50,7 +50,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('EventResolver distribution', () {
-    test('~12% of cells have events (within tolerance)', () {
+    test('~12-14% of cells have any event (within tolerance)', () {
       var eventCount = 0;
       const trials = 10000;
 
@@ -61,14 +61,15 @@ void main() {
       }
 
       final percentage = eventCount / trials * 100;
-      // 12% ± 3% tolerance (statistically 3σ for this sample size)
+      // Migration ~12% + nesting site ~2% (independent checks, slight overlap)
+      // Total expected ~13.5% ± 4% tolerance.
       expect(percentage, greaterThan(9.0),
-          reason: 'Event rate $percentage% is too low (expected ~12%)');
-      expect(percentage, lessThan(15.0),
-          reason: 'Event rate $percentage% is too high (expected ~12%)');
+          reason: 'Event rate $percentage% is too low (expected ~13.5%)');
+      expect(percentage, lessThan(18.0),
+          reason: 'Event rate $percentage% is too high (expected ~13.5%)');
     });
 
-    test('all event types appear with roughly equal frequency', () {
+    test('both event types appear; nesting site is rarer than migration', () {
       final typeCounts = <CellEventType, int>{};
       for (final t in CellEventType.values) {
         typeCounts[t] = 0;
@@ -82,23 +83,19 @@ void main() {
         }
       }
 
-      // All types should appear
+      // Both types must appear.
       for (final t in CellEventType.values) {
         expect(typeCounts[t]!, greaterThan(0),
             reason: '${t.name} never appeared in $trials trials');
       }
 
-      // Check rough equality — each type should be within 30% of the mean
-      final totalEvents = typeCounts.values.reduce((a, b) => a + b);
-      final mean = totalEvents / CellEventType.values.length;
-      for (final entry in typeCounts.entries) {
-        expect(entry.value, greaterThan(mean * 0.7),
-            reason:
-                '${entry.key.name} count ${entry.value} is too far below mean $mean');
-        expect(entry.value, lessThan(mean * 1.3),
-            reason:
-                '${entry.key.name} count ${entry.value} is too far above mean $mean');
-      }
+      // Nesting sites (~2%) should be significantly rarer than migrations
+      // (~12%) — at least 3× fewer.
+      final nestingCount = typeCounts[CellEventType.nestingSite]!;
+      final migrationCount = typeCounts[CellEventType.migration]!;
+      expect(migrationCount, greaterThan(nestingCount * 3),
+          reason:
+              'Expected migration ($migrationCount) to be >3× nesting ($nestingCount)');
     });
   });
 
