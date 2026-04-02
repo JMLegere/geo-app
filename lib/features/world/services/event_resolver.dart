@@ -17,32 +17,45 @@ class EventResolver {
 
   /// Resolve event for a cell on a given day.
   ///
-  /// Returns null for ~88% of cells (no event). For the ~12% with an event,
-  /// the event type is equally distributed across all [CellEventType] values.
+  /// Two independent checks with separate hash keys:
+  /// - Nesting site: ~[kNestingSiteChancePercent]% of cells (guaranteed EN/CR/EX).
+  /// - Migration: ~[kCellEventChancePercent]% of cells (foreign-continent species).
   ///
-  /// Hash format: `SHA-256(dailySeed + "_event_" + cellId)`
-  /// - First 4 bytes → uint32 → chance (% 100). If >= [kCellEventChancePercent], null.
-  /// - Next 4 bytes → uint32 → event type index (% values.length).
+  /// Nesting sites are checked first and take priority. Each uses its own
+  /// domain-separated hash so the two events are statistically independent.
   static CellEvent? resolve(String dailySeed, String cellId) {
-    final hash =
-        sha256.convert(utf8.encode('${dailySeed}_event_$cellId')).bytes;
+    // Check for nesting site first (rarer — guarantees rare species).
+    final nestingHash =
+        sha256.convert(utf8.encode('${dailySeed}_nesting_$cellId')).bytes;
+    final nestingChance = ((nestingHash[0] << 24) |
+            (nestingHash[1] << 16) |
+            (nestingHash[2] << 8) |
+            nestingHash[3]) &
+        0x7FFFFFFF;
+    if (nestingChance % 100 < kNestingSiteChancePercent) {
+      return CellEvent(
+        type: CellEventType.nestingSite,
+        cellId: cellId,
+        dailySeed: dailySeed,
+      );
+    }
 
-    // First 4 bytes as unsigned 32-bit int (masked positive).
-    final chance =
-        ((hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3]) &
-            0x7FFFFFFF;
-    if (chance % 100 >= kCellEventChancePercent) return null;
+    // Check for migration event.
+    final migrationHash =
+        sha256.convert(utf8.encode('${dailySeed}_migration_$cellId')).bytes;
+    final migrationChance = ((migrationHash[0] << 24) |
+            (migrationHash[1] << 16) |
+            (migrationHash[2] << 8) |
+            migrationHash[3]) &
+        0x7FFFFFFF;
+    if (migrationChance % 100 < kCellEventChancePercent) {
+      return CellEvent(
+        type: CellEventType.migration,
+        cellId: cellId,
+        dailySeed: dailySeed,
+      );
+    }
 
-    // Next 4 bytes for event type selection.
-    final typeValue =
-        ((hash[4] << 24) | (hash[5] << 16) | (hash[6] << 8) | hash[7]) &
-            0x7FFFFFFF;
-    final eventIndex = typeValue % CellEventType.values.length;
-
-    return CellEvent(
-      type: CellEventType.values[eventIndex],
-      cellId: cellId,
-      dailySeed: dailySeed,
-    );
+    return null;
   }
 }

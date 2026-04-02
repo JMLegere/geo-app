@@ -233,8 +233,14 @@ const int kWriteQueueFlushBatchSize = 50;
 const int kWriteQueueAutoFlushDelaySeconds = 3;
 
 // Cell Events (Rotating Layer)
-/// Percentage of cells that have an event on any given day (~12%).
+/// Percentage of cells that have a migration event on any given day (~12%).
 const int kCellEventChancePercent = 12;
+
+/// Percentage of cells that have a nesting site event on any given day (~2%).
+///
+/// Nesting sites guarantee EN/CR/EX species — kept rare to prevent extinct
+/// species flooding. Checked independently of migration events.
+const int kNestingSiteChancePercent = 2;
 
 // Daily Seed (Phase 4: Deterministic Daily Encounters)
 /// Grace period in hours for a cached daily seed before discoveries pause.
