@@ -77,9 +77,6 @@ void main() {
     });
 
     test('locationId can be null', () {
-      final withoutLocation = props.copyWith(locationId: null);
-      // copyWith preserves old locationId since null means "don't change"
-      // So we create fresh:
       final fresh = CellProperties(
         cellId: 'v_0_0',
         habitats: {Habitat.plains},

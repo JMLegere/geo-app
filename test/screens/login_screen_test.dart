@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/data/sync/mock_auth_service.dart';
-import 'package:earth_nova/models/auth_state.dart';
+
 import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/screens/login_screen.dart';
 

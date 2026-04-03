@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:earth_nova/providers/inventory_provider.dart';
 import 'package:earth_nova/screens/pack_screen.dart';
 
 void main() {
