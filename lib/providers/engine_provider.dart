@@ -420,18 +420,7 @@ Future<void> _hydrateAndStart({
   try {
     AppObservability.instance.log('[HYDRATION] start user=$userId');
 
-    // 0a. Verify schema integrity on web (native checks before open).
-    final db = ref.read(databaseProvider);
-    if (!await db.verifyTables()) {
-      final missing = await db.missingTables();
-      debugPrint(
-          '[HYDRATION] missing tables on web: $missing — resetting storage');
-      AppObservability.instance.log('[HYDRATION] missing tables: $missing');
-      resetDatabaseStorage();
-      return; // Page will reload; abort hydration.
-    }
-
-    // 0b. Seed species table from JSON if empty (first launch).
+    // 0. Seed species table from JSON if empty (first launch).
     await _seedSpeciesIfEmpty(ref);
 
     if (disposed()) return;
