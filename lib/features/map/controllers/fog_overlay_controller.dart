@@ -215,7 +215,7 @@ class FogOverlayController {
     double maxLat,
     double minLon,
     double maxLon
-  })? _lastViewportBounds;
+  })? _lastViewportBounds; // ignore: unused_field
 
   /// Number of cells that passed the viewport filter in the last build.
   int _lastViewportCellCount = 0;
