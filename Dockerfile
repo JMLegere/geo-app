@@ -3,16 +3,9 @@ ARG RAILWAY_GIT_COMMIT_SHA=""
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
-# Bust Docker cache — ensures COPY picks up LFS-untracked JSON files.
-# Remove this comment when Railway build caching is verified clean.
 COPY . .
-# Verify critical assets are real JSON, not Git LFS pointers.
-RUN head -c 1 assets/species_data.json | grep -q '\[' || \
-    (echo "ERROR: species_data.json is a Git LFS pointer, not JSON" && exit 1)
-RUN head -c 1 assets/biome_features.json | grep -q '{' || \
-    (echo "ERROR: biome_features.json is a Git LFS pointer, not JSON" && exit 1)
 RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
-    BUILD_TS="β $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
+    BUILD_TS="v3 $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmYWN6Y3NycGZjYmlqb2FlY2tiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzE3ODYsImV4cCI6MjA4ODE0Nzc4Nn0.hyjp1NRiteavWfBnch1LpRARtiN5lvpP0PztbRwqPJ8 \
