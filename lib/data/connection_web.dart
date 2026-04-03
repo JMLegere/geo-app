@@ -147,19 +147,31 @@ Future<void> _deleteIndexedDb(String name) async {
 
 /// Delete OPFS databases used by Drift's WasmDatabase.open().
 ///
-/// Drift stores databases in OPFS under `/drift-databases/`. Clearing
-/// this directory forces a fresh database on the next open.
+/// Drift stores databases in OPFS under various paths depending on the
+/// storage implementation. We try multiple known paths to ensure a clean slate.
 Future<void> _deleteOpfsDatabases() async {
   try {
-    // Access the OPFS root and remove the drift databases directory.
     final root = await web.window.navigator.storage.getDirectory().toDart;
-    await root
-        .removeEntry(
-          'drift-databases',
-          web.FileSystemRemoveOptions(recursive: true),
-        )
-        .toDart;
-    debugPrint('[connection_web] deleted OPFS drift-databases');
+    // Try all known OPFS paths used by Drift.
+    for (final name in ['drift-databases', 'earthnova', 'earthnova_db']) {
+      try {
+        await root
+            .removeEntry(name, web.FileSystemRemoveOptions(recursive: true))
+            .toDart;
+        debugPrint('[connection_web] deleted OPFS "$name"');
+      } catch (_) {
+        // Directory may not exist — that's fine.
+      }
+    }
+    // Also try to delete the earthnova database at the OPFS root level.
+    // Drift's WasmStorageImplementation may store it directly.
+    try {
+      await root
+          .removeEntry(
+              'earthnova.db', web.FileSystemRemoveOptions(recursive: true))
+          .toDart;
+      debugPrint('[connection_web] deleted OPFS "earthnova.db"');
+    } catch (_) {}
   } catch (e) {
     debugPrint(
       '[connection_web] OPFS cleanup failed ($e) — may not exist yet',
