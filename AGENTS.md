@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
 | Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
-| Tests | 445 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 469 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | info-level issues only (0 errors, 0 warnings) |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
@@ -330,6 +330,24 @@ When `SUPABASE_URL` is empty, `SupabasePersistence` is null and the app runs in 
 
 ---
 
+## Testing Protocol
+
+**TDD is mandatory.** Every code change follows red → green → refactor. No exceptions.
+
+1. **Write the failing test first.** Before touching implementation code, write a test that describes the expected behavior and watch it fail. This proves the test is meaningful — it can detect the absence of the feature or the presence of the bug.
+2. **Make it pass with minimal code.** Implement just enough to turn the test green. Don't gold-plate.
+3. **Refactor under green.** Clean up with confidence that the test catches regressions.
+4. **Every PR must include tests.**
+   - **Bug fix** = regression test proving the bug exists before the fix. If the test would have caught the bug in the first place, it's the right test.
+   - **New feature** = tests covering happy path + key edge cases + error paths.
+   - **Refactor** = existing tests still pass. New tests only if behavior changes.
+5. **Test all public behavior.** Every public method, every state transition, every error path. The bar isn't a coverage percentage — it's that every behavior a user depends on has a test that would fail if that behavior broke.
+6. **Test the fix, not the symptom.** The test should fail on the root cause. If you're fixing a button that's stuck disabled, the test should assert on the state transition that enables it — not on the button widget itself.
+7. **No untested state machines.** Every state × every input = a test case. Auth has 4 states × 2 stream values = 8 tests. Fog has 5 states × 3 triggers. If a state machine ships without full transition coverage, it will break.
+8. **Tests are not optional for "simple" changes.** A one-line fix to a conditional (`else if` → `else`) still needs a test. Simple changes are the ones most likely to ship without tests — and most likely to regress.
+
+---
+
 ## Test Conventions
 
 ### Framework
@@ -449,21 +467,21 @@ When diagnosing infrastructure issues (stalled pipelines, deploy failures, schem
 5. **Check deploy history** — when did the last successful Edge Function deploy happen? Did a recent deploy change `PIPELINE_VERSION` or other env vars? Use `gh api repos/.../deployments` to check.
 6. **Time-box investigation** — 15 min max per hypothesis before pivoting. If you can't confirm a root cause in 15 min, you're likely chasing the wrong lead.
 
-> **Observability architecture** — two parallel systems:
-> - **`app_logs`** table: Raw debug text blobs from `DebugLogBuffer` via `LogFlushService` (debounced 5s). Severity-filtered (warning+ and always-pass tags).
-> - **`app_events`** table: Structured typed events from `ObservabilityBuffer` (30s batch flush). Categories: event, log, js, ui.
->
-> See `docs/target-architecture.md` for the full observability design.
+> **Observability architecture** — unified `app_logs` pipeline:
+> - **`app_logs`** table: All client logs flow here — raw `debugPrint` lines AND structured `GameEvent` rows.
+> - **`app_events`** table: REMOVED in migration 024. Do not reference or reintroduce.
+> - Client: `AppObservability` singleton captures `debugPrint`/`print`, zone errors, platform errors. 5s periodic flush to Supabase.
+> - Web beacon: `web/index.html` buffers page lifecycle events, flushes via `navigator.sendBeacon`.
+> - See `docs/tech-stack.md` > Observability for the full component list.
 
 > **Investigation postmortem (2026-03-28):** Enrichment pipeline stalled for 3 days. Initially misdiagnosed as "missing DB columns" by comparing local migration files against Edge Function code. Columns already existed on remote (added via direct migrations). Root cause: `PIPELINE_VERSION` env var matched existing enrichver stamps, so no candidates looked stale. A deploy with a new commit SHA changed the version and unblocked the pipeline. Lesson: always verify live state before diagnosing.
 
 ### Supabase App Logs
 
-Debug text logs are in `app_logs`, structured events are in `app_events`. Both are in Supabase (project ref: `bfaczcsrpfcbijoaeckb`). Query via the Supabase CLI:
+Debug text logs are in `app_logs`, structured events are in `app_logs` (unified — `app_events` was removed in migration 024). Both are in Supabase (project ref: `bfaczcsrpfcbijoaeckb`). Query via the Supabase CLI:
 
 ```bash
 npx supabase db query --linked "SELECT * FROM app_logs ORDER BY created_at DESC LIMIT 100"
-npx supabase db query --linked "SELECT * FROM app_events ORDER BY created_at DESC LIMIT 100"
 ```
 
 Edge function logs (process-enrichment-queue, validate-encounter, etc.) are accessible via the Railway production logs:
