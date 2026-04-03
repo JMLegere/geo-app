@@ -14,7 +14,7 @@
 | Geo types | `geobase` — `Geographic(lat:, lon:)` (NOT `LatLng`) |
 | Cell system | Voronoi (`LazyVoronoiCellService`, no fallbacks) |
 | Species data | 32,752 real IUCN records in Drift-managed `LocalSpeciesTable` (seeded from `assets/species_data.json`) |
-| Tests | 1962 passing, `flutter_test` only (no mockito/mocktail) |
+| Tests | 445 passing, `flutter_test` only (no mockito/mocktail) |
 | Analysis | info-level issues only (0 errors, 0 warnings) |
 | Backend | Supabase (conditional) — `SupabaseAuthService` + `SupabasePersistence` when credentials supplied, `MockAuthService` fallback |
 | Production | https://geo-app-production-47b0.up.railway.app — Railway, deploys from `main` |
@@ -39,57 +39,28 @@ flutter analyze
 
 ```
 lib/
-├── main.dart                   # ProviderScope → EarthNovaApp → TabShell
-├── core/                       # Domain logic, models, state, persistence (NO UI)
-│   ├── cells/                  # Spatial indexing (LazyVoronoi, CellCache)
-│   ├── config/                 # SupabaseConfig (env vars)
-│   ├── database/               # Drift ORM (6 tables, schema v18)
-│   ├── engine/                 # GameEngine + GameCoordinator (event-driven game loop)
-│   ├── fog/                    # FogStateResolver (computed visibility)
-│   ├── models/                 # 24 immutable value objects
-│   ├── persistence/            # Repository pattern (7 repos)
-│   ├── services/               # DailySeedService, ObservabilityBuffer, DebugLogBuffer
-│   ├── species/                # SpeciesRepository (Drift), LootTable, SpeciesCache
-│   └── state/                  # Riverpod providers, PersistenceConsumer, AffixBackfill
-├── features/                   # Feature modules (UI + feature-specific logic)
-│   ├── achievements/           # 🏆 Milestone tracking + toast notifications
-│   ├── auth/                   # 🔐 Mock auth (swappable to Supabase)
-│   ├── calendar/               # 📅 Seasons, time-of-day (← was seasonal/)
-│   ├── caretaking/             # 🌱 Daily visit streaks
-│   ├── discovery/              # 🔬 Species encounter events
-│   ├── items/                  # 📦 Item creation, inventory, lifecycle
-│   ├── location/               # 📍 GPS, simulation, filtering
-│   ├── map/                    # 🗺️ Map rendering, fog overlay, camera
-│   ├── onboarding/             # 🚀 First-run welcome flow
-│   ├── pack/                   # 🎒 Collection viewer with filters
-│   ├── sanctuary/              # 🏠 Species sanctuary grouped by habitat
-│   ├── steps/                  # 👣 Pedometer, step-based exploration
-│   ├── sync/                   # ☁️ Offline-first sync
-│   └── world/                  # 🌍 Terrain, cell state (shared state)
-├── shared/
-│   └── constants.dart          # All game-balance constants
+├── main.dart        # ProviderScope → EarthNovaApp → TabShell
+├── engine/          # Pure Dart game loop + event stream (GameEngine, EngineRunner)
+├── domain/          # Game rules: cells, fog, species, items, seed, world
+├── data/            # Drift schema, repos, sync, location services
+├── models/          # Immutable value objects
+├── providers/       # 20 Riverpod providers
+├── screens/         # 8 screens (map, pack, sanctuary, settings, auth, etc.)
+├── widgets/         # Map rendering, fog overlay, UI components
+└── shared/          # Constants, theme, design tokens
 ```
 
-### Feature Roles
-
-| Role | Features | What they do |
-|------|----------|-------------|
-| **Inputs** | `location/`, `world/`, `calendar/`, `steps/` | Real-world data that feeds the game loop |
-| **Domain** | `items/` | Item definitions, instances, inventory, lifecycle |
-| **Experiences** | `map/`, `discovery/`, `pack/`, `sanctuary/`, `achievements/`, `caretaking/` | What the player sees and interacts with |
-| **Infrastructure** | `auth/`, `sync/`, `onboarding/` | Identity, persistence, first-run |
-
-**See also:** `lib/core/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/world/AGENTS.md`, `lib/features/calendar/AGENTS.md`, `lib/features/items/AGENTS.md`, `lib/features/auth/AGENTS.md`, `lib/features/caretaking/AGENTS.md`, `lib/features/onboarding/AGENTS.md`, `lib/features/pack/AGENTS.md`, `lib/features/sanctuary/AGENTS.md`, `lib/features/steps/AGENTS.md`, `lib/features/sync/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
+**See also:** `lib/AGENTS.md`, `lib/data/AGENTS.md`, `lib/data/sync/AGENTS.md`, `lib/domain/fog/AGENTS.md`, `lib/domain/seed/AGENTS.md`, `lib/models/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
 | Metric | Value |
 |--------|-------|
-| Dart source files | ~225 (lib/) + ~125 (test/) |
-| Total lines | ~34,500 |
-| Largest file | `app_database.g.dart` (~2,300 lines — generated) |
-| Largest feature | `map/` (25 files) |
-| Features | 14 (4 inputs, 1 domain, 6 experiences, 3 infrastructure) |
+| Dart source files | ~130 (lib/) + ~34 (test/) |
+| Total lines | ~23,400 |
+| Largest file | `database.g.dart` (generated) |
+| Providers | 20 Riverpod providers |
+| Screens | 8 |
 
 ---
 
@@ -200,7 +171,7 @@ These are the target architecture decisions from two design jams. They describe 
 - **Does NOT own:** map rendering, camera, widget state, toast UI, RubberBand interpolation.
 - **Output:** Individual callbacks (onPlayerLocationUpdate, onGpsErrorChanged, onCellVisited, onItemDiscovered) wired by gameCoordinatorProvider. Discovery events → UI subscribes for toasts.
 - **Target directory:** `lib/core/game/`
-- **IMPLEMENTED** — `GameCoordinator` class at `lib/core/game/game_coordinator.dart` with dual-position model and `gameCoordinatorProvider` at `lib/core/state/game_coordinator_provider.dart`.
+- **IMPLEMENTED** — `GameEngine` at `lib/engine/game_engine.dart` with `EngineRunner` orchestration and `engineProvider` at `lib/providers/engine_provider.dart`.
 
 ### Wall 3: Server-Authoritative with Offline Resilience
 
@@ -367,7 +338,7 @@ When `SUPABASE_URL` is empty, `SupabasePersistence` is null and the app runs in 
 
 ### Structure
 
-Tests mirror `lib/` exactly: `test/core/cells/cell_cache_test.dart` tests `lib/core/cells/cell_cache.dart`.
+Tests mirror `lib/` exactly: `test/domain/cells/cell_cache_test.dart` tests `lib/domain/cells/cell_cache.dart`.
 
 Additional directories:
 - `test/fixtures/` — shared test data (`kSpeciesFixtureJson`: 50 species)
@@ -436,7 +407,7 @@ Additional directories:
 | Item | Location | Impact |
 |------|----------|--------|
 | `widget_test.dart` accepts ErrorBoundary fallback as passing | `test/widget_test.dart` | MapLibre doesn't render on headless CI — real map tests require device/emulator |
-| `game_coordinator_provider.dart` still 952 lines | `lib/core/state/game_coordinator_provider.dart` | Remaining code is genuine wiring, not incidental complexity |
+| `widget_test.dart` accepts ErrorBoundary fallback as passing | `test/widget_test.dart` | MapLibre doesn't render on headless CI — real map tests require device/emulator |
 
 ---
 
@@ -583,20 +554,16 @@ docs/
 Per-directory files providing module-specific patterns, gotchas, and anti-patterns. These are **not** duplicates of `docs/` — they cover local concerns only.
 
 ```
-AGENTS.md files (12 total):
-├── ./AGENTS.md                              # Root — quick ref, design decisions, forbidden patterns
-├── lib/core/AGENTS.md                       # Domain models, providers, persistence internals
-├── lib/core/cells/AGENTS.md                 # Voronoi cell system, CellCache
-├── lib/core/species/AGENTS.md               # LootTable, IUCN weights, ContinentResolver
-├── lib/features/map/AGENTS.md               # Fog overlay, camera, GeoJSON layers
-├── lib/features/location/AGENTS.md          # GPS stream, simulation, filtering
-├── lib/features/discovery/AGENTS.md         # Encounter flow, dual notifier pattern
-├── lib/features/achievements/AGENTS.md      # Achievement evaluation, toast notifications
-├── lib/features/world/AGENTS.md             # Terrain, cell state
-├── lib/features/calendar/AGENTS.md          # Seasons, time-of-day
-├── lib/features/items/AGENTS.md             # Item definitions, instances, inventory
-├── lib/shared/AGENTS.md                     # Constants, shared utilities
-└── test/AGENTS.md                           # Test fixtures, mock patterns, integration suites
+AGENTS.md files:
+├── ./AGENTS.md                          # Root — quick ref, design decisions, forbidden patterns
+├── lib/AGENTS.md                        # v2 flat structure overview
+├── lib/data/AGENTS.md                   # Drift schema, repos, sync
+├── lib/data/sync/AGENTS.md             # Write queue, Supabase persistence
+├── lib/domain/fog/AGENTS.md            # Fog state resolution
+├── lib/domain/seed/AGENTS.md           # Daily seed service
+├── lib/models/AGENTS.md                # Immutable value objects
+├── lib/shared/AGENTS.md                # Constants, shared utilities
+└── test/AGENTS.md                       # Test fixtures, mock patterns, integration suites
 ```
 
 **Update triggers for `AGENTS.md` files:**
@@ -605,7 +572,7 @@ AGENTS.md files (12 total):
 |---------|--------|
 | New feature module created | Create `features/<name>/AGENTS.md` (30–80 lines) |
 | Provider renamed or rewired | Update the relevant `AGENTS.md` + `docs/state.md` |
-| New model or enum added | Update `lib/core/AGENTS.md` + `docs/data-model.md` |
+| New model or enum added | Update `lib/models/AGENTS.md` + `docs/data-model.md` |
 | New gotcha or anti-pattern discovered | Add to the nearest `AGENTS.md` |
 | File moved between directories | Update both old and new parent `AGENTS.md` |
 | Test pattern changed (new mock, new fixture) | Update `test/AGENTS.md` |
@@ -630,13 +597,12 @@ There is no automatic inheritance. Each agent reads the AGENTS.md files it finds
 ### Structure
 
 ```
-/AGENTS.md                       ← Project-wide rules, architecture, design decisions
-lib/core/AGENTS.md               ← Core subsystem rules (covers all core/ subdirs)
-lib/core/<subdir>/AGENTS.md      ← Stub with local rules + pointer to lib/core/AGENTS.md
-lib/features/<name>/AGENTS.md    ← Feature-specific patterns, gotchas, file map
-lib/shared/AGENTS.md             ← Design system, constants, shared widget rules
-test/AGENTS.md                   ← Test conventions, mocks, integration suites
-.agents/                         ← Agent working memory (gitignored)
+/AGENTS.md                        ← Project-wide rules, architecture, design decisions
+lib/AGENTS.md                     ← v2 flat structure overview
+lib/<subdir>/AGENTS.md            ← Stub with local rules + pointer to root AGENTS.md
+lib/shared/AGENTS.md              ← Design system, constants, shared widget rules
+test/AGENTS.md                    ← Test conventions, mocks, integration suites
+.agents/                          ← Agent working memory (gitignored)
 ```
 
 ### Rules for maintaining

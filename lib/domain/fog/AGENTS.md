@@ -1,14 +1,7 @@
-# core/fog
+# domain/fog/
 
-Fog-of-war state resolution. `FogStateResolver` computes per-cell fog state from player position + visit history.
+Fog-of-war state resolution. FogState is COMPUTED from player position + visit history — never stored.
 
-**CRITICAL:** FogState is COMPUTED, never stored. Only `visitedCellIds` are persisted. Storing computed fog state causes desync.
+Key: `onLocationUpdate()` stream uses `sync: true`. Detection radius = `kDetectionRadiusMeters` (1000m).
 
-**Priority order:** Observed > Hidden > Concealed > Unexplored > Undetected.
-
-**Key rules:**
-- `onLocationUpdate()` stream controller uses `sync: true` — events are emitted synchronously. Listeners must not perform async work.
-- Detection radius from `kDetectionRadiusMeters` (1000m) in `shared/constants.dart`.
-- Exploration frontier maintained incrementally — when a cell becomes Observed, its unvisited neighbors become Unexplored.
-
-See /lib/core/AGENTS.md for full fog resolver API.
+See /AGENTS.md for project-wide rules.

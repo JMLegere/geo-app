@@ -11,6 +11,7 @@ import 'package:earth_nova/data/repos/cell_visit_repo.dart';
 import 'package:earth_nova/data/repos/item_repo.dart';
 import 'package:earth_nova/data/repos/player_repo.dart';
 import 'package:earth_nova/data/repos/write_queue_repo.dart';
+import 'package:earth_nova/domain/cells/cell_service.dart';
 import 'package:earth_nova/domain/items/stats_service.dart';
 import 'package:earth_nova/domain/species/encounter_roller.dart';
 import 'package:earth_nova/domain/species/species_cache.dart';
@@ -31,6 +32,7 @@ import 'package:earth_nova/models/iucn_status.dart';
 import 'package:earth_nova/providers/achievement_provider.dart';
 import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/providers/cell_provider.dart';
+import 'package:earth_nova/providers/detection_zone_provider.dart';
 import 'package:earth_nova/providers/daily_seed_provider.dart';
 import 'package:earth_nova/providers/database_provider.dart';
 import 'package:earth_nova/providers/discovery_provider.dart';
@@ -191,6 +193,7 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
       ref: ref,
       event: event,
       userId: engine.currentUserId,
+      cellService: cellService,
       cellVisitRepo: cellVisitRepo,
       cellPropertyRepo: cellPropertyRepo,
       writeQueueRepo: writeQueueRepo,
@@ -421,6 +424,7 @@ void _routeEvent({
   required Ref ref,
   required GameEvent event,
   required String? userId,
+  required CellService cellService,
   required CellVisitRepo cellVisitRepo,
   required CellPropertyRepo cellPropertyRepo,
   required WriteQueueRepo writeQueueRepo,
@@ -433,6 +437,11 @@ void _routeEvent({
 
       ref.read(playerProvider.notifier).incrementCellsObserved();
       ref.read(achievementProvider.notifier).evaluate();
+
+      final center = cellService.getCellCenter(cellId);
+      ref
+          .read(detectionZoneProvider)
+          .updatePlayerPosition(center.lat, center.lon);
 
       if (userId != null) {
         _persistCellVisit(
