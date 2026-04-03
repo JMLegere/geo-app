@@ -7,7 +7,7 @@ import 'connection.dart';
 part 'database.g.dart';
 
 // ============================================================================
-// TABLE DEFINITIONS — 6 tables, schema v1
+// TABLE DEFINITIONS — 10 tables, schema v2
 // ============================================================================
 
 /// Player profile + stats.
@@ -126,6 +126,70 @@ class CellPropertiesTable extends Table {
   Set<Column> get primaryKey => {cellId};
 }
 
+/// Country in the geographic hierarchy.
+@DataClassName('HierarchyCountry')
+class CountriesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get continent => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// State / Province in the geographic hierarchy.
+@DataClassName('HierarchyState')
+class StatesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get countryId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// City / Locality in the geographic hierarchy.
+@DataClassName('HierarchyCity')
+class CitiesTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get stateId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  IntColumn get cellsTotal => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// District / Neighbourhood in the geographic hierarchy.
+@DataClassName('HierarchyDistrict')
+class DistrictsTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get centroidLat => real()();
+  RealColumn get centroidLon => real()();
+  TextColumn get cityId => text()();
+  TextColumn get boundaryJson => text().nullable()();
+  IntColumn get cellsTotal => integer().nullable()();
+  TextColumn get source => text().withDefault(const Constant('whosonfirst'))();
+  TextColumn get sourceId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// Offline write queue. Entries deleted after server confirms.
 @DataClassName('WriteQueueEntry')
 class WriteQueueTable extends Table {
@@ -153,6 +217,10 @@ class WriteQueueTable extends Table {
   ItemsTable,
   CellVisitsTable,
   CellPropertiesTable,
+  CountriesTable,
+  StatesTable,
+  CitiesTable,
+  DistrictsTable,
   WriteQueueTable,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -162,7 +230,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -171,6 +239,14 @@ class AppDatabase extends _$AppDatabase {
           // Species seeding is handled by the provider layer after DB creation.
           // Native: ATTACH species.db → INSERT SELECT
           // Web: Parse species_data.json → batch insert
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.createTable(countriesTable);
+            await m.createTable(statesTable);
+            await m.createTable(citiesTable);
+            await m.createTable(districtsTable);
+          }
         },
       );
 
@@ -242,6 +318,47 @@ class AppDatabase extends _$AppDatabase {
             t.status.equals('pending') &
             t.createdAt.isSmallerThanValue(cutoff)))
       .go();
+
+  // ---- Hierarchy convenience methods ----
+
+  Future<List<HierarchyCountry>> getAllCountries() =>
+      select(countriesTable).get();
+
+  Future<HierarchyCountry?> getCountry(String id) =>
+      (select(countriesTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertCountry(CountriesTableCompanion entry) =>
+      into(countriesTable).insertOnConflictUpdate(entry);
+
+  Future<List<HierarchyState>> getStatesForCountry(String countryId) =>
+      (select(statesTable)..where((t) => t.countryId.equals(countryId))).get();
+
+  Future<HierarchyState?> getState(String id) =>
+      (select(statesTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertState(StatesTableCompanion entry) =>
+      into(statesTable).insertOnConflictUpdate(entry);
+
+  Future<List<HierarchyCity>> getCitiesForState(String stateId) =>
+      (select(citiesTable)..where((t) => t.stateId.equals(stateId))).get();
+
+  Future<HierarchyCity?> getCity(String id) =>
+      (select(citiesTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertCity(CitiesTableCompanion entry) =>
+      into(citiesTable).insertOnConflictUpdate(entry);
+
+  Future<List<HierarchyDistrict>> getDistrictsForCity(String cityId) =>
+      (select(districtsTable)..where((t) => t.cityId.equals(cityId))).get();
+
+  Future<HierarchyDistrict?> getDistrict(String id) =>
+      (select(districtsTable)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<List<HierarchyDistrict>> getAllDistricts() =>
+      select(districtsTable).get();
+
+  Future<void> upsertDistrict(DistrictsTableCompanion entry) =>
+      into(districtsTable).insertOnConflictUpdate(entry);
 
   // ---- Cell property convenience methods ----
 

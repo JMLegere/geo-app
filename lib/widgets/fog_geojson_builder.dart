@@ -24,6 +24,7 @@ class FogGeoJsonBuilder {
   static int _baseFogLogCounter = 0;
   static int _midFogLogCounter = 0;
   static int _cellBordersLogCounter = 0;
+  static int _exploredBordersLogCounter = 0;
 
   /// Builds the "fog-base" GeoJSON: a world polygon with holes punched for
   /// every cell that is NOT fully opaque (i.e., explored, nearby, current).
@@ -231,7 +232,12 @@ class FogGeoJsonBuilder {
   /// strings, each a GeoJSON FeatureCollection.
   ///
   /// See individual methods for per-layer semantics and property schemas.
-  static ({String baseFog, String midFog, String cellBorders}) buildAllLayers({
+  static ({
+    String baseFog,
+    String midFog,
+    String cellBorders,
+    String exploredBorders
+  }) buildAllLayers({
     required Map<String, FogState> cellStates,
     required List<Geographic> Function(String cellId) getBoundary,
     String Function(String cellId)? getFragment,
@@ -249,6 +255,10 @@ class FogGeoJsonBuilder {
     final borderFeatures = StringBuffer();
     var borderFirst = true;
     var borderCount = 0;
+
+    final exploredFeatures = StringBuffer();
+    var exploredFirst = true;
+    var exploredCount = 0;
 
     for (final entry in cellStates.entries) {
       final state = entry.value;
@@ -343,10 +353,40 @@ class FogGeoJsonBuilder {
           }
         }
       }
+
+      // ------------------------------------------------------------------
+      // Explored borders: bright white outlines for explored + present cells.
+      // ------------------------------------------------------------------
+      if (state == FogState.explored || state == FogState.present) {
+        if (getFragment != null) {
+          if (!exploredFirst) exploredFeatures.write(',');
+          exploredFirst = false;
+          exploredCount++;
+          exploredFeatures.write(
+              '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[');
+          exploredFeatures.write(getFragment(cellId));
+          exploredFeatures.write(']},"properties":{}}');
+        } else {
+          final boundary = getBoundary(cellId);
+          if (boundary.length >= 3) {
+            if (!exploredFirst) exploredFeatures.write(',');
+            exploredFirst = false;
+            exploredCount++;
+            exploredFeatures.write(
+                '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[');
+            for (var i = 0; i < boundary.length; i++) {
+              if (i > 0) exploredFeatures.write(',');
+              exploredFeatures.write('[${boundary[i].lon},${boundary[i].lat}]');
+            }
+            exploredFeatures.write(',[${boundary[0].lon},${boundary[0].lat}]');
+            exploredFeatures.write(']]},"properties":{}}');
+          }
+        }
+      }
     }
 
     debugPrint('[FOG-GEO] buildAllLayers: ${cellStates.length} cells → '
-        '$holeCount holes, $midCount mid, $borderCount borders');
+        '$holeCount holes, $midCount mid, $borderCount borders, $exploredCount explored-borders');
 
     return (
       baseFog: '{"type":"FeatureCollection","features":[{"type":"Feature",'
@@ -354,7 +394,59 @@ class FogGeoJsonBuilder {
           '"properties":{}}]}',
       midFog: '{"type":"FeatureCollection","features":[$midFeatures]}',
       cellBorders: '{"type":"FeatureCollection","features":[$borderFeatures]}',
+      exploredBorders:
+          '{"type":"FeatureCollection","features":[$exploredFeatures]}',
     );
+  }
+
+  /// Builds white border GeoJSON for explored/present cells.
+  /// These are bright white outlines on cells where fog has cleared.
+  static String buildExploredBorders({
+    required Map<String, FogState> cellStates,
+    required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
+  }) {
+    final features = StringBuffer();
+    var first = true;
+    var featureCount = 0;
+
+    for (final entry in cellStates.entries) {
+      // Only explored and present cells get white borders.
+      if (entry.value != FogState.explored && entry.value != FogState.present) {
+        continue;
+      }
+
+      if (getFragment != null) {
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write(
+            '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[');
+        features.write(getFragment(entry.key));
+        features.write(']},"properties":{}}');
+      } else {
+        final boundary = getBoundary(entry.key);
+        if (boundary.length < 3) continue;
+        if (!first) features.write(',');
+        first = false;
+        featureCount++;
+        features.write(
+            '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[');
+        for (var i = 0; i < boundary.length; i++) {
+          if (i > 0) features.write(',');
+          features.write('[${boundary[i].lon},${boundary[i].lat}]');
+        }
+        features.write(',[${boundary[0].lon},${boundary[0].lat}]');
+        features.write(']]},"properties":{}}');
+      }
+    }
+
+    if (++_exploredBordersLogCounter % 100 == 1) {
+      debugPrint(
+          '[FOG-GEO] explored-borders: $featureCount features from ${cellStates.length} cells');
+    }
+
+    return '{"type":"FeatureCollection","features":[$features]}';
   }
 
   /// Returns an empty GeoJSON FeatureCollection.
