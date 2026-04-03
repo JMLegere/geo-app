@@ -1,0 +1,84 @@
+{
+  "sessions": [
+    {
+      "sessionId": "ses_2ab8e23ceffeNkJuVtH4PX2zlv",
+      "startedAt": "2026-04-03T17:50:11.830Z",
+      "lastActiveAt": "2026-04-03T18:04:08.363Z",
+      "agent": "build",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2ab75e001ffeMiWdpZx3OO2FFj",
+      "startedAt": "2026-04-03T18:10:31.608Z",
+      "lastActiveAt": "2026-04-03T18:20:18.182Z",
+      "agent": "build",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2ab6ae78affeTpkg3H5T3nhDjd",
+      "startedAt": "2026-04-03T18:22:30.588Z",
+      "lastActiveAt": "2026-04-03T18:27:12.818Z",
+      "agent": "plan",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2af1b41cbffeh5ZgHcO366tC8g",
+      "startedAt": "2026-04-03T18:28:45.810Z",
+      "lastActiveAt": "2026-04-03T22:58:23.009Z",
+      "agent": "hive-master",
+      "sessionKind": "primary",
+      "baseAgent": "hive-master",
+      "directivePrompt": "continue",
+      "replayDirectivePending": false
+    },
+    {
+      "sessionId": "ses_2ab6240b6ffeqDiQ1AQ6YbJlzM",
+      "startedAt": "2026-04-03T18:31:57.525Z",
+      "lastActiveAt": "2026-04-03T18:31:57.525Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2ab434bfdffe7s8eQlswbDyrlB",
+      "startedAt": "2026-04-03T19:05:46.254Z",
+      "lastActiveAt": "2026-04-03T19:05:46.254Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2ab34b564ffejyAHTsFA8o9ec3",
+      "startedAt": "2026-04-03T19:21:42.356Z",
+      "lastActiveAt": "2026-04-03T19:33:27.160Z",
+      "agent": "build",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2aafac9abffeWNcCYHMIKrKyl0",
+      "startedAt": "2026-04-03T20:24:58.208Z",
+      "lastActiveAt": "2026-04-03T20:24:58.208Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2aad63e44ffeEqJF1ZLcUzN35K",
+      "startedAt": "2026-04-03T21:04:53.246Z",
+      "lastActiveAt": "2026-04-03T21:04:53.246Z",
+      "agent": "explorer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2aad51109ffeJCd4VXesUbX7Uy",
+      "startedAt": "2026-04-03T21:06:10.303Z",
+      "lastActiveAt": "2026-04-03T21:06:10.303Z",
+      "agent": "explorer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2aaae079effeU7t7ylbOBq2uh0",
+      "startedAt": "2026-04-03T21:48:48.618Z",
+      "lastActiveAt": "2026-04-03T21:48:48.618Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    }
+  ]
+}
