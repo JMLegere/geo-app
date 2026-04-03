@@ -44,6 +44,10 @@ class _TabShellState extends ConsumerState<TabShell>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       _flushWriteQueue();
+    } else if (state == AppLifecycleState.resumed) {
+      // Flush write queue when returning to foreground to pick up any
+      // queued writes that may have accumulated while backgrounded.
+      _flushWriteQueue();
     }
   }
 

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart';
 import 'package:earth_nova/data/database.dart';
 
 class SpeciesRepo {
@@ -13,8 +14,9 @@ class SpeciesRepo {
   Future<List<Species>> getAll() => _db.select(_db.speciesTable).get();
 
   Future<int> count() async {
-    final rows = await _db.select(_db.speciesTable).get();
-    return rows.length;
+    final countExp = _db.speciesTable.definitionId.count();
+    final query = _db.selectOnly(_db.speciesTable)..addColumns([countExp]);
+    return await query.map((row) => row.read(countExp)!).getSingle();
   }
 
   /// Returns species matching any of [habitats] AND matching [continent].
