@@ -1560,6 +1560,36 @@ class $ItemsTableTable extends ItemsTable
   late final GeneratedColumn<String> cellContinentName =
       GeneratedColumn<String>('cell_continent_name', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationDistrictMeta =
+      const VerificationMeta('locationDistrict');
+  @override
+  late final GeneratedColumn<String> locationDistrict = GeneratedColumn<String>(
+      'location_district', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCityMeta =
+      const VerificationMeta('locationCity');
+  @override
+  late final GeneratedColumn<String> locationCity = GeneratedColumn<String>(
+      'location_city', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationStateMeta =
+      const VerificationMeta('locationState');
+  @override
+  late final GeneratedColumn<String> locationState = GeneratedColumn<String>(
+      'location_state', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryMeta =
+      const VerificationMeta('locationCountry');
+  @override
+  late final GeneratedColumn<String> locationCountry = GeneratedColumn<String>(
+      'location_country', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _locationCountryCodeMeta =
+      const VerificationMeta('locationCountryCode');
+  @override
+  late final GeneratedColumn<String> locationCountryCode =
+      GeneratedColumn<String>('location_country_code', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1591,7 +1621,12 @@ class $ItemsTableTable extends ItemsTable
         artUrl,
         cellHabitatName,
         cellClimateName,
-        cellContinentName
+        cellContinentName,
+        locationDistrict,
+        locationCity,
+        locationState,
+        locationCountry,
+        locationCountryCode
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1770,6 +1805,36 @@ class $ItemsTableTable extends ItemsTable
           cellContinentName.isAcceptableOrUnknown(
               data['cell_continent_name']!, _cellContinentNameMeta));
     }
+    if (data.containsKey('location_district')) {
+      context.handle(
+          _locationDistrictMeta,
+          locationDistrict.isAcceptableOrUnknown(
+              data['location_district']!, _locationDistrictMeta));
+    }
+    if (data.containsKey('location_city')) {
+      context.handle(
+          _locationCityMeta,
+          locationCity.isAcceptableOrUnknown(
+              data['location_city']!, _locationCityMeta));
+    }
+    if (data.containsKey('location_state')) {
+      context.handle(
+          _locationStateMeta,
+          locationState.isAcceptableOrUnknown(
+              data['location_state']!, _locationStateMeta));
+    }
+    if (data.containsKey('location_country')) {
+      context.handle(
+          _locationCountryMeta,
+          locationCountry.isAcceptableOrUnknown(
+              data['location_country']!, _locationCountryMeta));
+    }
+    if (data.containsKey('location_country_code')) {
+      context.handle(
+          _locationCountryCodeMeta,
+          locationCountryCode.isAcceptableOrUnknown(
+              data['location_country_code']!, _locationCountryCodeMeta));
+    }
     return context;
   }
 
@@ -1839,6 +1904,16 @@ class $ItemsTableTable extends ItemsTable
           DriftSqlType.string, data['${effectivePrefix}cell_climate_name']),
       cellContinentName: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}cell_continent_name']),
+      locationDistrict: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_district']),
+      locationCity: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_city']),
+      locationState: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_state']),
+      locationCountry: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_country']),
+      locationCountryCode: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}location_country_code']),
     );
   }
 
@@ -1879,6 +1954,11 @@ class Item extends DataClass implements Insertable<Item> {
   final String? cellHabitatName;
   final String? cellClimateName;
   final String? cellContinentName;
+  final String? locationDistrict;
+  final String? locationCity;
+  final String? locationState;
+  final String? locationCountry;
+  final String? locationCountryCode;
   const Item(
       {required this.id,
       required this.userId,
@@ -1909,7 +1989,12 @@ class Item extends DataClass implements Insertable<Item> {
       this.artUrl,
       this.cellHabitatName,
       this.cellClimateName,
-      this.cellContinentName});
+      this.cellContinentName,
+      this.locationDistrict,
+      this.locationCity,
+      this.locationState,
+      this.locationCountry,
+      this.locationCountryCode});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1981,6 +2066,21 @@ class Item extends DataClass implements Insertable<Item> {
     if (!nullToAbsent || cellContinentName != null) {
       map['cell_continent_name'] = Variable<String>(cellContinentName);
     }
+    if (!nullToAbsent || locationDistrict != null) {
+      map['location_district'] = Variable<String>(locationDistrict);
+    }
+    if (!nullToAbsent || locationCity != null) {
+      map['location_city'] = Variable<String>(locationCity);
+    }
+    if (!nullToAbsent || locationState != null) {
+      map['location_state'] = Variable<String>(locationState);
+    }
+    if (!nullToAbsent || locationCountry != null) {
+      map['location_country'] = Variable<String>(locationCountry);
+    }
+    if (!nullToAbsent || locationCountryCode != null) {
+      map['location_country_code'] = Variable<String>(locationCountryCode);
+    }
     return map;
   }
 
@@ -2049,6 +2149,21 @@ class Item extends DataClass implements Insertable<Item> {
       cellContinentName: cellContinentName == null && nullToAbsent
           ? const Value.absent()
           : Value(cellContinentName),
+      locationDistrict: locationDistrict == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationDistrict),
+      locationCity: locationCity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCity),
+      locationState: locationState == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationState),
+      locationCountry: locationCountry == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCountry),
+      locationCountryCode: locationCountryCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationCountryCode),
     );
   }
 
@@ -2088,6 +2203,12 @@ class Item extends DataClass implements Insertable<Item> {
       cellClimateName: serializer.fromJson<String?>(json['cellClimateName']),
       cellContinentName:
           serializer.fromJson<String?>(json['cellContinentName']),
+      locationDistrict: serializer.fromJson<String?>(json['locationDistrict']),
+      locationCity: serializer.fromJson<String?>(json['locationCity']),
+      locationState: serializer.fromJson<String?>(json['locationState']),
+      locationCountry: serializer.fromJson<String?>(json['locationCountry']),
+      locationCountryCode:
+          serializer.fromJson<String?>(json['locationCountryCode']),
     );
   }
   @override
@@ -2124,6 +2245,11 @@ class Item extends DataClass implements Insertable<Item> {
       'cellHabitatName': serializer.toJson<String?>(cellHabitatName),
       'cellClimateName': serializer.toJson<String?>(cellClimateName),
       'cellContinentName': serializer.toJson<String?>(cellContinentName),
+      'locationDistrict': serializer.toJson<String?>(locationDistrict),
+      'locationCity': serializer.toJson<String?>(locationCity),
+      'locationState': serializer.toJson<String?>(locationState),
+      'locationCountry': serializer.toJson<String?>(locationCountry),
+      'locationCountryCode': serializer.toJson<String?>(locationCountryCode),
     };
   }
 
@@ -2157,7 +2283,12 @@ class Item extends DataClass implements Insertable<Item> {
           Value<String?> artUrl = const Value.absent(),
           Value<String?> cellHabitatName = const Value.absent(),
           Value<String?> cellClimateName = const Value.absent(),
-          Value<String?> cellContinentName = const Value.absent()}) =>
+          Value<String?> cellContinentName = const Value.absent(),
+          Value<String?> locationDistrict = const Value.absent(),
+          Value<String?> locationCity = const Value.absent(),
+          Value<String?> locationState = const Value.absent(),
+          Value<String?> locationCountry = const Value.absent(),
+          Value<String?> locationCountryCode = const Value.absent()}) =>
       Item(
         id: id ?? this.id,
         userId: userId ?? this.userId,
@@ -2203,6 +2334,19 @@ class Item extends DataClass implements Insertable<Item> {
         cellContinentName: cellContinentName.present
             ? cellContinentName.value
             : this.cellContinentName,
+        locationDistrict: locationDistrict.present
+            ? locationDistrict.value
+            : this.locationDistrict,
+        locationCity:
+            locationCity.present ? locationCity.value : this.locationCity,
+        locationState:
+            locationState.present ? locationState.value : this.locationState,
+        locationCountry: locationCountry.present
+            ? locationCountry.value
+            : this.locationCountry,
+        locationCountryCode: locationCountryCode.present
+            ? locationCountryCode.value
+            : this.locationCountryCode,
       );
   Item copyWithCompanion(ItemsTableCompanion data) {
     return Item(
@@ -2266,6 +2410,21 @@ class Item extends DataClass implements Insertable<Item> {
       cellContinentName: data.cellContinentName.present
           ? data.cellContinentName.value
           : this.cellContinentName,
+      locationDistrict: data.locationDistrict.present
+          ? data.locationDistrict.value
+          : this.locationDistrict,
+      locationCity: data.locationCity.present
+          ? data.locationCity.value
+          : this.locationCity,
+      locationState: data.locationState.present
+          ? data.locationState.value
+          : this.locationState,
+      locationCountry: data.locationCountry.present
+          ? data.locationCountry.value
+          : this.locationCountry,
+      locationCountryCode: data.locationCountryCode.present
+          ? data.locationCountryCode.value
+          : this.locationCountryCode,
     );
   }
 
@@ -2301,7 +2460,12 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('artUrl: $artUrl, ')
           ..write('cellHabitatName: $cellHabitatName, ')
           ..write('cellClimateName: $cellClimateName, ')
-          ..write('cellContinentName: $cellContinentName')
+          ..write('cellContinentName: $cellContinentName, ')
+          ..write('locationDistrict: $locationDistrict, ')
+          ..write('locationCity: $locationCity, ')
+          ..write('locationState: $locationState, ')
+          ..write('locationCountry: $locationCountry, ')
+          ..write('locationCountryCode: $locationCountryCode')
           ..write(')'))
         .toString();
   }
@@ -2337,7 +2501,12 @@ class Item extends DataClass implements Insertable<Item> {
         artUrl,
         cellHabitatName,
         cellClimateName,
-        cellContinentName
+        cellContinentName,
+        locationDistrict,
+        locationCity,
+        locationState,
+        locationCountry,
+        locationCountryCode
       ]);
   @override
   bool operator ==(Object other) =>
@@ -2372,7 +2541,12 @@ class Item extends DataClass implements Insertable<Item> {
           other.artUrl == this.artUrl &&
           other.cellHabitatName == this.cellHabitatName &&
           other.cellClimateName == this.cellClimateName &&
-          other.cellContinentName == this.cellContinentName);
+          other.cellContinentName == this.cellContinentName &&
+          other.locationDistrict == this.locationDistrict &&
+          other.locationCity == this.locationCity &&
+          other.locationState == this.locationState &&
+          other.locationCountry == this.locationCountry &&
+          other.locationCountryCode == this.locationCountryCode);
 }
 
 class ItemsTableCompanion extends UpdateCompanion<Item> {
@@ -2406,6 +2580,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
   final Value<String?> cellHabitatName;
   final Value<String?> cellClimateName;
   final Value<String?> cellContinentName;
+  final Value<String?> locationDistrict;
+  final Value<String?> locationCity;
+  final Value<String?> locationState;
+  final Value<String?> locationCountry;
+  final Value<String?> locationCountryCode;
   final Value<int> rowid;
   const ItemsTableCompanion({
     this.id = const Value.absent(),
@@ -2438,6 +2617,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
     this.cellHabitatName = const Value.absent(),
     this.cellClimateName = const Value.absent(),
     this.cellContinentName = const Value.absent(),
+    this.locationDistrict = const Value.absent(),
+    this.locationCity = const Value.absent(),
+    this.locationState = const Value.absent(),
+    this.locationCountry = const Value.absent(),
+    this.locationCountryCode = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ItemsTableCompanion.insert({
@@ -2471,6 +2655,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
     this.cellHabitatName = const Value.absent(),
     this.cellClimateName = const Value.absent(),
     this.cellContinentName = const Value.absent(),
+    this.locationDistrict = const Value.absent(),
+    this.locationCity = const Value.absent(),
+    this.locationState = const Value.absent(),
+    this.locationCountry = const Value.absent(),
+    this.locationCountryCode = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         userId = Value(userId),
@@ -2507,6 +2696,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
     Expression<String>? cellHabitatName,
     Expression<String>? cellClimateName,
     Expression<String>? cellContinentName,
+    Expression<String>? locationDistrict,
+    Expression<String>? locationCity,
+    Expression<String>? locationState,
+    Expression<String>? locationCountry,
+    Expression<String>? locationCountryCode,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2541,6 +2735,12 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
       if (cellHabitatName != null) 'cell_habitat_name': cellHabitatName,
       if (cellClimateName != null) 'cell_climate_name': cellClimateName,
       if (cellContinentName != null) 'cell_continent_name': cellContinentName,
+      if (locationDistrict != null) 'location_district': locationDistrict,
+      if (locationCity != null) 'location_city': locationCity,
+      if (locationState != null) 'location_state': locationState,
+      if (locationCountry != null) 'location_country': locationCountry,
+      if (locationCountryCode != null)
+        'location_country_code': locationCountryCode,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2576,6 +2776,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
       Value<String?>? cellHabitatName,
       Value<String?>? cellClimateName,
       Value<String?>? cellContinentName,
+      Value<String?>? locationDistrict,
+      Value<String?>? locationCity,
+      Value<String?>? locationState,
+      Value<String?>? locationCountry,
+      Value<String?>? locationCountryCode,
       Value<int>? rowid}) {
     return ItemsTableCompanion(
       id: id ?? this.id,
@@ -2608,6 +2813,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
       cellHabitatName: cellHabitatName ?? this.cellHabitatName,
       cellClimateName: cellClimateName ?? this.cellClimateName,
       cellContinentName: cellContinentName ?? this.cellContinentName,
+      locationDistrict: locationDistrict ?? this.locationDistrict,
+      locationCity: locationCity ?? this.locationCity,
+      locationState: locationState ?? this.locationState,
+      locationCountry: locationCountry ?? this.locationCountry,
+      locationCountryCode: locationCountryCode ?? this.locationCountryCode,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2705,6 +2915,22 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
     if (cellContinentName.present) {
       map['cell_continent_name'] = Variable<String>(cellContinentName.value);
     }
+    if (locationDistrict.present) {
+      map['location_district'] = Variable<String>(locationDistrict.value);
+    }
+    if (locationCity.present) {
+      map['location_city'] = Variable<String>(locationCity.value);
+    }
+    if (locationState.present) {
+      map['location_state'] = Variable<String>(locationState.value);
+    }
+    if (locationCountry.present) {
+      map['location_country'] = Variable<String>(locationCountry.value);
+    }
+    if (locationCountryCode.present) {
+      map['location_country_code'] =
+          Variable<String>(locationCountryCode.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2744,6 +2970,11 @@ class ItemsTableCompanion extends UpdateCompanion<Item> {
           ..write('cellHabitatName: $cellHabitatName, ')
           ..write('cellClimateName: $cellClimateName, ')
           ..write('cellContinentName: $cellContinentName, ')
+          ..write('locationDistrict: $locationDistrict, ')
+          ..write('locationCity: $locationCity, ')
+          ..write('locationState: $locationState, ')
+          ..write('locationCountry: $locationCountry, ')
+          ..write('locationCountryCode: $locationCountryCode, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6414,6 +6645,11 @@ typedef $$ItemsTableTableCreateCompanionBuilder = ItemsTableCompanion Function({
   Value<String?> cellHabitatName,
   Value<String?> cellClimateName,
   Value<String?> cellContinentName,
+  Value<String?> locationDistrict,
+  Value<String?> locationCity,
+  Value<String?> locationState,
+  Value<String?> locationCountry,
+  Value<String?> locationCountryCode,
   Value<int> rowid,
 });
 typedef $$ItemsTableTableUpdateCompanionBuilder = ItemsTableCompanion Function({
@@ -6447,6 +6683,11 @@ typedef $$ItemsTableTableUpdateCompanionBuilder = ItemsTableCompanion Function({
   Value<String?> cellHabitatName,
   Value<String?> cellClimateName,
   Value<String?> cellContinentName,
+  Value<String?> locationDistrict,
+  Value<String?> locationCity,
+  Value<String?> locationState,
+  Value<String?> locationCountry,
+  Value<String?> locationCountryCode,
   Value<int> rowid,
 });
 
@@ -6556,6 +6797,24 @@ class $$ItemsTableTableFilterComposer
 
   ColumnFilters<String> get cellContinentName => $composableBuilder(
       column: $table.cellContinentName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCity => $composableBuilder(
+      column: $table.locationCity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationState => $composableBuilder(
+      column: $table.locationState, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode,
       builder: (column) => ColumnFilters(column));
 }
 
@@ -6669,6 +6928,26 @@ class $$ItemsTableTableOrderingComposer
   ColumnOrderings<String> get cellContinentName => $composableBuilder(
       column: $table.cellContinentName,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCity => $composableBuilder(
+      column: $table.locationCity,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationState => $composableBuilder(
+      column: $table.locationState,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$ItemsTableTableAnnotationComposer
@@ -6769,6 +7048,21 @@ class $$ItemsTableTableAnnotationComposer
 
   GeneratedColumn<String> get cellContinentName => $composableBuilder(
       column: $table.cellContinentName, builder: (column) => column);
+
+  GeneratedColumn<String> get locationDistrict => $composableBuilder(
+      column: $table.locationDistrict, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCity => $composableBuilder(
+      column: $table.locationCity, builder: (column) => column);
+
+  GeneratedColumn<String> get locationState => $composableBuilder(
+      column: $table.locationState, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountry => $composableBuilder(
+      column: $table.locationCountry, builder: (column) => column);
+
+  GeneratedColumn<String> get locationCountryCode => $composableBuilder(
+      column: $table.locationCountryCode, builder: (column) => column);
 }
 
 class $$ItemsTableTableTableManager extends RootTableManager<
@@ -6824,6 +7118,11 @@ class $$ItemsTableTableTableManager extends RootTableManager<
             Value<String?> cellHabitatName = const Value.absent(),
             Value<String?> cellClimateName = const Value.absent(),
             Value<String?> cellContinentName = const Value.absent(),
+            Value<String?> locationDistrict = const Value.absent(),
+            Value<String?> locationCity = const Value.absent(),
+            Value<String?> locationState = const Value.absent(),
+            Value<String?> locationCountry = const Value.absent(),
+            Value<String?> locationCountryCode = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ItemsTableCompanion(
@@ -6857,6 +7156,11 @@ class $$ItemsTableTableTableManager extends RootTableManager<
             cellHabitatName: cellHabitatName,
             cellClimateName: cellClimateName,
             cellContinentName: cellContinentName,
+            locationDistrict: locationDistrict,
+            locationCity: locationCity,
+            locationState: locationState,
+            locationCountry: locationCountry,
+            locationCountryCode: locationCountryCode,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6890,6 +7194,11 @@ class $$ItemsTableTableTableManager extends RootTableManager<
             Value<String?> cellHabitatName = const Value.absent(),
             Value<String?> cellClimateName = const Value.absent(),
             Value<String?> cellContinentName = const Value.absent(),
+            Value<String?> locationDistrict = const Value.absent(),
+            Value<String?> locationCity = const Value.absent(),
+            Value<String?> locationState = const Value.absent(),
+            Value<String?> locationCountry = const Value.absent(),
+            Value<String?> locationCountryCode = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ItemsTableCompanion.insert(
@@ -6923,6 +7232,11 @@ class $$ItemsTableTableTableManager extends RootTableManager<
             cellHabitatName: cellHabitatName,
             cellClimateName: cellClimateName,
             cellContinentName: cellContinentName,
+            locationDistrict: locationDistrict,
+            locationCity: locationCity,
+            locationState: locationState,
+            locationCountry: locationCountry,
+            locationCountryCode: locationCountryCode,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -39,6 +39,9 @@ class SupabasePersistence {
 
   final SupabaseClient _client;
 
+  /// Exposes the underlying Supabase client for direct queries (e.g. enrichment pull).
+  SupabaseClient get client => _client;
+
   Map<String, String> _authHeaders() {
     final token = _client.auth.currentSession?.accessToken;
     if (token != null) return {'Authorization': 'Bearer $token'};
@@ -324,6 +327,29 @@ class SupabasePersistence {
       debugPrint('[SupabasePersistence] fetchCellProperties failed: $e');
       throw SyncException('Failed to load cell properties.', cause: e);
     }
+  }
+
+  // -- Location Hierarchy -----------------------------------------------------
+
+  /// Fetches all countries from Supabase.
+  Future<List<Map<String, dynamic>>> fetchCountries() async {
+    final response = await _client.from('countries').select();
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchStates() async {
+    final response = await _client.from('states').select();
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCities() async {
+    final response = await _client.from('cities').select();
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDistricts() async {
+    final response = await _client.from('districts').select();
+    return List<Map<String, dynamic>>.from(response);
   }
 
   Future<List<Map<String, dynamic>>> fetchSpeciesUpdates({

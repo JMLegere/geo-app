@@ -30,6 +30,7 @@ import 'package:earth_nova/models/item_category.dart';
 import 'package:earth_nova/models/item_instance.dart';
 import 'package:earth_nova/models/iucn_status.dart';
 import 'package:earth_nova/providers/achievement_provider.dart';
+import 'package:earth_nova/providers/hierarchy_provider.dart';
 import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/providers/cell_provider.dart';
 import 'package:earth_nova/providers/detection_zone_provider.dart';
@@ -44,6 +45,18 @@ import 'package:earth_nova/providers/species_provider.dart';
 import 'package:earth_nova/providers/step_provider.dart';
 import 'package:earth_nova/providers/sync_provider.dart';
 import 'package:earth_nova/providers/world_provider.dart';
+import 'package:earth_nova/data/sync/supabase_client.dart';
+import 'package:earth_nova/data/sync/supabase_persistence.dart';
+
+// ---------------------------------------------------------------------------
+// Pre-cached ancestry map for synchronous location resolution at discovery time.
+// Rebuilt during hydration after hierarchy sync completes.
+// Key: districtId → (city, state, country, countryCode)
+// ---------------------------------------------------------------------------
+
+Map<String,
+        ({String? city, String? state, String? country, String? countryCode})>
+    _ancestryCache = {};
 
 // ---------------------------------------------------------------------------
 // Repo convenience providers
@@ -127,6 +140,22 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
   // no species until warmed up by the hydration sequence.
   engine.speciesServiceGetter =
       () => SpeciesService.fromCache(cache: speciesCache);
+
+  // Wire location resolver — synchronous lookup from pre-cached ancestry.
+  engine.locationResolver = (cellId) {
+    final districtId =
+        ref.read(detectionZoneProvider).cellDistrictAttribution[cellId];
+    if (districtId == null) return null;
+    final ancestry = _ancestryCache[districtId];
+    if (ancestry == null) return null;
+    return (
+      district: districtId,
+      city: ancestry.city,
+      state: ancestry.state,
+      country: ancestry.country,
+      countryCode: ancestry.countryCode,
+    );
+  };
 
   // Wire enriched stats lookup from species cache.
   engine.enrichedStatsLookup = (definitionId) {
@@ -236,6 +265,34 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
 
 bool _hydrating = false;
 
+/// Rebuilds the in-memory ancestry cache from the hierarchy repository.
+///
+/// Called during hydration so that [GameEngine.locationResolver] can resolve
+/// district → city/state/country/countryCode synchronously at discovery time.
+Future<void> _rebuildAncestryCache(Ref ref) async {
+  final hierarchyRepo = ref.read(hierarchyRepoProvider);
+  final districts = await hierarchyRepo.getAllDistricts();
+  final newCache = <String,
+      ({String? city, String? state, String? country, String? countryCode})>{};
+
+  for (final district in districts) {
+    final city = await hierarchyRepo.getCity(district.cityId);
+    final state =
+        city != null ? await hierarchyRepo.getState(city.stateId) : null;
+    final country =
+        state != null ? await hierarchyRepo.getCountry(state.countryId) : null;
+    newCache[district.id] = (
+      city: city?.name,
+      state: state?.name,
+      country: country?.name,
+      countryCode: country?.id,
+    );
+  }
+  _ancestryCache = newCache;
+  debugPrint(
+      '[EngineProvider] ancestry cache rebuilt: ${newCache.length} districts');
+}
+
 Future<void> _hydrateAndStart({
   required Ref ref,
   required MainThreadEngineRunner runner,
@@ -270,6 +327,78 @@ Future<void> _hydrateAndStart({
     final dbVisits = results[1]! as List<CellVisit>;
     final dbProfile = results[2] as Player?;
     final dbCellProps = results[3]! as List<CellProperty>;
+
+    // 1b. Sync hierarchy from Supabase if local tables are empty.
+    final hierarchyRepo = ref.read(hierarchyRepoProvider);
+    final localCountries = await hierarchyRepo.getAllCountries();
+    if (localCountries.isEmpty) {
+      final supabaseClient = SupabaseBootstrap.client;
+      if (supabaseClient != null) {
+        final persistence = SupabasePersistence(supabaseClient);
+        try {
+          final db = ref.read(databaseProvider);
+          // Fetch and upsert countries
+          final countries = await persistence.fetchCountries();
+          for (final c in countries) {
+            await db.upsertCountry(CountriesTableCompanion.insert(
+              id: c['id'] as String,
+              name: c['name'] as String? ?? '',
+              centroidLat: (c['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+              centroidLon: (c['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+              continent: c['continent'] as String? ?? '',
+              boundaryJson: Value(c['boundary_json'] as String?),
+            ));
+          }
+          // Fetch and upsert states
+          final states = await persistence.fetchStates();
+          for (final s in states) {
+            await db.upsertState(StatesTableCompanion.insert(
+              id: s['id'] as String,
+              name: s['name'] as String? ?? '',
+              centroidLat: (s['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+              centroidLon: (s['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+              countryId: s['country_id'] as String? ?? '',
+              boundaryJson: Value(s['boundary_json'] as String?),
+            ));
+          }
+          // Fetch and upsert cities
+          final cities = await persistence.fetchCities();
+          for (final ci in cities) {
+            await db.upsertCity(CitiesTableCompanion.insert(
+              id: ci['id'] as String,
+              name: ci['name'] as String? ?? '',
+              centroidLat: (ci['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+              centroidLon: (ci['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+              stateId: ci['state_id'] as String? ?? '',
+              boundaryJson: Value(ci['boundary_json'] as String?),
+              cellsTotal: Value(ci['cells_total'] as int?),
+            ));
+          }
+          // Fetch and upsert districts
+          final districts = await persistence.fetchDistricts();
+          for (final d in districts) {
+            await db.upsertDistrict(DistrictsTableCompanion.insert(
+              id: d['id'] as String,
+              name: d['name'] as String? ?? '',
+              centroidLat: (d['centroid_lat'] as num?)?.toDouble() ?? 0.0,
+              centroidLon: (d['centroid_lon'] as num?)?.toDouble() ?? 0.0,
+              cityId: d['city_id'] as String? ?? '',
+              boundaryJson: Value(d['boundary_json'] as String?),
+              cellsTotal: Value(d['cells_total'] as int?),
+              source: Value(d['source'] as String? ?? 'whosonfirst'),
+              sourceId: Value(d['source_id'] as String?),
+            ));
+          }
+          debugPrint('[HYDRATION] synced ${countries.length} countries, '
+              '${states.length} states, ${cities.length} cities, '
+              '${districts.length} districts from Supabase');
+        } catch (e) {
+          debugPrint('[HYDRATION] hierarchy sync failed: $e');
+        }
+      }
+    }
+
+    if (disposed()) return;
 
     // 2. Load cell properties into engine.
     if (dbCellProps.isNotEmpty) {
@@ -396,6 +525,15 @@ Future<void> _hydrateAndStart({
       await (dailySeedService as dynamic).fetchSeed();
     } catch (e) {
       debugPrint('[EngineProvider] daily seed fetch failed: $e');
+    }
+
+    if (disposed()) return;
+
+    // 7b. Rebuild ancestry cache for synchronous location stamping at discovery.
+    try {
+      await _rebuildAncestryCache(ref);
+    } catch (e) {
+      debugPrint('[EngineProvider] ancestry cache rebuild failed: $e');
     }
 
     if (disposed()) return;
@@ -565,6 +703,11 @@ void _persistItemDiscovery({
     cellHabitatName: Value(instance.cellHabitatName),
     cellClimateName: Value(instance.cellClimateName),
     cellContinentName: Value(instance.cellContinentName),
+    locationDistrict: Value(instance.locationDistrict),
+    locationCity: Value(instance.locationCity),
+    locationState: Value(instance.locationState),
+    locationCountry: Value(instance.locationCountry),
+    locationCountryCode: Value(instance.locationCountryCode),
   ))
       .catchError((Object e) {
     debugPrint('[EngineProvider] persistItemDiscovery SQLite failed: $e');
@@ -657,6 +800,11 @@ ItemInstance? _itemFromRow(Item row) {
       cellHabitatName: row.cellHabitatName,
       cellClimateName: row.cellClimateName,
       cellContinentName: row.cellContinentName,
+      locationDistrict: row.locationDistrict,
+      locationCity: row.locationCity,
+      locationState: row.locationState,
+      locationCountry: row.locationCountry,
+      locationCountryCode: row.locationCountryCode,
     );
   } catch (e) {
     debugPrint('[EngineProvider] _itemFromRow failed for ${row.id}: $e');

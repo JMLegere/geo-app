@@ -20,6 +20,17 @@ import 'package:earth_nova/models/item_definition.dart';
 import 'package:earth_nova/models/item_instance.dart';
 import 'package:earth_nova/shared/constants.dart';
 
+/// Resolves location hierarchy for a cell ID.
+/// Returns null if hierarchy data is not available.
+typedef LocationResolver = ({
+  String? district,
+  String? city,
+  String? state,
+  String? country,
+  String? countryCode,
+})?
+    Function(String cellId);
+
 /// Central game logic engine. Pure Dart — no Flutter, no Riverpod.
 ///
 /// Merges the responsibilities of the old GameCoordinator and DiscoveryService
@@ -79,6 +90,9 @@ class GameEngine {
 
   /// Resolves geo-derived cell properties (habitat, climate, continent).
   CellPropertyResolver? cellPropertyResolver;
+
+  /// Optional location resolver — set by the provider layer after hierarchy data loads.
+  LocationResolver? locationResolver;
 
   /// Optional lookup for AI-enriched base stats + size by definition ID.
   ///
@@ -635,6 +649,9 @@ class GameEngine {
 
     final now = DateTime.now();
 
+    // Resolve location hierarchy synchronously from pre-cached ancestry.
+    final location = locationResolver?.call(cellId);
+
     final instance = ItemInstance(
       id: instanceId,
       definitionId: definition.id,
@@ -664,7 +681,12 @@ class GameEngine {
           cellProps.habitats.isNotEmpty ? cellProps.habitats.first.name : null,
       cellClimateName: cellProps.climate.name,
       cellContinentName: cellProps.continent.name,
-      // Location fields backfilled async by server pipeline
+      // Location hierarchy stamped at discovery time
+      locationDistrict: location?.district,
+      locationCity: location?.city,
+      locationState: location?.state,
+      locationCountry: location?.country,
+      locationCountryCode: location?.countryCode,
     );
 
     _emit(GameEvent.speciesDiscovered(

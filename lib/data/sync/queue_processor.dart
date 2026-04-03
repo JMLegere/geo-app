@@ -281,11 +281,11 @@ class QueueProcessor {
           cellHabitatName: item.cellHabitatName,
           cellClimateName: item.cellClimateName,
           cellContinentName: item.cellContinentName,
-          locationDistrict: null,
-          locationCity: null,
-          locationState: null,
-          locationCountry: null,
-          locationCountryCode: null,
+          locationDistrict: item.locationDistrict,
+          locationCity: item.locationCity,
+          locationState: item.locationState,
+          locationCountry: item.locationCountry,
+          locationCountryCode: item.locationCountryCode,
         );
 
         // Validate encounter with server.
@@ -363,6 +363,38 @@ class QueueProcessor {
         continent: data['continent'] as String,
         locationId: data['location_id'] as String?,
       );
+    }
+  }
+
+  /// Pulls updated item data from server after successful sync.
+  /// Server-side enrichment may have added location data the client didn't have.
+  Future<void> pullEnrichedItems(String userId) async {
+    if (_persistence == null) return;
+    try {
+      // Fetch items that have location data from server
+      final response = await _persistence!.client
+          .from('item_instances')
+          .select(
+              'id, location_district, location_city, location_state, location_country, location_country_code')
+          .eq('user_id', userId)
+          .not('location_country', 'is', null);
+
+      final items = List<Map<String, dynamic>>.from(response as List);
+      for (final item in items) {
+        await _itemRepo.updateLocation(
+          item['id'] as String,
+          district: item['location_district'] as String?,
+          city: item['location_city'] as String?,
+          state: item['location_state'] as String?,
+          country: item['location_country'] as String?,
+          countryCode: item['location_country_code'] as String?,
+        );
+      }
+      if (items.isNotEmpty) {
+        debugPrint('[SYNC] pulled ${items.length} enriched items from server');
+      }
+    } catch (e) {
+      debugPrint('[SYNC] enrichment pull failed: $e');
     }
   }
 

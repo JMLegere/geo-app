@@ -13,6 +13,7 @@ import 'package:earth_nova/providers/cell_provider.dart';
 import 'package:earth_nova/providers/detection_zone_provider.dart';
 import 'package:earth_nova/providers/engine_provider.dart';
 import 'package:earth_nova/providers/fog_provider.dart';
+import 'package:earth_nova/providers/territory_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/widgets/camera_controller.dart';
 import 'package:earth_nova/widgets/discovery_toast.dart';
@@ -68,6 +69,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
   double _currentZoom = kDefaultZoom;
 
   // MapLibre source/layer IDs
+  static const _territoryFillSrcId = 'territory-fill-src';
+  static const _territoryFillLayerId = 'territory-fill';
+  static const _territoryLinesSrcId = 'territory-lines-src';
+  static const _territoryLinesLayerId = 'territory-lines';
   static const _fogBaseSrcId = 'fog-base-src';
   static const _fogBaseLayerId = 'fog-base';
   static const _fogMidSrcId = 'fog-mid-src';
@@ -126,6 +131,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
         ref.read(detectionZoneProvider).onZoneChanged.listen((cells) {
       if (!mounted) return;
       _fogController.addDetectionZoneCells(cells, {});
+      final territory = ref.read(territoryProvider);
+      _fogController.cellDistrictIds = territory.cellDistrictIds;
+      _fogController.districtAncestry = territory.ancestry;
+      final pos = _markerPosition.value;
+      if (pos != null) _updateFogRendering(pos.lat, pos.lon);
+    });
+
+    // Update fog controller when territory state changes.
+    ref.listen(territoryProvider, (_, next) {
+      _fogController.cellDistrictIds = next.cellDistrictIds;
+      _fogController.districtAncestry = next.ancestry;
       final pos = _markerPosition.value;
       if (pos != null) _updateFogRendering(pos.lat, pos.lon);
     });
@@ -205,6 +221,53 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || _fogLayersInitialized) return;
 
     try {
+      // Territory border fill: gradient at admin boundaries (rendered below fog).
+      await controller.addSource(
+        GeoJsonSource(
+            id: _territoryFillSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _territoryFillLayerId,
+        sourceId: _territoryFillSrcId,
+        paint: {
+          'fill-color': ['get', 'region_color_country'],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            [
+              'coalesce',
+              ['get', 'border_distance_country'],
+              3
+            ],
+            0,
+            0.5,
+            1,
+            0.04,
+            2,
+            0.01,
+            3,
+            0.0,
+          ],
+        },
+      ));
+
+      // Territory border lines (rendered below fog).
+      await controller.addSource(
+        GeoJsonSource(
+            id: _territoryLinesSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(LineLayer(
+        id: _territoryLinesLayerId,
+        sourceId: _territoryLinesSrcId,
+        paint: {
+          'line-color': '#FFFFFF',
+          'line-width': 2.0,
+          'line-opacity': 0.8,
+        },
+      ));
+
       // Base fog: opaque world polygon with holes punched for revealed cells.
       await controller.addSource(
         GeoJsonSource(id: _fogBaseSrcId, data: FogGeoJsonBuilder.fullWorldFog),
@@ -305,6 +368,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
       await controller.updateGeoJsonSource(
           id: _exploredBorderSrcId,
           data: _fogController.exploredBordersGeoJson);
+      if (_fogController.consumeBorderDirty()) {
+        await controller.updateGeoJsonSource(
+            id: _territoryFillSrcId, data: _fogController.borderFillGeoJson);
+        await controller.updateGeoJsonSource(
+            id: _territoryLinesSrcId, data: _fogController.borderLinesGeoJson);
+      }
     } catch (e) {
       debugPrint('[MAP] Failed to update fog sources: $e');
     }
