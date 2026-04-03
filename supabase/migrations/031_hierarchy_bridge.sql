@@ -119,18 +119,10 @@ CREATE TRIGGER trg_sync_hierarchy
   FOR EACH ROW
   EXECUTE FUNCTION sync_location_node_to_hierarchy();
 
--- Backfill: sync existing location_nodes into hierarchy tables
--- (run once, then the trigger handles new rows)
-DO $$
-DECLARE
-  r RECORD;
-BEGIN
-  -- Process in order: countries first, then states, cities, districts
-  FOR r IN SELECT * FROM location_nodes WHERE admin_level = 'country' ORDER BY created_at LOOP
-    PERFORM sync_location_node_to_hierarchy();
-  END LOOP;
-END $$;
-
--- Note: The backfill above won't actually work because it can't call a trigger function directly.
--- Instead, do a simple UPDATE that re-triggers the function:
-UPDATE location_nodes SET name = name WHERE admin_level IN ('country', 'state', 'city', 'district');
+-- Backfill: trigger the function for existing location_nodes by doing a no-op UPDATE.
+-- The trigger fires on UPDATE, so setting name = name re-processes each row.
+-- Process in dependency order: countries first, then states, cities, districts.
+UPDATE location_nodes SET name = name WHERE admin_level = 'country';
+UPDATE location_nodes SET name = name WHERE admin_level = 'state';
+UPDATE location_nodes SET name = name WHERE admin_level = 'city';
+UPDATE location_nodes SET name = name WHERE admin_level = 'district';

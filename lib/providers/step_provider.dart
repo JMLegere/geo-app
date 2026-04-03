@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/data/location/mobile_pedometer_service.dart';
 import 'package:earth_nova/providers/player_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 
@@ -32,9 +33,15 @@ class NoOpPedometer implements PedometerService {
   void dispose() {}
 }
 
-final pedometerServiceProvider = Provider<PedometerService>(
-  (ref) => const NoOpPedometer(),
-);
+final pedometerServiceProvider = Provider<PedometerService>((ref) {
+  // Use real OS pedometer on mobile; fall back to no-op on web and tests.
+  if (!kIsWeb) {
+    final svc = MobilePedometerService();
+    ref.onDispose(svc.dispose);
+    return svc;
+  }
+  return const NoOpPedometer();
+});
 
 // ---------------------------------------------------------------------------
 // State
