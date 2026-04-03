@@ -1,0 +1,147 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+
+import 'package:earth_nova/domain/cells/detection_zone_service.dart';
+
+import '../../fixtures/test_helpers.dart';
+
+void main() {
+  group('DetectionZoneService', () {
+    late MockCellService cellService;
+    late DetectionZoneService service;
+
+    setUp(() {
+      cellService = buildStarGrid();
+      service = DetectionZoneService(cellService: cellService);
+    });
+
+    tearDown(() {
+      service.dispose();
+    });
+
+    test('updatePlayerPosition creates zone with cells from ring-0 to ring-15',
+        () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+
+      // Star grid: center A with neighbors B, C, D — all reachable within ring-1.
+      expect(service.zoneCellIds, contains(kTestCellA));
+      expect(service.zoneCellIds, contains(kTestCellB));
+      expect(service.zoneCellIds, contains(kTestCellC));
+      expect(service.zoneCellIds, contains(kTestCellD));
+    });
+
+    test('updatePlayerPosition skips recomputation when same cell', () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      final firstZone = service.zoneCellIds;
+
+      // Same cell — zone should not change (same contents).
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      expect(service.zoneCellIds, equals(firstZone));
+    });
+
+    test('updatePlayerPosition recomputes when player moves to different cell',
+        () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      expect(service.centeredOnCellId, kTestCellA);
+
+      // Move to cell B position.
+      service.updatePlayerPosition(kTestLat + 0.01, kTestLon);
+      expect(service.centeredOnCellId, kTestCellB);
+      // Zone now centered on B.
+      expect(service.zoneCellIds, contains(kTestCellB));
+    });
+
+    test('onZoneChanged stream fires when zone changes', () async {
+      final events = <Set<String>>[];
+      final sub = service.onZoneChanged.listen(events.add);
+
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.length, 1);
+      expect(events.first, contains(kTestCellA));
+
+      sub.cancel();
+    });
+
+    test('onZoneChanged does NOT fire when same cell', () async {
+      final events = <Set<String>>[];
+      final sub = service.onZoneChanged.listen(events.add);
+
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      service.updatePlayerPosition(kTestLat, kTestLon); // same cell
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.length, 1);
+
+      sub.cancel();
+    });
+
+    test('recompute forces zone recomputation even without cell change',
+        () async {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+      await Future<void>.delayed(Duration.zero);
+
+      final events = <Set<String>>[];
+      final sub = service.onZoneChanged.listen(events.add);
+
+      service.recompute();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.length, 1);
+      expect(events.first, contains(kTestCellA));
+
+      sub.cancel();
+    });
+
+    test('recompute is a no-op before first position update', () async {
+      final events = <Set<String>>[];
+      final sub = service.onZoneChanged.listen(events.add);
+
+      service.recompute();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, isEmpty);
+
+      sub.cancel();
+    });
+
+    test('zoneCellIds returns unmodifiable copy', () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+
+      final zone = service.zoneCellIds;
+      expect(() => (zone as dynamic).add('injected'), throwsUnsupportedError);
+    });
+
+    test('dispose closes the stream', () async {
+      service.dispose();
+
+      expect(
+        service.onZoneChanged.listen((_) {}),
+        isNotNull, // listen itself doesn't throw
+      );
+      // After dispose, stream should be closed — new listeners get onDone.
+      final done = Completer<void>();
+      service.onZoneChanged.listen(null, onDone: done.complete);
+      await done.future.timeout(const Duration(seconds: 1));
+    });
+
+    test('zone includes ring-0 (player cell) and ring-1 (neighbors)', () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+
+      // Ring-0 is the player cell.
+      expect(service.zoneCellIds, contains(kTestCellA));
+      // Ring-1 neighbors are all present.
+      expect(service.zoneCellIds,
+          containsAll([kTestCellB, kTestCellC, kTestCellD]));
+    });
+
+    test('zone includes all reachable cells in the configured grid', () {
+      service.updatePlayerPosition(kTestLat, kTestLon);
+
+      // Star grid has 4 cells total — all should be in the detection zone.
+      expect(service.zoneCellIds.length, greaterThanOrEqualTo(4));
+    });
+  });
+}

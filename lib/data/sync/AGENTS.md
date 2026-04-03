@@ -1,9 +1,7 @@
-# core/config
+# data/sync/
 
-Environment configuration and Supabase bootstrap.
+Write queue processor and Supabase persistence layer.
 
-**Files:** `supabase_config.dart` (`SupabaseConfig` — url, anonKey, validate()), `supabase_bootstrap.dart` (pre-initializes Supabase client, overridden in ProviderScope).
+Supabase is conditionally enabled via `SUPABASE_URL` dart-define. When absent, sync is disabled.
 
-**Key rule:** `validate()` throws if `SUPABASE_URL` or `SUPABASE_ANON_KEY` are empty — fail fast at startup. No fallback values.
-
-See /lib/core/AGENTS.md for full core subsystem rules.
+See /AGENTS.md for project-wide rules.

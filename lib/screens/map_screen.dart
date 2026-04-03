@@ -10,6 +10,7 @@ import 'package:earth_nova/data/location/keyboard_location_service.dart';
 import 'package:earth_nova/data/location/location_service.dart';
 import 'package:earth_nova/engine/engine_input.dart';
 import 'package:earth_nova/providers/cell_provider.dart';
+import 'package:earth_nova/providers/detection_zone_provider.dart';
 import 'package:earth_nova/providers/engine_provider.dart';
 import 'package:earth_nova/providers/fog_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
@@ -50,6 +51,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   StreamSubscription<({Geographic position, double accuracy})>?
       _rawGpsSubscription;
   StreamSubscription<dynamic>? _engineEventsSubscription;
+  StreamSubscription<Set<String>>? _detectionZoneSubscription;
 
   // Web keyboard movement service (web only).
   KeyboardLocationService? _keyboardService;
@@ -117,6 +119,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     // Subscribe to engine events for exploration-disabled banner.
     _engineEventsSubscription = runner.events.listen(_onEngineEvent);
 
+    // Subscribe to detection zone changes → feed cells to fog controller.
+    _detectionZoneSubscription =
+        ref.read(detectionZoneProvider).onZoneChanged.listen((cells) {
+      if (!mounted) return;
+      _fogController.addDetectionZoneCells(cells, {});
+      final pos = _markerPosition.value;
+      if (pos != null) _updateFogRendering(pos.lat, pos.lon);
+    });
+
     // Web keyboard movement.
     if (kIsWeb) {
       _keyboardService = KeyboardLocationService()..start();
@@ -127,6 +138,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void dispose() {
     _rawGpsSubscription?.cancel();
     _engineEventsSubscription?.cancel();
+    _detectionZoneSubscription?.cancel();
     _keyboardService?.dispose();
     _rubberBand.dispose();
     _markerPosition.dispose();
