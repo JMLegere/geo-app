@@ -220,6 +220,143 @@ class FogGeoJsonBuilder {
     return '{"type":"FeatureCollection","features":[$features]}';
   }
 
+  /// Builds all three fog GeoJSON layers in a **single pass** over [cellStates].
+  ///
+  /// Equivalent to calling [buildBaseFog], [buildMidFog], and
+  /// [buildCellBorders] independently, but iterates [cellStates.entries] only
+  /// once — reducing allocation pressure and improving cache locality for
+  /// large cell sets.
+  ///
+  /// Returns a named record with [baseFog], [midFog], and [cellBorders]
+  /// strings, each a GeoJSON FeatureCollection.
+  ///
+  /// See individual methods for per-layer semantics and property schemas.
+  static ({String baseFog, String midFog, String cellBorders}) buildAllLayers({
+    required Map<String, FogState> cellStates,
+    required List<Geographic> Function(String cellId) getBoundary,
+    String Function(String cellId)? getFragment,
+  }) {
+    const worldRing =
+        '[-180,-85.06],[180,-85.06],[180,85.06],[-180,85.06],[-180,-85.06]';
+
+    final holes = StringBuffer();
+    var holeCount = 0;
+
+    final midFeatures = StringBuffer();
+    var midFirst = true;
+    var midCount = 0;
+
+    final borderFeatures = StringBuffer();
+    var borderFirst = true;
+    var borderCount = 0;
+
+    for (final entry in cellStates.entries) {
+      final state = entry.value;
+      final cellId = entry.key;
+
+      // ------------------------------------------------------------------
+      // Base fog holes: all non-unknown states get a hole.
+      // ------------------------------------------------------------------
+      if (state != FogState.unknown) {
+        if (getFragment != null) {
+          holeCount++;
+          holes.write(',');
+          holes.write(getFragment(cellId));
+        } else {
+          final boundary = getBoundary(cellId);
+          if (boundary.length >= 3) {
+            holeCount++;
+            holes.write(',[');
+            for (var i = 0; i < boundary.length; i++) {
+              if (i > 0) holes.write(',');
+              holes.write('[${boundary[i].lon},${boundary[i].lat}]');
+            }
+            holes.write(',[${boundary[0].lon},${boundary[0].lat}]');
+            holes.write(']');
+          }
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Mid fog features: detected / nearby / explored (not unknown/present).
+      // ------------------------------------------------------------------
+      if (state != FogState.unknown && state != FogState.present) {
+        final density = state.density;
+        if (getFragment != null) {
+          if (!midFirst) midFeatures.write(',');
+          midFirst = false;
+          midCount++;
+          midFeatures.write('{"type":"Feature","geometry":{"type":"Polygon",'
+              '"coordinates":[');
+          midFeatures.write(getFragment(cellId));
+          midFeatures.write(']},"properties":{"density":$density}}');
+        } else {
+          final boundary = getBoundary(cellId);
+          if (boundary.length >= 3) {
+            if (!midFirst) midFeatures.write(',');
+            midFirst = false;
+            midCount++;
+            midFeatures.write(
+                '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[');
+            for (var i = 0; i < boundary.length; i++) {
+              if (i > 0) midFeatures.write(',');
+              midFeatures.write('[${boundary[i].lon},${boundary[i].lat}]');
+            }
+            midFeatures.write(',[${boundary[0].lon},${boundary[0].lat}]');
+            midFeatures.write(']]},"properties":{"density":$density}}');
+          }
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Cell borders: detected (0.4), nearby (0.25), unknown (0.1).
+      // ------------------------------------------------------------------
+      final double? opacity = switch (state) {
+        FogState.detected => 0.4,
+        FogState.nearby => 0.25,
+        FogState.unknown => 0.1,
+        _ => null,
+      };
+      if (opacity != null) {
+        if (getFragment != null) {
+          if (!borderFirst) borderFeatures.write(',');
+          borderFirst = false;
+          borderCount++;
+          borderFeatures.write(
+              '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[');
+          borderFeatures.write(getFragment(cellId));
+          borderFeatures.write(']},"properties":{"opacity":$opacity}}');
+        } else {
+          final boundary = getBoundary(cellId);
+          if (boundary.length >= 3) {
+            if (!borderFirst) borderFeatures.write(',');
+            borderFirst = false;
+            borderCount++;
+            borderFeatures.write(
+                '{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[');
+            for (var i = 0; i < boundary.length; i++) {
+              if (i > 0) borderFeatures.write(',');
+              borderFeatures.write('[${boundary[i].lon},${boundary[i].lat}]');
+            }
+            borderFeatures.write(',[${boundary[0].lon},${boundary[0].lat}]');
+            borderFeatures.write(']]},"properties":{"opacity":$opacity}}');
+          }
+        }
+      }
+    }
+
+    debugPrint('[FOG-GEO] buildAllLayers: ${cellStates.length} cells → '
+        '$holeCount holes, $midCount mid, $borderCount borders');
+
+    return (
+      baseFog: '{"type":"FeatureCollection","features":[{"type":"Feature",'
+          '"geometry":{"type":"Polygon","coordinates":[[$worldRing]$holes]},'
+          '"properties":{}}]}',
+      midFog: '{"type":"FeatureCollection","features":[$midFeatures]}',
+      cellBorders: '{"type":"FeatureCollection","features":[$borderFeatures]}',
+    );
+  }
+
   /// Returns an empty GeoJSON FeatureCollection.
   static String get emptyFeatureCollection =>
       '{"type":"FeatureCollection","features":[]}';

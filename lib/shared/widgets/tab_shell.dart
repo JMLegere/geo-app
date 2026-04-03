@@ -21,10 +21,11 @@ import 'package:earth_nova/shared/widgets/identicon_avatar.dart';
 
 /// Root navigation shell with 4-tab bottom bar.
 ///
-/// MapScreen (tab 0) is kept alive via [Offstage] — MapLibre's GPS, fog, and
-/// ticker state is expensive to recreate. All other tabs (Sanctuary, Town,
-/// Pack) are built on demand and disposed when not selected, eliminating
-/// their widget trees and animation controllers while they're invisible.
+/// All tabs are kept alive via [Offstage] — MapScreen (tab 0) preserves
+/// MapLibre's GPS, fog, and ticker state; Sanctuary (1), Town (2), and Pack
+/// (3) retain their image widget trees across tab switches, eliminating
+/// image churn (repeated decode/dispose cycles) that caused visible load
+/// delays and memory pressure spikes on iOS.
 ///
 /// On web, [MapVisibility] hides/reveals the MapLibre HTML container when
 /// switching away from or back to the Map tab (index 0). On native platforms,
@@ -126,25 +127,36 @@ class _TabShellState extends ConsumerState<TabShell>
           // tab. One boundary avoids the cascade while still protecting the
           // bottom nav bar (which lives outside in the Scaffold).
           //
-          // MapScreen stays alive via Offstage — MapLibre state (GPS, fog,
-          // tickers) is expensive to recreate. The other tabs build on demand
-          // and dispose when deselected, eliminating their widget trees and
-          // animation controllers while invisible.
+          // All tabs stay alive via Offstage — MapLibre state (GPS, fog,
+          // tickers) is expensive to recreate; Sanctuary and Pack avoid
+          // image churn (decode/dispose cycles) that caused load delays
+          // and iOS content-process kills.
           ErrorBoundary(
             onError: (details, reset) => DefaultErrorFallback(
               onRetry: reset,
             ),
             child: Stack(
               children: [
-                // MapScreen always mounted; hidden when not on tab 0.
-                // Offstage preserves MapLibre state across tab switches.
+                // All tabs use Offstage to prevent image/widget churn on
+                // tab switches. Offstage keeps widget trees alive
+                // (preserving image cache, scroll position, animation
+                // state) while suppressing paint and suspending tickers.
                 Offstage(
                   offstage: currentIndex != 0,
                   child: const MapScreen(),
                 ),
-                if (currentIndex == 1) const SanctuaryScreen(),
-                if (currentIndex == 2) const TownPlaceholderScreen(),
-                if (currentIndex == 3) const PackScreen(),
+                Offstage(
+                  offstage: currentIndex != 1,
+                  child: const SanctuaryScreen(),
+                ),
+                Offstage(
+                  offstage: currentIndex != 2,
+                  child: const TownPlaceholderScreen(),
+                ),
+                Offstage(
+                  offstage: currentIndex != 3,
+                  child: const PackScreen(),
+                ),
               ],
             ),
           ),

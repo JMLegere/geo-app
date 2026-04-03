@@ -11,6 +11,7 @@ import 'package:earth_nova/core/models/fog_state.dart';
 import 'package:earth_nova/features/map/utils/cell_property_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
 import 'package:earth_nova/features/map/utils/habitat_fill_geojson_builder.dart';
+import 'package:earth_nova/features/map/utils/mercator_projection.dart';
 import 'package:earth_nova/features/map/utils/territory_border_geojson_builder.dart';
 
 /// Computes fog GeoJSON for MapLibre native fill layers.
@@ -207,11 +208,29 @@ class FogOverlayController {
   /// Eliminates ~250K double.toString() calls per fog rebuild.
   final Map<String, String> _boundaryFragmentCache = {};
 
+  /// Cached last viewport bounding box for change detection.
+  /// Format: (minLat, maxLat, minLon, maxLon) — null until first update.
+  ({
+    double minLat,
+    double maxLat,
+    double minLon,
+    double maxLon
+  })? _lastViewportBounds;
+
+  /// Number of cells that passed the viewport filter in the last build.
+  int _lastViewportCellCount = 0;
+
   /// Monotonically incremented on every `update` call.
   int get renderVersion => _renderVersion;
 
   /// Number of cells currently discovered via viewport sampling.
   int get visibleCellCount => _discoveredCellIds.length;
+
+  /// Number of cells that passed the viewport filter in the last [update] call.
+  ///
+  /// Useful for performance diagnostics and tests — this should be much smaller
+  /// than [visibleCellCount] when the map is zoomed in.
+  int get lastViewportCellCount => _lastViewportCellCount;
 
   /// GeoJSON for the opaque base fog (world polygon with holes).
   String get baseFogGeoJson => _baseFogGeoJson;
@@ -337,7 +356,30 @@ class FogOverlayController {
       // they don't change when a cell transitions fog state.
       final cellCountChanged = _discoveredCellIds.length != _lastBuildCellCount;
       final includeProps = cellCountChanged || !_lastBuildIncludedProperties;
-      _buildGeoJson(_discoveredCellIds, includePropertyLayers: includeProps);
+
+      // Filter to viewport cells for the GeoJSON build.
+      // Full _discoveredCellIds retained for territory borders and pruning.
+      final viewportCells = _viewportCells(
+        cellIds: _discoveredCellIds,
+        cameraLat: cameraLat,
+        cameraLon: cameraLon,
+        zoom: zoom,
+        viewportSize: viewportSize,
+      );
+      // Always include visited cells — they need to render their explored
+      // state even if slightly off-viewport (camera edge cases).
+      for (final cellId in fogResolver.visitedCellIds) {
+        viewportCells.add(cellId);
+      }
+      _lastViewportBounds = MercatorProjection.visibleBounds(
+        cameraLat: cameraLat,
+        cameraLon: cameraLon,
+        zoom: zoom,
+        viewportSize: viewportSize,
+      );
+
+      _buildGeoJson(viewportCells, includePropertyLayers: includeProps);
+      _lastViewportCellCount = viewportCells.length;
       _lastBuildCellCount = _discoveredCellIds.length;
       _lastBuildVisitedCount = currentVisitedCount;
       _lastBuildIncludedProperties = includeProps;
@@ -356,7 +398,8 @@ class FogOverlayController {
       }
       ObservabilityBuffer.instance?.event('fog_computed', {
         'duration_ms': sw.elapsedMilliseconds,
-        'cell_count': _discoveredCellIds.length,
+        'cell_count': _lastViewportCellCount, // viewport cells, not total
+        'total_cells': _discoveredCellIds.length, // total discovered
         'dirty': _fogDirty,
         'skipped_rebuild': !needsRebuild,
         'states': stateCounts,
@@ -378,9 +421,29 @@ class FogOverlayController {
     void Function()? onBatchReady,
     int chunkSize = 20,
   }) async {
-    // Build GeoJSON from all discovered cells (populated by
-    // addDetectionZoneCells during loading screen).
-    _buildGeoJson(_discoveredCellIds, includePropertyLayers: true);
+    // Filter to viewport cells for the GeoJSON build.
+    // Full _discoveredCellIds retained for territory borders and pruning.
+    final viewportCells = _viewportCells(
+      cellIds: _discoveredCellIds,
+      cameraLat: cameraLat,
+      cameraLon: cameraLon,
+      zoom: zoom,
+      viewportSize: viewportSize,
+    );
+    // Always include visited cells — they need to render their explored
+    // state even if slightly off-viewport (camera edge cases).
+    for (final cellId in fogResolver.visitedCellIds) {
+      viewportCells.add(cellId);
+    }
+    _lastViewportBounds = MercatorProjection.visibleBounds(
+      cameraLat: cameraLat,
+      cameraLon: cameraLon,
+      zoom: zoom,
+      viewportSize: viewportSize,
+    );
+
+    _buildGeoJson(viewportCells, includePropertyLayers: true);
+    _lastViewportCellCount = viewportCells.length;
     _lastBuildCellCount = _discoveredCellIds.length;
     _lastBuildVisitedCount = fogResolver.visitedCellIds.length;
     _lastBuildIncludedProperties = true;
@@ -408,6 +471,44 @@ class FogOverlayController {
     buf.write(',[${boundary[0].lon},${boundary[0].lat}]');
     buf.write(']');
     return buf.toString();
+  }
+
+  /// Returns the subset of [cellIds] whose center lies within the viewport
+  /// bounding box, expanded by [bufferDeg] degrees on each side.
+  ///
+  /// [bufferDeg] adds margin so cells at the viewport edge don't pop in/out
+  /// as the camera moves. ~0.01° ≈ 1km at mid-latitudes — about one Voronoi
+  /// cell width.
+  Set<String> _viewportCells({
+    required Iterable<String> cellIds,
+    required double cameraLat,
+    required double cameraLon,
+    required double zoom,
+    required Size viewportSize,
+    double bufferDeg = 0.01,
+  }) {
+    final bounds = MercatorProjection.visibleBounds(
+      cameraLat: cameraLat,
+      cameraLon: cameraLon,
+      zoom: zoom,
+      viewportSize: viewportSize,
+    );
+    final minLat = bounds.minLat - bufferDeg;
+    final maxLat = bounds.maxLat + bufferDeg;
+    final minLon = bounds.minLon - bufferDeg;
+    final maxLon = bounds.maxLon + bufferDeg;
+
+    final result = <String>{};
+    for (final cellId in cellIds) {
+      final center = cellService.getCellCenter(cellId);
+      if (center.lat >= minLat &&
+          center.lat <= maxLat &&
+          center.lon >= minLon &&
+          center.lon <= maxLon) {
+        result.add(cellId);
+      }
+    }
+    return result;
   }
 
   /// Builds all GeoJSON strings from the given set of visible cell IDs.
@@ -463,24 +564,19 @@ class FogOverlayController {
     _lastVisibleCellIds = cellIds is Set<String> ? cellIds : cellIds.toSet();
     _lastCellStates = cellStates;
 
-    // Fog layers (base + mid + border outlines).
-    _baseFogGeoJson = FogGeoJsonBuilder.buildBaseFog(
+    // Fog layers (base + mid + border outlines) — single pass over cellStates.
+    final (
+      :baseFog,
+      :midFog,
+      :cellBorders,
+    ) = FogGeoJsonBuilder.buildAllLayers(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
       getFragment: _getFragment,
     );
-
-    _midFogGeoJson = FogGeoJsonBuilder.buildMidFog(
-      cellStates: cellStates,
-      getBoundary: cellService.getCellBoundary,
-      getFragment: _getFragment,
-    );
-
-    _cellBorderGeoJson = FogGeoJsonBuilder.buildCellBorders(
-      cellStates: cellStates,
-      getBoundary: cellService.getCellBoundary,
-      getFragment: _getFragment,
-    );
+    _baseFogGeoJson = baseFog;
+    _midFogGeoJson = midFog;
+    _cellBorderGeoJson = cellBorders;
     _fogDirty = true;
 
     if (includePropertyLayers) {

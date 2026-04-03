@@ -63,6 +63,19 @@ class CellProperties {
     );
   }
 
+  /// Serializes to the Supabase `cell_properties` table row format.
+  ///
+  /// Matches the payload format used by the write queue for routing.
+  Map<String, dynamic> toSupabaseMap() {
+    return {
+      'cell_id': cellId,
+      'habitats': habitats.map((h) => h.name).toList(),
+      'climate': climate.name,
+      'continent': continent.name,
+      'location_id': locationId,
+    };
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'cellId': cellId,

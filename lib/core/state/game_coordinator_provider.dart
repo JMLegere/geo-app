@@ -457,32 +457,41 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       });
     }
 
-    // ── Phase 2: Deferred persistence (batched microtask, ~75ms/batch) ──
-    // Persist to SQLite + enqueue for Supabase in batches of 5 with yields
-    // between batches. Each SQLite write takes 10-15ms on iOS IndexedDB,
-    // so batches of 5 = ~75ms per batch — under the JANK threshold.
+    // ── Phase 2: Deferred persistence (single batch transaction) ──
+    // 1. Single Drift batch() write to SQLite for all cells.
+    // 2. Single direct Supabase bulk upsert (skip write queue — cell
+    //    properties are global/deterministic, not user discovery events,
+    //    and don't need retry semantics).
+    //
+    // Previously: 1 persistCellProperties() call per cell → 1500 individual
+    // write queue entries → 1500 HTTP POSTs on startup. Now: 1 SQLite batch
+    // + 1 Supabase bulk upsert.
     final allToPersist = [...cellsToPersist, ...locationIdUpdates];
     if (allToPersist.isNotEmpty) {
-      final userId = ref.read(authProvider).user?.id;
       Future.microtask(() async {
-        var persisted = 0;
-        for (var i = 0; i < allToPersist.length; i++) {
-          if (_providerDisposed) return;
-          await persistCellProperties(
-            properties: allToPersist[i],
-            cellPropertyRepo: cellPropertyRepo,
-            queueProcessor: queueProcessor,
-            userId: userId,
-            obs: obs,
-          );
-          persisted++;
-          // Yield every 5 writes so the UI can render frames.
-          if (persisted % 5 == 0) {
-            await Future<void>.delayed(Duration.zero);
+        if (_providerDisposed) return;
+
+        // 1. Batch SQLite write (single transaction, not per-cell).
+        await cellPropertyRepo.batchUpsert(allToPersist);
+
+        // 2. Single direct Supabase bulk upsert (skip write queue — cell
+        //    properties are global/deterministic, not user discovery events,
+        //    don't need retry semantics).
+        final supabase = ref.read(supabaseClientProvider);
+        if (supabase != null && allToPersist.isNotEmpty) {
+          try {
+            await supabase
+                .from('cell_properties')
+                .upsert(allToPersist.map((p) => p.toSupabaseMap()).toList());
+          } catch (e) {
+            // Non-critical: enrichment pipeline will still work from SQLite cache.
+            debugPrint(
+                '[DetectionZone] cell_properties Supabase batch failed: $e');
           }
         }
-        debugPrint('[DetectionZone] persisted $persisted cell properties '
-            '(batched, ${allToPersist.length} total)');
+
+        debugPrint(
+            '[DetectionZone] persisted ${allToPersist.length} cell properties (batch)');
       });
     }
   });
@@ -1040,19 +1049,29 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
           final facts =
               (response as List).map((r) => r['fact_text'] as String).toList();
 
+          // Fetch prefs once — used for both fact caching and generation throttle.
+          final prefs = await SharedPreferences.getInstance();
+
           if (facts.isNotEmpty) {
-            final prefs = await SharedPreferences.getInstance();
             await prefs.setString('fun_facts_cache', jsonEncode(facts));
             debugPrint(
                 '[FunFacts] cached ${facts.length} facts for next session');
           }
 
-          // Trigger pool growth (fire-and-forget)
-          unawaited(supabase.functions.invoke('generate-fun-facts').then((_) {
-            debugPrint('[FunFacts] generation triggered');
-          }).catchError((e) {
-            debugPrint('[FunFacts] generation failed (non-critical): $e');
-          }));
+          // Only trigger pool growth if we haven't done so in the last 6 hours.
+          // The edge function takes ~10s and holds a connection — avoid on every session.
+          if (funFactsGenerationDue(prefs)) {
+            await prefs.setInt('fun_facts_last_generated',
+                DateTime.now().millisecondsSinceEpoch);
+            unawaited(supabase.functions.invoke('generate-fun-facts').then((_) {
+              debugPrint('[FunFacts] generation triggered');
+            }).catchError((e) {
+              debugPrint('[FunFacts] generation failed (non-critical): $e');
+            }));
+          } else {
+            debugPrint(
+                '[FunFacts] skipping generation (< 6h since last trigger)');
+          }
         } catch (e) {
           debugPrint('[FunFacts] cache refresh failed (non-critical): $e');
         }
@@ -1160,8 +1179,12 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
         );
 
         // Fun facts: refresh cache for next session + trigger pool growth.
+        // Defer by 30s to avoid connection contention during the critical
+        // startup window (daily seed, enrichment, Supabase hydration).
         // Fire-and-forget — errors are irrelevant to gameplay.
-        refreshFunFactsCache();
+        Future.delayed(const Duration(seconds: 30), () {
+          if (!_providerDisposed) refreshFunFactsCache();
+        });
       }).catchError((Object e) {
         debugPrint(
           '[GameCoordinator] background Supabase sync failed: $e',
@@ -1407,6 +1430,19 @@ GameEngine? _latestEngine;
 /// identifier "version"`. These are unrecoverable — the only fix is to
 /// wipe browser storage and start fresh.
 ///
+/// Returns true if the fun-facts generation edge function should be triggered.
+///
+/// Throttled to once per 6 hours using a SharedPreferences timestamp
+/// (`fun_facts_last_generated`). Prevents 1 connection per session being
+/// held for the ~10s edge function call.
+@visibleForTesting
+bool funFactsGenerationDue(SharedPreferences prefs) {
+  final lastGenerated = prefs.getInt('fun_facts_last_generated') ?? 0;
+  final hoursSince =
+      (DateTime.now().millisecondsSinceEpoch - lastGenerated) / 3600000;
+  return hoursSince >= 6;
+}
+
 /// We must distinguish real database corruption from network JSON parse
 /// errors (e.g. ad blockers intercepting Supabase API calls and returning
 /// HTML). Network errors contain 'postgrest', 'SupabaseClient', or

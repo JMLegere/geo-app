@@ -198,6 +198,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// Fog rendering runs at ~10 Hz, not 60 fps.
   int _renderFrame = 0;
 
+  /// Frame counter for throttling engine position sends in
+  /// [_onDisplayPositionUpdate]. Engine receives updates at ~10 Hz (every 6th
+  /// display frame), matching GameCoordinator's internal `_kGameLogicInterval`.
+  int _engineFrame = 0;
+
+  /// Last lat/lon at which fog was rendered. Used to skip fog updates when
+  /// the player is stationary. Delta threshold: [kFogMovementThreshold] (~1 m).
+  double _lastFogLat = 0.0;
+  double _lastFogLon = 0.0;
+
   /// Last raw GPS position received. Used to compute convergence distance
   /// for the playerLocatedProvider gate.
   ({double lat, double lon})? _lastRawGps;
@@ -1074,9 +1084,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       }
     }
 
-    // 2. Feed player position to engine via EngineRunner (60 fps — coordinator
-    //    throttles internally to ~10 Hz for game logic).
-    _engineRunner.send(PositionUpdate(lat, lon, 0));
+    // 2. Feed player position to engine via EngineRunner (~10 Hz — matches
+    //    GameCoordinator's internal _kGameLogicInterval=6 throttle).
+    //    Camera and marker above still update at 60 fps.
+    _engineFrame++;
+    if (_engineFrame == 1 || _engineFrame % 6 == 0) {
+      _engineRunner.send(PositionUpdate(lat, lon, 0));
+    }
 
     // 4. Fog rendering (~10 Hz, throttled locally).
     _renderFrame++;
@@ -1092,6 +1106,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
   /// MapLibre controller access which is widget-layer only.
   void _updateFogRendering(double lat, double lon) {
     if (!mounted) return;
+
+    // Skip fog rebuild when player hasn't moved more than ~1 m (kFogMovementThreshold°).
+    // FogOverlayController.needsRebuild catches state changes; this gate
+    // catches the common stationary case without even hitting the controller.
+    // The _lastFogLat != 0.0 guard ensures the first call always runs
+    // (even if the player starts exactly on the equator, the condition
+    // `!movedEnough && _lastFogLat != 0.0` is false on the very first call).
+    final movedEnough = (lat - _lastFogLat).abs() > kFogMovementThreshold ||
+        (lon - _lastFogLon).abs() > kFogMovementThreshold;
+    if (!movedEnough && _lastFogLat != 0.0) return;
+    _lastFogLat = lat;
+    _lastFogLon = lon;
 
     final mapState = ref.read(mapStateProvider);
     if (mapState.isReady && _mapController != null) {
