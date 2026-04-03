@@ -79,7 +79,7 @@ lib/
 | **Experiences** | `map/`, `discovery/`, `pack/`, `sanctuary/`, `achievements/`, `caretaking/` | What the player sees and interacts with |
 | **Infrastructure** | `auth/`, `sync/`, `onboarding/` | Identity, persistence, first-run |
 
-**See also:** `lib/core/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/world/AGENTS.md`, `lib/features/calendar/AGENTS.md`, `lib/features/items/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
+**See also:** `lib/core/AGENTS.md`, `lib/core/cells/AGENTS.md`, `lib/core/species/AGENTS.md`, `lib/features/map/AGENTS.md`, `lib/shared/AGENTS.md`, `lib/features/location/AGENTS.md`, `lib/features/discovery/AGENTS.md`, `lib/features/achievements/AGENTS.md`, `lib/features/world/AGENTS.md`, `lib/features/calendar/AGENTS.md`, `lib/features/items/AGENTS.md`, `lib/features/auth/AGENTS.md`, `lib/features/caretaking/AGENTS.md`, `lib/features/onboarding/AGENTS.md`, `lib/features/pack/AGENTS.md`, `lib/features/sanctuary/AGENTS.md`, `lib/features/steps/AGENTS.md`, `lib/features/sync/AGENTS.md`, `test/AGENTS.md` for subsystem-specific guidance.
 
 ### Codebase Stats
 
@@ -618,6 +618,41 @@ AGENTS.md files (12 total):
 3. **Format for AI.** Bullet points, tables, code blocks, type schemas. Zero narrative fluff. Telegraphic style.
 4. **Verify after changes.** After updating any doc, spot-check that cross-references between `docs/` files and `AGENTS.md` files remain consistent (e.g., provider count in `state.md` matches root AGENTS.md Quick Reference).
 5. **50–150 lines per AGENTS.md.** If a file grows past 150 lines, split into child directories or move cross-cutting content to `docs/`.
+
+---
+
+## Managing AGENTS.md Files
+
+### How it works
+
+There is no automatic inheritance. Each agent reads the AGENTS.md files it finds in directories it's working in. The root file contains project-wide rules; subdirectory files contain directory-specific context plus a pointer line back to their parent. Behavior varies by tool — some tools load all AGENTS.md files in the path, others only the nearest one.
+
+### Structure
+
+```
+/AGENTS.md                       ← Project-wide rules, architecture, design decisions
+lib/core/AGENTS.md               ← Core subsystem rules (covers all core/ subdirs)
+lib/core/<subdir>/AGENTS.md      ← Stub with local rules + pointer to lib/core/AGENTS.md
+lib/features/<name>/AGENTS.md    ← Feature-specific patterns, gotchas, file map
+lib/shared/AGENTS.md             ← Design system, constants, shared widget rules
+test/AGENTS.md                   ← Test conventions, mocks, integration suites
+.agents/                         ← Agent working memory (gitignored)
+```
+
+### Rules for maintaining
+
+1. **Every significant directory gets a file.** Skip `generated/`, `assets/`, `__tests__/`, platform dirs (`android/`, `ios/`, `web/`, `linux/`, `macos/`, `windows/`).
+2. **Keep them operational.** Rules agents can follow, not docs for humans.
+3. **Preserve existing rules when updating.** Read first, then add.
+4. **When adding a new feature directory**, create its `AGENTS.md` immediately (use feature template from root AGENTS.md).
+5. **When adding a new convention or constraint**, add to root; only add to subdirectory file if the rule is scoped to that directory.
+6. **End every subdirectory file** with: `See /AGENTS.md for project-wide rules.` (or pointer to nearest parent).
+7. **Core subdirectory files are stubs** pointing to `lib/core/AGENTS.md` — the parent file has full detail for all core subdirs.
+8. **50–150 lines per file.** If a feature file exceeds 150 lines, split by moving cross-cutting content to `docs/`.
+
+### How to regenerate
+
+Run `/init-deep` in the OpenCode session to rescan and update all AGENTS.md files and `.agents/` working memory.
 
 ---
 
