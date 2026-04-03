@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,11 @@ import 'package:earth_nova/shared/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('[ErrorBoundary] Flutter error: ${details.exceptionAsString()}');
+  };
 
   await SupabaseBootstrap.initialize();
   final AuthService authService =
@@ -51,8 +57,63 @@ Future<void> main() async {
 
   runApp(UncontrolledProviderScope(
     container: container,
-    child: const EarthNovaApp(),
+    child: const ErrorBoundary(child: EarthNovaApp()),
   ));
+}
+
+/// Catches uncaught Flutter widget errors and renders a fallback UI instead
+/// of a blank/crashed screen.
+class ErrorBoundary extends StatefulWidget {
+  final Widget child;
+  const ErrorBoundary({super.key, required this.child});
+
+  @override
+  State<ErrorBoundary> createState() => _ErrorBoundaryState();
+}
+
+class _ErrorBoundaryState extends State<ErrorBoundary> {
+  Object? _error;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _error = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return MaterialApp(
+        home: Scaffold(
+          backgroundColor: const Color(0xFF0D1117),
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline,
+                    color: Colors.redAccent, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Something went wrong',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => setState(() => _error = null),
+                  child: const Text('Retry',
+                      style: TextStyle(color: Colors.greenAccent)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return widget.child;
+  }
 }
 
 class EarthNovaApp extends ConsumerWidget {

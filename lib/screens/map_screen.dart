@@ -573,6 +573,42 @@ class _MapScreenState extends ConsumerState<MapScreen>
             child: SafeArea(child: DiscoveryNotificationOverlay()),
           ),
 
+          // Debug HUD (kDebugMode only, toggled via MapControls)
+          if (_showDebug && kDebugMode)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 56,
+              left: 8,
+              child: IgnorePointer(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: DefaultTextStyle(
+                    style: const TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: 11,
+                        fontFamily: 'monospace'),
+                    child: ValueListenableBuilder<({double lat, double lon})?>(
+                      valueListenable: _markerPosition,
+                      builder: (_, pos, __) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('pos: ${pos?.lat.toStringAsFixed(5) ?? '--'}, '
+                              '${pos?.lon.toStringAsFixed(5) ?? '--'}'),
+                          Text('zoom: ${_currentZoom.toStringAsFixed(1)}'),
+                          Text('frame: $_renderFrame'),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // Exploration disabled banner
           if (_showExplorationBanner)
             Positioned(
