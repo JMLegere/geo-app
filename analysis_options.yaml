@@ -24,9 +24,6 @@ linter:
     - unrelated_type_equality_checks
 
 analyzer:
-  exclude:
-    - "**/*.g.dart"
-    - "**/*.freezed.dart"
   errors:
     missing_required_param: error
     missing_return: error
