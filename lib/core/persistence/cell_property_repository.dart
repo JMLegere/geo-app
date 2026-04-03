@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart';
 import 'package:earth_nova/core/database/app_database.dart';
 import 'package:earth_nova/core/models/cell_properties.dart';
 
@@ -21,5 +22,22 @@ class CellPropertyRepository {
   Future<List<CellProperties>> getAll() async {
     final rows = await _db.getAllCellProperties();
     return rows.map(CellProperties.fromDrift).toList();
+  }
+
+  /// Upserts all [properties] in a single Drift batch transaction.
+  ///
+  /// Significantly more efficient than calling [upsert] per-cell when
+  /// persisting large batches (e.g., initial detection zone of 1500 cells).
+  Future<void> batchUpsert(List<CellProperties> properties) async {
+    if (properties.isEmpty) return;
+    await _db.batch((batch) {
+      for (final p in properties) {
+        batch.insert(
+          _db.localCellPropertiesTable,
+          p.toDriftCompanion(),
+          onConflict: DoUpdate((_) => p.toDriftCompanion()),
+        );
+      }
+    });
   }
 }

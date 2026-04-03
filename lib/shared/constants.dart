@@ -129,6 +129,16 @@ const int kCameraZoomDurationMs = 300;
 /// before the loading screen dismisses.
 const double kPlayerLocatedThresholdMeters = 1000.0;
 
+/// Minimum lat/lon delta (degrees) required before `_updateFogRendering`
+/// issues a fog rebuild. ~0.00001° ≈ 1.11 m at the equator.
+///
+/// Guards the common stationary case: GPS reports the same location at 1 Hz,
+/// rubber-band converges, and `_onDisplayPositionUpdate` keeps firing at 60 fps
+/// even though the player hasn't moved. The check avoids even entering
+/// `FogOverlayController.update()` when neither lat nor lon has changed by
+/// more than this threshold.
+const double kFogMovementThreshold = 0.00001;
+
 // Rubber-Band Marker Interpolation
 //
 // The player marker is decoupled from raw GPS coordinates and smoothly

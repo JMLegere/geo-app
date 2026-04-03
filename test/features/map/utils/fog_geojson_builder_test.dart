@@ -489,6 +489,142 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // buildAllLayers
+  // -------------------------------------------------------------------------
+
+  group('FogGeoJsonBuilder.buildAllLayers', () {
+    test('produces identical output to 3 separate methods with mixed states',
+        () {
+      final cellStates = {
+        'cell_37_-122': FogState.present,
+        'cell_38_-122': FogState.explored,
+        'cell_37_-121': FogState.unknown,
+        'cell_38_-121': FogState.nearby,
+        'cell_39_-122': FogState.detected,
+      };
+
+      final expectedBase = FogGeoJsonBuilder.buildBaseFog(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+      final expectedMid = FogGeoJsonBuilder.buildMidFog(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+      final expectedBorders = FogGeoJsonBuilder.buildCellBorders(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      expect(result.baseFog, equals(expectedBase));
+      expect(result.midFog, equals(expectedMid));
+      expect(result.cellBorders, equals(expectedBorders));
+    });
+
+    test('baseFog has holes for non-unknown cells only', () {
+      final cellStates = {
+        'cell_37_-122': FogState.present, // hole
+        'cell_38_-122': FogState.explored, // hole
+        'cell_37_-121': FogState.unknown, // no hole
+        'cell_38_-121': FogState.nearby, // hole
+        'cell_39_-122': FogState.detected, // hole
+      };
+
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      final baseFeatures = _features(result.baseFog);
+      final coordinates =
+          baseFeatures[0]['geometry']['coordinates'] as List<dynamic>;
+      // exterior ring + 4 holes (present, explored, nearby, detected)
+      expect(coordinates.length, equals(5));
+    });
+
+    test('midFog has features for detected/nearby/explored only', () {
+      final cellStates = {
+        'cell_37_-122': FogState.present, // excluded
+        'cell_38_-122': FogState.explored, // included (density 0.5)
+        'cell_37_-121': FogState.unknown, // excluded
+        'cell_38_-121': FogState.nearby, // included (density 0.95)
+        'cell_39_-122': FogState.detected, // included (density 1.0)
+      };
+
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      final midFeatures = _features(result.midFog);
+      expect(midFeatures.length, equals(3));
+    });
+
+    test('cellBorders has features for detected/nearby/unknown only', () {
+      final cellStates = {
+        'cell_37_-122': FogState.present, // excluded
+        'cell_38_-122': FogState.explored, // excluded
+        'cell_37_-121': FogState.unknown, // opacity 0.1
+        'cell_38_-121': FogState.nearby, // opacity 0.25
+        'cell_39_-122': FogState.detected, // opacity 0.4
+      };
+
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      final borderFeatures = _features(result.cellBorders);
+      expect(borderFeatures.length, equals(3));
+
+      final opacities = borderFeatures
+          .map((f) => (f['properties'] as Map<String, dynamic>)['opacity'])
+          .toSet();
+      expect(opacities, containsAll([0.4, 0.25, 0.1]));
+    });
+
+    test('returns valid GeoJSON FeatureCollections for all three layers', () {
+      final cellStates = {
+        'cell_37_-122': FogState.present,
+        'cell_38_-122': FogState.nearby,
+        'cell_37_-121': FogState.unknown,
+      };
+
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: cellStates,
+        getBoundary: _getBoundary,
+      );
+
+      expect(() => jsonDecode(result.baseFog), returnsNormally);
+      expect(() => jsonDecode(result.midFog), returnsNormally);
+      expect(() => jsonDecode(result.cellBorders), returnsNormally);
+
+      expect(_parse(result.baseFog)['type'], equals('FeatureCollection'));
+      expect(_parse(result.midFog)['type'], equals('FeatureCollection'));
+      expect(_parse(result.cellBorders)['type'], equals('FeatureCollection'));
+    });
+
+    test('empty cellStates returns world fog with no holes and empty features',
+        () {
+      final result = FogGeoJsonBuilder.buildAllLayers(
+        cellStates: {},
+        getBoundary: _getBoundary,
+      );
+
+      final baseCoordinates = _features(result.baseFog)[0]['geometry']
+          ['coordinates'] as List<dynamic>;
+      expect(baseCoordinates.length, equals(1), reason: 'No holes');
+      expect(_features(result.midFog), isEmpty);
+      expect(_features(result.cellBorders), isEmpty);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // GeoJSON validity
   // -------------------------------------------------------------------------
 

@@ -7,6 +7,7 @@ import 'package:earth_nova/core/cells/cell_service.dart';
 import 'package:earth_nova/core/fog/fog_state_resolver.dart';
 import 'package:earth_nova/features/map/controllers/fog_overlay_controller.dart';
 import 'package:earth_nova/features/map/utils/fog_geojson_builder.dart';
+import 'package:earth_nova/shared/constants.dart';
 
 // ---------------------------------------------------------------------------
 // MockCellService — simple 1°×1° degree grid.
@@ -352,10 +353,14 @@ void main() {
       };
       controller.addDetectionZoneCells(zoneCells, const {});
 
+      // Use zoom=7 so the ±1° neighbor cells (1°×1° mock grid) fall within the
+      // viewport bounding box (~±4.4° lat × ±2.2° lon at this zoom level).
+      // At zoom 13 (the default _zoom), the viewport is only ~0.14° tall —
+      // neighbors at ±1° would be filtered out by the viewport optimization.
       controller.update(
         cameraLat: _cameraLat,
         cameraLon: _cameraLon,
-        zoom: _zoom,
+        zoom: 7.0,
         viewportSize: _viewport,
       );
 
@@ -528,6 +533,174 @@ void main() {
   });
 
   // -----------------------------------------------------------------------
+  // addDetectionZoneCells pruning
+  // -----------------------------------------------------------------------
+
+  group('addDetectionZoneCells pruning', () {
+    test('unvisited out-of-range cells are pruned when zone shifts', () {
+      // Zone A: cells at lat=0 row, Zone B: cells at lat=10 row — no overlap.
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      final zoneA = {'cell_0_0', 'cell_0_1', 'cell_0_2'};
+      final zoneB = {'cell_10_10', 'cell_10_11', 'cell_10_12'};
+
+      controller.addDetectionZoneCells(zoneA, const {});
+      expect(controller.visibleCellCount, equals(3));
+
+      controller.addDetectionZoneCells(zoneB, const {});
+      // zoneA cells are unvisited and outside zoneB → should be pruned.
+      expect(
+        controller.visibleCellCount,
+        equals(3),
+        reason:
+            'Only zone B cells should remain; zone A unvisited cells pruned',
+      );
+    });
+
+    test('visited cells survive pruning even when outside the new zone', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Mark two zone-A cells as visited (center of cell_0_0 and cell_0_1).
+      fogResolver.onLocationUpdate(0.5, 0.5); // visits cell_0_0
+      fogResolver.onLocationUpdate(0.5, 1.5); // visits cell_0_1
+
+      final zoneA = {'cell_0_0', 'cell_0_1', 'cell_0_2'};
+      controller.addDetectionZoneCells(zoneA, const {});
+      expect(controller.visibleCellCount, equals(3));
+
+      // Zone B has no overlap with zone A.
+      final zoneB = {'cell_10_10', 'cell_10_11', 'cell_10_12'};
+      controller.addDetectionZoneCells(zoneB, const {});
+
+      // cell_0_0 and cell_0_1 are visited → preserved.
+      // cell_0_2 is unvisited and outside zoneB → pruned.
+      // zoneB cells → 3 kept.
+      expect(
+        controller.visibleCellCount,
+        equals(5),
+        reason: '3 zone B cells + 2 visited zone A cells should survive',
+      );
+    });
+
+    test('cells in both old and new zone are preserved', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Zone A: shared cell + a-only cell.
+      final zoneA = {'cell_5_5', 'cell_5_6'};
+      controller.addDetectionZoneCells(zoneA, const {});
+
+      // Zone B: shared cell + b-only cell.
+      final zoneB = {'cell_5_5', 'cell_5_7'};
+      controller.addDetectionZoneCells(zoneB, const {});
+
+      // cell_5_6 is not in zoneB and not visited → pruned.
+      // cell_5_5 is in zoneB → kept.
+      // cell_5_7 is in zoneB → kept.
+      expect(
+        controller.visibleCellCount,
+        equals(2),
+        reason: 'Only cells in new zone should remain when a-only is unvisited',
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // viewport filtering
+  // -----------------------------------------------------------------------
+
+  group('viewport filtering', () {
+    test('viewport filter reduces processed cell count for wide discovery zone',
+        () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Add cells spread across a wide area — most will be off-viewport at
+      // high zoom. Camera at (37.5, -122.5) zoom=15 covers only ~0.01°.
+      final wideCells = <String>{};
+      for (var lat = 0; lat < 80; lat += 5) {
+        for (var lon = -180; lon < 0; lon += 5) {
+          wideCells.add('cell_${lat}_$lon');
+        }
+      }
+      controller.addDetectionZoneCells(wideCells, const {});
+      expect(controller.visibleCellCount, equals(wideCells.length));
+
+      controller.update(
+        cameraLat: 37.5,
+        cameraLon: -122.5,
+        zoom: 15.0,
+        viewportSize: const Size(400, 800),
+      );
+
+      // Viewport cells should be a strict subset of all discovered cells.
+      expect(
+        controller.lastViewportCellCount,
+        lessThan(controller.visibleCellCount),
+        reason: 'High zoom should filter most cells off-viewport',
+      );
+    });
+
+    test('off-viewport unvisited cells not included in borders GeoJSON', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Camera exactly at cell_37_-123's center (37.5, -122.5).
+      // cell_37_-123: center (37.5, -122.5)  — in viewport at zoom 12.
+      // cell_80_80:   center (80.5, 80.5)    — far off-viewport.
+      const cameraLat = 37.5;
+      const cameraLon = -122.5;
+      const inViewport = 'cell_37_-123';
+      const offViewport = 'cell_80_80';
+
+      controller.addDetectionZoneCells({inViewport, offViewport}, const {});
+
+      controller.update(
+        cameraLat: cameraLat,
+        cameraLon: cameraLon,
+        zoom: 12.0,
+        viewportSize: const Size(400, 800),
+      );
+
+      // Both cells are unknown → border at opacity 0.1.
+      // Only in-viewport cell should appear (off-viewport filtered out).
+      final features = _getFeatures(controller.cellBorderGeoJson);
+      expect(
+        features.length,
+        equals(1),
+        reason: 'Only viewport cell should appear in borders',
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // _buildGeoJson property layer optimization
   // -----------------------------------------------------------------------
 
@@ -633,6 +806,100 @@ void main() {
           reason: 'Icons should be rebuilt when cell count changes');
       expect(controller.consumeHabitatDirty(), isTrue,
           reason: 'Habitat should be rebuilt when cell count changes');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // P3: Stationary fog skip — threshold constant and no-rebuild invariant
+  // -------------------------------------------------------------------------
+
+  group('P3 stationary fog skip', () {
+    test('kFogMovementThreshold is approximately 1m in degrees (~0.00001°)',
+        () {
+      // 1 degree latitude ≈ 111 km → 0.00001° ≈ 1.11 m.
+      // The threshold should be small enough to detect 1m movement but
+      // large enough to ignore floating-point noise from GPS.
+      expect(
+        kFogMovementThreshold,
+        greaterThanOrEqualTo(0.000005),
+        reason: 'Too tight — sub-meter GPS noise would prevent fog updates',
+      );
+      expect(
+        kFogMovementThreshold,
+        lessThanOrEqualTo(0.0001),
+        reason: 'Too loose — 10m movement would be ignored',
+      );
+    });
+
+    test(
+        'consumeFogDirty() stays false when update() called twice with identical params and no state changes',
+        () {
+      final controller = _makeController();
+
+      // Prime the controller — first call always runs (no prior coords).
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      controller.consumeFogDirty(); // drain
+
+      // Second call — same coords, no state changes.
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      expect(
+        controller.consumeFogDirty(),
+        isFalse,
+        reason: 'Fog should NOT be marked dirty when nothing changed — '
+            'stationary skip relies on this invariant',
+      );
+    });
+
+    test(
+        'consumeFogDirty() is true after update() when player moves beyond kFogMovementThreshold',
+        () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final ctrl = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Seed detection zone to make a cell explorable.
+      final cellId = cellService.getCellId(_cameraLat, _cameraLon);
+      ctrl.addDetectionZoneCells({cellId}, {});
+
+      // Prime at initial position.
+      ctrl.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      ctrl.consumeFogDirty(); // drain
+
+      // Visit the cell (state change) then move > threshold.
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+      final movedLat = _cameraLat + kFogMovementThreshold * 2;
+      ctrl.update(
+        cameraLat: movedLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      expect(
+        ctrl.consumeFogDirty(),
+        isTrue,
+        reason: 'Fog should be rebuilt when player moved AND fog state changed',
+      );
     });
   });
 }
