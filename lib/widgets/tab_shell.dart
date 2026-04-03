@@ -23,6 +23,10 @@ class TabShell extends ConsumerStatefulWidget {
 
 class _TabShellState extends ConsumerState<TabShell>
     with WidgetsBindingObserver {
+  // Tracks which tabs have been built at least once.
+  // Map tab (index 0) is always built immediately.
+  final Set<int> _builtTabs = {0};
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +45,16 @@ class _TabShellState extends ConsumerState<TabShell>
         state == AppLifecycleState.hidden) {
       _flushWriteQueue();
     }
+  }
+
+  Widget _buildTab(int index, int currentIndex, Widget child) {
+    if (!_builtTabs.contains(index)) {
+      return const SizedBox.shrink();
+    }
+    return Offstage(
+      offstage: currentIndex != index,
+      child: child,
+    );
   }
 
   Future<void> _flushWriteQueue() async {
@@ -67,20 +81,11 @@ class _TabShellState extends ConsumerState<TabShell>
     return Scaffold(
       body: Stack(
         children: [
-          // Offstage keeps all tab trees alive — prevents GPS/animation teardown
-          // on Map and avoids image churn on Pack/Sanctuary.
-          Offstage(
-            offstage: currentIndex != 0,
-            child: const MapScreen(),
-          ),
-          Offstage(
-            offstage: currentIndex != 1,
-            child: const SanctuaryScreen(),
-          ),
-          Offstage(
-            offstage: currentIndex != 2,
-            child: const PackScreen(),
-          ),
+          // Lazy + Offstage: tabs are only built when first selected, then
+          // kept alive via Offstage to avoid GPS/animation teardown.
+          _buildTab(0, currentIndex, const MapScreen()),
+          _buildTab(1, currentIndex, const SanctuaryScreen()),
+          _buildTab(2, currentIndex, const PackScreen()),
 
           // Settings button — top-right on Map tab
           if (currentIndex == 0)
@@ -101,6 +106,7 @@ class _TabShellState extends ConsumerState<TabShell>
         currentIndex: currentIndex,
         onTap: (index) {
           debugPrint('[NAV] tab switch: ${tabNames[index]}');
+          setState(() => _builtTabs.add(index));
           ref.read(tabIndexProvider.notifier).setTab(index);
         },
         items: const [

@@ -231,6 +231,8 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
 // Hydration
 // ---------------------------------------------------------------------------
 
+bool _hydrating = false;
+
 Future<void> _hydrateAndStart({
   required Ref ref,
   required MainThreadEngineRunner runner,
@@ -247,6 +249,8 @@ Future<void> _hydrateAndStart({
   required bool Function() disposed,
 }) async {
   if (disposed()) return;
+  if (_hydrating) return;
+  _hydrating = true;
 
   try {
     // 1. Parallel SQLite reads.
@@ -404,6 +408,8 @@ Future<void> _hydrateAndStart({
     if (!disposed()) {
       ref.read(playerProvider.notifier).markHydrated();
     }
+  } finally {
+    _hydrating = false;
   }
 }
 
@@ -500,10 +506,10 @@ void _persistCellVisit({
 
   writeQueueRepo
       .enqueue(WriteQueueTableCompanion.insert(
-    entityType: 'cellVisit',
+    entityType: 'cellProgress',
     entityId: '$userId:$cellId',
     operation: 'upsert',
-    payload: jsonEncode({'userId': userId, 'cellId': cellId}),
+    payload: jsonEncode({'user_id': userId, 'cell_id': cellId}),
     userId: userId,
   ))
       .catchError((Object e) {
@@ -557,10 +563,10 @@ void _persistItemDiscovery({
 
   writeQueueRepo
       .enqueue(WriteQueueTableCompanion.insert(
-    entityType: 'item',
+    entityType: 'itemInstance',
     entityId: instance.id,
     operation: 'upsert',
-    payload: jsonEncode({'id': instance.id, 'userId': userId}),
+    payload: jsonEncode({'id': instance.id}),
     userId: userId,
   ))
       .catchError((Object e) {
@@ -623,6 +629,8 @@ ItemInstance? _itemFromRow(Item row) {
       continents: continents,
       affixes: affixes,
       badges: badges,
+      parentAId: row.parentAId,
+      parentBId: row.parentBId,
       acquiredAt: row.acquiredAt,
       acquiredInCellId: row.acquiredInCellId,
       dailySeed: row.dailySeed,

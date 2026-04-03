@@ -223,12 +223,19 @@ class AppDatabase extends _$AppDatabase {
     return count > 0;
   }
 
-  Future<void> incrementEntryAttempts(int entryId, String error) =>
-      customStatement(
-        'UPDATE write_queue_table SET attempts = attempts + 1, '
-        'last_error = ?, updated_at = ? WHERE id = ?',
-        [error, DateTime.now().toIso8601String(), entryId],
-      );
+  Future<void> incrementEntryAttempts(int entryId, String error) async {
+    final entry = await (select(writeQueueTable)
+          ..where((t) => t.id.equals(entryId)))
+        .getSingleOrNull();
+    if (entry == null) return;
+    await (update(writeQueueTable)..where((t) => t.id.equals(entryId))).write(
+      WriteQueueTableCompanion(
+        attempts: Value(entry.attempts + 1),
+        lastError: Value(error),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
 
   Future<int> deleteStaleEntries(DateTime cutoff) => (delete(writeQueueTable)
         ..where((t) =>

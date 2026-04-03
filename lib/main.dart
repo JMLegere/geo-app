@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -50,22 +48,6 @@ Future<void> main() async {
         .read(authProvider.notifier)
         .setState(const AuthState.unauthenticated());
   }
-
-  // Bridge auth service stream → auth provider for token refresh / sign-out.
-  // ignore: cancel_subscriptions — lives for app lifetime
-  authService.authStateChanges.listen((user) {
-    if (user != null) {
-      container
-          .read(authProvider.notifier)
-          .setState(AuthState.authenticated(user));
-    } else {
-      if (container.read(authProvider).status == AuthStatus.authenticated) {
-        container
-            .read(authProvider.notifier)
-            .setState(const AuthState.unauthenticated());
-      }
-    }
-  });
 
   runApp(UncontrolledProviderScope(
     container: container,

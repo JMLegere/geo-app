@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'package:earth_nova/data/database.dart';
+import 'package:earth_nova/data/repos/cell_visit_repo.dart';
 import 'package:earth_nova/data/repos/item_repo.dart';
 import 'package:earth_nova/data/repos/write_queue_repo.dart';
 import 'package:earth_nova/data/sync/supabase_persistence.dart';
@@ -57,8 +58,8 @@ class FlushSummary {
 class QueueProcessor {
   final WriteQueueRepo _queueRepo;
   final SupabasePersistence? _persistence;
-  // ignore: unused_field
   final ItemRepo _itemRepo;
+  final CellVisitRepo _cellVisitRepo;
 
   bool _flushing = false;
   Timer? _autoFlushTimer;
@@ -69,9 +70,11 @@ class QueueProcessor {
     required WriteQueueRepo queueRepo,
     required SupabasePersistence? persistence,
     required ItemRepo itemRepo,
+    required CellVisitRepo cellVisitRepo,
   })  : _queueRepo = queueRepo,
         _persistence = persistence,
-        _itemRepo = itemRepo;
+        _itemRepo = itemRepo,
+        _cellVisitRepo = cellVisitRepo;
 
   bool get canSync => _persistence != null;
   bool get isFlushing => _flushing;
@@ -243,52 +246,57 @@ class QueueProcessor {
   ) async {
     switch (entry.operation) {
       case 'upsert':
-        final data = jsonDecode(entry.payload) as Map<String, dynamic>;
+        final item = await _itemRepo.get(entry.entityId);
+        if (item == null) {
+          debugPrint(
+              '[QueueProcessor] item not found locally: ${entry.entityId}');
+          return;
+        }
         await persistence.upsertItemInstance(
-          id: data['id'] as String,
+          id: item.id,
           userId: entry.userId,
-          definitionId: data['definition_id'] as String,
-          affixes: data['affixes'] as String,
-          displayName: data['display_name'] as String?,
-          scientificName: data['scientific_name'] as String?,
-          categoryName: data['category_name'] as String?,
-          rarityName: data['rarity_name'] as String?,
-          habitatsJson: data['habitats_json'] as String?,
-          continentsJson: data['continents_json'] as String?,
-          taxonomicClass: data['taxonomic_class'] as String?,
-          badgesJson: data['badges_json'] as String?,
-          parentAId: data['parent_a_id'] as String?,
-          parentBId: data['parent_b_id'] as String?,
-          acquiredAt: DateTime.parse(data['acquired_at'] as String),
-          acquiredInCellId: data['acquired_in_cell_id'] as String?,
-          dailySeed: data['daily_seed'] as String?,
-          status: data['status'] as String,
-          animalClassName: data['animal_class_name'] as String?,
-          foodPreferenceName: data['food_preference_name'] as String?,
-          climateName: data['climate_name'] as String?,
-          brawn: data['brawn'] as int?,
-          wit: data['wit'] as int?,
-          speed: data['speed'] as int?,
-          sizeName: data['size_name'] as String?,
-          cellHabitatName: data['cell_habitat_name'] as String?,
-          cellClimateName: data['cell_climate_name'] as String?,
-          cellContinentName: data['cell_continent_name'] as String?,
-          locationDistrict: data['location_district'] as String?,
-          locationCity: data['location_city'] as String?,
-          locationState: data['location_state'] as String?,
-          locationCountry: data['location_country'] as String?,
-          locationCountryCode: data['location_country_code'] as String?,
+          definitionId: item.definitionId,
+          affixes: item.affixesJson,
+          displayName: item.displayName,
+          scientificName: item.scientificName,
+          categoryName: item.categoryName,
+          rarityName: item.rarityName,
+          habitatsJson: item.habitatsJson,
+          continentsJson: item.continentsJson,
+          taxonomicClass: item.taxonomicClass,
+          badgesJson: item.badgesJson,
+          parentAId: item.parentAId,
+          parentBId: item.parentBId,
+          acquiredAt: item.acquiredAt,
+          acquiredInCellId: item.acquiredInCellId,
+          dailySeed: item.dailySeed,
+          status: item.status,
+          animalClassName: item.animalClassName,
+          foodPreferenceName: item.foodPreferenceName,
+          climateName: item.climateName,
+          brawn: item.brawn,
+          wit: item.wit,
+          speed: item.speed,
+          sizeName: item.sizeName,
+          cellHabitatName: item.cellHabitatName,
+          cellClimateName: item.cellClimateName,
+          cellContinentName: item.cellContinentName,
+          locationDistrict: null,
+          locationCity: null,
+          locationState: null,
+          locationCountry: null,
+          locationCountryCode: null,
         );
 
         // Validate encounter with server.
         try {
           await persistence.validateEncounter(
-            itemId: data['id'] as String,
+            itemId: item.id,
             userId: entry.userId,
-            definitionId: data['definition_id'] as String,
-            cellId: data['acquired_in_cell_id'] as String? ?? '',
-            dailySeed: data['daily_seed'] as String?,
-            acquiredAt: data['acquired_at'] as String,
+            definitionId: item.definitionId,
+            cellId: item.acquiredInCellId ?? '',
+            dailySeed: item.dailySeed,
+            acquiredAt: item.acquiredAt.toIso8601String(),
           );
         } on SyncValidationRejectedException catch (e) {
           throw SyncRejectedException(e.reason);
@@ -305,15 +313,15 @@ class QueueProcessor {
   ) async {
     if (entry.operation == 'upsert') {
       final data = jsonDecode(entry.payload) as Map<String, dynamic>;
+      final cellId = data['cell_id'] as String;
+      final visit = await _cellVisitRepo.get(entry.userId, cellId);
       await persistence.upsertCellProgress(
         userId: entry.userId,
-        cellId: data['cell_id'] as String,
-        fogState: data['fog_state'] as String,
-        distanceWalked: (data['distance_walked'] as num?)?.toDouble() ?? 0,
-        visitCount: (data['visit_count'] as num?)?.toInt() ?? 0,
-        lastVisited: data['last_visited'] != null
-            ? DateTime.parse(data['last_visited'] as String)
-            : null,
+        cellId: cellId,
+        fogState: 'explored',
+        distanceWalked: visit?.distanceWalked ?? 0,
+        visitCount: visit?.visitCount ?? 1,
+        lastVisited: visit?.lastVisited,
       );
     }
   }

@@ -75,6 +75,7 @@ class AuthState {
   ///
   /// Maps each known status to a builder function. [otpVerifying] falls
   /// through to [loading] since both represent in-progress operations.
+  // TODO: add error handler to when()
   T when<T>({
     required T Function() loading,
     required T Function() unauthenticated,

@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/data/database.dart';
+import 'package:earth_nova/data/repos/cell_visit_repo.dart';
 import 'package:earth_nova/data/repos/write_queue_repo.dart';
 import 'package:earth_nova/data/repos/item_repo.dart';
 import 'package:earth_nova/data/sync/queue_processor.dart';
@@ -29,6 +30,7 @@ void main() {
       queueRepo: writeQueueRepo,
       persistence: null,
       itemRepo: itemRepo,
+      cellVisitRepo: CellVisitRepo(db),
     );
   });
 
