@@ -51,6 +51,16 @@ void main() {
     test('classifies ordinary text as debug', () {
       expect(LogLevel.classify('loading cell v_10_20'), LogLevel.debug);
     });
+
+    test('classifies [JS-ERROR] as error', () {
+      expect(LogLevel.classify('[JS-ERROR] TypeError: cannot read property'),
+          LogLevel.error);
+    });
+
+    test('classifies [JS-REJECTION] as error', () {
+      expect(LogLevel.classify('[JS-REJECTION] unhandled promise rejection'),
+          LogLevel.error);
+    });
   });
 
   group('DebugLogBuffer', () {
@@ -172,6 +182,35 @@ void main() {
       buf.add('retry b');
       buf.clear();
       expect(buf.lines, isEmpty);
+    });
+
+    test('[JS-ERROR] triggers onCrash callback', () {
+      final buffer = DebugLogBuffer.instance;
+      buffer.minLevel = LogLevel.debug;
+      var crashFired = false;
+      buffer.onCrash = () => crashFired = true;
+      buffer.add('[JS-ERROR] WebGL context lost');
+      expect(crashFired, isTrue);
+      buffer.onCrash = null;
+    });
+
+    test('[JS-REJECTION] triggers onCrash callback', () {
+      final buffer = DebugLogBuffer.instance;
+      buffer.minLevel = LogLevel.debug;
+      var crashFired = false;
+      buffer.onCrash = () => crashFired = true;
+      buffer.add('[JS-REJECTION] unhandled promise rejection');
+      expect(crashFired, isTrue);
+      buffer.onCrash = null;
+    });
+
+    test('[JS-ERROR] always passes severity filter', () {
+      final buffer = DebugLogBuffer.instance;
+      final before = buffer.lines.length;
+      buffer.minLevel =
+          LogLevel.warning; // JS-ERROR is error so it passes anyway
+      buffer.add('[JS-ERROR] something broke');
+      expect(buffer.lines.length, greaterThan(before));
     });
   });
 }

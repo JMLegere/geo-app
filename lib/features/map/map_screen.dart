@@ -246,6 +246,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
       _districtAncestryMap = {};
   bool _districtAncestryLoaded = false;
 
+  /// Rate-limits cellPropertiesCache setter to avoid excessive border rebuilds
+  /// when enrichment results stream in rapidly.
+  DateTime _lastPropsSetTime = DateTime.fromMillisecondsSinceEpoch(0);
+
   /// District data cache for infographic overlay.
   Map<String, HDistrict> _districtDataMap = {};
 
@@ -1108,9 +1112,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       // returns Map.unmodifiable() which creates a NEW object each call,
       // so identical() always fails. Length comparison catches new cells.
       final currentProps = _gameCoordinator.cellPropertiesCache;
-      if (currentProps.length !=
-          fogOverlayController.cellPropertiesCacheRef.length) {
+      final propsSizeChanged = currentProps.length !=
+          fogOverlayController.cellPropertiesCacheRef.length;
+      final propsCooldownElapsed =
+          DateTime.now().difference(_lastPropsSetTime).inSeconds >= 2;
+      if (propsSizeChanged && propsCooldownElapsed) {
         fogOverlayController.cellPropertiesCache = currentProps;
+        _lastPropsSetTime = DateTime.now();
       }
       final seedState = ref.read(dailySeedServiceProvider).currentSeed;
       fogOverlayController.dailySeed = seedState?.seed ?? '';

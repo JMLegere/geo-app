@@ -25,6 +25,8 @@ enum LogLevel {
       return LogLevel.error;
     }
     if (lower.contains('corrupt')) return LogLevel.error;
+    if (line.contains('[JS-ERROR]')) return LogLevel.error;
+    if (line.contains('[JS-REJECTION]')) return LogLevel.error;
 
     // ── Warning ────────────────────────────────────────────────────────
     if (lower.contains('timeout') ||
@@ -111,7 +113,9 @@ class DebugLogBuffer {
   /// crash/auth callbacks still fire for any line.
   void add(String line) {
     // Always check crash/auth callbacks regardless of level.
-    if (line.contains('[CRASH]')) {
+    if (line.contains('[CRASH]') ||
+        line.contains('[JS-ERROR]') ||
+        line.contains('[JS-REJECTION]')) {
       onCrash?.call();
     } else if (line.contains('[AUTH]') ||
         line.contains('[Auth]') ||
@@ -131,7 +135,9 @@ class DebugLogBuffer {
         line.contains('[DISCOVERY]') ||
         line.contains('[FOG]') ||
         line.contains('[SEED]') ||
-        line.contains('[EVENT]');
+        line.contains('[EVENT]') ||
+        line.contains('[JS-ERROR]') ||
+        line.contains('[JS-REJECTION]');
 
     // Filter by level — drop lines below minLevel.
     if (!alwaysPass) {

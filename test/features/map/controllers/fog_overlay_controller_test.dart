@@ -526,4 +526,113 @@ void main() {
       expect(parsed['type'], equals('FeatureCollection'));
     });
   });
+
+  // -----------------------------------------------------------------------
+  // _buildGeoJson property layer optimization
+  // -----------------------------------------------------------------------
+
+  group('_buildGeoJson property layer optimization', () {
+    test('fog-only update does not dirty icons when visited count changes', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Populate detection zone cells.
+      final currentCellId = cellService.getCellId(_cameraLat, _cameraLon);
+      final zoneCells = {
+        currentCellId,
+        ...cellService.getNeighborIds(currentCellId),
+      };
+      controller.addDetectionZoneCells(zoneCells, const {});
+
+      // Initial update — full build including properties.
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      // Consume dirty flags to reset them.
+      controller.consumeFogDirty();
+      controller.consumeIconsDirty();
+      controller.consumeHabitatDirty();
+
+      // Simulate a fog-only change: player visits a cell (visited count changes)
+      // but no new cells are discovered (cell count unchanged).
+      fogResolver.onLocationUpdate(_cameraLat, _cameraLon);
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      // Fog was rebuilt (visited count changed).
+      expect(controller.consumeFogDirty(), isTrue,
+          reason: 'Fog should be rebuilt when visited count changes');
+
+      // Icons and habitat were NOT rebuilt (cell count unchanged = fog-only change).
+      expect(controller.consumeIconsDirty(), isFalse,
+          reason: 'Icons should not be rebuilt on fog-only changes');
+      expect(controller.consumeHabitatDirty(), isFalse,
+          reason: 'Habitat should not be rebuilt on fog-only changes');
+    });
+
+    test('cell count change rebuilds property layers', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Initial detection zone.
+      final currentCellId = cellService.getCellId(_cameraLat, _cameraLon);
+      final zoneCells = {
+        currentCellId,
+        ...cellService.getNeighborIds(currentCellId),
+      };
+      controller.addDetectionZoneCells(zoneCells, const {});
+
+      // Initial update — full build.
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+      controller.consumeFogDirty();
+      controller.consumeIconsDirty();
+      controller.consumeHabitatDirty();
+
+      // Add more cells (cell count changes).
+      final newCellId = cellService.getCellId(_cameraLat + 2, _cameraLon + 2);
+      final newZoneCells = {
+        newCellId,
+        ...cellService.getNeighborIds(newCellId)
+      };
+      controller.addDetectionZoneCells(newZoneCells, const {});
+
+      controller.update(
+        cameraLat: _cameraLat,
+        cameraLon: _cameraLon,
+        zoom: _zoom,
+        viewportSize: _viewport,
+      );
+
+      // Both fog and property layers should be rebuilt.
+      expect(controller.consumeFogDirty(), isTrue,
+          reason: 'Fog should be rebuilt when cell count changes');
+      expect(controller.consumeIconsDirty(), isTrue,
+          reason: 'Icons should be rebuilt when cell count changes');
+      expect(controller.consumeHabitatDirty(), isTrue,
+          reason: 'Habitat should be rebuilt when cell count changes');
+    });
+  });
 }

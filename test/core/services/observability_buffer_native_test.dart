@@ -68,6 +68,11 @@ void main() {
       expect(buffer.userId, isNull);
     });
 
+    test('installWebLifecycleHooks is a no-op on native', () {
+      expect(() => ObservabilityBuffer.installWebLifecycleHooks(),
+          returnsNormally);
+    });
+
     test('event() produces parseable JSON in the data portion', () {
       final logs = <String>[];
       final original = debugPrint;

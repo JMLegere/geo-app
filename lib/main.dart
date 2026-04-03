@@ -155,10 +155,13 @@ Future<void> main() async {
   });
 
   // Flush log buffer on crash/auth events for immediate delivery.
+  // Drain first so the most recent lines (since last 1s timer tick) are included.
   DebugLogBuffer.instance.onCrash = () {
+    LogFlushService.instance?.addLines(DebugLogBuffer.instance.drainPending());
     LogFlushService.instance?.flush();
   };
   DebugLogBuffer.instance.onAuthEvent = () {
+    LogFlushService.instance?.addLines(DebugLogBuffer.instance.drainPending());
     LogFlushService.instance?.flush();
   };
 
@@ -231,10 +234,13 @@ void _setupPerfMonitoring(ProviderContainer container) {
     final cache = PaintingBinding.instance.imageCache;
     final cacheSizeMb =
         (cache.currentSizeBytes / (1024 * 1024)).toStringAsFixed(1);
+    final logBuf = DebugLogBuffer.instance.length;
+    final logPending = LogFlushService.instance?.pendingCount ?? 0;
     print(
       '[PERF] imgCache: ${cache.currentSize} cached (${cacheSizeMb}MB), '
       '${cache.liveImageCount} live, ${cache.pendingImageCount} pending | '
-      'slowFrames: $slowFrameCount (worst: ${worstFrameMs}ms)',
+      'slowFrames: $slowFrameCount (worst: ${worstFrameMs}ms) | '
+      'logBuf: $logBuf lines, logFlush: $logPending pending',
     );
     slowFrameCount = 0;
     worstFrameMs = 0;
@@ -478,10 +484,13 @@ class _ObservabilityLifecycleObserverState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
       ObservabilityBuffer.instance?.event('session_ended', {
         'reason': 'background',
       });
+      LogFlushService.instance
+          ?.addLines(DebugLogBuffer.instance.drainPending());
       LogFlushService.instance?.flush();
     }
   }

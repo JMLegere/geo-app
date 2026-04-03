@@ -179,6 +179,14 @@ class GameCoordinator {
   double _rawGpsAccuracy = 0.0;
   Geographic? _playerPosition;
 
+  /// Timestamp of the most recent [updatePlayerPosition] call.
+  /// Used by the provider watchdog to detect a stalled game loop.
+  DateTime? _lastPositionUpdateTime;
+
+  /// The time of the most recent [updatePlayerPosition] call, or null if
+  /// [updatePlayerPosition] has never been called.
+  DateTime? get lastPositionUpdateTime => _lastPositionUpdateTime;
+
   /// Raw GPS position from the location service (1 Hz).
   Geographic? get rawGpsPosition => _rawGpsPosition;
 
@@ -360,6 +368,7 @@ class GameCoordinator {
   /// Internally throttles game logic to ~10 Hz. The first call always
   /// processes immediately.
   void updatePlayerPosition(double lat, double lon) {
+    _lastPositionUpdateTime = DateTime.now();
     _playerPosition = Geographic(lat: lat, lon: lon);
 
     _gameLogicFrame++;
