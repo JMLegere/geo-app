@@ -37,7 +37,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _onFieldChanged() {
-    if (_localError != null) setState(() => _localError = null);
+    setState(() {
+      if (_localError != null) _localError = null;
+    });
   }
 
   String get _fullPhone => '$_countryCode${_phoneController.text.trim()}';
