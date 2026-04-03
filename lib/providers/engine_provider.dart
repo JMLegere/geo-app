@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/data/connection.dart';
 import 'package:earth_nova/data/database.dart';
+import 'package:earth_nova/data/observability.dart';
 import 'package:earth_nova/data/repos/cell_property_repo.dart';
 import 'package:earth_nova/data/repos/cell_visit_repo.dart';
 import 'package:earth_nova/data/repos/item_repo.dart';
@@ -220,6 +222,10 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
 
   final eventSub = runner.events.listen((event) {
     if (disposed) return;
+    AppObservability.instance.recordEvent(
+      event,
+      line: '[ENGINE] ${event.event}',
+    );
     _routeEvent(
       ref: ref,
       event: event,
@@ -389,7 +395,7 @@ Future<void> _rebuildAncestryCache(Ref ref) async {
   }
   _ancestryCache = newCache;
   debugPrint(
-      '[EngineProvider] ancestry cache rebuilt: ${newCache.length} districts');
+      '[HYDRATION] ancestry cache rebuilt: ${newCache.length} districts');
 }
 
 Future<void> _hydrateAndStart({
@@ -412,7 +418,20 @@ Future<void> _hydrateAndStart({
   _hydrating = true;
 
   try {
-    // 0. Seed species table from JSON if empty (first launch).
+    AppObservability.instance.log('[HYDRATION] start user=$userId');
+
+    // 0a. Verify schema integrity on web (native checks before open).
+    final db = ref.read(databaseProvider);
+    if (!await db.verifyTables()) {
+      final missing = await db.missingTables();
+      debugPrint(
+          '[HYDRATION] missing tables on web: $missing — resetting storage');
+      AppObservability.instance.log('[HYDRATION] missing tables: $missing');
+      resetDatabaseStorage();
+      return; // Page will reload; abort hydration.
+    }
+
+    // 0b. Seed species table from JSON if empty (first launch).
     await _seedSpeciesIfEmpty(ref);
 
     if (disposed()) return;
@@ -584,7 +603,7 @@ Future<void> _hydrateAndStart({
               lastSessionDate: dbProfile?.updatedAt,
             );
       } catch (e) {
-        debugPrint('[EngineProvider] step hydration failed: $e');
+        debugPrint('[HYDRATION] step hydration failed: $e');
       }
     }
 
@@ -628,7 +647,7 @@ Future<void> _hydrateAndStart({
     try {
       await (dailySeedService as dynamic).fetchSeed();
     } catch (e) {
-      debugPrint('[EngineProvider] daily seed fetch failed: $e');
+      debugPrint('[HYDRATION] daily seed fetch failed: $e');
     }
 
     if (disposed()) return;
@@ -637,7 +656,7 @@ Future<void> _hydrateAndStart({
     try {
       await _rebuildAncestryCache(ref);
     } catch (e) {
-      debugPrint('[EngineProvider] ancestry cache rebuild failed: $e');
+      debugPrint('[HYDRATION] ancestry cache rebuild failed: $e');
     }
 
     if (disposed()) return;
@@ -652,16 +671,22 @@ Future<void> _hydrateAndStart({
       if (disposed()) return;
       try {
         await (dailySeedService as dynamic).refreshSeed();
-        debugPrint('[EngineProvider] daily seed refreshed');
+        debugPrint('[ENGINE] daily seed refreshed');
       } catch (e) {
-        debugPrint('[EngineProvider] daily seed refresh failed: $e');
+        debugPrint('[ENGINE] daily seed refresh failed: $e');
       }
     });
     ref.onDispose(seedRefreshTimer.cancel);
 
-    debugPrint('[EngineProvider] hydration complete, engine started');
+    debugPrint('[HYDRATION] complete, engine started');
   } catch (e, stack) {
-    debugPrint('[EngineProvider] hydration failed: $e\n$stack');
+    debugPrint('[HYDRATION] failed: $e\n$stack');
+    if ('$e'.contains('no such table')) {
+      debugPrint(
+        '[HYDRATION] missing table detected — resetting local database storage',
+      );
+      resetDatabaseStorage();
+    }
     // Always mark hydrated to prevent loading screen from blocking indefinitely.
     if (!disposed()) {
       ref.read(playerProvider.notifier).markHydrated();
@@ -765,7 +790,7 @@ void _persistCellVisit({
   required WriteQueueRepo writeQueueRepo,
 }) {
   cellVisitRepo.incrementVisit(userId, cellId).catchError((Object e) {
-    debugPrint('[EngineProvider] persistCellVisit SQLite failed: $e');
+    debugPrint('[SYNC] persistCellVisit SQLite failed: $e');
   });
 
   writeQueueRepo
@@ -777,7 +802,7 @@ void _persistCellVisit({
     userId: userId,
   ))
       .catchError((Object e) {
-    debugPrint('[EngineProvider] enqueue cellVisit failed: $e');
+    debugPrint('[SYNC] enqueue cellVisit failed: $e');
     return 0;
   });
 }
@@ -827,7 +852,7 @@ void _persistItemDiscovery({
     locationCountryCode: Value(instance.locationCountryCode),
   ))
       .catchError((Object e) {
-    debugPrint('[EngineProvider] persistItemDiscovery SQLite failed: $e');
+    debugPrint('[SYNC] persistItemDiscovery SQLite failed: $e');
   });
 
   writeQueueRepo
@@ -839,7 +864,7 @@ void _persistItemDiscovery({
     userId: userId,
   ))
       .catchError((Object e) {
-    debugPrint('[EngineProvider] enqueue item failed: $e');
+    debugPrint('[SYNC] enqueue item failed: $e');
     return 0;
   });
 }
@@ -861,7 +886,7 @@ void _persistCellProperties({
     locationId: Value(locationId),
   ))
       .catchError((Object e) {
-    debugPrint('[EngineProvider] persistCellProperties SQLite failed: $e');
+    debugPrint('[SYNC] persistCellProperties SQLite failed: $e');
   });
 }
 
@@ -924,7 +949,7 @@ ItemInstance? _itemFromRow(Item row) {
       locationCountryCode: row.locationCountryCode,
     );
   } catch (e) {
-    debugPrint('[EngineProvider] _itemFromRow failed for ${row.id}: $e');
+    debugPrint('[HYDRATION] _itemFromRow failed for ${row.id}: $e');
     return null;
   }
 }

@@ -8,5 +8,9 @@ const Set<String> kExpectedTableNames = {
   'items_table',
   'cell_visits_table',
   'cell_properties_table',
+  'countries_table',
+  'states_table',
+  'cities_table',
+  'districts_table',
   'write_queue_table',
 };

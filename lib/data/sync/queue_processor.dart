@@ -224,18 +224,17 @@ class QueueProcessor {
         case 'cellProperties':
           await _processCellProperties(entry, persistence);
         default:
-          debugPrint(
-              '[QueueProcessor] unknown entity type: ${entry.entityType}');
+          debugPrint('[SYNC] unknown entity type: ${entry.entityType}');
       }
       return const FlushConfirmed();
     } on SyncRejectedException catch (e) {
-      debugPrint('[QueueProcessor] rejected ${entry.id}: ${e.reason}');
+      debugPrint('[SYNC] rejected ${entry.id}: ${e.reason}');
       return FlushRejected(e.reason);
     } on SyncException catch (e) {
-      debugPrint('[QueueProcessor] sync error for ${entry.id}: $e');
+      debugPrint('[SYNC] sync error for ${entry.id}: $e');
       return FlushRetryable(e.message);
     } catch (e) {
-      debugPrint('[QueueProcessor] unexpected error for ${entry.id}: $e');
+      debugPrint('[SYNC] unexpected error for ${entry.id}: $e');
       return FlushRetryable(e.toString());
     }
   }
@@ -248,8 +247,7 @@ class QueueProcessor {
       case 'upsert':
         final item = await _itemRepo.get(entry.entityId);
         if (item == null) {
-          debugPrint(
-              '[QueueProcessor] item not found locally: ${entry.entityId}');
+          debugPrint('[SYNC] item not found locally: ${entry.entityId}');
           return;
         }
         await persistence.upsertItemInstance(

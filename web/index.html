@@ -124,10 +124,25 @@
       var BEACON_URL = 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/beacon-events';
       var MAX_BYTES = 2097152;
 
+      function ensureUuid(key) {
+        var existing = localStorage.getItem(key);
+        if (existing) return existing;
+        var value = (window.crypto && window.crypto.randomUUID)
+          ? window.crypto.randomUUID()
+          : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, function(c) {
+              return (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16);
+            });
+        localStorage.setItem(key, value);
+        return value;
+      }
+
+      ensureUuid('earthnova_session_id');
+      ensureUuid('earthnova_device_id');
+
       function push(category, event, msg) {
         try {
-          var sid = localStorage.getItem('earthnova_session_id') || 'unknown';
-          var did = localStorage.getItem('earthnova_device_id') || 'unknown';
+          var sid = ensureUuid('earthnova_session_id');
+          var did = ensureUuid('earthnova_device_id');
           var entry = JSON.stringify({
             session_id: sid, device_id: did, user_id: null,
             category: category, event: event,
