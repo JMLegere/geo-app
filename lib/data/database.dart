@@ -7,7 +7,7 @@ import 'connection.dart';
 part 'database.g.dart';
 
 // ============================================================================
-// TABLE DEFINITIONS — 10 tables, schema v2
+// TABLE DEFINITIONS — 10 tables, schema v3
 // ============================================================================
 
 /// Player profile + stats.
@@ -92,6 +92,12 @@ class ItemsTable extends Table {
   TextColumn get cellHabitatName => text().nullable()();
   TextColumn get cellClimateName => text().nullable()();
   TextColumn get cellContinentName => text().nullable()();
+  // Location hierarchy at discovery
+  TextColumn get locationDistrict => text().nullable()();
+  TextColumn get locationCity => text().nullable()();
+  TextColumn get locationState => text().nullable()();
+  TextColumn get locationCountry => text().nullable()();
+  TextColumn get locationCountryCode => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -230,7 +236,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -246,6 +252,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(statesTable);
             await m.createTable(citiesTable);
             await m.createTable(districtsTable);
+          }
+          if (from < 3) {
+            await m.addColumn(itemsTable, itemsTable.locationDistrict);
+            await m.addColumn(itemsTable, itemsTable.locationCity);
+            await m.addColumn(itemsTable, itemsTable.locationState);
+            await m.addColumn(itemsTable, itemsTable.locationCountry);
+            await m.addColumn(itemsTable, itemsTable.locationCountryCode);
           }
         },
       );

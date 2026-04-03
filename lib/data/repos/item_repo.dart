@@ -29,4 +29,23 @@ class ItemRepo {
 
   Future<int> delete(String id) =>
       (_db.delete(_db.itemsTable)..where((t) => t.id.equals(id))).go();
+
+  Future<void> updateLocation(
+    String id, {
+    String? district,
+    String? city,
+    String? state,
+    String? country,
+    String? countryCode,
+  }) async {
+    await (_db.update(_db.itemsTable)..where((t) => t.id.equals(id))).write(
+      ItemsTableCompanion(
+        locationDistrict: Value(district),
+        locationCity: Value(city),
+        locationState: Value(state),
+        locationCountry: Value(country),
+        locationCountryCode: Value(countryCode),
+      ),
+    );
+  }
 }
