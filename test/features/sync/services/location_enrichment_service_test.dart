@@ -56,12 +56,22 @@ class MockFunctionsClient implements FunctionsClient {
   /// [FunctionException] (or any other exception).
   FunctionResponse Function(String functionName, Object? body)? handler;
 
+  /// Async variant — takes priority over [handler] when set. Return a
+  /// [Future<FunctionResponse>] or throw / return a never-completing future
+  /// to simulate slow/hung Edge Functions for timeout tests.
+  Future<FunctionResponse> Function(String functionName, Object? body)?
+      asyncHandler;
+
   @override
   dynamic noSuchMethod(Invocation invocation) {
     if (invocation.memberName == #invoke) {
       final functionName = invocation.positionalArguments[0] as String;
       final body = invocation.namedArguments[#body];
       invocations.add((functionName: functionName, body: body));
+
+      if (asyncHandler != null) {
+        return asyncHandler!(functionName, body);
+      }
 
       if (handler != null) {
         try {
@@ -527,6 +537,148 @@ void main() {
 
         expect(mockFunctions.invocations, hasLength(1));
       });
+    });
+  });
+
+  group('timeout handling', () {
+    late MockFunctionsClient mockFunctions;
+    late MockSupabaseClient mockClient;
+
+    setUp(() {
+      cellPropertyRepo = MockCellPropertyRepository();
+      hierarchyRepo = _MockHierarchyRepository();
+      mockFunctions = MockFunctionsClient();
+      mockClient = MockSupabaseClient(
+        mockFunctions: mockFunctions,
+        mockAuth: MockGoTrueClient(),
+      );
+    });
+
+    test('batch timeout releases in-flight cell IDs', () async {
+      // Handler that never resolves — simulates a hung Edge Function.
+      mockFunctions.asyncHandler = (name, body) async {
+        await Future<void>.delayed(const Duration(seconds: 10));
+        return FunctionResponse(data: null, status: 200);
+      };
+
+      final enrichedEvents = <String>[];
+
+      final service = LocationEnrichmentService(
+        cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: hierarchyRepo,
+        supabaseClient: mockClient,
+        batchTimeout: const Duration(milliseconds: 50),
+      );
+      addTearDown(service.dispose);
+
+      service.onLocationEnriched.listen((e) => enrichedEvents.add(e.cellId));
+      service.requestEnrichment(cellId: 'cell_timeout', lat: 45.0, lon: -66.0);
+
+      // Wait for drain (fires immediately) + timeout (50 ms) + buffer.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // The timed-out request must not have emitted an enrichment event.
+      expect(
+        enrichedEvents,
+        isEmpty,
+        reason: 'timeout must not emit an enrichment event',
+      );
+
+      // After timeout the cell is no longer in-flight — re-requesting it with a
+      // working handler should enrich it. Use onLocationEnriched as the
+      // completion signal so the test doesn't rely on wall-clock drain timing.
+      final reEnriched = Completer<String>();
+      service.onLocationEnriched.listen((e) {
+        if (!reEnriched.isCompleted) reEnriched.complete(e.locationId);
+      });
+
+      mockFunctions.asyncHandler = (name, body) async {
+        return FunctionResponse(
+          status: 200,
+          data: {
+            'results': <Map<String, Object?>>[
+              {
+                'cell_id': 'cell_timeout',
+                'status': 'enriched',
+                'location_id': 'loc_1',
+                'hierarchy': <Object>[],
+              },
+            ],
+            'errors': <Object>[],
+          },
+        );
+      };
+
+      service.requestEnrichment(cellId: 'cell_timeout', lat: 45.0, lon: -66.0);
+
+      // Wait up to 2 s for the drain timer to fire (max(0, 1200-elapsed)).
+      final locationId = await reEnriched.future
+          .timeout(const Duration(seconds: 2), onTimeout: () => '');
+
+      expect(
+        locationId,
+        equals('loc_1'),
+        reason: 'cell must be re-queueable after timeout releases _inFlight',
+      );
+    });
+
+    test('single request timeout releases in-flight cell ID', () async {
+      // First call throws 404 on batch → forces single-request mode.
+      // Subsequent single-request call never resolves → triggers timeout.
+      mockFunctions.asyncHandler = (name, body) async {
+        if (name == 'enrich-locations-batch') {
+          throw const FunctionException(status: 404);
+        }
+        // Single-request path: never complete.
+        await Future<void>.delayed(const Duration(seconds: 10));
+        return FunctionResponse(data: null, status: 200);
+      };
+
+      final service = LocationEnrichmentService(
+        cellPropertyRepo: cellPropertyRepo,
+        hierarchyRepo: hierarchyRepo,
+        supabaseClient: mockClient,
+        batchTimeout: const Duration(milliseconds: 50),
+      );
+      addTearDown(service.dispose);
+
+      service.requestEnrichment(
+          cellId: 'cell_single_timeout', lat: 45.0, lon: -66.0);
+
+      // Wait for batch 404 fallback + single-request timeout + buffer.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+
+      expect(service.batchSupported, isFalse);
+
+      // Cell should be re-queueable — listen for the completion event.
+      final reEnriched = Completer<String>();
+      service.onLocationEnriched.listen((e) {
+        if (!reEnriched.isCompleted) reEnriched.complete(e.locationId);
+      });
+
+      mockFunctions.asyncHandler = (name, body) async {
+        return FunctionResponse(
+          status: 200,
+          data: {
+            'status': 'enriched',
+            'location_id': 'loc_single',
+            'hierarchy': <Object>[],
+          },
+        );
+      };
+
+      service.requestEnrichment(
+          cellId: 'cell_single_timeout', lat: 45.0, lon: -66.0);
+
+      // Wait up to 2 s for the drain timer to fire.
+      final locationId = await reEnriched.future
+          .timeout(const Duration(seconds: 2), onTimeout: () => '');
+
+      expect(
+        locationId,
+        equals('loc_single'),
+        reason: 'cell must be re-queueable after single-request timeout',
+      );
     });
   });
 }

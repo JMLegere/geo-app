@@ -34,6 +34,11 @@ class ObservabilityBuffer {
     }
   }
 
+  /// No-op on native platforms — lifecycle hooks are web-only.
+  static void installWebLifecycleHooks() {
+    // No-op on native platforms — hooks are web-only.
+  }
+
   /// Emit a structured event as a tagged debugPrint line.
   /// Flows through DebugLogBuffer → LogFlushService → app_logs.
   void event(String name, [Map<String, dynamic> data = const {}]) {

@@ -70,7 +70,6 @@ class LogFlushService {
       _disposed || _pending.isEmpty || _flushing || _flushTimer != null;
 
   /// Number of lines waiting to be flushed.
-  @visibleForTesting
   int get pendingCount => _pending.length;
 
   /// Whether the debounce timer is currently armed.

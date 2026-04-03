@@ -1510,6 +1510,8 @@ void main() {
         c.dispose();
       });
     });
+
+    _lastPositionUpdateTimeTests();
   });
 }
 
@@ -1557,4 +1559,42 @@ class _CountingCellPropertyResolver implements CellPropertyResolver {
       createdAt: DateTime.now(),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// lastPositionUpdateTime tests
+// ---------------------------------------------------------------------------
+
+void _lastPositionUpdateTimeTests() {
+  group('lastPositionUpdateTime', () {
+    late GameCoordinator coordinator;
+
+    setUp(() {
+      coordinator = _makeCoordinator();
+    });
+
+    tearDown(() {
+      coordinator.dispose();
+    });
+
+    test('is null before any position update', () {
+      expect(coordinator.lastPositionUpdateTime, isNull);
+    });
+
+    test('is set after first updatePlayerPosition call', () {
+      coordinator.updatePlayerPosition(45.0, -66.0);
+      expect(coordinator.lastPositionUpdateTime, isNotNull);
+    });
+
+    test('advances after subsequent position updates', () {
+      coordinator.updatePlayerPosition(45.0, -66.0);
+      final first = coordinator.lastPositionUpdateTime!;
+      coordinator.updatePlayerPosition(45.001, -66.001);
+      expect(
+        coordinator.lastPositionUpdateTime!.isAtSameMomentAs(first) ||
+            coordinator.lastPositionUpdateTime!.isAfter(first),
+        isTrue,
+      );
+    });
+  });
 }

@@ -101,6 +101,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   final supabaseClient = ref.read(supabaseClientProvider);
   final obs = ObservabilityBuffer();
   ObservabilityBuffer.instance = obs;
+  ObservabilityBuffer.installWebLifecycleHooks();
 
   // Debug log flush — ships DebugLogBuffer text to app_logs table.
   // Debounced: 5s after first line, no fixed timer when idle.
@@ -199,6 +200,9 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
   // startLoop() from calling ref.read() on a dead provider reference.
   // This closes the race where .whenComplete() fires after disposal.
   var _providerDisposed = false;
+
+  // Watchdog timer — set after game loop starts, cancelled in onDispose.
+  Timer? _watchdog;
 
   final engine = GameEngine(
     fogResolver: fogResolver,
@@ -993,6 +997,23 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
       if (_providerDisposed) return;
       startLoop();
 
+      // Watchdog: detect a stalled game loop (GPS stream died silently).
+      // Fires every 30s. If no position update has arrived in 60s while
+      // the coordinator is started, log a crash-level event for immediate flush.
+      _watchdog = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (!coordinator.isStarted) return;
+        final lastUpdate = coordinator.lastPositionUpdateTime;
+        if (lastUpdate == null) return; // Never started — not a stall
+        final staleSecs = DateTime.now().difference(lastUpdate).inSeconds;
+        if (staleSecs >= 60) {
+          debugPrint(
+              '[CRASH] game_loop_stalled: no position update for ${staleSecs}s');
+          ObservabilityBuffer.instance?.event('game_loop_stalled', {
+            'stale_seconds': staleSecs,
+          });
+        }
+      });
+
       // Start live pedometer stream after game loop is running (native only).
       // Must be after hydrate() so _lastStreamValue is set as the baseline.
       if (!kIsWeb) {
@@ -1367,6 +1388,7 @@ final gameCoordinatorProvider = Provider<GameCoordinator>((ref) {
     engine.dispose(); // coordinator.dispose() + stream close.
     queueProcessor.dispose();
     locationService.stop();
+    _watchdog?.cancel();
   });
 
   // Store engine reference for engineRunnerProvider.

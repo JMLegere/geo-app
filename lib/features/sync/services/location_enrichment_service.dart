@@ -38,6 +38,7 @@ class LocationEnrichmentService {
     this.supabaseClient,
     @visibleForTesting this.maxRetries = 3,
     @visibleForTesting this.baseDelayMs = 1200,
+    @visibleForTesting this.batchTimeout = const Duration(seconds: 15),
   });
 
   final CellPropertyRepository cellPropertyRepo;
@@ -45,6 +46,7 @@ class LocationEnrichmentService {
   final SupabaseClient? supabaseClient;
   final int maxRetries;
   final int baseDelayMs;
+  final Duration batchTimeout;
 
   /// Stream of (cellId, locationId) pairs emitted when enrichment completes.
   /// Replaces the old `onLocationEnriched` callback field — multiple listeners
@@ -175,7 +177,7 @@ class LocationEnrichmentService {
         'enrich-locations-batch',
         headers: _authHeaders(client),
         body: {'cells': cellPayloads},
-      );
+      ).timeout(batchTimeout);
 
       if (_disposed) return;
 
@@ -238,6 +240,10 @@ class LocationEnrichmentService {
           }
         }
       }
+    } on TimeoutException {
+      debugPrint('[LocationEnrichment] batch timed out after '
+          '${batchTimeout.inSeconds}s for ${cellIds.length} cells');
+      return;
     } on FunctionException catch (e) {
       if (e.status == 404) {
         debugPrint('[LocationEnrichment] batch endpoint not found (404) '
@@ -315,7 +321,7 @@ class LocationEnrichmentService {
           'lat': request.lat,
           'lon': request.lon,
         },
-      );
+      ).timeout(batchTimeout);
 
       if (_disposed) return;
 
@@ -357,6 +363,10 @@ class LocationEnrichmentService {
           }
         }
       }
+    } on TimeoutException {
+      debugPrint('[LocationEnrichment] request timed out after '
+          '${batchTimeout.inSeconds}s for ${request.cellId}');
+      return;
     } on FunctionException catch (e) {
       if (e.status == 429) {
         _handleRateLimit(request);

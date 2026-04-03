@@ -65,6 +65,10 @@ class FogOverlayController {
   /// Visited set size at time of last GeoJSON build.
   int _lastBuildVisitedCount = 0;
 
+  /// Whether the last GeoJSON build included property layers (icons + habitat).
+  /// Used to force a property rebuild when props first become available.
+  bool _lastBuildIncludedProperties = false;
+
   /// Callback fired the first time a cell is added to [_discoveredCellIds].
   ///
   /// Provides the cell ID and the geographic center of the cell so the caller
@@ -313,9 +317,16 @@ class FogOverlayController {
         currentVisitedCount != _lastBuildVisitedCount;
 
     if (needsRebuild) {
-      _buildGeoJson(_discoveredCellIds);
+      // Include property layers (icons + habitat) when cell count changed
+      // (new cells discovered) or when properties weren't built last time.
+      // On fog-only changes (visited count changed), skip icons/habitat —
+      // they don't change when a cell transitions fog state.
+      final cellCountChanged = _discoveredCellIds.length != _lastBuildCellCount;
+      final includeProps = cellCountChanged || !_lastBuildIncludedProperties;
+      _buildGeoJson(_discoveredCellIds, includePropertyLayers: includeProps);
       _lastBuildCellCount = _discoveredCellIds.length;
       _lastBuildVisitedCount = currentVisitedCount;
+      _lastBuildIncludedProperties = includeProps;
     }
     _renderVersion++;
 
@@ -355,9 +366,10 @@ class FogOverlayController {
   }) async {
     // Build GeoJSON from all discovered cells (populated by
     // addDetectionZoneCells during loading screen).
-    _buildGeoJson(_discoveredCellIds);
+    _buildGeoJson(_discoveredCellIds, includePropertyLayers: true);
     _lastBuildCellCount = _discoveredCellIds.length;
     _lastBuildVisitedCount = fogResolver.visitedCellIds.length;
+    _lastBuildIncludedProperties = true;
     _renderVersion++;
     onBatchReady?.call();
 
@@ -390,7 +402,10 @@ class FogOverlayController {
   /// [_updateFogSources] only pushes changed sources to MapLibre.
   /// Territory borders are NOT rebuilt here — they are event-driven
   /// via [_rebuildTerritoryBorders] (triggered by setter changes).
-  void _buildGeoJson(Iterable<String> cellIds) {
+  void _buildGeoJson(
+    Iterable<String> cellIds, {
+    bool includePropertyLayers = true,
+  }) {
     final cellStates = <String, FogState>{};
     for (final cellId in cellIds) {
       final state = fogResolver.resolve(cellId);
@@ -454,33 +469,35 @@ class FogOverlayController {
     );
     _fogDirty = true;
 
-    // Build cell property icons (habitat, climate, event).
-    if (_cellPropertiesCache.isNotEmpty && _dailySeed.isNotEmpty) {
-      _cellIconsGeoJson = CellPropertyGeoJsonBuilder.buildCellIcons(
-        cellStates: cellStates,
-        cellProperties: _cellPropertiesCache,
-        currentCellId: fogResolver.currentCellId,
-        adjacentCellIds: fogResolver.currentNeighborIds,
-        visitedCellIds: fogResolver.visitedCellIds,
-        dailySeed: _dailySeed,
-        getCellCenter: cellService.getCellCenter,
-      );
-    } else {
-      _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
-    }
-    _iconsDirty = true;
+    if (includePropertyLayers) {
+      // Build cell property icons (habitat, climate, event).
+      if (_cellPropertiesCache.isNotEmpty && _dailySeed.isNotEmpty) {
+        _cellIconsGeoJson = CellPropertyGeoJsonBuilder.buildCellIcons(
+          cellStates: cellStates,
+          cellProperties: _cellPropertiesCache,
+          currentCellId: fogResolver.currentCellId,
+          adjacentCellIds: fogResolver.currentNeighborIds,
+          visitedCellIds: fogResolver.visitedCellIds,
+          dailySeed: _dailySeed,
+          getCellCenter: cellService.getCellCenter,
+        );
+      } else {
+        _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
+      }
+      _iconsDirty = true;
 
-    // Build habitat fill gradient rings for revealed cells.
-    if (_cellPropertiesCache.isNotEmpty) {
-      _habitatFillGeoJson = HabitatFillGeoJsonBuilder.buildHabitatFills(
-        cellProperties: _cellPropertiesCache,
-        cellStates: cellStates,
-        getCellBoundary: cellService.getCellBoundary,
-      );
-    } else {
-      _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
+      // Build habitat fill gradient rings for revealed cells.
+      if (_cellPropertiesCache.isNotEmpty) {
+        _habitatFillGeoJson = HabitatFillGeoJsonBuilder.buildHabitatFills(
+          cellProperties: _cellPropertiesCache,
+          cellStates: cellStates,
+          getCellBoundary: cellService.getCellBoundary,
+        );
+      } else {
+        _habitatFillGeoJson = HabitatFillGeoJsonBuilder.emptyFeatureCollection;
+      }
+      _habitatDirty = true;
     }
-    _habitatDirty = true;
   }
 
   /// Schedules a territory border rebuild 100ms from now.
