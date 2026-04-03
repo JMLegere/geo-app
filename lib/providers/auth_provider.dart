@@ -33,7 +33,7 @@ class AuthNotifier extends Notifier<AuthState> {
     _authStreamSub = authService.authStateChanges.listen((user) {
       if (user != null) {
         state = AuthState.authenticated(user);
-      } else if (state.status == AuthStatus.authenticated) {
+      } else {
         state = const AuthState.unauthenticated();
       }
     });
