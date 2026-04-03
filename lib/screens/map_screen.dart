@@ -9,17 +9,21 @@ import 'package:maplibre/maplibre.dart';
 import 'package:earth_nova/data/location/keyboard_location_service.dart';
 import 'package:earth_nova/data/location/location_service.dart';
 import 'package:earth_nova/engine/engine_input.dart';
+import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/providers/cell_provider.dart';
+import 'package:earth_nova/providers/hierarchy_provider.dart';
 import 'package:earth_nova/providers/detection_zone_provider.dart';
 import 'package:earth_nova/providers/engine_provider.dart';
 import 'package:earth_nova/providers/fog_provider.dart';
 import 'package:earth_nova/providers/territory_provider.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/widgets/camera_controller.dart';
+import 'package:earth_nova/widgets/cell_info_sheet.dart';
 import 'package:earth_nova/widgets/discovery_toast.dart';
 import 'package:earth_nova/widgets/dpad_controls.dart';
 import 'package:earth_nova/widgets/fog_geojson_builder.dart';
 import 'package:earth_nova/widgets/fog_overlay_controller.dart';
+import 'package:earth_nova/widgets/location_permission_banner.dart';
 import 'package:earth_nova/widgets/map_controls.dart';
 import 'package:earth_nova/widgets/player_marker_layer.dart';
 import 'package:earth_nova/widgets/rubber_band_controller.dart';
@@ -69,6 +73,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   double _currentZoom = kDefaultZoom;
 
   // MapLibre source/layer IDs
+  static const _habitatFillSrcId = 'habitat-fill-src';
+  static const _habitatFillLayerId = 'habitat-fill';
   static const _territoryFillSrcId = 'territory-fill-src';
   static const _territoryFillLayerId = 'territory-fill';
   static const _territoryLinesSrcId = 'territory-lines-src';
@@ -221,6 +227,30 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || _fogLayersInitialized) return;
 
     try {
+      // Habitat fill: subtle tint per revealed cell based on habitat type.
+      // Added BEFORE territory layers so territory borders render on top.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _habitatFillSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(FillLayer(
+        id: _habitatFillLayerId,
+        sourceId: _habitatFillSrcId,
+        paint: {
+          'fill-color': [
+            'coalesce',
+            ['get', 'color'],
+            '#888888'
+          ],
+          'fill-opacity': [
+            'coalesce',
+            ['get', 'opacity'],
+            0.0
+          ],
+        },
+      ));
+
       // Territory border fill: gradient at admin boundaries (rendered below fog).
       await controller.addSource(
         GeoJsonSource(
@@ -359,6 +389,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (controller == null || !_fogLayersInitialized) return;
 
     try {
+      if (_fogController.consumeHabitatDirty()) {
+        await controller.updateGeoJsonSource(
+            id: _habitatFillSrcId, data: _fogController.habitatFillGeoJson);
+      }
       await controller.updateGeoJsonSource(
           id: _fogBaseSrcId, data: _fogController.baseFogGeoJson);
       await controller.updateGeoJsonSource(
@@ -385,6 +419,61 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   void _onMapCreated(MapController controller) {
     _mapController = controller;
+  }
+
+  void _onMapEvent(MapEvent event) {
+    if (event is MapEventClick) {
+      _handleMapTap(event.point);
+    }
+  }
+
+  Future<void> _handleMapTap(Position pos) async {
+    try {
+      // Position is (lng, lat) — maplibre convention.
+      final lat = pos.lat.toDouble();
+      final lon = pos.lng.toDouble();
+      final cellService = ref.read(cellServiceProvider);
+      final cellId = cellService.getCellId(lat, lon);
+
+      // Look up cell properties from fog controller cache.
+      final cellPropsCache = _fogController.cellPropertiesCacheRef;
+      final props = cellPropsCache[cellId];
+
+      // Look up visit count from DB.
+      final userId = ref.read(authProvider).user?.id;
+      int visitCount = 0;
+      DateTime? lastVisited;
+      if (userId != null) {
+        final visitRepo = ref.read(cellVisitRepoProvider);
+        final visit = await visitRepo.get(userId, cellId);
+        visitCount = visit?.visitCount ?? 0;
+        lastVisited = visit?.lastVisited;
+      }
+
+      // Look up district name from hierarchy.
+      final territory = ref.read(territoryProvider);
+      final districtId = territory.cellDistrictIds[cellId];
+      String? districtName;
+      if (districtId != null) {
+        try {
+          final hierarchyRepo = ref.read(hierarchyRepoProvider);
+          final district = await hierarchyRepo.getDistrict(districtId);
+          districtName = district?.name;
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      showCellInfoSheet(
+        context,
+        cellId: cellId,
+        properties: props,
+        visitCount: visitCount,
+        lastVisited: lastVisited,
+        districtName: districtName,
+      );
+    } catch (e) {
+      debugPrint('[MAP] tap handler failed: $e');
+    }
   }
 
   void _onStyleLoaded() {
@@ -416,6 +505,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
             ),
             onMapCreated: _onMapCreated,
             onStyleLoaded: _onStyleLoaded,
+            onEvent: _onMapEvent,
             children: [
               PlayerMarkerLayer(position: _markerPosition),
             ],
@@ -427,6 +517,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
             left: 0,
             right: 0,
             child: SafeArea(child: StatusBar()),
+          ),
+
+          // Location permission banner (shown below status bar when needed)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 52,
+            left: 0,
+            right: 0,
+            child: const LocationPermissionBanner(),
           ),
 
           // Map controls (right side)

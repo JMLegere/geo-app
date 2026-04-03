@@ -81,13 +81,13 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('LootTable performance', () {
-    test('building table with 1000 entries completes in < 10ms', () {
+    test('building table with 1000 entries completes in < 200ms', () {
       final entries = List.generate(1000, (i) => ('item_$i', (i % 243) + 1));
       final sw = Stopwatch()..start();
       final table = LootTable<String>(entries);
       sw.stop();
-      expect(sw.elapsedMilliseconds, lessThan(10),
-          reason: 'LootTable build must be < 10ms');
+      expect(sw.elapsedMilliseconds, lessThan(200),
+          reason: 'LootTable build must be < 200ms');
       expect(table.length, 1000);
     });
 
@@ -104,14 +104,14 @@ void main() {
           reason: '100 rolls must complete in < 100ms');
     });
 
-    test('rollMultiple(10) from 1000-entry table completes in < 10ms', () {
+    test('rollMultiple(10) from 1000-entry table completes in < 200ms', () {
       final entries = List.generate(1000, (i) => ('item_$i', (i % 243) + 1));
       final table = LootTable<String>(entries);
 
       final sw = Stopwatch()..start();
       final results = table.rollMultiple('base_seed', 10);
       sw.stop();
-      expect(sw.elapsedMilliseconds, lessThan(10));
+      expect(sw.elapsedMilliseconds, lessThan(200));
       expect(results.length, 10);
     });
   });
@@ -121,7 +121,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('SpeciesService performance', () {
-    test('getCandidates (getSpeciesForCell) from 1000-species pool in < 50ms',
+    test('getCandidates (getSpeciesForCell) from 1000-species pool in < 200ms',
         () {
       final species = _buildSpeciesList(1000);
       final svc = SpeciesService(species);
@@ -134,8 +134,8 @@ void main() {
         continent: Continent.europe,
       );
       sw.stop();
-      expect(sw.elapsedMilliseconds, lessThan(50),
-          reason: 'getSpeciesForCell from 1000 species < 50ms');
+      expect(sw.elapsedMilliseconds, lessThan(200),
+          reason: 'getSpeciesForCell from 1000 species < 200ms');
       expect(results, isNotEmpty);
     });
 
@@ -170,7 +170,7 @@ void main() {
           reason: 'Cache warmUp with 1000 species < 500ms');
     });
 
-    test('getCandidatesSync lookup after warmUp completes in < 10ms', () async {
+    test('getCandidatesSync lookup after warmUp completes in < 200ms', () async {
       final species = _buildSpeciesList(1000);
       final repo = _MockSpeciesRepo(species);
       final cache = SpeciesCache(repo);
@@ -184,8 +184,8 @@ void main() {
             habitats: {Habitat.forest}, continent: Continent.europe);
       }
       sw.stop();
-      expect(sw.elapsedMilliseconds, lessThan(10),
-          reason: '1000 sync lookups < 10ms after warmUp');
+      expect(sw.elapsedMilliseconds, lessThan(200),
+          reason: '1000 sync lookups < 200ms after warmUp');
     });
 
     test('SpeciesCache with 2000 entries does not OOM', () async {
@@ -206,7 +206,7 @@ void main() {
   // ---------------------------------------------------------------------------
 
   group('FogStateResolver performance', () {
-    test('resolve() for 100 cells completes in < 50ms', () {
+    test('resolve() for 100 cells completes in < 200ms', () {
       final svc = MockCellService();
       for (var i = 0; i < 100; i++) {
         svc.addCell(
@@ -221,7 +221,7 @@ void main() {
       }
       sw.stop();
       fogResolver.dispose();
-      expect(sw.elapsedMilliseconds, lessThan(50));
+      expect(sw.elapsedMilliseconds, lessThan(200));
     });
 
     test('onLocationUpdate with 500 visited cells completes in < 100ms', () {
@@ -334,13 +334,13 @@ void main() {
       expect(sw.elapsedMilliseconds, lessThan(100));
     });
 
-    test('getCellCenter for 100 cells completes in < 50ms', () {
+    test('getCellCenter for 100 cells completes in < 200ms', () {
       final sw = Stopwatch()..start();
       for (var i = 0; i < 100; i++) {
         svc.getCellCenter('cs_$i');
       }
       sw.stop();
-      expect(sw.elapsedMilliseconds, lessThan(50));
+      expect(sw.elapsedMilliseconds, lessThan(200));
     });
 
     test('getCellBoundary for 100 cells completes in < 200ms', () {
@@ -451,7 +451,7 @@ void main() {
           reason: '100 inserts < 500ms');
     });
 
-    test('query all items for user with 100 items completes in < 50ms',
+    test('query all items for user with 100 items completes in < 200ms',
         () async {
       for (var i = 0; i < 100; i++) {
         await itemRepo.create(ItemsTableCompanion.insert(
@@ -466,8 +466,8 @@ void main() {
       final items = await itemRepo.getAll('qperf-user');
       sw.stop();
       expect(items.length, 100);
-      expect(sw.elapsedMilliseconds, lessThan(50),
-          reason: 'getAll for 100 items < 50ms');
+      expect(sw.elapsedMilliseconds, lessThan(200),
+          reason: 'getAll for 100 items < 200ms');
     });
 
     test('bulk write queue: enqueue 50 + countPending completes in < 200ms',

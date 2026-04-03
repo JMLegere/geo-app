@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
+import 'package:drift/drift.dart' show InsertMode, Value;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:earth_nova/data/database.dart';
@@ -10,6 +11,7 @@ import 'package:earth_nova/data/repos/cell_property_repo.dart';
 import 'package:earth_nova/data/repos/cell_visit_repo.dart';
 import 'package:earth_nova/data/repos/item_repo.dart';
 import 'package:earth_nova/data/repos/player_repo.dart';
+import 'package:earth_nova/data/repos/species_repo.dart';
 import 'package:earth_nova/data/repos/write_queue_repo.dart';
 import 'package:earth_nova/domain/cells/cell_service.dart';
 import 'package:earth_nova/domain/items/stats_service.dart';
@@ -265,6 +267,103 @@ final engineProvider = Provider<MainThreadEngineRunner>((ref) {
 
 bool _hydrating = false;
 
+// ---------------------------------------------------------------------------
+// Species seeding
+// ---------------------------------------------------------------------------
+
+/// Maps a raw habitat string from the JSON dataset to its Dart enum name.
+/// Returns null for unrecognised values (e.g. "Unknown").
+String? _habitatName(String raw) {
+  try {
+    return Habitat.values
+        .firstWhere((h) => h.displayName == raw || h.name == raw)
+        .name;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Maps a raw continent string from the JSON dataset to its Dart enum name.
+/// Returns null for unrecognised values (e.g. "Unknown").
+String? _continentName(String raw) {
+  try {
+    return Continent.fromDataString(raw).name;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Seeds the species table from [assets/species_data.json] if it is empty.
+///
+/// Runs once on first launch. Batches inserts in chunks of 500 and yields to
+/// the event loop between chunks to avoid blocking the UI thread.
+Future<void> _seedSpeciesIfEmpty(Ref ref) async {
+  final db = ref.read(databaseProvider);
+  final speciesRepo = SpeciesRepo(db);
+  final existing = await speciesRepo.count();
+  if (existing > 0) return;
+
+  debugPrint('[HYDRATION] species table empty — seeding from JSON…');
+
+  final jsonStr = await rootBundle.loadString('assets/species_data.json');
+  final speciesList =
+      (jsonDecode(jsonStr) as List).cast<Map<String, dynamic>>();
+
+  const chunkSize = 500;
+  for (var i = 0; i < speciesList.length; i += chunkSize) {
+    final chunk = speciesList.skip(i).take(chunkSize);
+    await db.batch((batch) {
+      for (final s in chunk) {
+        final scientificName = s['scientificName'] as String? ?? '';
+        // Derive definitionId: "fauna_vulpes_vulpes" style.
+        final definitionId =
+            'fauna_${scientificName.toLowerCase().replaceAll(' ', '_')}';
+
+        // Map full IUCN status string → enum name (e.g. "Least Concern" → "leastConcern").
+        final iucnRaw = s['iucnStatus'] as String? ?? 'Least Concern';
+        String iucnName;
+        try {
+          iucnName = IucnStatus.fromIucnString(iucnRaw).name;
+        } catch (_) {
+          iucnName = IucnStatus.leastConcern.name;
+        }
+
+        // Normalize habitat strings to enum names (e.g. "Freshwater" → "freshwater").
+        final rawHabitats = (s['habitats'] as List?)?.cast<String>() ?? [];
+        final habitats = rawHabitats
+            .map((h) => _habitatName(h))
+            .whereType<String>()
+            .toList();
+
+        // Normalize continent strings to enum names (e.g. "North America" → "northAmerica").
+        final rawContinents = (s['continents'] as List?)?.cast<String>() ?? [];
+        final continents = rawContinents
+            .map((c) => _continentName(c))
+            .whereType<String>()
+            .toList();
+
+        batch.insert(
+          db.speciesTable,
+          SpeciesTableCompanion.insert(
+            definitionId: definitionId,
+            scientificName: scientificName,
+            commonName: s['commonName'] as String? ?? '',
+            taxonomicClass: s['taxonomicClass'] as String? ?? '',
+            iucnStatus: iucnName,
+            habitatsJson: jsonEncode(habitats),
+            continentsJson: jsonEncode(continents),
+          ),
+          mode: InsertMode.insertOrIgnore,
+        );
+      }
+    });
+    // Yield to event loop between chunks to avoid UI jank.
+    await Future.delayed(Duration.zero);
+  }
+
+  debugPrint('[HYDRATION] seeded ${speciesList.length} species from JSON');
+}
+
 /// Rebuilds the in-memory ancestry cache from the hierarchy repository.
 ///
 /// Called during hydration so that [GameEngine.locationResolver] can resolve
@@ -313,6 +412,11 @@ Future<void> _hydrateAndStart({
   _hydrating = true;
 
   try {
+    // 0. Seed species table from JSON if empty (first launch).
+    await _seedSpeciesIfEmpty(ref);
+
+    if (disposed()) return;
+
     // 1. Parallel SQLite reads.
     final results = await Future.wait<Object?>([
       itemRepo.getAll(userId),
@@ -541,6 +645,19 @@ Future<void> _hydrateAndStart({
     // 8. Start engine with GPS stream.
     final gpsStream = ref.read(gpsStreamProvider);
     runner.startEngine(gpsStream: gpsStream);
+
+    // 9. Periodic daily seed refresh (catches midnight rotation).
+    final seedRefreshTimer =
+        Timer.periodic(const Duration(minutes: 30), (_) async {
+      if (disposed()) return;
+      try {
+        await (dailySeedService as dynamic).refreshSeed();
+        debugPrint('[EngineProvider] daily seed refreshed');
+      } catch (e) {
+        debugPrint('[EngineProvider] daily seed refresh failed: $e');
+      }
+    });
+    ref.onDispose(seedRefreshTimer.cancel);
 
     debugPrint('[EngineProvider] hydration complete, engine started');
   } catch (e, stack) {
