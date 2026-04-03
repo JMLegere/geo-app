@@ -528,6 +528,96 @@ void main() {
   });
 
   // -----------------------------------------------------------------------
+  // addDetectionZoneCells pruning
+  // -----------------------------------------------------------------------
+
+  group('addDetectionZoneCells pruning', () {
+    test('unvisited out-of-range cells are pruned when zone shifts', () {
+      // Zone A: cells at lat=0 row, Zone B: cells at lat=10 row — no overlap.
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      final zoneA = {'cell_0_0', 'cell_0_1', 'cell_0_2'};
+      final zoneB = {'cell_10_10', 'cell_10_11', 'cell_10_12'};
+
+      controller.addDetectionZoneCells(zoneA, const {});
+      expect(controller.visibleCellCount, equals(3));
+
+      controller.addDetectionZoneCells(zoneB, const {});
+      // zoneA cells are unvisited and outside zoneB → should be pruned.
+      expect(
+        controller.visibleCellCount,
+        equals(3),
+        reason:
+            'Only zone B cells should remain; zone A unvisited cells pruned',
+      );
+    });
+
+    test('visited cells survive pruning even when outside the new zone', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Mark two zone-A cells as visited (center of cell_0_0 and cell_0_1).
+      fogResolver.onLocationUpdate(0.5, 0.5); // visits cell_0_0
+      fogResolver.onLocationUpdate(0.5, 1.5); // visits cell_0_1
+
+      final zoneA = {'cell_0_0', 'cell_0_1', 'cell_0_2'};
+      controller.addDetectionZoneCells(zoneA, const {});
+      expect(controller.visibleCellCount, equals(3));
+
+      // Zone B has no overlap with zone A.
+      final zoneB = {'cell_10_10', 'cell_10_11', 'cell_10_12'};
+      controller.addDetectionZoneCells(zoneB, const {});
+
+      // cell_0_0 and cell_0_1 are visited → preserved.
+      // cell_0_2 is unvisited and outside zoneB → pruned.
+      // zoneB cells → 3 kept.
+      expect(
+        controller.visibleCellCount,
+        equals(5),
+        reason: '3 zone B cells + 2 visited zone A cells should survive',
+      );
+    });
+
+    test('cells in both old and new zone are preserved', () {
+      final cellService = MockCellService();
+      final fogResolver = FogStateResolver(cellService);
+      final controller = FogOverlayController(
+        cellService: cellService,
+        fogResolver: fogResolver,
+        sampleStepPx: 80.0,
+      );
+
+      // Zone A: shared cell + a-only cell.
+      final zoneA = {'cell_5_5', 'cell_5_6'};
+      controller.addDetectionZoneCells(zoneA, const {});
+
+      // Zone B: shared cell + b-only cell.
+      final zoneB = {'cell_5_5', 'cell_5_7'};
+      controller.addDetectionZoneCells(zoneB, const {});
+
+      // cell_5_6 is not in zoneB and not visited → pruned.
+      // cell_5_5 is in zoneB → kept.
+      // cell_5_7 is in zoneB → kept.
+      expect(
+        controller.visibleCellCount,
+        equals(2),
+        reason: 'Only cells in new zone should remain when a-only is unvisited',
+      );
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // _buildGeoJson property layer optimization
   // -----------------------------------------------------------------------
 

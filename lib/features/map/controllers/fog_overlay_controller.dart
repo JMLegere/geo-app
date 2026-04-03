@@ -96,7 +96,20 @@ class FogOverlayController {
     for (final cellId in zoneCellIds) {
       if (_discoveredCellIds.add(cellId)) added++;
     }
-    if (added > 0 || cellProperties.length != _cellPropertiesCache.length) {
+
+    // Prune cells that are no longer in the detection zone and have never been
+    // visited. Unvisited out-of-range cells have no fog state to preserve and
+    // their continued presence causes unbounded GeoJSON build growth.
+    // Visited cells are never pruned — they hold permanent fog state.
+    final beforePrune = _discoveredCellIds.length;
+    _discoveredCellIds.removeWhere((cellId) =>
+        !zoneCellIds.contains(cellId) &&
+        !fogResolver.visitedCellIds.contains(cellId));
+    final pruned = beforePrune - _discoveredCellIds.length;
+
+    if (added > 0 ||
+        pruned > 0 ||
+        cellProperties.length != _cellPropertiesCache.length) {
       _cellPropertiesCache = cellProperties;
       // Do NOT call _buildGeoJson() here — it would process all 6000+
       // discovered cells synchronously, causing a 114ms+ JANK frame that
@@ -118,7 +131,8 @@ class FogOverlayController {
       _renderVersion++;
       sw.stop();
       debugPrint('[FOG] added $added detection zone cells '
-          '(zone: ${zoneCellIds.length}, visited: ${fogResolver.visitedCellIds.length}, total: ${_discoveredCellIds.length}, '
+          '(zone: ${zoneCellIds.length}, visited: ${fogResolver.visitedCellIds.length}, '
+          'total: ${_discoveredCellIds.length}, pruned: $pruned, '
           'props: ${_cellPropertiesCache.length}, '
           '${sw.elapsedMilliseconds}ms)');
     }
