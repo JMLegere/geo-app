@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/models/iucn_status.dart';
 import 'package:earth_nova/shared/earth_nova_theme.dart';
 
 /// Visual identity for *EarthNova*.

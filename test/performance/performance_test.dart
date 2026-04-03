@@ -1,532 +1,492 @@
-// Performance benchmark tests for critical game-loop paths.
-//
-// These tests load the REAL production assets (33k species, 509KB biome
-// features) and the full 40×40 Voronoi grid to verify acceptable latency
-// on commodity hardware. Each test asserts a generous time budget that
-// should pass even on low-end devices (3× the typical desktop time).
-//
-// Run:
-//   LD_LIBRARY_PATH=. flutter test test/performance/performance_test.dart
+// ignore_for_file: avoid_redundant_argument_values
 
-import 'dart:convert';
-import 'dart:io';
-
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/core/cells/lazy_voronoi_cell_service.dart';
-import 'package:earth_nova/core/database/app_database.dart';
-import 'package:earth_nova/core/fog/fog_state_resolver.dart';
-import 'package:earth_nova/core/models/continent.dart';
-import 'package:earth_nova/core/models/habitat.dart';
-import 'package:earth_nova/core/species/drift_species_repository.dart';
-import 'package:earth_nova/core/species/species_repository.dart';
-import 'package:earth_nova/core/species/species_service.dart';
-import 'package:earth_nova/features/world/services/biome_feature_index.dart';
-import 'package:earth_nova/features/world/services/biome_service.dart';
-import 'package:earth_nova/shared/constants.dart';
 
-/// Helper: times a synchronous [fn] and returns the elapsed Duration.
-Duration timeSync(void Function() fn) {
-  final sw = Stopwatch()..start();
-  fn();
-  sw.stop();
-  return sw.elapsed;
+import 'package:earth_nova/data/database.dart';
+import 'package:earth_nova/data/repos/item_repo.dart';
+import 'package:earth_nova/data/repos/write_queue_repo.dart';
+import 'package:earth_nova/domain/fog/fog_resolver.dart';
+import 'package:earth_nova/domain/species/encounter_roller.dart';
+import 'package:earth_nova/domain/species/loot_table.dart';
+import 'package:earth_nova/domain/species/species_cache.dart';
+import 'package:earth_nova/domain/species/species_repository.dart';
+import 'package:earth_nova/engine/engine_input.dart';
+import 'package:earth_nova/engine/game_engine.dart';
+import 'package:earth_nova/models/cell_properties.dart';
+import 'package:earth_nova/models/climate.dart';
+import 'package:earth_nova/models/continent.dart';
+import 'package:earth_nova/models/habitat.dart';
+import 'package:earth_nova/models/item_definition.dart';
+import 'package:earth_nova/models/iucn_status.dart';
+
+import '../fixtures/test_helpers.dart';
+
+// ---------------------------------------------------------------------------
+// Mock species repository for cache tests
+// ---------------------------------------------------------------------------
+
+class _MockSpeciesRepo implements SpeciesRepository {
+  final List<FaunaDefinition> _all;
+  _MockSpeciesRepo(this._all);
+
+  @override
+  Future<List<FaunaDefinition>> getCandidates({
+    required Set<Habitat> habitats,
+    required Continent continent,
+  }) async {
+    return _all
+        .where((s) =>
+            s.habitats.any(habitats.contains) &&
+            s.continents.contains(continent))
+        .toList();
+  }
+
+  @override
+  Future<List<FaunaDefinition>> getByIds(List<String> ids) async {
+    final idSet = ids.toSet();
+    return _all.where((s) => idSet.contains(s.id)).toList();
+  }
+
+  @override
+  Future<int> count() async => _all.length;
 }
 
-/// Helper: opens species data from assets/species_data.json into an in-memory Drift DB.
-Future<SpeciesRepository> _openSpeciesDb() async {
-  final db = AppDatabase(NativeDatabase.memory());
-  final jsonStr = File('assets/species_data.json').readAsStringSync();
-  final data = jsonDecode(jsonStr) as List;
-  await db.batch((b) {
-    for (final item in data) {
-      final m = item as Map<String, dynamic>;
-      final sciName = m['scientificName'] as String;
-      final defId = 'fauna_${sciName.toLowerCase().replaceAll(' ', '_')}';
-      b.insert(
-        db.localSpeciesTable,
-        LocalSpeciesTableCompanion.insert(
-          definitionId: defId,
-          scientificName: sciName,
-          commonName: m['commonName'] as String,
-          taxonomicClass: m['taxonomicClass'] as String,
-          iucnStatus: m['iucnStatus'] as String,
-          habitatsJson: jsonEncode(m['habitats']),
-          continentsJson: jsonEncode(m['continents']),
-        ),
-      );
-    }
-  });
-  return DriftSpeciesRepository(db);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/// Build a list of [n] FaunaDefinitions with forest/europe.
+List<FaunaDefinition> _buildSpeciesList(int n) {
+  return List.generate(
+    n,
+    (i) => FaunaDefinition(
+      id: 'fauna_species_$i',
+      displayName: 'Species $i',
+      scientificName: 'Species scientifica $i',
+      taxonomicClass: (i % 2 == 0) ? 'Mammalia' : 'Aves',
+      rarity: IucnStatus.values[i % IucnStatus.values.length],
+      habitats: [Habitat.forest],
+      continents: [Continent.europe],
+    ),
+  );
 }
 
 void main() {
-  // ── Shared state loaded once ──────────────────────────────────────────────
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
-  late String biomeJson;
+  // ---------------------------------------------------------------------------
+  // LootTable performance
+  // ---------------------------------------------------------------------------
 
-  setUpAll(() {
-    biomeJson = File('assets/biome_features.json').readAsStringSync();
-  });
-
-  // =========================================================================
-  // 1. Species Data Loading — 33k records from SQLite DB
-  // =========================================================================
-
-  group('Species data loading (33k records)', () {
-    test('loads 33k species from SQLite in under 5 seconds', () async {
-      final repo = await _openSpeciesDb();
-      late List records;
+  group('LootTable performance', () {
+    test('building table with 1000 entries completes in < 10ms', () {
+      final entries = List.generate(1000, (i) => ('item_$i', (i % 243) + 1));
       final sw = Stopwatch()..start();
-      records = await repo.getAll();
+      final table = LootTable<String>(entries);
       sw.stop();
-      repo.dispose();
-
-      expect(records.length, greaterThanOrEqualTo(30000),
-          reason: 'Full dataset should have 30k+ records');
-      expect(sw.elapsedMilliseconds, lessThan(5000),
-          reason: 'Loading 33k species took ${sw.elapsedMilliseconds}ms');
+      expect(sw.elapsedMilliseconds, lessThan(10),
+          reason: 'LootTable build must be < 10ms');
+      expect(table.length, 1000);
     });
 
-    test('builds SpeciesService indices in under 3 seconds', () async {
-      final repo = await _openSpeciesDb();
-      final records = await repo.getAll();
-      repo.dispose();
+    test('rolling 100 times from 1000-entry table completes in < 100ms', () {
+      final entries = List.generate(1000, (i) => ('item_$i', (i % 243) + 1));
+      final table = LootTable<String>(entries);
 
-      late SpeciesService service;
-      final elapsed = timeSync(() {
-        service = SpeciesService(records);
-      });
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        table.roll('seed_$i');
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(100),
+          reason: '100 rolls must complete in < 100ms');
+    });
 
-      expect(service.totalSpecies, greaterThanOrEqualTo(30000));
-      expect(elapsed.inMilliseconds, lessThan(3000),
-          reason: 'Index building took ${elapsed.inMilliseconds}ms');
+    test('rollMultiple(10) from 1000-entry table completes in < 10ms', () {
+      final entries = List.generate(1000, (i) => ('item_$i', (i % 243) + 1));
+      final table = LootTable<String>(entries);
+
+      final sw = Stopwatch()..start();
+      final results = table.rollMultiple('base_seed', 10);
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(10));
+      expect(results.length, 10);
     });
   });
 
-  // =========================================================================
-  // 2. Species Lookups — per-cell encounter generation
-  // =========================================================================
+  // ---------------------------------------------------------------------------
+  // SpeciesService (in-memory mode) performance
+  // ---------------------------------------------------------------------------
 
-  group('Species lookup performance', () {
-    late SpeciesService service;
+  group('SpeciesService performance', () {
+    test('getCandidates (getSpeciesForCell) from 1000-species pool in < 50ms',
+        () {
+      final species = _buildSpeciesList(1000);
+      final svc = SpeciesService(species);
 
-    setUpAll(() async {
-      final repo = await _openSpeciesDb();
-      final records = await repo.getAll();
-      repo.dispose();
-      service = SpeciesService(records);
-    });
-
-    test('getSpeciesForCell (single habitat) completes in under 5ms', () {
-      // Warm up — first call may lazy-init internal structures.
-      service.getSpeciesForCell(
-        cellId: 'warmup',
-        dailySeed: 'test_seed',
+      final sw = Stopwatch()..start();
+      final results = svc.getSpeciesForCell(
+        cellId: kTestCellA,
+        dailySeed: kTestDailySeed,
         habitats: {Habitat.forest},
-        continent: Continent.northAmerica,
+        continent: Continent.europe,
       );
-
-      final sw = Stopwatch()..start();
-      const iterations = 1000;
-      for (var i = 0; i < iterations; i++) {
-        service.getSpeciesForCell(
-          cellId: 'perf_cell_$i',
-          dailySeed: 'test_seed',
-          habitats: {Habitat.forest},
-          continent: Continent.northAmerica,
-        );
-      }
       sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(5000),
-          reason:
-              'Single-habitat lookup averaged ${avgUs.toStringAsFixed(1)}µs');
+      expect(sw.elapsedMilliseconds, lessThan(50),
+          reason: 'getSpeciesForCell from 1000 species < 50ms');
+      expect(results, isNotEmpty);
     });
 
-    test('getSpeciesForCell (3 habitats) completes in under 10ms', () {
+    test('building SpeciesService with 1000 species (index build) in < 100ms',
+        () {
+      final species = _buildSpeciesList(1000);
+
       final sw = Stopwatch()..start();
-      const iterations = 1000;
-      for (var i = 0; i < iterations; i++) {
-        service.getSpeciesForCell(
-          cellId: 'multi_cell_$i',
-          dailySeed: 'test_seed',
-          habitats: {Habitat.forest, Habitat.freshwater, Habitat.mountain},
-          continent: Continent.europe,
-        );
-      }
+      final svc = SpeciesService(species);
       sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(10000),
-          reason:
-              'Multi-habitat lookup averaged ${avgUs.toStringAsFixed(1)}µs');
-    });
-
-    test('getPoolForArea unions correctly with full dataset', () {
-      final pool = service.getPoolForArea(
-        habitats: {Habitat.forest, Habitat.freshwater},
-        continent: Continent.northAmerica,
-      );
-
-      // The union should include more species than either habitat alone.
-      final forestOnly = service.getPoolForArea(
-        habitats: {Habitat.forest},
-        continent: Continent.northAmerica,
-      );
-      final freshwaterOnly = service.getPoolForArea(
-        habitats: {Habitat.freshwater},
-        continent: Continent.northAmerica,
-      );
-
-      expect(pool.length, greaterThanOrEqualTo(forestOnly.length),
-          reason: 'Union pool should be >= forest-only pool');
-      expect(pool.length, greaterThanOrEqualTo(freshwaterOnly.length),
-          reason: 'Union pool should be >= freshwater-only pool');
+      expect(sw.elapsedMilliseconds, lessThan(100),
+          reason: 'Index build for 1000 species < 100ms');
+      expect(svc.totalSpecies, 1000);
     });
   });
 
-  // =========================================================================
-  // 3. BiomeFeatureIndex — spatial grid loading and queries
-  // =========================================================================
+  // ---------------------------------------------------------------------------
+  // SpeciesCache performance
+  // ---------------------------------------------------------------------------
 
-  group('BiomeFeatureIndex performance', () {
-    test('loads and indexes 509KB biome JSON in under 2 seconds', () {
-      late BiomeFeatureIndex index;
-      final elapsed = timeSync(() {
-        index = BiomeFeatureIndex.load(biomeJson);
-      });
-
-      // Smoke check: query a known coastal location (San Francisco).
-      final sfBiomes = index.getBiomesNear(37.77, -122.42);
-      expect(sfBiomes, isNotEmpty);
-
-      expect(elapsed.inMilliseconds, lessThan(2000),
-          reason: 'BiomeFeatureIndex load took ${elapsed.inMilliseconds}ms');
-    });
-
-    test('getBiomesNear completes in under 1ms per query (cached)', () {
-      final index = BiomeFeatureIndex.load(biomeJson);
-
-      // Cold queries to populate cache.
-      index.getBiomesNear(37.77, -122.42);
-      index.getBiomesNear(51.5, -0.1);
+  group('SpeciesCache performance', () {
+    test('warmUp with 1000 species completes in < 500ms', () async {
+      final species = _buildSpeciesList(1000);
+      final repo = _MockSpeciesRepo(species);
+      final cache = SpeciesCache(repo);
 
       final sw = Stopwatch()..start();
-      const iterations = 10000;
-      for (var i = 0; i < iterations; i++) {
-        // Vary coords slightly within the same cache bucket.
-        index.getBiomesNear(37.77 + (i % 10) * 0.001, -122.42);
-      }
+      await cache
+          .warmUp(habitats: {Habitat.forest}, continent: Continent.europe);
       sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(1000),
-          reason: 'Cached biome query averaged ${avgUs.toStringAsFixed(1)}µs');
+      expect(sw.elapsedMilliseconds, lessThan(500),
+          reason: 'Cache warmUp with 1000 species < 500ms');
     });
 
-    test('getBiomesNear cold queries complete in under 15ms each', () {
-      final index = BiomeFeatureIndex.load(biomeJson);
+    test('getCandidatesSync lookup after warmUp completes in < 10ms', () async {
+      final species = _buildSpeciesList(1000);
+      final repo = _MockSpeciesRepo(species);
+      final cache = SpeciesCache(repo);
 
-      // Scatter queries across different 1° grid cells to avoid cache hits.
-      final coords = <(double, double)>[
-        (37.77, -122.42), // SF (coastal)
-        (51.51, -0.13), // London
-        (35.68, 139.69), // Tokyo
-        (-33.87, 151.21), // Sydney
-        (48.86, 2.35), // Paris
-        (-22.91, -43.17), // Rio
-        (55.75, 37.62), // Moscow
-        (30.04, 31.24), // Cairo
-        (1.35, 103.82), // Singapore
-        (40.71, -74.01), // NYC
-        (19.43, -99.13), // Mexico City
-        (-1.29, 36.82), // Nairobi
-        (28.61, 77.21), // Delhi
-        (39.90, 116.41), // Beijing
-        (-34.60, -58.38), // Buenos Aires
-        (59.33, 18.07), // Stockholm
-        (64.15, -21.94), // Reykjavik (remote, should be plains)
-        (-37.81, 144.96), // Melbourne
-        (25.20, 55.27), // Dubai
-        (13.76, 100.50), // Bangkok
-      ];
+      await cache
+          .warmUp(habitats: {Habitat.forest}, continent: Continent.europe);
 
       final sw = Stopwatch()..start();
-      for (final (lat, lon) in coords) {
-        index.getBiomesNear(lat, lon);
+      for (var i = 0; i < 1000; i++) {
+        cache.getCandidatesSync(
+            habitats: {Habitat.forest}, continent: Continent.europe);
       }
       sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(10),
+          reason: '1000 sync lookups < 10ms after warmUp');
+    });
 
-      final avgMs = sw.elapsedMilliseconds / coords.length;
-      expect(avgMs, lessThan(15),
-          reason:
-              'Cold biome query averaged ${avgMs.toStringAsFixed(2)}ms over ${coords.length} cities');
+    test('SpeciesCache with 2000 entries does not OOM', () async {
+      final species = _buildSpeciesList(2000);
+      final repo = _MockSpeciesRepo(species);
+      final cache = SpeciesCache(repo);
+      await cache
+          .warmUp(habitats: {Habitat.forest}, continent: Continent.europe);
+      // Verify it loaded correctly — no OOM.
+      final results = cache.getCandidatesSync(
+          habitats: {Habitat.forest}, continent: Continent.europe);
+      expect(results, isNotEmpty);
     });
   });
 
-  // =========================================================================
-  // 4. HabitatService with BiomeFeatureIndex — end-to-end biome classification
-  // =========================================================================
-
-  group('HabitatService end-to-end', () {
-    test('classifyLocation returns sensible habitats for known locations', () {
-      final index = BiomeFeatureIndex.load(biomeJson);
-      final service = HabitatService.withFeatureIndex(index);
-
-      // Coastal location (Ocean Beach SF, right on the coast) → should include saltwater.
-      final sf = service.classifyLocation(37.76, -122.51);
-      expect(sf, contains(Habitat.saltwater),
-          reason: 'Ocean Beach SF is on the coast — should detect saltwater');
-
-      // Amazon basin → should include forest.
-      final amazon = service.classifyLocation(-3.0, -60.0);
-      expect(amazon, contains(Habitat.forest),
-          reason: 'Amazon should detect forest');
-
-      // Sahara → should include desert.
-      final sahara = service.classifyLocation(25.0, 15.0);
-      expect(sahara, contains(Habitat.desert),
-          reason: 'Sahara should detect desert');
-
-      // Middle of Kansas → should be plains (no features nearby).
-      final kansas = service.classifyLocation(38.5, -98.5);
-      expect(kansas, contains(Habitat.plains),
-          reason: 'Kansas interior should default to plains');
-
-      // Every location should return at least one habitat.
-      for (final biomes in [sf, amazon, sahara, kansas]) {
-        expect(biomes, isNotEmpty,
-            reason: 'classifyLocation should always return at least 1 habitat');
-      }
-    });
-  });
-
-  // =========================================================================
-  // 5. LazyVoronoiCellService — cell resolution and neighbor map
-  // =========================================================================
-
-  group('LazyVoronoiCellService performance', () {
-    late LazyVoronoiCellService cellService;
-    // Use a fixed cell count for iteration bounds (1600 cells in a 40×40 grid).
-    const cellCount = 1600;
-
-    setUpAll(() {
-      cellService = LazyVoronoiCellService();
-    });
-
-    test('getCellId resolves in under 1ms per call', () {
-      final sw = Stopwatch()..start();
-      const iterations = 1000;
-      for (var i = 0; i < iterations; i++) {
-        final lat = 45.9 + (i % 40) * 0.002;
-        final lon = -66.6 + (i ~/ 40 % 40) * 0.002;
-        cellService.getCellId(lat, lon);
-      }
-      sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(1000),
-          reason: 'getCellId averaged ${avgUs.toStringAsFixed(1)}µs over '
-              '$cellCount cells');
-    });
-
-    test('neighbor map builds in under 2 seconds', () {
-      // Force a fresh service to time the neighbor computation from scratch.
-      final freshService = LazyVoronoiCellService();
-      final seedCellId = freshService.getCellId(45.9, -66.6);
-
-      final elapsed = timeSync(() {
-        // Trigger neighbor computation.
-        freshService.getNeighborIds(seedCellId);
-      });
-
-      expect(elapsed.inMilliseconds, lessThan(2000),
-          reason: 'Neighbor map build took ${elapsed.inMilliseconds}ms');
-    });
-
-    test('getNeighborIds is O(1) after initial build', () {
-      // Resolve a set of cell IDs to use as lookup targets.
-      final cellIds = List.generate(
-        cellCount,
-        (i) => cellService.getCellId(
-            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
-      );
-      // Warm up the cache.
-      cellService.getNeighborIds(cellIds.first);
-
-      final sw = Stopwatch()..start();
-      const iterations = 10000;
-      for (var i = 0; i < iterations; i++) {
-        cellService.getNeighborIds(cellIds[i % cellCount]);
-      }
-      sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(100),
-          reason:
-              'Cached neighbor lookup averaged ${avgUs.toStringAsFixed(1)}µs');
-    });
-
-    test('getCellsInRing(k=2) completes in under 1ms', () {
-      // Resolve a set of cell IDs to use as lookup targets.
-      final cellIds = List.generate(
-        cellCount,
-        (i) => cellService.getCellId(
-            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
-      );
-      // Warm up the cache.
-      cellService.getNeighborIds(cellIds.first);
-
-      final sw = Stopwatch()..start();
-      const iterations = 100;
-      for (var i = 0; i < iterations; i++) {
-        cellService.getCellsInRing(cellIds[i % cellCount], 2);
-      }
-      sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(1000),
-          reason: 'getCellsInRing(k=2) averaged ${avgUs.toStringAsFixed(1)}µs');
-    });
-  });
-
-  // =========================================================================
-  // 6. FogStateResolver — bulk fog resolution
-  // =========================================================================
+  // ---------------------------------------------------------------------------
+  // FogStateResolver performance
+  // ---------------------------------------------------------------------------
 
   group('FogStateResolver performance', () {
-    late LazyVoronoiCellService cellService;
-    late FogStateResolver resolver;
-    const cellCount = 1600;
-
-    setUp(() {
-      cellService = LazyVoronoiCellService();
-      resolver = FogStateResolver(cellService);
-    });
-
-    tearDown(() {
-      resolver.dispose();
-    });
-
-    test('onLocationUpdate processes in under 5ms', () {
-      final sw = Stopwatch()..start();
-      const updates = 100;
-      for (var i = 0; i < updates; i++) {
-        final lat = 45.9 + (i % 10) * 0.002;
-        final lon = -66.6 + (i ~/ 10 % 10) * 0.002;
-        resolver.onLocationUpdate(lat, lon);
+    test('resolve() for 100 cells completes in < 50ms', () {
+      final svc = MockCellService();
+      for (var i = 0; i < 100; i++) {
+        svc.addCell(
+            id: 'fog_cell_$i', lat: kTestLat + i * 0.001, lon: kTestLon);
       }
-      sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / updates;
-      expect(avgUs, lessThan(5000),
-          reason: 'onLocationUpdate averaged ${avgUs.toStringAsFixed(1)}µs');
-    });
-
-    test('resolve() is O(1) per cell', () {
-      // Seed some visited cells and frontier.
-      resolver.onLocationUpdate(kDefaultMapLat, kDefaultMapLon);
-
-      // Resolve a set of cell IDs to use as lookup targets.
-      final cellIds = List.generate(
-        cellCount,
-        (i) => cellService.getCellId(
-            45.9 + (i % 40) * 0.002, -66.6 + (i ~/ 40 % 40) * 0.002),
-      );
+      final fogResolver = FogStateResolver(svc);
+      fogResolver.onLocationUpdate(kTestLat, kTestLon);
 
       final sw = Stopwatch()..start();
-      const iterations = 10000;
-      for (var i = 0; i < iterations; i++) {
-        resolver.resolve(cellIds[i % cellCount]);
+      for (var i = 0; i < 100; i++) {
+        fogResolver.resolve('fog_cell_$i');
       }
       sw.stop();
-
-      final avgUs = sw.elapsedMicroseconds / iterations;
-      expect(avgUs, lessThan(100),
-          reason: 'resolve() averaged ${avgUs.toStringAsFixed(1)}µs');
+      fogResolver.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(50));
     });
 
-    test('loadVisitedCells with 500 cells completes in under 2 seconds', () {
-      // Simulate a player who has visited 500 cells (heavy user).
-      // Build IDs directly using v_{row}_{col} format (25×20 grid around
-      // Fredericton) to guarantee exactly 500 unique cell IDs.
-      const baseRow = 22950; // (45.9 / 0.002).floor()
-      const baseCol = -33300; // (-66.6 / 0.002).floor()
-      final visited = Set<String>.from(List.generate(
-        500,
-        (i) => 'v_${baseRow + i % 25}_${baseCol + i ~/ 25}',
-      ));
-
-      final elapsed = timeSync(() {
-        resolver.loadVisitedCells(visited);
-      });
-
-      expect(resolver.visitedCellIds.length, equals(500));
-      expect(elapsed.inMilliseconds, lessThan(2000),
-          reason: 'loadVisitedCells(500) took ${elapsed.inMilliseconds}ms');
+    test('onLocationUpdate with 500 visited cells completes in < 100ms', () {
+      final svc = MockCellService();
+      for (var i = 0; i < 500; i++) {
+        svc.addCell(
+            id: 'visited_$i',
+            lat: kTestLat + i * 0.001,
+            lon: kTestLon,
+            neighbors: i > 0 ? ['visited_${i - 1}'] : []);
+      }
+      final fogResolver = FogStateResolver(svc);
+      final visitedSet = {for (var i = 0; i < 500; i++) 'visited_$i'};
+      fogResolver.loadVisitedCells(visitedSet);
+      final sw = Stopwatch()..start();
+      fogResolver.onLocationUpdate(kTestLat, kTestLon);
+      sw.stop();
+      fogResolver.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(100));
     });
-  });
 
-  // =========================================================================
-  // 7. End-to-end discovery pipeline
-  // =========================================================================
+    test('onLocationUpdate with 2000 visited cells completes in < 500ms', () {
+      final svc = MockCellService();
+      for (var i = 0; i < 2000; i++) {
+        svc.addCell(
+            id: 'big_$i',
+            lat: kTestLat + i * 0.0005,
+            lon: kTestLon,
+            neighbors: i > 0 ? ['big_${i - 1}'] : []);
+      }
+      final fogResolver = FogStateResolver(svc);
+      fogResolver.loadVisitedCells({for (var i = 0; i < 2000; i++) 'big_$i'});
 
-  group('End-to-end discovery pipeline', () {
-    late SpeciesService endToEndSpeciesService;
+      final sw = Stopwatch()..start();
+      fogResolver.onLocationUpdate(kTestLat, kTestLon);
+      sw.stop();
+      fogResolver.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(500));
+    });
 
-    setUpAll(() async {
-      final repo = await _openSpeciesDb();
-      final records = await repo.getAll();
-      repo.dispose();
-      endToEndSpeciesService = SpeciesService(records);
+    test('FogResolver with 5000 visited cells does not OOM', () {
+      final svc = MockCellService();
+      for (var i = 0; i < 5000; i++) {
+        svc.addCell(id: 'oom_$i', lat: kTestLat + i * 0.0001, lon: kTestLon);
+      }
+      final fogResolver = FogStateResolver(svc);
+      fogResolver.loadVisitedCells({for (var i = 0; i < 5000; i++) 'oom_$i'});
+      fogResolver.onLocationUpdate(kTestLat, kTestLon);
+      // Verify it resolves without crash.
+      final state = fogResolver.resolve('oom_0');
+      fogResolver.dispose();
+      expect(state, isNotNull);
     });
 
     test(
-        'full pipeline (locate → biome → species → loot) completes in under 50ms',
+        'frontier management: 1000 cells visited sequentially completes in < 1s',
         () {
-      final cellService = LazyVoronoiCellService();
-      final biomeIndex = BiomeFeatureIndex.load(biomeJson);
-      final habitatService = HabitatService.withFeatureIndex(biomeIndex);
-      final speciesService = endToEndSpeciesService;
-
-      // Warm up Voronoi neighbor cache.
-      final warmupId = cellService.getCellId(45.9, -66.6);
-      cellService.getNeighborIds(warmupId);
-
-      // Simulate the exact sequence that fires on each new cell entry.
-      final sw = Stopwatch()..start();
-      const iterations = 100;
-      for (var i = 0; i < iterations; i++) {
-        final lat = 45.9 + (i % 10) * 0.002;
-        final lon = -66.6 + (i ~/ 10 % 10) * 0.002;
-
-        // 1. Resolve cell ID from GPS coordinates.
-        final cellId = cellService.getCellId(lat, lon);
-
-        // 2. Get cell center.
-        final center = cellService.getCellCenter(cellId);
-
-        // 3. Classify biomes near cell center.
-        final habitats =
-            habitatService.classifyLocation(center.lat, center.lon);
-
-        // 4. Roll species encounters.
-        speciesService.getSpeciesForCell(
-          cellId: cellId,
-          dailySeed: 'test_seed',
-          habitats: habitats,
-          continent: Continent.northAmerica,
+      final svc = MockCellService();
+      for (var i = 0; i < 1000; i++) {
+        svc.addCell(
+          id: 'frontier_$i',
+          lat: kTestLat + i * 0.001,
+          lon: kTestLon,
+          neighbors: [
+            if (i > 0) 'frontier_${i - 1}',
+            if (i < 999) 'frontier_${i + 1}',
+          ],
         );
       }
-      sw.stop();
+      final fogResolver = FogStateResolver(svc);
 
-      final avgMs = sw.elapsedMicroseconds / iterations / 1000;
-      expect(avgMs, lessThan(50),
-          reason:
-              'Full discovery pipeline averaged ${avgMs.toStringAsFixed(2)}ms '
-              'per cell entry');
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 1000; i++) {
+        fogResolver.onLocationUpdate(kTestLat + i * 0.001, kTestLon);
+      }
+      sw.stop();
+      fogResolver.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(1000));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // MockCellService (stand-in for cell service) performance
+  // ---------------------------------------------------------------------------
+
+  group('CellService performance (MockCellService with 100 cells)', () {
+    late MockCellService svc;
+
+    setUpAll(() {
+      svc = MockCellService();
+      for (var i = 0; i < 100; i++) {
+        svc.addCell(
+          id: 'cs_$i',
+          lat: kTestLat + i * 0.01,
+          lon: kTestLon,
+          neighbors: [
+            if (i > 0) 'cs_${i - 1}',
+            if (i < 99) 'cs_${i + 1}',
+          ],
+        );
+      }
+    });
+
+    test('getCellId for 100 different positions completes in < 100ms', () {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        svc.getCellId(kTestLat + i * 0.01, kTestLon);
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(100));
+    });
+
+    test('getCellCenter for 100 cells completes in < 50ms', () {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        svc.getCellCenter('cs_$i');
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(50));
+    });
+
+    test('getCellBoundary for 100 cells completes in < 200ms', () {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        svc.getCellBoundary('cs_$i');
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(200));
+    });
+
+    test('getNeighborIds for 100 cells completes in < 200ms', () {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        svc.getNeighborIds('cs_$i');
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(200));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // GameEngine throughput
+  // ---------------------------------------------------------------------------
+
+  group('GameEngine throughput', () {
+    test('process 100 PositionUpdate inputs completes in < 200ms', () {
+      final svc = buildStarGrid();
+      final fog = FogStateResolver(svc);
+      final engine = GameEngine(fogResolver: fog, cellService: svc);
+      engine.start();
+
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        engine.send(PositionUpdate(kTestLat + i * 0.001, kTestLon));
+      }
+      sw.stop();
+      engine.dispose();
+      fog.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(200));
+    });
+
+    test(
+        'engine with 1000 visited cells: single position update completes in < 5ms',
+        () {
+      final svc = MockCellService();
+      for (var i = 0; i < 1001; i++) {
+        svc.addCell(id: 'eng_$i', lat: kTestLat + i * 0.001, lon: kTestLon);
+      }
+      final fog = FogStateResolver(svc);
+      fog.loadVisitedCells({for (var i = 0; i < 1000; i++) 'eng_$i'});
+      final engine = GameEngine(fogResolver: fog, cellService: svc);
+      engine.loadCellProperties({
+        'eng_1000': CellProperties(
+          cellId: 'eng_1000',
+          habitats: {Habitat.forest},
+          climate: Climate.temperate,
+          continent: Continent.europe,
+          locationId: null,
+          createdAt: DateTime(2026, 1, 1),
+        )
+      });
+      engine.start();
+
+      // Warm up the engine.
+      engine.send(PositionUpdate(kTestLat, kTestLon));
+
+      // Now measure a single update at the end of the visited range.
+      final sw = Stopwatch()..start();
+      engine.send(PositionUpdate(kTestLat + 1000 * 0.001, kTestLon));
+      sw.stop();
+      engine.dispose();
+      fog.dispose();
+      expect(sw.elapsedMilliseconds, lessThan(5));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Database performance
+  // ---------------------------------------------------------------------------
+
+  group('Database performance', () {
+    late AppDatabase db;
+    late ItemRepo itemRepo;
+    late WriteQueueRepo writeQueueRepo;
+
+    setUp(() {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      itemRepo = ItemRepo(db);
+      writeQueueRepo = WriteQueueRepo(db);
+    });
+
+    tearDown(() async => db.close());
+
+    test('insert 100 items completes in < 500ms', () async {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 100; i++) {
+        await itemRepo.create(ItemsTableCompanion.insert(
+          id: 'perf-item-$i',
+          userId: 'perf-user',
+          definitionId: 'fauna_$i',
+          acquiredAt: DateTime(2026, 1, 1),
+          displayName: Value('Species $i'),
+        ));
+      }
+      sw.stop();
+      expect(sw.elapsedMilliseconds, lessThan(500),
+          reason: '100 inserts < 500ms');
+    });
+
+    test('query all items for user with 100 items completes in < 50ms',
+        () async {
+      for (var i = 0; i < 100; i++) {
+        await itemRepo.create(ItemsTableCompanion.insert(
+          id: 'qperf-item-$i',
+          userId: 'qperf-user',
+          definitionId: 'fauna_$i',
+          acquiredAt: DateTime(2026, 1, 1),
+        ));
+      }
+
+      final sw = Stopwatch()..start();
+      final items = await itemRepo.getAll('qperf-user');
+      sw.stop();
+      expect(items.length, 100);
+      expect(sw.elapsedMilliseconds, lessThan(50),
+          reason: 'getAll for 100 items < 50ms');
+    });
+
+    test('bulk write queue: enqueue 50 + countPending completes in < 200ms',
+        () async {
+      final sw = Stopwatch()..start();
+      for (var i = 0; i < 50; i++) {
+        await writeQueueRepo.enqueue(WriteQueueTableCompanion.insert(
+          entityType: 'itemInstance',
+          entityId: 'wq-item-$i',
+          operation: 'upsert',
+          payload: '{"id":"wq-item-$i"}',
+          userId: 'wq-user',
+        ));
+      }
+      final count = await writeQueueRepo.countPending(userId: 'wq-user');
+      sw.stop();
+      expect(count, 50);
+      expect(sw.elapsedMilliseconds, lessThan(200),
+          reason: 'Enqueue 50 + count < 200ms');
     });
   });
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:earth_nova/core/models/iucn_status.dart';
+import 'package:earth_nova/models/iucn_status.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
