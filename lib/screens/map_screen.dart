@@ -74,6 +74,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   static const _fogMidLayerId = 'fog-mid';
   static const _fogBorderSrcId = 'fog-border-src';
   static const _fogBorderLayerId = 'fog-border';
+  static const _exploredBorderSrcId = 'explored-border-src';
+  static const _exploredBorderLayerId = 'explored-border';
 
   /// Render logic runs every Nth display-update frame.
   /// Desktop: every 6th frame (~10 Hz at 60 fps).
@@ -243,6 +245,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
         },
       ));
 
+      // Explored cell borders: bright white outlines on explored cells.
+      await controller.addSource(
+        GeoJsonSource(
+            id: _exploredBorderSrcId,
+            data: FogGeoJsonBuilder.emptyFeatureCollection),
+      );
+      await controller.addLayer(LineLayer(
+        id: _exploredBorderLayerId,
+        sourceId: _exploredBorderSrcId,
+        paint: {
+          'line-color': '#FFFFFF',
+          'line-width': 1.5,
+          'line-opacity': 0.7,
+        },
+      ));
+
       _fogLayersInitialized = true;
     } catch (e) {
       debugPrint('[MAP] Failed to init fog layers: $e');
@@ -284,6 +302,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
           id: _fogMidSrcId, data: _fogController.midFogGeoJson);
       await controller.updateGeoJsonSource(
           id: _fogBorderSrcId, data: _fogController.cellBorderGeoJson);
+      await controller.updateGeoJsonSource(
+          id: _exploredBorderSrcId,
+          data: _fogController.exploredBordersGeoJson);
     } catch (e) {
       debugPrint('[MAP] Failed to update fog sources: $e');
     }

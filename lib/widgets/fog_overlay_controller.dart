@@ -147,6 +147,9 @@ class FogOverlayController {
   /// GeoJSON string for the cell border outlines (unexplored + concealed).
   String _cellBorderGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
 
+  /// GeoJSON string for white explored borders (explored + present cells).
+  String _exploredBordersGeoJson = FogGeoJsonBuilder.emptyFeatureCollection;
+
   /// GeoJSON string for cell property icon Point features.
   String _cellIconsGeoJson = CellPropertyGeoJsonBuilder.emptyFeatureCollection;
 
@@ -238,6 +241,9 @@ class FogOverlayController {
 
   /// GeoJSON for cell border outlines (unexplored + concealed).
   String get cellBorderGeoJson => _cellBorderGeoJson;
+
+  /// GeoJSON for white explored borders (explored + present cells).
+  String get exploredBordersGeoJson => _exploredBordersGeoJson;
 
   /// GeoJSON for cell property icon Points (habitat, climate, event icons).
   String get cellIconsGeoJson => _cellIconsGeoJson;
@@ -546,11 +552,12 @@ class FogOverlayController {
     _lastVisibleCellIds = cellIds is Set<String> ? cellIds : cellIds.toSet();
     _lastCellStates = cellStates;
 
-    // Fog layers (base + mid + border outlines) — single pass over cellStates.
+    // Fog layers (base + mid + border outlines + explored borders) — single pass.
     final (
       :baseFog,
       :midFog,
       :cellBorders,
+      :exploredBorders,
     ) = FogGeoJsonBuilder.buildAllLayers(
       cellStates: cellStates,
       getBoundary: cellService.getCellBoundary,
@@ -559,6 +566,7 @@ class FogOverlayController {
     _baseFogGeoJson = baseFog;
     _midFogGeoJson = midFog;
     _cellBorderGeoJson = cellBorders;
+    _exploredBordersGeoJson = exploredBorders;
     _fogDirty = true;
 
     if (includePropertyLayers) {
