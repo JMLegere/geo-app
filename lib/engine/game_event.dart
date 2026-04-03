@@ -235,7 +235,7 @@ class GameEvent {
   // Serialization
   // ---------------------------------------------------------------------------
 
-  /// Serialize to an `app_events` row.
+  /// Serialize to a structured `app_logs` row.
   ///
   /// [data] values that are not JSON-primitives are excluded — the caller
   /// is responsible for extracting and serializing rich objects (e.g.

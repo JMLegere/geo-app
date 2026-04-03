@@ -11,10 +11,15 @@ void main() {
   group('DetectionZoneService', () {
     late MockCellService cellService;
     late DetectionZoneService service;
+    late List<String> logLines;
 
     setUp(() {
       cellService = buildStarGrid();
-      service = DetectionZoneService(cellService: cellService);
+      logLines = <String>[];
+      service = DetectionZoneService(
+        cellService: cellService,
+        onLog: logLines.add,
+      );
     });
 
     tearDown(() {
@@ -199,6 +204,24 @@ void main() {
       // Move to a new cell — should NOT reload districts.
       await service.updatePlayerPosition(kTestLat + 0.01, kTestLon);
       expect(callCount, 1);
+    });
+
+    test('emits detection zone log when zone changes', () async {
+      await service.updatePlayerPosition(kTestLat, kTestLon);
+
+      expect(logLines, isNotEmpty);
+      expect(logLines.last, startsWith('[DETECTION_ZONE]'));
+      expect(logLines.last, contains('center=cell_A'));
+    });
+
+    test('does not emit detection zone log when player stays in same cell',
+        () async {
+      await service.updatePlayerPosition(kTestLat, kTestLon);
+      final firstLogCount = logLines.length;
+
+      await service.updatePlayerPosition(kTestLat, kTestLon);
+
+      expect(logLines, hasLength(firstLogCount));
     });
   });
 }

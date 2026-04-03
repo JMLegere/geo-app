@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type",
@@ -47,9 +51,12 @@ serve(async (req: Request) => {
     for (const e of events) {
       if (!e.session_id || !e.category || !e.event) continue;
       const msg = e.data?.msg || "";
+      const sessionId = isUuid(String(e.session_id))
+        ? String(e.session_id)
+        : crypto.randomUUID();
       const line = `[${e.created_at || new Date().toISOString()}] [${e.category}] ${e.event}: ${msg}`;
       rows.push({
-        session_id: String(e.session_id).slice(0, 100),
+        session_id: sessionId,
         user_id: e.user_id || null,
         device_id: e.device_id ? String(e.device_id).slice(0, 50) : null,
         lines: line,

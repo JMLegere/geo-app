@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:earth_nova/data/observability.dart';
 import 'package:earth_nova/models/auth_state.dart';
 import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/providers/queue_processor_provider.dart';
@@ -64,6 +65,7 @@ class _TabShellState extends ConsumerState<TabShell>
   Future<void> _flushWriteQueue() async {
     final userId = ref.read(authProvider).user?.id;
     await ref.read(queueProcessorProvider).flushNow(userId: userId);
+    await AppObservability.instance.flush();
   }
 
   @override

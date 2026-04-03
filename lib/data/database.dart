@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
+import 'app_database.dart' show kExpectedTableNames;
 import 'connection.dart';
 
 part 'database.g.dart';
@@ -384,4 +385,25 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<CellProperty>> getAllCellProperties() =>
       select(cellPropertiesTable).get();
+
+  // ---- Schema integrity verification ----
+
+  /// Returns true if all expected application tables exist.
+  Future<bool> verifyTables() async {
+    final existing = await _listTables();
+    return kExpectedTableNames.every(existing.contains);
+  }
+
+  /// Returns the set of expected tables that are missing from the database.
+  Future<Set<String>> missingTables() async {
+    final existing = await _listTables();
+    return kExpectedTableNames.difference(existing);
+  }
+
+  Future<Set<String>> _listTables() async {
+    final rows = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table'",
+    ).get();
+    return rows.map((r) => r.read<String>('name')).toSet();
+  }
 }

@@ -355,6 +355,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       ));
 
       _fogLayersInitialized = true;
+      debugPrint('[FOG] fog layers initialized');
     } catch (e) {
       debugPrint('[MAP] Failed to init fog layers: $e');
     }
@@ -408,6 +409,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         await controller.updateGeoJsonSource(
             id: _territoryLinesSrcId, data: _fogController.borderLinesGeoJson);
       }
+      debugPrint('[FOG] fog sources updated');
     } catch (e) {
       debugPrint('[MAP] Failed to update fog sources: $e');
     }
@@ -419,6 +421,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
   void _onMapCreated(MapController controller) {
     _mapController = controller;
+    debugPrint('[MAP] map created');
   }
 
   void _onMapEvent(MapEvent event) {
@@ -477,6 +480,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   }
 
   void _onStyleLoaded() {
+    debugPrint('[MAP] style loaded');
     _initFogLayers();
     // If we already have a position, trigger initial fog render.
     final pos = _markerPosition.value;

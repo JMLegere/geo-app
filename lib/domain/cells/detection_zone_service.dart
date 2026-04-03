@@ -11,6 +11,7 @@ import 'package:earth_nova/models/hierarchy.dart';
 /// ~180m per ring. 15 rings ≈ 2.7km radius — covers a good walking area.
 class DetectionZoneService {
   final CellService _cellService;
+  final void Function(String line)? _onLog;
 
   /// Number of Voronoi rings. 15 rings ≈ 2.7km.
   static const int ringCount = 15;
@@ -27,8 +28,11 @@ class DetectionZoneService {
   /// Callback to load districts from the repository (injected to keep service pure).
   Future<List<HDistrict>> Function()? districtLoader;
 
-  DetectionZoneService({required CellService cellService})
-      : _cellService = cellService;
+  DetectionZoneService({
+    required CellService cellService,
+    void Function(String line)? onLog,
+  })  : _cellService = cellService,
+        _onLog = onLog;
 
   /// Current detection zone cell IDs. Empty before first position update.
   Set<String> get zoneCellIds => Set.unmodifiable(_zoneCellIds);
@@ -93,6 +97,9 @@ class DetectionZoneService {
     _currentDistrictId = attribution[cellId];
     _cellDistrictAttribution = attribution;
     _zoneCellIds = zoneCells;
+    _onLog?.call(
+      '[DETECTION_ZONE] center=$cellId cells=${zoneCells.length} districts=${attribution.length}',
+    );
     if (!_zoneChangedController.isClosed) {
       _zoneChangedController.add(Set.unmodifiable(zoneCells));
     }
