@@ -39,5 +39,32 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Run tests with coverage
+        run: flutter test --coverage
+
+      - name: Check coverage threshold
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "::error::No coverage file generated"
+            exit 1
+          fi
+
+          # Count lines
+          TOTAL=$(grep -c 'DA:' coverage/lcov.info || echo 0)
+          HIT=$(grep 'DA:' coverage/lcov.info | grep -cv ',0$' || echo 0)
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "::error::No coverage data found"
+            exit 1
+          fi
+
+          PCT=$(( HIT * 100 / TOTAL ))
+          echo "Coverage: $HIT/$TOTAL lines = ${PCT}%"
+
+          # Fail if coverage drops below 60%
+          if [ "$PCT" -lt 60 ]; then
+            echo "::error::Coverage ${PCT}% is below 60% threshold"
+            exit 1
+          fi
+
+          echo "✅ Coverage ${PCT}% meets 60% threshold"
