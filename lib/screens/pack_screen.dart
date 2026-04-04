@@ -9,6 +9,7 @@ import 'package:earth_nova/shared/app_theme.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/shared/iconography.dart';
 import 'package:earth_nova/widgets/loading_dots.dart';
+import 'package:earth_nova/widgets/species_card.dart';
 
 /// Pack screen — responsive grid of discovered species with collapsible
 /// filter panel and compact filter bar.
@@ -28,6 +29,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   PackSortMode _sort = PackSortMode.recent;
   PackFilterState _filters = const PackFilterState();
   bool _panelExpanded = false;
+  String _searchQuery = '';
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
@@ -42,8 +44,8 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(itemsProvider);
-    final filtered =
-        _applyFilterAndSort(state.items, _category, _filters, _sort);
+    final filtered = _applyFilterAndSort(
+        state.items, _category, _filters, _sort, _searchQuery);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -66,13 +68,16 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                   sort: _sort,
                   filters: _filters,
                   panelExpanded: _panelExpanded,
+                  searchQuery: _searchQuery,
                   onCategoryChanged: _onCategoryChanged,
                   onSortChanged: _onSortChanged,
                   onToggleType: _onToggleType,
                   onToggleHabitat: _onToggleHabitat,
                   onToggleRegion: _onToggleRegion,
+                  onToggleRarity: _onToggleRarity,
                   onClearFilters: _onClearFilters,
                   onTogglePanel: _onTogglePanel,
+                  onSearchChanged: _onSearchChanged,
                 ),
     );
   }
@@ -98,9 +103,12 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   void _onToggleRegion(GameRegion region) =>
       setState(() => _filters = _filters.toggleRegion(region));
 
+  void _onToggleRarity(IucnStatus rarity) =>
+      setState(() => _filters = _filters.toggleRarity(rarity));
   void _onClearFilters() => setState(() => _filters = const PackFilterState());
-
   void _onTogglePanel() => setState(() => _panelExpanded = !_panelExpanded);
+
+  void _onSearchChanged(String query) => setState(() => _searchQuery = query);
 }
 
 // ─── Shared filter + sort helper ──────────────────────────────────────────────
@@ -110,9 +118,18 @@ List<Item> _applyFilterAndSort(
   ItemCategory category,
   PackFilterState filters,
   PackSortMode sort,
+  String searchQuery,
 ) {
   var result = items.where((i) => i.category == category).toList();
   result = result.where(filters.matches).toList();
+  if (searchQuery.isNotEmpty) {
+    final q = searchQuery.toLowerCase();
+    result = result
+        .where((i) =>
+            i.displayName.toLowerCase().contains(q) ||
+            (i.scientificName?.toLowerCase().contains(q) ?? false))
+        .toList();
+  }
   switch (sort) {
     case PackSortMode.recent:
       result.sort((a, b) => b.acquiredAt.compareTo(a.acquiredAt));
@@ -145,13 +162,16 @@ class _PackBody extends StatelessWidget {
     required this.sort,
     required this.filters,
     required this.panelExpanded,
+    required this.searchQuery,
     required this.onCategoryChanged,
     required this.onSortChanged,
     required this.onToggleType,
     required this.onToggleHabitat,
     required this.onToggleRegion,
+    required this.onToggleRarity,
     required this.onClearFilters,
     required this.onTogglePanel,
+    required this.onSearchChanged,
   });
 
   final List<Item> allItems;
@@ -160,13 +180,16 @@ class _PackBody extends StatelessWidget {
   final PackSortMode sort;
   final PackFilterState filters;
   final bool panelExpanded;
+  final String searchQuery;
   final void Function(int) onCategoryChanged;
   final void Function(PackSortMode) onSortChanged;
   final void Function(TaxonomicGroup) onToggleType;
   final void Function(Habitat) onToggleHabitat;
   final void Function(GameRegion) onToggleRegion;
+  final void Function(IucnStatus) onToggleRarity;
   final VoidCallback onClearFilters;
   final VoidCallback onTogglePanel;
+  final void Function(String) onSearchChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -198,15 +221,22 @@ class _PackBody extends StatelessWidget {
               onToggleType: onToggleType,
               onToggleHabitat: onToggleHabitat,
               onToggleRegion: onToggleRegion,
+              onToggleRarity: onToggleRarity,
               onClearFilters: onClearFilters,
             ),
           ),
+        ),
+        // Search bar
+        _SearchBar(
+          query: searchQuery,
+          onChanged: onSearchChanged,
         ),
         Expanded(
           child: filtered.isEmpty
               ? _EmptyState(
                   category: category,
-                  hasFilters: filters.hasActiveFilters,
+                  hasFilters:
+                      filters.hasActiveFilters || searchQuery.isNotEmpty,
                 )
               : _ItemGrid(items: filtered),
         ),
@@ -531,6 +561,7 @@ class _FilterPanel extends StatelessWidget {
     required this.onToggleType,
     required this.onToggleHabitat,
     required this.onToggleRegion,
+    required this.onToggleRarity,
     required this.onClearFilters,
   });
 
@@ -541,6 +572,7 @@ class _FilterPanel extends StatelessWidget {
   final void Function(TaxonomicGroup) onToggleType;
   final void Function(Habitat) onToggleHabitat;
   final void Function(GameRegion) onToggleRegion;
+  final void Function(IucnStatus) onToggleRarity;
   final VoidCallback onClearFilters;
 
   @override
@@ -634,6 +666,24 @@ class _FilterPanel extends StatelessWidget {
               ),
             ),
           ],
+          // Rarity row — all categories
+          _divider(),
+          _FilterRow(
+            label: 'RARITY',
+            child: Wrap(
+              spacing: Spacing.xs,
+              runSpacing: Spacing.xs,
+              children: IucnStatus.values
+                  .where((s) => s != IucnStatus.extinct)
+                  .map((status) {
+                return _RarityFilterToggle(
+                  status: status,
+                  selected: filters.activeRarities.contains(status),
+                  onTap: () => onToggleRarity(status),
+                );
+              }).toList(),
+            ),
+          ),
           // Clear button
           if (filters.hasActiveFilters) ...[
             _divider(),
@@ -834,6 +884,130 @@ class _SortToggle extends StatelessWidget {
   }
 }
 
+// ─── Rarity filter toggle ─────────────────────────────────────────────────────
+
+/// IUCN status text toggle — multi-select, colored by rarity.
+class _RarityFilterToggle extends StatelessWidget {
+  const _RarityFilterToggle({
+    required this.status,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IucnStatus status;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.lg),
+      splashColor: Colors.transparent,
+      child: AnimatedContainer(
+        duration: Durations.quick,
+        curve: AppCurves.standard,
+        width: ComponentSizes.rarityToggleWidth,
+        height: ComponentSizes.filterToggleSize,
+        decoration: BoxDecoration(
+          color: selected
+              ? status.color.withValues(alpha: 0.15)
+              : AppTheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(
+            color: selected
+                ? status.color.withValues(alpha: 0.60)
+                : AppTheme.outline,
+            width: selected ? 1.5 : 1.0,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: status.color.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            status.code,
+            style: TextStyle(
+              fontSize: ComponentSizes.rarityCodeFont,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+              color: selected ? status.color : AppTheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Search bar ───────────────────────────────────────────────────────────────
+
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.query, required this.onChanged});
+  final String query;
+  final void Function(String) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+      margin: const EdgeInsets.symmetric(
+        horizontal: Spacing.sm,
+        vertical: Spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.xl),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search,
+            size: 18,
+            color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: TextField(
+              onChanged: onChanged,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppTheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search species...',
+                hintStyle: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (query.isNotEmpty)
+            GestureDetector(
+              onTap: () => onChanged(''),
+              child: Icon(
+                Icons.close,
+                size: 16,
+                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Item grid ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
@@ -885,9 +1059,7 @@ class _ItemSlot extends StatelessWidget {
     final hasFrame2 = item.iconUrlFrame2 != null;
 
     return GestureDetector(
-      onTap: () {
-        // TODO: open SpeciesCard bottom sheet
-      },
+      onTap: () => showSpeciesCard(context, item),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
