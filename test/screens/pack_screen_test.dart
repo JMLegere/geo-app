@@ -7,9 +7,9 @@ import 'package:earth_nova/screens/pack_screen.dart';
 
 void main() {
   group('PackScreen', () {
-    testWidgets('shows filtered count in title, not total count',
+    testWidgets('compact bar shows filtered count, not total item count',
         (tester) async {
-      // 4 fauna + 2 flora = 6 total; title should show 4 (fauna default).
+      // 4 fauna + 2 flora = 6 total; compact bar should show 4 (fauna default).
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna, rarity: 'leastConcern'),
         _item('2', 'Blue Whale', ItemCategory.fauna, rarity: 'endangered'),
@@ -21,11 +21,15 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      expect(find.text('Pack · 4'), findsOneWidget);
-      expect(find.text('Pack · 6'), findsNothing);
+      expect(find.text('Pack'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '4',
+      );
+      expect(find.textContaining('Pack ·'), findsNothing);
     });
 
-    testWidgets('shows pack count of zero when no items match category',
+    testWidgets('compact bar shows zero when no items match category',
         (tester) async {
       // Only flora items — default fauna category yields 0 matches.
       final items = [
@@ -34,10 +38,15 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      expect(find.text('Pack · 0'), findsOneWidget);
+      expect(find.text('Pack'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '0',
+      );
     });
 
-    testWidgets('tapping category chip updates title count', (tester) async {
+    testWidgets('tapping category chip updates compact bar count',
+        (tester) async {
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna, rarity: 'leastConcern'),
         _item('2', 'Oak Tree', ItemCategory.flora, rarity: 'leastConcern'),
@@ -47,15 +56,20 @@ void main() {
       await _pumpPack(tester, items);
 
       // Initial: fauna → 1 item.
-      expect(find.text('Pack · 1'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '1',
+      );
 
       // Tap the "Flora" category chip label.
       await tester.tap(find.text('Flora'));
       await tester.pumpAndSettle();
 
       // Now flora → 2 items.
-      expect(find.text('Pack · 2'), findsOneWidget);
-      expect(find.text('Pack · 1'), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '2',
+      );
     });
 
     testWidgets('shows empty state when user has no items at all',
@@ -78,8 +92,11 @@ void main() {
 
       // Compact bar should show "Recent" label.
       expect(find.text('Recent'), findsOneWidget);
-      // Title should show filtered count.
-      expect(find.text('Pack · 2'), findsOneWidget);
+      // Compact bar should show filtered species count.
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '2',
+      );
     });
 
     testWidgets('tapping compact bar expands filter panel', (tester) async {
@@ -137,7 +154,10 @@ void main() {
       await _pumpPack(tester, items);
 
       // All items visible initially.
-      expect(find.text('Pack · 1'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '1',
+      );
 
       // Expand panel.
       await tester.tap(find.text('Recent'));
@@ -148,7 +168,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // No mammals match birds filter → 0.
-      expect(find.text('Pack · 0'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '0',
+      );
       expect(find.text('No discoveries match your filters'), findsOneWidget);
     });
     testWidgets('toggling filter off restores all items', (tester) async {
@@ -158,19 +181,28 @@ void main() {
       ];
 
       await _pumpPack(tester, items);
-      expect(find.text('Pack · 2'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '2',
+      );
 
       // Expand, filter to mammals by key.
       await tester.tap(find.text('Recent'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('filter-type-mammals')));
       await tester.pumpAndSettle();
-      expect(find.text('Pack · 1'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '1',
+      );
 
       // Toggle mammals off → back to all.
       await tester.tap(find.byKey(const ValueKey('filter-type-mammals')));
       await tester.pumpAndSettle();
-      expect(find.text('Pack · 2'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '2',
+      );
     });
   });
 }
@@ -200,6 +232,12 @@ Item _item(
     );
 
 Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
+  // Use a tall viewport so the filter panel (up to ~320 px when "Clear" row
+  // is visible) plus the empty/grid state both fit without overflow.
+  tester.view.physicalSize = const Size(800, 900);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+
   final container = ProviderContainer(
     overrides: [
       itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
