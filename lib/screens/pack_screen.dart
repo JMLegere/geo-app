@@ -30,22 +30,44 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   PackFilterState _filters = const PackFilterState();
   bool _panelExpanded = false;
   String _searchQuery = '';
+  late final PageController _pageController = PageController();
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
   @override
   void initState() {
     super.initState();
+    _pageController.addListener(_onPageScrolled);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(itemsProvider.notifier).fetchItems();
     });
   }
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  /// Updates category in real-time as the user swipes.
+  void _onPageScrolled() {
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page;
+    if (page == null) return;
+    final newIndex = page.round();
+    if (newIndex != _categoryIndex) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        _categoryIndex = newIndex;
+        _filters = const PackFilterState();
+        _searchQuery = '';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(itemsProvider);
-    final filtered = _applyFilterAndSort(
-        state.items, _category, _filters, _sort, _searchQuery);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -63,12 +85,12 @@ class _PackScreenState extends ConsumerState<PackScreen> {
               ? _ErrorState(message: state.error!, onRetry: _fetch)
               : _PackBody(
                   allItems: state.items,
-                  filtered: filtered,
                   category: _category,
                   sort: _sort,
                   filters: _filters,
                   panelExpanded: _panelExpanded,
                   searchQuery: _searchQuery,
+                  pageController: _pageController,
                   onCategoryChanged: _onCategoryChanged,
                   onSortChanged: _onSortChanged,
                   onToggleType: _onToggleType,
@@ -86,10 +108,11 @@ class _PackScreenState extends ConsumerState<PackScreen> {
 
   void _onCategoryChanged(int index) {
     HapticFeedback.selectionClick();
-    setState(() {
-      _categoryIndex = index;
-      _filters = const PackFilterState(); // Reset filters per category
-    });
+    _pageController.animateToPage(
+      index,
+      duration: Durations.normal,
+      curve: AppCurves.standard,
+    );
   }
 
   void _onSortChanged(PackSortMode mode) => setState(() => _sort = mode);
@@ -157,12 +180,12 @@ List<Item> _applyFilterAndSort(
 class _PackBody extends StatelessWidget {
   const _PackBody({
     required this.allItems,
-    required this.filtered,
     required this.category,
     required this.sort,
     required this.filters,
     required this.panelExpanded,
     required this.searchQuery,
+    required this.pageController,
     required this.onCategoryChanged,
     required this.onSortChanged,
     required this.onToggleType,
@@ -175,12 +198,12 @@ class _PackBody extends StatelessWidget {
   });
 
   final List<Item> allItems;
-  final List<Item> filtered;
   final ItemCategory category;
   final PackSortMode sort;
   final PackFilterState filters;
   final bool panelExpanded;
   final String searchQuery;
+  final PageController pageController;
   final void Function(int) onCategoryChanged;
   final void Function(PackSortMode) onSortChanged;
   final void Function(TaxonomicGroup) onToggleType;
@@ -193,6 +216,9 @@ class _PackBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final filtered =
+        _applyFilterAndSort(allItems, category, filters, sort, searchQuery);
+
     return Column(
       children: [
         _CategoryRow(
@@ -226,19 +252,28 @@ class _PackBody extends StatelessWidget {
             ),
           ),
         ),
-        // Search bar
         _SearchBar(
           query: searchQuery,
           onChanged: onSearchChanged,
         ),
         Expanded(
-          child: filtered.isEmpty
-              ? _EmptyState(
-                  category: category,
+          child: PageView.builder(
+            controller: pageController,
+            itemCount: ItemCategory.values.length,
+            itemBuilder: (_, index) {
+              final cat = ItemCategory.values[index];
+              final items = _applyFilterAndSort(
+                  allItems, cat, filters, sort, searchQuery);
+              if (items.isEmpty) {
+                return _EmptyState(
+                  category: cat,
                   hasFilters:
                       filters.hasActiveFilters || searchQuery.isNotEmpty,
-                )
-              : _ItemGrid(items: filtered),
+                );
+              }
+              return _ItemGrid(items: items);
+            },
+          ),
         ),
       ],
     );
