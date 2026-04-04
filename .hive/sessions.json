@@ -24,11 +24,11 @@
     {
       "sessionId": "ses_2af1b41cbffeh5ZgHcO366tC8g",
       "startedAt": "2026-04-03T18:28:45.810Z",
-      "lastActiveAt": "2026-04-04T05:11:57.516Z",
+      "lastActiveAt": "2026-04-04T07:42:28.887Z",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
-      "directivePrompt": "some things i see:\nthe animal text spills outside their box.\nthe tabs have truncated text.\ni wish i could swipe right and left to go through the pack",
+      "directivePrompt": "push to 90 and add proper integration tests or a Supabase mock layer.",
       "replayDirectivePending": false
     },
     {
@@ -98,6 +98,34 @@
       "sessionId": "ses_2a92c0574ffem2WLG7C9Nbmgao",
       "startedAt": "2026-04-04T04:50:26.068Z",
       "lastActiveAt": "2026-04-04T04:50:26.068Z",
+      "agent": "designer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a905d453ffettsYAlOpkWm40n",
+      "startedAt": "2026-04-04T05:32:09.013Z",
+      "lastActiveAt": "2026-04-04T05:32:09.013Z",
+      "agent": "designer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a8f9e4beffe2TORwxsofU9oLz",
+      "startedAt": "2026-04-04T05:45:11.240Z",
+      "lastActiveAt": "2026-04-04T05:45:11.240Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a8ec7994ffevK8abBy5oCn4NT",
+      "startedAt": "2026-04-04T05:59:50.641Z",
+      "lastActiveAt": "2026-04-04T05:59:50.641Z",
+      "agent": "designer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a8b9d53cffeZ2Oun7yHRgQnQW",
+      "startedAt": "2026-04-04T06:55:09.516Z",
+      "lastActiveAt": "2026-04-04T06:55:09.516Z",
       "agent": "designer",
       "sessionKind": "unknown"
     }

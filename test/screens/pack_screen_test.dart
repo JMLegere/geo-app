@@ -174,6 +174,91 @@ void main() {
       );
       expect(find.text('No discoveries match your filters'), findsOneWidget);
     });
+    testWidgets('changing sort mode updates compact bar', (tester) async {
+      final items = [
+        _item('1', 'Red Fox', ItemCategory.fauna, rarity: 'endangered'),
+        _item('2', 'Gray Wolf', ItemCategory.fauna, rarity: 'leastConcern'),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // Default sort is Recent.
+      expect(find.text('Recent'), findsOneWidget);
+
+      // Expand panel.
+      await tester.tap(find.text('Recent'));
+      await tester.pumpAndSettle();
+
+      // Tap Rarity sort.
+      await tester.tap(find.text('Rarity'));
+      await tester.pumpAndSettle();
+
+      // Compact bar should now show Rarity.
+      expect(find.text('Rarity'), findsAtLeast(1));
+    });
+
+    testWidgets('switching sort to Name works', (tester) async {
+      final items = [
+        _item('1', 'Zebra', ItemCategory.fauna),
+        _item('2', 'Aardvark', ItemCategory.fauna),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // Expand panel.
+      await tester.tap(find.text('Recent'));
+      await tester.pumpAndSettle();
+
+      // Tap A→Z sort.
+      await tester.tap(find.text('A→Z'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('A→Z'), findsAtLeast(1));
+    });
+
+    testWidgets('error state shows retry button', (tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _ErrorItemsNotifier()),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PackScreen()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't load your collection"), findsOneWidget);
+      expect(find.text('Try Again'), findsOneWidget);
+    });
+
+    testWidgets('flora category shows HABITAT and REGION in panel',
+        (tester) async {
+      final items = [
+        _item('1', 'Oak Tree', ItemCategory.flora),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // Switch to flora.
+      await tester.tap(find.text('Flora'));
+      await tester.pumpAndSettle();
+
+      // Expand panel.
+      await tester.tap(find.text('Recent'));
+      await tester.pumpAndSettle();
+
+      // Flora gets SORT + HABITAT + REGION but NOT TYPE.
+      expect(find.text('SORT'), findsOneWidget);
+      expect(find.text('TYPE'), findsNothing);
+      expect(find.text('HABITAT'), findsOneWidget);
+      expect(find.text('REGION'), findsOneWidget);
+    });
+
     testWidgets('toggling filter off restores all items', (tester) async {
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna, taxonomicClass: 'MAMMALIA'),
@@ -267,4 +352,16 @@ class _MockItemsNotifier extends ItemsNotifier {
   Future<void> fetchItems() async {
     // State already set in build — nothing to fetch.
   }
+}
+
+/// Mock that returns an error state — tests the error UI.
+class _ErrorItemsNotifier extends ItemsNotifier {
+  @override
+  ItemsState build() => const ItemsState(
+        isLoading: false,
+        error: 'Connection timed out',
+      );
+
+  @override
+  Future<void> fetchItems() async {}
 }
