@@ -24,11 +24,11 @@
     {
       "sessionId": "ses_2af1b41cbffeh5ZgHcO366tC8g",
       "startedAt": "2026-04-03T18:28:45.810Z",
-      "lastActiveAt": "2026-04-04T00:11:19.310Z",
+      "lastActiveAt": "2026-04-04T02:25:57.413Z",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
-      "directivePrompt": "don't wait on ci. put it all in one big pr",
+      "directivePrompt": "continue",
       "replayDirectivePending": false
     },
     {

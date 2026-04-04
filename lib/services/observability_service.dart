@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -59,8 +60,10 @@ class ObservabilityService {
     if (_client == null) return;
     try {
       await _client!.from('app_logs').insert(events);
-    } catch (_) {
+    } catch (e) {
       // Fire-and-forget — never crash the app over logging.
+      // But DO log to console so we can diagnose RLS issues.
+      debugPrint('[Observability] flush failed: $e');
     }
   }
 
