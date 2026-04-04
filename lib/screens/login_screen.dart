@@ -31,9 +31,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _onPhoneChanged() {
-    if (_errorText != null) {
-      setState(() => _errorText = null);
-    }
+    // Always rebuild — re-evaluates _isValid so the Continue button
+    // enables/disables as the user types. Without this unconditional
+    // setState, the button stays frozen in its initial disabled state.
+    setState(() {
+      if (_errorText != null) _errorText = null;
+    });
   }
 
   bool get _isValid {
