@@ -90,8 +90,8 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      // Compact bar should show "Recent" label.
-      expect(find.text('Recent'), findsOneWidget);
+      // "Recent" appears in compact bar + panel sort row (always in tree).
+      expect(find.text('Recent'), findsAtLeast(1));
       // Compact bar should show filtered species count.
       expect(
         tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
@@ -99,30 +99,25 @@ void main() {
       );
     });
 
-    testWidgets('tapping compact bar expands filter panel', (tester) async {
+    testWidgets('tapping compact bar toggles filter panel', (tester) async {
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna, taxonomicClass: 'MAMMALIA'),
       ];
 
       await _pumpPack(tester, items);
 
-      // Panel labels should NOT be visible before expand.
-      expect(find.text('SORT'), findsNothing);
-      expect(find.text('TYPE'), findsNothing);
-
-      // Tap the compact bar area (find by "Recent" label).
-      await tester.tap(find.text('Recent'));
+      // Tap the compact bar to expand.
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
-      // Panel labels should now be visible.
+      // Fauna gets all 4 rows.
       expect(find.text('SORT'), findsOneWidget);
       expect(find.text('TYPE'), findsOneWidget);
       expect(find.text('HABITAT'), findsOneWidget);
       expect(find.text('REGION'), findsOneWidget);
     });
 
-    testWidgets('non-fauna category only shows SORT row in panel',
-        (tester) async {
+    testWidgets('non-fauna category hides TYPE row in panel', (tester) async {
       final items = [
         _item('1', 'Diamond', ItemCategory.mineral),
       ];
@@ -133,11 +128,7 @@ void main() {
       await tester.tap(find.text('Mineral'));
       await tester.pumpAndSettle();
 
-      // Expand panel.
-      await tester.tap(find.text('Recent'));
-      await tester.pumpAndSettle();
-
-      // Only SORT row — no TYPE/HABITAT/REGION for minerals.
+      // Mineral gets SORT only — no TYPE/HABITAT/REGION.
       expect(find.text('SORT'), findsOneWidget);
       expect(find.text('TYPE'), findsNothing);
       expect(find.text('HABITAT'), findsNothing);
@@ -160,7 +151,7 @@ void main() {
       );
 
       // Expand panel.
-      await tester.tap(find.text('Recent'));
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
       // Find the birds toggle by key.
@@ -182,11 +173,11 @@ void main() {
 
       await _pumpPack(tester, items);
 
-      // Default sort is Recent.
-      expect(find.text('Recent'), findsOneWidget);
+      // Default sort is Recent (compact bar + panel sort row).
+      expect(find.text('Recent'), findsAtLeast(1));
 
       // Expand panel.
-      await tester.tap(find.text('Recent'));
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
       // Tap Rarity sort.
@@ -206,7 +197,7 @@ void main() {
       await _pumpPack(tester, items);
 
       // Expand panel.
-      await tester.tap(find.text('Recent'));
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
       // Tap A→Z sort.
@@ -249,7 +240,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Expand panel.
-      await tester.tap(find.text('Recent'));
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
 
       // Flora gets SORT + HABITAT + REGION but NOT TYPE.
@@ -272,7 +263,7 @@ void main() {
       );
 
       // Expand, filter to mammals by key.
-      await tester.tap(find.text('Recent'));
+      await tester.tap(find.byKey(const Key('compact-bar')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('filter-type-mammals')));
       await tester.pumpAndSettle();

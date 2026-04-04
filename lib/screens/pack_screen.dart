@@ -185,23 +185,21 @@ class _PackBody extends StatelessWidget {
           onTogglePanel: onTogglePanel,
         ),
         ClipRect(
-          child: AnimatedSize(
+          child: AnimatedAlign(
             duration: Durations.normal,
             curve: AppCurves.standard,
             alignment: Alignment.topCenter,
-            clipBehavior: Clip.antiAlias,
-            child: panelExpanded
-                ? _FilterPanel(
-                    category: category,
-                    sort: sort,
-                    filters: filters,
-                    onSortChanged: onSortChanged,
-                    onToggleType: onToggleType,
-                    onToggleHabitat: onToggleHabitat,
-                    onToggleRegion: onToggleRegion,
-                    onClearFilters: onClearFilters,
-                  )
-                : const SizedBox.shrink(),
+            heightFactor: panelExpanded ? 1.0 : 0.0,
+            child: _FilterPanel(
+              category: category,
+              sort: sort,
+              filters: filters,
+              onSortChanged: onSortChanged,
+              onToggleType: onToggleType,
+              onToggleHabitat: onToggleHabitat,
+              onToggleRegion: onToggleRegion,
+              onClearFilters: onClearFilters,
+            ),
           ),
         ),
         Expanded(
@@ -357,6 +355,7 @@ class _CompactBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: const Key('compact-bar'),
       onTap: onTogglePanel,
       child: Container(
         height: ComponentSizes.compactBarHeight,
