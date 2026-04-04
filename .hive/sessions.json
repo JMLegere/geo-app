@@ -24,11 +24,11 @@
     {
       "sessionId": "ses_2af1b41cbffeh5ZgHcO366tC8g",
       "startedAt": "2026-04-03T18:28:45.810Z",
-      "lastActiveAt": "2026-04-04T03:58:11.488Z",
+      "lastActiveAt": "2026-04-04T05:11:57.516Z",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
-      "directivePrompt": "make sure that the new code you write is covered by tests",
+      "directivePrompt": "some things i see:\nthe animal text spills outside their box.\nthe tabs have truncated text.\ni wish i could swipe right and left to go through the pack",
       "replayDirectivePending": false
     },
     {
@@ -78,6 +78,27 @@
       "startedAt": "2026-04-03T21:48:48.618Z",
       "lastActiveAt": "2026-04-03T21:48:48.618Z",
       "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a93da468ffeU9JVB192sYpSqP",
+      "startedAt": "2026-04-04T04:31:11.261Z",
+      "lastActiveAt": "2026-04-04T04:31:11.261Z",
+      "agent": "designer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a92ddf11ffe0c1Uc0qfFRsDO7",
+      "startedAt": "2026-04-04T04:48:24.820Z",
+      "lastActiveAt": "2026-04-04T04:48:24.820Z",
+      "agent": "designer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2a92c0574ffem2WLG7C9Nbmgao",
+      "startedAt": "2026-04-04T04:50:26.068Z",
+      "lastActiveAt": "2026-04-04T04:50:26.068Z",
+      "agent": "designer",
       "sessionKind": "unknown"
     }
   ]

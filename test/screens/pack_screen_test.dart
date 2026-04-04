@@ -200,6 +200,138 @@ void main() {
       expect(find.text('Pack'), findsOneWidget);
       expect(find.textContaining('Pack ·'), findsNothing);
     });
+
+    testWidgets('swiping PageView left advances to next category',
+        (tester) async {
+      // 2 fauna + 1 flora — distinct counts let us confirm the category
+      // switched by checking the title after the swipe settles.
+      final items = [
+        Item(
+          id: '1',
+          definitionId: 'species1',
+          displayName: 'Red Fox',
+          category: ItemCategory.fauna,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 1),
+          status: ItemStatus.active,
+        ),
+        Item(
+          id: '2',
+          definitionId: 'species2',
+          displayName: 'Gray Wolf',
+          category: ItemCategory.fauna,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 2),
+          status: ItemStatus.active,
+        ),
+        Item(
+          id: '3',
+          definitionId: 'species3',
+          displayName: 'Oak Tree',
+          category: ItemCategory.flora,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 3),
+          status: ItemStatus.active,
+        ),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PackScreen()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Initial: fauna (page 0) → 2 items.
+      expect(find.text('Pack · 2'), findsOneWidget);
+
+      // Swipe left to advance to the next category (flora, page 1).
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(-400, 0),
+        800,
+      );
+      await tester.pumpAndSettle();
+
+      // After the swipe, flora is active → 1 item.
+      expect(find.text('Pack · 1'), findsOneWidget);
+      expect(find.text('Pack · 2'), findsNothing);
+    });
+
+    testWidgets('swiping PageView right goes back to previous category',
+        (tester) async {
+      // Start on flora (page 1) by tapping the chip, then swipe right back
+      // to fauna (page 0). Counts: 1 fauna, 2 flora.
+      final items = [
+        Item(
+          id: '1',
+          definitionId: 'species1',
+          displayName: 'Red Fox',
+          category: ItemCategory.fauna,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 1),
+          status: ItemStatus.active,
+        ),
+        Item(
+          id: '2',
+          definitionId: 'species2',
+          displayName: 'Oak Tree',
+          category: ItemCategory.flora,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 2),
+          status: ItemStatus.active,
+        ),
+        Item(
+          id: '3',
+          definitionId: 'species3',
+          displayName: 'Pine Tree',
+          category: ItemCategory.flora,
+          rarity: 'leastConcern',
+          acquiredAt: DateTime(2026, 1, 3),
+          status: ItemStatus.active,
+        ),
+      ];
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PackScreen()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Navigate to flora first via chip tap.
+      await tester.tap(find.text('Flora'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pack · 2'), findsOneWidget);
+
+      // Swipe right to return to fauna.
+      await tester.fling(
+        find.byType(PageView),
+        const Offset(400, 0),
+        800,
+      );
+      await tester.pumpAndSettle();
+
+      // Back to fauna → 1 item.
+      expect(find.text('Pack · 1'), findsOneWidget);
+      expect(find.text('Pack · 2'), findsNothing);
+    });
   });
 }
 

@@ -784,6 +784,7 @@ Every reusable piece. Nothing gets built that isn't listed here first.
 | `LoadingDots` | `widgets/loading_dots.dart` | Animated ellipsis (`·` `··` `···`) on 400ms loop |
 | `ErrorStateWidget` | `widgets/error_state_widget.dart` | Error message + retry button |
 | `IdenticonAvatar` | `widgets/identicon_avatar.dart` | Deterministic avatar generated from user ID seed |
+| `_PageDotIndicator` | `screens/pack_screen.dart` (private) | 7-dot page indicator for the Pack screen category PageView — active dot expands to a teal pill |
 
 ---
 
@@ -1001,9 +1002,22 @@ AppBar: "Pack · {filtered count}"
 FilterBar: 🦊 Fauna · 4 | 🌿 Flora | 💎 Mineral | 🦴 Fossil | 🏺 Artifact | 🍎 Food | 🔮 Orb
 ────────────────────────────────────────────────────────────────────────────────────────────
 SortBar (when items > 0):                             [ Recent ] [ Rarity ] [ Name ]
+PageDotIndicator: • ─ • • • • •  (7 dots; active = teal pill, inactive = muted circle)
 ────────────────────────────────────────────────────────────────────────────────────────────
-Grid (responsive columns — see breakpoints below)
+PageView — one page per category (swipe left/right to change category)
+  └─ Grid (responsive columns — see breakpoints below)
 ```
+
+**Swipe Interaction:**
+- The item grid is a `PageView.builder` with 7 pages, one per `ItemCategory`.
+- Swipe left → next category; swipe right → previous category.
+- Page change triggers `HapticFeedback.selectionClick()` for tactile confirmation.
+- Tapping a filter chip animates the PageView to the corresponding page via
+  `PageController.animateToPage(duration: 250ms, curve: easeInOut)`.
+- When a swipe advances to an off-screen chip, the filter `ListView` scrolls
+  proportionally so the active chip stays visible.
+- Each page filters and sorts independently; the empty-state per category shows
+  that category's emoji + "No {cat} in your pack yet. Keep exploring!"
 
 **Responsive Grid Breakpoints:**
 
@@ -1024,7 +1038,9 @@ Grid padding: `Spacing.sm` (8px) all sides. Gap: `Spacing.sm` (8px) both axes.
 - Count badge (inside chip, shown when `count > 0`): 10px `w700` text in translucent pill
   - Selected: `white × 0.25` background, white text
   - Unselected: `outline × 0.6` background, `onSurfaceVariant` text
-- Chip label font: 13px, height 1, emoji 14px, `Spacing.xs` gap
+- Chip label font: 13px, emoji 14px, `Spacing.xs` gap
+  - **No `height: 1`** — the EM-square clamp clips emoji glyphs on some platforms.
+    Default line-height renders cleanly without truncation.
 
 **SortBar anatomy:**
 - Container: bottom border `outline 0.5px`, padding `horizontal: 12px, vertical: 4px`
@@ -1051,8 +1067,12 @@ Grid padding: `Spacing.sm` (8px) all sides. Gap: `Spacing.sm` (8px) both axes.
 
 - Background: `surfaceContainerHigh`
 - Border: rarity colour at rarity-scaled opacity (see table below), `1.5px`, `Radii.xl` (12px)
+- `clipBehavior: Clip.antiAlias` — clips the name-strip background and any
+  overflowing paint to the card's rounded corners, preventing text/content
+  from visually spilling outside the card boundary.
 - Glow: `boxShadow` with rarity colour for EN and higher
 - Name strip: `surfaceContainer × 0.85`, `BorderRadius.vertical(bottom: Radii.lg)` (10px)
+  - `maxLines: 2`, `overflow: TextOverflow.ellipsis` — long names truncate cleanly.
 - Tap: TODO — opens `SpeciesCard` bottom sheet
 
 **Rarity border intensity:**

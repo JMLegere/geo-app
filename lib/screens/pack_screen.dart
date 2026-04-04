@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart' hide Durations;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/models/item.dart';
 import 'package:earth_nova/providers/items_provider.dart';
@@ -7,6 +8,10 @@ import 'package:earth_nova/shared/design_tokens.dart';
 import 'package:earth_nova/widgets/loading_dots.dart';
 
 /// Pack screen — responsive grid of discovered species with filter and sort.
+///
+/// Users can tap a category chip **or** swipe the grid left/right to browse
+/// fauna, flora, minerals, and other discovery types. The filter bar and
+/// dot indicator always reflect the active page.
 class PackScreen extends ConsumerStatefulWidget {
   const PackScreen({super.key});
 
@@ -15,8 +20,20 @@ class PackScreen extends ConsumerStatefulWidget {
 }
 
 class _PackScreenState extends ConsumerState<PackScreen> {
-  ItemCategory _filter = ItemCategory.fauna;
+  /// Index into [ItemCategory.values] — drives both the chip selection and
+  /// the [PageView] position.
+  int _filterIndex = 0;
   _SortMode _sort = _SortMode.recent;
+
+  /// Drives the category [PageView]. Also animated programmatically when a
+  /// filter chip is tapped.
+  late final PageController _pageController = PageController();
+
+  /// Controls the filter chip [ListView] so the active chip scrolls into view
+  /// when the user swipes to an off-screen category.
+  final ScrollController _filterScrollController = ScrollController();
+
+  ItemCategory get _filter => ItemCategory.values[_filterIndex];
 
   @override
   void initState() {
@@ -27,9 +44,16 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   }
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    _filterScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = ref.watch(itemsProvider);
-    final filtered = _filteredAndSorted(state.items);
+    final filtered = _applyFilterAndSort(state.items, _filter, _sort);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -50,41 +74,86 @@ class _PackScreenState extends ConsumerState<PackScreen> {
           : state.error != null
               ? _ErrorState(message: state.error!, onRetry: _fetch)
               : _PackBody(
-                  items: filtered,
                   allItems: state.items,
                   filter: _filter,
                   sort: _sort,
-                  onFilterChanged: (cat) => setState(() => _filter = cat),
+                  pageController: _pageController,
+                  filterScrollController: _filterScrollController,
+                  onFilterChanged: _onFilterChipTapped,
                   onSortChanged: (mode) => setState(() => _sort = mode),
+                  onPageChanged: _onPageChanged,
                 ),
     );
   }
 
   void _fetch() => ref.read(itemsProvider.notifier).fetchItems();
 
-  List<Item> _filteredAndSorted(List<Item> items) {
-    var result = items.where((i) => i.category == _filter).toList();
-    switch (_sort) {
-      case _SortMode.recent:
-        result.sort((a, b) => b.acquiredAt.compareTo(a.acquiredAt));
-      case _SortMode.rarity:
-        const order = [
-          'criticallyEndangered',
-          'endangered',
-          'vulnerable',
-          'nearThreatened',
-          'leastConcern',
-        ];
-        result.sort((a, b) {
-          final ai = order.indexOf(a.rarity ?? '');
-          final bi = order.indexOf(b.rarity ?? '');
-          return ai.compareTo(bi);
-        });
-      case _SortMode.name:
-        result.sort((a, b) => a.displayName.compareTo(b.displayName));
-    }
-    return result;
+  /// Called by [PageView.onPageChanged] when a swipe (or chip animation)
+  /// settles on a new page.
+  void _onPageChanged(int index) {
+    if (index == _filterIndex) return;
+    HapticFeedback.selectionClick();
+    setState(() => _filterIndex = index);
+    _scrollToActiveChip(index);
   }
+
+  /// Called when a filter chip is tapped — slides the [PageView] to match.
+  void _onFilterChipTapped(ItemCategory cat) {
+    final index = ItemCategory.values.indexOf(cat);
+    _pageController.animateToPage(
+      index,
+      duration: Durations.normal,
+      curve: AppCurves.standard,
+    );
+  }
+
+  /// Proportionally scrolls the filter chip list so the active chip is
+  /// always visible after a swipe advances the category.
+  void _scrollToActiveChip(int index) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_filterScrollController.hasClients) return;
+      final maxExtent = _filterScrollController.position.maxScrollExtent;
+      if (maxExtent <= 0) return;
+      final fraction = ItemCategory.values.length <= 1
+          ? 0.0
+          : index / (ItemCategory.values.length - 1).toDouble();
+      _filterScrollController.animateTo(
+        (maxExtent * fraction).clamp(0.0, maxExtent),
+        duration: Durations.quick,
+        curve: AppCurves.standard,
+      );
+    });
+  }
+}
+
+// ─── Shared filter + sort helper ──────────────────────────────────────────────
+
+/// Apply category filter and sort to a list of items.
+/// Top-level so both the state (for the title count) and [_PackBody]
+/// (for each PageView page) can use it without duplication.
+List<Item> _applyFilterAndSort(
+    List<Item> items, ItemCategory cat, _SortMode sort) {
+  var result = items.where((i) => i.category == cat).toList();
+  switch (sort) {
+    case _SortMode.recent:
+      result.sort((a, b) => b.acquiredAt.compareTo(a.acquiredAt));
+    case _SortMode.rarity:
+      const order = [
+        'criticallyEndangered',
+        'endangered',
+        'vulnerable',
+        'nearThreatened',
+        'leastConcern',
+      ];
+      result.sort((a, b) {
+        final ai = order.indexOf(a.rarity ?? '');
+        final bi = order.indexOf(b.rarity ?? '');
+        return ai.compareTo(bi);
+      });
+    case _SortMode.name:
+      result.sort((a, b) => a.displayName.compareTo(b.displayName));
+  }
+  return result;
 }
 
 enum _SortMode { recent, rarity, name }
@@ -92,54 +161,114 @@ enum _SortMode { recent, rarity, name }
 // ─── Pack body ────────────────────────────────────────────────────────────────
 
 /// Top-level layout shell for the non-loading, non-error pack state.
-/// Always shows the filter bar; conditionally shows sort bar and grid.
+///
+/// The item area is a [PageView] — one page per [ItemCategory]. Swiping
+/// left/right navigates between categories; the filter chips and dot
+/// indicator stay in sync with the active page.
 class _PackBody extends StatelessWidget {
   const _PackBody({
-    required this.items,
     required this.allItems,
     required this.filter,
     required this.sort,
+    required this.pageController,
+    required this.filterScrollController,
     required this.onFilterChanged,
     required this.onSortChanged,
+    required this.onPageChanged,
   });
 
-  /// Filtered + sorted items for the active category.
-  final List<Item> items;
-
-  /// All items across all categories (for per-chip counts).
+  /// All items across every category — used for per-chip counts and to
+  /// populate each [PageView] page.
   final List<Item> allItems;
 
   final ItemCategory filter;
   final _SortMode sort;
+  final PageController pageController;
+  final ScrollController filterScrollController;
   final void Function(ItemCategory) onFilterChanged;
   final void Function(_SortMode) onSortChanged;
 
+  /// Forwarded directly from [PageView.onPageChanged] to the parent state.
+  final void Function(int) onPageChanged;
+
   @override
   Widget build(BuildContext context) {
+    // Used only to decide whether to show the sort bar for the active page.
+    final currentItems = _applyFilterAndSort(allItems, filter, sort);
+
     return Column(
       children: [
         _FilterBar(
           filter: filter,
           allItems: allItems,
           onFilterChanged: onFilterChanged,
+          scrollController: filterScrollController,
         ),
-        if (items.isNotEmpty)
+        if (currentItems.isNotEmpty)
           _SortBar(sort: sort, onSortChanged: onSortChanged),
+        if (allItems.isNotEmpty) _PageDotIndicator(filter: filter),
         Expanded(
           child: allItems.isEmpty
               ? _EmptyState(
                   filter: filter,
                   subtitle: 'Explore the world to discover wildlife!',
                 )
-              : items.isEmpty
-                  ? _EmptyState(
-                      filter: filter,
-                      subtitle:
-                          'No ${filter.name} in your pack yet. Keep exploring!',
-                    )
-                  : _ItemGrid(items: items),
+              : PageView.builder(
+                  controller: pageController,
+                  onPageChanged: onPageChanged,
+                  itemCount: ItemCategory.values.length,
+                  itemBuilder: (_, index) {
+                    final cat = ItemCategory.values[index];
+                    final items = _applyFilterAndSort(allItems, cat, sort);
+                    if (items.isEmpty) {
+                      return _EmptyState(
+                        filter: cat,
+                        subtitle:
+                            'No ${cat.name} in your pack yet. Keep exploring!',
+                      );
+                    }
+                    return _ItemGrid(items: items);
+                  },
+                ),
         ),
       ],
+    );
+  }
+}
+
+// ─── Page dot indicator ───────────────────────────────────────────────────────
+
+/// Minimal swipe affordance: one dot per [ItemCategory].
+/// The active category expands to a wider pill; inactive dots are small
+/// circles. Animates with the category transition so the user always knows
+/// where they are in the sequence.
+class _PageDotIndicator extends StatelessWidget {
+  const _PageDotIndicator({required this.filter});
+  final ItemCategory filter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: ItemCategory.values.map((cat) {
+          final isActive = cat == filter;
+          return AnimatedContainer(
+            duration: Durations.quick,
+            curve: AppCurves.standard,
+            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+            width: isActive ? 16.0 : 5.0,
+            height: 5.0,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppTheme.primary
+                  : AppTheme.outline.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(Radii.pill),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -151,11 +280,16 @@ class _FilterBar extends StatelessWidget {
     required this.filter,
     required this.allItems,
     required this.onFilterChanged,
+    required this.scrollController,
   });
 
   final ItemCategory filter;
   final List<Item> allItems;
   final void Function(ItemCategory) onFilterChanged;
+
+  /// Passed in from the parent state so programmatic swipes can scroll the
+  /// chip list to keep the newly-active chip on screen.
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +302,7 @@ class _FilterBar extends StatelessWidget {
         ),
       ),
       child: ListView.separated(
+        controller: scrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(
           horizontal: Spacing.sm,
@@ -234,10 +369,13 @@ class _CategoryChip extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // height: 1 removed — the EM-square clamp clips emoji glyphs on
+            // some platforms, causing the top/bottom pixels to be cut off.
             Text(
               category.emoji,
-              style: const TextStyle(fontSize: 14, height: 1),
+              style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(width: Spacing.xs),
             Text(
@@ -246,7 +384,6 @@ class _CategoryChip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                 color: selected ? Colors.white : AppTheme.onSurfaceVariant,
-                height: 1,
               ),
             ),
             if (count > 0) ...[
@@ -265,7 +402,6 @@ class _CategoryChip extends StatelessWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: selected ? Colors.white : AppTheme.onSurfaceVariant,
-                    height: 1,
                   ),
                 ),
               ),
@@ -468,6 +604,9 @@ class _ItemSlot extends StatelessWidget {
         // TODO: open SpeciesCard bottom sheet
       },
       child: Container(
+        // Clip content to the rounded-corner shape so the name strip
+        // background and any overflowing paint stay within card bounds.
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppTheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(Radii.xl),
@@ -537,6 +676,8 @@ class _ItemSlot extends StatelessWidget {
               ),
             ),
             // ── Name strip ────────────────────────────────────────────────
+            // Contained by clipBehavior above — text ellipsis + maxLines 2
+            // prevent overflow, clip prevents any paint escaping the card.
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: Spacing.xs,
