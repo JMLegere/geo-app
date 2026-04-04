@@ -31,6 +31,38 @@ void main() {
       expect(IucnStatus.criticallyEndangered.code, 'CR');
       expect(IucnStatus.extinct.code, 'EX');
     });
+
+    test('all statuses have color properties', () {
+      for (final status in IucnStatus.values) {
+        expect(status.color, isNotNull, reason: '${status.name} missing color');
+        expect(status.fgColor, isNotNull,
+            reason: '${status.name} missing fgColor');
+        expect(status.borderAlpha, greaterThanOrEqualTo(0.0));
+        expect(status.borderAlpha, lessThanOrEqualTo(1.0));
+        expect(status.glowAlpha, greaterThanOrEqualTo(0.0));
+        expect(status.glowAlpha, lessThanOrEqualTo(1.0));
+      }
+    });
+
+    test('CR has highest glow, LC/NT/EX have none', () {
+      expect(IucnStatus.criticallyEndangered.glowAlpha, greaterThan(0));
+      expect(IucnStatus.endangered.glowAlpha, greaterThan(0));
+      expect(IucnStatus.vulnerable.glowAlpha, greaterThan(0));
+      expect(IucnStatus.nearThreatened.glowAlpha, 0.0);
+      expect(IucnStatus.leastConcern.glowAlpha, 0.0);
+      expect(IucnStatus.extinct.glowAlpha, 0.0);
+    });
+
+    test('rarity sort order: CR > EN > VU > NT > LC by borderAlpha', () {
+      expect(IucnStatus.criticallyEndangered.borderAlpha,
+          greaterThan(IucnStatus.endangered.borderAlpha));
+      expect(IucnStatus.endangered.borderAlpha,
+          greaterThan(IucnStatus.vulnerable.borderAlpha));
+      expect(IucnStatus.vulnerable.borderAlpha,
+          greaterThan(IucnStatus.nearThreatened.borderAlpha));
+      expect(IucnStatus.nearThreatened.borderAlpha,
+          greaterThan(IucnStatus.leastConcern.borderAlpha));
+    });
   });
 
   group('AuthState', () {

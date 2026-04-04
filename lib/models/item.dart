@@ -1,15 +1,22 @@
-/// Item category — what type of discovery this is.
-enum ItemCategory {
-  fauna('🦊'),
-  flora('🌿'),
-  mineral('💎'),
-  fossil('🦴'),
-  artifact('🏺'),
-  food('🍎'),
-  orb('🔮');
+import 'dart:convert';
 
-  const ItemCategory(this.emoji);
+import 'package:earth_nova/shared/iconography.dart';
+
+/// Item category — what type of discovery this is.
+///
+/// Emoji icons are sourced from [AppIcons] — never hardcoded.
+enum ItemCategory {
+  fauna(AppIcons.fauna, 'Fauna'),
+  flora(AppIcons.flora, 'Flora'),
+  mineral(AppIcons.mineral, 'Mineral'),
+  fossil(AppIcons.fossil, 'Fossil'),
+  artifact(AppIcons.artifact, 'Artifact'),
+  food(AppIcons.food, 'Food'),
+  orb(AppIcons.orb, 'Orb');
+
+  const ItemCategory(this.emoji, this.label);
   final String emoji;
+  final String label;
 
   static ItemCategory fromString(String? value) {
     if (value == null) return ItemCategory.fauna;
@@ -52,6 +59,9 @@ class Item {
     required this.acquiredAt,
     this.acquiredInCellId,
     required this.status,
+    this.taxonomicClass,
+    this.habitats = const [],
+    this.continents = const [],
   });
 
   final String id;
@@ -67,6 +77,19 @@ class Item {
   final String? acquiredInCellId;
   final ItemStatus status;
 
+  /// Raw IUCN taxonomic class (e.g. "MAMMALIA"). Null for non-species items.
+  final String? taxonomicClass;
+
+  /// Parsed habitat names (e.g. ["Forest", "Mountain"]). Empty for non-species.
+  final List<String> habitats;
+
+  /// Parsed continent names (e.g. ["Africa", "Asia"]). Empty for non-species.
+  final List<String> continents;
+
+  /// Convenience getter: maps [taxonomicClass] to a user-facing group.
+  TaxonomicGroup get taxonomicGroup =>
+      TaxonomicGroup.fromTaxonomicClass(taxonomicClass);
+
   factory Item.fromJson(Map<String, dynamic> json) => Item(
         id: json['id'] as String,
         definitionId: json['definition_id'] as String,
@@ -81,6 +104,9 @@ class Item {
         acquiredAt: DateTime.parse(json['acquired_at'] as String),
         acquiredInCellId: json['acquired_in_cell_id'] as String?,
         status: ItemStatus.fromString(json['status'] as String?),
+        taxonomicClass: json['taxonomic_class'] as String?,
+        habitats: _parseJsonArray(json['habitats_json'] as String?),
+        continents: _parseJsonArray(json['continents_json'] as String?),
       );
 
   Map<String, dynamic> toJson() => {
@@ -96,6 +122,9 @@ class Item {
         'acquired_at': acquiredAt.toIso8601String(),
         'acquired_in_cell_id': acquiredInCellId,
         'status': status.name,
+        'taxonomic_class': taxonomicClass,
+        'habitats_json': jsonEncode(habitats),
+        'continents_json': jsonEncode(continents),
       };
 
   Item copyWith({
@@ -111,6 +140,9 @@ class Item {
     DateTime? acquiredAt,
     String? acquiredInCellId,
     ItemStatus? status,
+    String? taxonomicClass,
+    List<String>? habitats,
+    List<String>? continents,
   }) =>
       Item(
         id: id ?? this.id,
@@ -125,6 +157,9 @@ class Item {
         acquiredAt: acquiredAt ?? this.acquiredAt,
         acquiredInCellId: acquiredInCellId ?? this.acquiredInCellId,
         status: status ?? this.status,
+        taxonomicClass: taxonomicClass ?? this.taxonomicClass,
+        habitats: habitats ?? this.habitats,
+        continents: continents ?? this.continents,
       );
 
   @override
@@ -143,7 +178,10 @@ class Item {
           artUrl == other.artUrl &&
           acquiredAt == other.acquiredAt &&
           acquiredInCellId == other.acquiredInCellId &&
-          status == other.status;
+          status == other.status &&
+          taxonomicClass == other.taxonomicClass &&
+          _listEquals(habitats, other.habitats) &&
+          _listEquals(continents, other.continents);
 
   @override
   int get hashCode => Object.hashAll([
@@ -159,5 +197,28 @@ class Item {
         acquiredAt,
         acquiredInCellId,
         status,
+        taxonomicClass,
+        habitats.join(','),
+        continents.join(','),
       ]);
+}
+
+/// Parse a JSON-encoded string array (e.g. '["Forest","Mountain"]').
+/// Returns empty list for null, empty, or malformed input.
+List<String> _parseJsonArray(String? json) {
+  if (json == null || json.isEmpty || json == '[]') return const [];
+  try {
+    return List<String>.from(jsonDecode(json) as List);
+  } catch (_) {
+    return const [];
+  }
+}
+
+/// Element-wise list equality (order-sensitive).
+bool _listEquals(List<String> a, List<String> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
