@@ -46,7 +46,7 @@ class ItemsState {
 /// Provider for the item service — overridden with real impl in main.dart.
 final itemServiceProvider = Provider<ItemService>((ref) {
   final client = Supabase.instance.client;
-  return ItemService(client: client);
+  return SupabaseItemService(client: client);
 });
 
 /// Items provider — fetches and caches user's items from Supabase.
