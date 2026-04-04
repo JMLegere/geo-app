@@ -22,8 +22,12 @@
 # Install toolchain (Flutter 3.41.3, Supabase CLI, Terraform)
 mise install
 
-# Activate Flutter in current shell
+# Activate toolchain in current shell (Flutter, Supabase CLI, Terraform)
 eval "$(~/.local/bin/mise activate bash)"
+
+# Railway CLI (installed via npm, already in node PATH)
+# Auth: railway login (browser OAuth — already logged in if you see `railway whoami`)
+# Supabase CLI: already in mise.toml — `supabase --version` to verify
 
 # Install dependencies
 flutter pub get
