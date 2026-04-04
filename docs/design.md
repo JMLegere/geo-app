@@ -995,38 +995,98 @@ enabled: !isLoading
 
 The centrepiece. Pokémon PC Box meets TCG binder.
 
-**Structure:**
+**Structure (v3 MVP):**
 ```
-AppBar: "Pack"                     [identicon avatar → settings]
-TabBar: 🧭 Character | 🦊 Fauna | 🌿 Flora | 💎 Mineral | 🦴 Fossil | 🏺 Artifact | 🍎 Food | 🔮 Orb
-────────────────────────────────────────────────────────
-[active tab content]
-```
-
-**Fauna Tab (the real one in v3):**
-```
-SubTabBar: 🦁 Mammal | 🐦 Bird | 🐟 Fish | 🦎 Reptile | 🐛 Bug
-────────────────────────────────────────────────────────────────
-Sort: [ Recent ▼ ]   (dropdown — Recent | Rarity | Name | Type)
-────────────────────────────────────────────────────────────────
-Grid (6 columns):
-┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐
-│   │ │   │ │   │ │   │ │   │ │   │  ← ItemSlotWidget
-│ 🦊 │ │ 🐻 │ │ 🐯 │ │ 🐼 │ │ 🦍 │ │   │
-│ LC│ │ LC│ │EN │ │VU │ │CR │ │   │  ← RarityBadge top-right
-│Fox│ │Bear│ │Tiger│ │Panda│ │Gorilla│ │
-└───┘ └───┘ └───┘ └───┘ └───┘ └───┘
+AppBar: "Pack · {filtered count}"
+FilterBar: 🦊 Fauna · 4 | 🌿 Flora | 💎 Mineral | 🦴 Fossil | 🏺 Artifact | 🍎 Food | 🔮 Orb
+────────────────────────────────────────────────────────────────────────────────────────────
+SortBar (when items > 0):                             [ Recent ] [ Rarity ] [ Name ]
+────────────────────────────────────────────────────────────────────────────────────────────
+Grid (responsive columns — see breakpoints below)
 ```
 
-**ItemSlotWidget anatomy:**
-- Size: 6 columns, `childAspectRatio: 0.85`, `crossAxisSpacing: 6`, `mainAxisSpacing: 6`
-- Background: `HabitatGradient.tile(primaryHabitat)` or `surfaceContainerHigh`
-- Border: rarity colour at 20% opacity, `1.5px` width, `Radii.borderLg`
-- Icon: `SpeciesArtImage` (icon_url → fallback emoji), `44px`, centred, **2-frame idle animation** (see below)
-- `RarityBadge` (small): top-right corner
-- First-discovery: `PrismaticBorder` (animated rainbow, `2.5px`, `3500ms` cycle) replaces static border + `★` badge top-left
-- Name: 9px, w600, 1 line, ellipsis, bottom-centre
-- Tap: opens `SpeciesCard` modal (TCG card for that item instance)
+**Responsive Grid Breakpoints:**
+
+| Viewport width | Columns | `childAspectRatio` | Card size (375px phone) |
+|----------------|---------|---------------------|------------------------|
+| `< 600px`      | 3       | 0.78                | ~114 × 146 px          |
+| `600–899px`    | 4       | 0.82                | ~145 × 177 px          |
+| `≥ 900px`      | 6       | 0.85                | ~148 × 174 px          |
+
+Grid padding: `Spacing.sm` (8px) all sides. Gap: `Spacing.sm` (8px) both axes.
+
+**FilterBar anatomy:**
+- Container: `height: 52px`, `color: surfaceContainer`, bottom border `outline 0.5px`
+- Horizontally scrolling `ListView.separated`, padding `horizontal: 8px, vertical: 4px`
+- Each chip: `_CategoryChip` — pill shape (`Radii.pill`), `horizontal: 12px / vertical: 2px` padding
+- Selected chip: `primary` fill + border, white text, `w600`
+- Unselected chip: `surfaceContainerHigh` fill, `outline` border, `onSurfaceVariant` text, `w400`
+- Count badge (inside chip, shown when `count > 0`): 10px `w700` text in translucent pill
+  - Selected: `white × 0.25` background, white text
+  - Unselected: `outline × 0.6` background, `onSurfaceVariant` text
+- Chip label font: 13px, height 1, emoji 14px, `Spacing.xs` gap
+
+**SortBar anatomy:**
+- Container: bottom border `outline 0.5px`, padding `horizontal: 12px, vertical: 4px`
+- Three pill toggle buttons right-aligned: `Recent`, `Rarity`, `Name`
+- Selected pill: `primary × 0.15` fill, `primary × 0.6` border, `primary` text `w600`
+- Unselected pill: transparent, no border, `onSurfaceVariant` text `w400`
+- Pill padding: `horizontal: 8px, vertical: 4px`; font: 12px
+
+**ItemSlot anatomy (v3 MVP):**
+
+```
+┌────────────────────────────┐
+│                      [CR]  │  ← RarityBadge — purple pill, top-right, 4px inset
+│                            │
+│            🦊              │  ← species icon (iconUrl → category emoji fallback)
+│          44 × 44           │     centred, top padding 12px
+│                            │
+│ ● (teal dot, if frame2)   │  ← animated-species indicator, bottom-left 4px inset
+├────────────────────────────┤
+│    Amur Leopard            │  ← surfaceContainer × 0.85 strip
+│                            │     10px w600, 2 lines, center, ellipsis
+└────────────────────────────┘
+```
+
+- Background: `surfaceContainerHigh`
+- Border: rarity colour at rarity-scaled opacity (see table below), `1.5px`, `Radii.xl` (12px)
+- Glow: `boxShadow` with rarity colour for EN and higher
+- Name strip: `surfaceContainer × 0.85`, `BorderRadius.vertical(bottom: Radii.lg)` (10px)
+- Tap: TODO — opens `SpeciesCard` bottom sheet
+
+**Rarity border intensity:**
+
+| IUCN Status        | Code | Border alpha | Glow alpha | Glow blur |
+|--------------------|------|-------------|------------|-----------|
+| Critically Endangered | CR | 0.90        | 0.35       | 12px      |
+| Endangered         | EN   | 0.85        | 0.25       | 12px      |
+| Vulnerable         | VU   | 0.65        | 0.15       | 12px      |
+| Near Threatened    | NT   | 0.50        | —          | —         |
+| Least Concern      | LC   | 0.12        | —          | —         |
+| Unknown            | —    | 0.50 (outline) | —       | —         |
+
+**RarityBadge anatomy:**
+- Pill shape: `Radii.xs` (4px), padding `horizontal: 4px, vertical: 1px`
+- Font: 8px, `w800`, `letterSpacing: 0.4`, `height: 1.2`
+- Glow: `boxShadow` with badge colour at 0.5 alpha, `blurRadius: 4`
+
+| Code | Background | Text |
+|------|-----------|------|
+| CR   | `#9C27B0` | white |
+| EN   | `#FFD700` | `#1A1A2E` |
+| VU   | `#2196F3` | white |
+| NT   | `#4CAF50` | white |
+| LC   | `#FFFFFF` | `#1A1A2E` |
+
+**Animated-species indicator:**
+- 5×5px circle, `AppTheme.tertiary × 0.9`, bottom-left at `Spacing.xs` inset
+- Soft teal glow: `boxShadow` with `tertiary × 0.5`, `blurRadius: 4`
+- Visible only when `iconUrlFrame2 != null` (species has 2-frame animation data)
+
+**Species icon:**
+- `Image.network(iconUrl, width: 44, height: 44, fit: BoxFit.contain)` with emoji fallback
+- Fallback: `Text(category.emoji, fontSize: 36)` when `iconUrl` is null or fails to load
 
 **2-Frame Idle Animation (living pack)**
 
@@ -1164,28 +1224,57 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 
 ### Pack Screen
 
-- [ ] Authenticated user with fauna: 6-column `ItemSlotWidget` grid renders
-- [ ] Each slot: `SpeciesArtImage` icon (44px), `RarityBadge` (small, top-right), name (9px, 1 line, ellipsis)
-- [ ] `HabitatGradient` background applied to slot when `primaryHabitat` known
-- [ ] Slot border colour matches IUCN rarity colour at 20% opacity
-- [ ] First-discovery slot: `PrismaticBorder` (animated rainbow) + `★` badge top-left
-- [ ] `SpriteAnimationScope` provides one shared `AnimationController` per grid (not per slot)
-- [ ] Slot with `icon_url_frame2` non-null: animates at 2Hz between frame 1 and frame 2
-- [ ] Slot with `icon_url_frame2` null: renders static `icon_url`, no animation
-- [ ] Phase offsets vary per species — slots do not all switch frames simultaneously
-- [ ] Animal type subtabs: Mammal | Bird | Fish | Reptile | Bug
-- [ ] Empty animal type subtab → `EmptyStateWidget` with type icon + message
-- [ ] No fauna at all → `EmptyStateWidget` "No fauna collected yet"
+**Responsiveness**
+- [ ] Grid: 3 columns when viewport `< 600px`, 4 columns at `600–899px`, 6 columns at `≥ 900px`
+- [ ] `childAspectRatio` 0.78 / 0.82 / 0.85 respectively — cards remain readable at all breakpoints
+
+**FilterBar**
+- [ ] FilterBar always visible (loading and empty states show spinner/empty below it)
+- [ ] Seven category chips: Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb
+- [ ] Selected chip: `primary` fill, white label `w600`, count badge in `white × 0.25`
+- [ ] Unselected chip: `surfaceContainerHigh` fill, `outline` border, `onSurfaceVariant` label
+- [ ] Count badge only shown when `count > 0`
+- [ ] FilterBar scrolls horizontally on narrow viewports — no overflow
+
+**SortBar**
+- [ ] SortBar hidden when filtered list is empty; visible when ≥ 1 item
+- [ ] Three pill buttons: Recent (default), Rarity, Name — right-aligned
+- [ ] Active pill: `primary × 0.15` fill, `primary × 0.6` border, `primary` text
+- [ ] Tapping pill re-sorts grid immediately (< 16ms)
+
+**ItemSlot**
+- [ ] Background: `surfaceContainerHigh`; border: rarity colour at rarity-scaled opacity, `1.5px`, `Radii.xl`
+- [ ] CR and EN slots have ambient glow (`boxShadow` with rarity colour)
+- [ ] `RarityBadge` top-right: colour-coded pill (CR purple / EN gold / VU blue / NT green / LC white)
+- [ ] Icon: `Image.network(iconUrl)` 44×44px, fit contain; falls back to `category.emoji` at 36px on error/null
+- [ ] Name strip: `surfaceContainer × 0.85`, bottom-rounded, 10px `w600`, 2-line ellipsis
+- [ ] Animated-species dot (5px teal circle) shown only when `iconUrlFrame2 != null`
+- [ ] Slot with `icon_url_frame2` null: static icon, no dot indicator
+- [ ] Minimum touch target: card is ≥ 90px tall at 3-column layout on 375px screen
+
+**States**
+- [ ] Loading: `Center(LoadingDots)`, title shows plain `'Pack'`
+- [ ] Error: warning icon, message, `'Try Again'` `FilledButton` — no filter/sort chrome
+- [ ] Global empty (0 items): filter bar + `_EmptyState` with active category emoji + "Explore" subtitle
+- [ ] Category empty (items exist elsewhere): filter bar shows counts + `_EmptyState` with category emoji + "Keep exploring" subtitle
+- [ ] Title: `'Pack · N'` where N = filtered count (not total); plain `'Pack'` when total = 0
+
+**Sort behaviour**
 - [ ] Sort Recent: items ordered `acquired_at DESC`
-- [ ] Sort Rarity: EX first, LC last
+- [ ] Sort Rarity: CR → EN → VU → NT → LC
 - [ ] Sort Name: A→Z alphabetical
-- [ ] Sort Type: Mammal → Bird → Fish → Reptile → Bug
-- [ ] Tap slot → `SpeciesCard` modal opens as bottom sheet
-- [ ] `SpeciesCard` shows: display name, `RarityBadge`, watercolor `art_url`, type bar, location, `acquired_at` date
-- [ ] `SpeciesCard` art: falls back to fallback emoji when `art_url` null
-- [ ] Category tabs Flora / Mineral / Fossil / Artifact / Food / Orb → `EmptyStateWidget` "Coming soon"
-- [ ] `items.fetch_success` logged with correct item `count`
-- [ ] `items.fetch_error` logged with full error detail — no crash, error state shown with retry button
+
+**Post-MVP (not in v3)**
+- [ ] `SpriteAnimationScope` 2-frame idle at 2Hz (staggered phase offsets)
+- [ ] `PrismaticBorder` animated rainbow for first-discovery slots
+- [ ] `HabitatGradient` tinted backgrounds
+- [ ] `SpeciesCard` bottom sheet on slot tap
+- [ ] Animal type subtabs (Mammal / Bird / Fish / Reptile / Bug)
+- [ ] Sort by Type
+
+**Observability**
+- [ ] `items.fetch_success` logged with correct `count`
+- [ ] `items.fetch_error` logged with full error detail — no crash, retry shown
 
 ### Settings Screen
 
