@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthException;
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 import 'package:earth_nova/models/auth_state.dart';
 import 'package:earth_nova/services/auth_service.dart';
@@ -15,11 +15,11 @@ import 'package:earth_nova/services/observability_service.dart';
 /// A regression test enforces this.
 class SupabaseAuthService implements AuthService {
   SupabaseAuthService({
-    required SupabaseClient client,
+    required supa.SupabaseClient client,
     required ObservabilityService observability,
   }) : _client = client;
 
-  final SupabaseClient _client;
+  final supa.SupabaseClient _client;
   final _controller = StreamController<AuthEvent>.broadcast();
 
   @override
@@ -47,8 +47,8 @@ class SupabaseAuthService implements AuthService {
         _controller.add(AuthStateChanged(profile));
         return profile;
       }
-    } on AuthException catch (e) {
-      // If credentials don't exist, try sign-up.
+    } on supa.AuthException catch (e) {
+      // If credentials don't exist, try sign-up (upsert behavior).
       if (e.message.contains('Invalid login credentials')) {
         return _signUp(phone, email, password);
       }
@@ -78,7 +78,7 @@ class SupabaseAuthService implements AuthService {
         _controller.add(AuthStateChanged(profile));
         return profile;
       }
-    } on AuthException catch (e) {
+    } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     }
     throw const AuthException('Sign-up failed: no user returned.');
