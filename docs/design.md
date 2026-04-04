@@ -784,6 +784,7 @@ Every reusable piece. Nothing gets built that isn't listed here first.
 | `LoadingDots` | `widgets/loading_dots.dart` | Animated ellipsis (`·` `··` `···`) on 400ms loop |
 | `ErrorStateWidget` | `widgets/error_state_widget.dart` | Error message + retry button |
 | `IdenticonAvatar` | `widgets/identicon_avatar.dart` | Deterministic avatar generated from user ID seed |
+| `_PageDotIndicator` | `screens/pack_screen.dart` (private) | 7-dot page indicator for the Pack screen category PageView — active dot expands to a teal pill |
 
 ---
 
@@ -819,65 +820,293 @@ The first thing a user sees after every launch. Must feel alive.
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│          EarthNova              │  ← 28px w700
-│    Explore. Discover. Reveal.   │  ← 14px onSurfaceVariant
+│                                 │
+│          EarthNova              │  ← 32px, w700, #E0E1DD, letterSpacing -0.5
+│    Explore. Discover. Reveal.   │  ← 14px, #ADB5BD
+│                                 │
+│           ← 40px gap →          │
 │                                 │
 │  ┌────────────────────────────┐ │
-│  │ +1   │  (555) 123-4567    │ │  ← TextField, surfaceContainer bg
+│  │ +1  │ (555) 123-4567      │ │  ← fill #132333, radius 12px
 │  └────────────────────────────┘ │
+│                                 │
+│           ← 16px gap →          │
 │                                 │
 │  ┌────────────────────────────┐ │
-│  │         Continue           │ │  ← ElevatedButton, primary color
+│  │         Continue           │ │  ← fill #006D77, radius 12px, 52px tall
 │  └────────────────────────────┘ │
 │                                 │
-│  "Couldn't sign in. Try again." │  ← error text, errorColor, 13px, animated fade
+│  "Couldn't sign in. Try again." │  ← errorText below field, #EF476F, 12px
 │                                 │
 └─────────────────────────────────┘
 ```
 
-- Background: `#0D1B2A`
-- Phone input: `surfaceContainer` background, `Radii.borderXl`, `+1` prefix in `onSurfaceVariant`
-- Continue button: full-width, `ComponentSizes.buttonHeight = 52px`, disabled when < 10 digits (opacity 0.4)
-- Loading state: button shows `LoadingDots` instead of text
-- Error state: error text fades in below button (`Durations.quick`)
-- Screen padding: `Spacing.lg` horizontal, content centred vertically at 40% height
+#### Layout
+
+| Property | Value |
+|----------|-------|
+| Scaffold background | `AppTheme.surface` `#0D1B2A` |
+| Body structure | `SafeArea` → `Center` → `SingleChildScrollView` → `Column` |
+| Horizontal padding | `Spacing.lg` 16px (both sides, on `SingleChildScrollView`) |
+| Column alignment | `mainAxisAlignment: center`, `crossAxisAlignment: center` (default) |
+
+`Center` vertically centres the scroll view when content is shorter than the viewport.
+`TextField` fills the available column width automatically.
+The `ElevatedButton` is wrapped in `SizedBox(width: double.infinity)` to explicitly
+fill the width (the theme's `minimumSize: Size(double.infinity, 52)` achieves the same
+result, but the SizedBox wrapper makes the intent explicit at the call site).
+
+#### Brand block
+
+| Element | Value |
+|---------|-------|
+| Wordmark | `"EarthNova"`, `fontSize: 32`, `fontWeight: w700`, `color: #E0E1DD`, `letterSpacing: -0.5` |
+| Tagline | `'Explore. Discover. Reveal.'`, `fontSize: 14`, `color: #ADB5BD` |
+| Wordmark → tagline gap | `Spacing.xs` 4px |
+| Tagline → phone field gap | `Spacing.huge` 40px |
+
+#### Phone input field
+
+| Property | Value |
+|----------|-------|
+| Widget | `TextField` with `InputDecoration` |
+| Fill colour | `AppTheme.surfaceContainer` `#132333` (via theme `fillColor`) |
+| Border radius | `Radii.xl` 12px on all border states |
+| Content padding | `horizontal: 16px, vertical: 14px` (via theme `contentPadding`) |
+| Prefix text | `'+1 '` (trailing space for visual gap from user digits) |
+| Prefix style | `fontSize: 16`, `color: #ADB5BD` (onSurfaceVariant) |
+| Placeholder (`hintText`) | `'(555) 123-4567'` |
+| Hint style | `fontSize: 16`, `color: #ADB5BD` — same size as entered text, muted colour |
+| Entered text style | `fontSize: 16`, `color: #E0E1DD` |
+| Keyboard type | `TextInputType.phone` |
+| Input formatter | `_PhoneInputFormatter` (see below) |
+| Max raw digits | 10 — enforced by `_PhoneInputFormatter`, not by `maxLength` |
+| Counter | Hidden via `counterText: ''` |
+| Validation gate | `rawDigits.length >= 10` where `rawDigits = text.replaceAll(RegExp(r'[^\d]'), '')` |
+
+**Input field border states** — all defined in `AppTheme.dark()` `InputDecorationTheme`:
+
+| State | Border |
+|-------|--------|
+| Empty, unfocused | `BorderSide.none` — no ring, card-like appearance |
+| Typing / filled, unfocused | `BorderSide.none` |
+| Focused (any content) | 2px solid `#006D77` (primary) |
+| Error, unfocused | 1.5px solid `#EF476F` (error) |
+| Error + focused | 2px solid `#EF476F` (error) |
+| Disabled (loading) | `BorderSide.none`; fill darkened by M3 disabled overlay |
+
+**Input field fill/text states:**
+
+| State | Fill | Text / hint |
+|-------|------|-------------|
+| Enabled, empty | `#132333` | hint `#ADB5BD` at full opacity |
+| Enabled, typing | `#132333` | entered text `#E0E1DD` |
+| Disabled (`enabled: false`) | M3 applies `onSurface × 0.12` over fill | text `onSurface × 0.38` |
+
+#### `_PhoneInputFormatter`
+
+Private `TextInputFormatter` in `login_screen.dart`. Applied via
+`inputFormatters: [_PhoneInputFormatter()]` on the `TextField`.
+
+**Purpose:** ensures the live input text always matches the `(NNN) NNN-NNNN` placeholder
+format, so there is zero visual mismatch between the hint and what the user types.
+
+**Algorithm:**
+1. Strip all non-digit characters from `newValue.text`
+2. Cap at 10 raw digits (paste protection)
+3. Re-build the formatted string character by character:
+   - Insert `(` before digit 0
+   - Insert `) ` after digit 2 (before digit 3)
+   - Insert `-` after digit 5 (before digit 6)
+4. Return a `TextEditingValue` with cursor collapsed to end
+
+**Format progression:**
+
+| Raw digits typed | Formatted display |
+|-----------------|-------------------|
+| `5` | `(5` |
+| `55` | `(55` |
+| `555` | `(555` |
+| `5551` | `(555) 1` |
+| `55512` | `(555) 12` |
+| `555123` | `(555) 123` |
+| `5551234` | `(555) 123-4` |
+| `55512345` | `(555) 123-45` |
+| `555123456` | `(555) 123-456` |
+| `5551234567` | `(555) 123-4567` ← matches placeholder exactly |
+
+**Backspace behaviour:** each backspace recalculates from the stripped digit string, so
+punctuation characters (`(`, `)`, ` `, `-`) are never individually deletable — they
+vanish automatically when the surrounding digit is removed.
+
+**Cursor:** always placed at the end of the formatted string after any edit.
+
+#### Continue button
+
+| Property | Value |
+|----------|-------|
+| Widget | `ElevatedButton` inside `SizedBox(width: double.infinity)` |
+| Background (enabled) | `AppTheme.primary` `#006D77` |
+| Foreground (text / icon) | `Colors.white` `#FFFFFF` |
+| Height | `ComponentSizes.buttonHeight` 52px (via theme `minimumSize`) |
+| Border radius | `Radii.xl` 12px (via theme `shape`) |
+| Label | `'Continue'`, `fontSize: 16`, `fontWeight: w600` |
+| Gap above (from input) | `Spacing.lg` 16px |
+
+**Button states:**
+
+| State | Condition | Background | Label / content |
+|-------|-----------|------------|-----------------|
+| Enabled | `_isValid && !isLoading` | `#006D77` | `'Continue'` white |
+| Disabled | `!_isValid \|\| isLoading` (`onPressed: null`) | `onSurface × 0.12` ≈ `#E0E1DD` at 12 % | `'Continue'` at `onSurface × 0.38` |
+| Loading | `isLoading == true` | `#006D77` | `CircularProgressIndicator` 20 × 20, `strokeWidth: 2`, white |
+| Pressed | tap | `#006D77` with Material ink ripple | `'Continue'` white |
+
+The disabled colours are Material 3 defaults — no custom override needed.
+
+#### Error state
+
+- **Rendered via:** `InputDecoration.errorText` — appears below the phone field, above the button gap
+- **Colour:** `colorScheme.error` → `AppTheme.error` `#EF476F` (Material 3 default for `errorText`)
+- **Font size:** 12px (Material 3 default for error label)
+- **Border:** field simultaneously switches to `errorBorder` — 1.5px `#EF476F` ring
+- **Trigger:** `AuthStatus.error` → `setState(() => _errorText = authState.errorMessage)`
+- **Dismissal:** first keystroke after an error clears `_errorText` (set to `null` in `_onPhoneChanged`)
+
+#### Disabled / enabled transition logic
+
+```dart
+// Button enabled only when the number is valid AND no request is in flight.
+onPressed: _isValid && !isLoading ? _onContinue : null
+
+// Field disabled while loading to prevent concurrent submissions.
+enabled: !isLoading
+```
+
+#### Auth flow (from this screen)
+
+1. User taps **Continue** → `_onContinue()` called
+2. Strips formatting: `digits = text.replaceAll(RegExp(r'[^\d]'), '')` (always 10 chars)
+3. Calls `authProvider.notifier.signInWithPhone('+1$digits')`
+4. On `AuthStatus.error` response: sets `_errorText` for inline display
+5. On `AuthStatus.authenticated`: router navigates to `LoadingScreen` automatically
+6. Phone stored as `+1XXXXXXXXXX` (E.164-adjacent) — no OTP (see Key Decisions)
 
 ### Pack Screen
 
 The centrepiece. Pokémon PC Box meets TCG binder.
 
-**Structure:**
+**Structure (v3 MVP):**
 ```
-AppBar: "Pack"                     [identicon avatar → settings]
-TabBar: 🧭 Character | 🦊 Fauna | 🌿 Flora | 💎 Mineral | 🦴 Fossil | 🏺 Artifact | 🍎 Food | 🔮 Orb
-────────────────────────────────────────────────────────
-[active tab content]
-```
-
-**Fauna Tab (the real one in v3):**
-```
-SubTabBar: 🦁 Mammal | 🐦 Bird | 🐟 Fish | 🦎 Reptile | 🐛 Bug
-────────────────────────────────────────────────────────────────
-Sort: [ Recent ▼ ]   (dropdown — Recent | Rarity | Name | Type)
-────────────────────────────────────────────────────────────────
-Grid (6 columns):
-┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐ ┌───┐
-│   │ │   │ │   │ │   │ │   │ │   │  ← ItemSlotWidget
-│ 🦊 │ │ 🐻 │ │ 🐯 │ │ 🐼 │ │ 🦍 │ │   │
-│ LC│ │ LC│ │EN │ │VU │ │CR │ │   │  ← RarityBadge top-right
-│Fox│ │Bear│ │Tiger│ │Panda│ │Gorilla│ │
-└───┘ └───┘ └───┘ └───┘ └───┘ └───┘
+AppBar: "Pack · {filtered count}"
+FilterBar: 🦊 Fauna · 4 | 🌿 Flora | 💎 Mineral | 🦴 Fossil | 🏺 Artifact | 🍎 Food | 🔮 Orb
+────────────────────────────────────────────────────────────────────────────────────────────
+SortBar (when items > 0):                             [ Recent ] [ Rarity ] [ Name ]
+PageDotIndicator: • ─ • • • • •  (7 dots; active = teal pill, inactive = muted circle)
+────────────────────────────────────────────────────────────────────────────────────────────
+PageView — one page per category (swipe left/right to change category)
+  └─ Grid (responsive columns — see breakpoints below)
 ```
 
-**ItemSlotWidget anatomy:**
-- Size: 6 columns, `childAspectRatio: 0.85`, `crossAxisSpacing: 6`, `mainAxisSpacing: 6`
-- Background: `HabitatGradient.tile(primaryHabitat)` or `surfaceContainerHigh`
-- Border: rarity colour at 20% opacity, `1.5px` width, `Radii.borderLg`
-- Icon: `SpeciesArtImage` (icon_url → fallback emoji), `44px`, centred, **2-frame idle animation** (see below)
-- `RarityBadge` (small): top-right corner
-- First-discovery: `PrismaticBorder` (animated rainbow, `2.5px`, `3500ms` cycle) replaces static border + `★` badge top-left
-- Name: 9px, w600, 1 line, ellipsis, bottom-centre
-- Tap: opens `SpeciesCard` modal (TCG card for that item instance)
+**Swipe Interaction:**
+- The item grid is a `PageView.builder` with 7 pages, one per `ItemCategory`.
+- Swipe left → next category; swipe right → previous category.
+- Page change triggers `HapticFeedback.selectionClick()` for tactile confirmation.
+- Tapping a filter chip animates the PageView to the corresponding page via
+  `PageController.animateToPage(duration: 250ms, curve: easeInOut)`.
+- When a swipe advances to an off-screen chip, the filter `ListView` scrolls
+  proportionally so the active chip stays visible.
+- Each page filters and sorts independently; the empty-state per category shows
+  that category's emoji + "No {cat} in your pack yet. Keep exploring!"
+
+**Responsive Grid Breakpoints:**
+
+| Viewport width | Columns | `childAspectRatio` | Card size (375px phone) |
+|----------------|---------|---------------------|------------------------|
+| `< 600px`      | 3       | 0.78                | ~114 × 146 px          |
+| `600–899px`    | 4       | 0.82                | ~145 × 177 px          |
+| `≥ 900px`      | 6       | 0.85                | ~148 × 174 px          |
+
+Grid padding: `Spacing.sm` (8px) all sides. Gap: `Spacing.sm` (8px) both axes.
+
+**FilterBar anatomy:**
+- Container: `height: 52px`, `color: surfaceContainer`, bottom border `outline 0.5px`
+- Horizontally scrolling `ListView.separated`, padding `horizontal: 8px, vertical: 4px`
+- Each chip: `_CategoryChip` — pill shape (`Radii.pill`), `horizontal: 12px / vertical: 2px` padding
+- Selected chip: `primary` fill + border, white text, `w600`
+- Unselected chip: `surfaceContainerHigh` fill, `outline` border, `onSurfaceVariant` text, `w400`
+- Count badge (inside chip, shown when `count > 0`): 10px `w700` text in translucent pill
+  - Selected: `white × 0.25` background, white text
+  - Unselected: `outline × 0.6` background, `onSurfaceVariant` text
+- Chip label font: 13px, emoji 14px, `Spacing.xs` gap
+  - **No `height: 1`** — the EM-square clamp clips emoji glyphs on some platforms.
+    Default line-height renders cleanly without truncation.
+
+**SortBar anatomy:**
+- Container: bottom border `outline 0.5px`, padding `horizontal: 12px, vertical: 4px`
+- Three pill toggle buttons right-aligned: `Recent`, `Rarity`, `Name`
+- Selected pill: `primary × 0.15` fill, `primary × 0.6` border, `primary` text `w600`
+- Unselected pill: transparent, no border, `onSurfaceVariant` text `w400`
+- Pill padding: `horizontal: 8px, vertical: 4px`; font: 12px
+
+**ItemSlot anatomy (v3 MVP):**
+
+```
+┌────────────────────────────┐
+│                      [CR]  │  ← RarityBadge — purple pill, top-right, 4px inset
+│                            │
+│            🦊              │  ← species icon (iconUrl → category emoji fallback)
+│          44 × 44           │     centred, top padding 12px
+│                            │
+│ ● (teal dot, if frame2)   │  ← animated-species indicator, bottom-left 4px inset
+├────────────────────────────┤
+│    Amur Leopard            │  ← surfaceContainer × 0.85 strip
+│                            │     10px w600, 2 lines, center, ellipsis
+└────────────────────────────┘
+```
+
+- Background: `surfaceContainerHigh`
+- Border: rarity colour at rarity-scaled opacity (see table below), `1.5px`, `Radii.xl` (12px)
+- `clipBehavior: Clip.antiAlias` — clips the name-strip background and any
+  overflowing paint to the card's rounded corners, preventing text/content
+  from visually spilling outside the card boundary.
+- Glow: `boxShadow` with rarity colour for EN and higher
+- Name strip: `surfaceContainer × 0.85`, `BorderRadius.vertical(bottom: Radii.lg)` (10px)
+  - `maxLines: 2`, `overflow: TextOverflow.ellipsis` — long names truncate cleanly.
+- Tap: TODO — opens `SpeciesCard` bottom sheet
+
+**Rarity border intensity:**
+
+| IUCN Status        | Code | Border alpha | Glow alpha | Glow blur |
+|--------------------|------|-------------|------------|-----------|
+| Critically Endangered | CR | 0.90        | 0.35       | 12px      |
+| Endangered         | EN   | 0.85        | 0.25       | 12px      |
+| Vulnerable         | VU   | 0.65        | 0.15       | 12px      |
+| Near Threatened    | NT   | 0.50        | —          | —         |
+| Least Concern      | LC   | 0.12        | —          | —         |
+| Unknown            | —    | 0.50 (outline) | —       | —         |
+
+**RarityBadge anatomy:**
+- Pill shape: `Radii.xs` (4px), padding `horizontal: 4px, vertical: 1px`
+- Font: 8px, `w800`, `letterSpacing: 0.4`, `height: 1.2`
+- Glow: `boxShadow` with badge colour at 0.5 alpha, `blurRadius: 4`
+
+| Code | Background | Text |
+|------|-----------|------|
+| CR   | `#9C27B0` | white |
+| EN   | `#FFD700` | `#1A1A2E` |
+| VU   | `#2196F3` | white |
+| NT   | `#4CAF50` | white |
+| LC   | `#FFFFFF` | `#1A1A2E` |
+
+**Animated-species indicator:**
+- 5×5px circle, `AppTheme.tertiary × 0.9`, bottom-left at `Spacing.xs` inset
+- Soft teal glow: `boxShadow` with `tertiary × 0.5`, `blurRadius: 4`
+- Visible only when `iconUrlFrame2 != null` (species has 2-frame animation data)
+
+**Species icon:**
+- `Image.network(iconUrl, width: 44, height: 44, fit: BoxFit.contain)` with emoji fallback
+- Fallback: `Text(category.emoji, fontSize: 36)` when `iconUrl` is null or fails to load
 
 **2-Frame Idle Animation (living pack)**
 
@@ -1015,28 +1244,57 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 
 ### Pack Screen
 
-- [ ] Authenticated user with fauna: 6-column `ItemSlotWidget` grid renders
-- [ ] Each slot: `SpeciesArtImage` icon (44px), `RarityBadge` (small, top-right), name (9px, 1 line, ellipsis)
-- [ ] `HabitatGradient` background applied to slot when `primaryHabitat` known
-- [ ] Slot border colour matches IUCN rarity colour at 20% opacity
-- [ ] First-discovery slot: `PrismaticBorder` (animated rainbow) + `★` badge top-left
-- [ ] `SpriteAnimationScope` provides one shared `AnimationController` per grid (not per slot)
-- [ ] Slot with `icon_url_frame2` non-null: animates at 2Hz between frame 1 and frame 2
-- [ ] Slot with `icon_url_frame2` null: renders static `icon_url`, no animation
-- [ ] Phase offsets vary per species — slots do not all switch frames simultaneously
-- [ ] Animal type subtabs: Mammal | Bird | Fish | Reptile | Bug
-- [ ] Empty animal type subtab → `EmptyStateWidget` with type icon + message
-- [ ] No fauna at all → `EmptyStateWidget` "No fauna collected yet"
+**Responsiveness**
+- [ ] Grid: 3 columns when viewport `< 600px`, 4 columns at `600–899px`, 6 columns at `≥ 900px`
+- [ ] `childAspectRatio` 0.78 / 0.82 / 0.85 respectively — cards remain readable at all breakpoints
+
+**FilterBar**
+- [ ] FilterBar always visible (loading and empty states show spinner/empty below it)
+- [ ] Seven category chips: Fauna, Flora, Mineral, Fossil, Artifact, Food, Orb
+- [ ] Selected chip: `primary` fill, white label `w600`, count badge in `white × 0.25`
+- [ ] Unselected chip: `surfaceContainerHigh` fill, `outline` border, `onSurfaceVariant` label
+- [ ] Count badge only shown when `count > 0`
+- [ ] FilterBar scrolls horizontally on narrow viewports — no overflow
+
+**SortBar**
+- [ ] SortBar hidden when filtered list is empty; visible when ≥ 1 item
+- [ ] Three pill buttons: Recent (default), Rarity, Name — right-aligned
+- [ ] Active pill: `primary × 0.15` fill, `primary × 0.6` border, `primary` text
+- [ ] Tapping pill re-sorts grid immediately (< 16ms)
+
+**ItemSlot**
+- [ ] Background: `surfaceContainerHigh`; border: rarity colour at rarity-scaled opacity, `1.5px`, `Radii.xl`
+- [ ] CR and EN slots have ambient glow (`boxShadow` with rarity colour)
+- [ ] `RarityBadge` top-right: colour-coded pill (CR purple / EN gold / VU blue / NT green / LC white)
+- [ ] Icon: `Image.network(iconUrl)` 44×44px, fit contain; falls back to `category.emoji` at 36px on error/null
+- [ ] Name strip: `surfaceContainer × 0.85`, bottom-rounded, 10px `w600`, 2-line ellipsis
+- [ ] Animated-species dot (5px teal circle) shown only when `iconUrlFrame2 != null`
+- [ ] Slot with `icon_url_frame2` null: static icon, no dot indicator
+- [ ] Minimum touch target: card is ≥ 90px tall at 3-column layout on 375px screen
+
+**States**
+- [ ] Loading: `Center(LoadingDots)`, title shows plain `'Pack'`
+- [ ] Error: warning icon, message, `'Try Again'` `FilledButton` — no filter/sort chrome
+- [ ] Global empty (0 items): filter bar + `_EmptyState` with active category emoji + "Explore" subtitle
+- [ ] Category empty (items exist elsewhere): filter bar shows counts + `_EmptyState` with category emoji + "Keep exploring" subtitle
+- [ ] Title: `'Pack · N'` where N = filtered count (not total); plain `'Pack'` when total = 0
+
+**Sort behaviour**
 - [ ] Sort Recent: items ordered `acquired_at DESC`
-- [ ] Sort Rarity: EX first, LC last
+- [ ] Sort Rarity: CR → EN → VU → NT → LC
 - [ ] Sort Name: A→Z alphabetical
-- [ ] Sort Type: Mammal → Bird → Fish → Reptile → Bug
-- [ ] Tap slot → `SpeciesCard` modal opens as bottom sheet
-- [ ] `SpeciesCard` shows: display name, `RarityBadge`, watercolor `art_url`, type bar, location, `acquired_at` date
-- [ ] `SpeciesCard` art: falls back to fallback emoji when `art_url` null
-- [ ] Category tabs Flora / Mineral / Fossil / Artifact / Food / Orb → `EmptyStateWidget` "Coming soon"
-- [ ] `items.fetch_success` logged with correct item `count`
-- [ ] `items.fetch_error` logged with full error detail — no crash, error state shown with retry button
+
+**Post-MVP (not in v3)**
+- [ ] `SpriteAnimationScope` 2-frame idle at 2Hz (staggered phase offsets)
+- [ ] `PrismaticBorder` animated rainbow for first-discovery slots
+- [ ] `HabitatGradient` tinted backgrounds
+- [ ] `SpeciesCard` bottom sheet on slot tap
+- [ ] Animal type subtabs (Mammal / Bird / Fish / Reptile / Bug)
+- [ ] Sort by Type
+
+**Observability**
+- [ ] `items.fetch_success` logged with correct `count`
+- [ ] `items.fetch_error` logged with full error detail — no crash, retry shown
 
 ### Settings Screen
 

@@ -1,10 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/models/auth_state.dart';
 import 'package:earth_nova/providers/auth_provider.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+
+/// Formats a US phone number as `(NNN) NNN-NNNN` as the user types.
+///
+/// Strips all non-digit characters, limits input to 10 raw digits, then
+/// applies the `(NNN) NNN-NNNN` mask so the live text always matches the
+/// placeholder format. The cursor is placed at the end after every edit.
+///
+/// Digit → formatted position mapping:
+///   d[0..2]  → `(`d[0]d[1]d[2]           e.g. 3 digits  → `(555`
+///   d[3..5]  → `) `d[3]d[4]d[5]          e.g. 6 digits  → `(555) 123`
+///   d[6..9]  → `-`d[6]d[7]d[8]d[9]       e.g. 10 digits → `(555) 123-4567`
+class _PhoneInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Strip everything that isn't a digit.
+    final raw = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (raw.isEmpty) return newValue.copyWith(text: '');
+
+    // Hard cap at 10 digits — paste protection.
+    final digits = raw.length > 10 ? raw.substring(0, 10) : raw;
+
+    final buf = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i == 0) buf.write('(');
+      if (i == 3) buf.write(') ');
+      if (i == 6) buf.write('-');
+      buf.write(digits[i]);
+    }
+
+    final formatted = buf.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 /// Login screen — phone number input + Continue button.
 class LoginScreen extends ConsumerStatefulWidget {
@@ -89,18 +129,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: Spacing.huge),
 
                 // Phone input
+                // _PhoneInputFormatter formats digits as (NNN) NNN-NNNN while
+                // typing so the live text always matches the placeholder format.
                 TextField(
                   controller: _phoneController,
                   enabled: !isLoading,
                   keyboardType: TextInputType.phone,
-                  maxLength: 10,
+                  inputFormatters: [_PhoneInputFormatter()],
                   decoration: InputDecoration(
                     prefixText: '+1 ',
                     prefixStyle: TextStyle(
                       color: AppTheme.onSurfaceVariant,
                       fontSize: 16,
                     ),
-                    hintText: '555 123 4567',
+                    hintText: '(555) 123-4567',
                     counterText: '',
                     errorText: _errorText,
                   ),
