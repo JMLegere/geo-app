@@ -24,11 +24,11 @@
     {
       "sessionId": "ses_2af1b41cbffeh5ZgHcO366tC8g",
       "startedAt": "2026-04-03T18:28:45.810Z",
-      "lastActiveAt": "2026-04-04T02:25:57.413Z",
+      "lastActiveAt": "2026-04-04T02:48:00.500Z",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
-      "directivePrompt": "continue",
+      "directivePrompt": "https://railway.com/project/e693a14e-316c-4280-842a-6258a048d326/service/13593e40-5efb-47ed-858f-885ff5784b98?environmentId=4c59a313-60f8-4545-b039-e7f16f97e886&id=82346350-b5ed-4226-9017-5986a1f7e3d1#deploy",
       "replayDirectivePending": false
     },
     {

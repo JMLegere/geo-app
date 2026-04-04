@@ -1,9 +1,11 @@
 FROM instrumentisto/flutter:3.41 AS build
 ARG RAILWAY_GIT_COMMIT_SHA=""
+ARG CACHEBUST=v3-rebuild
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 COPY . .
+RUN rm -rf build/
 RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     BUILD_TS="v3 $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
     flutter build web \
