@@ -71,7 +71,7 @@ Every `Notifier` extends `ObservableNotifier<T>`. Every state change calls `tran
 ```dart
 class FooNotifier extends ObservableNotifier<FooState> {
   @override ObservabilityService get obs => ref.watch(observabilityProvider);
-  @override String get _category => 'foo';
+  @override String get category => 'foo';
 }
 ```
 
@@ -101,6 +101,7 @@ These are settled. Do not revisit without explicit instruction from the user.
 ## Forbidden Patterns
 
 - **`state = newState`** in a Notifier — use `transition(newState, 'event')` instead
+- **`extends Notifier<`** — all notifiers MUST extend `ObservableNotifier<T>`. A grep test in `test/providers/observable_notifier_test.dart` enforces this at CI time.
 - **`StateNotifier`** — use `Notifier` pattern only
 - **Drift / SQLite** — not in v3. Do not add back.
 - **`build_runner` / codegen** — hand-write everything
