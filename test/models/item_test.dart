@@ -238,6 +238,22 @@ void main() {
       expect(a == b, isTrue);
       expect(a == c, isFalse);
     });
+
+    test('hashCode is consistent with equality', () {
+      final a = _testItem();
+      final b = _testItem();
+      expect(a.hashCode, b.hashCode);
+
+      final c = _testItem().copyWith(displayName: 'Different');
+      expect(a.hashCode == c.hashCode, isFalse);
+    });
+
+    test('items can be used in Set and Map keys', () {
+      final a = _testItem();
+      final b = _testItem();
+      final set = {a, b};
+      expect(set.length, 1, reason: 'equal items should deduplicate');
+    });
   });
 }
 
