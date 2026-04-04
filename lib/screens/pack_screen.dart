@@ -48,11 +48,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
-        title: Text(
-          state.isLoading || state.items.isEmpty
-              ? 'Pack'
-              : 'Pack · ${filtered.length}',
-        ),
+        title: const Text('Pack'),
         backgroundColor: AppTheme.surfaceContainer,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -188,26 +184,25 @@ class _PackBody extends StatelessWidget {
           panelExpanded: panelExpanded,
           onTogglePanel: onTogglePanel,
         ),
-        AnimatedSize(
-          duration: Durations.normal,
-          curve: AppCurves.standard,
-          child: panelExpanded
-              ? ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 240),
-                  child: SingleChildScrollView(
-                    child: _FilterPanel(
-                      category: category,
-                      sort: sort,
-                      filters: filters,
-                      onSortChanged: onSortChanged,
-                      onToggleType: onToggleType,
-                      onToggleHabitat: onToggleHabitat,
-                      onToggleRegion: onToggleRegion,
-                      onClearFilters: onClearFilters,
-                    ),
-                  ),
-                )
-              : const SizedBox.shrink(),
+        ClipRect(
+          child: AnimatedSize(
+            duration: Durations.normal,
+            curve: AppCurves.standard,
+            alignment: Alignment.topCenter,
+            clipBehavior: Clip.antiAlias,
+            child: panelExpanded
+                ? _FilterPanel(
+                    category: category,
+                    sort: sort,
+                    filters: filters,
+                    onSortChanged: onSortChanged,
+                    onToggleType: onToggleType,
+                    onToggleHabitat: onToggleHabitat,
+                    onToggleRegion: onToggleRegion,
+                    onClearFilters: onClearFilters,
+                  )
+                : const SizedBox.shrink(),
+          ),
         ),
         Expanded(
           child: filtered.isEmpty
@@ -427,6 +422,7 @@ class _CompactBar extends StatelessWidget {
             ],
             // Count
             Text(
+              key: const Key('compact-bar-count'),
               '$count',
               style: const TextStyle(
                 fontSize: 14,
@@ -450,8 +446,8 @@ class _CompactBar extends StatelessWidget {
               curve: AppCurves.standard,
               child: const Icon(
                 Icons.keyboard_arrow_down,
-                size: 18,
-                color: AppTheme.onSurfaceVariant,
+                size: 20,
+                color: AppTheme.onSurface,
               ),
             ),
           ],
