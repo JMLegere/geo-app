@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -56,11 +57,18 @@ class ObservabilityService {
     if (_buffer.isEmpty) return;
     final events = List<Map<String, dynamic>>.from(_buffer);
     _buffer.clear();
-    if (_client == null) return;
+    if (_client == null) {
+      for (final e in events) {
+        debugPrint('[obs] ${e['event']} ${e['data']}');
+      }
+      return;
+    }
     try {
       await _client!.from('app_logs').insert(events);
-    } catch (_) {
+    } catch (e) {
       // Fire-and-forget — never crash the app over logging.
+      // But DO log to console so we can diagnose RLS issues.
+      debugPrint('[Observability] flush failed: $e');
     }
   }
 
