@@ -250,6 +250,64 @@ void main() {
       expect(find.text('REGION'), findsOneWidget);
     });
 
+    testWidgets('rarity toggles appear in panel for all categories',
+        (tester) async {
+      final items = [
+        _item('1', 'Diamond', ItemCategory.mineral, rarity: 'leastConcern'),
+      ];
+
+      await _pumpPack(tester, items);
+      await tester.tap(find.text('Mineral'));
+      await tester.pumpAndSettle();
+
+      // Rarity row should be in the panel even for minerals.
+      expect(find.text('RARITY'), findsOneWidget);
+      expect(find.text('CR'), findsOneWidget);
+      expect(find.text('EN'), findsOneWidget);
+      expect(find.text('VU'), findsOneWidget);
+    });
+
+    testWidgets('search bar filters by name', (tester) async {
+      final items = [
+        _item('1', 'Red Fox', ItemCategory.fauna),
+        _item('2', 'Gray Wolf', ItemCategory.fauna),
+        _item('3', 'Arctic Fox', ItemCategory.fauna),
+      ];
+
+      await _pumpPack(tester, items);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '3',
+      );
+
+      // Type "Fox" in search.
+      await tester.enterText(find.byType(TextField), 'Fox');
+      await tester.pumpAndSettle();
+
+      // Should filter to 2 foxes.
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '2',
+      );
+    });
+
+    testWidgets('tapping item opens species card bottom sheet', (tester) async {
+      final items = [
+        _item('1', 'Red Fox', ItemCategory.fauna,
+            rarity: 'leastConcern', scientificName: 'Vulpes vulpes'),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // Tap the item.
+      await tester.tap(find.text('Red Fox'));
+      await tester.pumpAndSettle();
+
+      // Species card should show scientific name.
+      expect(find.text('Vulpes vulpes'), findsOneWidget);
+      expect(find.text('DISCOVERED'), findsOneWidget);
+    });
+
     testWidgets('toggling filter off restores all items', (tester) async {
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna, taxonomicClass: 'MAMMALIA'),
@@ -291,6 +349,7 @@ Item _item(
   ItemCategory category, {
   String? rarity,
   String? taxonomicClass,
+  String? scientificName,
   List<String> habitats = const [],
   List<String> continents = const [],
 }) =>
@@ -298,6 +357,7 @@ Item _item(
       id: id,
       definitionId: 'def-$id',
       displayName: name,
+      scientificName: scientificName,
       category: category,
       rarity: rarity,
       acquiredAt: DateTime(2026, 1, int.parse(id)),

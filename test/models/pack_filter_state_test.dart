@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/models/iucn_status.dart';
 import 'package:earth_nova/models/item.dart';
 import 'package:earth_nova/models/pack_filter_state.dart';
 import 'package:earth_nova/shared/iconography.dart';
@@ -39,6 +40,44 @@ void main() {
 
       final without = with1.toggleRegion(GameRegion.africa);
       expect(without.activeRegions, isEmpty);
+    });
+
+    test('toggleRarity adds and removes', () {
+      const state = PackFilterState();
+      final with1 = state.toggleRarity(IucnStatus.endangered);
+      expect(with1.activeRarities, {IucnStatus.endangered});
+
+      final without = with1.toggleRarity(IucnStatus.endangered);
+      expect(without.activeRarities, isEmpty);
+    });
+
+    test('rarity filter matches correct status', () {
+      final filters =
+          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      expect(
+        filters.matches(_fauna(rarity: 'endangered')),
+        isTrue,
+      );
+      expect(
+        filters.matches(_fauna(rarity: 'leastConcern')),
+        isFalse,
+      );
+    });
+
+    test('rarity filter applies to non-fauna items', () {
+      final filters =
+          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      final mineral = Item(
+        id: 'm1',
+        definitionId: 'quartz',
+        displayName: 'Quartz',
+        category: ItemCategory.mineral,
+        rarity: 'leastConcern',
+        acquiredAt: DateTime(2026),
+        status: ItemStatus.active,
+      );
+      // Mineral with LC rarity should NOT pass EN filter
+      expect(filters.matches(mineral), isFalse);
     });
 
     test('clearAll resets all dimensions', () {
@@ -190,6 +229,7 @@ void main() {
 
 Item _fauna({
   String? taxonomicClass,
+  String? rarity,
   List<String> habitats = const [],
   List<String> continents = const [],
 }) =>
@@ -198,6 +238,7 @@ Item _fauna({
       definitionId: 'def',
       displayName: 'Test Animal',
       category: ItemCategory.fauna,
+      rarity: rarity,
       acquiredAt: DateTime(2026),
       status: ItemStatus.active,
       taxonomicClass: taxonomicClass,
