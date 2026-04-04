@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:earth_nova/screens/pack_screen.dart';
 import 'package:earth_nova/screens/settings_screen.dart';
 import 'package:earth_nova/screens/stub_screen.dart';
+import 'package:earth_nova/shared/iconography.dart';
 
 /// 4-tab bottom navigation. Pack is real, others are stubs.
 class TabShell extends StatefulWidget {
@@ -20,9 +21,9 @@ class _TabShellState extends State<TabShell> {
   void initState() {
     super.initState();
     _screens = [
-      const StubScreen(label: '🗺️'),
+      const StubScreen(label: AppIcons.map),
       const PackScreen(),
-      const StubScreen(label: '🌿'),
+      const StubScreen(label: AppIcons.sanctuary),
       const SettingsScreen(),
     ];
   }

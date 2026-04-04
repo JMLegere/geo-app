@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/models/item.dart';
+import 'package:earth_nova/shared/iconography.dart';
 
 void main() {
   group('ItemCategory', () {
@@ -23,6 +24,17 @@ void main() {
       for (final cat in ItemCategory.values) {
         expect(cat.emoji, isNotEmpty);
       }
+    });
+
+    test('label is set for all categories', () {
+      for (final cat in ItemCategory.values) {
+        expect(cat.label, isNotEmpty);
+      }
+    });
+
+    test('food emoji is mushroom not apple', () {
+      expect(ItemCategory.food.emoji, AppIcons.food);
+      expect(ItemCategory.food.emoji, '🍄');
     });
   });
 
@@ -151,6 +163,81 @@ void main() {
       expect(a == b, isTrue);
       expect(a == c, isFalse);
     });
+
+    test('fromJson parses taxonomicClass', () {
+      final json = _baseJson()..['taxonomic_class'] = 'MAMMALIA';
+      final item = Item.fromJson(json);
+      expect(item.taxonomicClass, 'MAMMALIA');
+    });
+
+    test('fromJson parses habitats_json array', () {
+      final json = _baseJson()..['habitats_json'] = '["Forest","Mountain"]';
+      final item = Item.fromJson(json);
+      expect(item.habitats, ['Forest', 'Mountain']);
+    });
+
+    test('fromJson parses continents_json array', () {
+      final json = _baseJson()..['continents_json'] = '["Africa","Asia"]';
+      final item = Item.fromJson(json);
+      expect(item.continents, ['Africa', 'Asia']);
+    });
+
+    test('fromJson handles null habitats_json', () {
+      final json = _baseJson();
+      final item = Item.fromJson(json);
+      expect(item.habitats, isEmpty);
+    });
+
+    test('fromJson handles empty habitats_json', () {
+      final json = _baseJson()..['habitats_json'] = '[]';
+      final item = Item.fromJson(json);
+      expect(item.habitats, isEmpty);
+    });
+
+    test('fromJson handles malformed habitats_json', () {
+      final json = _baseJson()..['habitats_json'] = 'not-json';
+      final item = Item.fromJson(json);
+      expect(item.habitats, isEmpty);
+    });
+
+    test('taxonomicGroup getter maps class to group', () {
+      final mammal = _testItem().copyWith(taxonomicClass: 'MAMMALIA');
+      expect(mammal.taxonomicGroup, TaxonomicGroup.mammals);
+
+      final bird = _testItem().copyWith(taxonomicClass: 'AVES');
+      expect(bird.taxonomicGroup, TaxonomicGroup.birds);
+
+      final noClass = _testItem();
+      expect(noClass.taxonomicGroup, TaxonomicGroup.other);
+    });
+
+    test('toJson round-trip preserves new fields', () {
+      final item = Item(
+        id: 'item_1',
+        definitionId: 'def',
+        displayName: 'Test',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime.utc(2026),
+        status: ItemStatus.active,
+        taxonomicClass: 'MAMMALIA',
+        habitats: ['Forest', 'Mountain'],
+        continents: ['Africa'],
+      );
+      final json = item.toJson();
+      final restored = Item.fromJson(json);
+      expect(restored.taxonomicClass, 'MAMMALIA');
+      expect(restored.habitats, ['Forest', 'Mountain']);
+      expect(restored.continents, ['Africa']);
+      expect(restored, item);
+    });
+
+    test('equality includes new fields', () {
+      final a = _testItem().copyWith(habitats: ['Forest']);
+      final b = _testItem().copyWith(habitats: ['Forest']);
+      final c = _testItem().copyWith(habitats: ['Desert']);
+      expect(a == b, isTrue);
+      expect(a == c, isFalse);
+    });
   });
 }
 
@@ -168,3 +255,12 @@ Item _testItem() => Item(
       acquiredInCellId: 'v_45_67',
       status: ItemStatus.active,
     );
+
+Map<String, dynamic> _baseJson() => {
+      'id': 'item_base',
+      'definition_id': 'fauna_test',
+      'display_name': 'Test Animal',
+      'category': 'fauna',
+      'acquired_at': '2026-01-01T00:00:00Z',
+      'status': 'active',
+    };

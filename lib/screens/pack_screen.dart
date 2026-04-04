@@ -2,16 +2,20 @@ import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/models/item.dart';
+import 'package:earth_nova/models/iucn_status.dart';
+import 'package:earth_nova/models/pack_filter_state.dart';
 import 'package:earth_nova/providers/items_provider.dart';
 import 'package:earth_nova/shared/app_theme.dart';
 import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/iconography.dart';
 import 'package:earth_nova/widgets/loading_dots.dart';
 
-/// Pack screen — responsive grid of discovered species with filter and sort.
+/// Pack screen — responsive grid of discovered species with collapsible
+/// filter panel and compact filter bar.
 ///
-/// Users can tap a category chip **or** swipe the grid left/right to browse
-/// fauna, flora, minerals, and other discovery types. The filter bar and
-/// dot indicator always reflect the active page.
+/// Category row selects the primary item type (fauna, flora, mineral, etc.).
+/// Expanding the compact bar reveals sort + filter toggles specific to the
+/// active category. Filters use OR within dimension, AND across dimensions.
 class PackScreen extends ConsumerStatefulWidget {
   const PackScreen({super.key});
 
@@ -20,20 +24,12 @@ class PackScreen extends ConsumerStatefulWidget {
 }
 
 class _PackScreenState extends ConsumerState<PackScreen> {
-  /// Index into [ItemCategory.values] — drives both the chip selection and
-  /// the [PageView] position.
-  int _filterIndex = 0;
-  _SortMode _sort = _SortMode.recent;
+  int _categoryIndex = 0;
+  PackSortMode _sort = PackSortMode.recent;
+  PackFilterState _filters = const PackFilterState();
+  bool _panelExpanded = false;
 
-  /// Drives the category [PageView]. Also animated programmatically when a
-  /// filter chip is tapped.
-  late final PageController _pageController = PageController();
-
-  /// Controls the filter chip [ListView] so the active chip scrolls into view
-  /// when the user swipes to an off-screen category.
-  final ScrollController _filterScrollController = ScrollController();
-
-  ItemCategory get _filter => ItemCategory.values[_filterIndex];
+  ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
   @override
   void initState() {
@@ -44,16 +40,10 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   }
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    _filterScrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final state = ref.watch(itemsProvider);
-    final filtered = _applyFilterAndSort(state.items, _filter, _sort);
+    final filtered =
+        _applyFilterAndSort(state.items, _category, _filters, _sort);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -75,69 +65,62 @@ class _PackScreenState extends ConsumerState<PackScreen> {
               ? _ErrorState(message: state.error!, onRetry: _fetch)
               : _PackBody(
                   allItems: state.items,
-                  filter: _filter,
+                  filtered: filtered,
+                  category: _category,
                   sort: _sort,
-                  pageController: _pageController,
-                  filterScrollController: _filterScrollController,
-                  onFilterChanged: _onFilterChipTapped,
-                  onSortChanged: (mode) => setState(() => _sort = mode),
-                  onPageChanged: _onPageChanged,
+                  filters: _filters,
+                  panelExpanded: _panelExpanded,
+                  onCategoryChanged: _onCategoryChanged,
+                  onSortChanged: _onSortChanged,
+                  onToggleType: _onToggleType,
+                  onToggleHabitat: _onToggleHabitat,
+                  onToggleRegion: _onToggleRegion,
+                  onClearFilters: _onClearFilters,
+                  onTogglePanel: _onTogglePanel,
                 ),
     );
   }
 
   void _fetch() => ref.read(itemsProvider.notifier).fetchItems();
 
-  /// Called by [PageView.onPageChanged] when a swipe (or chip animation)
-  /// settles on a new page.
-  void _onPageChanged(int index) {
-    if (index == _filterIndex) return;
+  void _onCategoryChanged(int index) {
     HapticFeedback.selectionClick();
-    setState(() => _filterIndex = index);
-    _scrollToActiveChip(index);
-  }
-
-  /// Called when a filter chip is tapped — slides the [PageView] to match.
-  void _onFilterChipTapped(ItemCategory cat) {
-    final index = ItemCategory.values.indexOf(cat);
-    _pageController.animateToPage(
-      index,
-      duration: Durations.normal,
-      curve: AppCurves.standard,
-    );
-  }
-
-  /// Proportionally scrolls the filter chip list so the active chip is
-  /// always visible after a swipe advances the category.
-  void _scrollToActiveChip(int index) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_filterScrollController.hasClients) return;
-      final maxExtent = _filterScrollController.position.maxScrollExtent;
-      if (maxExtent <= 0) return;
-      final fraction = ItemCategory.values.length <= 1
-          ? 0.0
-          : index / (ItemCategory.values.length - 1).toDouble();
-      _filterScrollController.animateTo(
-        (maxExtent * fraction).clamp(0.0, maxExtent),
-        duration: Durations.quick,
-        curve: AppCurves.standard,
-      );
+    setState(() {
+      _categoryIndex = index;
+      _filters = const PackFilterState(); // Reset filters per category
     });
   }
+
+  void _onSortChanged(PackSortMode mode) => setState(() => _sort = mode);
+
+  void _onToggleType(TaxonomicGroup group) =>
+      setState(() => _filters = _filters.toggleType(group));
+
+  void _onToggleHabitat(Habitat habitat) =>
+      setState(() => _filters = _filters.toggleHabitat(habitat));
+
+  void _onToggleRegion(GameRegion region) =>
+      setState(() => _filters = _filters.toggleRegion(region));
+
+  void _onClearFilters() => setState(() => _filters = const PackFilterState());
+
+  void _onTogglePanel() => setState(() => _panelExpanded = !_panelExpanded);
 }
 
 // ─── Shared filter + sort helper ──────────────────────────────────────────────
 
-/// Apply category filter and sort to a list of items.
-/// Top-level so both the state (for the title count) and [_PackBody]
-/// (for each PageView page) can use it without duplication.
 List<Item> _applyFilterAndSort(
-    List<Item> items, ItemCategory cat, _SortMode sort) {
-  var result = items.where((i) => i.category == cat).toList();
+  List<Item> items,
+  ItemCategory category,
+  PackFilterState filters,
+  PackSortMode sort,
+) {
+  var result = items.where((i) => i.category == category).toList();
+  result = result.where(filters.matches).toList();
   switch (sort) {
-    case _SortMode.recent:
+    case PackSortMode.recent:
       result.sort((a, b) => b.acquiredAt.compareTo(a.acquiredAt));
-    case _SortMode.rarity:
+    case PackSortMode.rarity:
       const order = [
         'criticallyEndangered',
         'endangered',
@@ -150,146 +133,107 @@ List<Item> _applyFilterAndSort(
         final bi = order.indexOf(b.rarity ?? '');
         return ai.compareTo(bi);
       });
-    case _SortMode.name:
+    case PackSortMode.name:
       result.sort((a, b) => a.displayName.compareTo(b.displayName));
   }
   return result;
 }
 
-enum _SortMode { recent, rarity, name }
-
 // ─── Pack body ────────────────────────────────────────────────────────────────
 
-/// Top-level layout shell for the non-loading, non-error pack state.
-///
-/// The item area is a [PageView] — one page per [ItemCategory]. Swiping
-/// left/right navigates between categories; the filter chips and dot
-/// indicator stay in sync with the active page.
 class _PackBody extends StatelessWidget {
   const _PackBody({
     required this.allItems,
-    required this.filter,
+    required this.filtered,
+    required this.category,
     required this.sort,
-    required this.pageController,
-    required this.filterScrollController,
-    required this.onFilterChanged,
+    required this.filters,
+    required this.panelExpanded,
+    required this.onCategoryChanged,
     required this.onSortChanged,
-    required this.onPageChanged,
+    required this.onToggleType,
+    required this.onToggleHabitat,
+    required this.onToggleRegion,
+    required this.onClearFilters,
+    required this.onTogglePanel,
   });
 
-  /// All items across every category — used for per-chip counts and to
-  /// populate each [PageView] page.
   final List<Item> allItems;
-
-  final ItemCategory filter;
-  final _SortMode sort;
-  final PageController pageController;
-  final ScrollController filterScrollController;
-  final void Function(ItemCategory) onFilterChanged;
-  final void Function(_SortMode) onSortChanged;
-
-  /// Forwarded directly from [PageView.onPageChanged] to the parent state.
-  final void Function(int) onPageChanged;
+  final List<Item> filtered;
+  final ItemCategory category;
+  final PackSortMode sort;
+  final PackFilterState filters;
+  final bool panelExpanded;
+  final void Function(int) onCategoryChanged;
+  final void Function(PackSortMode) onSortChanged;
+  final void Function(TaxonomicGroup) onToggleType;
+  final void Function(Habitat) onToggleHabitat;
+  final void Function(GameRegion) onToggleRegion;
+  final VoidCallback onClearFilters;
+  final VoidCallback onTogglePanel;
 
   @override
   Widget build(BuildContext context) {
-    // Used only to decide whether to show the sort bar for the active page.
-    final currentItems = _applyFilterAndSort(allItems, filter, sort);
-
     return Column(
       children: [
-        _FilterBar(
-          filter: filter,
+        _CategoryRow(
+          category: category,
           allItems: allItems,
-          onFilterChanged: onFilterChanged,
-          scrollController: filterScrollController,
+          onCategoryChanged: onCategoryChanged,
         ),
-        if (currentItems.isNotEmpty)
-          _SortBar(sort: sort, onSortChanged: onSortChanged),
-        if (allItems.isNotEmpty) _PageDotIndicator(filter: filter),
-        Expanded(
-          child: allItems.isEmpty
-              ? _EmptyState(
-                  filter: filter,
-                  subtitle: 'Explore the world to discover wildlife!',
+        _CompactBar(
+          sort: sort,
+          filters: filters,
+          count: filtered.length,
+          panelExpanded: panelExpanded,
+          onTogglePanel: onTogglePanel,
+        ),
+        AnimatedSize(
+          duration: Durations.normal,
+          curve: AppCurves.standard,
+          child: panelExpanded
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 240),
+                  child: SingleChildScrollView(
+                    child: _FilterPanel(
+                      category: category,
+                      sort: sort,
+                      filters: filters,
+                      onSortChanged: onSortChanged,
+                      onToggleType: onToggleType,
+                      onToggleHabitat: onToggleHabitat,
+                      onToggleRegion: onToggleRegion,
+                      onClearFilters: onClearFilters,
+                    ),
+                  ),
                 )
-              : PageView.builder(
-                  controller: pageController,
-                  onPageChanged: onPageChanged,
-                  itemCount: ItemCategory.values.length,
-                  itemBuilder: (_, index) {
-                    final cat = ItemCategory.values[index];
-                    final items = _applyFilterAndSort(allItems, cat, sort);
-                    if (items.isEmpty) {
-                      return _EmptyState(
-                        filter: cat,
-                        subtitle:
-                            'No ${cat.name} in your pack yet. Keep exploring!',
-                      );
-                    }
-                    return _ItemGrid(items: items);
-                  },
-                ),
+              : const SizedBox.shrink(),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? _EmptyState(
+                  category: category,
+                  hasFilters: filters.hasActiveFilters,
+                )
+              : _ItemGrid(items: filtered),
         ),
       ],
     );
   }
 }
 
-// ─── Page dot indicator ───────────────────────────────────────────────────────
+// ─── Category row ─────────────────────────────────────────────────────────────
 
-/// Minimal swipe affordance: one dot per [ItemCategory].
-/// The active category expands to a wider pill; inactive dots are small
-/// circles. Animates with the category transition so the user always knows
-/// where they are in the sequence.
-class _PageDotIndicator extends StatelessWidget {
-  const _PageDotIndicator({required this.filter});
-  final ItemCategory filter;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: ItemCategory.values.map((cat) {
-          final isActive = cat == filter;
-          return AnimatedContainer(
-            duration: Durations.quick,
-            curve: AppCurves.standard,
-            margin: const EdgeInsets.symmetric(horizontal: 2.5),
-            width: isActive ? 16.0 : 5.0,
-            height: 5.0,
-            decoration: BoxDecoration(
-              color: isActive
-                  ? AppTheme.primary
-                  : AppTheme.outline.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(Radii.pill),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-// ─── Filter bar ───────────────────────────────────────────────────────────────
-
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.filter,
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({
+    required this.category,
     required this.allItems,
-    required this.onFilterChanged,
-    required this.scrollController,
+    required this.onCategoryChanged,
   });
 
-  final ItemCategory filter;
+  final ItemCategory category;
   final List<Item> allItems;
-  final void Function(ItemCategory) onFilterChanged;
-
-  /// Passed in from the parent state so programmatic swipes can scroll the
-  /// chip list to keep the newly-active chip on screen.
-  final ScrollController scrollController;
+  final void Function(int) onCategoryChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -301,25 +245,25 @@ class _FilterBar extends StatelessWidget {
           bottom: BorderSide(color: AppTheme.outline, width: 0.5),
         ),
       ),
-      child: ListView.separated(
-        controller: scrollController,
-        scrollDirection: Axis.horizontal,
+      child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.sm,
+          horizontal: Spacing.xs,
           vertical: Spacing.xs,
         ),
-        itemCount: ItemCategory.values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: Spacing.xs),
-        itemBuilder: (context, index) {
-          final cat = ItemCategory.values[index];
-          final count = allItems.where((i) => i.category == cat).length;
-          return _CategoryChip(
-            category: cat,
-            selected: cat == filter,
-            count: count,
-            onTap: () => onFilterChanged(cat),
-          );
-        },
+        child: Row(
+          children: List.generate(ItemCategory.values.length, (index) {
+            final cat = ItemCategory.values[index];
+            final count = allItems.where((i) => i.category == cat).length;
+            return Expanded(
+              child: _CategoryChip(
+                category: cat,
+                selected: cat == category,
+                count: count,
+                onTap: () => onCategoryChanged(index),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -338,74 +282,59 @@ class _CategoryChip extends StatelessWidget {
   final int count;
   final VoidCallback onTap;
 
-  static String _label(ItemCategory cat) => switch (cat) {
-        ItemCategory.fauna => 'Fauna',
-        ItemCategory.flora => 'Flora',
-        ItemCategory.mineral => 'Mineral',
-        ItemCategory.fossil => 'Fossil',
-        ItemCategory.artifact => 'Artifact',
-        ItemCategory.food => 'Food',
-        ItemCategory.orb => 'Orb',
-      };
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.md),
+      splashColor: Colors.transparent,
+      highlightColor: AppTheme.primary.withValues(alpha: 0.08),
       child: AnimatedContainer(
         duration: Durations.quick,
         curve: AppCurves.standard,
         padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.md,
+          horizontal: Spacing.xxs,
           vertical: Spacing.xxs,
         ),
         decoration: BoxDecoration(
           color: selected ? AppTheme.primary : AppTheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.pill),
+          borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(
             color: selected ? AppTheme.primary : AppTheme.outline,
             width: 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // height: 1 removed — the EM-square clamp clips emoji glyphs on
-            // some platforms, causing the top/bottom pixels to be cut off.
             Text(
               category.emoji,
-              style: const TextStyle(fontSize: 14),
+              style: const TextStyle(fontSize: 13, height: 1.0),
             ),
-            const SizedBox(width: Spacing.xs),
             Text(
-              _label(category),
+              category.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                fontSize: 8,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                 color: selected ? Colors.white : AppTheme.onSurfaceVariant,
+                height: 1.1,
               ),
             ),
-            if (count > 0) ...[
-              const SizedBox(width: Spacing.xs),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                decoration: BoxDecoration(
+            if (count > 0)
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 7,
+                  fontWeight: FontWeight.w700,
                   color: selected
-                      ? Colors.white.withValues(alpha: 0.25)
-                      : AppTheme.outline.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-                child: Text(
-                  '$count',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: selected ? Colors.white : AppTheme.onSurfaceVariant,
-                  ),
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  height: 1.1,
                 ),
               ),
-            ],
           ],
         ),
       ),
@@ -413,92 +342,497 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-// ─── Sort bar ─────────────────────────────────────────────────────────────────
+// ─── Compact filter bar ───────────────────────────────────────────────────────
 
-class _SortBar extends StatelessWidget {
-  const _SortBar({required this.sort, required this.onSortChanged});
+class _CompactBar extends StatelessWidget {
+  const _CompactBar({
+    required this.sort,
+    required this.filters,
+    required this.count,
+    required this.panelExpanded,
+    required this.onTogglePanel,
+  });
 
-  final _SortMode sort;
-  final void Function(_SortMode) onSortChanged;
+  final PackSortMode sort;
+  final PackFilterState filters;
+  final int count;
+  final bool panelExpanded;
+  final VoidCallback onTogglePanel;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTogglePanel,
+      child: Container(
+        height: ComponentSizes.compactBarHeight,
+        padding: const EdgeInsets.symmetric(horizontal: Spacing.md),
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceContainer,
+          border: Border(
+            bottom: BorderSide(
+              color: AppTheme.outline,
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Sort pill
+            Text(
+              sort.icon,
+              style: const TextStyle(
+                fontSize: ComponentSizes.compactBarEmoji,
+              ),
+            ),
+            const SizedBox(width: Spacing.xxs),
+            Text(
+              sort.label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppTheme.secondary,
+              ),
+            ),
+            // Filter chips
+            if (filters.hasActiveFilters) ...[
+              const SizedBox(width: Spacing.xs),
+              Text(
+                '·',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+              ),
+              const SizedBox(width: Spacing.xs),
+              Expanded(child: _MiniFilterChips(filters: filters)),
+            ] else ...[
+              const SizedBox(width: Spacing.xs),
+              Text(
+                '·',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+              ),
+              const SizedBox(width: Spacing.xs),
+              Text(
+                'All',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ),
+              const Spacer(),
+            ],
+            // Count
+            Text(
+              '$count',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurface,
+              ),
+            ),
+            Text(
+              ' sp',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
+                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(width: Spacing.xs),
+            // Chevron
+            AnimatedRotation(
+              turns: panelExpanded ? 0.5 : 0.0,
+              duration: Durations.normal,
+              curve: AppCurves.standard,
+              child: const Icon(
+                Icons.keyboard_arrow_down,
+                size: 18,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows up to 3 mini emoji chips + "+N" overflow in the compact bar.
+class _MiniFilterChips extends StatelessWidget {
+  const _MiniFilterChips({required this.filters});
+  final PackFilterState filters;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = <String>[
+      ...filters.activeTypes.map((t) => t.icon),
+      ...filters.activeHabitats.map((h) => h.icon),
+      ...filters.activeRegions.map((r) => r.icon),
+    ];
+
+    final showCount = chips.length > 3 ? 3 : chips.length;
+    final overflow = chips.length - showCount;
+
+    return Row(
+      children: [
+        for (var i = 0; i < showCount; i++) ...[
+          if (i > 0) const SizedBox(width: Spacing.xxs),
+          Container(
+            width: ComponentSizes.miniChipSize,
+            height: ComponentSizes.miniChipSize,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceContainerHighest.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(Radii.xs),
+            ),
+            child: Center(
+              child: Text(
+                chips[i],
+                style: const TextStyle(
+                  fontSize: ComponentSizes.compactBarEmoji,
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (overflow > 0) ...[
+          const SizedBox(width: Spacing.xxs),
+          Container(
+            width: ComponentSizes.miniChipSize,
+            height: ComponentSizes.miniChipSize,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceContainerHighest.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(Radii.xs),
+            ),
+            child: Center(
+              child: Text(
+                '+$overflow',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ],
+        const Spacer(),
+      ],
+    );
+  }
+}
+
+// ─── Filter panel (expandable) ────────────────────────────────────────────────
+
+class _FilterPanel extends StatelessWidget {
+  const _FilterPanel({
+    required this.category,
+    required this.sort,
+    required this.filters,
+    required this.onSortChanged,
+    required this.onToggleType,
+    required this.onToggleHabitat,
+    required this.onToggleRegion,
+    required this.onClearFilters,
+  });
+
+  final ItemCategory category;
+  final PackSortMode sort;
+  final PackFilterState filters;
+  final void Function(PackSortMode) onSortChanged;
+  final void Function(TaxonomicGroup) onToggleType;
+  final void Function(Habitat) onToggleHabitat;
+  final void Function(GameRegion) onToggleRegion;
+  final VoidCallback onClearFilters;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Spacing.md,
-        vertical: Spacing.xs,
-      ),
       decoration: const BoxDecoration(
+        color: AppTheme.surfaceContainer,
         border: Border(
           bottom: BorderSide(color: AppTheme.outline, width: 0.5),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SortPill(
-            label: 'Recent',
-            selected: sort == _SortMode.recent,
-            onTap: () => onSortChanged(_SortMode.recent),
+          // Sort row — always visible for all categories
+          _FilterRow(
+            label: 'SORT',
+            child: Row(
+              children: PackSortMode.values.map((mode) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: Spacing.xs),
+                  child: _SortToggle(
+                    mode: mode,
+                    selected: mode == sort,
+                    onTap: () => onSortChanged(mode),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          const SizedBox(width: Spacing.xs),
-          _SortPill(
-            label: 'Rarity',
-            selected: sort == _SortMode.rarity,
-            onTap: () => onSortChanged(_SortMode.rarity),
+          // Taxonomic type row — fauna only
+          if (category == ItemCategory.fauna) ...[
+            _divider(),
+            _FilterRow(
+              label: 'TYPE',
+              child: Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: TaxonomicGroup.values
+                    .where((g) => g != TaxonomicGroup.other)
+                    .map((group) {
+                  return _IconFilterToggle(
+                    key: ValueKey('filter-type-${group.name}'),
+                    icon: group.icon,
+                    selected: filters.activeTypes.contains(group),
+                    onTap: () => onToggleType(group),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+          // Habitat row — fauna and flora
+          if (category == ItemCategory.fauna ||
+              category == ItemCategory.flora) ...[
+            _divider(),
+            _FilterRow(
+              label: 'HABITAT',
+              child: Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: Habitat.values
+                    .where((h) => h != Habitat.unknown)
+                    .map((habitat) {
+                  return _IconFilterToggle(
+                    icon: habitat.icon,
+                    selected: filters.activeHabitats.contains(habitat),
+                    onTap: () => onToggleHabitat(habitat),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+          // Region row — fauna and flora
+          if (category == ItemCategory.fauna ||
+              category == ItemCategory.flora) ...[
+            _divider(),
+            _FilterRow(
+              label: 'REGION',
+              child: Wrap(
+                spacing: Spacing.xs,
+                runSpacing: Spacing.xs,
+                children: GameRegion.values
+                    .where((r) => r != GameRegion.unknown)
+                    .map((region) {
+                  return _IconFilterToggle(
+                    icon: region.icon,
+                    selected: filters.activeRegions.contains(region),
+                    onTap: () => onToggleRegion(region),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+          // Clear button
+          if (filters.hasActiveFilters) ...[
+            _divider(),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Spacing.md,
+                vertical: Spacing.xs,
+              ),
+              child: GestureDetector(
+                onTap: onClearFilters,
+                child: Text(
+                  'Clear all filters',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.error.withValues(alpha: 0.8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: Spacing.xs),
+        ],
+      ),
+    );
+  }
+
+  static Widget _divider() => Container(
+        height: 0.5,
+        margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
+        color: AppTheme.outline.withValues(alpha: 0.4),
+      );
+}
+
+/// A labeled row within the filter panel.
+class _FilterRow extends StatelessWidget {
+  const _FilterRow({required this.label, required this.child});
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.md,
+        vertical: Spacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
+              letterSpacing: 0.8,
+            ),
           ),
-          const SizedBox(width: Spacing.xs),
-          _SortPill(
-            label: 'Name',
-            selected: sort == _SortMode.name,
-            onTap: () => onSortChanged(_SortMode.name),
-          ),
+          const SizedBox(height: Spacing.xs),
+          child,
         ],
       ),
     );
   }
 }
 
-class _SortPill extends StatelessWidget {
-  const _SortPill({
-    required this.label,
+// ─── Toggle components ────────────────────────────────────────────────────────
+
+/// Emoji icon toggle — multi-select, teal accent.
+class _IconFilterToggle extends StatelessWidget {
+  const _IconFilterToggle({
+    super.key,
+    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
-  final String label;
+  final String icon;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.lg),
+      splashColor: Colors.transparent,
+      highlightColor: AppTheme.primary.withValues(alpha: 0.08),
       child: AnimatedContainer(
         duration: Durations.quick,
+        curve: AppCurves.standard,
+        width: ComponentSizes.filterToggleSize,
+        height: ComponentSizes.filterToggleSize,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primary.withValues(alpha: 0.15)
+              : AppTheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(Radii.lg),
+          border: Border.all(
+            color: selected
+                ? AppTheme.primary.withValues(alpha: 0.60)
+                : AppTheme.outline,
+            width: selected ? 1.5 : 1.0,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.20),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: Durations.quick,
+            style: TextStyle(
+              fontSize: ComponentSizes.filterPanelEmoji,
+              color: selected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.75),
+            ),
+            child: Text(icon),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sort toggle — single-select, amber accent, pill shape.
+class _SortToggle extends StatelessWidget {
+  const _SortToggle({
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PackSortMode mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.pill),
+      splashColor: Colors.transparent,
+      highlightColor: AppTheme.secondary.withValues(alpha: 0.08),
+      child: AnimatedContainer(
+        duration: Durations.quick,
+        curve: AppCurves.standard,
+        height: ComponentSizes.sortToggleHeight,
         padding: const EdgeInsets.symmetric(
           horizontal: Spacing.sm,
           vertical: Spacing.xs,
         ),
         decoration: BoxDecoration(
           color: selected
-              ? AppTheme.primary.withValues(alpha: 0.15)
+              ? AppTheme.secondary.withValues(alpha: 0.15)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(Radii.sm),
+          borderRadius: BorderRadius.circular(Radii.pill),
           border: Border.all(
             color: selected
-                ? AppTheme.primary.withValues(alpha: 0.6)
+                ? AppTheme.secondary.withValues(alpha: 0.55)
                 : Colors.transparent,
+            width: selected ? 1.5 : 0,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected ? AppTheme.primary : AppTheme.onSurfaceVariant,
-            height: 1,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedDefaultTextStyle(
+              duration: Durations.quick,
+              style: TextStyle(
+                fontSize: 16,
+                color: selected
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.50),
+              ),
+              child: Text(mode.icon),
+            ),
+            const SizedBox(width: Spacing.xxs),
+            Text(
+              mode.label,
+              style: TextStyle(
+                fontSize: ComponentSizes.filterLabelFont,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color:
+                    selected ? AppTheme.secondary : AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -511,17 +845,12 @@ class _ItemGrid extends StatelessWidget {
   const _ItemGrid({required this.items});
   final List<Item> items;
 
-  /// Responsive column count.
-  /// Mobile  < 600px  → 3 cols (~114px cards on 375px)
-  /// Tablet  < 900px  → 4 cols
-  /// Desktop ≥ 900px  → 6 cols
   static int _columns(double width) {
     if (width < 600) return 3;
     if (width < 900) return 4;
     return 6;
   }
 
-  /// Taller aspect ratio at fewer columns keeps names readable.
   static double _aspectRatio(int cols) {
     if (cols <= 3) return 0.78;
     if (cols == 4) return 0.82;
@@ -555,48 +884,9 @@ class _ItemSlot extends StatelessWidget {
   const _ItemSlot({required this.item});
   final Item item;
 
-  /// Returns rarity-specific border opacity and glow strength.
-  /// Higher rarity → more vivid border + ambient glow.
-  static ({Color color, double borderAlpha, double glowAlpha}) _rarityDecor(
-    String? rarity,
-  ) {
-    return switch (rarity) {
-      'criticallyEndangered' => (
-          color: const Color(0xFF9C27B0),
-          borderAlpha: 0.9,
-          glowAlpha: 0.35,
-        ),
-      'endangered' => (
-          color: const Color(0xFFFFD700),
-          borderAlpha: 0.85,
-          glowAlpha: 0.25,
-        ),
-      'vulnerable' => (
-          color: const Color(0xFF2196F3),
-          borderAlpha: 0.65,
-          glowAlpha: 0.15,
-        ),
-      'nearThreatened' => (
-          color: const Color(0xFF4CAF50),
-          borderAlpha: 0.5,
-          glowAlpha: 0.0,
-        ),
-      'leastConcern' => (
-          color: Colors.white,
-          borderAlpha: 0.12,
-          glowAlpha: 0.0,
-        ),
-      _ => (
-          color: AppTheme.outline,
-          borderAlpha: 0.5,
-          glowAlpha: 0.0,
-        ),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final rd = _rarityDecor(item.rarity);
+    final status = IucnStatus.fromString(item.rarity);
     final hasFrame2 = item.iconUrlFrame2 != null;
 
     return GestureDetector(
@@ -604,20 +894,20 @@ class _ItemSlot extends StatelessWidget {
         // TODO: open SpeciesCard bottom sheet
       },
       child: Container(
-        // Clip content to the rounded-corner shape so the name strip
-        // background and any overflowing paint stay within card bounds.
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: AppTheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(Radii.xl),
           border: Border.all(
-            color: rd.color.withValues(alpha: rd.borderAlpha),
+            color: status != null
+                ? status.color.withValues(alpha: status.borderAlpha)
+                : AppTheme.outline.withValues(alpha: 0.5),
             width: 1.5,
           ),
-          boxShadow: rd.glowAlpha > 0
+          boxShadow: status != null && status.glowAlpha > 0
               ? [
                   BoxShadow(
-                    color: rd.color.withValues(alpha: rd.glowAlpha),
+                    color: status.color.withValues(alpha: status.glowAlpha),
                     blurRadius: 12,
                     spreadRadius: -2,
                   ),
@@ -627,12 +917,10 @@ class _ItemSlot extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Icon area ─────────────────────────────────────────────────
             Expanded(
               flex: 5,
               child: Stack(
                 children: [
-                  // Species icon centred in the card body.
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -644,15 +932,12 @@ class _ItemSlot extends StatelessWidget {
                       child: _SpeciesIcon(item: item),
                     ),
                   ),
-                  // Rarity badge — top-right corner.
-                  if (item.rarity != null)
+                  if (status != null)
                     Positioned(
                       top: Spacing.xs,
                       right: Spacing.xs,
-                      child: _RarityBadge(rarity: item.rarity!),
+                      child: _RarityBadge(status: status),
                     ),
-                  // Animated-species dot — teal pulse, bottom-left.
-                  // Signals that this species has 2-frame idle animation data.
                   if (hasFrame2)
                     Positioned(
                       bottom: Spacing.xs,
@@ -675,9 +960,6 @@ class _ItemSlot extends StatelessWidget {
                 ],
               ),
             ),
-            // ── Name strip ────────────────────────────────────────────────
-            // Contained by clipBehavior above — text ellipsis + maxLines 2
-            // prevent overflow, clip prevents any paint escaping the card.
             Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: Spacing.xs,
@@ -686,8 +968,7 @@ class _ItemSlot extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surfaceContainer.withValues(alpha: 0.85),
                 borderRadius: const BorderRadius.vertical(
-                  bottom:
-                      Radius.circular(Radii.lg), // inset from outer Radii.xl
+                  bottom: Radius.circular(Radii.lg),
                 ),
               ),
               child: Text(
@@ -712,7 +993,6 @@ class _ItemSlot extends StatelessWidget {
 
 // ─── Species icon ─────────────────────────────────────────────────────────────
 
-/// Loads the species chibi icon from the item's iconUrl with an emoji fallback.
 class _SpeciesIcon extends StatelessWidget {
   const _SpeciesIcon({required this.item});
   final Item item;
@@ -725,6 +1005,13 @@ class _SpeciesIcon extends StatelessWidget {
         width: 44,
         height: 44,
         fit: BoxFit.contain,
+        loadingBuilder: (_, child, progress) {
+          if (progress == null) return child;
+          return Text(
+            item.category.emoji,
+            style: const TextStyle(fontSize: 28),
+          );
+        },
         errorBuilder: (_, __, ___) => _CategoryEmoji(category: item.category),
       );
     }
@@ -744,67 +1031,31 @@ class _CategoryEmoji extends StatelessWidget {
 
 // ─── Rarity badge ─────────────────────────────────────────────────────────────
 
-/// IUCN status pill — e.g. "CR" on purple, "EN" on gold.
-/// Placed top-right on each item slot.
+/// IUCN status pill — uses canonical [IucnStatus] colors from the model.
 class _RarityBadge extends StatelessWidget {
-  const _RarityBadge({required this.rarity});
-  final String rarity;
-
-  static ({Color bg, Color fg, String code}) _badgeData(String rarity) =>
-      switch (rarity) {
-        'criticallyEndangered' => (
-            bg: const Color(0xFF9C27B0),
-            fg: Colors.white,
-            code: 'CR',
-          ),
-        'endangered' => (
-            bg: const Color(0xFFFFD700),
-            fg: const Color(0xFF1A1A2E),
-            code: 'EN',
-          ),
-        'vulnerable' => (
-            bg: const Color(0xFF2196F3),
-            fg: Colors.white,
-            code: 'VU',
-          ),
-        'nearThreatened' => (
-            bg: const Color(0xFF4CAF50),
-            fg: Colors.white,
-            code: 'NT',
-          ),
-        'leastConcern' => (
-            bg: Colors.white,
-            fg: const Color(0xFF1A1A2E),
-            code: 'LC',
-          ),
-        _ => (
-            bg: AppTheme.outline,
-            fg: AppTheme.onSurface,
-            code: '?',
-          ),
-      };
+  const _RarityBadge({required this.status});
+  final IucnStatus status;
 
   @override
   Widget build(BuildContext context) {
-    final d = _badgeData(rarity);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: d.bg,
+        color: status.color,
         borderRadius: BorderRadius.circular(Radii.xs),
         boxShadow: [
           BoxShadow(
-            color: d.bg.withValues(alpha: 0.5),
+            color: status.color.withValues(alpha: 0.5),
             blurRadius: 4,
           ),
         ],
       ),
       child: Text(
-        d.code,
+        status.code,
         style: TextStyle(
           fontSize: 8,
           fontWeight: FontWeight.w800,
-          color: d.fg,
+          color: status.fgColor,
           letterSpacing: 0.4,
           height: 1.2,
         ),
@@ -815,17 +1066,14 @@ class _RarityBadge extends StatelessWidget {
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
-/// Shown when [filter] category has no items.
-/// [subtitle] varies depending on whether the user has NO items at all,
-/// or simply none in this category.
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
-    required this.filter,
-    required this.subtitle,
+    required this.category,
+    required this.hasFilters,
   });
 
-  final ItemCategory filter;
-  final String subtitle;
+  final ItemCategory category;
+  final bool hasFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -836,12 +1084,14 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              filter.emoji,
+              hasFilters ? AppIcons.search : category.emoji,
               style: const TextStyle(fontSize: 56),
             ),
             const SizedBox(height: Spacing.md),
             Text(
-              'No ${filter.name} discovered yet',
+              hasFilters
+                  ? 'No discoveries match your filters'
+                  : 'No ${category.label.toLowerCase()} discovered yet',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 17,
@@ -852,7 +1102,9 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.xs),
             Text(
-              subtitle,
+              hasFilters
+                  ? 'Try removing some filters'
+                  : 'Explore the world to discover wildlife!',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,
@@ -894,7 +1146,11 @@ class _ErrorState extends StatelessWidget {
                 ),
               ),
               child: const Center(
-                child: Text('⚠️', style: TextStyle(fontSize: 28)),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  size: 28,
+                  color: AppTheme.error,
+                ),
               ),
             ),
             const SizedBox(height: Spacing.lg),

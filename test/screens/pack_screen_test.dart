@@ -9,330 +9,211 @@ void main() {
   group('PackScreen', () {
     testWidgets('shows filtered count in title, not total count',
         (tester) async {
-      // 4 fauna + 2 flora = 6 total; title should show 4 (fauna filter).
+      // 4 fauna + 2 flora = 6 total; title should show 4 (fauna default).
       final items = [
-        Item(
-          id: '1',
-          definitionId: 'species1',
-          displayName: 'Red Fox',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 1),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '2',
-          definitionId: 'species2',
-          displayName: 'Blue Whale',
-          category: ItemCategory.fauna,
-          rarity: 'endangered',
-          acquiredAt: DateTime(2026, 1, 2),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '3',
-          definitionId: 'species3',
-          displayName: 'Oak Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 3),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '4',
-          definitionId: 'species4',
-          displayName: 'Pine Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 4),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '5',
-          definitionId: 'species5',
-          displayName: 'Gray Wolf',
-          category: ItemCategory.fauna,
-          rarity: 'vulnerable',
-          acquiredAt: DateTime(2026, 1, 5),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '6',
-          definitionId: 'species6',
-          displayName: 'Brown Bear',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 6),
-          status: ItemStatus.active,
-        ),
+        _item('1', 'Red Fox', ItemCategory.fauna, rarity: 'leastConcern'),
+        _item('2', 'Blue Whale', ItemCategory.fauna, rarity: 'endangered'),
+        _item('3', 'Oak Tree', ItemCategory.flora, rarity: 'leastConcern'),
+        _item('4', 'Pine Tree', ItemCategory.flora, rarity: 'leastConcern'),
+        _item('5', 'Gray Wolf', ItemCategory.fauna, rarity: 'vulnerable'),
+        _item('6', 'Brown Bear', ItemCategory.fauna, rarity: 'leastConcern'),
       ];
 
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
-        ],
-      );
+      await _pumpPack(tester, items);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Default filter is fauna — should show 4 fauna items, not 6 total.
       expect(find.text('Pack · 4'), findsOneWidget);
       expect(find.text('Pack · 6'), findsNothing);
     });
 
-    testWidgets('shows pack count of zero when no items match filter',
+    testWidgets('shows pack count of zero when no items match category',
         (tester) async {
-      // Only flora items — default fauna filter yields 0 matches.
+      // Only flora items — default fauna category yields 0 matches.
       final items = [
-        Item(
-          id: '1',
-          definitionId: 'species1',
-          displayName: 'Oak Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 1),
-          status: ItemStatus.active,
-        ),
+        _item('1', 'Oak Tree', ItemCategory.flora, rarity: 'leastConcern'),
       ];
 
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
-        ],
-      );
+      await _pumpPack(tester, items);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // items exist but none match the fauna filter → "Pack · 0".
       expect(find.text('Pack · 0'), findsOneWidget);
     });
 
-    testWidgets('updates title when filter changes', (tester) async {
+    testWidgets('tapping category chip updates title count', (tester) async {
       final items = [
-        Item(
-          id: '1',
-          definitionId: 'species1',
-          displayName: 'Red Fox',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 1),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '2',
-          definitionId: 'species2',
-          displayName: 'Oak Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 2),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '3',
-          definitionId: 'species3',
-          displayName: 'Pine Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 3),
-          status: ItemStatus.active,
-        ),
+        _item('1', 'Red Fox', ItemCategory.fauna, rarity: 'leastConcern'),
+        _item('2', 'Oak Tree', ItemCategory.flora, rarity: 'leastConcern'),
+        _item('3', 'Pine Tree', ItemCategory.flora, rarity: 'leastConcern'),
       ];
 
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
-        ],
-      );
+      await _pumpPack(tester, items);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Initial: fauna filter → 1 item.
+      // Initial: fauna → 1 item.
       expect(find.text('Pack · 1'), findsOneWidget);
 
-      // Tap the "Flora" category chip label to switch filter.
+      // Tap the "Flora" category chip label.
       await tester.tap(find.text('Flora'));
       await tester.pumpAndSettle();
 
-      // Now flora filter → 2 items.
+      // Now flora → 2 items.
       expect(find.text('Pack · 2'), findsOneWidget);
       expect(find.text('Pack · 1'), findsNothing);
     });
 
     testWidgets('shows empty state when user has no items at all',
         (tester) async {
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier([])),
-        ],
-      );
+      await _pumpPack(tester, []);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // No items at all → title stays plain 'Pack'.
       expect(find.text('Pack'), findsOneWidget);
       expect(find.textContaining('Pack ·'), findsNothing);
     });
 
-    testWidgets('swiping PageView left advances to next category',
+    testWidgets('compact bar shows sort mode and species count',
         (tester) async {
-      // 2 fauna + 1 flora — distinct counts let us confirm the category
-      // switched by checking the title after the swipe settles.
       final items = [
-        Item(
-          id: '1',
-          definitionId: 'species1',
-          displayName: 'Red Fox',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 1),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '2',
-          definitionId: 'species2',
-          displayName: 'Gray Wolf',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 2),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '3',
-          definitionId: 'species3',
-          displayName: 'Oak Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 3),
-          status: ItemStatus.active,
-        ),
+        _item('1', 'Red Fox', ItemCategory.fauna),
+        _item('2', 'Gray Wolf', ItemCategory.fauna),
+        _item('3', 'Oak Tree', ItemCategory.flora),
       ];
 
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
-        ],
-      );
+      await _pumpPack(tester, items);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Initial: fauna (page 0) → 2 items.
+      // Compact bar should show "Recent" label.
+      expect(find.text('Recent'), findsOneWidget);
+      // Title should show filtered count.
       expect(find.text('Pack · 2'), findsOneWidget);
-
-      // Swipe left to advance to the next category (flora, page 1).
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(-400, 0),
-        800,
-      );
-      await tester.pumpAndSettle();
-
-      // After the swipe, flora is active → 1 item.
-      expect(find.text('Pack · 1'), findsOneWidget);
-      expect(find.text('Pack · 2'), findsNothing);
     });
 
-    testWidgets('swiping PageView right goes back to previous category',
-        (tester) async {
-      // Start on flora (page 1) by tapping the chip, then swipe right back
-      // to fauna (page 0). Counts: 1 fauna, 2 flora.
+    testWidgets('tapping compact bar expands filter panel', (tester) async {
       final items = [
-        Item(
-          id: '1',
-          definitionId: 'species1',
-          displayName: 'Red Fox',
-          category: ItemCategory.fauna,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 1),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '2',
-          definitionId: 'species2',
-          displayName: 'Oak Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 2),
-          status: ItemStatus.active,
-        ),
-        Item(
-          id: '3',
-          definitionId: 'species3',
-          displayName: 'Pine Tree',
-          category: ItemCategory.flora,
-          rarity: 'leastConcern',
-          acquiredAt: DateTime(2026, 1, 3),
-          status: ItemStatus.active,
-        ),
+        _item('1', 'Red Fox', ItemCategory.fauna, taxonomicClass: 'MAMMALIA'),
       ];
 
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
-        ],
-      );
+      await _pumpPack(tester, items);
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
-      );
+      // Panel labels should NOT be visible before expand.
+      expect(find.text('SORT'), findsNothing);
+      expect(find.text('TYPE'), findsNothing);
 
+      // Tap the compact bar area (find by "Recent" label).
+      await tester.tap(find.text('Recent'));
       await tester.pumpAndSettle();
 
-      // Navigate to flora first via chip tap.
-      await tester.tap(find.text('Flora'));
+      // Panel labels should now be visible.
+      expect(find.text('SORT'), findsOneWidget);
+      expect(find.text('TYPE'), findsOneWidget);
+      expect(find.text('HABITAT'), findsOneWidget);
+      expect(find.text('REGION'), findsOneWidget);
+    });
+
+    testWidgets('non-fauna category only shows SORT row in panel',
+        (tester) async {
+      final items = [
+        _item('1', 'Diamond', ItemCategory.mineral),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // Switch to mineral.
+      await tester.tap(find.text('Mineral'));
       await tester.pumpAndSettle();
+
+      // Expand panel.
+      await tester.tap(find.text('Recent'));
+      await tester.pumpAndSettle();
+
+      // Only SORT row — no TYPE/HABITAT/REGION for minerals.
+      expect(find.text('SORT'), findsOneWidget);
+      expect(find.text('TYPE'), findsNothing);
+      expect(find.text('HABITAT'), findsNothing);
+      expect(find.text('REGION'), findsNothing);
+    });
+
+    testWidgets('filter-driven empty state shows correct message',
+        (tester) async {
+      final items = [
+        _item('1', 'Red Fox', ItemCategory.fauna,
+            taxonomicClass: 'MAMMALIA', habitats: ['Forest']),
+      ];
+
+      await _pumpPack(tester, items);
+
+      // All items visible initially.
+      expect(find.text('Pack · 1'), findsOneWidget);
+
+      // Expand panel.
+      await tester.tap(find.text('Recent'));
+      await tester.pumpAndSettle();
+
+      // Find the birds toggle by key.
+      await tester.tap(find.byKey(const ValueKey('filter-type-birds')));
+      await tester.pumpAndSettle();
+
+      // No mammals match birds filter → 0.
+      expect(find.text('Pack · 0'), findsOneWidget);
+      expect(find.text('No discoveries match your filters'), findsOneWidget);
+    });
+    testWidgets('toggling filter off restores all items', (tester) async {
+      final items = [
+        _item('1', 'Red Fox', ItemCategory.fauna, taxonomicClass: 'MAMMALIA'),
+        _item('2', 'Eagle', ItemCategory.fauna, taxonomicClass: 'AVES'),
+      ];
+
+      await _pumpPack(tester, items);
       expect(find.text('Pack · 2'), findsOneWidget);
 
-      // Swipe right to return to fauna.
-      await tester.fling(
-        find.byType(PageView),
-        const Offset(400, 0),
-        800,
-      );
+      // Expand, filter to mammals by key.
+      await tester.tap(find.text('Recent'));
       await tester.pumpAndSettle();
-
-      // Back to fauna → 1 item.
+      await tester.tap(find.byKey(const ValueKey('filter-type-mammals')));
+      await tester.pumpAndSettle();
       expect(find.text('Pack · 1'), findsOneWidget);
-      expect(find.text('Pack · 2'), findsNothing);
+
+      // Toggle mammals off → back to all.
+      await tester.tap(find.byKey(const ValueKey('filter-type-mammals')));
+      await tester.pumpAndSettle();
+      expect(find.text('Pack · 2'), findsOneWidget);
     });
   });
+}
+
+// ─── Test helpers ─────────────────────────────────────────────────────────────
+
+Item _item(
+  String id,
+  String name,
+  ItemCategory category, {
+  String? rarity,
+  String? taxonomicClass,
+  List<String> habitats = const [],
+  List<String> continents = const [],
+}) =>
+    Item(
+      id: id,
+      definitionId: 'def-$id',
+      displayName: name,
+      category: category,
+      rarity: rarity,
+      acquiredAt: DateTime(2026, 1, int.parse(id)),
+      status: ItemStatus.active,
+      taxonomicClass: taxonomicClass,
+      habitats: habitats,
+      continents: continents,
+    );
+
+Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
+  final container = ProviderContainer(
+    overrides: [
+      itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
+    ],
+  );
+
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: PackScreen()),
+    ),
+  );
+
+  await tester.pumpAndSettle();
 }
 
 /// Mock [ItemsNotifier] that returns a pre-loaded state — no Supabase call.
