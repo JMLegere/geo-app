@@ -819,28 +819,177 @@ The first thing a user sees after every launch. Must feel alive.
 ```
 ┌─────────────────────────────────┐
 │                                 │
-│          EarthNova              │  ← 28px w700
-│    Explore. Discover. Reveal.   │  ← 14px onSurfaceVariant
+│                                 │
+│          EarthNova              │  ← 32px, w700, #E0E1DD, letterSpacing -0.5
+│    Explore. Discover. Reveal.   │  ← 14px, #ADB5BD
+│                                 │
+│           ← 40px gap →          │
 │                                 │
 │  ┌────────────────────────────┐ │
-│  │ +1   │  (555) 123-4567    │ │  ← TextField, surfaceContainer bg
+│  │ +1  │ (555) 123-4567      │ │  ← fill #132333, radius 12px
 │  └────────────────────────────┘ │
+│                                 │
+│           ← 16px gap →          │
 │                                 │
 │  ┌────────────────────────────┐ │
-│  │         Continue           │ │  ← ElevatedButton, primary color
+│  │         Continue           │ │  ← fill #006D77, radius 12px, 52px tall
 │  └────────────────────────────┘ │
 │                                 │
-│  "Couldn't sign in. Try again." │  ← error text, errorColor, 13px, animated fade
+│  "Couldn't sign in. Try again." │  ← errorText below field, #EF476F, 12px
 │                                 │
 └─────────────────────────────────┘
 ```
 
-- Background: `#0D1B2A`
-- Phone input: `surfaceContainer` background, `Radii.borderXl`, `+1` prefix in `onSurfaceVariant`
-- Continue button: full-width, `ComponentSizes.buttonHeight = 52px`, disabled when < 10 digits (opacity 0.4)
-- Loading state: button shows `LoadingDots` instead of text
-- Error state: error text fades in below button (`Durations.quick`)
-- Screen padding: `Spacing.lg` horizontal, content centred vertically at 40% height
+#### Layout
+
+| Property | Value |
+|----------|-------|
+| Scaffold background | `AppTheme.surface` `#0D1B2A` |
+| Body structure | `SafeArea` → `Center` → `SingleChildScrollView` → `Column` |
+| Horizontal padding | `Spacing.lg` 16px (both sides, on `SingleChildScrollView`) |
+| Column alignment | `mainAxisAlignment: center`, `crossAxisAlignment: center` (default) |
+
+`Center` vertically centres the scroll view when content is shorter than the viewport.
+`TextField` fills the available column width automatically.
+The `ElevatedButton` is wrapped in `SizedBox(width: double.infinity)` to explicitly
+fill the width (the theme's `minimumSize: Size(double.infinity, 52)` achieves the same
+result, but the SizedBox wrapper makes the intent explicit at the call site).
+
+#### Brand block
+
+| Element | Value |
+|---------|-------|
+| Wordmark | `"EarthNova"`, `fontSize: 32`, `fontWeight: w700`, `color: #E0E1DD`, `letterSpacing: -0.5` |
+| Tagline | `'Explore. Discover. Reveal.'`, `fontSize: 14`, `color: #ADB5BD` |
+| Wordmark → tagline gap | `Spacing.xs` 4px |
+| Tagline → phone field gap | `Spacing.huge` 40px |
+
+#### Phone input field
+
+| Property | Value |
+|----------|-------|
+| Widget | `TextField` with `InputDecoration` |
+| Fill colour | `AppTheme.surfaceContainer` `#132333` (via theme `fillColor`) |
+| Border radius | `Radii.xl` 12px on all border states |
+| Content padding | `horizontal: 16px, vertical: 14px` (via theme `contentPadding`) |
+| Prefix text | `'+1 '` (trailing space for visual gap from user digits) |
+| Prefix style | `fontSize: 16`, `color: #ADB5BD` (onSurfaceVariant) |
+| Placeholder (`hintText`) | `'(555) 123-4567'` |
+| Hint style | `fontSize: 16`, `color: #ADB5BD` — same size as entered text, muted colour |
+| Entered text style | `fontSize: 16`, `color: #E0E1DD` |
+| Keyboard type | `TextInputType.phone` |
+| Input formatter | `_PhoneInputFormatter` (see below) |
+| Max raw digits | 10 — enforced by `_PhoneInputFormatter`, not by `maxLength` |
+| Counter | Hidden via `counterText: ''` |
+| Validation gate | `rawDigits.length >= 10` where `rawDigits = text.replaceAll(RegExp(r'[^\d]'), '')` |
+
+**Input field border states** — all defined in `AppTheme.dark()` `InputDecorationTheme`:
+
+| State | Border |
+|-------|--------|
+| Empty, unfocused | `BorderSide.none` — no ring, card-like appearance |
+| Typing / filled, unfocused | `BorderSide.none` |
+| Focused (any content) | 2px solid `#006D77` (primary) |
+| Error, unfocused | 1.5px solid `#EF476F` (error) |
+| Error + focused | 2px solid `#EF476F` (error) |
+| Disabled (loading) | `BorderSide.none`; fill darkened by M3 disabled overlay |
+
+**Input field fill/text states:**
+
+| State | Fill | Text / hint |
+|-------|------|-------------|
+| Enabled, empty | `#132333` | hint `#ADB5BD` at full opacity |
+| Enabled, typing | `#132333` | entered text `#E0E1DD` |
+| Disabled (`enabled: false`) | M3 applies `onSurface × 0.12` over fill | text `onSurface × 0.38` |
+
+#### `_PhoneInputFormatter`
+
+Private `TextInputFormatter` in `login_screen.dart`. Applied via
+`inputFormatters: [_PhoneInputFormatter()]` on the `TextField`.
+
+**Purpose:** ensures the live input text always matches the `(NNN) NNN-NNNN` placeholder
+format, so there is zero visual mismatch between the hint and what the user types.
+
+**Algorithm:**
+1. Strip all non-digit characters from `newValue.text`
+2. Cap at 10 raw digits (paste protection)
+3. Re-build the formatted string character by character:
+   - Insert `(` before digit 0
+   - Insert `) ` after digit 2 (before digit 3)
+   - Insert `-` after digit 5 (before digit 6)
+4. Return a `TextEditingValue` with cursor collapsed to end
+
+**Format progression:**
+
+| Raw digits typed | Formatted display |
+|-----------------|-------------------|
+| `5` | `(5` |
+| `55` | `(55` |
+| `555` | `(555` |
+| `5551` | `(555) 1` |
+| `55512` | `(555) 12` |
+| `555123` | `(555) 123` |
+| `5551234` | `(555) 123-4` |
+| `55512345` | `(555) 123-45` |
+| `555123456` | `(555) 123-456` |
+| `5551234567` | `(555) 123-4567` ← matches placeholder exactly |
+
+**Backspace behaviour:** each backspace recalculates from the stripped digit string, so
+punctuation characters (`(`, `)`, ` `, `-`) are never individually deletable — they
+vanish automatically when the surrounding digit is removed.
+
+**Cursor:** always placed at the end of the formatted string after any edit.
+
+#### Continue button
+
+| Property | Value |
+|----------|-------|
+| Widget | `ElevatedButton` inside `SizedBox(width: double.infinity)` |
+| Background (enabled) | `AppTheme.primary` `#006D77` |
+| Foreground (text / icon) | `Colors.white` `#FFFFFF` |
+| Height | `ComponentSizes.buttonHeight` 52px (via theme `minimumSize`) |
+| Border radius | `Radii.xl` 12px (via theme `shape`) |
+| Label | `'Continue'`, `fontSize: 16`, `fontWeight: w600` |
+| Gap above (from input) | `Spacing.lg` 16px |
+
+**Button states:**
+
+| State | Condition | Background | Label / content |
+|-------|-----------|------------|-----------------|
+| Enabled | `_isValid && !isLoading` | `#006D77` | `'Continue'` white |
+| Disabled | `!_isValid \|\| isLoading` (`onPressed: null`) | `onSurface × 0.12` ≈ `#E0E1DD` at 12 % | `'Continue'` at `onSurface × 0.38` |
+| Loading | `isLoading == true` | `#006D77` | `CircularProgressIndicator` 20 × 20, `strokeWidth: 2`, white |
+| Pressed | tap | `#006D77` with Material ink ripple | `'Continue'` white |
+
+The disabled colours are Material 3 defaults — no custom override needed.
+
+#### Error state
+
+- **Rendered via:** `InputDecoration.errorText` — appears below the phone field, above the button gap
+- **Colour:** `colorScheme.error` → `AppTheme.error` `#EF476F` (Material 3 default for `errorText`)
+- **Font size:** 12px (Material 3 default for error label)
+- **Border:** field simultaneously switches to `errorBorder` — 1.5px `#EF476F` ring
+- **Trigger:** `AuthStatus.error` → `setState(() => _errorText = authState.errorMessage)`
+- **Dismissal:** first keystroke after an error clears `_errorText` (set to `null` in `_onPhoneChanged`)
+
+#### Disabled / enabled transition logic
+
+```dart
+// Button enabled only when the number is valid AND no request is in flight.
+onPressed: _isValid && !isLoading ? _onContinue : null
+
+// Field disabled while loading to prevent concurrent submissions.
+enabled: !isLoading
+```
+
+#### Auth flow (from this screen)
+
+1. User taps **Continue** → `_onContinue()` called
+2. Strips formatting: `digits = text.replaceAll(RegExp(r'[^\d]'), '')` (always 10 chars)
+3. Calls `authProvider.notifier.signInWithPhone('+1$digits')`
+4. On `AuthStatus.error` response: sets `_errorText` for inline display
+5. On `AuthStatus.authenticated`: router navigates to `LoadingScreen` automatically
+6. Phone stored as `+1XXXXXXXXXX` (E.164-adjacent) — no OTP (see Key Decisions)
 
 ### Pack Screen
 

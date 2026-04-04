@@ -125,6 +125,13 @@ void main() {
       expect(authState.status.name, 'authenticated');
     });
 
+    testWidgets('phone field shows (555) 123-4567 placeholder', (tester) async {
+      await pumpLogin(tester);
+
+      // hintText is rendered as a separate Text widget inside the InputDecorator.
+      expect(find.text('(555) 123-4567'), findsOneWidget);
+    });
+
     testWidgets('phone field shows +1 prefix', (tester) async {
       await pumpLogin(tester);
 
@@ -137,12 +144,17 @@ void main() {
       await pumpLogin(tester);
 
       final textField = find.byType(TextField);
-      // Type more than 10 chars — should be capped at 10.
+      // Type more than 10 raw digits — formatter must cap at 10.
+      // The displayed text becomes '(555) 123-4567' (14 chars including
+      // punctuation), so we strip non-digits before asserting the limit.
       await tester.enterText(textField, '55512345678901');
       await tester.pump();
 
       final controller = tester.widget<TextField>(textField).controller!;
-      expect(controller.text.length, lessThanOrEqualTo(10));
+      final rawDigits = controller.text.replaceAll(RegExp(r'[^\d]'), '');
+      expect(rawDigits.length, lessThanOrEqualTo(10),
+          reason:
+              'Formatter must cap input at 10 raw digits regardless of formatting');
     });
   });
 }

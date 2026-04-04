@@ -60,9 +60,36 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceContainer,
+        // Hint text always 16px in onSurfaceVariant so it is visually aligned
+        // with the entered text (same size, just muted colour).
+        hintStyle: const TextStyle(
+          color: onSurfaceVariant,
+          fontSize: 16,
+        ),
+        // ── Border states ────────────────────────────────────────────────────
+        // Empty / unfocused — no visible border, card-like appearance.
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12), // Radii.xl
           borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12), // Radii.xl
+          borderSide: BorderSide.none,
+        ),
+        // Focused — 2px primary ring confirms which field is active.
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12), // Radii.xl
+          borderSide: const BorderSide(color: primary, width: 2),
+        ),
+        // Error — 1.5px error ring pairs with the errorText label below.
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12), // Radii.xl
+          borderSide: const BorderSide(color: error, width: 1.5),
+        ),
+        // Focused + error — 2px error ring (same weight as focused primary).
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12), // Radii.xl
+          borderSide: const BorderSide(color: error, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
