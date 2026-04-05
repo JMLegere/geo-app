@@ -2,7 +2,7 @@
 flowchart TD
     subgraph JTBD["JTBD Canvas -- L3-I.1: Discover NPCs on the Map"]
         JP["<b>Job Performer</b><br/>Explorer finding<br/>characters in the world"]
-        ASP["<b>Aspirations</b><br/>The world has inhabitants<br/>Discovering them is a surprise"]
+        ASP["<b>Aspirations</b><br/>The world has inhabitants<br/>Discovering them unlocks features<br/>Each NPC is a surprise"]
         FJ["<b>Focus Job</b><br/>Discover NPCs on the map"]
         S1["<b>Step 1</b><br/>Explore map in town area"]
         S2["<b>Step 2</b><br/>See NPC marker on map"]
@@ -24,7 +24,7 @@ flowchart TD
 
     subgraph SystemSpec["System Spec -- L3-I.1"]
         IN["<b>Inputs</b><br/>Cell visits<br/>NPC placement data"]
-        OUT["<b>Outputs</b><br/>NPC discovery record"]
+        OUT["<b>Outputs</b><br/>NPC discovery record<br/>Feature unlock (e.g. Museum for<br/>minerals, fossils, artifacts)"]
         SF["<b>Skill Feed</b><br/>None -- discovery is<br/>exploration-driven"]
         GT["<b>Gating</b><br/>Visit specific cells<br/>with NPC placement"]
         DR["<b>Data Requirements</b><br/>v3_npcs (location, name, personality)<br/>v3_npc_discoveries"]
