@@ -1,0 +1,40 @@
+%% L3-F.2: Customize profile
+%% Parent: F (Manage my explorer identity)
+%% Status: DEFERRED (post-MVP)
+
+flowchart TD
+    subgraph JTBD["JTBD Canvas — F.2: Customize profile"]
+        direction TB
+
+        JP["**Job Performer**\nPlayer who wants a personal identity"]
+        ASP["**Aspirations**\nExpress personality, stand out,\nfeel ownership of explorer persona"]
+        FJ["**Focus Job**\nCustomize my explorer profile\nbeyond the default"]
+
+        PLAN["**PLAN**\nOpen settings/profile screen"]
+        PREPARE["**PREPARE**\nSee current profile:\ndefault name 'Explorer',\nauto-generated identicon"]
+        EXECUTE["**EXECUTE**\nSet display name,\nchoose/upload avatar"]
+        MONITOR["**MONITOR**\nSee updated profile in\nsanctuary, leaderboards, trades"]
+        MODIFY["**MODIFY**\nChange name/avatar\nat any time"]
+        CONCLUDE["**CONCLUDE**\nProfile reflects\nmy identity"]
+
+        JP --> ASP --> FJ
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+
+        SC["**Success Criteria**\nName visible to others,\navatar renders correctly,\nchanges persist"]
+        EM["**Emotions**\nCreativity → ownership → pride"]
+
+        CONCLUDE --> SC
+        CONCLUDE --> EM
+    end
+
+    subgraph SYS["System Spec"]
+        direction TB
+
+        IN["**Inputs**\ndisplay_name (text),\navatar (image or selection)"]
+        OUT["**Outputs**\nUPDATE v3_profiles\nSET display_name, avatar_url"]
+        GATE["**Gating**\nAuthenticated"]
+        DATA["**Data**\nv3_profiles"]
+        STATUS["**Status: DEFERRED**\nMVP default: 'Explorer' + identicon\nCustomization post-MVP"]
+    end
+
+    JTBD --> SYS

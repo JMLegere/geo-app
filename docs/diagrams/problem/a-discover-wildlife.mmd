@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-A: Discover Wildlife While Exploring the Real World"]
+        JP["<b>Job Performer</b><br/>Explorer: outdoor player<br/>with GPS enabled"]
+        ASP["<b>Aspirations</b><br/>Real places yield real discoveries<br/>Every walk is unique<br/>The world map fills in"]
+        FJ["<b>Focus Job</b><br/>Discover wildlife while<br/>exploring the real world"]
+        RJ["<b>Related Jobs</b><br/>A.1: Navigate the real-world map<br/>A.2: Reveal fog-of-war by visiting cells<br/>A.3: Encounter and collect species"]
+        PLAN["<b>PLAN</b><br/>Choose a route through<br/>unexplored areas"]
+        PREPARE["<b>PREPARE</b><br/>Open app, GPS lock,<br/>check daily seed"]
+        EXECUTE["<b>EXECUTE</b><br/>Walk into cells,<br/>trigger encounters,<br/>collect specimens"]
+        MONITOR["<b>MONITOR</b><br/>Fog clears, pack fills,<br/>new species found"]
+        MODIFY["<b>MODIFY</b><br/>Change route for<br/>uncovered areas"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Return home with<br/>new discoveries"]
+        SC["<b>Success Criteria</b><br/>New cells revealed<br/>New species encountered<br/>Items in pack"]
+        EM["<b>Emotions</b><br/>Curiosity --> Surprise --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Walking outdoors,<br/>GPS signal available"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-A"]
+        IN["<b>Inputs</b><br/>GPS coordinates<br/>Daily seed<br/>Cell ID"]
+        OUT["<b>Outputs</b><br/>Cell visits recorded<br/>Unidentified items: 1-3 per cell"]
+        SF["<b>Skill Feed</b><br/>+1 to skill matching item type<br/>per item acquired"]
+        GT["<b>Gating</b><br/>None -- exploration is<br/>always available"]
+        DR["<b>Data Requirements</b><br/>v3_cell_visits<br/>v3_items<br/>species catalog<br/>daily_seed"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

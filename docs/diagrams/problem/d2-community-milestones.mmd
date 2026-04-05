@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.2: See Community Milestones"]
+        JP["<b>Job Performer</b><br/>Player interested in<br/>the broader world"]
+        ASP["<b>Aspirations</b><br/>Feel less alone<br/>See collective progress<br/>We are doing this together"]
+        FJ["<b>Focus Job</b><br/>See community milestones"]
+        RJ["<b>Related Jobs</b><br/>D: Reconnect with progress on return<br/>D.1: Review personal progress recap<br/>E.3: Community goals"]
+        PLAN["<b>PLAN</b><br/>Community page in recap,<br/>or future community tab"]
+        PREPARE["<b>PREPARE</b><br/>System aggregates data:<br/>city --> state --> country"]
+        EXECUTE["<b>EXECUTE</b><br/>View aggregate stats:<br/>total species discovered,<br/>cells explored,<br/>collections completed"]
+        MONITOR["<b>MONITOR</b><br/>Compare personal to community<br/>See 500 new species<br/>identifiable this week"]
+        MODIFY["<b>MODIFY</b><br/>Browse different<br/>geographic scopes"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Feel connected to<br/>broader effort"]
+        SC["<b>Success Criteria</b><br/>Aggregates accurate<br/>Geographic layering works<br/>Feels social not competitive"]
+        EM["<b>Emotions</b><br/>Belonging --> Shared pride --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>Viewing recap or<br/>browsing community tab"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.2"]
+        IN["<b>Inputs</b><br/>Community aggregate data<br/>pre-computed hourly"]
+        OUT["<b>Outputs</b><br/>Stats by geography:<br/>city / state / country"]
+        SF["<b>Skill Feed</b><br/>Geographic scope derived from<br/>player cell visit history<br/>via reverse geocoding"]
+        GT["<b>Gating</b><br/>Community models:<br/>Phase 1: cooperative milestone<br/>Phase 2: ambient presence<br/>Phase 2-3: friendly competition"]
+        DR["<b>Data Requirements</b><br/>Aggregated v3_cell_visits<br/>Aggregated v3_items across all users<br/>Phase 1 = simple counters in recap<br/>Full social deferred"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.2: Compare Sanctuaries DEFERRED"]
+        JP["<b>Job Performer</b><br/>Curious player browsing<br/>others builds"]
+        ASP["<b>Aspirations</b><br/>See whats possible<br/>Get inspired<br/>Friendly comparison"]
+        FJ["<b>Focus Job</b><br/>Compare sanctuaries"]
+        RJ["<b>Related Jobs</b><br/>E: Share my world with explorers<br/>C.1: Browse sanctuary collections"]
+        PLAN["<b>PLAN</b><br/>Browse player list<br/>or leaderboard"]
+        PREPARE["<b>PREPARE</b><br/>Load other players<br/>sanctuary"]
+        EXECUTE["<b>EXECUTE</b><br/>Browse their collections,<br/>compare progress"]
+        MONITOR["<b>MONITOR</b><br/>Note differences and<br/>unique specimens"]
+        MODIFY["<b>MODIFY</b><br/>Visit multiple sanctuaries<br/>for broader view"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Inspired to build more"]
+        SC["<b>Success Criteria</b><br/>Best conservationist not who is strongest<br/>Collection completion %, species identified"]
+        EM["<b>Emotions</b><br/>Curiosity --> Admiration --> Inspiration"]
+        CIRC["<b>Circumstances</b><br/>Player seeks comparison<br/>DEFERRED: not in MVP"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.2 DEFERRED"]
+        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Requires: public sanctuary<br/>read access, player profiles"]
+        OUT["<b>Outputs</b><br/>Other players sanctuary view<br/>Comparison metrics"]
+        SF["<b>Skill Feed</b><br/>Metrics: collection completion %,<br/>species identified,<br/>sanctuary size"]
+        GT["<b>Gating</b><br/>Requires public profiles<br/>Not in MVP scope"]
+        DR["<b>Data Requirements</b><br/>Future: public v3_sanctuary_donations,<br/>player profiles,<br/>leaderboard aggregation"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

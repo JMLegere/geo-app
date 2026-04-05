@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-C.1: Discover and Browse Collections"]
+        JP["<b>Job Performer</b><br/>Player exploring what<br/>is available to build"]
+        ASP["<b>Aspirations</b><br/>See the full scope of what can be built<br/>Find achievable targets"]
+        FJ["<b>Focus Job</b><br/>Discover and browse collections"]
+        RJ["<b>Related Jobs</b><br/>C.2: Donate specimens<br/>C.3: Complete bundles"]
+        PLAN["<b>PLAN</b><br/>Open sanctuary tab"]
+        PREPARE["<b>PREPARE</b><br/>Collections load,<br/>grouped by dimension"]
+        EXECUTE["<b>EXECUTE</b><br/>Browse collection list,<br/>see progress bars,<br/>filter by habitat/region/class"]
+        MONITOR["<b>MONITOR</b><br/>Tiny collections 1-5 feel achievable,<br/>large ones feel like long-term goals"]
+        MODIFY["<b>MODIFY</b><br/>Filter to specific<br/>dimensions, search"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Identified target collections<br/>to work toward"]
+        SC["<b>Success Criteria</b><br/>Only non-empty permutations shown<br/>Progress visible<br/>Size clear"]
+        EM["<b>Emotions</b><br/>Overview --> Planning --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>Player has at least one<br/>identified species"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-C.1"]
+        IN["<b>Inputs</b><br/>v3_sanctuary_donations for user<br/>Species catalog"]
+        OUT["<b>Outputs</b><br/>Collection list with progress"]
+        COLL["<b>Collections</b><br/>513 real permutations of<br/>continent x habitat x taxonomicClass"]
+        SIZES["<b>Collection Sizes</b><br/>Tiny 1-5 species: 147 collections<br/>Small 6-50: 180 collections<br/>Medium 51-200: 107 collections<br/>Large 200+: 79 collections"]
+        GT["<b>Gating / Unlock Rule</b><br/>Collection visible only after<br/>first identification of<br/>an eligible species"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_donations<br/>species catalog<br/>collection permutation index"]
+        COMP["<b>Components</b><br/>SanctuaryScreen<br/>CollectionBrowser<br/>CollectionCard"]
+
+        IN --> COLL
+        COLL --> SIZES
+        SIZES --> OUT
+        GT --> DR
+        DR --> COMP
+    end
+
+    JTBD --> SystemSpec

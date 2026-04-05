@@ -1,0 +1,51 @@
+%% L3-F.3: Manage account settings
+%% Parent: F (Manage my explorer identity)
+
+flowchart TD
+    subgraph JTBD["JTBD Canvas — F.3: Manage account settings"]
+        direction TB
+
+        JP["**Job Performer**\nPlayer managing their account"]
+        ASP["**Aspirations**\nControl over account,\nability to sign out,\nfuture: delete data, manage sessions"]
+        FJ["**Focus Job**\nManage account settings\nand preferences"]
+
+        PLAN["**PLAN**\nOpen Settings tab"]
+        PREPARE["**PREPARE**\nSee current account state:\nphone number, session info"]
+        EXECUTE["**EXECUTE**\nSign out, or adjust\npreferences (future)"]
+        MONITOR["**MONITOR**\nConfirm action completed\n(navigated to login, etc.)"]
+        MODIFY["**MODIFY**\nSign back in if needed"]
+        CONCLUDE["**CONCLUDE**\nAccount in desired state"]
+
+        JP --> ASP --> FJ
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+
+        SC["**Success Criteria**\nSign out works reliably,\nsession cleared,\nnavigates to LoginScreen"]
+        EM["**Emotions**\nControl → confidence → trust"]
+
+        CONCLUDE --> SC
+        CONCLUDE --> EM
+    end
+
+    subgraph SYS["System Spec"]
+        direction TB
+
+        IN["**Inputs**\nUser action (sign out, etc.)"]
+        OUT["**Outputs**\nSession cleared,\nAuthState.unauthenticated"]
+        GATE["**Gating**\nAuthenticated"]
+        DATA["**Data**\nSupabase auth session"]
+
+        MVP["**MVP Scope**\nSign out button only"]
+        FUTURE["**Future**\nAccount deletion (GDPR),\nmultiple devices,\nOAuth login (Google/Apple),\nnotification preferences"]
+
+        IN --- OUT --- GATE --- DATA
+        MVP --- FUTURE
+    end
+
+    subgraph COMP["Components"]
+        C1["SettingsScreen"]
+        C2["AuthNotifier.signOut()"]
+        C3["ObservabilityService\nauth.sign_out event"]
+    end
+
+    JTBD --> SYS
+    SYS --> COMP

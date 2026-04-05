@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.1: Trade Specimens DEFERRED"]
+        JP["<b>Job Performer</b><br/>Player with duplicates<br/>or specific needs"]
+        ASP["<b>Aspirations</b><br/>I have something you need<br/>Mutual benefit"]
+        FJ["<b>Focus Job</b><br/>Trade specimens"]
+        RJ["<b>Related Jobs</b><br/>E: Share my world with explorers<br/>C.2: Donate specimens"]
+        PLAN["<b>PLAN</b><br/>Identify surplus specimens"]
+        PREPARE["<b>PREPARE</b><br/>Find trade partner"]
+        EXECUTE["<b>EXECUTE</b><br/>Propose trade,<br/>negotiate, confirm"]
+        MONITOR["<b>MONITOR</b><br/>Items transfer"]
+        MODIFY["<b>MODIFY</b><br/>Adjust offer if<br/>partner declines"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Both players enriched"]
+        SC["<b>Success Criteria</b><br/>Fair exchange<br/>Both parties satisfied"]
+        EM["<b>Emotions</b><br/>Hope --> Negotiation --> Mutual satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Player has surplus specimens<br/>DEFERRED: not in MVP"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.1 DEFERRED"]
+        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Requires: multiplayer backend,<br/>item transfer system,<br/>trade confirmation UI"]
+        OUT["<b>Outputs</b><br/>ItemStatus.traded already exists<br/>Hook: v3_items status can<br/>transition to traded"]
+        SF["<b>Skill Feed</b><br/>No skill impact defined<br/>for trading yet"]
+        GT["<b>Gating</b><br/>Requires multiplayer backend<br/>Not in MVP scope"]
+        DR["<b>Data Requirements</b><br/>Future: trade proposals table,<br/>trade confirmations,<br/>item ownership transfer"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

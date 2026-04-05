@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L1: Build and Grow My Personal Wildlife World"]
+        JP["<b>Job Performer</b><br/>Active player with account,<br/>exploring regularly"]
+        ASP["<b>Aspirations</b><br/>Pack fills with discoveries<br/>Sanctuary grows<br/>Skills level up<br/>World reflects journey"]
+        FJ["<b>Focus Job</b><br/>Build and grow my<br/>personal wildlife world"]
+        RJ["<b>Related Jobs</b><br/>A: Discover wildlife<br/>B: Identify specimens<br/>C: Curate sanctuary"]
+        PLAN["<b>PLAN</b><br/>Decide todays exploration<br/>goals and targets"]
+        PREPARE["<b>PREPARE</b><br/>Open app, check recap,<br/>review progress"]
+        EXECUTE["<b>EXECUTE</b><br/>Explore + Discover +<br/>Identify + Donate cycle"]
+        MONITOR["<b>MONITOR</b><br/>Track progress across skills,<br/>collections, fog coverage"]
+        MODIFY["<b>MODIFY</b><br/>Target specific collections<br/>or regions"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Session ends,<br/>progress persisted"]
+        SC["<b>Success Criteria</b><br/>Measurable growth each session<br/>New species, collections, skill levels<br/>World feels richer"]
+        EM["<b>Emotions</b><br/>Anticipation --> Flow --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Any outdoor session,<br/>5 min to 2 hours"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L1"]
+        IN["<b>Inputs</b><br/>All game systems:<br/>GPS, daily seed, items,<br/>species catalog, collections"]
+        OUT["<b>Outputs</b><br/>Persistent world state:<br/>cell visits, items, donations,<br/>skill levels, fog map"]
+        SF["<b>Skill Feed</b><br/>All 5 skills accumulate:<br/>Zoology, Botany, Geology,<br/>Paleontology, Archaeology"]
+        GT["<b>Gating</b><br/>Authenticated user<br/>with GPS permissions"]
+        DR["<b>Data Requirements</b><br/>All v3 tables:<br/>v3_items, v3_cell_visits,<br/>v3_sanctuary_donations,<br/>species, daily_seed"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

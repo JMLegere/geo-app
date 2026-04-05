@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-A.1: Navigate the Real-World Map"]
+        JP["<b>Job Performer</b><br/>Explorer looking at<br/>the map screen"]
+        ASP["<b>Aspirations</b><br/>Know where I am<br/>See where I have been<br/>Plan where to go"]
+        FJ["<b>Focus Job</b><br/>Navigate the real-world map"]
+        RJ["<b>Related Jobs</b><br/>A.2: Reveal fog-of-war<br/>A.3: Encounter and collect species"]
+        PLAN["<b>PLAN</b><br/>Open map tab"]
+        PREPARE["<b>PREPARE</b><br/>GPS acquires position"]
+        EXECUTE["<b>EXECUTE</b><br/>Pan/zoom map, see player<br/>marker, read fog overlay"]
+        MONITOR["<b>MONITOR</b><br/>Position updates real-time,<br/>fog state visible"]
+        MODIFY["<b>MODIFY</b><br/>Pan to explore distant areas,<br/>break camera follow"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Decide direction,<br/>switch to exploration"]
+        SC["<b>Success Criteria</b><br/>GPS accurate within threshold<br/>Map responsive at 60fps<br/>Fog state clear<br/>Position visible"]
+        EM["<b>Emotions</b><br/>Orientation --> Planning --> Confidence"]
+        CIRC["<b>Circumstances</b><br/>App foregrounded,<br/>GPS permission granted"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-A.1"]
+        IN["<b>Inputs</b><br/>GPS coordinates: lat/lng<br/>Accuracy threshold"]
+        OUT["<b>Outputs</b><br/>Player position on map<br/>Camera position"]
+        SF["<b>Skill Feed</b><br/>None -- navigation is<br/>a utility job"]
+        GT["<b>Gating</b><br/>GPS permission granted<br/>Accuracy within threshold"]
+        DR["<b>Data Requirements</b><br/>Device GPS<br/>MapLibre tiles<br/>v3_cell_visits for fog overlay"]
+        COMP["<b>Components</b><br/>LocationProvider<br/>MapScreen<br/>CameraFollowMode"]
+        NOTES["<b>Notes</b><br/>Camera auto-follows GPS,<br/>breaks on manual pan.<br/>1-tile prefetch radius."]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> COMP
+        COMP --> NOTES
+    end
+
+    JTBD --> SystemSpec

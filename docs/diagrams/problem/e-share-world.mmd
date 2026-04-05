@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-E: Share My World with Other Explorers DEFERRED"]
+        JP["<b>Job Performer</b><br/>Social player"]
+        ASP["<b>Aspirations</b><br/>Show off sanctuary<br/>Help others<br/>Participate in something bigger"]
+        FJ["<b>Focus Job</b><br/>Share my world with<br/>other explorers"]
+        RJ["<b>Related Jobs</b><br/>E.1: Trade specimens<br/>E.2: Compare sanctuaries<br/>E.3: Community goals"]
+        PLAN["<b>PLAN</b><br/>Decide to interact<br/>with others"]
+        PREPARE["<b>PREPARE</b><br/>Find other players"]
+        EXECUTE["<b>EXECUTE</b><br/>Trade, visit sanctuaries,<br/>contribute to goals"]
+        MONITOR["<b>MONITOR</b><br/>See social interactions,<br/>leaderboards"]
+        MODIFY["<b>MODIFY</b><br/>Adjust strategy based<br/>on community"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Feel part of community"]
+        SC["<b>Success Criteria</b><br/>Meaningful social interactions<br/>Cooperative not toxic"]
+        EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
+        CIRC["<b>Circumstances</b><br/>Player seeks social features<br/>DEFERRED: not in MVP"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-E DEFERRED"]
+        IN["<b>Inputs</b><br/>Status: FULLY DEFERRED<br/>Architecture hooks only"]
+        OUT["<b>Outputs</b><br/>ItemStatus already has traded<br/>Community counters in recap<br/>from Phase 1"]
+        SF["<b>Skill Feed</b><br/>Trading requires<br/>item transfer system"]
+        GT["<b>Gating</b><br/>Multiplayer backend<br/>not in MVP"]
+        DR["<b>Data Requirements</b><br/>Future: trade system,<br/>public sanctuaries,<br/>community goal backend"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

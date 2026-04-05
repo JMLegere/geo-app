@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.3: Participate in Community Goals DEFERRED"]
+        JP["<b>Job Performer</b><br/>Player contributing to<br/>shared milestones"]
+        ASP["<b>Aspirations</b><br/>Feel part of something larger<br/>Collective achievement"]
+        FJ["<b>Focus Job</b><br/>Participate in<br/>community goals"]
+        RJ["<b>Related Jobs</b><br/>E: Share my world with explorers<br/>D.2: See community milestones"]
+        PLAN["<b>PLAN</b><br/>See active community goal"]
+        PREPARE["<b>PREPARE</b><br/>Identify how to contribute"]
+        EXECUTE["<b>EXECUTE</b><br/>Perform qualifying actions"]
+        MONITOR["<b>MONITOR</b><br/>See global progress bar"]
+        MODIFY["<b>MODIFY</b><br/>Shift focus to highest-impact<br/>contributions"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Goal reached,<br/>everyone benefits"]
+        SC["<b>Success Criteria</b><br/>Contribution feels meaningful<br/>Collective reward earned"]
+        EM["<b>Emotions</b><br/>Purpose --> Solidarity --> Shared triumph"]
+        CIRC["<b>Circumstances</b><br/>Active community goal exists<br/>DEFERRED: not in MVP"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.3 DEFERRED"]
+        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Four community models:<br/>cooperative milestone,<br/>ambient presence,<br/>trading economy,<br/>friendly competition"]
+        OUT["<b>Outputs</b><br/>Phase 1: simple aggregate counters<br/>Full implementation post-MVP"]
+        SF["<b>Skill Feed</b><br/>Community actions may<br/>grant bonus skill XP<br/>in future phases"]
+        GT["<b>Gating</b><br/>Phase 1: counters in recap only<br/>Full goals require backend"]
+        DR["<b>Data Requirements</b><br/>Future: community_goals table,<br/>contribution tracking,<br/>reward distribution system"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

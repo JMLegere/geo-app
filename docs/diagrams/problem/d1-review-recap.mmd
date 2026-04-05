@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.1: Review Personal Progress Recap"]
+        JP["<b>Job Performer</b><br/>Returning player viewing recap"]
+        ASP["<b>Aspirations</b><br/>See what changed<br/>Feel proud of progress<br/>Know whats pending"]
+        FJ["<b>Focus Job</b><br/>Review personal progress<br/>via recap"]
+        RJ["<b>Related Jobs</b><br/>D: Reconnect with progress on return<br/>D.2: See community milestones"]
+        PLAN["<b>PLAN</b><br/>Recap auto-triggers<br/>on app open"]
+        PREPARE["<b>PREPARE</b><br/>System computes on-demand:<br/>discoveries, stats,<br/>pending count"]
+        EXECUTE["<b>EXECUTE</b><br/>View Whats New card:<br/>new discoveries since<br/>last session"]
+        MONITOR["<b>MONITOR</b><br/>View Your Progress:<br/>streaks, collection bars,<br/>skill levels"]
+        MODIFY["<b>MODIFY</b><br/>Swipe through or<br/>tap to skip"]
+        CONCLUDE["<b>CONCLUDE</b><br/>View Pending:<br/>X unidentified specimens,<br/>feel pull to identify"]
+        SC["<b>Success Criteria</b><br/>Data accurate<br/>Loads fast<br/>Never blocks<br/>Skippable"]
+        EM["<b>Emotions</b><br/>Nostalgia --> Pride --> Anticipation"]
+        CIRC["<b>Circumstances</b><br/>App opened after 6h+ absence<br/>Recap threshold met"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.1"]
+        IN["<b>Inputs</b><br/>Player activity data<br/>since last recap"]
+        OUT["<b>Outputs</b><br/>4-page card stack:<br/>Whats New, Your Progress,<br/>Community, Pending"]
+        SF["<b>Skill Feed</b><br/>Pending card shows<br/>X unidentified specimens<br/>No enriched/unenriched distinction"]
+        GT["<b>Gating</b><br/>Computed on-demand,<br/>no pre-built cron"]
+        DR["<b>Data Requirements</b><br/>v3_items, v3_cell_visits<br/>skill levels, streaks<br/>Events: recap.shown, recap.dismissed<br/>Components: RecapScreen,<br/>RecapCardStack"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

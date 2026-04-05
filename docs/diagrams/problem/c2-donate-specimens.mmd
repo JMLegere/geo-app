@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-C.2: Donate Specimens to Fill Collection Slots"]
+        JP["<b>Job Performer</b><br/>Player choosing what to donate"]
+        ASP["<b>Aspirations</b><br/>Make the right choice<br/>Donation is permanent"]
+        FJ["<b>Focus Job</b><br/>Donate specimens to<br/>fill collection slots"]
+        RJ["<b>Related Jobs</b><br/>C.1: Browse sanctuary collections<br/>C.3: Complete collection bundles"]
+        PLAN["<b>PLAN</b><br/>Select identified item,<br/>tap Donate"]
+        PREPARE["<b>PREPARE</b><br/>System computes eligible<br/>collections from<br/>habitats x continents x class"]
+        EXECUTE["<b>EXECUTE</b><br/>If multiple eligible:<br/>pick collection;<br/>confirm donation"]
+        MONITOR["<b>MONITOR</b><br/>Item moves to sanctuary,<br/>collection progress updates"]
+        MODIFY["<b>MODIFY</b><br/>Consider keeping better<br/>specimens for other<br/>collections or trading"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Item permanently donated,<br/>slot filled"]
+        SC["<b>Success Criteria</b><br/>Correct collection eligibility<br/>Permanent donation<br/>Slot filled<br/>Item leaves pack"]
+        EM["<b>Emotions</b><br/>Strategic tension --> Commitment --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Player has identified items<br/>in pack ready to donate"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-C.2"]
+        IN["<b>Inputs</b><br/>Identified item<br/>species.habitats<br/>species.continents<br/>species.taxonomicClass"]
+        OUT["<b>Outputs</b><br/>v3_sanctuary_donations INSERT<br/>v3_items UPDATE status=donated"]
+        SF["<b>Skill Feed</b><br/>No skill XP on donation<br/>Collection progress increments"]
+        GT["<b>Gating</b><br/>Item must be identified<br/>One instance per slot:<br/>need separate specimens for<br/>same species in different collections"]
+        DR["<b>Data Requirements</b><br/>Algorithm: collection_key =<br/>continent_habitat_class<br/>for each permutation<br/>Write: optimistic --> WriteQueue --> Supabase<br/>Events: sanctuary.donation,<br/>sanctuary.collection_unlocked if new"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

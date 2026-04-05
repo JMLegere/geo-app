@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-D: Reconnect with Progress on Return"]
+        JP["<b>Job Performer</b><br/>Returning player<br/>6h+ absence"]
+        ASP["<b>Aspirations</b><br/>Feel the world continued<br/>Catch up warmly<br/>Feel motivated"]
+        FJ["<b>Focus Job</b><br/>Reconnect with progress<br/>on return"]
+        RJ["<b>Related Jobs</b><br/>D.1: Review personal progress recap<br/>D.2: See community milestones"]
+        PLAN["<b>PLAN</b><br/>Open app after absence"]
+        PREPARE["<b>PREPARE</b><br/>System checks 6h threshold"]
+        EXECUTE["<b>EXECUTE</b><br/>View recap cards"]
+        MONITOR["<b>MONITOR</b><br/>Swipe: Whats New --><br/>Progress --> Community --><br/>Pending"]
+        MODIFY["<b>MODIFY</b><br/>Skip if not interested"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Caught up,<br/>ready to explore"]
+        SC["<b>Success Criteria</b><br/>Player informed and motivated<br/>Never blocked by recap"]
+        EM["<b>Emotions</b><br/>Warm welcome --> Curiosity --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>6h+ since last session<br/>App reopened"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-D"]
+        IN["<b>Inputs</b><br/>last_recap_dismissed_at<br/>current time"]
+        OUT["<b>Outputs</b><br/>Recap card stack<br/>Updated dismissal timestamp"]
+        SF["<b>Skill Feed</b><br/>No direct skill XP<br/>Motivates return to play"]
+        GT["<b>Gating</b><br/>6h+ since last dismissal<br/>Not first-ever login"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>v3_cell_visits<br/>Community aggregates<br/>Resolves critique: 3.1, 3.2"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

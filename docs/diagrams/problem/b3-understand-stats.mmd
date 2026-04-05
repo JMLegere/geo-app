@@ -1,0 +1,42 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-B.3: Understand Specimen Stats and Traits"]
+        JP["<b>Job Performer</b><br/>Collector examining an<br/>identified specimen"]
+        ASP["<b>Aspirations</b><br/>Understand what makes this specimen unique<br/>Compare across collection"]
+        FJ["<b>Focus Job</b><br/>Understand specimen<br/>stats and traits"]
+        RJ["<b>Related Jobs</b><br/>B.2: Hold-to-identify<br/>C.2: Donate specimens"]
+        PLAN["<b>PLAN</b><br/>Tap identified item<br/>in pack"]
+        PREPARE["<b>PREPARE</b><br/>SpeciesCard modal opens"]
+        EXECUTE["<b>EXECUTE</b><br/>Read stats: brawn/wit/speed bars,<br/>size category, weight, affixes"]
+        MONITOR["<b>MONITOR</b><br/>See rarity glow,<br/>habitat/region icons,<br/>taxonomic class"]
+        MODIFY["<b>MODIFY</b><br/>Compare with other specimens<br/>of same species"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Understand specimens<br/>personality and value"]
+        SC["<b>Success Criteria</b><br/>All stats visible<br/>Color identity derivable<br/>Personality clear"]
+        EM["<b>Emotions</b><br/>Understanding --> Comparison --> Appreciation"]
+        CIRC["<b>Circumstances</b><br/>Item is identified,<br/>player in pack view"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-B.3"]
+        IN["<b>Inputs</b><br/>Identified item data"]
+        OUT["<b>Outputs</b><br/>TCG card display"]
+        STATS["<b>Stats Displayed</b><br/>Brawn/Wit/Speed: RGB bars, sum=90<br/>Size: 9 categories<br/>Weight: grams/kg<br/>Prefix/suffix affixes"]
+        COLOR["<b>Color Identity</b><br/>R = brawn/90<br/>G = speed/90<br/>B = wit/90<br/>Layer 4 depth"]
+        LAYOUT["<b>Card Layout</b><br/>Art zone: 68%<br/>Rarity stripe<br/>Name + scientific name<br/>Badge pills<br/>Habitat/region emojis<br/>Discovery footer"]
+        COMP["<b>Components</b><br/>SpeciesCard: centered modal<br/>StatBars<br/>AffixDisplay"]
+
+        IN --> STATS
+        STATS --> COLOR
+        COLOR --> OUT
+        OUT --> LAYOUT
+        LAYOUT --> COMP
+    end
+
+    JTBD --> SystemSpec

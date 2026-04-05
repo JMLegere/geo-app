@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-B: Identify Specimens in My Collection"]
+        JP["<b>Job Performer</b><br/>Collector: player with<br/>items in pack"]
+        ASP["<b>Aspirations</b><br/>Transform mystery into knowledge<br/>Feel the reveal dopamine<br/>Understand what I found"]
+        FJ["<b>Focus Job</b><br/>Identify specimens<br/>in my collection"]
+        RJ["<b>Related Jobs</b><br/>B.1: Browse and organize pack<br/>B.2: Hold-to-identify reveal<br/>B.3: Understand stats and traits"]
+        PLAN["<b>PLAN</b><br/>Open pack, browse<br/>unidentified items"]
+        PREPARE["<b>PREPARE</b><br/>Select an enriched item"]
+        EXECUTE["<b>EXECUTE</b><br/>Hold card 1.2s,<br/>watch charge, see reveal"]
+        MONITOR["<b>MONITOR</b><br/>Stats roll, art appears,<br/>affixes shown"]
+        MODIFY["<b>MODIFY</b><br/>Compare with<br/>other specimens"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Item identified,<br/>full TCG card"]
+        SC["<b>Success Criteria</b><br/>Item identified with stats<br/>Art visible<br/>Affixes assigned"]
+        EM["<b>Emotions</b><br/>Anticipation --> Tension --> Dopamine burst --> Pride"]
+        CIRC["<b>Circumstances</b><br/>Indoors or outdoors,<br/>species fully enriched"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-B"]
+        IN["<b>Inputs</b><br/>Instance UUID<br/>Species enrichment data"]
+        OUT["<b>Outputs</b><br/>Identified item with:<br/>brawn / wit / speed<br/>size / weight / affixes"]
+        SF["<b>Skill Feed</b><br/>+1 to matching skill<br/>on identification"]
+        GT["<b>Gating</b><br/>Species must be FULLY ENRICHED<br/>8-column NOT NULL check"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>species table<br/>SHA-256 stat roll"]
+        RES["<b>Resolves Critiques</b><br/>2.1, 2.3, 2.4"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> RES
+    end
+
+    JTBD --> SystemSpec

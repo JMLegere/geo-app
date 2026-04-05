@@ -57,19 +57,55 @@ CRAFTING → lures, cosmetics, breeding materials (from orbs + minerals)
 
 ## Diagram Catalog
 
-### Problem Space — JTBD Job Canvases (7)
+### Problem Space — JTBD Canvases (29)
 
+4-level hierarchy: L0 (aspirational) → L1 (core) → L2 (job areas) → L3 (specific tasks).
 Each canvas contains both the JTBD problem map AND the system spec.
+See [`problem/AGENTS.md`](problem/AGENTS.md) for full guidance.
+
+#### L0–L1: Aspirational & Core (2)
+
+| # | File | Focus Job |
+|---|------|-----------|
+| L0 | [`problem/l0-become-explorer.mmd`](problem/l0-become-explorer.mmd) | Become an explorer who discovers and cares about the natural world |
+| L1 | [`problem/l1-build-wildlife-world.mmd`](problem/l1-build-wildlife-world.mmd) | Build and grow my personal wildlife world |
+
+#### L2: Major Job Areas (7)
 
 | # | File | Focus Job | Resolves |
 |---|------|-----------|----------|
-| J1 | [`problem/j1-explore-discover.mmd`](problem/j1-explore-discover.mmd) | Discover wildlife through real-world exploration | 4.1 |
-| J2 | [`problem/j2-identify-understand.mmd`](problem/j2-identify-understand.mmd) | Identify and understand my collected specimens | 2.1, 2.3, 2.4 |
-| J3 | [`problem/j3-curate-sanctuary.mmd`](problem/j3-curate-sanctuary.mmd) | Build a sanctuary that reflects my journey | 3.3, 3.4 |
-| J4 | [`problem/j4-return-reconnect.mmd`](problem/j4-return-reconnect.mmd) | Stay connected to my growing world | 3.1, 3.2 |
-| J5 | [`problem/j5-manage-identity.mmd`](problem/j5-manage-identity.mmd) | Maintain my explorer identity | — |
-| J6 | [`problem/j6-system-enrichment.mmd`](problem/j6-system-enrichment.mmd) | [System] Make every species identifiable | 2.2, 2.3 |
-| J7 | [`problem/j7-system-sync.mmd`](problem/j7-system-sync.mmd) | [System] Keep player data safe and consistent | 2.4 |
+| A | [`problem/a-discover-wildlife.mmd`](problem/a-discover-wildlife.mmd) | Discover wildlife while exploring the real world | 4.1 |
+| B | [`problem/b-identify-specimens.mmd`](problem/b-identify-specimens.mmd) | Identify specimens in my collection | 2.1, 2.3, 2.4 |
+| C | [`problem/c-curate-sanctuary.mmd`](problem/c-curate-sanctuary.mmd) | Curate a sanctuary through donations | 3.3, 3.4 |
+| D | [`problem/d-reconnect-return.mmd`](problem/d-reconnect-return.mmd) | Reconnect with progress on return | 3.1, 3.2 |
+| E | [`problem/e-share-world.mmd`](problem/e-share-world.mmd) | Share my world with other explorers (DEFERRED) | — |
+| F | [`problem/f-manage-identity.mmd`](problem/f-manage-identity.mmd) | Manage my explorer identity | — |
+| S | [`problem/s-system-growing.mmd`](problem/s-system-growing.mmd) | [System] Keep the world growing | 2.2, 2.3, 2.4 |
+
+#### L3: Specific Tasks (20)
+
+| # | File | Focus Job | Parent |
+|---|------|-----------|--------|
+| A.1 | [`problem/a1-navigate-map.mmd`](problem/a1-navigate-map.mmd) | Navigate the real-world map | A |
+| A.2 | [`problem/a2-reveal-fog.mmd`](problem/a2-reveal-fog.mmd) | Reveal fog-of-war by visiting cells | A |
+| A.3 | [`problem/a3-encounter-collect.mmd`](problem/a3-encounter-collect.mmd) | Encounter and collect species | A |
+| B.1 | [`problem/b1-browse-pack.mmd`](problem/b1-browse-pack.mmd) | Browse and organize my pack | B |
+| B.2 | [`problem/b2-hold-to-identify.mmd`](problem/b2-hold-to-identify.mmd) | Reveal specimen identity (hold-to-identify) | B |
+| B.3 | [`problem/b3-understand-stats.mmd`](problem/b3-understand-stats.mmd) | Understand specimen stats and traits | B |
+| C.1 | [`problem/c1-browse-collections.mmd`](problem/c1-browse-collections.mmd) | Discover and browse collections | C |
+| C.2 | [`problem/c2-donate-specimens.mmd`](problem/c2-donate-specimens.mmd) | Donate specimens to fill collection slots | C |
+| C.3 | [`problem/c3-complete-bundles.mmd`](problem/c3-complete-bundles.mmd) | Complete collection bundles | C |
+| D.1 | [`problem/d1-review-recap.mmd`](problem/d1-review-recap.mmd) | Review personal progress (recap) | D |
+| D.2 | [`problem/d2-community-milestones.mmd`](problem/d2-community-milestones.mmd) | See community milestones | D |
+| E.1 | [`problem/e1-trade-specimens.mmd`](problem/e1-trade-specimens.mmd) | Trade specimens (DEFERRED) | E |
+| E.2 | [`problem/e2-compare-sanctuaries.mmd`](problem/e2-compare-sanctuaries.mmd) | Compare sanctuaries (DEFERRED) | E |
+| E.3 | [`problem/e3-community-goals.mmd`](problem/e3-community-goals.mmd) | Participate in community goals (DEFERRED) | E |
+| F.1 | [`problem/f1-create-sign-in.mmd`](problem/f1-create-sign-in.mmd) | Create account and sign in | F |
+| F.2 | [`problem/f2-customize-profile.mmd`](problem/f2-customize-profile.mmd) | Customize profile (DEFERRED) | F |
+| F.3 | [`problem/f3-manage-settings.mmd`](problem/f3-manage-settings.mmd) | Manage account settings | F |
+| S.1 | [`problem/s1-enrich-species.mmd`](problem/s1-enrich-species.mmd) | Enrich species for identification | S |
+| S.2 | [`problem/s2-sync-data.mmd`](problem/s2-sync-data.mmd) | Sync data between device and server | S |
+| S.3 | [`problem/s3-persist-progress.mmd`](problem/s3-persist-progress.mmd) | Persist progress reliably | S |
 
 ### Solution Space — Technical Diagrams (33)
 

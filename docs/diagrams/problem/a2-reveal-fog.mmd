@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-A.2: Reveal Fog-of-War by Visiting Cells"]
+        JP["<b>Job Performer</b><br/>Explorer moving<br/>through the world"]
+        ASP["<b>Aspirations</b><br/>Transform unknown terrain<br/>into explored territory<br/>See my footprint grow"]
+        FJ["<b>Focus Job</b><br/>Reveal fog-of-war<br/>by visiting cells"]
+        RJ["<b>Related Jobs</b><br/>A.1: Navigate map<br/>A.3: Encounter species"]
+        PLAN["<b>PLAN</b><br/>Identify dark/fogged<br/>areas on map"]
+        PREPARE["<b>PREPARE</b><br/>Navigate toward<br/>unexplored cells"]
+        EXECUTE["<b>EXECUTE</b><br/>Enter cell boundary,<br/>system records visit"]
+        MONITOR["<b>MONITOR</b><br/>Fog lifts on visited cell,<br/>adjacent cells become detected"]
+        MODIFY["<b>MODIFY</b><br/>Target specific cells<br/>to fill gaps"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Area revealed,<br/>visit history recorded"]
+        SC["<b>Success Criteria</b><br/>Cell visit recorded<br/>Fog state transitions correct<br/>Detection radius works"]
+        EM["<b>Emotions</b><br/>Anticipation --> Satisfaction --> Completionist drive"]
+        CIRC["<b>Circumstances</b><br/>Player physically moving<br/>through real-world terrain"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-A.2"]
+        IN["<b>Inputs</b><br/>Player GPS position<br/>Voronoi cell boundaries"]
+        OUT["<b>Outputs</b><br/>v3_cell_visits INSERT<br/>Fog state update"]
+        SF["<b>Skill Feed</b><br/>None -- fog reveal is<br/>a prerequisite job"]
+        GT["<b>Gating</b><br/>Player physically in cell"]
+        DR["<b>Data Requirements</b><br/>v3_cell_visits<br/>Voronoi cell geometry"]
+        FOG["<b>Fog States</b><br/>Unknown --> Detected: within 1000m<br/>Detected --> Nearby<br/>Nearby --> Explored: visited<br/>Explored --> Present: currently in"]
+        COMP["<b>Components</b><br/>CellService<br/>FogComputeService<br/>CellVisitProvider"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> FOG
+        FOG --> COMP
+    end
+
+    JTBD --> SystemSpec
