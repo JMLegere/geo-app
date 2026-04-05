@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-A.4: Follow Treasure Maps"]
+        JP["<b>Job Performer</b><br/>Explorer seeking guided goals<br/>alongside free exploration"]
+        ASP["<b>Aspirations</b><br/>Directed purpose when free roaming<br/>feels aimless<br/>Discover specific areas"]
+        FJ["<b>Focus Job</b><br/>Follow treasure maps<br/>(directed quests)"]
+        S1["<b>Step 1</b><br/>Receive treasure map hint"]
+        S2["<b>Step 2</b><br/>View map with marked destination"]
+        S3["<b>Step 3</b><br/>Navigate to target location"]
+        S4["<b>Step 4</b><br/>Arrive and trigger special encounter"]
+        S5["<b>Step 5</b><br/>Collect rare specimens"]
+        SC["<b>Success Criteria</b><br/>Clear objective<br/>Reachable goal<br/>Reward feels earned"]
+        EM["<b>Emotions</b><br/>Purpose --> Adventure --> Discovery --> Reward satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Player has acquired a treasure map<br/>from NPC, achievement, or random drop"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-A.4"]
+        IN["<b>Inputs</b><br/>treasure_map definition:<br/>target cell/area,<br/>objective type, reward"]
+        OUT["<b>Outputs</b><br/>Map completion record,<br/>reward items"]
+        SF["<b>Skill Feed</b><br/>Proposed: +XP to skill matching<br/>map objective type"]
+        GT["<b>Gating</b><br/>Map acquired: from NPC,<br/>achievement, or random drop"]
+        DR["<b>Data Requirements</b><br/>v3_treasure_maps<br/>v3_map_completions"]
+        CP["<b>Components</b><br/>TreasureMapOverlay<br/>QuestTracker"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> CP
+    end
+
+    JTBD --> SystemSpec

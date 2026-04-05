@@ -1,0 +1,35 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-I: Meet NPCs and Fulfill Requests"]
+        JP["<b>Job Performer</b><br/>Explorer who wants<br/>guided goals and story"]
+        ASP["<b>Aspirations</b><br/>NPCs give the world personality<br/>Discovering NPCs unlocks features<br/>Directed goals complement free exploration"]
+        FJ["<b>Focus Job</b><br/>Meet NPCs and<br/>fulfill requests"]
+
+        FJ --> I1["<b>I.1: Discover NPCs</b><br/>Find NPCs placed<br/>on the map"]
+        I1 --> I2["<b>I.2: NPC Bundles</b><br/>Accept and complete<br/>NPC collection requests"]
+        I2 --> I3["<b>I.3: Town Hub</b><br/>Visit the central town<br/>to interact with NPCs"]
+
+        SC["<b>Success Criteria</b><br/>NPCs discoverable<br/>Requests clear<br/>Rewards meaningful"]
+        EM["<b>Emotions</b><br/>Curiosity --> Purpose --> Warmth (NPC connection)"]
+        CIRC["<b>Circumstances</b><br/>Exploring the map or<br/>visiting town hub"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-I"]
+        IN["<b>Inputs</b><br/>NPC definitions<br/>Request lists"]
+        OUT["<b>Outputs</b><br/>Feature unlocks (e.g. Archaeologist unlocks Museum)<br/>Rewards: orbs, cosmetics, titles<br/>NPC relationship progress"]
+        SF["<b>Skill Feed</b><br/>Varies by NPC request type"]
+        GT["<b>Gating</b><br/>At least one NPC<br/>discovered"]
+        DR["<b>Data Requirements</b><br/>v3_npcs<br/>v3_npc_requests<br/>v3_npc_progress"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

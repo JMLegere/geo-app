@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-G.1: Feed and Care for Placed Animals"]
+        JP["<b>Job Performer</b><br/>Caretaker tending<br/>to animal needs"]
+        ASP["<b>Aspirations</b><br/>Keep animals happy<br/>Produce orbs<br/>Feel the nurturing loop"]
+        FJ["<b>Focus Job</b><br/>Feed and care for<br/>placed animals"]
+        S1["<b>Step 1</b><br/>Open sanctuary,<br/>see hungry indicator"]
+        S2["<b>Step 2</b><br/>Select animal to feed"]
+        S3["<b>Step 3</b><br/>Choose matching food<br/>from inventory"]
+        S4["<b>Step 4</b><br/>Tap feed button"]
+        S5["<b>Step 5</b><br/>Watch eat animation,<br/>happiness rises"]
+        S6["<b>Step 6</b><br/>Orbs produced<br/>(habitat + class + climate)"]
+        SC["<b>Success Criteria</b><br/>Animal fed<br/>Correct food preference matched<br/>Orbs generated"]
+        EM["<b>Emotions</b><br/>Care --> Satisfaction (correct food!) --> Reward (orbs)"]
+        CIRC["<b>Circumstances</b><br/>Animal placed in sanctuary<br/>Food in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-G.1"]
+        IN["<b>Inputs</b><br/>Placed animal<br/>Food item"]
+        OUT["<b>Outputs</b><br/>3 orbs per feeding:<br/>habitat + class + climate type"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per feeding"]
+        GT["<b>Gating</b><br/>Animal placed +<br/>food in inventory"]
+        DR["<b>Data Requirements</b><br/>species.food_preference<br/>v3_items (food category)<br/>orb_inventory"]
+        NOTES["<b>Notes</b><br/>Each species has AI-enriched<br/>food_preference (one of 7 types).<br/>Wrong food still feeds but<br/>lower happiness gain."]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

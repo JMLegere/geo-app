@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-F.1: Create Account and Sign In"]
+        JP["<b>Job Performer</b><br/>New or returning player<br/>at login screen"]
+        ASP["<b>Aspirations</b><br/>Get in quickly<br/>No friction<br/>Dont lose my stuff"]
+        FJ["<b>Focus Job</b><br/>Create account<br/>and sign in"]
+        S1["<b>Step 1</b><br/>Launch app,<br/>see login screen"]
+        S2["<b>Step 2</b><br/>Enter 10-digit<br/>phone number"]
+        S3["<b>Step 3</b><br/>Tap Sign In<br/>(auto sign-up fallback)"]
+        S4["<b>Step 4</b><br/>See loading spinner"]
+        S5["<b>Step 5</b><br/>Auth succeeds,<br/>navigate to pack"]
+        SC["<b>Success Criteria</b><br/>Less than 2s auth flow<br/>Seamless sign-in/sign-up<br/>Session persists"]
+        EM["<b>Emotions</b><br/>Impatience --> Relief --> Confidence"]
+        CIRC["<b>Circumstances</b><br/>App launch,<br/>no active session"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-F.1"]
+        IN["<b>Inputs</b><br/>Phone number: 10 digits, +1 prefix"]
+        OUT["<b>Outputs</b><br/>Supabase session<br/>UserProfile<br/>v3_profiles row via trigger"]
+        SF["<b>Skill Feed</b><br/>CRITICAL: _deriveEmail and<br/>_derivePassword MUST match v2<br/>exactly -- byte-for-byte<br/>Changing these locks out<br/>all existing users"]
+        GT["<b>Gating</b><br/>Valid 10-digit phone number<br/>signIn first, signUp fallback"]
+        DR["<b>Data Requirements</b><br/>auth.users, v3_profiles<br/>Events: auth.sign_in_success/error<br/>auth.sign_up_success/error<br/>Components: LoginScreen,<br/>AuthNotifier, AuthService"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

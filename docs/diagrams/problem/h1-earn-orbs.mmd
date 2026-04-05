@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-H.1: Earn and Manage Orbs"]
+        JP["<b>Job Performer</b><br/>Player building<br/>orb reserves"]
+        ASP["<b>Aspirations</b><br/>Understand the economy<br/>Accumulate strategically<br/>Orbs feel valuable"]
+        FJ["<b>Focus Job</b><br/>Earn and manage orbs"]
+        S1["<b>Step 1</b><br/>Feed a sanctuary animal"]
+        S2["<b>Step 2</b><br/>Animal produces orbs<br/>on feeding"]
+        S3["<b>Step 3</b><br/>Orbs auto-collected<br/>to inventory"]
+        S4["<b>Step 4</b><br/>View orb inventory<br/>by type"]
+        S5["<b>Step 5</b><br/>Orbs accumulate<br/>for crafting"]
+        SC["<b>Success Criteria</b><br/>Target orbs accumulated<br/>Economy feels purposeful"]
+        EM["<b>Emotions</b><br/>Strategic Planning --> Incremental Progress --> Readiness"]
+        CIRC["<b>Circumstances</b><br/>Animals placed and<br/>food available for feeding"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-H.1"]
+        IN["<b>Inputs</b><br/>Feeding actions (G.1)"]
+        OUT["<b>Outputs</b><br/>Orbs deposited to inventory"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per feeding<br/>(via G.1)"]
+        GT["<b>Gating</b><br/>Animals placed +<br/>food available"]
+        DR["<b>Data Requirements</b><br/>orb_inventory table"]
+        NOTES["<b>Notes</b><br/>46 orb types:<br/>Habitat: Forest/Plains/Freshwater/<br/>Saltwater/Swamp/Mountain/Desert<br/>Class: Mammalia/Aves/Reptilia/...<br/>Climate: Tropic/Temperate/Boreal/Frigid"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.2: See Community Milestones"]
+        JP["<b>Job Performer</b><br/>Player interested in<br/>the broader world"]
+        ASP["<b>Aspirations</b><br/>Feel less alone<br/>See collective progress<br/>We are doing this together"]
+        FJ["<b>Focus Job</b><br/>See community milestones"]
+        S1["<b>Step 1</b><br/>See community card<br/>in recap"]
+        S2["<b>Step 2</b><br/>View aggregate stats:<br/>species discovered,<br/>cells explored"]
+        S3["<b>Step 3</b><br/>Compare personal<br/>contribution"]
+        S4["<b>Step 4</b><br/>Feel part of<br/>larger effort"]
+        SC["<b>Success Criteria</b><br/>Aggregates accurate<br/>Geographic layering works<br/>Feels social not competitive"]
+        EM["<b>Emotions</b><br/>Belonging --> Shared pride --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>Viewing recap or<br/>browsing community tab"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.2"]
+        IN["<b>Inputs</b><br/>Community aggregate data<br/>pre-computed hourly"]
+        OUT["<b>Outputs</b><br/>Stats by geography:<br/>city / state / country"]
+        SF["<b>Skill Feed</b><br/>Geographic scope derived from<br/>player cell visit history<br/>via reverse geocoding"]
+        GT["<b>Gating</b><br/>Community models:<br/>Phase 1: cooperative milestone<br/>Phase 2: ambient presence<br/>Phase 2-3: friendly competition"]
+        DR["<b>Data Requirements</b><br/>Aggregated v3_cell_visits<br/>Aggregated v3_items across all users<br/>Phase 1 = simple counters in recap<br/>Full social in scope"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

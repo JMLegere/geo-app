@@ -1,0 +1,38 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-B: Identify Specimens in My Collection"]
+        JP["<b>Job Performer</b><br/>Collector: player with<br/>items in pack"]
+        ASP["<b>Aspirations</b><br/>Transform mystery into knowledge<br/>Feel the reveal dopamine<br/>Understand what I found"]
+        FJ["<b>Focus Job</b><br/>Identify specimens<br/>in my collection"]
+
+        FJ --> B1["<b>B.1: Browse Pack</b><br/>View and organize<br/>items in pack"]
+        B1 --> B2["<b>B.2: Hold-to-Identify</b><br/>Press and hold 1.2s,<br/>reveal full TCG card"]
+        B2 --> B3["<b>B.3: Understand Stats</b><br/>Read brawn/wit/speed,<br/>size, weight, affixes"]
+        B3 --> B4["<b>B.4: Decide Keep or Donate</b><br/>Keep, donate to collection,<br/>or trade"]
+
+        SC["<b>Success Criteria</b><br/>Item identified with stats<br/>Art visible<br/>Affixes assigned"]
+        EM["<b>Emotions</b><br/>Anticipation --> Tension --> Dopamine burst --> Pride"]
+        CIRC["<b>Circumstances</b><br/>Indoors or outdoors,<br/>species fully enriched"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-B"]
+        IN["<b>Inputs</b><br/>Instance UUID<br/>Species enrichment data"]
+        OUT["<b>Outputs</b><br/>Identified item with:<br/>brawn / wit / speed<br/>size / weight / affixes"]
+        SF["<b>Skill Feed</b><br/>+1 to matching skill<br/>on identification"]
+        GT["<b>Gating</b><br/>Species must be FULLY ENRICHED<br/>8-column NOT NULL check"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>species table<br/>SHA-256 stat roll"]
+        RES["<b>Resolves Critiques</b><br/>2.1, 2.3, 2.4"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> RES
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,56 @@
+%% Status: NEEDS HUMAN REVIEW
+stateDiagram-v2
+    [*] --> OPTIMISTIC : user action triggers optimistic UI update
+
+    state "OPTIMISTIC" as OPTIMISTIC
+    state "PENDING" as PENDING
+    state "CONFIRMED" as CONFIRMED
+    state "RETRYING" as RETRYING
+    state "FAILED" as FAILED
+    state "ROLLED_BACK" as ROLLED_BACK
+
+    note right of OPTIMISTIC
+        UI updated immediately.
+        Write not yet attempted.
+    end note
+
+    note right of PENDING
+        Write sent to Supabase.
+        Awaiting response.
+    end note
+
+    note right of CONFIRMED
+        Server acknowledged (2xx).
+        Local state matches server.
+    end note
+
+    note right of RETRYING
+        Write failed, will retry with
+        exponential backoff (max 3 retries).
+    end note
+
+    note right of FAILED
+        All retries exhausted.
+        User notified.
+    end note
+
+    note right of ROLLED_BACK
+        Optimistic state reverted
+        due to permanent failure.
+    end note
+
+    note left of PENDING
+        Idempotency: writes use WHERE guards
+        e.g. WHERE identified = false
+        to prevent duplicate mutations.
+    end note
+
+    OPTIMISTIC --> PENDING : network available, write dispatched
+    PENDING --> CONFIRMED : server 2xx response
+    PENDING --> RETRYING : network error or 5xx
+    RETRYING --> PENDING : retry attempt (exponential backoff)
+    RETRYING --> FAILED : max retries exceeded (3)
+    FAILED --> ROLLED_BACK : rollback local state
+
+    CONFIRMED --> [*]
+    ROLLED_BACK --> [*]

@@ -1,0 +1,43 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-B.2: Reveal Specimen Identity via Hold-to-Identify"]
+        JP["<b>Job Performer</b><br/>Player with an enriched<br/>unidentified item"]
+        ASP["<b>Aspirations</b><br/>Feel the Balatro dopamine theater<br/>Interruptible and snappy<br/>Every reveal is a moment"]
+        FJ["<b>Focus Job</b><br/>Reveal specimen identity<br/>with hold-to-identify"]
+        S1["<b>Step 1</b><br/>Find unidentified enriched card in pack"]
+        S2["<b>Step 2</b><br/>Press and hold card with finger"]
+        S3["<b>Step 3</b><br/>Card lifts, particles flow inward (300ms)"]
+        S4["<b>Step 4</b><br/>Feel haptic pulses at 50% and 75%"]
+        S5["<b>Step 5</b><br/>Release early to cancel<br/>OR hold to 1200ms"]
+        S6["<b>Step 6</b><br/>Burst — full TCG card<br/>revealed with stats"]
+        SC["<b>Success Criteria</b><br/>Smooth 60fps animation<br/>Interruptible at any point<br/>Deterministic stat roll"]
+        EM["<b>Emotions</b><br/>Anticipation --> Tension --> Dopamine burst --> What did I get?!"]
+        CIRC["<b>Circumstances</b><br/>Item species is fully enriched,<br/>8-column NOT NULL"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-B.2"]
+        IN["<b>Inputs</b><br/>Enriched unidentified item"]
+        OUT["<b>Outputs</b><br/>Identified item with rolled stats"]
+        ALG["<b>Algorithm</b><br/>SHA-256 instanceUUID --> seed<br/>brawn/wit/speed sum=90<br/>+/- instance variance from species baseline"]
+        AFF["<b>Affixes</b><br/>CR: 2 affixes<br/>EN: 1-2 affixes<br/>VU: 0-1 affixes<br/>NT/LC: 0 affixes"]
+        WR["<b>Write Path</b><br/>Optimistic --> WriteQueue<br/>UPDATE v3_items<br/>SET identified=true<br/>WHERE identified=false"]
+        ANIM["<b>Animation</b><br/>Spring physics:<br/>snappy --> bouncy --> gentle tokens<br/>Particles: 6 for LC to 24 for CR"]
+        EV["<b>Events</b><br/>identify.started<br/>identify.completed<br/>identify.cancelled"]
+
+        IN --> ALG
+        ALG --> AFF
+        AFF --> OUT
+        OUT --> WR
+        IN --> ANIM
+        ANIM --> EV
+    end
+
+    JTBD --> SystemSpec

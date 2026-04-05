@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.3: Participate in Community Goals"]
+        JP["<b>Job Performer</b><br/>Player contributing to<br/>shared milestones"]
+        ASP["<b>Aspirations</b><br/>Feel part of something larger<br/>Collective achievement"]
+        FJ["<b>Focus Job</b><br/>Participate in<br/>community goals"]
+        S1["<b>Step 1</b><br/>View active<br/>community goal"]
+        S2["<b>Step 2</b><br/>See collective<br/>progress bar"]
+        S3["<b>Step 3</b><br/>Contribute by doing<br/>relevant activities"]
+        S4["<b>Step 4</b><br/>Goal completes when<br/>threshold reached"]
+        S5["<b>Step 5</b><br/>All participants<br/>receive reward"]
+        SC["<b>Success Criteria</b><br/>Contribution feels meaningful<br/>Collective reward earned"]
+        EM["<b>Emotions</b><br/>Purpose --> Solidarity --> Shared triumph"]
+        CIRC["<b>Circumstances</b><br/>Active community goal exists,<br/>player has qualifying actions available"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.3"]
+        IN["<b>Inputs</b><br/>Active community goal definition,<br/>qualifying action types,<br/>player actions"]
+        OUT["<b>Outputs</b><br/>Contribution count incremented,<br/>global progress bar updated,<br/>rewards on completion"]
+        SF["<b>Skill Feed</b><br/>Community actions may<br/>grant bonus skill XP"]
+        GT["<b>Gating</b><br/>Active goal exists,<br/>player can perform qualifying actions"]
+        DR["<b>Data Requirements</b><br/>v3_community_goals table,<br/>v3_goal_contributions table,<br/>reward distribution system,<br/>real-time progress aggregation"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

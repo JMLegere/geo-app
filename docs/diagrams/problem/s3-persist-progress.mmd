@@ -1,0 +1,44 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.3: Persist Progress Reliably"]
+        JP["<b>Job Performer</b><br/>Write Queue System<br/>(client-side, automated)"]
+        ASP["<b>Aspirations</b><br/>Never lose player actions,<br/>eventual consistency,<br/>no perceptible latency"]
+        FJ["<b>Focus Job</b><br/>Ensure every player action<br/>is durably persisted to server"]
+        S1["<b>Step 1</b><br/>Player action triggers<br/>state change"]
+        S2["<b>Step 2</b><br/>Optimistic UI update<br/>shown immediately"]
+        S3["<b>Step 3</b><br/>Write queued to<br/>v3_write_queue"]
+        S4["<b>Step 4</b><br/>Background sync sends<br/>to Supabase"]
+        S5["<b>Step 5</b><br/>CONFIRMED or retry<br/>on failure"]
+        SC["<b>Success Criteria</b><br/>Zero data loss on normal network,<br/>graceful degradation offline,<br/>idempotent writes (safe to retry)"]
+        EM["<b>Emotions</b><br/>Actions feel instant<br/>(optimistic). Failures are<br/>rare and handled gracefully."]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
+    end
+
+    subgraph SYS["System Spec"]
+        direction TB
+
+        IN["<b>Inputs</b><br/>Player action + payload"]
+        OUT["<b>Outputs</b><br/>Confirmed server state<br/>or rollback notification"]
+
+        STATES["<b>Write Queue States</b><br/>OPTIMISTIC: UI updated, write not sent<br/>PENDING: write dispatched<br/>CONFIRMED: server 2xx<br/>RETRYING: failed, will retry<br/>FAILED: max retries exceeded<br/>ROLLED_BACK: local state reverted"]
+
+        ACTIONS["<b>Supported Actions</b><br/>identify: UPDATE v3_items SET identified=true,<br/>  brawn, wit, speed, size, weight, prefix, suffix<br/>donate: INSERT v3_sanctuary_donations,<br/>  UPDATE v3_items SET status='donated'<br/>visit: INSERT v3_cell_visits"]
+
+        DATA["<b>Data</b><br/>v3_write_queue,<br/>v3_items, v3_cell_visits,<br/>v3_sanctuary_donations"]
+
+        COMP["<b>Components</b><br/>WriteQueueProvider<br/>WriteQueueService<br/>v3_write_queue table"]
+
+        RESOLVES["<b>Resolves Critique</b><br/>2.4: Fire-and-forget unsafe.<br/>Optimistic + queue + retry +<br/>idempotent guards = safe writes."]
+
+        IN --- OUT
+        STATES --- ACTIONS
+        DATA --- COMP --- RESOLVES
+    end
+
+    JTBD --> SYS

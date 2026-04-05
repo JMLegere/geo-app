@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-C.1: Discover and Browse Collections"]
+        JP["<b>Job Performer</b><br/>Player exploring what<br/>is available to build"]
+        ASP["<b>Aspirations</b><br/>See the full scope of what can be built<br/>Find achievable targets"]
+        FJ["<b>Focus Job</b><br/>Discover and browse collections"]
+        S1["<b>Step 1</b><br/>Open sanctuary tab"]
+        S2["<b>Step 2</b><br/>Browse available collections"]
+        S3["<b>Step 3</b><br/>See filled vs empty slots"]
+        S4["<b>Step 4</b><br/>Tap collection for detail view"]
+        S5["<b>Step 5</b><br/>Check which specimens qualify"]
+        SC["<b>Success Criteria</b><br/>Only non-empty permutations shown<br/>Progress visible<br/>Size clear"]
+        EM["<b>Emotions</b><br/>Overview --> Planning --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>Player has at least one<br/>identified species"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-C.1"]
+        IN["<b>Inputs</b><br/>v3_sanctuary_donations for user<br/>Species catalog"]
+        OUT["<b>Outputs</b><br/>Collection list with progress"]
+        COLL["<b>Collections</b><br/>513 real permutations of<br/>continent x habitat x taxonomicClass<br/>+ Museum (minerals, fossils, artifacts)<br/>unlocked via Archaeologist NPC"]
+        SIZES["<b>Collection Sizes</b><br/>Tiny 1-5 species: 147 collections<br/>Small 6-50: 180 collections<br/>Medium 51-200: 107 collections<br/>Large 200+: 79 collections"]
+        GT["<b>Gating / Unlock Rule</b><br/>Collection visible only after<br/>first identification of<br/>an eligible species"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_donations<br/>species catalog<br/>collection permutation index"]
+        COMP["<b>Components</b><br/>SanctuaryScreen<br/>CollectionBrowser<br/>CollectionCard"]
+
+        IN --> COLL
+        COLL --> SIZES
+        SIZES --> OUT
+        GT --> DR
+        DR --> COMP
+    end
+
+    JTBD --> SystemSpec

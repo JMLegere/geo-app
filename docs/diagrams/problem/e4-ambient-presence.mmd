@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.4: Sense Other Explorers"]
+        JP["<b>Job Performer</b><br/>Player exploring who wants<br/>to feel less alone"]
+        ASP["<b>Aspirations</b><br/>Others are here:<br/>the world is shared,<br/>not solitary"]
+        FJ["<b>Focus Job</b><br/>Sense other explorers<br/>(ambient presence)"]
+        S1["<b>Step 1</b><br/>Explore map in<br/>populated area"]
+        S2["<b>Step 2</b><br/>See subtle indicators<br/>of other explorers"]
+        S3["<b>Step 3</b><br/>Notice recently<br/>explored cells"]
+        S4["<b>Step 4</b><br/>Feel the world is<br/>shared and alive"]
+        SC["<b>Success Criteria</b><br/>Presence feels ambient not intrusive<br/>Opt-in only<br/>Adds warmth without pressure"]
+        EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
+        CIRC["<b>Circumstances</b><br/>Player has opted in<br/>to location sharing<br/>Authenticated session"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.4"]
+        IN["<b>Inputs</b><br/>Other players anonymized<br/>activity data:<br/>fog reveals, cell visits"]
+        OUT["<b>Outputs</b><br/>Map overlay showing recent<br/>exploration by others"]
+        SF["<b>Skill Feed</b><br/>None: passive observation"]
+        GT["<b>Gating</b><br/>Opt-in location sharing<br/>Authenticated session"]
+        DR["<b>Data Requirements</b><br/>Aggregated v3_cell_visits: anonymized<br/>Activity heatmap data"]
+        PR["<b>Privacy</b><br/>Anonymized: no player identity,<br/>just someone was here"]
+        CP["<b>Components</b><br/>PresenceOverlay<br/>PrivacyToggle"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> PR
+        PR --> CP
+    end
+
+    JTBD --> SystemSpec

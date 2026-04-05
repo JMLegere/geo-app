@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+%% EarthNova Client-Side Drift Schema (post-MVP offline support)
+
+erDiagram
+    LocalSpeciesTable {
+        int8 speciesId PK
+        text commonName
+        text scientificName
+        text animalClass
+        text climate
+        text size
+        int4 brawn
+        int4 wit
+        int4 speed
+        text iconUrl
+        text iconUrlFrame2
+        text artUrl
+        timestamp enrichedAt
+        timestamp syncedAt
+    }
+
+    LocalSkillProgress {
+        text skillName PK
+        int4 level
+        int4 accumulatedCount
+        timestamp syncedAt
+    }
+
+    LocalWriteQueue {
+        uuid id PK
+        uuid userId
+        text action
+        text payload "JSON string"
+        text status
+        timestamp createdAt
+        timestamp resolvedAt
+    }

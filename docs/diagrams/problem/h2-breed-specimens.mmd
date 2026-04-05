@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-H.2: Breed Specimens"]
+        JP["<b>Job Performer</b><br/>Breeder seeking<br/>rare combinations"]
+        ASP["<b>Aspirations</b><br/>Create offspring with<br/>inherited/combined traits<br/>Discover new stat combinations"]
+        FJ["<b>Focus Job</b><br/>Breed specimens"]
+        S1["<b>Step 1</b><br/>Select two compatible<br/>specimens"]
+        S2["<b>Step 2</b><br/>Check breeding requirements<br/>(skill level, orb cost)"]
+        S3["<b>Step 3</b><br/>Spend orbs to<br/>initiate breeding"]
+        S4["<b>Step 4</b><br/>Wait for breeding timer"]
+        S5["<b>Step 5</b><br/>Offspring appears with<br/>inherited traits"]
+        SC["<b>Success Criteria</b><br/>Offspring created<br/>Traits inherited logically<br/>Feels meaningful"]
+        EM["<b>Emotions</b><br/>Anticipation --> Surprise (what traits?) --> Pride (good combo!)"]
+        CIRC["<b>Circumstances</b><br/>Two compatible identified fauna<br/>Sufficient orbs<br/>Zoology level met"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-H.2"]
+        IN["<b>Inputs</b><br/>2 identified fauna<br/>Required orbs"]
+        OUT["<b>Outputs</b><br/>New v3_items entry<br/>with inherited stats"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per breeding"]
+        GT["<b>Gating</b><br/>Zoology level ge 3<br/>L5 for rare species<br/>L8 for CR species"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>orb_inventory<br/>species breeding compatibility"]
+        NOTES["<b>Notes</b><br/>Offspring stats derived from<br/>parent stats + variance.<br/>Stardew-style accumulation<br/>levels 1-10."]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

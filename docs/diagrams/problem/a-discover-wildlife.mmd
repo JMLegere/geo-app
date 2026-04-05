@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-A: Discover Wildlife While Exploring the Real World"]
+        JP["<b>Job Performer</b><br/>Explorer: outdoor player<br/>with GPS enabled"]
+        ASP["<b>Aspirations</b><br/>Real places yield real discoveries<br/>Every walk is unique<br/>The world map fills in"]
+        FJ["<b>Focus Job</b><br/>Discover wildlife while<br/>exploring the real world"]
+
+        FJ --> A1["<b>A.1: Navigate Map</b><br/>Pan, zoom, GPS lock,<br/>see fog overlay"]
+        A1 --> A2["<b>A.2: Reveal Fog</b><br/>Walk into cells,<br/>fog clears permanently"]
+        A2 --> A3["<b>A.3: Encounter &amp; Collect</b><br/>Trigger encounters,<br/>collect 1-3 specimens per cell"]
+        A3 --> A4["<b>A.4: Treasure Maps</b><br/>Follow directed quests<br/>to specific locations"]
+
+        SC["<b>Success Criteria</b><br/>New cells revealed<br/>New species encountered<br/>Items in pack"]
+        EM["<b>Emotions</b><br/>Curiosity --> Surprise --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Walking outdoors,<br/>GPS signal available"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-A"]
+        IN["<b>Inputs</b><br/>GPS coordinates<br/>Daily seed<br/>Cell ID"]
+        OUT["<b>Outputs</b><br/>Cell visits recorded<br/>Unidentified items: 1-3 per cell"]
+        SF["<b>Skill Feed</b><br/>+1 to skill matching item type<br/>per item acquired"]
+        GT["<b>Gating</b><br/>None -- exploration is<br/>always available"]
+        DR["<b>Data Requirements</b><br/>v3_cell_visits<br/>v3_items<br/>species catalog<br/>daily_seed"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

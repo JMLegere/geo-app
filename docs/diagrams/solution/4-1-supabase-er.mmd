@@ -1,0 +1,128 @@
+%% Status: NEEDS HUMAN REVIEW
+%% EarthNova Supabase ER Diagram
+%% Old tables (preserved, untouched): profiles, item_instances, cell_progress
+
+erDiagram
+    AUTH_USERS {
+        uuid id PK
+        string email
+        string phone
+        timestamp created_at
+    }
+
+    species {
+        int8 id PK
+        int8 taxon_id
+        text scientific_name
+        text common_name
+        text category
+        text iucn_status
+        text taxonomic_class
+        jsonb habitats_json
+        jsonb continents_json
+        text animal_class
+        text food_preference
+        text climate
+        text size
+        int4 brawn
+        int4 wit
+        int4 speed
+        text icon_prompt
+        text art_prompt
+        text icon_url
+        text icon_url_frame2
+        text art_url
+        int4 enrichver_classify
+        int4 enrichver_icon_prompt
+        int4 enrichver_art_prompt
+        int4 enrichver_icon
+        int4 enrichver_art
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    v3_profiles {
+        uuid id PK "FK auth.users"
+        text phone
+        text display_name
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    v3_items {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        int8 definition_id
+        text display_name
+        text scientific_name
+        text category
+        text rarity
+        text icon_url
+        text icon_url_frame2
+        text art_url
+        timestamp acquired_at
+        text acquired_in_cell_id
+        text status
+        timestamp created_at
+        bool identified "future"
+        timestamp identified_at "future"
+        int4 brawn "future"
+        int4 wit "future"
+        int4 speed "future"
+        text size_category "future"
+        int4 weight_grams "future"
+        text prefix "future"
+        text suffix "future"
+    }
+
+    v3_cell_visits {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        text cell_id
+        timestamp visited_at
+    }
+
+    v3_write_queue {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        text action
+        jsonb payload
+        text status
+        timestamp created_at
+        timestamp resolved_at
+    }
+
+    v3_sanctuary_donations {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        uuid item_id FK "FK v3_items"
+        text collection_key
+        timestamp donated_at
+    }
+
+    v3_recap_snapshots {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        jsonb snapshot_data
+        timestamp created_at
+        timestamp dismissed_at
+    }
+
+    app_logs {
+        uuid id PK
+        uuid session_id
+        uuid user_id FK "FK auth.users"
+        text category
+        text event
+        jsonb data
+        timestamp created_at
+    }
+
+    AUTH_USERS ||--o| v3_profiles : "has profile"
+    AUTH_USERS ||--o{ v3_items : "owns items"
+    AUTH_USERS ||--o{ v3_cell_visits : "visits cells"
+    AUTH_USERS ||--o{ v3_write_queue : "queues writes"
+    AUTH_USERS ||--o{ v3_sanctuary_donations : "donates"
+    AUTH_USERS ||--o{ v3_recap_snapshots : "has recaps"
+    AUTH_USERS ||--o{ app_logs : "generates logs"
+    v3_items ||--o{ v3_sanctuary_donations : "donated via"

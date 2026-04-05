@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-F.2: Customize Profile"]
+        JP["<b>Job Performer</b><br/>Player who wants a personal identity"]
+        ASP["<b>Aspirations</b><br/>Express personality, stand out,<br/>feel ownership of explorer persona"]
+        FJ["<b>Focus Job</b><br/>Customize my explorer profile<br/>beyond the default"]
+        S1["<b>Step 1</b><br/>Open profile screen"]
+        S2["<b>Step 2</b><br/>Tap edit avatar"]
+        S3["<b>Step 3</b><br/>Choose or upload image"]
+        S4["<b>Step 4</b><br/>Set display name"]
+        S5["<b>Step 5</b><br/>Save changes"]
+        SC["<b>Success Criteria</b><br/>Name visible to others,<br/>avatar renders correctly,<br/>changes persist"]
+        EM["<b>Emotions</b><br/>Creativity --> Ownership --> Pride"]
+        CIRC["<b>Circumstances</b><br/>Player wants to personalize<br/>their explorer identity"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-F.2"]
+        IN["<b>Inputs</b><br/>display_name (text),<br/>avatar (image or selection)"]
+        OUT["<b>Outputs</b><br/>UPDATE v3_profiles<br/>SET display_name, avatar_url"]
+        GATE["<b>Gating</b><br/>Authenticated"]
+        DATA["<b>Data Requirements</b><br/>v3_profiles,<br/>Supabase Storage (avatar images)"]
+        COMP["<b>Components</b><br/>ProfileScreen, ProfileNotifier,<br/>ProfileService, AvatarPicker"]
+
+        IN --> OUT
+        GATE --> DATA
+        DATA --> COMP
+    end
+
+    JTBD --> SystemSpec

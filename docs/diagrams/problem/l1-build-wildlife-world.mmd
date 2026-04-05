@@ -1,0 +1,42 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L1: Build and Grow My Personal Wildlife World"]
+        JP["<b>Job Performer</b><br/>Active player with account,<br/>exploring regularly"]
+        ASP["<b>Aspirations</b><br/>Pack fills with discoveries<br/>Sanctuary grows<br/>Skills level up<br/>World reflects journey"]
+        FJ["<b>Focus Job</b><br/>Build and grow my<br/>personal wildlife world"]
+
+        FJ --> A["<b>A: Discover Wildlife</b><br/>Explore the real world,<br/>encounter and collect specimens"]
+        FJ --> B["<b>B: Identify Specimens</b><br/>Browse pack, hold-to-identify,<br/>understand stats"]
+        FJ --> C["<b>C: Curate Sanctuary</b><br/>Donate specimens,<br/>complete collections"]
+        FJ --> D["<b>D: Reconnect on Return</b><br/>Recap, milestones,<br/>achievements, streaks"]
+        FJ --> E["<b>E: Share My World</b><br/>Trade, compare,<br/>community goals"]
+        FJ --> F["<b>F: Manage Identity</b><br/>Auth, profile,<br/>settings, onboarding"]
+        FJ --> G["<b>G: Tend Sanctuary</b><br/>Feed, place,<br/>observe animals"]
+        FJ --> H["<b>H: Craft Resources</b><br/>Orbs, breeding,<br/>lures and cosmetics"]
+        FJ --> I["<b>I: Meet NPCs</b><br/>Discover NPCs,<br/>bundles, town hub"]
+        FJ --> S["<b>S: System Growing</b><br/>Enrichment, sync,<br/>persistence, monitoring"]
+
+        SC["<b>Success Criteria</b><br/>Measurable growth each session<br/>New species, collections, skill levels<br/>World feels richer"]
+        EM["<b>Emotions</b><br/>Anticipation --> Flow --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Any outdoor session,<br/>5 min to 2 hours"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L1"]
+        IN["<b>Inputs</b><br/>All game systems:<br/>GPS, daily seed, items,<br/>species catalog, collections"]
+        OUT["<b>Outputs</b><br/>Persistent world state:<br/>cell visits, items, donations,<br/>skill levels, fog map"]
+        SF["<b>Skill Feed</b><br/>All 5 skills accumulate:<br/>Zoology, Botany, Geology,<br/>Paleontology, Archaeology"]
+        GT["<b>Gating</b><br/>Authenticated user<br/>with GPS permissions"]
+        DR["<b>Data Requirements</b><br/>All v3 tables:<br/>v3_items, v3_cell_visits,<br/>v3_sanctuary_donations,<br/>species, daily_seed"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

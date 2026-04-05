@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-D: Reconnect with Progress on Return"]
+        JP["<b>Job Performer</b><br/>Returning player<br/>6h+ absence"]
+        ASP["<b>Aspirations</b><br/>Feel the world continued<br/>Catch up warmly<br/>Feel motivated"]
+        FJ["<b>Focus Job</b><br/>Reconnect with progress<br/>on return"]
+
+        FJ --> D1["<b>D.1: Review Recap</b><br/>Swipe through recap cards<br/>on app open"]
+        D1 --> D2["<b>D.2: Community Milestones</b><br/>See what the community<br/>achieved while away"]
+        D2 --> D3["<b>D.3: Achievements</b><br/>Track personal milestones<br/>and unlocks"]
+        D3 --> D4["<b>D.4: Streaks</b><br/>Maintain daily play<br/>streaks for rewards"]
+
+        SC["<b>Success Criteria</b><br/>Player informed and motivated<br/>Never blocked by recap"]
+        EM["<b>Emotions</b><br/>Warm welcome --> Curiosity --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>6h+ since last session<br/>App reopened"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-D"]
+        IN["<b>Inputs</b><br/>last_recap_dismissed_at<br/>current time"]
+        OUT["<b>Outputs</b><br/>Recap card stack<br/>Updated dismissal timestamp"]
+        SF["<b>Skill Feed</b><br/>No direct skill XP<br/>Motivates return to play"]
+        GT["<b>Gating</b><br/>6h+ since last dismissal<br/>Not first-ever login"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>v3_cell_visits<br/>Community aggregates<br/>Resolves critique: 3.1, 3.2"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

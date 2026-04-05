@@ -1,0 +1,31 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    Player["Player\n(mobile / web user)"]
+
+    subgraph EarthNova["EarthNova App"]
+        App["Flutter Web Application\n(PWA)"]
+    end
+
+    Supabase["Supabase Platform\n(auth, database, storage,\nedge functions, realtime)"]
+    IUCN["IUCN Red List\n(species data source\n— initial seed only)"]
+    OpenAI["OpenAI API\n(LLM classification +\nprompt generation)"]
+    ImageGen["Image Generation API\n(icon + art generation)"]
+    Railway["Railway\n(web hosting)"]
+    PgCron["pg_cron\n(Supabase extension —\nscheduled enrichment triggers)"]
+
+    Player -->|"plays game via\nbrowser / PWA"| App
+    App -->|"authenticates, reads/writes\ngame data, subscribes realtime"| Supabase
+    Supabase -->|"seed species data\n(one-time import)"| IUCN
+    Supabase -->|"requests classification\n+ prompt generation"| OpenAI
+    Supabase -->|"requests generated\nspecies icons / art"| ImageGen
+    Railway -->|"serves static\nweb build"| Player
+    PgCron -->|"triggers scheduled\nenrichment jobs"| Supabase
+
+    style EarthNova fill:#4a9eff,color:#fff
+    style Player fill:#22c55e,color:#fff
+    style Supabase fill:#3ecf8e,color:#fff
+    style IUCN fill:#f59e0b,color:#fff
+    style OpenAI fill:#a855f7,color:#fff
+    style ImageGen fill:#ec4899,color:#fff
+    style Railway fill:#6366f1,color:#fff
+    style PgCron fill:#78716c,color:#fff

@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-G.2: Place Animals in Sanctuary"]
+        JP["<b>Job Performer</b><br/>Builder arranging<br/>their sanctuary"]
+        ASP["<b>Aspirations</b><br/>Aesthetically pleasing layout<br/>Strategically optimal placement<br/>Ark Nova-style appeal puzzle"]
+        FJ["<b>Focus Job</b><br/>Place animals in sanctuary<br/>(spatial puzzle)"]
+        S1["<b>Step 1</b><br/>Open sanctuary<br/>placement view"]
+        S2["<b>Step 2</b><br/>Select unplaced animal<br/>from pack"]
+        S3["<b>Step 3</b><br/>Drag to desired position"]
+        S4["<b>Step 4</b><br/>Confirm placement"]
+        S5["<b>Step 5</b><br/>Animal appears with<br/>idle animation"]
+        SC["<b>Success Criteria</b><br/>Animal placed<br/>Appeal score updated<br/>Layout feels intentional"]
+        EM["<b>Emotions</b><br/>Creative Planning --> Puzzle Satisfaction --> Pride in Design"]
+        CIRC["<b>Circumstances</b><br/>At least one identified<br/>fauna item available"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-G.2"]
+        IN["<b>Inputs</b><br/>Identified fauna item"]
+        OUT["<b>Outputs</b><br/>v3_sanctuary_placements INSERT<br/>Appeal score update"]
+        SF["<b>Skill Feed</b><br/>None -- placement is<br/>a spatial utility job"]
+        GT["<b>Gating</b><br/>Item must be<br/>identified fauna"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_placements<br/>appeal_score"]
+        COMP["<b>Components</b><br/>SanctuaryPlacementView<br/>PlacementGrid"]
+        NOTES["<b>Notes</b><br/>Item transitions:<br/>IDENTIFIED --> PLACED (removable)"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> COMP
+        COMP --> NOTES
+    end
+
+    JTBD --> SystemSpec

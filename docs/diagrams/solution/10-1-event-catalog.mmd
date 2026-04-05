@@ -1,0 +1,79 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    title["Observability Event Catalog"]
+    style title fill:none,stroke:none
+
+    subgraph auth ["auth"]
+        auth_sign_in_success["sign_in_success"]
+        auth_sign_in_error["sign_in_error"]
+        auth_sign_up_success["sign_up_success"]
+        auth_sign_up_error["sign_up_error"]
+        auth_sign_out["sign_out"]
+        auth_session_restored["session_restored"]
+        auth_session_expired["session_expired"]
+    end
+
+    subgraph items ["items"]
+        items_fetch_success["fetch_success"]
+        items_fetch_error["fetch_error"]
+        items_fetch_empty["fetch_empty"]
+    end
+
+    subgraph app ["app"]
+        app_cold_start["cold_start"]
+        app_crash["crash"]
+    end
+
+    subgraph supa ["supabase"]
+        supa_init_success["init_success"]
+        supa_init_failure["init_failure"]
+    end
+
+    subgraph net ["network"]
+        net_offline["offline"]
+        net_online["online"]
+    end
+
+    subgraph discovery ["discovery (new)"]
+        disc_encounter["encounter\n{species_id, cell_id, rarity}"]
+        disc_item_acquired["item_acquired\n{item_id, species_id, is_enriched}"]
+    end
+
+    subgraph identify ["identify (new)"]
+        id_started["started\n{item_id}"]
+        id_completed["completed\n{item_id, brawn, wit,\nspeed, prefix, suffix}"]
+        id_cancelled["cancelled\n{item_id, charge_pct}"]
+    end
+
+    subgraph sanctuary ["sanctuary (new)"]
+        sanc_donation["donation\n{item_id, collection_key}"]
+        sanc_collection_unlocked["collection_unlocked\n{collection_key, species_count}"]
+    end
+
+    subgraph recap ["recap (new)"]
+        recap_shown["shown\n{hours_away, pending_count}"]
+        recap_dismissed["dismissed\n{pages_viewed}"]
+    end
+
+    subgraph skill ["skill (new)"]
+        skill_level_up["level_up\n{skill_name, new_level,\naccumulated_count}"]
+    end
+
+    subgraph species_sync ["species_sync (new)"]
+        sync_started["sync_started\n{last_sync_at}"]
+        sync_complete["sync_complete\n{species_updated_count}"]
+        sync_error["sync_error\n{error_message}"]
+    end
+
+    style auth fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style items fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style app fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style supa fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style net fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+
+    style discovery fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style identify fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style sanctuary fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style recap fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style skill fill:#e3f2fd,stroke:#1976D2,stroke-width:2px
+    style species_sync fill:#e3f2fd,stroke:#1976D2,stroke-width:2px

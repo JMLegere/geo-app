@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-B.1: Browse and Organize My Pack"]
+        JP["<b>Job Performer</b><br/>Player managing<br/>their collection"]
+        ASP["<b>Aspirations</b><br/>Quickly find items<br/>Understand what I have<br/>See what needs attention"]
+        FJ["<b>Focus Job</b><br/>Browse and organize my pack"]
+        S1["<b>Step 1</b><br/>Tap pack tab"]
+        S2["<b>Step 2</b><br/>See grid of collected items"]
+        S3["<b>Step 3</b><br/>Sort/filter by type or status"]
+        S4["<b>Step 4</b><br/>Tap item to see detail card"]
+        S5["<b>Step 5</b><br/>Identify enriched items<br/>or review identified ones"]
+        SC["<b>Success Criteria</b><br/>Items load fast<br/>Filters and sort work<br/>Visual state clear: identified vs not"]
+        EM["<b>Emotions</b><br/>Browsing comfort --> Organization satisfaction --> Discovery"]
+        CIRC["<b>Circumstances</b><br/>Any time, indoors or outdoors,<br/>authenticated user"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-B.1"]
+        IN["<b>Inputs</b><br/>v3_items for current user"]
+        OUT["<b>Outputs</b><br/>Filtered/sorted grid display"]
+        SF["<b>Skill Feed</b><br/>None -- browsing is<br/>a utility job"]
+        GT["<b>Gating</b><br/>Authenticated user"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>species table for enrichment status"]
+        COMP["<b>Components</b><br/>PackScreen<br/>ItemsProvider<br/>ItemCard<br/>RarityBadge<br/>Category filter chips"]
+        PERF["<b>Performance</b><br/>Filter/sort in under 100ms<br/>Grid renders at 60fps"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> COMP
+        COMP --> PERF
+    end
+
+    JTBD --> SystemSpec

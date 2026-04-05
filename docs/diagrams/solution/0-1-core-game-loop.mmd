@@ -1,0 +1,60 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    START((Player)) --> EXPLORE
+
+    subgraph EXPLORE_PHASE [1. EXPLORE]
+        EXPLORE[Move to GPS cell]
+        EXPLORE --> CELL_HASH[SHA-256 dailySeed + cellId]
+        CELL_HASH --> SPAWN[Spawn 3 species\nrarity-weighted]
+    end
+
+    SPAWN --> DISCOVER
+
+    subgraph DISCOVER_PHASE [2. DISCOVER]
+        DISCOVER[Encounter specimen\nin the wild]
+        DISCOVER --> UNID[Receive unidentified\nspecimen + possible food]
+    end
+
+    UNID --> IDENTIFY
+
+    subgraph IDENTIFY_PHASE [3. IDENTIFY]
+        IDENTIFY[Identify specimen]
+        IDENTIFY --> ENRICHED{Fully enriched?\n8 columns NOT NULL}
+        ENRICHED -->|No| SILENT[Silent -- cannot identify\nkeep as unidentified]
+        ENRICHED -->|Yes| STATS[Reveal stats:\nbrawn + wit + speed = 90\nart, affixes, rarity]
+    end
+
+    STATS --> DECIDE
+    SILENT -.->|Try again later| EXPLORE
+
+    subgraph DECIDE_PHASE [4. DECIDE]
+        DECIDE{What to do\nwith specimen?}
+        DECIDE -->|Keep| INVENTORY[Store in inventory]
+        DECIDE -->|Donate| COLLECTION[Donate to collection\nfills collection slot]
+        DECIDE -->|Release| RELEASE[Release specimen]
+    end
+
+    COLLECTION --> SANCTUARY
+    INVENTORY --> SANCTUARY
+
+    subgraph SANCTUARY_PHASE [5. SANCTUARY]
+        SANCTUARY[Manage sanctuary]
+        SANCTUARY --> FEED[Feed animals with food]
+        FEED --> ORBS[Receive orbs]
+        SANCTUARY --> BREED[Breed specimens\nstubbed]
+        SANCTUARY --> CULTIVATE[Cultivate flora\nstubbed]
+    end
+
+    ORBS --> RETURN
+    BREED --> RETURN
+    CULTIVATE --> RETURN
+
+    subgraph RETURN_PHASE [6. RETURN]
+        RETURN[Review progress]
+        RETURN --> RECAP[Review recap\nskills, levels, collections]
+        RETURN --> CRAFT[Craft lures / cosmetics\nstubbed]
+    end
+
+    RECAP --> EXPLORE
+    CRAFT --> EXPLORE
+    RELEASE --> EXPLORE

@@ -1,0 +1,42 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.4: Animate the World"]
+        JP["<b>Job Performer</b><br/>Animation System:<br/>client-side rendering framework"]
+        ASP["<b>Aspirations</b><br/>95% warm: gentle springs,<br/>breathing, soft shadows<br/>5% electric: particles,<br/>haptic, glow"]
+        FJ["<b>Focus Job</b><br/>Animate the world:<br/>spring physics, particles"]
+        S1["<b>Step 1</b><br/>Sprite loaded from<br/>enrichment art"]
+        S2["<b>Step 2</b><br/>2-frame animation plays<br/>(idle cycle)"]
+        S3["<b>Step 3</b><br/>Spring physics on<br/>interactions"]
+        S4["<b>Step 4</b><br/>Particle effects on events<br/>(reveal, donate)"]
+        S5["<b>Step 5</b><br/>60fps target maintained"]
+        SC["<b>Success Criteria</b><br/>60fps budget maintained<br/>Reduced motion respected<br/>Rarity-scaled feedback"]
+        EM["<b>Emotions</b><br/>Warmth --> Delight --> Tactile satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Any user interaction<br/>or idle state<br/>on card/map UI"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-S.4"]
+        ST["<b>Spring Tokens</b><br/>snappy: chip select<br/>bouncy: card reveal<br/>gentle: release<br/>heavy: drag"]
+        IW["<b>Idle Wobble</b><br/>+/-0.5px Y, +/-0.2deg rotation<br/>~2s period<br/>Per-card phase offset from<br/>definitionId.hashCode"]
+        PS["<b>Particle System</b><br/>Widget-based, max 24<br/>Rarity-scaled colors:<br/>LC gray #ADB5BD<br/>NT green #4CAF50<br/>VU blue #2196F3<br/>EN gold #FFD700<br/>CR purple #9C27B0"]
+        HT["<b>Hold-to-Reveal</b><br/>0ms press<br/>300ms charge threshold<br/>1200ms reveal<br/>Burst on complete<br/>Interruptible at any point"]
+        RM["<b>Reduced Motion</b><br/>MediaQuery.disableAnimations:<br/>replace spatial with opacity,<br/>disable particles/wobble"]
+        PF["<b>Performance</b><br/>Shared AnimationController<br/>per grid, not per card<br/>60fps budget"]
+        RG["<b>Rarity Glow</b><br/>LC/NT = 0.0 static<br/>VU = 0.15<br/>EN = 0.25<br/>CR = 0.35"]
+
+        ST --> IW
+        IW --> PS
+        PS --> HT
+        HT --> RM
+        RM --> PF
+        PF --> RG
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.2: Compare Sanctuaries"]
+        JP["<b>Job Performer</b><br/>Curious player browsing<br/>others builds"]
+        ASP["<b>Aspirations</b><br/>See whats possible<br/>Get inspired<br/>Friendly comparison"]
+        FJ["<b>Focus Job</b><br/>Compare sanctuaries"]
+        S1["<b>Step 1</b><br/>Open social tab"]
+        S2["<b>Step 2</b><br/>Browse friend<br/>sanctuaries"]
+        S3["<b>Step 3</b><br/>View their collections<br/>and completion"]
+        S4["<b>Step 4</b><br/>See leaderboard<br/>rankings"]
+        S5["<b>Step 5</b><br/>Get inspired for<br/>own sanctuary"]
+        SC["<b>Success Criteria</b><br/>Best conservationist not who is strongest<br/>Collection completion %, species identified"]
+        EM["<b>Emotions</b><br/>Curiosity --> Admiration --> Inspiration"]
+        CIRC["<b>Circumstances</b><br/>Player wants to see how others<br/>have built their sanctuaries"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.2"]
+        IN["<b>Inputs</b><br/>Other player ID,<br/>public sanctuary flag"]
+        OUT["<b>Outputs</b><br/>Other players sanctuary view,<br/>comparison metrics"]
+        SF["<b>Skill Feed</b><br/>Metrics: collection completion %,<br/>species identified,<br/>sanctuary size"]
+        GT["<b>Gating</b><br/>Public profiles enabled,<br/>sanctuary visibility opt-in"]
+        DR["<b>Data Requirements</b><br/>Public v3_sanctuary_donations read,<br/>v3_profiles with public flag,<br/>leaderboard aggregation table"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

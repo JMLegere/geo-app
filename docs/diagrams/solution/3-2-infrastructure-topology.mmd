@@ -1,0 +1,50 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph PlayerDevice["Player Device"]
+        PWA["Flutter Web App\n(PWA)"]
+    end
+
+    subgraph RailwayHost["Railway"]
+        Dockerfile["Dockerfile"]
+        Nginx["nginx"]
+        StaticBuild["Static web build"]
+        Dockerfile --> Nginx --> StaticBuild
+    end
+
+    subgraph SupabaseCloud["Supabase"]
+        Auth["Auth"]
+        Postgres["PostgreSQL\n(v3_tables + species\n+ app_logs)"]
+        Storage["Storage\n(species images)"]
+        EdgeFn["Edge Functions\n(process-enrichment-queue)"]
+        PgCronExt["pg_cron"]
+        Realtime["Realtime"]
+        Auth --- Postgres
+        Postgres --- Storage
+        Postgres --- EdgeFn
+        Postgres --- PgCronExt
+        Postgres --- Realtime
+    end
+
+    subgraph ExternalAPIs["External APIs"]
+        OpenAI["OpenAI API"]
+        ImageGenAPI["Image Generation API"]
+    end
+
+    subgraph CICD["CI/CD"]
+        GHA["GitHub Actions"]
+        AutoDeploy["Auto-deploy on\npush to main"]
+        GHA --> AutoDeploy
+    end
+
+    PWA -->|"HTTPS requests"| RailwayHost
+    PWA -->|"Supabase SDK\n(auth, data, realtime)"| SupabaseCloud
+    EdgeFn -->|"classification +\nprompt generation"| OpenAI
+    EdgeFn -->|"icon / art\ngeneration"| ImageGenAPI
+    PgCronExt -->|"triggers"| EdgeFn
+    AutoDeploy -->|"deploys to"| RailwayHost
+
+    style PlayerDevice fill:#e0f2fe,color:#333
+    style RailwayHost fill:#e0e7ff,color:#333
+    style SupabaseCloud fill:#d1fae5,color:#333
+    style ExternalAPIs fill:#fce7f3,color:#333
+    style CICD fill:#fef3c7,color:#333

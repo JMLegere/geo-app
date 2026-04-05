@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-C.3: Complete Collection Bundles"]
+        JP["<b>Job Performer</b><br/>Dedicated collector working<br/>toward completions"]
+        ASP["<b>Aspirations</b><br/>Fill every slot<br/>Earn rewards<br/>See bundles light up"]
+        FJ["<b>Focus Job</b><br/>Complete collection bundles"]
+        S1["<b>Step 1</b><br/>View collection with all slots filled"]
+        S2["<b>Step 2</b><br/>Bundle completion animation plays"]
+        S3["<b>Step 3</b><br/>Receive bundle reward"]
+        S4["<b>Step 4</b><br/>New collections or tiers unlock"]
+        SC["<b>Success Criteria</b><br/>All slots in collection filled<br/>Completion reward triggered"]
+        EM["<b>Emotions</b><br/>Determination --> Progress --> Triumph"]
+        CIRC["<b>Circumstances</b><br/>Player actively building<br/>toward a specific collection"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-C.3"]
+        IN["<b>Inputs</b><br/>v3_sanctuary_donations<br/>Collection definition:<br/>all eligible species"]
+        OUT["<b>Outputs</b><br/>Completion state<br/>Reward: TBD"]
+        SF["<b>Skill Feed</b><br/>Collection sizes create timescales:<br/>tiny 1-5 = trophy cases<br/>small 6-50 = weeks<br/>medium 51-200 = months<br/>large 200+ = lifetime"]
+        GT["<b>Gating</b><br/>Completion check:<br/>COUNT donations for collection_key<br/>= COUNT eligible species<br/>Rewards: TBD orbs? cosmetics? title?"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_donations<br/>species catalog with habitats,<br/>continents, taxonomicClass<br/>Components: CollectionDetail,<br/>CompletionCeremony"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

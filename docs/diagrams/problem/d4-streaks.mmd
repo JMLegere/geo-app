@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.4: Maintain Daily Streaks"]
+        JP["<b>Job Performer</b><br/>Player building a habit"]
+        ASP["<b>Aspirations</b><br/>Daily connection to the game<br/>Streak as motivation<br/>to keep going"]
+        FJ["<b>Focus Job</b><br/>Maintain daily streaks"]
+        S1["<b>Step 1</b><br/>Open app for<br/>daily session"]
+        S2["<b>Step 2</b><br/>See streak counter<br/>increment"]
+        S3["<b>Step 3</b><br/>View streak<br/>reward tier"]
+        S4["<b>Step 4</b><br/>Miss a day: streak resets<br/>with grace period"]
+        S5["<b>Step 5</b><br/>Build toward<br/>streak milestones"]
+        SC["<b>Success Criteria</b><br/>Streak visible<br/>Daily qualifier clear<br/>Milestone rewards motivating"]
+        EM["<b>Emotions</b><br/>Routine --> Commitment --> Pride --> Fear of breaking"]
+        CIRC["<b>Circumstances</b><br/>Player returns daily<br/>Missing a day resets to 0<br/>or grace period TBD"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.4"]
+        IN["<b>Inputs</b><br/>Daily activity check:<br/>any qualifying action per day"]
+        OUT["<b>Outputs</b><br/>Streak count update,<br/>milestone rewards"]
+        SF["<b>Skill Feed</b><br/>None: streak is meta-system,<br/>not skill-specific"]
+        GT["<b>Gating</b><br/>One qualifying action per calendar day"]
+        DR["<b>Data Requirements</b><br/>v3_cell_visits grouped by<br/>DATE visited_at<br/>v3_player_streaks:<br/>current_count, longest_count,<br/>last_active_date"]
+        CP["<b>Components</b><br/>StreakBadge<br/>StreakMilestoneToast"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> CP
+    end
+
+    JTBD --> SystemSpec

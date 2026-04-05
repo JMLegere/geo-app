@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph UILayer["UI Layer (Screens + Widgets)"]
+        LoginScreen["LoginScreen"]
+        LoadingScreen["LoadingScreen"]
+        PackScreen["PackScreen"]
+        MapStub["MapStub"]
+        SanctuaryStub["SanctuaryStub"]
+        SettingsScreen["SettingsScreen"]
+        TabShell["TabShell"]
+        ItemCard["ItemCard"]
+        RarityBadge["RarityBadge"]
+    end
+
+    subgraph StateLayer["State Layer (Providers / Notifiers)"]
+        AuthNotifier["AuthNotifier"]
+        ItemsNotifier["ItemsNotifier"]
+        FutureNotifiers["future:\nIdentificationNotifier\nSanctuaryNotifier\nRecapNotifier\nSkillProgressNotifier\nWriteQueueNotifier"]
+    end
+
+    subgraph ServiceLayer["Service Layer (Pure Dart — no Flutter, no Riverpod)"]
+        AuthService["AuthService"]
+        ItemService["ItemService"]
+        ObservabilityService["ObservabilityService"]
+        FutureServices["future:\nSpeciesSyncService\nIdentificationService\nSanctuaryService\nRecapService\nEncounterService"]
+    end
+
+    subgraph DataLayer["Data Layer"]
+        SupabaseClient["Supabase Client\n(auth, from, storage)"]
+        FutureLocal["future:\nLocalSpeciesTable\n(via Drift)"]
+    end
+
+    UILayer -->|"ref.watch / ref.read"| StateLayer
+    StateLayer -->|"method calls"| ServiceLayer
+    ServiceLayer -->|"Supabase SDK calls"| DataLayer
+
+    style UILayer fill:#dbeafe,color:#333
+    style StateLayer fill:#fce7f3,color:#333
+    style ServiceLayer fill:#d1fae5,color:#333
+    style DataLayer fill:#fef3c7,color:#333

@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.1: Enrich Species for Identification"]
+        JP["<b>Job Performer</b><br/>Enrichment Pipeline<br/>(pg_cron + Edge Function)"]
+        ASP["<b>Aspirations</b><br/>Steadily grow identifiable catalog,<br/>every species eventually identifiable"]
+        FJ["<b>Focus Job</b><br/>Transform unenriched species rows<br/>into fully enriched, identifiable entries"]
+        S1["<b>Step 1</b><br/>pg_cron fires every 5 min"]
+        S2["<b>Step 2</b><br/>Edge Function picks<br/>unenriched species"]
+        S3["<b>Step 3</b><br/>LLM classifies and<br/>generates prompts"]
+        S4["<b>Step 4</b><br/>Image API produces art<br/>(icon + frames)"]
+        S5["<b>Step 5</b><br/>Species row updated<br/>to fully enriched"]
+        SC["<b>Success Criteria</b><br/>~288 attempts/day<br/>(1 per 5-min tick)<br/>World grows over months"]
+        EM["<b>Emotions</b><br/>Items silently become identifiable.<br/>Player discovers organically."]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
+    end
+
+    subgraph SYS["System Spec"]
+        direction TB
+
+        IN["<b>Inputs</b><br/>Unenriched species row"]
+        OUT["<b>Outputs</b><br/>Fully enriched species:<br/>all 8 columns non-null"]
+        APIS["<b>External APIs</b><br/>OpenAI (LLM classification + prompts)<br/>Image Generation API (icon + art)<br/>Supabase Storage (image hosting)"]
+        DATA["<b>Data</b><br/>species table (17+ columns)<br/>Supabase Storage bucket<br/>enrichver columns for versioning"]
+        EVENTS["<b>Events</b><br/>Logged to Edge Function logs<br/>(Railway dashboard)<br/>Future: app_logs pipeline events"]
+        RESOLVES["<b>Resolves Critique</b><br/>2.2: Enrichment gap<br/>(paired with S.2 delta-sync)<br/>2.3: Fully enriched = 8 columns NOT NULL"]
+
+        IN --- OUT --- APIS
+        DATA --- EVENTS --- RESOLVES
+    end
+
+    JTBD --> SYS

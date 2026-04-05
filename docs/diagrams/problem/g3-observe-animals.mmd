@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-G.3: Observe Animal Needs and Behaviors"]
+        JP["<b>Job Performer</b><br/>Attentive caretaker"]
+        ASP["<b>Aspirations</b><br/>Animals feel real<br/>They age, express needs,<br/>interact with each other"]
+        FJ["<b>Focus Job</b><br/>Observe animal needs<br/>and behaviors"]
+        S1["<b>Step 1</b><br/>Open sanctuary view"]
+        S2["<b>Step 2</b><br/>Watch animals roam<br/>and interact"]
+        S3["<b>Step 3</b><br/>See needs indicators<br/>(hungry, happy, bored)"]
+        S4["<b>Step 4</b><br/>Tap animal for<br/>personality detail"]
+        S5["<b>Step 5</b><br/>Learn food preferences<br/>over time"]
+        SC["<b>Success Criteria</b><br/>Needs visible<br/>Personality expressed<br/>Player feels attachment"]
+        EM["<b>Emotions</b><br/>Curiosity --> Empathy --> Attachment"]
+        CIRC["<b>Circumstances</b><br/>Animals placed in sanctuary,<br/>sanctuary view open"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-G.3"]
+        IN["<b>Inputs</b><br/>Placed animal data:<br/>stats, hunger, mood"]
+        OUT["<b>Outputs</b><br/>Need indicators<br/>Personality expressions"]
+        SF["<b>Skill Feed</b><br/>None -- observation is<br/>a passive job"]
+        GT["<b>Gating</b><br/>At least one animal<br/>placed in sanctuary"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_animals<br/>(hunger_level, last_fed_at, mood)"]
+        NOTES["<b>Notes</b><br/>Tamagotchi mechanics:<br/>animals age, hunger increases<br/>over time, mood derived<br/>from care history."]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

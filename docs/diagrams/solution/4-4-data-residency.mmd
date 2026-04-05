@@ -1,0 +1,46 @@
+%% Status: NEEDS HUMAN REVIEW
+%% EarthNova Data Residency Matrix
+
+flowchart TB
+    subgraph SUPABASE["Supabase (Master)"]
+        direction TB
+        S1["auth session"]
+        S2["v3_profiles"]
+        S3["v3_items"]
+        S4["v3_cell_visits"]
+        S5["species catalog (32k rows)"]
+        S6["enrichment data (icon_url, art_url, etc.)"]
+        S7["v3_write_queue"]
+        S8["app_logs"]
+        S9["v3_sanctuary_donations"]
+        S10["v3_recap_snapshots"]
+    end
+
+    subgraph CLIENT_CACHE["Client Cache (post-MVP)"]
+        direction TB
+        C1["LocalSpeciesTable\n(species enrichment subset)"]
+        C2["LocalSkillProgress"]
+        C3["LocalWriteQueue\n(offline write buffer)"]
+    end
+
+    subgraph CLIENT_COMPUTED["Client Computed (in-memory)"]
+        direction TB
+        D1["Stat rolls\n(SHA-256 deterministic)"]
+        D2["Collection eligibility"]
+        D3["Recap computation"]
+    end
+
+    subgraph DERIVED["Derived at Query Time (neither stored)"]
+        direction TB
+        E1["Fog-of-war"]
+        E2["Visit counts"]
+        E3["Streaks"]
+    end
+
+    S5 -- "sync delta\nupdated_at > lastSync" --> C1
+    S7 -- "mirrors for\noffline queueing" --> C3
+    S3 -- "input to" --> D1
+    S3 -- "input to" --> D2
+    S4 -- "input to" --> E1
+    S4 -- "input to" --> E2
+    S4 -- "input to" --> E3

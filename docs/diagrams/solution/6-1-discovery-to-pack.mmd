@@ -1,0 +1,33 @@
+%% Status: NEEDS HUMAN REVIEW
+sequenceDiagram
+    participant GPS
+    participant CellService
+    participant EncounterService
+    participant SpeciesDB
+    participant ItemService
+    participant Supabase
+    participant PackScreen
+    participant ObservabilityService
+
+    GPS->>CellService: location coordinates (lat, lng)
+    CellService->>CellService: Determine current Voronoi cell from coordinates
+    CellService->>Supabase: Check if cell is new visit
+    alt New cell visit
+        CellService->>Supabase: INSERT v3_cell_visits
+    end
+
+    CellService->>EncounterService: cellId, dailySeed
+    EncounterService->>EncounterService: SHA-256(dailySeed + "_" + cellId) for 3 encounter slots
+
+    loop For each of 3 encounter slots
+        EncounterService->>SpeciesDB: Map hash segment to species catalog index (rarity-weighted)
+        SpeciesDB-->>EncounterService: Species definition
+        EncounterService->>ItemService: Create unidentified item for species
+        ItemService->>Supabase: INSERT v3_items (status=active, identified=false)
+        Supabase-->>ItemService: Item created
+        ItemService->>PackScreen: New item via provider
+        ItemService->>ObservabilityService: Log discovery.item_acquired
+    end
+
+    EncounterService->>ObservabilityService: Log discovery.encounter
+    PackScreen->>PackScreen: Show "You found something!" modal

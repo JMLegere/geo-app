@@ -1,0 +1,65 @@
+%% Status: NEEDS HUMAN REVIEW
+stateDiagram-v2
+    [*] --> IDLE
+
+    IDLE --> PRESSING : finger down on\nenriched unidentified card
+    IDLE --> IDLE : finger down on\nunenriched card\n(no response)
+
+    PRESSING --> CHARGING : 300ms elapsed
+    PRESSING --> CANCELLED : finger up\nbefore 300ms
+
+    CHARGING --> REVEALING : 1200ms total elapsed
+    CHARGING --> CANCELLED : finger up\nbefore 1200ms
+
+    REVEALING --> REVEALED : animation complete\n(~400ms)
+
+    REVEALED --> PERSISTING : auto-trigger write
+
+    PERSISTING --> REVEALED : write confirmed\n(no visual change)
+
+    CANCELLED --> IDLE : spring animation settles
+
+    state IDLE {
+        [*] --> AtRest
+        AtRest : Card at rest in pack grid
+        AtRest : Breathing wobble animation
+    }
+
+    state PRESSING {
+        [*] --> FingerDown
+        FingerDown : Card lifts (scale 1.05x)
+        FingerDown : Shadow deepens
+    }
+
+    state CHARGING {
+        [*] --> ParticlesSpawn
+        ParticlesSpawn : Particles spawn at edges
+        ParticlesSpawn : Converge inward
+        ParticlesSpawn : Haptic at 50% and 75%
+    }
+
+    state REVEALING {
+        [*] --> ParticleBurst
+        ParticleBurst : Particles burst at center
+        ParticleBurst : TCG card appears with stats
+    }
+
+    state REVEALED {
+        [*] --> FullCard
+        FullCard : Full card displayed
+        FullCard : Stats visible
+        FullCard : Affixes shown
+    }
+
+    state PERSISTING {
+        [*] --> WriteQueue
+        WriteQueue : Write queue dispatching
+        WriteQueue : to Supabase
+        WriteQueue : (invisible to player)
+    }
+
+    state CANCELLED {
+        [*] --> Scatter
+        Scatter : Particles scatter outward
+        Scatter : Card springs back to rest
+    }

@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.2: Sync Data Between Device and Server"]
+        JP["<b>Job Performer</b><br/>Client sync system<br/>(app lifecycle triggered)"]
+        ASP["<b>Aspirations</b><br/>Client always has latest enrichment data,<br/>newly enriched species immediately usable"]
+        FJ["<b>Focus Job</b><br/>Keep client species cache<br/>current with server enrichment"]
+        S1["<b>Step 1</b><br/>App opens or resumes"]
+        S2["<b>Step 2</b><br/>Client queries species<br/>WHERE updated_at > lastSync"]
+        S3["<b>Step 3</b><br/>New/updated species<br/>rows fetched"]
+        S4["<b>Step 4</b><br/>UPSERT into local cache"]
+        S5["<b>Step 5</b><br/>UI reflects latest<br/>enrichment"]
+        SC["<b>Success Criteria</b><br/>Sync completes in < 2s,<br/>minimal data transfer (delta only),<br/>graceful degradation on failure"]
+        EM["<b>Emotions</b><br/>Transparent. Player never sees sync.<br/>They just notice more items<br/>are identifiable over time."]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
+    end
+
+    subgraph SYS["System Spec"]
+        direction TB
+
+        IN["<b>Inputs</b><br/>lastSyncTimestamp,<br/>network availability"]
+        OUT["<b>Outputs</b><br/>Updated LocalSpeciesTable,<br/>new lastSyncTimestamp"]
+        GATE["<b>Gating</b><br/>Authenticated,<br/>network available<br/>(graceful skip if offline)"]
+        DATA["<b>Data</b><br/>species table (server),<br/>LocalSpeciesTable (client cache),<br/>lastSyncTimestamp"]
+
+        CROSS["<b>Cross-reference</b><br/>After sync, ItemsProvider checks:<br/>for each item in pack,<br/>is item.definition_id in<br/>LocalSpeciesTable with<br/>all 8 enrichment columns?<br/>Yes: fully enriched, identifiable<br/>No: still waiting"]
+
+        COMP["<b>Components</b><br/>SpeciesSyncProvider<br/>SpeciesSyncService<br/>LocalSpeciesTable (Drift, post-MVP)"]
+
+        RESOLVES["<b>Resolves Critique</b><br/>2.2: THE missing link.<br/>Enrichment writes to species table,<br/>delta-sync brings it to client,<br/>client cross-references with items."]
+
+        IN --- OUT --- GATE --- DATA
+        CROSS --- COMP --- RESOLVES
+    end
+
+    JTBD --> SYS

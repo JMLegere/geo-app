@@ -1,0 +1,77 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph WORLD [World / GPS Grid]
+        CELL[GPS Cell]
+    end
+
+    subgraph EXPLORATION [Exploration Phase]
+        EXPLORE[Explore Cell]
+        CELL --> EXPLORE
+        EXPLORE --> UNID_FAUNA[Unidentified Fauna]
+        EXPLORE --> UNID_FLORA[Unidentified Flora]
+        EXPLORE --> UNID_MINERAL[Unidentified Mineral]
+        EXPLORE --> UNID_FOSSIL[Unidentified Fossil]
+        EXPLORE --> UNID_ARTIFACT[Unidentified Artifact]
+        EXPLORE --> FOOD_DROP[Food drop]
+    end
+
+    subgraph IDENTIFICATION [Identification Phase]
+        IDENTIFY[Identify Specimen]
+        UNID_FAUNA --> IDENTIFY
+        UNID_FLORA --> IDENTIFY
+        UNID_MINERAL --> IDENTIFY
+        UNID_FOSSIL --> IDENTIFY
+        UNID_ARTIFACT --> IDENTIFY
+        IDENTIFY --> ID_SPECIMEN[Identified Specimen\nstats: brawn + wit + speed = 90\nart, affixes, rarity]
+    end
+
+    subgraph SANCTUARY_MGMT [Sanctuary Phase]
+        DONATE[Donate to Collection]
+        FEED[Feed Animal]
+        ID_SPECIMEN --> DONATE
+        DONATE --> SLOT[Collection Slot Filled]
+        ID_SPECIMEN --> FEED
+        FOOD_DROP --> FOOD_STORE[(Food Storage)]
+        FOOD_STORE --> FEED
+        FEED --> ORBS[Orbs]
+    end
+
+    subgraph CRAFTING [Crafting Phase -- stubbed]
+        ORBS --> CRAFT{Craft}
+        MATERIALS --> CRAFT
+        CRAFT --> LURES[Lures]
+        CRAFT --> COSMETICS[Cosmetics]
+        CRAFT --> BREEDING[Breeding Items]
+    end
+
+    subgraph SKILL_SYSTEM [Skill Progression]
+        SLOT --> SKILL_XP[Skill XP\nby item type]
+        IDENTIFY --> SKILL_XP
+        EXPLORE --> SKILL_XP
+        SKILL_XP --> LEVELS[Levels 1 - 10\nStardew-style accumulation]
+    end
+
+    subgraph ITEM_CATEGORIES [7 Item Categories]
+        direction LR
+        CAT_FAUNA([fauna])
+        CAT_FLORA([flora])
+        CAT_MINERAL([mineral])
+        CAT_FOSSIL([fossil])
+        CAT_ARTIFACT([artifact])
+        CAT_FOOD([food])
+        CAT_ORB([orb])
+    end
+
+    subgraph RARITY_TIERS [IUCN Rarity Tiers]
+        direction LR
+        R_LC([LC - Least Concern])
+        R_NT([NT - Near Threatened])
+        R_VU([VU - Vulnerable])
+        R_EN([EN - Endangered])
+        R_CR([CR - Critically Endangered])
+    end
+
+    ID_SPECIMEN -.-> ITEM_CATEGORIES
+    ID_SPECIMEN -.-> RARITY_TIERS
+
+    UNID_MINERAL -->|cut / craft| MATERIALS[Materials]

@@ -1,0 +1,60 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph active ["ACTIVE JOBS"]
+        direction TB
+        J1_name["process-enrichment-queue"]
+        J1_schedule["Schedule: */5 * * * *\n(every 5 minutes)"]
+        J1_target["Target: Edge Function\nprocess-enrichment-queue"]
+        J1_desc["Enriches 1 species per tick\nfrom the enrichment queue"]
+        J1_status([STATUS: ACTIVE])
+
+        J1_name --- J1_schedule --- J1_target --- J1_desc --- J1_status
+    end
+
+    subgraph planned ["PLANNED JOBS (Future)"]
+        direction TB
+
+        subgraph J2 ["recap-snapshot-builder"]
+            J2_schedule["Schedule: 0 * * * *\n(every 1 hour)"]
+            J2_target["Target: SQL function\nbuild_recap_snapshots()"]
+            J2_desc["Pre-computes recap snapshots\nfor active users"]
+            J2_status([STATUS: PLANNED])
+            J2_schedule --- J2_target --- J2_desc --- J2_status
+        end
+
+        subgraph J3 ["app-logs-retention"]
+            J3_schedule["Schedule: 0 3 * * *\n(daily at 03:00 UTC)"]
+            J3_target["Target: SQL function\nprune_app_logs()"]
+            J3_desc["Prunes app_logs:\nerrors 90d, auth 30d, data 14d"]
+            J3_status([STATUS: PLANNED])
+            J3_schedule --- J3_target --- J3_desc --- J3_status
+        end
+
+        subgraph J4 ["daily-seed-rotation"]
+            J4_schedule["Schedule: 0 0 * * *\n(midnight GMT)"]
+            J4_target["Target: RPC\nensure_daily_seed()"]
+            J4_desc["Rotates daily seed\nfor deterministic game mechanics"]
+            J4_status([STATUS: PLANNED])
+            J4_schedule --- J4_target --- J4_desc --- J4_status
+        end
+
+        subgraph J5 ["community-aggregation"]
+            J5_schedule["Schedule: 0 * * * *\n(every 1 hour)"]
+            J5_target["Target: SQL function\naggregate_community_stats()"]
+            J5_desc["Computes city/state/country\naggregate stats"]
+            J5_status([STATUS: PLANNED])
+            J5_schedule --- J5_target --- J5_desc --- J5_status
+        end
+    end
+
+    pgcron[(pg_cron scheduler)] --> active
+    pgcron -.->|future| planned
+
+    style active fill:#e8f5e9,stroke:#4CAF50,stroke-width:2px
+    style planned fill:#fff3e0,stroke:#FF9800,stroke-width:2px,stroke-dasharray:5 5
+    style J1_status fill:#4CAF50,color:#fff
+    style J2_status fill:#FF9800,color:#fff
+    style J3_status fill:#FF9800,color:#fff
+    style J4_status fill:#FF9800,color:#fff
+    style J5_status fill:#FF9800,color:#fff
+    style pgcron fill:#e3f2fd,stroke:#1976D2

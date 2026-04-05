@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+sequenceDiagram
+    participant Player
+    participant AppLifecycle
+    participant RecapService
+    participant Supabase
+    participant RecapScreen
+    participant ObservabilityService
+
+    Note over Player,AppLifecycle: App comes to foreground (or cold start after auth)
+    AppLifecycle->>AppLifecycle: Check: last_recap_dismissed_at < now() - 6 hours?
+
+    alt Less than 6 hours since last dismissal
+        AppLifecycle->>AppLifecycle: Skip recap, go to active state
+    else 6+ hours since last dismissal
+        AppLifecycle->>RecapService: Request recap data
+
+        RecapService->>Supabase: Query personal discoveries since last session
+        Supabase-->>RecapService: Discovery data
+        RecapService->>Supabase: Query progress stats (streaks, collection progress)
+        Supabase-->>RecapService: Progress data
+        RecapService->>Supabase: Query community aggregates (city, state, country)
+        Supabase-->>RecapService: Community data
+        RecapService->>Supabase: Query pending unidentified count
+        Supabase-->>RecapService: Pending count
+
+        Note over RecapService: No pre-computed cron for MVP.<br/>All queries run on-demand.
+
+        RecapService->>RecapScreen: Build card stack: What's New, Your Progress, Community, Pending
+        RecapScreen->>ObservabilityService: Log recap.shown
+
+        RecapScreen->>Player: Show swipeable card stack
+
+        Player->>RecapScreen: Swipe through cards or tap to skip
+
+        RecapScreen->>Supabase: UPDATE last_recap_dismissed_at = now()
+        RecapScreen->>ObservabilityService: Log recap.dismissed with pages_viewed count
+
+        RecapScreen->>AppLifecycle: Navigate to active PackScreen
+    end

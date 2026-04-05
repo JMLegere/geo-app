@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-E: Share My World with Other Explorers"]
+        JP["<b>Job Performer</b><br/>Social player"]
+        ASP["<b>Aspirations</b><br/>Show off sanctuary<br/>Help others<br/>Participate in something bigger"]
+        FJ["<b>Focus Job</b><br/>Share my world with<br/>other explorers"]
+
+        FJ --> E1["<b>E.1: Trade Specimens</b><br/>Offer and accept trades<br/>with other players"]
+        E1 --> E2["<b>E.2: Compare Sanctuaries</b><br/>Visit others' sanctuaries,<br/>leaderboards"]
+        E2 --> E3["<b>E.3: Community Goals</b><br/>Contribute to shared<br/>cooperative milestones"]
+        E3 --> E4["<b>E.4: Ambient Presence</b><br/>Sense other explorers<br/>nearby on the map"]
+
+        SC["<b>Success Criteria</b><br/>Meaningful social interactions<br/>Cooperative not toxic"]
+        EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
+        CIRC["<b>Circumstances</b><br/>Player seeks social features<br/>Multiplayer backend required"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-E"]
+        IN["<b>Inputs</b><br/>Player identity, sanctuary state,<br/>item inventory, community goals"]
+        OUT["<b>Outputs</b><br/>Traded items, sanctuary visits,<br/>community progress, leaderboards"]
+        SF["<b>Skill Feed</b><br/>Trading may grant skill XP<br/>based on item types exchanged"]
+        GT["<b>Gating</b><br/>Authenticated, multiplayer backend,<br/>item transfer system"]
+        DR["<b>Data Requirements</b><br/>Trade proposals table,<br/>public sanctuaries,<br/>community goals backend,<br/>leaderboard aggregation"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

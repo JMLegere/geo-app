@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-H: Craft and Trade Resources"]
+        JP["<b>Job Performer</b><br/>Crafter/breeder: player<br/>with orbs and materials"]
+        ASP["<b>Aspirations</b><br/>Transform raw resources<br/>into valuable items<br/>Breed better specimens"]
+        FJ["<b>Focus Job</b><br/>Craft and trade resources"]
+
+        FJ --> H1["<b>H.1: Earn Orbs</b><br/>Feed animals, produce<br/>habitat + class + climate orbs"]
+        H1 --> H2["<b>H.2: Breed Specimens</b><br/>Combine specimens<br/>for offspring"]
+        H2 --> H3["<b>H.3: Craft Items</b><br/>Spend orbs on lures,<br/>cosmetics, materials"]
+
+        SC["<b>Success Criteria</b><br/>Resources transformed<br/>New items created<br/>Economy feels purposeful"]
+        EM["<b>Emotions</b><br/>Planning --> Transformation --> Reward"]
+        CIRC["<b>Circumstances</b><br/>Orbs and materials<br/>available in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-H"]
+        IN["<b>Inputs</b><br/>Orbs, materials, specimens"]
+        OUT["<b>Outputs</b><br/>Lures, cosmetics,<br/>bred offspring"]
+        SF["<b>Skill Feed</b><br/>Varies by craft type:<br/>Geology for mineral crafts<br/>Zoology for breeding"]
+        GT["<b>Gating</b><br/>Sufficient orbs/materials<br/>for selected recipe"]
+        DR["<b>Data Requirements</b><br/>orb_inventory<br/>v3_items<br/>crafting_recipes"]
+        NOTES["<b>Notes</b><br/>46 orb types:<br/>7 habitat + ~35 class + 4 climate"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

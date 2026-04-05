@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    START([Check if species row\nis fully enriched]) --> C1
+
+    C1{animal_class\nIS NOT NULL?}
+    C1 -->|Yes| C2
+    C1 -->|No| FAIL
+
+    C2{climate\nIS NOT NULL?}
+    C2 -->|Yes| C3
+    C2 -->|No| FAIL
+
+    C3{brawn\nIS NOT NULL?}
+    C3 -->|Yes| C4
+    C3 -->|No| FAIL
+
+    C4{wit\nIS NOT NULL?}
+    C4 -->|Yes| C5
+    C4 -->|No| FAIL
+
+    C5{speed\nIS NOT NULL?}
+    C5 -->|Yes| C6
+    C5 -->|No| FAIL
+
+    C6{size\nIS NOT NULL?}
+    C6 -->|Yes| C7
+    C6 -->|No| FAIL
+
+    C7{icon_url\nIS NOT NULL?}
+    C7 -->|Yes| C8
+    C7 -->|No| FAIL
+
+    C8{art_url\nIS NOT NULL?}
+    C8 -->|Yes| PASS
+    C8 -->|No| FAIL
+
+    PASS([FULLY ENRICHED\nSpecimen is identifiable\nStats can be rolled\nArt can be displayed])
+    FAIL([NOT ENRICHED\nSilent -- not identifiable\nSkipped in encounter selection])
+
+    style PASS fill:#2d6a2d,color:#fff
+    style FAIL fill:#8b1a1a,color:#fff

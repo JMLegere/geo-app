@@ -1,0 +1,60 @@
+%% Status: NEEDS HUMAN REVIEW
+%% EarthNova Species Enrichment Lifecycle
+
+sequenceDiagram
+    participant Cron as pg_cron
+    participant EF as EdgeFunction
+    participant LLM as LLM_API
+    participant IMG as Image_API
+    participant Storage as Supabase_Storage
+    participant DB as species_table
+    participant Client as Client
+
+    rect rgb(240, 248, 255)
+        Note over Cron,DB: Enrichment Pipeline (every 5 min)
+
+        Cron->>EF: trigger enrichment job
+        EF->>DB: SELECT species WHERE icon_url IS NULL (partial index)
+        DB-->>EF: unenriched species batch
+
+        rect rgb(255, 250, 240)
+            Note over EF,LLM: Phase 1 - Classification
+            EF->>LLM: classify request (species data)
+            LLM-->>EF: animal_class, climate, brawn, wit, speed, size, food_preference
+            EF->>DB: UPDATE classification columns + enrichver_classify stamp
+        end
+
+        rect rgb(240, 255, 240)
+            Note over EF,LLM: Phase 2 - Prompt Generation
+            EF->>LLM: generate icon_prompt
+            LLM-->>EF: icon_prompt text
+            EF->>DB: UPDATE icon_prompt + enrichver_icon_prompt
+            EF->>LLM: generate art_prompt
+            LLM-->>EF: art_prompt text
+            EF->>DB: UPDATE art_prompt + enrichver_art_prompt
+        end
+
+        rect rgb(255, 240, 245)
+            Note over EF,Storage: Phase 3 - Image Generation
+            EF->>IMG: generate icon from icon_prompt
+            IMG-->>EF: icon image
+            EF->>Storage: upload icon image
+            Storage-->>EF: icon storage URL
+            EF->>DB: UPDATE icon_url + enrichver_icon
+
+            EF->>IMG: generate art from art_prompt
+            IMG-->>EF: art image
+            EF->>Storage: upload art image
+            Storage-->>EF: art storage URL
+            EF->>DB: UPDATE art_url + enrichver_art
+        end
+
+        Note over DB: FULLY ENRICHED
+    end
+
+    rect rgb(245, 245, 255)
+        Note over Client,DB: Client Sync (on app start)
+        Client->>DB: SELECT FROM species WHERE updated_at > lastSync
+        DB-->>Client: delta of updated species
+        Client->>Client: update LocalSpeciesTable cache
+    end

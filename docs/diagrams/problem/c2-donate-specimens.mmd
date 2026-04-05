@@ -1,0 +1,38 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-C.2: Donate Specimens to Fill Collection Slots"]
+        JP["<b>Job Performer</b><br/>Player choosing what to donate"]
+        ASP["<b>Aspirations</b><br/>Make the right choice<br/>Donation is permanent"]
+        FJ["<b>Focus Job</b><br/>Donate specimens to<br/>fill collection slots"]
+        S1["<b>Step 1</b><br/>Select identified item in pack"]
+        S2["<b>Step 2</b><br/>Tap donate button"]
+        S3["<b>Step 3</b><br/>System shows eligible collections"]
+        S4["<b>Step 4</b><br/>Choose collection if multiple"]
+        S5["<b>Step 5</b><br/>Confirm donation"]
+        S6["<b>Step 6</b><br/>Item moves to sanctuary, slot fills"]
+        SC["<b>Success Criteria</b><br/>Correct collection eligibility<br/>Permanent donation<br/>Slot filled<br/>Item leaves pack"]
+        EM["<b>Emotions</b><br/>Strategic tension --> Commitment --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Player has identified items<br/>in pack ready to donate"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-C.2"]
+        IN["<b>Inputs</b><br/>Identified item<br/>species.habitats<br/>species.continents<br/>species.taxonomic_class"]
+        OUT["<b>Outputs</b><br/>v3_sanctuary_donations INSERT<br/>v3_items UPDATE status=donated"]
+        SF["<b>Skill Feed</b><br/>No skill XP on donation<br/>Collection progress increments"]
+        GT["<b>Gating</b><br/>Item must be identified<br/>One instance per slot:<br/>need separate specimens for<br/>same species in different collections"]
+        DR["<b>Data Requirements</b><br/>Algorithm: collection_key =<br/>continent_habitat_class<br/>for each permutation<br/>Write: optimistic --> WriteQueue --> Supabase<br/>Events: sanctuary.donation,<br/>sanctuary.collection_unlocked if new"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

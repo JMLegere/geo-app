@@ -1,0 +1,37 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-H.3: Craft Lures and Cosmetics"]
+        JP["<b>Job Performer</b><br/>Crafter spending<br/>resources"]
+        ASP["<b>Aspirations</b><br/>Convert surplus orbs/materials<br/>into useful or decorative items"]
+        FJ["<b>Focus Job</b><br/>Craft lures and cosmetics"]
+        S1["<b>Step 1</b><br/>Open crafting menu"]
+        S2["<b>Step 2</b><br/>Browse available recipes"]
+        S3["<b>Step 3</b><br/>Select recipe, check<br/>orb/material cost"]
+        S4["<b>Step 4</b><br/>Tap craft button"]
+        S5["<b>Step 5</b><br/>New item (lure, cosmetic)<br/>added to inventory"]
+        SC["<b>Success Criteria</b><br/>Recipe requirements clear<br/>Crafting instant<br/>Result useful"]
+        EM["<b>Emotions</b><br/>Planning --> Execution --> Satisfaction (new tool/cosmetic)"]
+        CIRC["<b>Circumstances</b><br/>Sufficient orbs and materials<br/>in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-H.3"]
+        IN["<b>Inputs</b><br/>Orbs + materials<br/>per recipe"]
+        OUT["<b>Outputs</b><br/>Crafted item: lure,<br/>cosmetic, breeding material"]
+        SF["<b>Skill Feed</b><br/>Geology level ge 3<br/>for mineral crafts"]
+        GT["<b>Gating</b><br/>Recipe ingredients available<br/>Skill level met"]
+        DR["<b>Data Requirements</b><br/>crafting_recipes<br/>orb_inventory<br/>v3_items"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

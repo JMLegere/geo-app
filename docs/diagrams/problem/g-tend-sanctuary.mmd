@@ -1,0 +1,35 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-G: Tend and Nurture Sanctuary Animals"]
+        JP["<b>Job Performer</b><br/>Caretaker: player with<br/>placed animals in sanctuary"]
+        ASP["<b>Aspirations</b><br/>Animals feel alive<br/>Sanctuary is a living world<br/>Not just a museum"]
+        FJ["<b>Focus Job</b><br/>Tend and nurture<br/>sanctuary animals"]
+
+        FJ --> G1["<b>G.1: Feed Animals</b><br/>Feed placed animals,<br/>produce orbs"]
+        G1 --> G2["<b>G.2: Place Animals</b><br/>Arrange animals spatially<br/>in sanctuary"]
+        G2 --> G3["<b>G.3: Observe Animals</b><br/>Watch needs, behaviors,<br/>personality emerge"]
+
+        SC["<b>Success Criteria</b><br/>Animals healthy<br/>Orb production flowing<br/>Sanctuary feels alive"]
+        EM["<b>Emotions</b><br/>Warmth --> Nurturing Satisfaction --> Pride in Thriving World"]
+        CIRC["<b>Circumstances</b><br/>At least one animal<br/>placed in sanctuary"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-G"]
+        IN["<b>Inputs</b><br/>Placed animals<br/>Food items"]
+        OUT["<b>Outputs</b><br/>Orbs: habitat + class + climate<br/>Animal happiness state"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per feeding"]
+        GT["<b>Gating</b><br/>At least one animal<br/>placed in sanctuary"]
+        DR["<b>Data Requirements</b><br/>v3_sanctuary_animals<br/>v3_items (food)<br/>orb_inventory"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,96 @@
+%% Status: NEEDS HUMAN REVIEW
+%% EarthNova Dart Model Class Diagram
+
+classDiagram
+    class Item {
+        +String id
+        +int definitionId
+        +String displayName
+        +String scientificName
+        +ItemCategory category
+        +IucnStatus rarity
+        +String iconUrl
+        +String? iconUrlFrame2
+        +String? artUrl
+        +DateTime acquiredAt
+        +ItemStatus status
+        +bool identified
+        +int? brawn
+        +int? wit
+        +int? speed
+        +String? sizeCategory
+        +int? weightGrams
+        +String? prefix
+        +String? suffix
+    }
+
+    class UserProfile {
+        +String id
+        +String? phone
+        +String displayName
+        +DateTime createdAt
+    }
+
+    class AuthState {
+        +AuthStatus status
+        +UserProfile? user
+        +String? errorMessage
+    }
+
+    class CollectionSlot {
+        +String collectionKey
+        +int speciesId
+        +String? itemId
+        +bool filled
+    }
+
+    class SkillProgress {
+        +String skillName
+        +int level
+        +int accumulatedCount
+    }
+
+    class ItemCategory {
+        <<enumeration>>
+        fauna
+        flora
+        mineral
+        fossil
+        artifact
+        food
+        orb
+    }
+
+    class ItemStatus {
+        <<enumeration>>
+        active
+        donated
+        placed
+        released
+        traded
+    }
+
+    class IucnStatus {
+        <<enumeration>>
+        leastConcern
+        nearThreatened
+        vulnerable
+        endangered
+        criticallyEndangered
+        extinct
+    }
+
+    class AuthStatus {
+        <<enumeration>>
+        unknown
+        authenticated
+        unauthenticated
+        error
+    }
+
+    Item --> ItemCategory : category
+    Item --> IucnStatus : rarity
+    Item --> ItemStatus : status
+    AuthState --> AuthStatus : status
+    AuthState --> UserProfile : user
+    CollectionSlot ..> Item : itemId references

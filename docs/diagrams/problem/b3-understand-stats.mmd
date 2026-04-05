@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-B.3: Understand Specimen Stats and Traits"]
+        JP["<b>Job Performer</b><br/>Collector examining an<br/>identified specimen"]
+        ASP["<b>Aspirations</b><br/>Understand what makes this specimen unique<br/>Compare across collection"]
+        FJ["<b>Focus Job</b><br/>Understand specimen<br/>stats and traits"]
+        S1["<b>Step 1</b><br/>View revealed TCG card"]
+        S2["<b>Step 2</b><br/>Read brawn/wit/speed scores"]
+        S3["<b>Step 3</b><br/>Check size and weight"]
+        S4["<b>Step 4</b><br/>See affixes and rarity badge"]
+        S5["<b>Step 5</b><br/>Compare with other specimens"]
+        SC["<b>Success Criteria</b><br/>All stats visible<br/>Color identity derivable<br/>Personality clear"]
+        EM["<b>Emotions</b><br/>Understanding --> Comparison --> Appreciation"]
+        CIRC["<b>Circumstances</b><br/>Item is identified,<br/>player in pack view"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-B.3"]
+        IN["<b>Inputs</b><br/>Identified item data"]
+        OUT["<b>Outputs</b><br/>TCG card display"]
+        STATS["<b>Stats Displayed</b><br/>Brawn/Wit/Speed: RGB bars, sum=90<br/>Size: 9 categories<br/>Weight: grams/kg<br/>Prefix/suffix affixes"]
+        COLOR["<b>Color Identity</b><br/>R = brawn/90<br/>G = speed/90<br/>B = wit/90<br/>Layer 4 depth"]
+        LAYOUT["<b>Card Layout</b><br/>Art zone: 68%<br/>Rarity stripe<br/>Name + scientific name<br/>Badge pills<br/>Habitat/region emojis<br/>Discovery footer"]
+        COMP["<b>Components</b><br/>SpeciesCard: centered modal<br/>StatBars<br/>AffixDisplay"]
+
+        IN --> STATS
+        STATS --> COLOR
+        COLOR --> OUT
+        OUT --> LAYOUT
+        LAYOUT --> COMP
+    end
+
+    JTBD --> SystemSpec

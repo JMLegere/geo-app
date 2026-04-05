@@ -1,0 +1,40 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.5: Observe and Monitor System Health"]
+        JP["<b>Job Performer</b><br/>Observability System:<br/>client + server instrumentation"]
+        ASP["<b>Aspirations</b><br/>If it is not in app_logs,<br/>it did not happen<br/>Every state transition<br/>emits an event"]
+        FJ["<b>Focus Job</b><br/>Observe and monitor<br/>system health"]
+        S1["<b>Step 1</b><br/>Every state transition logged<br/>via ObservableNotifier"]
+        S2["<b>Step 2</b><br/>Structured events sent<br/>to app_logs"]
+        S3["<b>Step 3</b><br/>Error boundaries catch<br/>and report crashes"]
+        S4["<b>Step 4</b><br/>Metrics aggregated<br/>for dashboards"]
+        S5["<b>Step 5</b><br/>Alerts fire on anomalies"]
+        SC["<b>Success Criteria</b><br/>Every state transition logged<br/>Structured queryable events<br/>No raw state mutations"]
+        EM["<b>Emotions</b><br/>Confidence --> Visibility --> Control"]
+        CIRC["<b>Circumstances</b><br/>All runtime state transitions<br/>Client and server side"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-S.5"]
+        EE["<b>Existing Events</b><br/>auth: sign_in_success/error,<br/>sign_up, sign_out,<br/>session_restored/expired<br/>items: fetch_success/error/empty<br/>app: cold_start, crash<br/>supabase: init_success/failure<br/>network: offline/online"]
+        NE["<b>New Game Events</b><br/>discovery: encounter, item_acquired<br/>identify: started, completed, cancelled<br/>sanctuary: donation, collection_unlocked<br/>recap: shown, dismissed<br/>skill: level_up<br/>species_sync: sync_started,<br/>sync_complete, sync_error"]
+        PT["<b>Pattern</b><br/>ObservableNotifier.transition<br/>newState, event.name<br/>Never raw state = newState"]
+        DR["<b>Data Requirements</b><br/>app_logs table:<br/>session_id, user_id, category,<br/>event, data JSONB, created_at"]
+        BT["<b>Batching</b><br/>ObservabilityService batches writes,<br/>flushes periodically"]
+        PR["<b>Privacy</b><br/>Raw phone numbers<br/>SHA-256 hashed before logging"]
+
+        EE --> NE
+        NE --> PT
+        PT --> DR
+        DR --> BT
+        BT --> PR
+    end
+
+    JTBD --> SystemSpec

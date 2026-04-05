@@ -1,0 +1,36 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-F: Manage My Explorer Identity"]
+        JP["<b>Job Performer</b><br/>Any player:<br/>new or returning"]
+        ASP["<b>Aspirations</b><br/>Secure account<br/>Persistent identity<br/>Personalized profile"]
+        FJ["<b>Focus Job</b><br/>Manage my<br/>explorer identity"]
+
+        FJ --> F1["<b>F.1: Create Account &amp; Sign In</b><br/>Phone number auth,<br/>seamless session"]
+        F1 --> F2["<b>F.2: Customize Profile</b><br/>Avatar, display name,<br/>personal touches"]
+        F2 --> F3["<b>F.3: Manage Settings</b><br/>Notifications, privacy,<br/>preferences"]
+        F3 --> F4["<b>F.4: Onboarding</b><br/>Learn the game through<br/>guided first experience"]
+
+        SC["<b>Success Criteria</b><br/>Seamless auth<br/>Persistent session<br/>Profile customizable"]
+        EM["<b>Emotions</b><br/>Anticipation --> Confidence --> Ownership"]
+        CIRC["<b>Circumstances</b><br/>First launch or returning<br/>after session expiry"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-F"]
+        IN["<b>Inputs</b><br/>Phone number"]
+        OUT["<b>Outputs</b><br/>Auth session<br/>UserProfile<br/>v3_profiles row"]
+        SF["<b>Skill Feed</b><br/>No direct skill impact<br/>Identity enables all skill tracking"]
+        GT["<b>Gating</b><br/>Auth: phone --> SHA-256 derived<br/>email+password --> Supabase<br/>No OTP"]
+        DR["<b>Data Requirements</b><br/>auth.users<br/>v3_profiles"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

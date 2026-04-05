@@ -1,0 +1,41 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-A.3: Encounter and Collect Species"]
+        JP["<b>Job Performer</b><br/>Explorer who just<br/>entered a new cell"]
+        ASP["<b>Aspirations</b><br/>Every cell holds surprises<br/>The catalog is vast: 32,752 species<br/>Each discovery is real"]
+        FJ["<b>Focus Job</b><br/>Encounter and collect species"]
+        S1["<b>Step 1</b><br/>Enter cell with active encounters"]
+        S2["<b>Step 2</b><br/>Encounter notification appears"]
+        S3["<b>Step 3</b><br/>Tap to view specimens"]
+        S4["<b>Step 4</b><br/>Specimens auto-added to pack"]
+        S5["<b>Step 5</b><br/>See pack count update"]
+        SC["<b>Success Criteria</b><br/>Deterministic: same seed+cell = same species<br/>Rarity-weighted selection<br/>Items created in pack"]
+        EM["<b>Emotions</b><br/>Surprise --> Excitement --> Collecting satisfaction"]
+        CIRC["<b>Circumstances</b><br/>First visit to cell<br/>on a given daily seed"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-A.3"]
+        IN["<b>Inputs</b><br/>dailySeed: string<br/>cellId: string"]
+        OUT["<b>Outputs</b><br/>1-3 unidentified items<br/>in v3_items"]
+        ALG["<b>Algorithm</b><br/>SHA-256 dailySeed + _ + cellId<br/>--> master hash<br/>Per slot: SHA-256 masterHash + _ + slotIndex<br/>--> species index mod 32,752<br/>Rarity weighting applied"]
+        SF["<b>Skill Feed</b><br/>Proposed: +1 to skill matching item type<br/>(mechanic TBD)"]
+        GT["<b>Gating</b><br/>Cell must be visited: A.2 complete"]
+        DR["<b>Data Requirements</b><br/>species catalog<br/>v3_items<br/>daily_seed (via ensure_daily_seed() RPC — schema TBD)"]
+        EV["<b>Events</b><br/>discovery.encounter<br/>discovery.item_acquired"]
+
+        IN --> ALG
+        ALG --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> EV
+    end
+
+    JTBD --> SystemSpec

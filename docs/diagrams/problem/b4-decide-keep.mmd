@@ -1,0 +1,39 @@
+%% Status: NEEDS HUMAN REVIEW
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-B.4: Decide What to Keep, Donate, or Trade"]
+        JP["<b>Job Performer</b><br/>Collector weighing options<br/>for identified specimens"]
+        ASP["<b>Aspirations</b><br/>Make meaningful choices<br/>The right specimen<br/>in the right place"]
+        FJ["<b>Focus Job</b><br/>Decide what to keep,<br/>donate, or trade"]
+        S1["<b>Step 1</b><br/>Review identified specimen"]
+        S2["<b>Step 2</b><br/>Compare stats to collection needs"]
+        S3["<b>Step 3</b><br/>Choose: keep in pack,<br/>donate to collection, or mark for trade"]
+        S4["<b>Step 4</b><br/>Confirm choice"]
+        S5["<b>Step 5</b><br/>Item moves to destination"]
+        SC["<b>Success Criteria</b><br/>Decision feels meaningful<br/>Consequences clear<br/>No regret from lack of info"]
+        EM["<b>Emotions</b><br/>Deliberation --> Tension --> Commitment --> Satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Item is identified<br/>Emotional hinge of the game loop:<br/>this one could be the one meets<br/>my little world"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-B.4"]
+        IN["<b>Inputs</b><br/>Identified item<br/>Collection eligibility<br/>Existing specimens of same species"]
+        OUT["<b>Outputs</b><br/>Item remains in pack, OR<br/>transitions to donate flow C.2, OR<br/>flagged for trade E.1"]
+        SF["<b>Skill Feed</b><br/>None: decision, not action"]
+        GT["<b>Gating</b><br/>Item must be identified"]
+        DR["<b>Data Requirements</b><br/>v3_items<br/>v3_sanctuary_donations: existing slots<br/>Species stats for comparison"]
+        EV["<b>Events</b><br/>item.keep<br/>item.donate_intent<br/>item.trade_intent"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> EV
+    end
+
+    JTBD --> SystemSpec
