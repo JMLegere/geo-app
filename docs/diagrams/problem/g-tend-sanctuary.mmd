@@ -4,22 +4,17 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Caretaker: player with<br/>placed animals in sanctuary"]
         ASP["<b>Aspirations</b><br/>Animals feel alive<br/>Sanctuary is a living world<br/>Not just a museum"]
         FJ["<b>Focus Job</b><br/>Tend and nurture<br/>sanctuary animals"]
-        RJ["<b>Related Jobs</b><br/>G.1: Feed and care for placed animals<br/>G.2: Place animals in sanctuary<br/>G.3: Observe animal needs and behaviors"]
-        PLAN["<b>PLAN</b><br/>Check sanctuary<br/>for animal needs"]
-        PREPARE["<b>PREPARE</b><br/>Gather food items<br/>from inventory"]
-        EXECUTE["<b>EXECUTE</b><br/>Feed, tend, interact<br/>with placed animals"]
-        MONITOR["<b>MONITOR</b><br/>Animals respond,<br/>produce orbs,<br/>express personality"]
-        MODIFY["<b>MODIFY</b><br/>Adjust feeding schedule,<br/>rearrange placement"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Sanctuary thriving,<br/>orbs produced"]
+
+        FJ --> G1["<b>G.1: Feed Animals</b><br/>Feed placed animals,<br/>produce orbs"]
+        G1 --> G2["<b>G.2: Place Animals</b><br/>Arrange animals spatially<br/>in sanctuary"]
+        G2 --> G3["<b>G.3: Observe Animals</b><br/>Watch needs, behaviors,<br/>personality emerge"]
+
         SC["<b>Success Criteria</b><br/>Animals healthy<br/>Orb production flowing<br/>Sanctuary feels alive"]
         EM["<b>Emotions</b><br/>Warmth --> Nurturing Satisfaction --> Pride in Thriving World"]
         CIRC["<b>Circumstances</b><br/>At least one animal<br/>placed in sanctuary"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

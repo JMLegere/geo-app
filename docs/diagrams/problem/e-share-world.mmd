@@ -4,22 +4,18 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Social player"]
         ASP["<b>Aspirations</b><br/>Show off sanctuary<br/>Help others<br/>Participate in something bigger"]
         FJ["<b>Focus Job</b><br/>Share my world with<br/>other explorers"]
-        RJ["<b>Related Jobs</b><br/>E.1: Trade specimens<br/>E.2: Compare sanctuaries<br/>E.3: Community goals"]
-        PLAN["<b>PLAN</b><br/>Decide to interact<br/>with others"]
-        PREPARE["<b>PREPARE</b><br/>Find other players"]
-        EXECUTE["<b>EXECUTE</b><br/>Trade, visit sanctuaries,<br/>contribute to goals"]
-        MONITOR["<b>MONITOR</b><br/>See social interactions,<br/>leaderboards"]
-        MODIFY["<b>MODIFY</b><br/>Adjust strategy based<br/>on community"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Feel part of community"]
+
+        FJ --> E1["<b>E.1: Trade Specimens</b><br/>Offer and accept trades<br/>with other players"]
+        E1 --> E2["<b>E.2: Compare Sanctuaries</b><br/>Visit others' sanctuaries,<br/>leaderboards"]
+        E2 --> E3["<b>E.3: Community Goals</b><br/>Contribute to shared<br/>cooperative milestones"]
+        E3 --> E4["<b>E.4: Ambient Presence</b><br/>Sense other explorers<br/>nearby on the map"]
+
         SC["<b>Success Criteria</b><br/>Meaningful social interactions<br/>Cooperative not toxic"]
         EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
         CIRC["<b>Circumstances</b><br/>Player seeks social features<br/>Multiplayer backend required"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

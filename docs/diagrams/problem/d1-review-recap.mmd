@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Returning player viewing recap"]
         ASP["<b>Aspirations</b><br/>See what changed<br/>Feel proud of progress<br/>Know whats pending"]
         FJ["<b>Focus Job</b><br/>Review personal progress<br/>via recap"]
-        RJ["<b>Related Jobs</b><br/>D: Reconnect with progress on return<br/>D.2: See community milestones"]
-        PLAN["<b>PLAN</b><br/>Recap auto-triggers<br/>on app open"]
-        PREPARE["<b>PREPARE</b><br/>System computes on-demand:<br/>discoveries, stats,<br/>pending count"]
-        EXECUTE["<b>EXECUTE</b><br/>View Whats New card:<br/>new discoveries since<br/>last session"]
-        MONITOR["<b>MONITOR</b><br/>View Your Progress:<br/>streaks, collection bars,<br/>skill levels"]
-        MODIFY["<b>MODIFY</b><br/>Swipe through or<br/>tap to skip"]
-        CONCLUDE["<b>CONCLUDE</b><br/>View Pending:<br/>X unidentified specimens,<br/>feel pull to identify"]
+        S1["<b>Step 1</b><br/>Open app after 6h+ absence"]
+        S2["<b>Step 2</b><br/>Recap card stack appears<br/>automatically"]
+        S3["<b>Step 3</b><br/>Swipe through cards:<br/>Whats New, Progress,<br/>Community, Pending"]
+        S4["<b>Step 4</b><br/>Tap any card<br/>for detail"]
+        S5["<b>Step 5</b><br/>Dismiss recap<br/>to enter game"]
         SC["<b>Success Criteria</b><br/>Data accurate<br/>Loads fast<br/>Never blocks<br/>Skippable"]
         EM["<b>Emotions</b><br/>Nostalgia --> Pride --> Anticipation"]
         CIRC["<b>Circumstances</b><br/>App opened after 6h+ absence<br/>Recap threshold met"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

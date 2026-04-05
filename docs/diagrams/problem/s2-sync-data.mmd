@@ -1,45 +1,38 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L3-S.2: Sync data between device and server
-%% Parent: S (Keep the world growing)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — S.2: Sync data between device and server"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L3-S.2: Sync Data Between Device and Server"]
+        JP["<b>Job Performer</b><br/>Client sync system<br/>(app lifecycle triggered)"]
+        ASP["<b>Aspirations</b><br/>Client always has latest enrichment data,<br/>newly enriched species immediately usable"]
+        FJ["<b>Focus Job</b><br/>Keep client species cache<br/>current with server enrichment"]
+        S1["<b>Step 1</b><br/>App opens or resumes"]
+        S2["<b>Step 2</b><br/>Client queries species<br/>WHERE updated_at > lastSync"]
+        S3["<b>Step 3</b><br/>New/updated species<br/>rows fetched"]
+        S4["<b>Step 4</b><br/>UPSERT into local cache"]
+        S5["<b>Step 5</b><br/>UI reflects latest<br/>enrichment"]
+        SC["<b>Success Criteria</b><br/>Sync completes in < 2s,<br/>minimal data transfer (delta only),<br/>graceful degradation on failure"]
+        EM["<b>Emotions</b><br/>Transparent. Player never sees sync.<br/>They just notice more items<br/>are identifiable over time."]
 
-        JP["**Job Performer**\nClient sync system\n(app lifecycle triggered)"]
-        ASP["**Aspirations**\nClient always has latest enrichment data,\nnewly enriched species immediately usable"]
-        FJ["**Focus Job**\nKeep client species cache\ncurrent with server enrichment"]
-
-        PLAN["**PLAN**\nApp opens or returns\nfrom background"]
-        PREPARE["**PREPARE**\nRead lastSyncTimestamp\nfrom local storage"]
-        EXECUTE["**EXECUTE**\nDelta sync query:\nSELECT id, common_name, scientific_name,\nanimal_class, climate, brawn, wit, speed,\nsize, icon_url, icon_url_frame2, art_url\nFROM species\nWHERE updated_at > :lastSync"]
-        MONITOR["**MONITOR**\nFor each changed species:\nUPSERT into LocalSpeciesTable\nUpdate lastSyncTimestamp"]
-        MODIFY["**MODIFY**\nOn network error: skip sync,\nuse stale cache\n(stale data = items not yet\nidentifiable, not broken)"]
-        CONCLUDE["**CONCLUDE**\nClient cache current.\nItems matching newly-enriched\nspecies now respond to hold."]
-
-        JP --> ASP --> FJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\nSync completes in < 2s,\nminimal data transfer (delta only),\ngraceful degradation on failure"]
-        EM["**Player Impact**\nTransparent. Player never sees sync.\nThey just notice more items\nare identifiable over time."]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
     end
 
     subgraph SYS["System Spec"]
         direction TB
 
-        IN["**Inputs**\nlastSyncTimestamp,\nnetwork availability"]
-        OUT["**Outputs**\nUpdated LocalSpeciesTable,\nnew lastSyncTimestamp"]
-        GATE["**Gating**\nAuthenticated,\nnetwork available\n(graceful skip if offline)"]
-        DATA["**Data**\nspecies table (server),\nLocalSpeciesTable (client cache),\nlastSyncTimestamp"]
+        IN["<b>Inputs</b><br/>lastSyncTimestamp,<br/>network availability"]
+        OUT["<b>Outputs</b><br/>Updated LocalSpeciesTable,<br/>new lastSyncTimestamp"]
+        GATE["<b>Gating</b><br/>Authenticated,<br/>network available<br/>(graceful skip if offline)"]
+        DATA["<b>Data</b><br/>species table (server),<br/>LocalSpeciesTable (client cache),<br/>lastSyncTimestamp"]
 
-        CROSS["**Cross-reference**\nAfter sync, ItemsProvider checks:\nfor each item in pack,\nis item.definition_id in\nLocalSpeciesTable with\nall 8 enrichment columns?\n→ Yes: fully enriched, identifiable\n→ No: still waiting"]
+        CROSS["<b>Cross-reference</b><br/>After sync, ItemsProvider checks:<br/>for each item in pack,<br/>is item.definition_id in<br/>LocalSpeciesTable with<br/>all 8 enrichment columns?<br/>Yes: fully enriched, identifiable<br/>No: still waiting"]
 
-        COMP["**Components**\nSpeciesSyncProvider\nSpeciesSyncService\nLocalSpeciesTable (Drift, post-MVP)"]
+        COMP["<b>Components</b><br/>SpeciesSyncProvider<br/>SpeciesSyncService<br/>LocalSpeciesTable (Drift, post-MVP)"]
 
-        RESOLVES["**Resolves Critique**\n2.2: THE missing link.\nEnrichment writes to species table,\ndelta-sync brings it to client,\nclient cross-references with items."]
+        RESOLVES["<b>Resolves Critique</b><br/>2.2: THE missing link.<br/>Enrichment writes to species table,<br/>delta-sync brings it to client,<br/>client cross-references with items."]
 
         IN --- OUT --- GATE --- DATA
         CROSS --- COMP --- RESOLVES

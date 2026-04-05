@@ -4,22 +4,17 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Builder: player with<br/>identified items"]
         ASP["<b>Aspirations</b><br/>Create a living collection reflecting my journey<br/>Fill bundles<br/>Build something permanent"]
         FJ["<b>Focus Job</b><br/>Curate a sanctuary<br/>through donations"]
-        RJ["<b>Related Jobs</b><br/>C.1: Discover and browse collections<br/>C.2: Donate specimens to fill slots<br/>C.3: Complete collection bundles"]
-        PLAN["<b>PLAN</b><br/>Review collections,<br/>find empty slots"]
-        PREPARE["<b>PREPARE</b><br/>Choose specimen<br/>to donate"]
-        EXECUTE["<b>EXECUTE</b><br/>Donate to specific<br/>collection"]
-        MONITOR["<b>MONITOR</b><br/>See collection progress,<br/>sanctuary grow"]
-        MODIFY["<b>MODIFY</b><br/>Strategize which specimen<br/>for each slot"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Collections filling,<br/>sanctuary beautiful"]
+
+        FJ --> C1["<b>C.1: Browse Collections</b><br/>Discover available collections,<br/>see empty slots"]
+        C1 --> C2["<b>C.2: Donate Specimens</b><br/>Place identified items<br/>into collection slots"]
+        C2 --> C3["<b>C.3: Complete Bundles</b><br/>Fill all slots in a bundle<br/>for rewards"]
+
         SC["<b>Success Criteria</b><br/>Slots filled<br/>Bundles progressing<br/>Sanctuary visible"]
         EM["<b>Emotions</b><br/>Pride --> Strategic tension --> Warm satisfaction"]
         CIRC["<b>Circumstances</b><br/>Player has identified items,<br/>indoors or outdoors"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

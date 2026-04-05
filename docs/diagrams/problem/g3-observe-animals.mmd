@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Attentive caretaker"]
         ASP["<b>Aspirations</b><br/>Animals feel real<br/>They age, express needs,<br/>interact with each other"]
         FJ["<b>Focus Job</b><br/>Observe animal needs<br/>and behaviors"]
-        RJ["<b>Related Jobs</b><br/>G.1: Feed and care for animals<br/>G.2: Place animals in sanctuary"]
-        PLAN["<b>PLAN</b><br/>Visit sanctuary"]
-        PREPARE["<b>PREPARE</b><br/>Scan animals for<br/>need indicators"]
-        EXECUTE["<b>EXECUTE</b><br/>Observe: hunger level,<br/>mood, interactions<br/>with neighbors"]
-        MONITOR["<b>MONITOR</b><br/>Animals express personality<br/>based on stats: high-speed<br/>fox runs, high-brawn bear lumbers"]
-        MODIFY["<b>MODIFY</b><br/>Respond to needs:<br/>feed hungry,<br/>rearrange lonely"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Deeper connection<br/>to collection"]
+        S1["<b>Step 1</b><br/>Open sanctuary view"]
+        S2["<b>Step 2</b><br/>Watch animals roam<br/>and interact"]
+        S3["<b>Step 3</b><br/>See needs indicators<br/>(hungry, happy, bored)"]
+        S4["<b>Step 4</b><br/>Tap animal for<br/>personality detail"]
+        S5["<b>Step 5</b><br/>Learn food preferences<br/>over time"]
         SC["<b>Success Criteria</b><br/>Needs visible<br/>Personality expressed<br/>Player feels attachment"]
         EM["<b>Emotions</b><br/>Curiosity --> Empathy --> Attachment"]
         CIRC["<b>Circumstances</b><br/>Animals placed in sanctuary,<br/>sanctuary view open"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

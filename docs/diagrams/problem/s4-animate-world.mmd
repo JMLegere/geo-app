@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Animation System:<br/>client-side rendering framework"]
         ASP["<b>Aspirations</b><br/>95% warm: gentle springs,<br/>breathing, soft shadows<br/>5% electric: particles,<br/>haptic, glow"]
         FJ["<b>Focus Job</b><br/>Animate the world:<br/>spring physics, particles"]
-        RJ["<b>Related Jobs</b><br/>S.3: Persist progress<br/>B.2: Hold to identify<br/>A.3: Encounter and collect"]
-        PLAN["<b>PLAN</b><br/>Determine animation context:<br/>idle, interaction, reveal,<br/>celebration"]
-        PREPARE["<b>PREPARE</b><br/>Select spring token:<br/>snappy / bouncy / gentle / heavy"]
-        EXECUTE["<b>EXECUTE</b><br/>Render animation:<br/>idle wobble, hold-to-reveal<br/>particles, collection<br/>completion burst"]
-        MONITOR["<b>MONITOR</b><br/>Maintain 60fps,<br/>respect reduced motion"]
-        MODIFY["<b>MODIFY</b><br/>Scale effects by rarity:<br/>LC = 6 particles,<br/>CR = 24 particles"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Animation completes,<br/>springs settle, state updated"]
+        S1["<b>Step 1</b><br/>Sprite loaded from<br/>enrichment art"]
+        S2["<b>Step 2</b><br/>2-frame animation plays<br/>(idle cycle)"]
+        S3["<b>Step 3</b><br/>Spring physics on<br/>interactions"]
+        S4["<b>Step 4</b><br/>Particle effects on events<br/>(reveal, donate)"]
+        S5["<b>Step 5</b><br/>60fps target maintained"]
         SC["<b>Success Criteria</b><br/>60fps budget maintained<br/>Reduced motion respected<br/>Rarity-scaled feedback"]
         EM["<b>Emotions</b><br/>Warmth --> Delight --> Tactile satisfaction"]
         CIRC["<b>Circumstances</b><br/>Any user interaction<br/>or idle state<br/>on card/map UI"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

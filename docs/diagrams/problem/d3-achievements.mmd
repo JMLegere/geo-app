@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player who wants recognition<br/>for progress"]
         ASP["<b>Aspirations</b><br/>Concrete markers of accomplishment<br/>I did that moments"]
         FJ["<b>Focus Job</b><br/>Track achievements<br/>and milestones"]
-        RJ["<b>Related Jobs</b><br/>D.1: Review recap<br/>D.2: Community milestones<br/>D.4: Maintain streaks"]
-        PLAN["<b>PLAN</b><br/>Browse achievement list"]
-        PREPARE["<b>PREPARE</b><br/>See progress toward<br/>incomplete achievements"]
-        EXECUTE["<b>EXECUTE</b><br/>Perform qualifying actions<br/>during normal play"]
-        MONITOR["<b>MONITOR</b><br/>Achievement progress notifications,<br/>near-completion alerts"]
-        MODIFY["<b>MODIFY</b><br/>Target specific achievements<br/>intentionally"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Achievement unlocked!<br/>Toast/badge/title earned"]
+        S1["<b>Step 1</b><br/>Open achievements panel"]
+        S2["<b>Step 2</b><br/>Browse achievement<br/>categories"]
+        S3["<b>Step 3</b><br/>See progress bars<br/>on each"]
+        S4["<b>Step 4</b><br/>Unlock achievement<br/>when criteria met"]
+        S5["<b>Step 5</b><br/>View reward earned"]
         SC["<b>Success Criteria</b><br/>Achievements discoverable<br/>Progress trackable<br/>Rewards feel earned"]
         EM["<b>Emotions</b><br/>Awareness --> Targeted effort --> Triumph --> Pride"]
         CIRC["<b>Circumstances</b><br/>Player actions across all game systems:<br/>discoveries, identifications,<br/>donations, visits"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

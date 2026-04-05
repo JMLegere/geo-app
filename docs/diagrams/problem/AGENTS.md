@@ -121,8 +121,7 @@ Every `.mmd` file uses `flowchart TD` with two subgraphs:
 | Job Performer | Who has this need (player archetype or system) |
 | Aspirations | The emotional/functional goal behind the job |
 | Focus Job | One-sentence job statement |
-| Related Jobs | Parent and child jobs in the hierarchy |
-| Steps | PLAN → PREPARE → EXECUTE → MONITOR → MODIFY → CONCLUDE |
+| Job Steps | **L0-L2**: Child jobs from the hierarchy (the decomposition IS the steps). **L3**: 4-6 concrete user actions (literal UI interactions) |
 | Success Criteria | How we know this job is done well |
 | Emotions | The feeling arc through the job |
 

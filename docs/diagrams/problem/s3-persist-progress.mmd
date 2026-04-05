@@ -1,47 +1,40 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L3-S.3: Persist progress reliably
-%% Parent: S (Keep the world growing)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — S.3: Persist progress reliably"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L3-S.3: Persist Progress Reliably"]
+        JP["<b>Job Performer</b><br/>Write Queue System<br/>(client-side, automated)"]
+        ASP["<b>Aspirations</b><br/>Never lose player actions,<br/>eventual consistency,<br/>no perceptible latency"]
+        FJ["<b>Focus Job</b><br/>Ensure every player action<br/>is durably persisted to server"]
+        S1["<b>Step 1</b><br/>Player action triggers<br/>state change"]
+        S2["<b>Step 2</b><br/>Optimistic UI update<br/>shown immediately"]
+        S3["<b>Step 3</b><br/>Write queued to<br/>v3_write_queue"]
+        S4["<b>Step 4</b><br/>Background sync sends<br/>to Supabase"]
+        S5["<b>Step 5</b><br/>CONFIRMED or retry<br/>on failure"]
+        SC["<b>Success Criteria</b><br/>Zero data loss on normal network,<br/>graceful degradation offline,<br/>idempotent writes (safe to retry)"]
+        EM["<b>Emotions</b><br/>Actions feel instant<br/>(optimistic). Failures are<br/>rare and handled gracefully."]
 
-        JP["**Job Performer**\nWrite Queue System\n(client-side, automated)"]
-        ASP["**Aspirations**\nNever lose player actions,\neventual consistency,\nno perceptible latency"]
-        FJ["**Focus Job**\nEnsure every player action\n(identify, donate, visit)\nis durably persisted to server"]
-
-        PLAN["**PLAN**\nPlayer performs action\n(identify item, donate, visit cell)"]
-        PREPARE["**PREPARE**\nOptimistic UI update:\nlocal state reflects action\nimmediately (no waiting)"]
-        EXECUTE["**EXECUTE**\nEnqueue write:\n{action, item_id, payload}\nDispatch to Supabase"]
-        MONITOR["**MONITOR**\nTrack write status:\nOPTIMISTIC → PENDING →\nCONFIRMED or RETRYING"]
-        MODIFY["**MODIFY**\nOn failure: exponential backoff\n(2s, 4s, 8s), max 3 retries.\nIdempotent WHERE guards:\ne.g., WHERE identified=false\nprevents duplicate mutations"]
-        CONCLUDE["**CONCLUDE**\nCONFIRMED: server matches local.\nFAILED: rollback optimistic state,\nnotify player."]
-
-        JP --> ASP --> FJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\nZero data loss on normal network,\ngraceful degradation offline,\nidempotent writes (safe to retry)"]
-        EM["**Player Impact**\nActions feel instant\n(optimistic). Failures are\nrare and handled gracefully."]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
     end
 
     subgraph SYS["System Spec"]
         direction TB
 
-        IN["**Inputs**\nPlayer action + payload"]
-        OUT["**Outputs**\nConfirmed server state\nor rollback notification"]
+        IN["<b>Inputs</b><br/>Player action + payload"]
+        OUT["<b>Outputs</b><br/>Confirmed server state<br/>or rollback notification"]
 
-        STATES["**Write Queue States**\nOPTIMISTIC: UI updated, write not sent\nPENDING: write dispatched\nCONFIRMED: server 2xx\nRETRYING: failed, will retry\nFAILED: max retries exceeded\nROLLED_BACK: local state reverted"]
+        STATES["<b>Write Queue States</b><br/>OPTIMISTIC: UI updated, write not sent<br/>PENDING: write dispatched<br/>CONFIRMED: server 2xx<br/>RETRYING: failed, will retry<br/>FAILED: max retries exceeded<br/>ROLLED_BACK: local state reverted"]
 
-        ACTIONS["**Supported Actions**\nidentify: UPDATE v3_items SET identified=true,\n  brawn, wit, speed, size, weight, prefix, suffix\ndonate: INSERT v3_sanctuary_donations,\n  UPDATE v3_items SET status='donated'\nvisit: INSERT v3_cell_visits"]
+        ACTIONS["<b>Supported Actions</b><br/>identify: UPDATE v3_items SET identified=true,<br/>  brawn, wit, speed, size, weight, prefix, suffix<br/>donate: INSERT v3_sanctuary_donations,<br/>  UPDATE v3_items SET status='donated'<br/>visit: INSERT v3_cell_visits"]
 
-        DATA["**Data**\nv3_write_queue,\nv3_items, v3_cell_visits,\nv3_sanctuary_donations"]
+        DATA["<b>Data</b><br/>v3_write_queue,<br/>v3_items, v3_cell_visits,<br/>v3_sanctuary_donations"]
 
-        COMP["**Components**\nWriteQueueProvider\nWriteQueueService\nv3_write_queue table"]
+        COMP["<b>Components</b><br/>WriteQueueProvider<br/>WriteQueueService<br/>v3_write_queue table"]
 
-        RESOLVES["**Resolves Critique**\n2.4: Fire-and-forget unsafe.\nOptimistic + queue + retry +\nidempotent guards = safe writes."]
+        RESOLVES["<b>Resolves Critique</b><br/>2.4: Fire-and-forget unsafe.<br/>Optimistic + queue + retry +<br/>idempotent guards = safe writes."]
 
         IN --- OUT
         STATES --- ACTIONS

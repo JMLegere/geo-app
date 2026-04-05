@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Explorer finding<br/>characters in the world"]
         ASP["<b>Aspirations</b><br/>The world has inhabitants<br/>Discovering them is a surprise"]
         FJ["<b>Focus Job</b><br/>Discover NPCs on the map"]
-        RJ["<b>Related Jobs</b><br/>I.2: Accept and complete NPC bundles<br/>I.3: Visit the town hub<br/>A: Discover wildlife (shared exploration)"]
-        PLAN["<b>PLAN</b><br/>Explore new areas"]
-        PREPARE["<b>PREPARE</b><br/>Enter cell with<br/>NPC presence"]
-        EXECUTE["<b>EXECUTE</b><br/>NPC appears as<br/>discoverable entity"]
-        MONITOR["<b>MONITOR</b><br/>NPC introduces themselves,<br/>first request offered"]
-        MODIFY["<b>MODIFY</b><br/>Revisit NPC location"]
-        CONCLUDE["<b>CONCLUDE</b><br/>NPC added to known NPCs,<br/>accessible from town tab"]
+        S1["<b>Step 1</b><br/>Explore map in town area"]
+        S2["<b>Step 2</b><br/>See NPC marker on map"]
+        S3["<b>Step 3</b><br/>Walk to NPC location"]
+        S4["<b>Step 4</b><br/>NPC dialogue introduces<br/>themselves"]
+        S5["<b>Step 5</b><br/>NPC added to<br/>known contacts"]
         SC["<b>Success Criteria</b><br/>NPCs discoverable through exploration<br/>Feel like part of the world"]
         EM["<b>Emotions</b><br/>Surprise --> Delight --> Curiosity (what do they want?)"]
         CIRC["<b>Circumstances</b><br/>Exploring map,<br/>visiting new cells"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

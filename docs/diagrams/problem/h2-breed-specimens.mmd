@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Breeder seeking<br/>rare combinations"]
         ASP["<b>Aspirations</b><br/>Create offspring with<br/>inherited/combined traits<br/>Discover new stat combinations"]
         FJ["<b>Focus Job</b><br/>Breed specimens"]
-        RJ["<b>Related Jobs</b><br/>H.1: Earn orbs (breeding cost)<br/>H.3: Craft items<br/>G.2: Place offspring in sanctuary"]
-        PLAN["<b>PLAN</b><br/>Select two identified fauna<br/>of compatible species"]
-        PREPARE["<b>PREPARE</b><br/>Ensure orb requirements met,<br/>check Zoology level"]
-        EXECUTE["<b>EXECUTE</b><br/>Initiate breeding,<br/>orbs consumed"]
-        MONITOR["<b>MONITOR</b><br/>Offspring generated with<br/>inherited traits from<br/>both parents"]
-        MODIFY["<b>MODIFY</b><br/>Try different parent<br/>combinations"]
-        CONCLUDE["<b>CONCLUDE</b><br/>New specimen with unique<br/>stat combination in pack"]
+        S1["<b>Step 1</b><br/>Select two compatible<br/>specimens"]
+        S2["<b>Step 2</b><br/>Check breeding requirements<br/>(skill level, orb cost)"]
+        S3["<b>Step 3</b><br/>Spend orbs to<br/>initiate breeding"]
+        S4["<b>Step 4</b><br/>Wait for breeding timer"]
+        S5["<b>Step 5</b><br/>Offspring appears with<br/>inherited traits"]
         SC["<b>Success Criteria</b><br/>Offspring created<br/>Traits inherited logically<br/>Feels meaningful"]
         EM["<b>Emotions</b><br/>Anticipation --> Surprise (what traits?) --> Pride (good combo!)"]
         CIRC["<b>Circumstances</b><br/>Two compatible identified fauna<br/>Sufficient orbs<br/>Zoology level met"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

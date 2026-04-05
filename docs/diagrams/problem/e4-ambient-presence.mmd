@@ -4,22 +4,18 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player exploring who wants<br/>to feel less alone"]
         ASP["<b>Aspirations</b><br/>Others are here:<br/>the world is shared,<br/>not solitary"]
         FJ["<b>Focus Job</b><br/>Sense other explorers<br/>(ambient presence)"]
-        RJ["<b>Related Jobs</b><br/>E.1: Trade specimens<br/>E.2: Compare sanctuaries<br/>E.3: Community goals<br/>A.2: Reveal fog"]
-        PLAN["<b>PLAN</b><br/>Open map while exploring"]
-        PREPARE["<b>PREPARE</b><br/>Opt into location sharing"]
-        EXECUTE["<b>EXECUTE</b><br/>See other players fog reveals,<br/>recent activity indicators on map"]
-        MONITOR["<b>MONITOR</b><br/>Sense of shared world:<br/>someone explored here yesterday"]
-        MODIFY["<b>MODIFY</b><br/>Opt out if privacy preferred"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Feel connected to broader<br/>explorer community without<br/>direct interaction"]
+        S1["<b>Step 1</b><br/>Explore map in<br/>populated area"]
+        S2["<b>Step 2</b><br/>See subtle indicators<br/>of other explorers"]
+        S3["<b>Step 3</b><br/>Notice recently<br/>explored cells"]
+        S4["<b>Step 4</b><br/>Feel the world is<br/>shared and alive"]
         SC["<b>Success Criteria</b><br/>Presence feels ambient not intrusive<br/>Opt-in only<br/>Adds warmth without pressure"]
         EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
         CIRC["<b>Circumstances</b><br/>Player has opted in<br/>to location sharing<br/>Authenticated session"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

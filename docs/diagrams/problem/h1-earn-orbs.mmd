@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player building<br/>orb reserves"]
         ASP["<b>Aspirations</b><br/>Understand the economy<br/>Accumulate strategically<br/>Orbs feel valuable"]
         FJ["<b>Focus Job</b><br/>Earn and manage orbs"]
-        RJ["<b>Related Jobs</b><br/>H.2: Breed specimens<br/>H.3: Craft lures and cosmetics<br/>G.1: Feed animals (orb source)"]
-        PLAN["<b>PLAN</b><br/>Identify which orbs<br/>needed for goals"]
-        PREPARE["<b>PREPARE</b><br/>Feed correct animals to<br/>produce target orb types"]
-        EXECUTE["<b>EXECUTE</b><br/>Feeding produces 3 orbs:<br/>habitat + class + climate"]
-        MONITOR["<b>MONITOR</b><br/>Orb inventory grows,<br/>track scarce types"]
-        MODIFY["<b>MODIFY</b><br/>Adjust which animals<br/>to feed based on orb needs"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Orb reserves ready<br/>for crafting/breeding"]
+        S1["<b>Step 1</b><br/>Feed a sanctuary animal"]
+        S2["<b>Step 2</b><br/>Animal produces orbs<br/>on feeding"]
+        S3["<b>Step 3</b><br/>Orbs auto-collected<br/>to inventory"]
+        S4["<b>Step 4</b><br/>View orb inventory<br/>by type"]
+        S5["<b>Step 5</b><br/>Orbs accumulate<br/>for crafting"]
         SC["<b>Success Criteria</b><br/>Target orbs accumulated<br/>Economy feels purposeful"]
         EM["<b>Emotions</b><br/>Strategic Planning --> Incremental Progress --> Readiness"]
         CIRC["<b>Circumstances</b><br/>Animals placed and<br/>food available for feeding"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

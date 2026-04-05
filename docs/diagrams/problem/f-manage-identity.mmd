@@ -4,22 +4,18 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Any player:<br/>new or returning"]
         ASP["<b>Aspirations</b><br/>Secure account<br/>Persistent identity<br/>Personalized profile"]
         FJ["<b>Focus Job</b><br/>Manage my<br/>explorer identity"]
-        RJ["<b>Related Jobs</b><br/>F.1: Create account and sign in<br/>F.2: Customize profile<br/>F.3: Manage settings"]
-        PLAN["<b>PLAN</b><br/>Decide to play"]
-        PREPARE["<b>PREPARE</b><br/>Enter phone number"]
-        EXECUTE["<b>EXECUTE</b><br/>Auth flow:<br/>phone --> derived email+password<br/>--> Supabase signIn/signUp"]
-        MONITOR["<b>MONITOR</b><br/>Session persists<br/>across visits"]
-        MODIFY["<b>MODIFY</b><br/>Customize profile,<br/>adjust settings"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Identity secure,<br/>progress safe"]
+
+        FJ --> F1["<b>F.1: Create Account &amp; Sign In</b><br/>Phone number auth,<br/>seamless session"]
+        F1 --> F2["<b>F.2: Customize Profile</b><br/>Avatar, display name,<br/>personal touches"]
+        F2 --> F3["<b>F.3: Manage Settings</b><br/>Notifications, privacy,<br/>preferences"]
+        F3 --> F4["<b>F.4: Onboarding</b><br/>Learn the game through<br/>guided first experience"]
+
         SC["<b>Success Criteria</b><br/>Seamless auth<br/>Persistent session<br/>Profile customizable"]
         EM["<b>Emotions</b><br/>Anticipation --> Confidence --> Ownership"]
         CIRC["<b>Circumstances</b><br/>First launch or returning<br/>after session expiry"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

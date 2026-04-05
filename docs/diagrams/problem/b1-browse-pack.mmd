@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player managing<br/>their collection"]
         ASP["<b>Aspirations</b><br/>Quickly find items<br/>Understand what I have<br/>See what needs attention"]
         FJ["<b>Focus Job</b><br/>Browse and organize my pack"]
-        RJ["<b>Related Jobs</b><br/>B.2: Hold-to-identify<br/>B.3: Understand stats<br/>C.2: Donate specimens"]
-        PLAN["<b>PLAN</b><br/>Open pack tab"]
-        PREPARE["<b>PREPARE</b><br/>Pack loads items<br/>from provider"]
-        EXECUTE["<b>EXECUTE</b><br/>Scroll grid, tap filter chips,<br/>sort by rarity/name/recent"]
-        MONITOR["<b>MONITOR</b><br/>See item cards with art/silhouettes,<br/>rarity glows, category icons"]
-        MODIFY["<b>MODIFY</b><br/>Switch category tabs,<br/>search by name, change sort"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Found items of interest,<br/>ready to identify or donate"]
+        S1["<b>Step 1</b><br/>Tap pack tab"]
+        S2["<b>Step 2</b><br/>See grid of collected items"]
+        S3["<b>Step 3</b><br/>Sort/filter by type or status"]
+        S4["<b>Step 4</b><br/>Tap item to see detail card"]
+        S5["<b>Step 5</b><br/>Identify enriched items<br/>or review identified ones"]
         SC["<b>Success Criteria</b><br/>Items load fast<br/>Filters and sort work<br/>Visual state clear: identified vs not"]
         EM["<b>Emotions</b><br/>Browsing comfort --> Organization satisfaction --> Discovery"]
         CIRC["<b>Circumstances</b><br/>Any time, indoors or outdoors,<br/>authenticated user"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

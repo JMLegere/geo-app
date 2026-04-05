@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>New or returning player<br/>at login screen"]
         ASP["<b>Aspirations</b><br/>Get in quickly<br/>No friction<br/>Dont lose my stuff"]
         FJ["<b>Focus Job</b><br/>Create account<br/>and sign in"]
-        RJ["<b>Related Jobs</b><br/>F: Manage my explorer identity<br/>F.2: Customize profile"]
-        PLAN["<b>PLAN</b><br/>Open app"]
-        PREPARE["<b>PREPARE</b><br/>Enter 10-digit<br/>phone number"]
-        EXECUTE["<b>EXECUTE</b><br/>System derives email:<br/>digits@earthnova.app<br/>password: SHA-256 phone:earthnova-beta-2026<br/>tries signIn, falls back to signUp"]
-        MONITOR["<b>MONITOR</b><br/>Loading state,<br/>success/error feedback"]
-        MODIFY["<b>MODIFY</b><br/>Retry on error"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Authenticated,<br/>session stored,<br/>navigate to pack"]
+        S1["<b>Step 1</b><br/>Launch app,<br/>see login screen"]
+        S2["<b>Step 2</b><br/>Enter 10-digit<br/>phone number"]
+        S3["<b>Step 3</b><br/>Tap Sign In<br/>(auto sign-up fallback)"]
+        S4["<b>Step 4</b><br/>See loading spinner"]
+        S5["<b>Step 5</b><br/>Auth succeeds,<br/>navigate to pack"]
         SC["<b>Success Criteria</b><br/>Less than 2s auth flow<br/>Seamless sign-in/sign-up<br/>Session persists"]
         EM["<b>Emotions</b><br/>Impatience --> Relief --> Confidence"]
         CIRC["<b>Circumstances</b><br/>App launch,<br/>no active session"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

@@ -1,40 +1,37 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L3-F.2: Customize profile
-%% Parent: F (Manage my explorer identity)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — F.2: Customize profile"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L3-F.2: Customize Profile"]
+        JP["<b>Job Performer</b><br/>Player who wants a personal identity"]
+        ASP["<b>Aspirations</b><br/>Express personality, stand out,<br/>feel ownership of explorer persona"]
+        FJ["<b>Focus Job</b><br/>Customize my explorer profile<br/>beyond the default"]
+        S1["<b>Step 1</b><br/>Open profile screen"]
+        S2["<b>Step 2</b><br/>Tap edit avatar"]
+        S3["<b>Step 3</b><br/>Choose or upload image"]
+        S4["<b>Step 4</b><br/>Set display name"]
+        S5["<b>Step 5</b><br/>Save changes"]
+        SC["<b>Success Criteria</b><br/>Name visible to others,<br/>avatar renders correctly,<br/>changes persist"]
+        EM["<b>Emotions</b><br/>Creativity --> Ownership --> Pride"]
+        CIRC["<b>Circumstances</b><br/>Player wants to personalize<br/>their explorer identity"]
 
-        JP["**Job Performer**\nPlayer who wants a personal identity"]
-        ASP["**Aspirations**\nExpress personality, stand out,\nfeel ownership of explorer persona"]
-        FJ["**Focus Job**\nCustomize my explorer profile\nbeyond the default"]
-
-        PLAN["**PLAN**\nOpen settings/profile screen"]
-        PREPARE["**PREPARE**\nSee current profile:\ndefault name 'Explorer',\nauto-generated identicon"]
-        EXECUTE["**EXECUTE**\nSet display name,\nchoose/upload avatar"]
-        MONITOR["**MONITOR**\nSee updated profile in\nsanctuary, leaderboards, trades"]
-        MODIFY["**MODIFY**\nChange name/avatar\nat any time"]
-        CONCLUDE["**CONCLUDE**\nProfile reflects\nmy identity"]
-
-        JP --> ASP --> FJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\nName visible to others,\navatar renders correctly,\nchanges persist"]
-        EM["**Emotions**\nCreativity → ownership → pride"]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
     end
 
-    subgraph SYS["System Spec"]
-        direction TB
+    subgraph SystemSpec["System Spec -- L3-F.2"]
+        IN["<b>Inputs</b><br/>display_name (text),<br/>avatar (image or selection)"]
+        OUT["<b>Outputs</b><br/>UPDATE v3_profiles<br/>SET display_name, avatar_url"]
+        GATE["<b>Gating</b><br/>Authenticated"]
+        DATA["<b>Data Requirements</b><br/>v3_profiles,<br/>Supabase Storage (avatar images)"]
+        COMP["<b>Components</b><br/>ProfileScreen, ProfileNotifier,<br/>ProfileService, AvatarPicker"]
 
-        IN["**Inputs**\ndisplay_name (text),\navatar (image or selection)"]
-        OUT["**Outputs**\nUPDATE v3_profiles\nSET display_name, avatar_url"]
-        GATE["**Gating**\nAuthenticated"]
-        DATA["**Data**\nv3_profiles,\nSupabase Storage (avatar images)"]
-        COMP["**Components**\nProfileScreen, ProfileNotifier,\nProfileService, AvatarPicker"]
+        IN --> OUT
+        GATE --> DATA
+        DATA --> COMP
     end
 
-    JTBD --> SYS
+    JTBD --> SystemSpec

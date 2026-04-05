@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Curious player browsing<br/>others builds"]
         ASP["<b>Aspirations</b><br/>See whats possible<br/>Get inspired<br/>Friendly comparison"]
         FJ["<b>Focus Job</b><br/>Compare sanctuaries"]
-        RJ["<b>Related Jobs</b><br/>E: Share my world with explorers<br/>C.1: Browse sanctuary collections"]
-        PLAN["<b>PLAN</b><br/>Browse player list<br/>or leaderboard"]
-        PREPARE["<b>PREPARE</b><br/>Load other players<br/>sanctuary"]
-        EXECUTE["<b>EXECUTE</b><br/>Browse their collections,<br/>compare progress"]
-        MONITOR["<b>MONITOR</b><br/>Note differences and<br/>unique specimens"]
-        MODIFY["<b>MODIFY</b><br/>Visit multiple sanctuaries<br/>for broader view"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Inspired to build more"]
+        S1["<b>Step 1</b><br/>Open social tab"]
+        S2["<b>Step 2</b><br/>Browse friend<br/>sanctuaries"]
+        S3["<b>Step 3</b><br/>View their collections<br/>and completion"]
+        S4["<b>Step 4</b><br/>See leaderboard<br/>rankings"]
+        S5["<b>Step 5</b><br/>Get inspired for<br/>own sanctuary"]
         SC["<b>Success Criteria</b><br/>Best conservationist not who is strongest<br/>Collection completion %, species identified"]
         EM["<b>Emotions</b><br/>Curiosity --> Admiration --> Inspiration"]
         CIRC["<b>Circumstances</b><br/>Player wants to see how others<br/>have built their sanctuaries"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

@@ -4,22 +4,18 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Returning player<br/>6h+ absence"]
         ASP["<b>Aspirations</b><br/>Feel the world continued<br/>Catch up warmly<br/>Feel motivated"]
         FJ["<b>Focus Job</b><br/>Reconnect with progress<br/>on return"]
-        RJ["<b>Related Jobs</b><br/>D.1: Review personal progress recap<br/>D.2: See community milestones"]
-        PLAN["<b>PLAN</b><br/>Open app after absence"]
-        PREPARE["<b>PREPARE</b><br/>System checks 6h threshold"]
-        EXECUTE["<b>EXECUTE</b><br/>View recap cards"]
-        MONITOR["<b>MONITOR</b><br/>Swipe: Whats New --><br/>Progress --> Community --><br/>Pending"]
-        MODIFY["<b>MODIFY</b><br/>Skip if not interested"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Caught up,<br/>ready to explore"]
+
+        FJ --> D1["<b>D.1: Review Recap</b><br/>Swipe through recap cards<br/>on app open"]
+        D1 --> D2["<b>D.2: Community Milestones</b><br/>See what the community<br/>achieved while away"]
+        D2 --> D3["<b>D.3: Achievements</b><br/>Track personal milestones<br/>and unlocks"]
+        D3 --> D4["<b>D.4: Streaks</b><br/>Maintain daily play<br/>streaks for rewards"]
+
         SC["<b>Success Criteria</b><br/>Player informed and motivated<br/>Never blocked by recap"]
         EM["<b>Emotions</b><br/>Warm welcome --> Curiosity --> Motivation"]
         CIRC["<b>Circumstances</b><br/>6h+ since last session<br/>App reopened"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

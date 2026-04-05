@@ -4,22 +4,20 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player choosing what to donate"]
         ASP["<b>Aspirations</b><br/>Make the right choice<br/>Donation is permanent"]
         FJ["<b>Focus Job</b><br/>Donate specimens to<br/>fill collection slots"]
-        RJ["<b>Related Jobs</b><br/>C.1: Browse sanctuary collections<br/>C.3: Complete collection bundles"]
-        PLAN["<b>PLAN</b><br/>Select identified item,<br/>tap Donate"]
-        PREPARE["<b>PREPARE</b><br/>System computes eligible<br/>collections from<br/>habitats x continents x class"]
-        EXECUTE["<b>EXECUTE</b><br/>If multiple eligible:<br/>pick collection;<br/>confirm donation"]
-        MONITOR["<b>MONITOR</b><br/>Item moves to sanctuary,<br/>collection progress updates"]
-        MODIFY["<b>MODIFY</b><br/>Consider keeping better<br/>specimens for other<br/>collections or trading"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Item permanently donated,<br/>slot filled"]
+        S1["<b>Step 1</b><br/>Select identified item in pack"]
+        S2["<b>Step 2</b><br/>Tap donate button"]
+        S3["<b>Step 3</b><br/>System shows eligible collections"]
+        S4["<b>Step 4</b><br/>Choose collection if multiple"]
+        S5["<b>Step 5</b><br/>Confirm donation"]
+        S6["<b>Step 6</b><br/>Item moves to sanctuary, slot fills"]
         SC["<b>Success Criteria</b><br/>Correct collection eligibility<br/>Permanent donation<br/>Slot filled<br/>Item leaves pack"]
         EM["<b>Emotions</b><br/>Strategic tension --> Commitment --> Satisfaction"]
         CIRC["<b>Circumstances</b><br/>Player has identified items<br/>in pack ready to donate"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

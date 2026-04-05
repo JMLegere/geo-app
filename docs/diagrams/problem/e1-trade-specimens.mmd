@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player with duplicates<br/>or specific needs"]
         ASP["<b>Aspirations</b><br/>I have something you need<br/>Mutual benefit"]
         FJ["<b>Focus Job</b><br/>Trade specimens"]
-        RJ["<b>Related Jobs</b><br/>E: Share my world with explorers<br/>C.2: Donate specimens"]
-        PLAN["<b>PLAN</b><br/>Identify surplus specimens"]
-        PREPARE["<b>PREPARE</b><br/>Find trade partner"]
-        EXECUTE["<b>EXECUTE</b><br/>Propose trade,<br/>negotiate, confirm"]
-        MONITOR["<b>MONITOR</b><br/>Items transfer"]
-        MODIFY["<b>MODIFY</b><br/>Adjust offer if<br/>partner declines"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Both players enriched"]
+        S1["<b>Step 1</b><br/>Select specimen<br/>to offer"]
+        S2["<b>Step 2</b><br/>Browse trade board<br/>or send to friend"]
+        S3["<b>Step 3</b><br/>Set asking price<br/>or swap request"]
+        S4["<b>Step 4</b><br/>Other player accepts<br/>or counters"]
+        S5["<b>Step 5</b><br/>Trade executes,<br/>items swap"]
         SC["<b>Success Criteria</b><br/>Fair exchange<br/>Both parties satisfied<br/>Items transfer atomically"]
         EM["<b>Emotions</b><br/>Hope --> Negotiation --> Mutual satisfaction"]
         CIRC["<b>Circumstances</b><br/>Player has surplus specimens<br/>or needs specific species for collections"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

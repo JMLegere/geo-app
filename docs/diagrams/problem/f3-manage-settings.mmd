@@ -1,42 +1,34 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L3-F.3: Manage account settings
-%% Parent: F (Manage my explorer identity)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — F.3: Manage account settings"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L3-F.3: Manage Account Settings"]
+        JP["<b>Job Performer</b><br/>Player managing their account"]
+        ASP["<b>Aspirations</b><br/>Control over account,<br/>ability to sign out,<br/>future: delete data, manage sessions"]
+        FJ["<b>Focus Job</b><br/>Manage account settings<br/>and preferences"]
+        S1["<b>Step 1</b><br/>Open settings screen"]
+        S2["<b>Step 2</b><br/>Toggle notification<br/>preferences"]
+        S3["<b>Step 3</b><br/>Adjust privacy settings"]
+        S4["<b>Step 4</b><br/>View account info"]
+        S5["<b>Step 5</b><br/>Sign out option<br/>available"]
+        SC["<b>Success Criteria</b><br/>Sign out works reliably,<br/>session cleared,<br/>navigates to LoginScreen"]
+        EM["<b>Emotions</b><br/>Control --> Confidence --> Trust"]
+        CIRC["<b>Circumstances</b><br/>Player wants to adjust<br/>account or app preferences"]
 
-        JP["**Job Performer**\nPlayer managing their account"]
-        ASP["**Aspirations**\nControl over account,\nability to sign out,\nfuture: delete data, manage sessions"]
-        FJ["**Focus Job**\nManage account settings\nand preferences"]
-
-        PLAN["**PLAN**\nOpen Settings tab"]
-        PREPARE["**PREPARE**\nSee current account state:\nphone number, session info"]
-        EXECUTE["**EXECUTE**\nSign out, or adjust\npreferences (future)"]
-        MONITOR["**MONITOR**\nConfirm action completed\n(navigated to login, etc.)"]
-        MODIFY["**MODIFY**\nSign back in if needed"]
-        CONCLUDE["**CONCLUDE**\nAccount in desired state"]
-
-        JP --> ASP --> FJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\nSign out works reliably,\nsession cleared,\nnavigates to LoginScreen"]
-        EM["**Emotions**\nControl → confidence → trust"]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
     end
 
-    subgraph SYS["System Spec"]
-        direction TB
-
-        IN["**Inputs**\nUser action (sign out, etc.)"]
-        OUT["**Outputs**\nSession cleared,\nAuthState.unauthenticated"]
-        GATE["**Gating**\nAuthenticated"]
-        DATA["**Data**\nSupabase auth session"]
-
-        MVP["**MVP Scope**\nSign out button only"]
-        FUTURE["**Future**\nAccount deletion (GDPR),\nmultiple devices,\nOAuth login (Google/Apple),\nnotification preferences"]
+    subgraph SystemSpec["System Spec -- L3-F.3"]
+        IN["<b>Inputs</b><br/>User action (sign out, etc.)"]
+        OUT["<b>Outputs</b><br/>Session cleared,<br/>AuthState.unauthenticated"]
+        GATE["<b>Gating</b><br/>Authenticated"]
+        DATA["<b>Data Requirements</b><br/>Supabase auth session"]
+        MVP["<b>MVP Scope</b><br/>Sign out button only"]
+        FUTURE["<b>Future</b><br/>Account deletion (GDPR),<br/>multiple devices,<br/>OAuth login (Google/Apple),<br/>notification preferences"]
 
         IN --- OUT --- GATE --- DATA
         MVP --- FUTURE
@@ -45,8 +37,8 @@ flowchart TD
     subgraph COMP["Components"]
         C1["SettingsScreen"]
         C2["AuthNotifier.signOut()"]
-        C3["ObservabilityService\nauth.sign_out event"]
+        C3["ObservabilityService<br/>auth.sign_out event"]
     end
 
-    JTBD --> SYS
-    SYS --> COMP
+    JTBD --> SystemSpec
+    SystemSpec --> COMP

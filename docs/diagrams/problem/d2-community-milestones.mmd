@@ -4,22 +4,18 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player interested in<br/>the broader world"]
         ASP["<b>Aspirations</b><br/>Feel less alone<br/>See collective progress<br/>We are doing this together"]
         FJ["<b>Focus Job</b><br/>See community milestones"]
-        RJ["<b>Related Jobs</b><br/>D: Reconnect with progress on return<br/>D.1: Review personal progress recap<br/>E.3: Community goals"]
-        PLAN["<b>PLAN</b><br/>Community page in recap,<br/>or future community tab"]
-        PREPARE["<b>PREPARE</b><br/>System aggregates data:<br/>city --> state --> country"]
-        EXECUTE["<b>EXECUTE</b><br/>View aggregate stats:<br/>total species discovered,<br/>cells explored,<br/>collections completed"]
-        MONITOR["<b>MONITOR</b><br/>Compare personal to community<br/>See 500 new species<br/>identifiable this week"]
-        MODIFY["<b>MODIFY</b><br/>Browse different<br/>geographic scopes"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Feel connected to<br/>broader effort"]
+        S1["<b>Step 1</b><br/>See community card<br/>in recap"]
+        S2["<b>Step 2</b><br/>View aggregate stats:<br/>species discovered,<br/>cells explored"]
+        S3["<b>Step 3</b><br/>Compare personal<br/>contribution"]
+        S4["<b>Step 4</b><br/>Feel part of<br/>larger effort"]
         SC["<b>Success Criteria</b><br/>Aggregates accurate<br/>Geographic layering works<br/>Feels social not competitive"]
         EM["<b>Emotions</b><br/>Belonging --> Shared pride --> Motivation"]
         CIRC["<b>Circumstances</b><br/>Viewing recap or<br/>browsing community tab"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Explorer seeking guided goals<br/>alongside free exploration"]
         ASP["<b>Aspirations</b><br/>Directed purpose when free roaming<br/>feels aimless<br/>Discover specific areas"]
         FJ["<b>Focus Job</b><br/>Follow treasure maps<br/>(directed quests)"]
-        RJ["<b>Related Jobs</b><br/>A.1: Navigate map<br/>A.2: Reveal fog<br/>A.3: Encounter and collect"]
-        PLAN["<b>PLAN</b><br/>Receive or find treasure map<br/>with target location/species"]
-        PREPARE["<b>PREPARE</b><br/>Read map clues, plan route"]
-        EXECUTE["<b>EXECUTE</b><br/>Navigate to target area,<br/>complete map objective"]
-        MONITOR["<b>MONITOR</b><br/>Progress toward map goal,<br/>distance remaining"]
-        MODIFY["<b>MODIFY</b><br/>Take detours to explore<br/>along the way"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Treasure found: rare species,<br/>orbs, cosmetic reward"]
+        S1["<b>Step 1</b><br/>Receive treasure map hint"]
+        S2["<b>Step 2</b><br/>View map with marked destination"]
+        S3["<b>Step 3</b><br/>Navigate to target location"]
+        S4["<b>Step 4</b><br/>Arrive and trigger special encounter"]
+        S5["<b>Step 5</b><br/>Collect rare specimens"]
         SC["<b>Success Criteria</b><br/>Clear objective<br/>Reachable goal<br/>Reward feels earned"]
         EM["<b>Emotions</b><br/>Purpose --> Adventure --> Discovery --> Reward satisfaction"]
         CIRC["<b>Circumstances</b><br/>Player has acquired a treasure map<br/>from NPC, achievement, or random drop"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

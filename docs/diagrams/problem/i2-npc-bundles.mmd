@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player with NPC relationship"]
         ASP["<b>Aspirations</b><br/>Stardew Valley community center feel<br/>Themed requests give direction"]
         FJ["<b>Focus Job</b><br/>Accept and complete<br/>NPC bundles"]
-        RJ["<b>Related Jobs</b><br/>I.1: Discover NPCs<br/>I.3: Visit town hub<br/>A.3: Encounter and collect species"]
-        PLAN["<b>PLAN</b><br/>Check active<br/>NPC requests"]
-        PREPARE["<b>PREPARE</b><br/>Identify which specimens<br/>and items needed"]
-        EXECUTE["<b>EXECUTE</b><br/>Collect and deliver<br/>requested items"]
-        MONITOR["<b>MONITOR</b><br/>Bundle progress,<br/>NPC dialogue updates"]
-        MODIFY["<b>MODIFY</b><br/>Switch between different<br/>NPC requests"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Bundle complete,<br/>reward earned,<br/>new bundle available"]
+        S1["<b>Step 1</b><br/>Talk to known NPC"]
+        S2["<b>Step 2</b><br/>View their requested bundle"]
+        S3["<b>Step 3</b><br/>Check which items you have"]
+        S4["<b>Step 4</b><br/>Deliver matching specimens"]
+        S5["<b>Step 5</b><br/>Bundle completes,<br/>receive reward"]
         SC["<b>Success Criteria</b><br/>Clear requirements<br/>Meaningful rewards<br/>NPCs feel grateful"]
         EM["<b>Emotions</b><br/>Purpose --> Progress --> Triumph + Warmth (NPC thanks you)"]
         CIRC["<b>Circumstances</b><br/>NPC discovered,<br/>active requests available"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

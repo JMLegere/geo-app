@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Observability System:<br/>client + server instrumentation"]
         ASP["<b>Aspirations</b><br/>If it is not in app_logs,<br/>it did not happen<br/>Every state transition<br/>emits an event"]
         FJ["<b>Focus Job</b><br/>Observe and monitor<br/>system health"]
-        RJ["<b>Related Jobs</b><br/>S.3: Persist progress<br/>S.2: Sync data<br/>F.1: Create/sign in"]
-        PLAN["<b>PLAN</b><br/>Define events for<br/>each state transition"]
-        PREPARE["<b>PREPARE</b><br/>ObservableNotifier pattern:<br/>all notifiers extend<br/>ObservableNotifier"]
-        EXECUTE["<b>EXECUTE</b><br/>Emit structured events to app_logs:<br/>category, event, data JSONB"]
-        MONITOR["<b>MONITOR</b><br/>Query app_logs for<br/>debugging, alerts, analytics"]
-        MODIFY["<b>MODIFY</b><br/>Add new events<br/>as features ship"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Full audit trail of all<br/>player and system actions"]
+        S1["<b>Step 1</b><br/>Every state transition logged<br/>via ObservableNotifier"]
+        S2["<b>Step 2</b><br/>Structured events sent<br/>to app_logs"]
+        S3["<b>Step 3</b><br/>Error boundaries catch<br/>and report crashes"]
+        S4["<b>Step 4</b><br/>Metrics aggregated<br/>for dashboards"]
+        S5["<b>Step 5</b><br/>Alerts fire on anomalies"]
         SC["<b>Success Criteria</b><br/>Every state transition logged<br/>Structured queryable events<br/>No raw state mutations"]
         EM["<b>Emotions</b><br/>Confidence --> Visibility --> Control"]
         CIRC["<b>Circumstances</b><br/>All runtime state transitions<br/>Client and server side"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

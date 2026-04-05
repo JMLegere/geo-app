@@ -4,22 +4,20 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Explorer looking at<br/>the map screen"]
         ASP["<b>Aspirations</b><br/>Know where I am<br/>See where I have been<br/>Plan where to go"]
         FJ["<b>Focus Job</b><br/>Navigate the real-world map"]
-        RJ["<b>Related Jobs</b><br/>A.2: Reveal fog-of-war<br/>A.3: Encounter and collect species"]
-        PLAN["<b>PLAN</b><br/>Open map tab"]
-        PREPARE["<b>PREPARE</b><br/>GPS acquires position"]
-        EXECUTE["<b>EXECUTE</b><br/>Pan/zoom map, see player<br/>marker, read fog overlay"]
-        MONITOR["<b>MONITOR</b><br/>Position updates real-time,<br/>fog state visible"]
-        MODIFY["<b>MODIFY</b><br/>Pan to explore distant areas,<br/>break camera follow"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Decide direction,<br/>switch to exploration"]
+        S1["<b>Step 1</b><br/>Tap map tab"]
+        S2["<b>Step 2</b><br/>Wait for GPS lock"]
+        S3["<b>Step 3</b><br/>See player position centered"]
+        S4["<b>Step 4</b><br/>Pinch/swipe to pan and zoom"]
+        S5["<b>Step 5</b><br/>Spot unexplored fog areas"]
+        S6["<b>Step 6</b><br/>Head toward unexplored territory"]
         SC["<b>Success Criteria</b><br/>GPS accurate within threshold<br/>Map responsive at 60fps<br/>Fog state clear<br/>Position visible"]
         EM["<b>Emotions</b><br/>Orientation --> Planning --> Confidence"]
         CIRC["<b>Circumstances</b><br/>App foregrounded,<br/>GPS permission granted"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

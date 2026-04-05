@@ -1,41 +1,34 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L3-S.1: Enrich species for identification
-%% Parent: S (Keep the world growing)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — S.1: Enrich species for identification"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L3-S.1: Enrich Species for Identification"]
+        JP["<b>Job Performer</b><br/>Enrichment Pipeline<br/>(pg_cron + Edge Function)"]
+        ASP["<b>Aspirations</b><br/>Steadily grow identifiable catalog,<br/>every species eventually identifiable"]
+        FJ["<b>Focus Job</b><br/>Transform unenriched species rows<br/>into fully enriched, identifiable entries"]
+        S1["<b>Step 1</b><br/>pg_cron fires every 5 min"]
+        S2["<b>Step 2</b><br/>Edge Function picks<br/>unenriched species"]
+        S3["<b>Step 3</b><br/>LLM classifies and<br/>generates prompts"]
+        S4["<b>Step 4</b><br/>Image API produces art<br/>(icon + frames)"]
+        S5["<b>Step 5</b><br/>Species row updated<br/>to fully enriched"]
+        SC["<b>Success Criteria</b><br/>~288 attempts/day<br/>(1 per 5-min tick)<br/>World grows over months"]
+        EM["<b>Emotions</b><br/>Items silently become identifiable.<br/>Player discovers organically."]
 
-        JP["**Job Performer**\nEnrichment Pipeline\n(pg_cron + Edge Function)"]
-        ASP["**Aspirations**\nSteadily grow identifiable catalog,\nevery species eventually identifiable"]
-        FJ["**Focus Job**\nTransform unenriched species rows\ninto fully enriched, identifiable entries"]
-
-        PLAN["**PLAN**\npg_cron fires every 5 minutes"]
-        PREPARE["**PREPARE**\nSELECT FROM species\nWHERE icon_url IS NULL\nLIMIT 1\n(partial index for fast query)"]
-        EXECUTE["**EXECUTE**\n5-stage pipeline:\n1. Classify (LLM → animal_class, climate,\n   size, brawn/wit/speed, food_preference)\n2. Icon prompt (LLM → 128×128 sprite desc)\n3. Art prompt (LLM → 512×512 watercolor desc)\n4. Generate icon (Image API → Storage)\n5. Generate art (Image API → Storage)"]
-        MONITOR["**MONITOR**\nPer-field enrichver stamps:\nenrichver_classify, enrichver_icon_prompt,\nenrichver_art_prompt, enrichver_icon,\nenrichver_art\nAll set to PIPELINE_VERSION"]
-        MODIFY["**MODIFY**\nOn failure: retry that stage\nOn permanent failure: skip,\nlog error, move to next species"]
-        CONCLUDE["**CONCLUDE**\n8 required columns populated:\nanimal_class, climate, brawn, wit,\nspeed, size, icon_url, art_url\n→ Species FULLY ENRICHED"]
-
-        JP --> ASP --> FJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\n~288 attempts/day\n(1 per 5-min tick)\n68 enriched so far / 32,752 total\nWorld grows over months"]
-        EM["**Player Impact**\nItems silently become identifiable.\nPlayer discovers organically:\n'oh, this one responds to hold now'"]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
+        S5 --> SC
+        S5 --> EM
     end
 
     subgraph SYS["System Spec"]
         direction TB
 
-        IN["**Inputs**\nUnenriched species row"]
-        OUT["**Outputs**\nFully enriched species:\nall 8 columns non-null"]
-        APIS["**External APIs**\nOpenAI (LLM classification + prompts)\nImage Generation API (icon + art)\nSupabase Storage (image hosting)"]
-        DATA["**Data**\nspecies table (17+ columns)\nSupabase Storage bucket\nenrichver columns for versioning"]
-        EVENTS["**Events**\nLogged to Edge Function logs\n(Railway dashboard)\nFuture: app_logs pipeline events"]
-        RESOLVES["**Resolves Critique**\n2.2: Enrichment gap\n(paired with S.2 delta-sync)\n2.3: Fully enriched = 8 columns NOT NULL"]
+        IN["<b>Inputs</b><br/>Unenriched species row"]
+        OUT["<b>Outputs</b><br/>Fully enriched species:<br/>all 8 columns non-null"]
+        APIS["<b>External APIs</b><br/>OpenAI (LLM classification + prompts)<br/>Image Generation API (icon + art)<br/>Supabase Storage (image hosting)"]
+        DATA["<b>Data</b><br/>species table (17+ columns)<br/>Supabase Storage bucket<br/>enrichver columns for versioning"]
+        EVENTS["<b>Events</b><br/>Logged to Edge Function logs<br/>(Railway dashboard)<br/>Future: app_logs pipeline events"]
+        RESOLVES["<b>Resolves Critique</b><br/>2.2: Enrichment gap<br/>(paired with S.2 delta-sync)<br/>2.3: Fully enriched = 8 columns NOT NULL"]
 
         IN --- OUT --- APIS
         DATA --- EVENTS --- RESOLVES

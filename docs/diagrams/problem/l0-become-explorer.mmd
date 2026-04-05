@@ -4,29 +4,22 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Anyone with a phone<br/>and curiosity about nature"]
         ASP["<b>Aspirations</b><br/>Transform daily walks into exploration<br/>Develop connection to biodiversity<br/>Feel like a naturalist"]
         FJ["<b>Focus Job</b><br/>Become an explorer who discovers<br/>and cares about the natural world"]
-        RJ["<b>Related Jobs</b><br/>L1: Build and grow my<br/>personal wildlife world"]
-        PLAN["<b>PLAN</b><br/>Hear about game,<br/>spark curiosity"]
-        PREPARE["<b>PREPARE</b><br/>Install app,<br/>create account"]
-        EXECUTE["<b>EXECUTE</b><br/>Explore, discover, collect,<br/>identify, build sanctuary"]
-        MONITOR["<b>MONITOR</b><br/>Watch world grow<br/>over days and weeks"]
-        MODIFY["<b>MODIFY</b><br/>Adjust play patterns<br/>to explore new areas"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Ongoing -- the world<br/>never stops growing"]
+
+        FJ --> L1["<b>L1: Build &amp; Grow My Wildlife World</b><br/>The core game job —<br/>explore, discover, identify,<br/>curate, and grow"]
+
         SC["<b>Success Criteria</b><br/>Player feels connected to real-world biodiversity<br/>Returns regularly<br/>World feels personal"]
         EM["<b>Emotions</b><br/>Wonder --> Curiosity --> Pride --> Belonging"]
         CIRC["<b>Circumstances</b><br/>Daily commute, weekend walks,<br/>travel to new places"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC
     end
 
     subgraph SystemSpec["System Spec -- L0"]
-        NOTE["<b>Aspirational Job</b><br/>No direct system spec.<br/>Fulfilled by all child jobs combined.<br/>L1 orchestrates A, B, C which<br/>collectively deliver on this aspiration."]
+        NOTE["<b>Aspirational Job</b><br/>No direct system spec.<br/>Fulfilled by all child jobs combined.<br/>L1 orchestrates A through I + S<br/>which collectively deliver on this aspiration."]
     end
 
     JTBD --> SystemSpec

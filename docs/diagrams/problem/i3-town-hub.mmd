@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player browsing<br/>NPC interactions"]
         ASP["<b>Aspirations</b><br/>Central place to see all NPCs<br/>Check requests, manage relationships"]
         FJ["<b>Focus Job</b><br/>Visit the town hub"]
-        RJ["<b>Related Jobs</b><br/>I.1: Discover NPCs<br/>I.2: Accept and complete bundles"]
-        PLAN["<b>PLAN</b><br/>Open town tab"]
-        PREPARE["<b>PREPARE</b><br/>See list of<br/>discovered NPCs"]
-        EXECUTE["<b>EXECUTE</b><br/>Browse NPC profiles,<br/>active requests,<br/>relationship levels"]
-        MONITOR["<b>MONITOR</b><br/>See which requests<br/>are close to completion"]
-        MODIFY["<b>MODIFY</b><br/>Prioritize requests based<br/>on current inventory"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Clear goals for next<br/>exploration session"]
+        S1["<b>Step 1</b><br/>Navigate to town area<br/>on map"]
+        S2["<b>Step 2</b><br/>Enter town hub view"]
+        S3["<b>Step 3</b><br/>See all available NPCs"]
+        S4["<b>Step 4</b><br/>Browse shops and services"]
+        S5["<b>Step 5</b><br/>Interact with selected NPC"]
         SC["<b>Success Criteria</b><br/>All discovered NPCs accessible<br/>Requests clear<br/>Progress visible"]
         EM["<b>Emotions</b><br/>Overview --> Planning --> Motivation"]
         CIRC["<b>Circumstances</b><br/>At least one NPC discovered"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

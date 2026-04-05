@@ -4,22 +4,20 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player with an enriched<br/>unidentified item"]
         ASP["<b>Aspirations</b><br/>Feel the Balatro dopamine theater<br/>Interruptible and snappy<br/>Every reveal is a moment"]
         FJ["<b>Focus Job</b><br/>Reveal specimen identity<br/>with hold-to-identify"]
-        RJ["<b>Related Jobs</b><br/>B.1: Browse pack to find item<br/>B.3: Understand stats after reveal"]
-        PLAN["<b>PLAN</b><br/>See unidentified enriched<br/>card in pack"]
-        PREPARE["<b>PREPARE</b><br/>Finger down on card"]
-        EXECUTE["<b>EXECUTE</b><br/>Card lifts, particles spawn at 300ms,<br/>converge toward center"]
-        MONITOR["<b>MONITOR</b><br/>Charge builds,<br/>haptic at 50% and 75%"]
-        MODIFY["<b>MODIFY</b><br/>Release to cancel --<br/>particles scatter,<br/>card springs back"]
-        CONCLUDE["<b>CONCLUDE</b><br/>At 1200ms: burst --<br/>full TCG card revealed"]
+        S1["<b>Step 1</b><br/>Find unidentified enriched card in pack"]
+        S2["<b>Step 2</b><br/>Press and hold card with finger"]
+        S3["<b>Step 3</b><br/>Card lifts, particles flow inward (300ms)"]
+        S4["<b>Step 4</b><br/>Feel haptic pulses at 50% and 75%"]
+        S5["<b>Step 5</b><br/>Release early to cancel<br/>OR hold to 1200ms"]
+        S6["<b>Step 6</b><br/>Burst — full TCG card<br/>revealed with stats"]
         SC["<b>Success Criteria</b><br/>Smooth 60fps animation<br/>Interruptible at any point<br/>Deterministic stat roll"]
         EM["<b>Emotions</b><br/>Anticipation --> Tension --> Dopamine burst --> What did I get?!"]
         CIRC["<b>Circumstances</b><br/>Item species is fully enriched,<br/>8-column NOT NULL"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5 --> S6
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

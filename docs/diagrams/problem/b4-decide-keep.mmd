@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Collector weighing options<br/>for identified specimens"]
         ASP["<b>Aspirations</b><br/>Make meaningful choices<br/>The right specimen<br/>in the right place"]
         FJ["<b>Focus Job</b><br/>Decide what to keep,<br/>donate, or trade"]
-        RJ["<b>Related Jobs</b><br/>B.2: Hold to identify<br/>B.3: Understand stats<br/>C.2: Donate specimens<br/>E.1: Trade specimens"]
-        PLAN["<b>PLAN</b><br/>Review identified specimen<br/>with full stats"]
-        PREPARE["<b>PREPARE</b><br/>Check collection eligibility,<br/>compare with existing specimens"]
-        EXECUTE["<b>EXECUTE</b><br/>Choose: keep in pack /<br/>donate to collection /<br/>hold for trading"]
-        MONITOR["<b>MONITOR</b><br/>See impact of decision:<br/>collection progress, pack space"]
-        MODIFY["<b>MODIFY</b><br/>Reconsider before confirming<br/>permanent actions"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Specimen fate decided,<br/>player feels ownership of choice"]
+        S1["<b>Step 1</b><br/>Review identified specimen"]
+        S2["<b>Step 2</b><br/>Compare stats to collection needs"]
+        S3["<b>Step 3</b><br/>Choose: keep in pack,<br/>donate to collection, or mark for trade"]
+        S4["<b>Step 4</b><br/>Confirm choice"]
+        S5["<b>Step 5</b><br/>Item moves to destination"]
         SC["<b>Success Criteria</b><br/>Decision feels meaningful<br/>Consequences clear<br/>No regret from lack of info"]
         EM["<b>Emotions</b><br/>Deliberation --> Tension --> Commitment --> Satisfaction"]
         CIRC["<b>Circumstances</b><br/>Item is identified<br/>Emotional hinge of the game loop:<br/>this one could be the one meets<br/>my little world"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

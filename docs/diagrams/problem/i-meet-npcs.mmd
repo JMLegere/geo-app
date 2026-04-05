@@ -4,22 +4,17 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Explorer who wants<br/>guided goals and story"]
         ASP["<b>Aspirations</b><br/>NPCs give the world personality<br/>Directed goals complement<br/>free exploration"]
         FJ["<b>Focus Job</b><br/>Meet NPCs and<br/>fulfill requests"]
-        RJ["<b>Related Jobs</b><br/>I.1: Discover NPCs on the map<br/>I.2: Accept and complete NPC bundles<br/>I.3: Visit the town hub"]
-        PLAN["<b>PLAN</b><br/>Visit town or explore<br/>map for NPCs"]
-        PREPARE["<b>PREPARE</b><br/>Check NPC requests<br/>and bundles"]
-        EXECUTE["<b>EXECUTE</b><br/>Collect and deliver<br/>requested specimens"]
-        MONITOR["<b>MONITOR</b><br/>NPC relationship grows,<br/>rewards earned"]
-        MODIFY["<b>MODIFY</b><br/>Prioritize which NPC<br/>requests to fulfill"]
-        CONCLUDE["<b>CONCLUDE</b><br/>NPC satisfied, reward received,<br/>new requests available"]
+
+        FJ --> I1["<b>I.1: Discover NPCs</b><br/>Find NPCs placed<br/>on the map"]
+        I1 --> I2["<b>I.2: NPC Bundles</b><br/>Accept and complete<br/>NPC collection requests"]
+        I2 --> I3["<b>I.3: Town Hub</b><br/>Visit the central town<br/>to interact with NPCs"]
+
         SC["<b>Success Criteria</b><br/>NPCs discoverable<br/>Requests clear<br/>Rewards meaningful"]
         EM["<b>Emotions</b><br/>Curiosity --> Purpose --> Warmth (NPC connection)"]
         CIRC["<b>Circumstances</b><br/>Exploring the map or<br/>visiting town hub"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

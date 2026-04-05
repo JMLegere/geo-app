@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Crafter spending<br/>resources"]
         ASP["<b>Aspirations</b><br/>Convert surplus orbs/materials<br/>into useful or decorative items"]
         FJ["<b>Focus Job</b><br/>Craft lures and cosmetics"]
-        RJ["<b>Related Jobs</b><br/>H.1: Earn orbs (crafting cost)<br/>H.2: Breed specimens<br/>A: Discover wildlife (use lures)"]
-        PLAN["<b>PLAN</b><br/>Browse crafting recipes"]
-        PREPARE["<b>PREPARE</b><br/>Check orb/material<br/>requirements"]
-        EXECUTE["<b>EXECUTE</b><br/>Select recipe,<br/>consume ingredients,<br/>receive crafted item"]
-        MONITOR["<b>MONITOR</b><br/>New item in inventory"]
-        MODIFY["<b>MODIFY</b><br/>Adjust crafting priorities<br/>based on needs"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Lure for exploration,<br/>cosmetic for sanctuary,<br/>or material for further crafting"]
+        S1["<b>Step 1</b><br/>Open crafting menu"]
+        S2["<b>Step 2</b><br/>Browse available recipes"]
+        S3["<b>Step 3</b><br/>Select recipe, check<br/>orb/material cost"]
+        S4["<b>Step 4</b><br/>Tap craft button"]
+        S5["<b>Step 5</b><br/>New item (lure, cosmetic)<br/>added to inventory"]
         SC["<b>Success Criteria</b><br/>Recipe requirements clear<br/>Crafting instant<br/>Result useful"]
         EM["<b>Emotions</b><br/>Planning --> Execution --> Satisfaction (new tool/cosmetic)"]
         CIRC["<b>Circumstances</b><br/>Sufficient orbs and materials<br/>in inventory"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

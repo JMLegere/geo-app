@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Brand new player<br/>on first launch"]
         ASP["<b>Aspirations</b><br/>Understand the basics<br/>without being talked down to<br/>Balatro approach: drop in, figure it out"]
         FJ["<b>Focus Job</b><br/>Learn the game<br/>(onboarding)"]
-        RJ["<b>Related Jobs</b><br/>F.1: Create/sign in<br/>A.1: Navigate map<br/>A.3: Encounter and collect"]
-        PLAN["<b>PLAN</b><br/>Launch app for first time"]
-        PREPARE["<b>PREPARE</b><br/>Create account via F.1"]
-        EXECUTE["<b>EXECUTE</b><br/>Enter the game with minimal guidance:<br/>no tutorial popups, no tap here"]
-        MONITOR["<b>MONITOR</b><br/>Discover mechanics organically:<br/>tap a card, see what happens,<br/>explore a cell"]
-        MODIFY["<b>MODIFY</b><br/>If stuck: subtle contextual hints<br/>after inactivity"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Player understands core loop<br/>through doing, not reading"]
+        S1["<b>Step 1</b><br/>First launch after<br/>account creation"]
+        S2["<b>Step 2</b><br/>Brief tutorial<br/>overlays appear"]
+        S3["<b>Step 3</b><br/>Learn map<br/>navigation gesture"]
+        S4["<b>Step 4</b><br/>Make first discovery"]
+        S5["<b>Step 5</b><br/>Tutorial completes,<br/>free exploration begins"]
         SC["<b>Success Criteria</b><br/>No mandatory tutorial<br/>No tooltip tours<br/>Hints only if stuck<br/>First session feels complete"]
         EM["<b>Emotions</b><br/>Curiosity --> Exploration --> Oh I get it! --> Empowerment"]
         CIRC["<b>Circumstances</b><br/>First login ever<br/>Empty action history<br/>No Onboarding: PRD S1"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

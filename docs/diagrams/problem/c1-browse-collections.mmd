@@ -4,22 +4,19 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Player exploring what<br/>is available to build"]
         ASP["<b>Aspirations</b><br/>See the full scope of what can be built<br/>Find achievable targets"]
         FJ["<b>Focus Job</b><br/>Discover and browse collections"]
-        RJ["<b>Related Jobs</b><br/>C.2: Donate specimens<br/>C.3: Complete bundles"]
-        PLAN["<b>PLAN</b><br/>Open sanctuary tab"]
-        PREPARE["<b>PREPARE</b><br/>Collections load,<br/>grouped by dimension"]
-        EXECUTE["<b>EXECUTE</b><br/>Browse collection list,<br/>see progress bars,<br/>filter by habitat/region/class"]
-        MONITOR["<b>MONITOR</b><br/>Tiny collections 1-5 feel achievable,<br/>large ones feel like long-term goals"]
-        MODIFY["<b>MODIFY</b><br/>Filter to specific<br/>dimensions, search"]
-        CONCLUDE["<b>CONCLUDE</b><br/>Identified target collections<br/>to work toward"]
+        S1["<b>Step 1</b><br/>Open sanctuary tab"]
+        S2["<b>Step 2</b><br/>Browse available collections"]
+        S3["<b>Step 3</b><br/>See filled vs empty slots"]
+        S4["<b>Step 4</b><br/>Tap collection for detail view"]
+        S5["<b>Step 5</b><br/>Check which specimens qualify"]
         SC["<b>Success Criteria</b><br/>Only non-empty permutations shown<br/>Progress visible<br/>Size clear"]
         EM["<b>Emotions</b><br/>Overview --> Planning --> Motivation"]
         CIRC["<b>Circumstances</b><br/>Player has at least one<br/>identified species"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
+        FJ --> S1
+        S1 --> S2 --> S3 --> S4 --> S5
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

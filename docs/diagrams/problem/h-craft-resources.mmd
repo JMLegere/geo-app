@@ -4,22 +4,17 @@ flowchart TD
         JP["<b>Job Performer</b><br/>Crafter/breeder: player<br/>with orbs and materials"]
         ASP["<b>Aspirations</b><br/>Transform raw resources<br/>into valuable items<br/>Breed better specimens"]
         FJ["<b>Focus Job</b><br/>Craft and trade resources"]
-        RJ["<b>Related Jobs</b><br/>H.1: Earn and manage orbs<br/>H.2: Breed specimens<br/>H.3: Craft lures and cosmetics"]
-        PLAN["<b>PLAN</b><br/>Review orb inventory,<br/>identify crafting goals"]
-        PREPARE["<b>PREPARE</b><br/>Gather required<br/>orbs + materials"]
-        EXECUTE["<b>EXECUTE</b><br/>Craft item or<br/>initiate breeding"]
-        MONITOR["<b>MONITOR</b><br/>See result: new item,<br/>bred offspring"]
-        MODIFY["<b>MODIFY</b><br/>Adjust strategy<br/>based on outcomes"]
-        CONCLUDE["<b>CONCLUDE</b><br/>New valuable items<br/>in inventory"]
+
+        FJ --> H1["<b>H.1: Earn Orbs</b><br/>Feed animals, produce<br/>habitat + class + climate orbs"]
+        H1 --> H2["<b>H.2: Breed Specimens</b><br/>Combine specimens<br/>for offspring"]
+        H2 --> H3["<b>H.3: Craft Items</b><br/>Spend orbs on lures,<br/>cosmetics, materials"]
+
         SC["<b>Success Criteria</b><br/>Resources transformed<br/>New items created<br/>Economy feels purposeful"]
         EM["<b>Emotions</b><br/>Planning --> Transformation --> Reward"]
         CIRC["<b>Circumstances</b><br/>Orbs and materials<br/>available in inventory"]
 
         JP --> FJ
         ASP --> FJ
-        FJ --> PLAN
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-        FJ --> RJ
         FJ --> SC
         FJ --> EM
         FJ --> CIRC

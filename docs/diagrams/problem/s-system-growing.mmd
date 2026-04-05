@@ -1,46 +1,35 @@
 %% Status: NEEDS HUMAN REVIEW
-%% L2-S: [System] Keep the world growing
-%% Parent: L1 (Build and grow my personal wildlife world)
-
 flowchart TD
-    subgraph JTBD["JTBD Canvas — S: Keep the world growing"]
-        direction TB
+    subgraph JTBD["JTBD Canvas -- L2-S: Keep the World Growing"]
+        JP["<b>Job Performer</b><br/>Automated backend systems"]
+        ASP["<b>Aspirations</b><br/>World grows steadily without player action<br/>Data never lost<br/>Progress always safe"]
+        FJ["<b>Focus Job</b><br/>Keep the world growing:<br/>enrich species, sync data,<br/>persist progress"]
 
-        JP["**Job Performer**\nAutomated backend systems"]
-        ASP["**Aspirations**\nWorld grows steadily without player action,\ndata never lost, progress always safe"]
-        FJ["**Focus Job**\nKeep the world growing:\nenrich species, sync data, persist progress"]
+        FJ --> S1["<b>S.1: Enrich Species</b><br/>LLM classify, generate prompts,<br/>produce art for identification"]
+        S1 --> S2["<b>S.2: Sync Data</b><br/>Delta-sync species enrichment<br/>to client on app start"]
+        S2 --> S3["<b>S.3: Persist Progress</b><br/>Write queue with retry,<br/>idempotent confirms"]
+        S3 --> S4["<b>S.4: Animate World</b><br/>Spring physics, particles,<br/>sprite animation"]
+        S4 --> S5["<b>S.5: Observe &amp; Monitor</b><br/>Structured logs, error tracking,<br/>system health"]
 
-        RJ["**Related Jobs**\nS.1: Enrich species for identification\nS.2: Sync data between device and server\nS.3: Persist progress reliably"]
+        SC["<b>Success Criteria</b><br/>~288 enrichment attempts/day<br/>Zero data loss<br/>Eventual consistency"]
+        EM["<b>Emotions</b><br/>N/A — system job<br/>Player impact: organic discovery<br/>of newly identifiable species"]
 
-        PLAN["**PLAN**\nScheduled triggers fire\n(pg_cron, app lifecycle events)"]
-        PREPARE["**PREPARE**\nQuery for pending work:\nunenriched species, unsynced data,\nqueued writes"]
-        EXECUTE["**EXECUTE**\nEnrich species via LLM + image APIs,\nsync delta to client,\nconfirm queued writes"]
-        MONITOR["**MONITOR**\nTrack enrichver stamps,\nsync timestamps,\nwrite queue status"]
-        MODIFY["**MODIFY**\nRetry on failure,\nskip permanently broken,\nrollback on conflict"]
-        CONCLUDE["**CONCLUDE**\nSpecies identifiable,\ndata consistent,\nprogress safe"]
-
-        JP --> ASP --> FJ --> RJ
-        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
-
-        SC["**Success Criteria**\n~288 enrichment attempts/day,\nzero data loss,\neventual consistency"]
-        EM["**Emotions**\nN/A — system job.\nPlayer impact: organic discovery\nof newly identifiable species"]
-
-        CONCLUDE --> SC
-        CONCLUDE --> EM
+        JP --> FJ
+        ASP --> FJ
+        FJ --> SC
+        FJ --> EM
     end
 
-    subgraph SYS["System Spec"]
-        direction TB
+    subgraph SystemSpec["System Spec -- L2-S"]
+        IN["<b>Inputs</b><br/>pg_cron triggers<br/>App lifecycle events<br/>Unenriched species"]
+        OUT["<b>Outputs</b><br/>Enriched species rows<br/>Synced client cache<br/>Confirmed writes"]
+        GT["<b>Gating</b><br/>Backend services running<br/>Edge functions deployed"]
+        DR["<b>Data Requirements</b><br/>species, v3_items, v3_write_queue,<br/>v3_cell_visits, v3_sanctuary_donations,<br/>app_logs, Supabase Storage"]
+        RES["<b>Resolves Critiques</b><br/>2.2: Enrichment gap<br/>2.3: Fully enriched definition<br/>2.4: Fire-and-forget unsafe"]
 
-        S1["**S.1 Enrichment**\npg_cron 5min → Edge Function\n→ LLM classify → prompts → images\n→ species table fully enriched"]
-        S2["**S.2 Delta Sync**\nClient app start → SELECT species\nWHERE updated_at > lastSync\n→ UPSERT LocalSpeciesTable"]
-        S3["**S.3 Write Queue**\nOptimistic UI → v3_write_queue\n→ Supabase confirm → CONFIRMED\nor retry → FAILED → rollback"]
-
-        DATA["**Data**\nspecies, v3_items, v3_write_queue,\nv3_cell_visits, v3_sanctuary_donations,\napp_logs, Supabase Storage"]
-        RESOLVES["**Resolves Critique**\n2.2: Enrichment gap (delta-sync)\n2.3: Fully enriched definition\n2.4: Fire-and-forget unsafe"]
-
-        S1 --- S2 --- S3
-        DATA --- RESOLVES
+        IN --> OUT
+        GT --> DR
+        DR --> RES
     end
 
-    JTBD --> SYS
+    JTBD --> SystemSpec
