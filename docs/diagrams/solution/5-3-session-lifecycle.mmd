@@ -1,0 +1,79 @@
+stateDiagram-v2
+    [*] --> COLD_START
+
+    state "COLD_START" as COLD_START
+    state "RESTORING_SESSION" as RESTORING_SESSION
+    state "UNAUTHENTICATED" as UNAUTHENTICATED
+    state "AUTHENTICATING" as AUTHENTICATING
+    state "HYDRATING" as HYDRATING
+    state "ACTIVE" as ACTIVE
+    state "BACKGROUNDED" as BACKGROUNDED
+    state "RECAP_CHECK" as RECAP_CHECK
+    state "SHOWING_RECAP" as SHOWING_RECAP
+    state "ERROR" as ERROR
+
+    note right of COLD_START
+        App launched, no state.
+    end note
+
+    note right of RESTORING_SESSION
+        Check Supabase for existing
+        auth session.
+    end note
+
+    note right of UNAUTHENTICATED
+        No valid session.
+        Show LoginScreen.
+    end note
+
+    note right of HYDRATING
+        Session valid.
+        Fetching items + species data
+        from Supabase.
+    end note
+
+    note right of ACTIVE
+        App ready, user interacting.
+    end note
+
+    note right of BACKGROUNDED
+        App in background (mobile)
+        or tab hidden (web).
+    end note
+
+    note right of RECAP_CHECK
+        On foreground, check if 6h+
+        since last recap.
+    end note
+
+    note right of SHOWING_RECAP
+        Recap card stack displayed.
+    end note
+
+    COLD_START --> RESTORING_SESSION : app init
+
+    RESTORING_SESSION --> HYDRATING : session found & valid
+    RESTORING_SESSION --> UNAUTHENTICATED : no session / expired
+    RESTORING_SESSION --> ERROR : auth check failed
+
+    UNAUTHENTICATED --> AUTHENTICATING : user taps sign‑in
+
+    AUTHENTICATING --> HYDRATING : auth success
+    AUTHENTICATING --> UNAUTHENTICATED : auth cancelled
+    AUTHENTICATING --> ERROR : auth error
+
+    HYDRATING --> ACTIVE : data loaded
+    HYDRATING --> ERROR : data fetch failed
+
+    ACTIVE --> BACKGROUNDED : app backgrounded / tab hidden
+    ACTIVE --> UNAUTHENTICATED : sign out
+
+    BACKGROUNDED --> RECAP_CHECK : app foregrounded
+
+    RECAP_CHECK --> SHOWING_RECAP : 6h+ since last recap
+    RECAP_CHECK --> ACTIVE : less than 6h, skip recap
+
+    SHOWING_RECAP --> ACTIVE : recap dismissed
+
+    ERROR --> RESTORING_SESSION : retry
+    ERROR --> UNAUTHENTICATED : back to login

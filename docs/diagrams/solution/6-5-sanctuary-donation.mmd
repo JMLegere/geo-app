@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant Player
+    participant PackScreen
+    participant SanctuaryService
+    participant CollectionService
+    participant WriteQueue
+    participant Supabase
+    participant ObservabilityService
+
+    Player->>PackScreen: Select identified item, tap "Donate"
+    PackScreen->>CollectionService: Compute eligible collections
+    CollectionService->>CollectionService: species habitats x continents x taxonomicClass
+
+    alt Multiple eligible collections
+        CollectionService-->>PackScreen: Multiple collection options
+        PackScreen->>Player: Show collection picker
+        Player->>PackScreen: Select specific collection
+    else Single eligible collection
+        CollectionService-->>PackScreen: Single collection_key
+    end
+
+    PackScreen->>SanctuaryService: Confirm donation (item_id, collection_key)
+
+    SanctuaryService->>SanctuaryService: Optimistic update: item.status = donated, add to local collection state
+
+    SanctuaryService->>WriteQueue: Enqueue {action: donate, item_id, collection_key}
+    WriteQueue->>Supabase: INSERT v3_sanctuary_donations
+    WriteQueue->>Supabase: UPDATE v3_items SET status='donated'
+
+    Supabase-->>WriteQueue: Confirm
+    WriteQueue->>WriteQueue: Mark CONFIRMED
+
+    opt Collection newly unlocked
+        WriteQueue->>ObservabilityService: Log sanctuary.collection_unlocked
+    end
+
+    WriteQueue->>ObservabilityService: Log sanctuary.donation
+
+    SanctuaryService->>PackScreen: Item permanently removed from active pack
+    Note over PackScreen: Item visible in sanctuary view

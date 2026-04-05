@@ -1,0 +1,54 @@
+sequenceDiagram
+    participant App
+    participant SupabaseAuth
+    participant AuthProvider
+    participant ItemsProvider
+    participant SpeciesSync
+    participant ObservabilityService
+    participant UI
+
+    App->>ObservabilityService: init(sessionId = UUID)
+    App->>SupabaseAuth: Check currentSession
+
+    alt Valid + not expired
+        SupabaseAuth-->>App: Restore session
+    else Expired session
+        App->>SupabaseAuth: Attempt refreshSession
+        alt Refresh success
+            SupabaseAuth-->>App: New session tokens
+        else Refresh fails
+            SupabaseAuth-->>App: No valid session
+            App->>UI: Navigate to LoginScreen
+            Note over UI: Stop - user must authenticate
+        end
+    else Anonymous or no session
+        App->>UI: Navigate to LoginScreen
+        Note over UI: Stop - user must authenticate
+    end
+
+    App->>AuthProvider: AuthState.authenticated(UserProfile)
+
+    Note over ItemsProvider,SpeciesSync: Parallel hydration
+
+    par Hydrate items
+        AuthProvider->>ItemsProvider: Start hydration
+        ItemsProvider->>SupabaseAuth: SELECT * FROM v3_items WHERE user_id = :uid
+        SupabaseAuth-->>ItemsProvider: Items data
+        ItemsProvider->>ItemsProvider: Populate pack state
+        ItemsProvider->>ObservabilityService: Log items.fetch_success
+    and Hydrate species
+        AuthProvider->>SpeciesSync: Start delta sync
+        SpeciesSync->>SupabaseAuth: SELECT FROM species WHERE updated_at > :lastSync
+        SupabaseAuth-->>SpeciesSync: Changed species rows
+        SpeciesSync->>SpeciesSync: Update LocalSpeciesTable cache
+        SpeciesSync->>ObservabilityService: Log species.sync_complete
+    end
+
+    App->>App: RecapCheck: should we show recap? (6h rule)
+
+    alt Recap applicable
+        App->>UI: Navigate to RecapScreen
+        Note over UI: RecapScreen shown first, then PackScreen
+    else No recap needed
+        App->>UI: Navigate to PackScreen
+    end

@@ -1,0 +1,43 @@
+flowchart TD
+    AppLaunch([App Launch]) --> LoadingScreen
+
+    LoadingScreen -->|no session| LoginScreen
+    LoadingScreen -->|"session + 6h rule"| RecapScreen
+    LoadingScreen -->|"session + no recap needed"| TabShell
+
+    LoginScreen -->|sign in| LoadingScreen
+    RecapScreen -->|dismissed| TabShell
+
+    subgraph TabShell [Tab Shell]
+        direction LR
+        Tab1[Tab 1: MapScreen]
+        Tab2[Tab 2: PackScreen]
+        Tab3[Tab 3: SanctuaryScreen]
+        Tab4[Tab 4: SettingsScreen]
+    end
+
+    Tab1 -.-|"stub -> future: MapLibre + fog"| MapFuture(MapLibre + Fog of War)
+
+    Tab2 -->|tap item| SpeciesCard{{SpeciesCard Modal}}
+    Tab2 -->|hold enriched item| IdentificationReveal{{IdentificationReveal Modal}}
+    SpeciesCard -->|donate button| CollectionPicker{{CollectionPicker Modal}}
+    CollectionPicker -->|confirm| DonationConfirmation{{Donation Confirmation}}
+
+    Tab3 -.-|"stub -> future"| SanctuaryFuture
+    subgraph SanctuaryFuture [Sanctuary Future]
+        BrowseCollections[Browse Collections] --> CollectionDetail[Collection Detail]
+        CollectionDetail -->|tap specimen| SpeciesCardSanctuary{{SpeciesCard Modal}}
+    end
+
+    Tab4 -->|sign out| LoginScreen
+    Tab4 -.-|future| SkillView[SkillView Screen]
+
+    style TabShell fill:#e8f4fd,stroke:#2196F3,stroke-width:2px
+    style SpeciesCard fill:#fff3e0,stroke:#FF9800
+    style IdentificationReveal fill:#fff3e0,stroke:#FF9800
+    style CollectionPicker fill:#fff3e0,stroke:#FF9800
+    style DonationConfirmation fill:#fff3e0,stroke:#FF9800
+    style SpeciesCardSanctuary fill:#fff3e0,stroke:#FF9800
+    style MapFuture fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5
+    style SanctuaryFuture fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5
+    style SkillView fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5

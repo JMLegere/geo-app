@@ -1,0 +1,39 @@
+sequenceDiagram
+    participant Player
+    participant PackScreen
+    participant IdentificationService
+    participant StatRoller
+    participant WriteQueue
+    participant Supabase
+    participant ObservabilityService
+
+    Player->>PackScreen: Long-press unidentified + enriched card
+    PackScreen->>PackScreen: Start hold timer, show charge animation (particles converge)
+
+    Note over PackScreen: At 1200ms threshold
+    PackScreen->>IdentificationService: Trigger identification
+
+    IdentificationService->>StatRoller: Roll stats for instanceUUID
+    StatRoller->>StatRoller: SHA-256(instanceUUID) to seed
+    StatRoller->>StatRoller: Distribute brawn/wit/speed (sum=90, +/-30% from species baseline)
+    StatRoller->>StatRoller: Determine size from species size band, weight from size range
+    StatRoller->>StatRoller: Roll affixes based on rarity (CR=2, EN=1-2, VU=0-1, NT/LC=0)
+    StatRoller-->>IdentificationService: Rolled stats, size, weight, prefix, suffix
+
+    IdentificationService->>PackScreen: Reveal card data
+    PackScreen->>PackScreen: Particle burst, full TCG card revealed with stats, art, name, affixes
+
+    IdentificationService->>IdentificationService: Optimistic update: local item identified=true with rolled stats
+
+    IdentificationService->>WriteQueue: Enqueue {action: identify, item_id, brawn, wit, speed, size, weight, prefix, suffix}
+    WriteQueue->>Supabase: UPDATE v3_items SET identified=true, brawn=X, ...<br/>WHERE id=Y AND identified=false (idempotent guard)
+
+    alt Success
+        Supabase-->>WriteQueue: Success
+        WriteQueue->>WriteQueue: Mark CONFIRMED
+        WriteQueue->>ObservabilityService: Log identify.completed
+    else Write fails
+        Supabase-->>WriteQueue: Error
+        WriteQueue->>WriteQueue: Retry with backoff
+        Note over WriteQueue: Stats are deterministic,<br/>so re-roll produces same result
+    end

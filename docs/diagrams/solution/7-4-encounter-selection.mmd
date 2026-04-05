@@ -1,0 +1,52 @@
+flowchart TD
+    INPUT[/"Inputs:\ndailySeed: string\ncellId: string"/] --> CONCAT["Concatenate:\ncombined = dailySeed + _ + cellId"]
+
+    CONCAT --> MASTER_HASH["Master hash =\nSHA-256 combined"]
+
+    MASTER_HASH --> LOOP
+
+    subgraph LOOP [For Each Slot 1, 2, 3]
+        direction TB
+        SLOT[/"slot = 1, 2, or 3"/]
+        SLOT --> SUB_CONCAT["sub_input =\nhash_hex + _ + slot"]
+        SUB_CONCAT --> SUB_HASH["sub_hash =\nSHA-256 sub_input"]
+        SUB_HASH --> INDEX["raw_index =\nsub_hash_bytes mod catalog_size\ncatalog_size = 32,752"]
+    end
+
+    INDEX --> RARITY
+
+    subgraph RARITY [Rarity Weighting]
+        direction TB
+        WEIGHT["IUCN rarity weights:\nLC = most common\nNT = uncommon\nVU = rare\nEN = very rare\nCR = extremely rare"]
+        WEIGHT --> WEIGHTED_SELECT["Weighted selection adjusts\nraw_index into rarity-biased\nspecies lookup"]
+        WEIGHTED_SELECT --> ENRICHED_CHECK{"Species is\nfully enriched?"}
+        ENRICHED_CHECK -->|Yes| ACCEPT[Accept species for slot]
+        ENRICHED_CHECK -->|No| REROLL["Skip -- try next index\nuntil enriched species found"]
+        REROLL --> WEIGHTED_SELECT
+    end
+
+    ACCEPT --> DEDUP
+
+    subgraph DEDUP [Deduplication]
+        DUP_CHECK{"Species already\nin another slot?"}
+        DUP_CHECK -->|Yes| REROLL2[Increment index\nand recheck]
+        DUP_CHECK -->|No| ASSIGN[Assign to slot]
+        REROLL2 --> ENRICHED_CHECK
+    end
+
+    ASSIGN --> OUTPUT
+
+    OUTPUT[/"Output: 3 unique species\nfor this cell today\nDeterministic per dailySeed + cellId"/]
+
+    subgraph TRACE [Example Trace]
+        direction TB
+        TR1["dailySeed = 2026-04-05\ncellId = h3_8a2a1072bffffff"]
+        TR2["combined = 2026-04-05_h3_8a2a1072bffffff"]
+        TR3["master hash = a4f9c1..."]
+        TR4["Slot 1: SHA-256 a4f9c1..._1\n  index = 12407 mod 32752 = 12407\n  species: Panthera leo -- LC"]
+        TR5["Slot 2: SHA-256 a4f9c1..._2\n  index = 29881 mod 32752 = 29881\n  species: Quercus robur -- LC"]
+        TR6["Slot 3: SHA-256 a4f9c1..._3\n  index = 7234 mod 32752 = 7234\n  species: Ammonoidea sp. -- VU"]
+        TR1 --> TR2 --> TR3 --> TR4 --> TR5 --> TR6
+    end
+
+    style OUTPUT fill:#2d6a2d,color:#fff

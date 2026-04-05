@@ -1,0 +1,78 @@
+stateDiagram-v2
+    [*] --> QUEUED
+
+    state "QUEUED" as QUEUED
+    state "CLASSIFYING" as CLASSIFYING
+    state "CLASSIFY_FAILED" as CLASSIFY_FAILED
+    state "PROMPTING_ICON" as PROMPTING_ICON
+    state "PROMPTING_ART" as PROMPTING_ART
+    state "PROMPT_FAILED" as PROMPT_FAILED
+    state "GENERATING_ICON" as GENERATING_ICON
+    state "GENERATING_ART" as GENERATING_ART
+    state "IMAGE_FAILED" as IMAGE_FAILED
+    state "ENRICHED" as ENRICHED
+
+    note right of QUEUED
+        Species has NULL enrichment fields.
+        Picked up by pg_cron.
+    end note
+
+    note right of CLASSIFYING
+        LLM determines animal_class,
+        food_preference, climate, size,
+        brawn / wit / speed baselines.
+    end note
+
+    note right of PROMPTING_ICON
+        LLM generates icon_prompt
+        (128x128 chibi sprite description).
+    end note
+
+    note right of PROMPTING_ART
+        LLM generates art_prompt
+        (512x512 watercolor description).
+    end note
+
+    note right of GENERATING_ICON
+        Image API creates icon
+        from icon_prompt.
+    end note
+
+    note right of GENERATING_ART
+        Image API creates art
+        from art_prompt.
+    end note
+
+    note right of ENRICHED
+        All 8 required fields populated.
+        Species identifiable.
+        Per‑field enrichver stamps track
+        which pipeline version produced each field.
+    end note
+
+    QUEUED --> CLASSIFYING : pg_cron picks up species
+
+    CLASSIFYING --> PROMPTING_ICON : classification complete
+    CLASSIFYING --> CLASSIFY_FAILED : classification error
+
+    CLASSIFY_FAILED --> CLASSIFYING : retry
+
+    PROMPTING_ICON --> PROMPTING_ART : icon prompt generated
+    PROMPTING_ICON --> PROMPT_FAILED : prompt generation error
+
+    PROMPTING_ART --> GENERATING_ICON : art prompt generated
+    PROMPTING_ART --> PROMPT_FAILED : prompt generation error
+
+    PROMPT_FAILED --> PROMPTING_ICON : retry (icon stage)
+    PROMPT_FAILED --> PROMPTING_ART : retry (art stage)
+
+    GENERATING_ICON --> GENERATING_ART : icon image created
+    GENERATING_ICON --> IMAGE_FAILED : image generation error
+
+    GENERATING_ART --> ENRICHED : art image created
+    GENERATING_ART --> IMAGE_FAILED : image generation error
+
+    IMAGE_FAILED --> GENERATING_ICON : retry (icon stage)
+    IMAGE_FAILED --> GENERATING_ART : retry (art stage)
+
+    ENRICHED --> [*]

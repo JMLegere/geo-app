@@ -1,0 +1,96 @@
+flowchart TD
+    subgraph Thresholds["Shared Level Thresholds (all 5 skills)"]
+        L1["Level 1 — 0 actions\nBasic identification"]
+        L2["Level 2 — 10 actions"]
+        L3["Level 3 — 25 actions\nPost-ID activity unlocked"]
+        L4["Level 4 — 50 actions"]
+        L5["Level 5 — 100 actions\nAdvanced activity variant"]
+        L6["Level 6 — 200 actions"]
+        L7["Level 7 — 350 actions"]
+        L8["Level 8 — 500 actions\nExpert activity variant"]
+        L9["Level 9 — 750 actions"]
+        L10["Level 10 — 1000 actions\nMastery title"]
+
+        L1 --> L2 --> L3 --> L4 --> L5 --> L6 --> L7 --> L8 --> L9 --> L10
+    end
+
+    subgraph Zoology["Zoology (fauna)"]
+        ZL1["L1: Identify fauna"]
+        ZL3["L3: Breed"]
+        ZL5["L5: Advanced Breed"]
+        ZL8["L8: Expert Breed"]
+        ZL10["L10: Master Zoologist"]
+    end
+
+    subgraph Botany["Botany (flora)"]
+        BL1["L1: Identify flora"]
+        BL3["L3: Cultivate"]
+        BL5["L5: Advanced Cultivate"]
+        BL8["L8: Expert Cultivate"]
+        BL10["L10: Master Botanist"]
+    end
+
+    subgraph Geology["Geology (minerals)"]
+        GL1["L1: Identify minerals"]
+        GL3["L3: Cut"]
+        GL5["L5: Advanced Cut"]
+        GL8["L8: Expert Cut"]
+        GL10["L10: Master Geologist"]
+    end
+
+    subgraph Paleontology["Paleontology (fossils)"]
+        PL1["L1: Identify fossils"]
+        PL3["L3: Reconstruct"]
+        PL5["L5: Advanced Reconstruct"]
+        PL8["L8: Expert Reconstruct"]
+        PL10["L10: Master Paleontologist"]
+    end
+
+    subgraph Archaeology["Archaeology (artifacts)"]
+        AL1["L1: Identify artifacts"]
+        AL3["L3: Restore"]
+        AL5["L5: Advanced Restore"]
+        AL8["L8: Expert Restore"]
+        AL10["L10: Master Archaeologist"]
+    end
+
+    L1 -.-> ZL1
+    L1 -.-> BL1
+    L1 -.-> GL1
+    L1 -.-> PL1
+    L1 -.-> AL1
+
+    L3 -.-> ZL3
+    L3 -.-> BL3
+    L3 -.-> GL3
+    L3 -.-> PL3
+    L3 -.-> AL3
+
+    L5 -.-> ZL5
+    L5 -.-> BL5
+    L5 -.-> GL5
+    L5 -.-> PL5
+    L5 -.-> AL5
+
+    L8 -.-> ZL8
+    L8 -.-> BL8
+    L8 -.-> GL8
+    L8 -.-> PL8
+    L8 -.-> AL8
+
+    L10 -.-> ZL10
+    L10 -.-> BL10
+    L10 -.-> GL10
+    L10 -.-> PL10
+    L10 -.-> AL10
+
+    style L1 fill:#22c55e,color:#fff
+    style L3 fill:#f59e0b,color:#fff
+    style L5 fill:#f59e0b,color:#fff
+    style L8 fill:#f59e0b,color:#fff
+    style L10 fill:#ef4444,color:#fff
+    style L2 fill:#e5e7eb,color:#333
+    style L4 fill:#e5e7eb,color:#333
+    style L6 fill:#e5e7eb,color:#333
+    style L7 fill:#e5e7eb,color:#333
+    style L9 fill:#e5e7eb,color:#333

@@ -1,0 +1,29 @@
+flowchart TD
+    A["Player performs activity\n(explore, discover, identify,\ndonate, feed, breed, etc.)"] --> B["Determine item type\n(fauna / flora / mineral /\nfossil / artifact)"]
+
+    B --> C{"Map to skill"}
+    C -->|fauna| Z["Zoology"]
+    C -->|flora| BO["Botany"]
+    C -->|mineral| G["Geology"]
+    C -->|fossil| P["Paleontology"]
+    C -->|artifact| AR["Archaeology"]
+
+    Z --> D["Increment skill\naccumulation counter\n(+1 per qualifying action)"]
+    BO --> D
+    G --> D
+    P --> D
+    AR --> D
+
+    D --> E{"Counter >= next\nlevel threshold?"}
+    E -->|No| F["Continue playing"]
+    E -->|Yes| H["Level Up!\n(passive, automatic)"]
+
+    H --> I["Unlock new capabilities\n(if any for this level)"]
+    I --> F
+
+    F --> A
+
+    style A fill:#4a9eff,color:#fff
+    style H fill:#22c55e,color:#fff
+    style I fill:#f59e0b,color:#fff
+    style E fill:#e5e7eb,color:#333

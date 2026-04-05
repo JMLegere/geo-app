@@ -1,0 +1,44 @@
+flowchart TD
+    SPECIES[/Species Record/] --> LOAD_FIELDS
+
+    subgraph LOAD_FIELDS [Extract Categorization Fields]
+        HABITATS["species.habitats[]\ne.g. forest, grassland, wetland"]
+        CONTINENTS["species.continents[]\ne.g. africa, asia, europe"]
+        CLASS["species.taxonomicClass\ne.g. mammalia, aves, reptilia"]
+    end
+
+    HABITATS --> CARTESIAN
+    CONTINENTS --> CARTESIAN
+    CLASS --> CARTESIAN
+
+    subgraph CARTESIAN [Cartesian Product]
+        direction TB
+        CROSS["For each continent in continents[]:\n  For each habitat in habitats[]:\n    key = continent + _ + habitat + _ + class"]
+        CROSS --> KEYS["Generated collection keys:\ne.g.\nafrica_forest_mammalia\nafrica_grassland_mammalia\nasia_forest_mammalia\nasia_grassland_mammalia"]
+    end
+
+    KEYS --> FILTER
+
+    subgraph FILTER [Filter Against Valid Collections]
+        VALID{"Key exists in\n513 real collections?"}
+        VALID -->|Yes| ADD[Add species to collection]
+        VALID -->|No| SKIP[Skip -- no such collection]
+    end
+
+    ADD --> RESULT
+
+    subgraph RESULT [Result]
+        MEMBER["Species belongs to\nN eligible collections\nwhere N = valid keys count"]
+    end
+
+    subgraph EXAMPLE [Example: African Elephant]
+        direction TB
+        EX_IN["habitats: forest, grassland\ncontinents: africa\nclass: mammalia"]
+        EX_PRODUCT["Cartesian product:\nafrica_forest_mammalia\nafrica_grassland_mammalia"]
+        EX_CHECK["Both keys exist in\n513 real collections"]
+        EX_OUT["Elephant belongs to\n2 collections"]
+        EX_IN --> EX_PRODUCT --> EX_CHECK --> EX_OUT
+    end
+
+    style SKIP fill:#555,color:#fff
+    style ADD fill:#2d6a2d,color:#fff

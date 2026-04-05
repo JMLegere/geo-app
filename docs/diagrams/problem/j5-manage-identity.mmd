@@ -1,0 +1,69 @@
+flowchart TD
+    subgraph JTBD["JTBD: Maintain my explorer identity"]
+        direction TB
+
+        JP["Job Performer: Any Player\n(managing their account)"]
+        ASP["Aspirations:\nSecure, persistent identity\nacross sessions"]
+        FJ["Focus Job:\nMaintain my\nexplorer identity"]
+
+        JP --> ASP --> FJ
+
+        subgraph STEPS["Steps"]
+            direction LR
+            S1["PLAN\nDecide to play"]
+            S2["PREPARE\nEnter phone number"]
+            S3["EXECUTE\nAuth flow: derive\nemail+password,\nsign in or sign up"]
+            S4["MONITOR\nSession restored\non return"]
+            S5["MODIFY\nSign out\nif needed"]
+            S6["CONCLUDE\nIdentity persists,\ndata safe"]
+            S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        end
+
+        FJ --> STEPS
+
+        subgraph RJ["Related Jobs"]
+            RJ1["Resume previous session"]
+            RJ2["Access saved collections"]
+            RJ3["Maintain skill progress"]
+        end
+
+        SC["Success Criteria:\n- Seamless login\n- Session persistence\n- Data integrity"]
+        EM["Emotions:\nTrust --> Relief (it works) --> Confidence"]
+        CIR["Circumstances:\nHas 10-digit phone number,\ndevice with internet access"]
+
+        STEPS --> SC
+        STEPS --> EM
+        STEPS --> CIR
+        FJ --> RJ
+    end
+
+    subgraph SPEC["System Spec"]
+        direction TB
+
+        subgraph INPUTS["Inputs"]
+            I1["Phone number\n(10 digits)"]
+        end
+
+        subgraph OUTPUTS["Outputs"]
+            O1["Auth session"]
+            O2["UserProfile"]
+            O3["v3_profiles row"]
+        end
+
+        SF["Skill Feed:\nNone"]
+
+        GT["Gating Requirements:\nNone"]
+
+        subgraph DATA["Data Requirements"]
+            D1["auth.users"]
+            D2["v3_profiles"]
+            D3["SHA-256 derived credentials"]
+        end
+
+        INPUTS --> OUTPUTS
+        OUTPUTS --> SF
+        SF --> GT
+        GT --> DATA
+    end
+
+    JTBD --> SPEC

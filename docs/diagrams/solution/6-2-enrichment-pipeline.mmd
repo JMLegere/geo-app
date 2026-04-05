@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant pg_cron
+    participant ProcessEnrichmentQueue
+    participant OpenAI_LLM
+    participant ImageAPI
+    participant SupabaseStorage
+    participant SpeciesTable
+
+    pg_cron->>ProcessEnrichmentQueue: Fire every 5 minutes
+    ProcessEnrichmentQueue->>SpeciesTable: SELECT FROM species WHERE icon_url IS NULL LIMIT 1
+    SpeciesTable-->>ProcessEnrichmentQueue: Unenriched species row
+
+    Note over ProcessEnrichmentQueue: Phase 1 - Classify
+    ProcessEnrichmentQueue->>OpenAI_LLM: Classify species
+    OpenAI_LLM-->>ProcessEnrichmentQueue: animal_class, climate, size, brawn/wit/speed, food_preference
+    ProcessEnrichmentQueue->>SpeciesTable: UPDATE species SET classification fields, enrichver_classify = PIPELINE_VERSION
+
+    Note over ProcessEnrichmentQueue: Phase 2 - Icon Prompt
+    ProcessEnrichmentQueue->>OpenAI_LLM: Generate icon prompt
+    OpenAI_LLM-->>ProcessEnrichmentQueue: icon_prompt text
+    ProcessEnrichmentQueue->>SpeciesTable: UPDATE species SET icon_prompt, enrichver_icon_prompt
+
+    Note over ProcessEnrichmentQueue: Phase 3 - Art Prompt
+    ProcessEnrichmentQueue->>OpenAI_LLM: Generate art prompt
+    OpenAI_LLM-->>ProcessEnrichmentQueue: art_prompt text
+    ProcessEnrichmentQueue->>SpeciesTable: UPDATE species SET art_prompt, enrichver_art_prompt
+
+    Note over ProcessEnrichmentQueue: Phase 4 - Generate Icon
+    ProcessEnrichmentQueue->>ImageAPI: Generate 128x128 PNG from icon_prompt
+    ImageAPI-->>ProcessEnrichmentQueue: Icon image data
+    ProcessEnrichmentQueue->>SupabaseStorage: Upload icon PNG
+    SupabaseStorage-->>ProcessEnrichmentQueue: Public URL
+    ProcessEnrichmentQueue->>SpeciesTable: UPDATE species SET icon_url, enrichver_icon
+
+    Note over ProcessEnrichmentQueue: Phase 5 - Generate Art
+    ProcessEnrichmentQueue->>ImageAPI: Generate 512x512 PNG from art_prompt
+    ImageAPI-->>ProcessEnrichmentQueue: Art image data
+    ProcessEnrichmentQueue->>SupabaseStorage: Upload art PNG
+    SupabaseStorage-->>ProcessEnrichmentQueue: Public URL
+    ProcessEnrichmentQueue->>SpeciesTable: UPDATE species SET art_url, enrichver_art
+
+    Note over ProcessEnrichmentQueue,SpeciesTable: Species is now FULLY ENRICHED.<br/>Each phase can fail independently.<br/>enrichver stamps track which pipeline version produced each field.

@@ -1,0 +1,73 @@
+flowchart TD
+    subgraph JTBD["JTBD: Build a sanctuary that reflects my journey"]
+        direction TB
+
+        JP["Job Performer: Builder\n(wants a personal museum/zoo)"]
+        ASP["Aspirations:\nCreate a living collection that\nshows exploration history"]
+        FJ["Focus Job:\nBuild a sanctuary that\nreflects my journey"]
+
+        JP --> ASP --> FJ
+
+        subgraph STEPS["Steps"]
+            direction LR
+            S1["PLAN\nReview collections,\nfind empty slots"]
+            S2["PREPARE\nChoose specimen\nto donate"]
+            S3["EXECUTE\nDonate identified item\nto collection slot"]
+            S4["MONITOR\nSee collection progress,\nsanctuary grow"]
+            S5["MODIFY\nChoose which specimen\nfor each slot strategically"]
+            S6["CONCLUDE\nCollections filling,\nsanctuary beautiful"]
+            S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        end
+
+        FJ --> STEPS
+
+        subgraph RJ["Related Jobs"]
+            RJ1["Explore for missing specimens"]
+            RJ2["Identify items before donating"]
+            RJ3["Track collection completeness"]
+        end
+
+        SC["Success Criteria:\n- Collection slots filled\n- Bundles progressing\n- Sanctuary growing"]
+        EM["Emotions:\nPride --> Strategic tension\n(which specimen?) --> Warm satisfaction"]
+        CIR["Circumstances:\nHas identified items in pack,\ncollection slots available"]
+
+        STEPS --> SC
+        STEPS --> EM
+        STEPS --> CIR
+        FJ --> RJ
+    end
+
+    subgraph SPEC["System Spec"]
+        direction TB
+
+        subgraph INPUTS["Inputs"]
+            I1["Identified item"]
+            I2["Collection eligibility\n(habitats x continents x class)"]
+        end
+
+        subgraph OUTPUTS["Outputs"]
+            O1["Donated item (permanent)"]
+            O2["Collection progress"]
+            O3["Sanctuary state"]
+        end
+
+        SF["Skill Feed:\n+1 to skill matching item type"]
+
+        GT["Gating Requirements:\nItem must be IDENTIFIED"]
+
+        subgraph DATA["Data Requirements"]
+            D1["v3_items"]
+            D2["v3_sanctuary_donations"]
+            D3["collection_key computation"]
+        end
+
+        RES["Resolves Critiques:\n3.3 - farming grind (separate specimens per slot)\n3.4 - sanctuary reward"]
+
+        INPUTS --> OUTPUTS
+        OUTPUTS --> SF
+        SF --> GT
+        GT --> DATA
+        DATA --> RES
+    end
+
+    JTBD --> SPEC

@@ -1,0 +1,62 @@
+flowchart LR
+    subgraph ACTIVITIES [13 Activities]
+        direction TB
+        A1[1. Explore a cell]
+        A2[2. Discover a specimen]
+        A3[3. Identify a specimen]
+        A4[4. Donate to collection]
+        A5[5. Feed sanctuary animal]
+        A6[6. Review recap]
+        A7[7. Breed\nstubbed]
+        A8[8. Cultivate\nstubbed]
+        A9[9. Harvest\nstubbed]
+        A10[10. Craft\nstubbed]
+        A11[11. Reconstruct\nstubbed]
+        A12[12. Restore\nstubbed]
+        A13[13. Trade\nstubbed]
+    end
+
+    subgraph SKILLS [5 Skills -- Stardew Levels 1-10]
+        direction TB
+        S1[Zoology\nfauna]
+        S2[Botany\nflora]
+        S3[Geology\nmineral]
+        S4[Paleontology\nfossil]
+        S5[Archaeology\nartifact]
+    end
+
+    A1 -->|fauna found| S1
+    A1 -->|flora found| S2
+    A1 -->|mineral found| S3
+    A1 -->|fossil found| S4
+    A1 -->|artifact found| S5
+
+    A2 -->|fauna| S1
+    A2 -->|flora| S2
+    A2 -->|mineral| S3
+    A2 -->|fossil| S4
+    A2 -->|artifact| S5
+
+    A3 -->|fauna| S1
+    A3 -->|flora| S2
+    A3 -->|mineral| S3
+    A3 -->|fossil| S4
+    A3 -->|artifact| S5
+
+    A4 -->|fauna| S1
+    A4 -->|flora| S2
+    A4 -->|mineral| S3
+    A4 -->|fossil| S4
+    A4 -->|artifact| S5
+
+    A5 -->|always| S1
+
+    A6 -.-x|no skill feed| SKILLS
+
+    A7 -.->|stubbed| S1
+    A8 -.->|stubbed| S2
+    A9 -.->|stubbed| S2
+    A10 -.->|stubbed| S3
+    A11 -.->|stubbed| S4
+    A12 -.->|stubbed| S5
+    A13 -.->|stubbed| SKILLS

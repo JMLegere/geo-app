@@ -1,0 +1,42 @@
+flowchart TD
+    INPUT[/Input: instanceUUID/] --> HASH[Compute hash =\nSHA-256 of instanceUUID]
+    HASH --> EXTRACT[Extract seed bytes:\nbytes 0..7 from 32-byte hash]
+
+    EXTRACT --> BASELINE[/Species baseline stats:\nbrawn_base + wit_base + speed_base = 90/]
+
+    BASELINE --> VARIANCE_CALC
+
+    subgraph VARIANCE_CALC [Variance Calculation per Stat]
+        direction TB
+        SEED_PORTION[Divide seed into 3 portions:\nbytes 0-1 for brawn\nbytes 2-3 for wit\nbytes 4-5 for speed]
+        SEED_PORTION --> NORMALIZE_SEED[Normalize each portion to 0.0 .. 1.0:\nportion_float = uint16 / 65535]
+        NORMALIZE_SEED --> CALC_VAR["For each stat:\nvariance = portion_float * 0.6 * base - 0.3 * base\nRange: -30% to +30% of base"]
+    end
+
+    VARIANCE_CALC --> RAW[/"Raw stats:\nbrawn_raw = brawn_base + variance_brawn\nwit_raw = wit_base + variance_wit\nspeed_raw = speed_base + variance_speed"/]
+
+    RAW --> SUM_CHECK["Compute raw_sum =\nbrawn_raw + wit_raw + speed_raw"]
+
+    SUM_CHECK --> NORMALIZE
+
+    subgraph NORMALIZE [Normalize to Sum = 90]
+        direction TB
+        SCALE["scale = 90 / raw_sum"]
+        SCALE --> APPLY["brawn = round brawn_raw * scale\nwit = round wit_raw * scale\nspeed = 90 - brawn - wit"]
+    end
+
+    NORMALIZE --> OUTPUT[/"Output:\nbrawn + wit + speed = 90\nAll integers, deterministic"/]
+
+    OUTPUT --> EXAMPLE
+
+    subgraph EXAMPLE [Test Vector Example]
+        direction TB
+        EX_UUID["instanceUUID =\n550e8400-e29b-41d4-a716-446655440000"]
+        EX_HASH["SHA-256 = \n3c26b8e3..."]
+        EX_BASE["Species baseline:\nbrawn=30, wit=30, speed=30"]
+        EX_SEED["seed bytes 0..5 extracted\nportion_brawn=0.42\nportion_wit=0.78\nportion_speed=0.15"]
+        EX_VAR["variance_brawn = 0.42*0.6*30 - 0.3*30 = -1.44\nvariance_wit = 0.78*0.6*30 - 0.3*30 = +5.04\nvariance_speed = 0.15*0.6*30 - 0.3*30 = -6.30"]
+        EX_RAW["raw: brawn=28.56, wit=35.04, speed=23.70\nraw_sum = 87.30"]
+        EX_FINAL["scale = 90/87.30 = 1.0309\nbrawn = round 29.44 = 29\nwit = round 36.12 = 36\nspeed = 90 - 29 - 36 = 25\nFinal: 29 + 36 + 25 = 90"]
+        EX_UUID --> EX_HASH --> EX_BASE --> EX_SEED --> EX_VAR --> EX_RAW --> EX_FINAL
+    end

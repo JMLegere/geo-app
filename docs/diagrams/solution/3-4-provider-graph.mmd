@@ -1,0 +1,72 @@
+flowchart TD
+    supabase["supabaseProvider\n(Supabase client)"]
+    observability["observabilityProvider"]
+    locationProv["locationProvider\n(GPS — no deps)"]
+
+    authService["authServiceProvider"]
+    itemService["itemServiceProvider"]
+
+    auth["authProvider\n(AuthNotifier)"]
+    items["itemsProvider\n(ItemsNotifier)"]
+
+    %% Future providers
+    speciesSync["speciesSyncProvider\n(future)"]
+    writeQueue["writeQueueProvider\n(future)"]
+    identification["identificationProvider\n(future)"]
+    sanctuary["sanctuaryProvider\n(future)"]
+    recap["recapProvider\n(future)"]
+    skillProgress["skillProgressProvider\n(future)"]
+    encounter["encounterProvider\n(future)"]
+    cellVisit["cellVisitProvider\n(future)"]
+
+    %% Current dependencies
+    supabase --> authService
+    supabase --> itemService
+
+    authService --> auth
+    observability --> auth
+
+    itemService --> items
+    auth --> items
+    observability --> items
+
+    %% Future dependencies
+    supabase --> speciesSync
+    supabase --> writeQueue
+    observability --> writeQueue
+
+    items --> identification
+    speciesSync --> identification
+    writeQueue --> identification
+
+    items --> sanctuary
+    writeQueue --> sanctuary
+
+    items --> recap
+    auth --> recap
+
+    items --> skillProgress
+    auth --> skillProgress
+
+    speciesSync --> encounter
+    items --> encounter
+
+    locationProv --> cellVisit
+    supabase --> cellVisit
+
+    %% Styling
+    style supabase fill:#3ecf8e,color:#fff
+    style observability fill:#78716c,color:#fff
+    style locationProv fill:#06b6d4,color:#fff
+    style auth fill:#4a9eff,color:#fff
+    style items fill:#4a9eff,color:#fff
+    style authService fill:#a3a3a3,color:#fff
+    style itemService fill:#a3a3a3,color:#fff
+    style speciesSync fill:#a855f7,color:#fff
+    style writeQueue fill:#a855f7,color:#fff
+    style identification fill:#a855f7,color:#fff
+    style sanctuary fill:#a855f7,color:#fff
+    style recap fill:#a855f7,color:#fff
+    style skillProgress fill:#a855f7,color:#fff
+    style encounter fill:#a855f7,color:#fff
+    style cellVisit fill:#a855f7,color:#fff

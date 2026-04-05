@@ -1,0 +1,53 @@
+stateDiagram-v2
+    [*] --> UNIDENTIFIED_UNENRICHED : discovery (cell encounter)
+
+    state "UNIDENTIFIED_UNENRICHED" as UNIDENTIFIED_UNENRICHED
+    state "UNIDENTIFIED_ENRICHED" as UNIDENTIFIED_ENRICHED
+    state "IDENTIFIED" as IDENTIFIED
+    state "DONATED" as DONATED
+    state "PLACED" as PLACED
+    state "RELEASED" as RELEASED
+    state "TRADED" as TRADED
+
+    note right of UNIDENTIFIED_UNENRICHED
+        Item discovered, species not yet enriched.
+        Silhouette display.
+        Hold gesture does nothing.
+    end note
+
+    note right of UNIDENTIFIED_ENRICHED
+        Species enrichment complete.
+        Silhouette but responds to hold gesture.
+    end note
+
+    note right of IDENTIFIED
+        Full TCG card revealed.
+        Stats rolled (brawn / wit / speed).
+        Art revealed, affixes assigned.
+    end note
+
+    note right of DONATED
+        Permanently placed in a sanctuary collection.
+        Leaves pack. Irreversible.
+    end note
+
+    note right of PLACED
+        In sanctuary display (not collection slot).
+        Visual only. Removable.
+    end note
+
+    note right of RELEASED
+        Removed from inventory. Gone.
+    end note
+
+    note right of TRADED
+        Transferred to another player.
+    end note
+
+    UNIDENTIFIED_UNENRICHED --> UNIDENTIFIED_ENRICHED : species enrichment completes\n(server‑side, silent)
+    UNIDENTIFIED_ENRICHED --> IDENTIFIED : hold‑to‑reveal\n(client‑side stat roll + animation)
+    IDENTIFIED --> DONATED : donate to collection (permanent)
+    IDENTIFIED --> PLACED : place in sanctuary (removable)
+    IDENTIFIED --> RELEASED : release (destructive)
+    IDENTIFIED --> TRADED : trade to player (deferred)
+    PLACED --> IDENTIFIED : remove from sanctuary display

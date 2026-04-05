@@ -1,0 +1,74 @@
+flowchart TD
+    subgraph JTBD["JTBD: Stay connected to my growing world"]
+        direction TB
+
+        JP["Job Performer: Returning Player\n(been away 6h+)"]
+        ASP["Aspirations:\nFeel like the world continued without me,\ncatch up warmly"]
+        FJ["Focus Job:\nStay connected to\nmy growing world"]
+
+        JP --> ASP --> FJ
+
+        subgraph STEPS["Steps"]
+            direction LR
+            S1["PLAN\nOpen app\nafter absence"]
+            S2["PREPARE\nSystem checks\n6h threshold"]
+            S3["EXECUTE\nView recap cards"]
+            S4["MONITOR\nSwipe through:\nWhat's New, Progress,\nCommunity, Pending"]
+            S5["MODIFY\nSkip if\nnot interested"]
+            S6["CONCLUDE\nCaught up,\nready to explore"]
+            S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        end
+
+        FJ --> STEPS
+
+        subgraph RJ["Related Jobs"]
+            RJ1["Resume exploration"]
+            RJ2["Identify pending items"]
+            RJ3["Check community activity"]
+        end
+
+        SC["Success Criteria:\n- Player feels informed\n- Player feels motivated to continue"]
+        EM["Emotions:\nWarm welcome --> Curiosity\n(what happened?) --> Motivation"]
+        CIR["Circumstances:\n6h+ since last session,\nnot first-ever login"]
+
+        STEPS --> SC
+        STEPS --> EM
+        STEPS --> CIR
+        FJ --> RJ
+    end
+
+    subgraph SPEC["System Spec"]
+        direction TB
+
+        subgraph INPUTS["Inputs"]
+            I1["last_recap_dismissed_at"]
+            I2["Current time"]
+            I3["Player activity data"]
+        end
+
+        subgraph OUTPUTS["Outputs"]
+            O1["Recap card stack\n(4 pages)"]
+            O2["Updated dismissal\ntimestamp"]
+        end
+
+        SF["Skill Feed:\nNone (recap is passive)"]
+
+        GT["Gating Requirements:\n6h+ since last recap dismissal\nNot first-ever login"]
+
+        subgraph DATA["Data Requirements"]
+            D1["v3_items"]
+            D2["v3_cell_visits"]
+            D3["Community aggregates"]
+            D4["v3_recap_snapshots"]
+        end
+
+        RES["Resolves Critiques:\n3.1 - ghosted gate (recap says X unidentified)\n3.2 - recap on-demand not cron"]
+
+        INPUTS --> OUTPUTS
+        OUTPUTS --> SF
+        SF --> GT
+        GT --> DATA
+        DATA --> RES
+    end
+
+    JTBD --> SPEC

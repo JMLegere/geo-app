@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant EnrichmentPipeline
+    participant SpeciesTable
+    participant Client_AppStart
+    participant LocalSpeciesTable
+    participant ItemsProvider
+    participant PackScreen
+
+    EnrichmentPipeline->>SpeciesTable: UPDATE species row (art_url now non-null)
+
+    Note over Client_AppStart: Client opens app or returns from background
+    Client_AppStart->>SpeciesTable: SELECT id, common_name, icon_url, art_url, brawn, wit, speed, ...<br/>FROM species WHERE updated_at > :lastSyncTimestamp
+    SpeciesTable-->>Client_AppStart: Changed species rows
+
+    loop For each changed species
+        Client_AppStart->>LocalSpeciesTable: UPSERT into LocalSpeciesTable
+    end
+    Client_AppStart->>Client_AppStart: Update lastSyncTimestamp
+
+    ItemsProvider->>LocalSpeciesTable: Cross-reference items whose definition_id matches newly-enriched species
+    LocalSpeciesTable-->>ItemsProvider: Matched items now have "fully enriched" predicate = true
+
+    ItemsProvider->>PackScreen: Notify updated item state
+    PackScreen->>PackScreen: Previously non-responsive cards now respond to hold gesture
+
+    Note over PackScreen: No push notification.<br/>Player discovers organically.
