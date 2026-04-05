@@ -303,9 +303,9 @@ void main() {
       await tester.tap(find.text('Red Fox'));
       await tester.pumpAndSettle();
 
-      // Species card should show scientific name.
+      // TCG card should show scientific name and date.
       expect(find.text('Vulpes vulpes'), findsOneWidget);
-      expect(find.text('DISCOVERED'), findsOneWidget);
+      expect(find.text('Jan 1, 2026'), findsOneWidget);
     });
 
     testWidgets('toggling filter off restores all items', (tester) async {

@@ -309,14 +309,14 @@ class _CategoryRow extends StatelessWidget {
           vertical: Spacing.xs,
         ),
         child: Row(
-          children: List.generate(ItemCategory.values.length, (index) {
+          children: List.generate(ItemCategory.values.length * 2 - 1, (i) {
+            if (i.isOdd) return const SizedBox(width: Spacing.xxs);
+            final index = i ~/ 2;
             final cat = ItemCategory.values[index];
-            final count = allItems.where((i) => i.category == cat).length;
             return Expanded(
               child: _CategoryChip(
                 category: cat,
                 selected: cat == category,
-                count: count,
                 onTap: () => onCategoryChanged(index),
               ),
             );
@@ -331,13 +331,11 @@ class _CategoryChip extends StatelessWidget {
   const _CategoryChip({
     required this.category,
     required this.selected,
-    required this.count,
     required this.onTap,
   });
 
   final ItemCategory category;
   final bool selected;
-  final int count;
   final VoidCallback onTap;
 
   @override
@@ -350,17 +348,24 @@ class _CategoryChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: Durations.quick,
         curve: AppCurves.standard,
-        padding: const EdgeInsets.symmetric(
-          horizontal: Spacing.xxs,
-          vertical: Spacing.xxs,
-        ),
+        padding: const EdgeInsets.all(Spacing.xxs),
         decoration: BoxDecoration(
           color: selected ? AppTheme.primary : AppTheme.surfaceContainerHigh,
           borderRadius: BorderRadius.circular(Radii.md),
-          border: Border.all(
-            color: selected ? AppTheme.primary : AppTheme.outline,
-            width: 1,
-          ),
+          boxShadow: [
+            if (selected)
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.45),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              )
+            else
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.20),
+                blurRadius: 3,
+                offset: const Offset(0, 1.5),
+              ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -368,31 +373,22 @@ class _CategoryChip extends StatelessWidget {
           children: [
             Text(
               category.emoji,
-              style: const TextStyle(fontSize: 13, height: 1.0),
+              style: const TextStyle(fontSize: 18, height: 1.0),
             ),
-            Text(
-              category.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 8,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                color: selected ? Colors.white : AppTheme.onSurfaceVariant,
-                height: 1.1,
-              ),
-            ),
-            if (count > 0)
-              Text(
-                '$count',
+            const SizedBox(height: 1),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                category.label,
                 style: TextStyle(
-                  fontSize: 7,
-                  fontWeight: FontWeight.w700,
-                  color: selected
-                      ? Colors.white.withValues(alpha: 0.8)
-                      : AppTheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                  color: selected ? Colors.white : AppTheme.onSurfaceVariant,
                   height: 1.1,
+                  letterSpacing: -0.2,
                 ),
               ),
+            ),
           ],
         ),
       ),
@@ -981,10 +977,43 @@ class _RarityFilterToggle extends StatelessWidget {
 
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
   const _SearchBar({required this.query, required this.onChanged});
   final String query;
   final void Function(String) onChanged;
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.query);
+  }
+
+  @override
+  void didUpdateWidget(_SearchBar old) {
+    super.didUpdateWidget(old);
+    // Sync controller when parent clears query (e.g. category change).
+    if (widget.query != old.query && widget.query != _controller.text) {
+      _controller.text = widget.query;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _clear() {
+    _controller.clear();
+    widget.onChanged('');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1009,7 +1038,8 @@ class _SearchBar extends StatelessWidget {
           const SizedBox(width: Spacing.sm),
           Expanded(
             child: TextField(
-              onChanged: onChanged,
+              controller: _controller,
+              onChanged: widget.onChanged,
               style: const TextStyle(
                 fontSize: 14,
                 color: AppTheme.onSurface,
@@ -1028,9 +1058,9 @@ class _SearchBar extends StatelessWidget {
               ),
             ),
           ),
-          if (query.isNotEmpty)
+          if (widget.query.isNotEmpty)
             GestureDetector(
-              onTap: () => onChanged(''),
+              onTap: _clear,
               child: Icon(
                 Icons.close,
                 size: 16,
