@@ -56,13 +56,13 @@ L0: Become an explorer who discovers and cares about the natural world
      ├─ D: Reconnect with progress on return
      │   ├─ D.1: Review personal progress (recap)
      │   └─ D.2: See community milestones
-     ├─ E: Share my world with other explorers (DEFERRED)
+     ├─ E: Share my world with other explorers
      │   ├─ E.1: Trade specimens
      │   ├─ E.2: Compare sanctuaries
      │   └─ E.3: Participate in community goals
      ├─ F: Manage my explorer identity
      │   ├─ F.1: Create account and sign in
-     │   ├─ F.2: Customize profile (DEFERRED)
+     │   ├─ F.2: Customize profile
      │   └─ F.3: Manage account settings
      └─ S: [System] Keep the world growing
          ├─ S.1: Enrich species for identification
@@ -149,10 +149,9 @@ Every `.mmd` file uses `flowchart TD` with two subgraphs:
 | Tag | Meaning |
 |-----|---------|
 | (no tag) | Active — in scope, being built or planned |
-| DEFERRED | Designed but not scheduled. Architecture hooks only. |
 | PHASE N | Part of implementation phase N (see `prd-game-systems.md` §13) |
 
-Current deferred items: E (all social), F.2 (profile customization).
+All canvases are in scope. Nothing is deferred.
 
 ---
 
@@ -175,7 +174,7 @@ Current deferred items: E (all social), F.2 (profile customization).
 | D (Reconnect) | 6-6 | §8 Recap |
 | D.1 (Recap) | 6-6 | §8 |
 | D.2 (Community) | — | §9 Community |
-| E (Social) | — | §9 (deferred) |
+| E (Social) | — | §9 Community |
 | F (Identity) | 6-7 | design.md §4 |
 | F.1 (Auth) | 6-7 | design.md §4 |
 | S (System) | 5-2, 5-4, 6-2, 6-3 | §4 Enrichment |

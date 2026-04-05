@@ -1,5 +1,5 @@
 flowchart TD
-    subgraph JTBD["JTBD Canvas -- L3-E.3: Participate in Community Goals DEFERRED"]
+    subgraph JTBD["JTBD Canvas -- L3-E.3: Participate in Community Goals"]
         JP["<b>Job Performer</b><br/>Player contributing to<br/>shared milestones"]
         ASP["<b>Aspirations</b><br/>Feel part of something larger<br/>Collective achievement"]
         FJ["<b>Focus Job</b><br/>Participate in<br/>community goals"]
@@ -12,7 +12,7 @@ flowchart TD
         CONCLUDE["<b>CONCLUDE</b><br/>Goal reached,<br/>everyone benefits"]
         SC["<b>Success Criteria</b><br/>Contribution feels meaningful<br/>Collective reward earned"]
         EM["<b>Emotions</b><br/>Purpose --> Solidarity --> Shared triumph"]
-        CIRC["<b>Circumstances</b><br/>Active community goal exists<br/>DEFERRED: not in MVP"]
+        CIRC["<b>Circumstances</b><br/>Active community goal exists,<br/>player has qualifying actions available"]
 
         JP --> FJ
         ASP --> FJ
@@ -24,12 +24,12 @@ flowchart TD
         FJ --> CIRC
     end
 
-    subgraph SystemSpec["System Spec -- L3-E.3 DEFERRED"]
-        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Four community models:<br/>cooperative milestone,<br/>ambient presence,<br/>trading economy,<br/>friendly competition"]
-        OUT["<b>Outputs</b><br/>Phase 1: simple aggregate counters<br/>Full implementation post-MVP"]
-        SF["<b>Skill Feed</b><br/>Community actions may<br/>grant bonus skill XP<br/>in future phases"]
-        GT["<b>Gating</b><br/>Phase 1: counters in recap only<br/>Full goals require backend"]
-        DR["<b>Data Requirements</b><br/>Future: community_goals table,<br/>contribution tracking,<br/>reward distribution system"]
+    subgraph SystemSpec["System Spec -- L3-E.3"]
+        IN["<b>Inputs</b><br/>Active community goal definition,<br/>qualifying action types,<br/>player actions"]
+        OUT["<b>Outputs</b><br/>Contribution count incremented,<br/>global progress bar updated,<br/>rewards on completion"]
+        SF["<b>Skill Feed</b><br/>Community actions may<br/>grant bonus skill XP"]
+        GT["<b>Gating</b><br/>Active goal exists,<br/>player can perform qualifying actions"]
+        DR["<b>Data Requirements</b><br/>v3_community_goals table,<br/>v3_goal_contributions table,<br/>reward distribution system,<br/>real-time progress aggregation"]
 
         IN --> OUT
         SF --> GT

@@ -1,5 +1,5 @@
 flowchart TD
-    subgraph JTBD["JTBD Canvas -- L3-E.2: Compare Sanctuaries DEFERRED"]
+    subgraph JTBD["JTBD Canvas -- L3-E.2: Compare Sanctuaries"]
         JP["<b>Job Performer</b><br/>Curious player browsing<br/>others builds"]
         ASP["<b>Aspirations</b><br/>See whats possible<br/>Get inspired<br/>Friendly comparison"]
         FJ["<b>Focus Job</b><br/>Compare sanctuaries"]
@@ -12,7 +12,7 @@ flowchart TD
         CONCLUDE["<b>CONCLUDE</b><br/>Inspired to build more"]
         SC["<b>Success Criteria</b><br/>Best conservationist not who is strongest<br/>Collection completion %, species identified"]
         EM["<b>Emotions</b><br/>Curiosity --> Admiration --> Inspiration"]
-        CIRC["<b>Circumstances</b><br/>Player seeks comparison<br/>DEFERRED: not in MVP"]
+        CIRC["<b>Circumstances</b><br/>Player wants to see how others<br/>have built their sanctuaries"]
 
         JP --> FJ
         ASP --> FJ
@@ -24,12 +24,12 @@ flowchart TD
         FJ --> CIRC
     end
 
-    subgraph SystemSpec["System Spec -- L3-E.2 DEFERRED"]
-        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Requires: public sanctuary<br/>read access, player profiles"]
-        OUT["<b>Outputs</b><br/>Other players sanctuary view<br/>Comparison metrics"]
+    subgraph SystemSpec["System Spec -- L3-E.2"]
+        IN["<b>Inputs</b><br/>Other player ID,<br/>public sanctuary flag"]
+        OUT["<b>Outputs</b><br/>Other players sanctuary view,<br/>comparison metrics"]
         SF["<b>Skill Feed</b><br/>Metrics: collection completion %,<br/>species identified,<br/>sanctuary size"]
-        GT["<b>Gating</b><br/>Requires public profiles<br/>Not in MVP scope"]
-        DR["<b>Data Requirements</b><br/>Future: public v3_sanctuary_donations,<br/>player profiles,<br/>leaderboard aggregation"]
+        GT["<b>Gating</b><br/>Public profiles enabled,<br/>sanctuary visibility opt-in"]
+        DR["<b>Data Requirements</b><br/>Public v3_sanctuary_donations read,<br/>v3_profiles with public flag,<br/>leaderboard aggregation table"]
 
         IN --> OUT
         SF --> GT

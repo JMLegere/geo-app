@@ -1,6 +1,5 @@
 %% L3-F.2: Customize profile
 %% Parent: F (Manage my explorer identity)
-%% Status: DEFERRED (post-MVP)
 
 flowchart TD
     subgraph JTBD["JTBD Canvas — F.2: Customize profile"]
@@ -33,8 +32,8 @@ flowchart TD
         IN["**Inputs**\ndisplay_name (text),\navatar (image or selection)"]
         OUT["**Outputs**\nUPDATE v3_profiles\nSET display_name, avatar_url"]
         GATE["**Gating**\nAuthenticated"]
-        DATA["**Data**\nv3_profiles"]
-        STATUS["**Status: DEFERRED**\nMVP default: 'Explorer' + identicon\nCustomization post-MVP"]
+        DATA["**Data**\nv3_profiles,\nSupabase Storage (avatar images)"]
+        COMP["**Components**\nProfileScreen, ProfileNotifier,\nProfileService, AvatarPicker"]
     end
 
     JTBD --> SYS

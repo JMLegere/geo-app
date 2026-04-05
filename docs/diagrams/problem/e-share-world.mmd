@@ -1,5 +1,5 @@
 flowchart TD
-    subgraph JTBD["JTBD Canvas -- L2-E: Share My World with Other Explorers DEFERRED"]
+    subgraph JTBD["JTBD Canvas -- L2-E: Share My World with Other Explorers"]
         JP["<b>Job Performer</b><br/>Social player"]
         ASP["<b>Aspirations</b><br/>Show off sanctuary<br/>Help others<br/>Participate in something bigger"]
         FJ["<b>Focus Job</b><br/>Share my world with<br/>other explorers"]
@@ -12,7 +12,7 @@ flowchart TD
         CONCLUDE["<b>CONCLUDE</b><br/>Feel part of community"]
         SC["<b>Success Criteria</b><br/>Meaningful social interactions<br/>Cooperative not toxic"]
         EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
-        CIRC["<b>Circumstances</b><br/>Player seeks social features<br/>DEFERRED: not in MVP"]
+        CIRC["<b>Circumstances</b><br/>Player seeks social features<br/>Multiplayer backend required"]
 
         JP --> FJ
         ASP --> FJ
@@ -24,12 +24,12 @@ flowchart TD
         FJ --> CIRC
     end
 
-    subgraph SystemSpec["System Spec -- L2-E DEFERRED"]
-        IN["<b>Inputs</b><br/>Status: FULLY DEFERRED<br/>Architecture hooks only"]
-        OUT["<b>Outputs</b><br/>ItemStatus already has traded<br/>Community counters in recap<br/>from Phase 1"]
-        SF["<b>Skill Feed</b><br/>Trading requires<br/>item transfer system"]
-        GT["<b>Gating</b><br/>Multiplayer backend<br/>not in MVP"]
-        DR["<b>Data Requirements</b><br/>Future: trade system,<br/>public sanctuaries,<br/>community goal backend"]
+    subgraph SystemSpec["System Spec -- L2-E"]
+        IN["<b>Inputs</b><br/>Player identity, sanctuary state,<br/>item inventory, community goals"]
+        OUT["<b>Outputs</b><br/>Traded items, sanctuary visits,<br/>community progress, leaderboards"]
+        SF["<b>Skill Feed</b><br/>Trading may grant skill XP<br/>based on item types exchanged"]
+        GT["<b>Gating</b><br/>Authenticated, multiplayer backend,<br/>item transfer system"]
+        DR["<b>Data Requirements</b><br/>Trade proposals table,<br/>public sanctuaries,<br/>community goals backend,<br/>leaderboard aggregation"]
 
         IN --> OUT
         SF --> GT

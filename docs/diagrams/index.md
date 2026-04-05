@@ -78,7 +78,7 @@ See [`problem/AGENTS.md`](problem/AGENTS.md) for full guidance.
 | B | [`problem/b-identify-specimens.mmd`](problem/b-identify-specimens.mmd) | Identify specimens in my collection | 2.1, 2.3, 2.4 |
 | C | [`problem/c-curate-sanctuary.mmd`](problem/c-curate-sanctuary.mmd) | Curate a sanctuary through donations | 3.3, 3.4 |
 | D | [`problem/d-reconnect-return.mmd`](problem/d-reconnect-return.mmd) | Reconnect with progress on return | 3.1, 3.2 |
-| E | [`problem/e-share-world.mmd`](problem/e-share-world.mmd) | Share my world with other explorers (DEFERRED) | — |
+| E | [`problem/e-share-world.mmd`](problem/e-share-world.mmd) | Share my world with other explorers | — |
 | F | [`problem/f-manage-identity.mmd`](problem/f-manage-identity.mmd) | Manage my explorer identity | — |
 | S | [`problem/s-system-growing.mmd`](problem/s-system-growing.mmd) | [System] Keep the world growing | 2.2, 2.3, 2.4 |
 
@@ -97,11 +97,11 @@ See [`problem/AGENTS.md`](problem/AGENTS.md) for full guidance.
 | C.3 | [`problem/c3-complete-bundles.mmd`](problem/c3-complete-bundles.mmd) | Complete collection bundles | C |
 | D.1 | [`problem/d1-review-recap.mmd`](problem/d1-review-recap.mmd) | Review personal progress (recap) | D |
 | D.2 | [`problem/d2-community-milestones.mmd`](problem/d2-community-milestones.mmd) | See community milestones | D |
-| E.1 | [`problem/e1-trade-specimens.mmd`](problem/e1-trade-specimens.mmd) | Trade specimens (DEFERRED) | E |
-| E.2 | [`problem/e2-compare-sanctuaries.mmd`](problem/e2-compare-sanctuaries.mmd) | Compare sanctuaries (DEFERRED) | E |
-| E.3 | [`problem/e3-community-goals.mmd`](problem/e3-community-goals.mmd) | Participate in community goals (DEFERRED) | E |
+| E.1 | [`problem/e1-trade-specimens.mmd`](problem/e1-trade-specimens.mmd) | Trade specimens | E |
+| E.2 | [`problem/e2-compare-sanctuaries.mmd`](problem/e2-compare-sanctuaries.mmd) | Compare sanctuaries | E |
+| E.3 | [`problem/e3-community-goals.mmd`](problem/e3-community-goals.mmd) | Participate in community goals | E |
 | F.1 | [`problem/f1-create-sign-in.mmd`](problem/f1-create-sign-in.mmd) | Create account and sign in | F |
-| F.2 | [`problem/f2-customize-profile.mmd`](problem/f2-customize-profile.mmd) | Customize profile (DEFERRED) | F |
+| F.2 | [`problem/f2-customize-profile.mmd`](problem/f2-customize-profile.mmd) | Customize profile | F |
 | F.3 | [`problem/f3-manage-settings.mmd`](problem/f3-manage-settings.mmd) | Manage account settings | F |
 | S.1 | [`problem/s1-enrich-species.mmd`](problem/s1-enrich-species.mmd) | Enrich species for identification | S |
 | S.2 | [`problem/s2-sync-data.mmd`](problem/s2-sync-data.mmd) | Sync data between device and server | S |

@@ -1,5 +1,5 @@
 flowchart TD
-    subgraph JTBD["JTBD Canvas -- L3-E.1: Trade Specimens DEFERRED"]
+    subgraph JTBD["JTBD Canvas -- L3-E.1: Trade Specimens"]
         JP["<b>Job Performer</b><br/>Player with duplicates<br/>or specific needs"]
         ASP["<b>Aspirations</b><br/>I have something you need<br/>Mutual benefit"]
         FJ["<b>Focus Job</b><br/>Trade specimens"]
@@ -10,9 +10,9 @@ flowchart TD
         MONITOR["<b>MONITOR</b><br/>Items transfer"]
         MODIFY["<b>MODIFY</b><br/>Adjust offer if<br/>partner declines"]
         CONCLUDE["<b>CONCLUDE</b><br/>Both players enriched"]
-        SC["<b>Success Criteria</b><br/>Fair exchange<br/>Both parties satisfied"]
+        SC["<b>Success Criteria</b><br/>Fair exchange<br/>Both parties satisfied<br/>Items transfer atomically"]
         EM["<b>Emotions</b><br/>Hope --> Negotiation --> Mutual satisfaction"]
-        CIRC["<b>Circumstances</b><br/>Player has surplus specimens<br/>DEFERRED: not in MVP"]
+        CIRC["<b>Circumstances</b><br/>Player has surplus specimens<br/>or needs specific species for collections"]
 
         JP --> FJ
         ASP --> FJ
@@ -24,12 +24,12 @@ flowchart TD
         FJ --> CIRC
     end
 
-    subgraph SystemSpec["System Spec -- L3-E.1 DEFERRED"]
-        IN["<b>Inputs</b><br/>Status: DEFERRED<br/>Requires: multiplayer backend,<br/>item transfer system,<br/>trade confirmation UI"]
-        OUT["<b>Outputs</b><br/>ItemStatus.traded already exists<br/>Hook: v3_items status can<br/>transition to traded"]
-        SF["<b>Skill Feed</b><br/>No skill impact defined<br/>for trading yet"]
-        GT["<b>Gating</b><br/>Requires multiplayer backend<br/>Not in MVP scope"]
-        DR["<b>Data Requirements</b><br/>Future: trade proposals table,<br/>trade confirmations,<br/>item ownership transfer"]
+    subgraph SystemSpec["System Spec -- L3-E.1"]
+        IN["<b>Inputs</b><br/>Two players, items to exchange,<br/>trade proposal"]
+        OUT["<b>Outputs</b><br/>Item ownership transferred,<br/>v3_items.status = traded,<br/>new items in recipient pack"]
+        SF["<b>Skill Feed</b><br/>No skill impact from trading<br/>(skill XP from discovery/identification only)"]
+        GT["<b>Gating</b><br/>Both players authenticated,<br/>items must be identified,<br/>mutual confirmation required"]
+        DR["<b>Data Requirements</b><br/>v3_trade_proposals table,<br/>v3_trade_confirmations table,<br/>atomic item ownership transfer,<br/>ItemStatus.traded transition"]
 
         IN --> OUT
         SF --> GT
