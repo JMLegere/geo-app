@@ -19,49 +19,46 @@ void main() {
       expect(find.text('Vulpes vulpes'), findsOneWidget);
     });
 
-    testWidgets('displays rarity badge when rarity is set', (tester) async {
+    testWidgets('displays rarity badge pill with full name', (tester) async {
       final item = _item(rarity: 'endangered');
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.textContaining('EN'), findsOneWidget);
-      expect(find.textContaining('Endangered'), findsOneWidget);
+      expect(find.text('EN · Endangered'), findsOneWidget);
     });
 
-    testWidgets('displays category chip', (tester) async {
+    testWidgets('displays category emoji in art overlay', (tester) async {
       final item = _item(category: ItemCategory.flora);
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.text('Flora'), findsOneWidget);
+      expect(find.text('🌿'), findsAtLeast(1));
     });
 
-    testWidgets('displays habitat chips when present', (tester) async {
+    testWidgets('displays habitat emojis when present', (tester) async {
       final item = _item(habitats: ['Forest', 'Mountain']);
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.text('HABITAT'), findsOneWidget);
-      expect(find.text('Forest'), findsOneWidget);
-      expect(find.text('Mountain'), findsOneWidget);
+      expect(find.text('🌲'), findsOneWidget);
+      expect(find.text('🏔️'), findsOneWidget);
     });
 
-    testWidgets('displays region chips when present', (tester) async {
+    testWidgets('displays region emojis when present', (tester) async {
       final item = _item(continents: ['Africa', 'Asia']);
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.text('REGION'), findsOneWidget);
-      expect(find.text('Africa'), findsOneWidget);
-      expect(find.text('Asia'), findsOneWidget);
+      expect(find.text('🌍'), findsOneWidget);
+      expect(find.text('🌏'), findsOneWidget);
     });
 
     testWidgets('displays acquired date', (tester) async {
@@ -71,11 +68,10 @@ void main() {
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.text('DISCOVERED'), findsOneWidget);
       expect(find.text('Jan 15, 2026'), findsOneWidget);
     });
 
-    testWidgets('displays taxonomic group for fauna', (tester) async {
+    testWidgets('displays taxonomic group badge for fauna', (tester) async {
       final item = _item(taxonomicClass: 'MAMMALIA');
 
       await tester.pumpWidget(MaterialApp(
@@ -85,18 +81,18 @@ void main() {
       expect(find.text('Mammals'), findsOneWidget);
     });
 
-    testWidgets('hides habitat/region when empty', (tester) async {
+    testWidgets('hides habitat/region rows when empty', (tester) async {
       final item = _item();
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: SpeciesCard(item: item)),
       ));
 
-      expect(find.text('HABITAT'), findsNothing);
-      expect(find.text('REGION'), findsNothing);
+      expect(find.text('🌲'), findsNothing);
+      expect(find.text('🌍'), findsNothing);
     });
 
-    testWidgets('showSpeciesCard opens bottom sheet', (tester) async {
+    testWidgets('showSpeciesCard opens dialog overlay', (tester) async {
       final item = _item(name: 'Test Species');
 
       await tester.pumpWidget(MaterialApp(
@@ -124,6 +120,17 @@ void main() {
       ));
 
       expect(find.text('Cell v_45_67'), findsOneWidget);
+    });
+
+    testWidgets('CR shows diamond accent in rarity pill', (tester) async {
+      final item = _item(rarity: 'criticallyEndangered');
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SpeciesCard(item: item)),
+      ));
+
+      expect(find.text('◆'), findsOneWidget);
+      expect(find.text('CR'), findsAtLeast(1));
     });
   });
 }
