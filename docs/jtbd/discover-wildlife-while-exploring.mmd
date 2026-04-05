@@ -1,0 +1,78 @@
+%% status: review
+%% needs_human_review: true
+%% last_updated: 2026-04-05
+%% canvas: A
+%% job_statement: Discover wildlife while exploring the real world
+%% performer: Player with phone, outdoors
+%% aspiration: Experience the wonder of the natural world through exploration
+%% related_jobs: Navigate safely outdoors, Track fitness, Share experiences
+%% circumstances: Has free time, Wants to walk, Curious about nearby nature, New area to explore
+%% phase: Phase 4 (Map/Discovery)
+
+graph TB
+    subgraph CANVAS["JTBD Canvas A: Discover Wildlife While Exploring"]
+        direction TB
+
+        subgraph HEADER["Context"]
+            PERFORMER["<b>Job Performer</b><br/>Player with phone, outdoors or planning to go out"]
+            ASPIRATION["<b>Aspiration</b><br/>Experience the wonder of the<br/>natural world through exploration"]
+            RELATED["<b>Related Jobs</b><br/>Navigate safely outdoors<br/>Track fitness / steps<br/>Share experiences with friends"]
+        end
+
+        subgraph STEPS["Job Steps"]
+            direction LR
+            PLAN["<b>PLAN</b><br/><i>Decide where to<br/>explore next</i>"]
+            PREPARE["<b>PREPARE</b><br/><i>Open app, orient<br/>on map, see fog</i>"]
+            EXECUTE["<b>EXECUTE</b><br/><i>Walk into cells,<br/>trigger encounters,<br/>collect specimens</i>"]
+            MONITOR["<b>MONITOR</b><br/><i>Track discoveries<br/>this session</i>"]
+            MODIFY["<b>MODIFY</b><br/><i>Change direction,<br/>revisit areas</i>"]
+            CONCLUDE["<b>CONCLUDE</b><br/><i>End session,<br/>review finds</i>"]
+            PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        end
+
+        subgraph CRITERIA["Success Criteria"]
+            SC_PLAN["PLAN: Minimize time deciding<br/>Maximize confidence in reward"]
+            SC_PREP["PREPARE: Minimize load time<br/>Maximize explored-vs-unexplored clarity"]
+            SC_EXEC["EXECUTE: Maximize surprise per encounter<br/>Minimize wait between encounters<br/>Maximize species variety"]
+            SC_MON["MONITOR: Maximize progress awareness<br/>Minimize need to stop and check"]
+            SC_MOD["MODIFY: Maximize influence on species found<br/>Minimize wasted exploration"]
+            SC_CONC["CONCLUDE: Maximize accomplishment<br/>Minimize progress loss"]
+        end
+
+        subgraph BOTTOM[""]
+            direction LR
+            EMOTIONS["<b>Emotions</b><br/>Anticipation → Excitement →<br/>Surprise → Satisfaction →<br/>Contentment"]
+            CIRCUMSTANCES["<b>Circumstances</b><br/>Free time available<br/>Wants to walk / exercise<br/>Curious about nearby nature<br/>New unexplored area nearby"]
+        end
+    end
+
+    subgraph SYSTEMS["System Requirements"]
+        direction LR
+        SYS_PLAN["Map screen<br/>Fog-of-war overlay<br/>Unexplored = opportunity"]
+        SYS_PREP["GPS location<br/>Camera follow<br/>Fast app start &lt;1s"]
+        SYS_EXEC["Voronoi cell detection<br/>3 encounters per cell<br/>SHA-256 daily seed + cellId<br/>Rarity-weighted selection<br/>v3_items INSERT<br/>Rarity-scaled notification"]
+        SYS_MON["Pack count in tab bar<br/>Discovery counter"]
+        SYS_MOD["Explored vs unexplored on map<br/>Habitat hints (future)"]
+        SYS_CONC["Session stored in v3_cell_visits<br/>Recap captures session"]
+    end
+
+    PLAN -.-> SYS_PLAN
+    PREPARE -.-> SYS_PREP
+    EXECUTE -.-> SYS_EXEC
+    MONITOR -.-> SYS_MON
+    MODIFY -.-> SYS_MOD
+    CONCLUDE -.-> SYS_CONC
+
+    style CANVAS fill:#0D1B2A,stroke:#3D5060,color:#E0E1DD
+    style HEADER fill:#132333,stroke:#3D5060,color:#E0E1DD
+    style STEPS fill:#1A2D40,stroke:#006D77,color:#E0E1DD
+    style CRITERIA fill:#132333,stroke:#3D5060,color:#ADB5BD
+    style BOTTOM fill:#132333,stroke:#3D5060,color:#ADB5BD
+    style SYSTEMS fill:#243A50,stroke:#006D77,color:#83C5BE
+
+    style PLAN fill:#006D77,stroke:#83C5BE,color:#fff
+    style PREPARE fill:#006D77,stroke:#83C5BE,color:#fff
+    style EXECUTE fill:#006D77,stroke:#83C5BE,color:#fff
+    style MONITOR fill:#006D77,stroke:#83C5BE,color:#fff
+    style MODIFY fill:#006D77,stroke:#83C5BE,color:#fff
+    style CONCLUDE fill:#006D77,stroke:#83C5BE,color:#fff

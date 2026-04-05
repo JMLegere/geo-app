@@ -1,0 +1,84 @@
+%% status: review
+%% needs_human_review: true
+%% last_updated: 2026-04-05
+%% canvas: B
+%% job_statement: Identify specimens in my collection
+%% performer: Player with unidentified specimens in pack
+%% aspiration: Build a meaningful personal collection, feel the dopamine of discovery
+%% related_jobs: Compare specimens, Evaluate quality, Prepare sanctuary donations
+%% circumstances: Has mystery cards in pack, Some respond to hold (enriched) others don't, Wants to engage
+%% phase: Phase 1-3 (Identification / TCG / Animation)
+%% resolves_critique: 2.1, 2.3, 2.4, 3.1
+
+graph TB
+    subgraph CANVAS["JTBD Canvas B: Identify Specimens in Collection"]
+        direction TB
+
+        subgraph HEADER["Context"]
+            PERFORMER["<b>Job Performer</b><br/>Player with unidentified specimens, at home or idle"]
+            ASPIRATION["<b>Aspiration</b><br/>Build a meaningful personal collection<br/>Feel the dopamine of discovery<br/>Know my world deeply"]
+            RELATED["<b>Related Jobs</b><br/>Compare specimens of same species<br/>Evaluate quality / rarity<br/>Prepare donations for sanctuary"]
+        end
+
+        subgraph STEPS["Job Steps"]
+            direction LR
+            PLAN["<b>PLAN</b><br/><i>Browse pack, find<br/>unidentified specimens</i>"]
+            PREPARE["<b>PREPARE</b><br/><i>Select card, notice<br/>it responds to hold</i><br/>⚠️ Enrichment gate"]
+            EXECUTE["<b>EXECUTE</b><br/><i>Hold 1.2s → charge<br/>→ burst → reveal<br/>→ full TCG card</i><br/>⚠️ Stat model<br/>⚠️ Persistence"]
+            MONITOR["<b>MONITOR</b><br/><i>Read revealed card:<br/>art, name, stats,<br/>rarity, habitats</i>"]
+            MODIFY["<b>MODIFY</b><br/><i>Compare with others,<br/>evaluate quality,<br/>re-assess collection</i>"]
+            CONCLUDE["<b>CONCLUDE</b><br/><i>Decide: keep in<br/>pack or earmark<br/>for sanctuary</i>"]
+            PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        end
+
+        subgraph CRITERIA["Success Criteria"]
+            SC_PLAN["PLAN: Minimize time finding actionable cards<br/>Maximize visual delight while browsing"]
+            SC_PREP["PREPARE: Minimize confusion about readiness<br/>Maximize anticipation building"]
+            SC_EXEC["EXECUTE: Maximize dopamine impact<br/>Minimize latency (all local, no server)<br/>Maximize information revealed"]
+            SC_MON["MONITOR: Maximize depth of understanding<br/>Minimize overwhelm<br/>Maximize specimen 'personality'"]
+            SC_MOD["MODIFY: Maximize ability to judge quality<br/>Minimize effort to compare"]
+            SC_CONC["CONCLUDE: Maximize decision confidence<br/>Minimize regret"]
+        end
+
+        subgraph BOTTOM[""]
+            direction LR
+            EMOTIONS["<b>Emotions</b><br/>Curiosity → Anticipation →<br/>Peak dopamine → Understanding →<br/>Deliberation → Agency"]
+            CIRCUMSTANCES["<b>Circumstances</b><br/>Has mystery cards in pack<br/>Some cards respond to hold, others don't<br/>No visible explanation for the difference<br/>Wants to engage with collection"]
+        end
+    end
+
+    subgraph SYSTEMS["System Requirements"]
+        direction LR
+        SYS_PLAN["Pack screen: filter/sort/grid<br/>2-frame idle animation<br/>Category tabs, search bar"]
+        SYS_PREP["<b>Ghosted enrichment gate</b><br/>Unenriched cards don't respond to hold<br/>No 'locked' icon, no explanation<br/><b>Fully enriched predicate:</b><br/>animal_class AND climate AND<br/>brawn AND wit AND speed AND<br/>size AND icon_url AND art_url<br/>all IS NOT NULL"]
+        SYS_EXEC["<b>Hold-to-reveal:</b> 0→300→1200ms<br/>Spring physics, rarity particles<br/><b>Stat rolling:</b> SHA-256(UUID)<br/>±30% around species baseline<br/>Sum always = 90<br/><b>Persistence:</b> optimistic local<br/>→ v3_write_queue → Supabase<br/>→ confirm / retry with backoff"]
+        SYS_MON["TCG card modal:<br/>Art zone 68% height<br/>Rarity stripe 4px<br/>Info: name, sci name, badges<br/>Stats: brawn/wit/speed bars<br/>Footer: date + cell"]
+        SYS_MOD["Compare view (future)<br/>Stats display<br/>Color identity (deferred)"]
+        SYS_CONC["Item state: identified=true<br/>Rolled stats persisted<br/>Ready for sanctuary donation"]
+    end
+
+    subgraph DEPENDENCIES["Critical Dependencies"]
+        DEP_ENRICH["Canvas S (CONCLUDE) must complete<br/>before this card's PREPARE step works.<br/>Enrichment latency: ~1h classify, ~1d art.<br/>Gap is invisible to player by design."]
+    end
+
+    PLAN -.-> SYS_PLAN
+    PREPARE -.-> SYS_PREP
+    EXECUTE -.-> SYS_EXEC
+    MONITOR -.-> SYS_MON
+    MODIFY -.-> SYS_MOD
+    CONCLUDE -.-> SYS_CONC
+
+    style CANVAS fill:#0D1B2A,stroke:#3D5060,color:#E0E1DD
+    style HEADER fill:#132333,stroke:#3D5060,color:#E0E1DD
+    style STEPS fill:#1A2D40,stroke:#E29578,color:#E0E1DD
+    style CRITERIA fill:#132333,stroke:#3D5060,color:#ADB5BD
+    style BOTTOM fill:#132333,stroke:#3D5060,color:#ADB5BD
+    style SYSTEMS fill:#243A50,stroke:#E29578,color:#E29578
+    style DEPENDENCIES fill:#1A1200,stroke:#FFD700,color:#FFD700
+
+    style PLAN fill:#E29578,stroke:#fff,color:#1A1A2E
+    style PREPARE fill:#E29578,stroke:#FFD700,color:#1A1A2E
+    style EXECUTE fill:#E29578,stroke:#FFD700,color:#1A1A2E
+    style MONITOR fill:#E29578,stroke:#fff,color:#1A1A2E
+    style MODIFY fill:#E29578,stroke:#fff,color:#1A1A2E
+    style CONCLUDE fill:#E29578,stroke:#fff,color:#1A1A2E
