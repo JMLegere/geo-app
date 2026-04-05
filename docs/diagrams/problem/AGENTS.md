@@ -168,10 +168,12 @@ Every `.mmd` file uses `flowchart TD` with two subgraphs:
 
 | Tag | Meaning |
 |-----|---------|
-| (no tag) | Active — in scope, being built or planned |
+| NEEDS HUMAN REVIEW | AI-generated, awaiting human review and approval |
+| APPROVED | Reviewed and approved by human |
 | PHASE N | Part of implementation phase N (see `prd-game-systems.md` §13) |
 
 All canvases are in scope. Nothing is deferred.
+All diagrams currently set to `NEEDS HUMAN REVIEW` — first line of every `.mmd` file.
 
 ---
 

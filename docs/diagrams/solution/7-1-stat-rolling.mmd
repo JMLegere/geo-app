@@ -1,3 +1,4 @@
+%% Status: NEEDS HUMAN REVIEW
 flowchart TD
     INPUT[/Input: instanceUUID/] --> HASH[Compute hash =\nSHA-256 of instanceUUID]
     HASH --> EXTRACT[Extract seed bytes:\nbytes 0..7 from 32-byte hash]
