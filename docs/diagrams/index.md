@@ -57,7 +57,7 @@ CRAFTING → lures, cosmetics, breeding materials (from orbs + minerals)
 
 ## Diagram Catalog
 
-### Problem Space — JTBD Canvases (29)
+### Problem Space — JTBD Canvases (49)
 
 4-level hierarchy: L0 (aspirational) → L1 (core) → L2 (job areas) → L3 (specific tasks).
 Each canvas contains both the JTBD problem map AND the system spec.
@@ -70,7 +70,7 @@ See [`problem/AGENTS.md`](problem/AGENTS.md) for full guidance.
 | L0 | [`problem/l0-become-explorer.mmd`](problem/l0-become-explorer.mmd) | Become an explorer who discovers and cares about the natural world |
 | L1 | [`problem/l1-build-wildlife-world.mmd`](problem/l1-build-wildlife-world.mmd) | Build and grow my personal wildlife world |
 
-#### L2: Major Job Areas (7)
+#### L2: Major Job Areas (10)
 
 | # | File | Focus Job | Resolves |
 |---|------|-----------|----------|
@@ -80,32 +80,52 @@ See [`problem/AGENTS.md`](problem/AGENTS.md) for full guidance.
 | D | [`problem/d-reconnect-return.mmd`](problem/d-reconnect-return.mmd) | Reconnect with progress on return | 3.1, 3.2 |
 | E | [`problem/e-share-world.mmd`](problem/e-share-world.mmd) | Share my world with other explorers | — |
 | F | [`problem/f-manage-identity.mmd`](problem/f-manage-identity.mmd) | Manage my explorer identity | — |
+| G | [`problem/g-tend-sanctuary.mmd`](problem/g-tend-sanctuary.mmd) | Tend and nurture sanctuary animals | — |
+| H | [`problem/h-craft-resources.mmd`](problem/h-craft-resources.mmd) | Craft and trade resources | — |
+| I | [`problem/i-meet-npcs.mmd`](problem/i-meet-npcs.mmd) | Meet NPCs and fulfill requests | — |
 | S | [`problem/s-system-growing.mmd`](problem/s-system-growing.mmd) | [System] Keep the world growing | 2.2, 2.3, 2.4 |
 
-#### L3: Specific Tasks (20)
+#### L3: Specific Tasks (37)
 
 | # | File | Focus Job | Parent |
 |---|------|-----------|--------|
 | A.1 | [`problem/a1-navigate-map.mmd`](problem/a1-navigate-map.mmd) | Navigate the real-world map | A |
 | A.2 | [`problem/a2-reveal-fog.mmd`](problem/a2-reveal-fog.mmd) | Reveal fog-of-war by visiting cells | A |
-| A.3 | [`problem/a3-encounter-collect.mmd`](problem/a3-encounter-collect.mmd) | Encounter and collect species | A |
+| A.3 | [`problem/a3-encounter-collect.mmd`](problem/a3-encounter-collect.mmd) | Encounter and collect specimens | A |
+| A.4 | [`problem/a4-treasure-maps.mmd`](problem/a4-treasure-maps.mmd) | Follow treasure maps (directed quests) | A |
 | B.1 | [`problem/b1-browse-pack.mmd`](problem/b1-browse-pack.mmd) | Browse and organize my pack | B |
 | B.2 | [`problem/b2-hold-to-identify.mmd`](problem/b2-hold-to-identify.mmd) | Reveal specimen identity (hold-to-identify) | B |
 | B.3 | [`problem/b3-understand-stats.mmd`](problem/b3-understand-stats.mmd) | Understand specimen stats and traits | B |
+| B.4 | [`problem/b4-decide-keep.mmd`](problem/b4-decide-keep.mmd) | Decide what to keep, donate, or trade | B |
 | C.1 | [`problem/c1-browse-collections.mmd`](problem/c1-browse-collections.mmd) | Discover and browse collections | C |
 | C.2 | [`problem/c2-donate-specimens.mmd`](problem/c2-donate-specimens.mmd) | Donate specimens to fill collection slots | C |
 | C.3 | [`problem/c3-complete-bundles.mmd`](problem/c3-complete-bundles.mmd) | Complete collection bundles | C |
 | D.1 | [`problem/d1-review-recap.mmd`](problem/d1-review-recap.mmd) | Review personal progress (recap) | D |
 | D.2 | [`problem/d2-community-milestones.mmd`](problem/d2-community-milestones.mmd) | See community milestones | D |
+| D.3 | [`problem/d3-achievements.mmd`](problem/d3-achievements.mmd) | Track achievements and milestones | D |
+| D.4 | [`problem/d4-streaks.mmd`](problem/d4-streaks.mmd) | Maintain daily streaks | D |
 | E.1 | [`problem/e1-trade-specimens.mmd`](problem/e1-trade-specimens.mmd) | Trade specimens | E |
-| E.2 | [`problem/e2-compare-sanctuaries.mmd`](problem/e2-compare-sanctuaries.mmd) | Compare sanctuaries | E |
+| E.2 | [`problem/e2-compare-sanctuaries.mmd`](problem/e2-compare-sanctuaries.mmd) | Compare sanctuaries and leaderboards | E |
 | E.3 | [`problem/e3-community-goals.mmd`](problem/e3-community-goals.mmd) | Participate in community goals | E |
+| E.4 | [`problem/e4-ambient-presence.mmd`](problem/e4-ambient-presence.mmd) | Sense other explorers (ambient presence) | E |
 | F.1 | [`problem/f1-create-sign-in.mmd`](problem/f1-create-sign-in.mmd) | Create account and sign in | F |
 | F.2 | [`problem/f2-customize-profile.mmd`](problem/f2-customize-profile.mmd) | Customize profile | F |
 | F.3 | [`problem/f3-manage-settings.mmd`](problem/f3-manage-settings.mmd) | Manage account settings | F |
+| F.4 | [`problem/f4-onboarding.mmd`](problem/f4-onboarding.mmd) | Learn the game (onboarding) | F |
+| G.1 | [`problem/g1-feed-animals.mmd`](problem/g1-feed-animals.mmd) | Feed and care for placed animals | G |
+| G.2 | [`problem/g2-place-animals.mmd`](problem/g2-place-animals.mmd) | Place animals in sanctuary (spatial puzzle) | G |
+| G.3 | [`problem/g3-observe-animals.mmd`](problem/g3-observe-animals.mmd) | Observe animal needs and behaviors | G |
+| H.1 | [`problem/h1-earn-orbs.mmd`](problem/h1-earn-orbs.mmd) | Earn and manage orbs | H |
+| H.2 | [`problem/h2-breed-specimens.mmd`](problem/h2-breed-specimens.mmd) | Breed specimens | H |
+| H.3 | [`problem/h3-craft-items.mmd`](problem/h3-craft-items.mmd) | Craft lures and cosmetics | H |
+| I.1 | [`problem/i1-discover-npcs.mmd`](problem/i1-discover-npcs.mmd) | Discover NPCs on the map | I |
+| I.2 | [`problem/i2-npc-bundles.mmd`](problem/i2-npc-bundles.mmd) | Accept and complete NPC bundles | I |
+| I.3 | [`problem/i3-town-hub.mmd`](problem/i3-town-hub.mmd) | Visit the town hub | I |
 | S.1 | [`problem/s1-enrich-species.mmd`](problem/s1-enrich-species.mmd) | Enrich species for identification | S |
 | S.2 | [`problem/s2-sync-data.mmd`](problem/s2-sync-data.mmd) | Sync data between device and server | S |
 | S.3 | [`problem/s3-persist-progress.mmd`](problem/s3-persist-progress.mmd) | Persist progress reliably | S |
+| S.4 | [`problem/s4-animate-world.mmd`](problem/s4-animate-world.mmd) | Animate the world (spring physics, particles) | S |
+| S.5 | [`problem/s5-observe-monitor.mmd`](problem/s5-observe-monitor.mmd) | Observe and monitor system health | S |
 
 ### Solution Space — Technical Diagrams (33)
 

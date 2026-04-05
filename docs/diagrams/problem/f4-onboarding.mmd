@@ -1,0 +1,42 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-F.4: Learn the Game"]
+        JP["<b>Job Performer</b><br/>Brand new player<br/>on first launch"]
+        ASP["<b>Aspirations</b><br/>Understand the basics<br/>without being talked down to<br/>Balatro approach: drop in, figure it out"]
+        FJ["<b>Focus Job</b><br/>Learn the game<br/>(onboarding)"]
+        RJ["<b>Related Jobs</b><br/>F.1: Create/sign in<br/>A.1: Navigate map<br/>A.3: Encounter and collect"]
+        PLAN["<b>PLAN</b><br/>Launch app for first time"]
+        PREPARE["<b>PREPARE</b><br/>Create account via F.1"]
+        EXECUTE["<b>EXECUTE</b><br/>Enter the game with minimal guidance:<br/>no tutorial popups, no tap here"]
+        MONITOR["<b>MONITOR</b><br/>Discover mechanics organically:<br/>tap a card, see what happens,<br/>explore a cell"]
+        MODIFY["<b>MODIFY</b><br/>If stuck: subtle contextual hints<br/>after inactivity"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Player understands core loop<br/>through doing, not reading"]
+        SC["<b>Success Criteria</b><br/>No mandatory tutorial<br/>No tooltip tours<br/>Hints only if stuck<br/>First session feels complete"]
+        EM["<b>Emotions</b><br/>Curiosity --> Exploration --> Oh I get it! --> Empowerment"]
+        CIRC["<b>Circumstances</b><br/>First login ever<br/>Empty action history<br/>No Onboarding: PRD S1"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-F.4"]
+        IN["<b>Inputs</b><br/>is_first_login flag<br/>Player action history: empty"]
+        OUT["<b>Outputs</b><br/>first_login tracked<br/>Recap skipped on first-ever login"]
+        DP["<b>Design Principle</b><br/>No Onboarding: PRD S1<br/>Balatro approach"]
+        HN["<b>Contextual Hints</b><br/>Gentle hold to identify prompt<br/>if card on screen too long<br/>without interaction"]
+        DR["<b>Data Requirements</b><br/>v3_profiles.created_at<br/>First action timestamps"]
+        CP["<b>Components</b><br/>ContextualHintService:<br/>shows hints after<br/>inactivity thresholds"]
+
+        IN --> OUT
+        OUT --> DP
+        DP --> HN
+        HN --> DR
+        DR --> CP
+    end
+
+    JTBD --> SystemSpec

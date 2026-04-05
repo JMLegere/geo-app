@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.3: Track Achievements and Milestones"]
+        JP["<b>Job Performer</b><br/>Player who wants recognition<br/>for progress"]
+        ASP["<b>Aspirations</b><br/>Concrete markers of accomplishment<br/>I did that moments"]
+        FJ["<b>Focus Job</b><br/>Track achievements<br/>and milestones"]
+        RJ["<b>Related Jobs</b><br/>D.1: Review recap<br/>D.2: Community milestones<br/>D.4: Maintain streaks"]
+        PLAN["<b>PLAN</b><br/>Browse achievement list"]
+        PREPARE["<b>PREPARE</b><br/>See progress toward<br/>incomplete achievements"]
+        EXECUTE["<b>EXECUTE</b><br/>Perform qualifying actions<br/>during normal play"]
+        MONITOR["<b>MONITOR</b><br/>Achievement progress notifications,<br/>near-completion alerts"]
+        MODIFY["<b>MODIFY</b><br/>Target specific achievements<br/>intentionally"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Achievement unlocked!<br/>Toast/badge/title earned"]
+        SC["<b>Success Criteria</b><br/>Achievements discoverable<br/>Progress trackable<br/>Rewards feel earned"]
+        EM["<b>Emotions</b><br/>Awareness --> Targeted effort --> Triumph --> Pride"]
+        CIRC["<b>Circumstances</b><br/>Player actions across all game systems:<br/>discoveries, identifications,<br/>donations, visits"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.3"]
+        IN["<b>Inputs</b><br/>Player action history:<br/>discoveries, identifications,<br/>donations, visits, etc."]
+        OUT["<b>Outputs</b><br/>Achievement unlock records,<br/>badges, titles"]
+        EX["<b>Examples</b><br/>Discover 100 forest fauna<br/>Identify 50 CR species<br/>Visit 1000 cells<br/>Complete 10 collections"]
+        GT["<b>Gating</b><br/>Varies per achievement"]
+        DR["<b>Data Requirements</b><br/>v3_achievements: definition<br/>v3_player_achievements:<br/>progress + unlock state"]
+        CP["<b>Components</b><br/>AchievementScreen<br/>AchievementToast<br/>BadgeDisplay"]
+
+        IN --> OUT
+        OUT --> EX
+        GT --> DR
+        DR --> CP
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-G.1: Feed and Care for Placed Animals"]
+        JP["<b>Job Performer</b><br/>Caretaker tending<br/>to animal needs"]
+        ASP["<b>Aspirations</b><br/>Keep animals happy<br/>Produce orbs<br/>Feel the nurturing loop"]
+        FJ["<b>Focus Job</b><br/>Feed and care for<br/>placed animals"]
+        RJ["<b>Related Jobs</b><br/>G.2: Place animals in sanctuary<br/>G.3: Observe animal needs"]
+        PLAN["<b>PLAN</b><br/>Check which animals<br/>are hungry"]
+        PREPARE["<b>PREPARE</b><br/>Find matching food in inventory<br/>7 types: critter, fish, fruit,<br/>grub, nectar, seed, veg"]
+        EXECUTE["<b>EXECUTE</b><br/>Feed animal with<br/>preferred food type"]
+        MONITOR["<b>MONITOR</b><br/>Animal eats,<br/>happiness increases,<br/>orb produced"]
+        MODIFY["<b>MODIFY</b><br/>Wrong food: lower happiness<br/>gain, still fed"]
+        CONCLUDE["<b>CONCLUDE</b><br/>1 habitat orb + 1 class orb<br/>+ 1 climate orb produced"]
+        SC["<b>Success Criteria</b><br/>Animal fed<br/>Correct food preference matched<br/>Orbs generated"]
+        EM["<b>Emotions</b><br/>Care --> Satisfaction (correct food!) --> Reward (orbs)"]
+        CIRC["<b>Circumstances</b><br/>Animal placed in sanctuary<br/>Food in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-G.1"]
+        IN["<b>Inputs</b><br/>Placed animal<br/>Food item"]
+        OUT["<b>Outputs</b><br/>3 orbs per feeding:<br/>habitat + class + climate type"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per feeding"]
+        GT["<b>Gating</b><br/>Animal placed +<br/>food in inventory"]
+        DR["<b>Data Requirements</b><br/>species.food_preference<br/>v3_items (food category)<br/>orb_inventory"]
+        NOTES["<b>Notes</b><br/>Each species has AI-enriched<br/>food_preference (one of 7 types).<br/>Wrong food still feeds but<br/>lower happiness gain."]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

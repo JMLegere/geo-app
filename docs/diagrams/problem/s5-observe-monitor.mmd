@@ -1,0 +1,42 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.5: Observe and Monitor System Health"]
+        JP["<b>Job Performer</b><br/>Observability System:<br/>client + server instrumentation"]
+        ASP["<b>Aspirations</b><br/>If it is not in app_logs,<br/>it did not happen<br/>Every state transition<br/>emits an event"]
+        FJ["<b>Focus Job</b><br/>Observe and monitor<br/>system health"]
+        RJ["<b>Related Jobs</b><br/>S.3: Persist progress<br/>S.2: Sync data<br/>F.1: Create/sign in"]
+        PLAN["<b>PLAN</b><br/>Define events for<br/>each state transition"]
+        PREPARE["<b>PREPARE</b><br/>ObservableNotifier pattern:<br/>all notifiers extend<br/>ObservableNotifier"]
+        EXECUTE["<b>EXECUTE</b><br/>Emit structured events to app_logs:<br/>category, event, data JSONB"]
+        MONITOR["<b>MONITOR</b><br/>Query app_logs for<br/>debugging, alerts, analytics"]
+        MODIFY["<b>MODIFY</b><br/>Add new events<br/>as features ship"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Full audit trail of all<br/>player and system actions"]
+        SC["<b>Success Criteria</b><br/>Every state transition logged<br/>Structured queryable events<br/>No raw state mutations"]
+        EM["<b>Emotions</b><br/>Confidence --> Visibility --> Control"]
+        CIRC["<b>Circumstances</b><br/>All runtime state transitions<br/>Client and server side"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-S.5"]
+        EE["<b>Existing Events</b><br/>auth: sign_in_success/error,<br/>sign_up, sign_out,<br/>session_restored/expired<br/>items: fetch_success/error/empty<br/>app: cold_start, crash<br/>supabase: init_success/failure<br/>network: offline/online"]
+        NE["<b>New Game Events</b><br/>discovery: encounter, item_acquired<br/>identify: started, completed, cancelled<br/>sanctuary: donation, collection_unlocked<br/>recap: shown, dismissed<br/>skill: level_up<br/>species_sync: sync_started,<br/>sync_complete, sync_error"]
+        PT["<b>Pattern</b><br/>ObservableNotifier.transition<br/>newState, event.name<br/>Never raw state = newState"]
+        DR["<b>Data Requirements</b><br/>app_logs table:<br/>session_id, user_id, category,<br/>event, data JSONB, created_at"]
+        BT["<b>Batching</b><br/>ObservabilityService batches writes,<br/>flushes periodically"]
+        PR["<b>Privacy</b><br/>Raw phone numbers<br/>SHA-256 hashed before logging"]
+
+        EE --> NE
+        NE --> PT
+        PT --> DR
+        DR --> BT
+        BT --> PR
+    end
+
+    JTBD --> SystemSpec

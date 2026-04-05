@@ -1,0 +1,44 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-S.4: Animate the World"]
+        JP["<b>Job Performer</b><br/>Animation System:<br/>client-side rendering framework"]
+        ASP["<b>Aspirations</b><br/>95% warm: gentle springs,<br/>breathing, soft shadows<br/>5% electric: particles,<br/>haptic, glow"]
+        FJ["<b>Focus Job</b><br/>Animate the world:<br/>spring physics, particles"]
+        RJ["<b>Related Jobs</b><br/>S.3: Persist progress<br/>B.2: Hold to identify<br/>A.3: Encounter and collect"]
+        PLAN["<b>PLAN</b><br/>Determine animation context:<br/>idle, interaction, reveal,<br/>celebration"]
+        PREPARE["<b>PREPARE</b><br/>Select spring token:<br/>snappy / bouncy / gentle / heavy"]
+        EXECUTE["<b>EXECUTE</b><br/>Render animation:<br/>idle wobble, hold-to-reveal<br/>particles, collection<br/>completion burst"]
+        MONITOR["<b>MONITOR</b><br/>Maintain 60fps,<br/>respect reduced motion"]
+        MODIFY["<b>MODIFY</b><br/>Scale effects by rarity:<br/>LC = 6 particles,<br/>CR = 24 particles"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Animation completes,<br/>springs settle, state updated"]
+        SC["<b>Success Criteria</b><br/>60fps budget maintained<br/>Reduced motion respected<br/>Rarity-scaled feedback"]
+        EM["<b>Emotions</b><br/>Warmth --> Delight --> Tactile satisfaction"]
+        CIRC["<b>Circumstances</b><br/>Any user interaction<br/>or idle state<br/>on card/map UI"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-S.4"]
+        ST["<b>Spring Tokens</b><br/>snappy: chip select<br/>bouncy: card reveal<br/>gentle: release<br/>heavy: drag"]
+        IW["<b>Idle Wobble</b><br/>+/-0.5px Y, +/-0.2deg rotation<br/>~2s period<br/>Per-card phase offset from<br/>definitionId.hashCode"]
+        PS["<b>Particle System</b><br/>Widget-based, max 24<br/>Rarity-scaled colors:<br/>LC gray #ADB5BD<br/>NT green #4CAF50<br/>VU blue #2196F3<br/>EN gold #FFD700<br/>CR purple #9C27B0"]
+        HT["<b>Hold-to-Reveal</b><br/>0ms press<br/>300ms charge threshold<br/>1200ms reveal<br/>Burst on complete<br/>Interruptible at any point"]
+        RM["<b>Reduced Motion</b><br/>MediaQuery.disableAnimations:<br/>replace spatial with opacity,<br/>disable particles/wobble"]
+        PF["<b>Performance</b><br/>Shared AnimationController<br/>per grid, not per card<br/>60fps budget"]
+        RG["<b>Rarity Glow</b><br/>LC/NT = 0.0 static<br/>VU = 0.15<br/>EN = 0.25<br/>CR = 0.35"]
+
+        ST --> IW
+        IW --> PS
+        PS --> HT
+        HT --> RM
+        RM --> PF
+        PF --> RG
+    end
+
+    JTBD --> SystemSpec

@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-H.1: Earn and Manage Orbs"]
+        JP["<b>Job Performer</b><br/>Player building<br/>orb reserves"]
+        ASP["<b>Aspirations</b><br/>Understand the economy<br/>Accumulate strategically<br/>Orbs feel valuable"]
+        FJ["<b>Focus Job</b><br/>Earn and manage orbs"]
+        RJ["<b>Related Jobs</b><br/>H.2: Breed specimens<br/>H.3: Craft lures and cosmetics<br/>G.1: Feed animals (orb source)"]
+        PLAN["<b>PLAN</b><br/>Identify which orbs<br/>needed for goals"]
+        PREPARE["<b>PREPARE</b><br/>Feed correct animals to<br/>produce target orb types"]
+        EXECUTE["<b>EXECUTE</b><br/>Feeding produces 3 orbs:<br/>habitat + class + climate"]
+        MONITOR["<b>MONITOR</b><br/>Orb inventory grows,<br/>track scarce types"]
+        MODIFY["<b>MODIFY</b><br/>Adjust which animals<br/>to feed based on orb needs"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Orb reserves ready<br/>for crafting/breeding"]
+        SC["<b>Success Criteria</b><br/>Target orbs accumulated<br/>Economy feels purposeful"]
+        EM["<b>Emotions</b><br/>Strategic Planning --> Incremental Progress --> Readiness"]
+        CIRC["<b>Circumstances</b><br/>Animals placed and<br/>food available for feeding"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-H.1"]
+        IN["<b>Inputs</b><br/>Feeding actions (G.1)"]
+        OUT["<b>Outputs</b><br/>Orbs deposited to inventory"]
+        SF["<b>Skill Feed</b><br/>+1 Zoology per feeding<br/>(via G.1)"]
+        GT["<b>Gating</b><br/>Animals placed +<br/>food available"]
+        DR["<b>Data Requirements</b><br/>orb_inventory table"]
+        NOTES["<b>Notes</b><br/>46 orb types:<br/>Habitat: Forest/Plains/Freshwater/<br/>Saltwater/Swamp/Mountain/Desert<br/>Class: Mammalia/Aves/Reptilia/...<br/>Climate: Tropic/Temperate/Boreal/Frigid"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec

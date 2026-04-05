@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-I: Meet NPCs and Fulfill Requests"]
+        JP["<b>Job Performer</b><br/>Explorer who wants<br/>guided goals and story"]
+        ASP["<b>Aspirations</b><br/>NPCs give the world personality<br/>Directed goals complement<br/>free exploration"]
+        FJ["<b>Focus Job</b><br/>Meet NPCs and<br/>fulfill requests"]
+        RJ["<b>Related Jobs</b><br/>I.1: Discover NPCs on the map<br/>I.2: Accept and complete NPC bundles<br/>I.3: Visit the town hub"]
+        PLAN["<b>PLAN</b><br/>Visit town or explore<br/>map for NPCs"]
+        PREPARE["<b>PREPARE</b><br/>Check NPC requests<br/>and bundles"]
+        EXECUTE["<b>EXECUTE</b><br/>Collect and deliver<br/>requested specimens"]
+        MONITOR["<b>MONITOR</b><br/>NPC relationship grows,<br/>rewards earned"]
+        MODIFY["<b>MODIFY</b><br/>Prioritize which NPC<br/>requests to fulfill"]
+        CONCLUDE["<b>CONCLUDE</b><br/>NPC satisfied, reward received,<br/>new requests available"]
+        SC["<b>Success Criteria</b><br/>NPCs discoverable<br/>Requests clear<br/>Rewards meaningful"]
+        EM["<b>Emotions</b><br/>Curiosity --> Purpose --> Warmth (NPC connection)"]
+        CIRC["<b>Circumstances</b><br/>Exploring the map or<br/>visiting town hub"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-I"]
+        IN["<b>Inputs</b><br/>NPC definitions<br/>Request lists"]
+        OUT["<b>Outputs</b><br/>Rewards: orbs, cosmetics, titles<br/>NPC relationship progress"]
+        SF["<b>Skill Feed</b><br/>Varies by NPC request type"]
+        GT["<b>Gating</b><br/>At least one NPC<br/>discovered"]
+        DR["<b>Data Requirements</b><br/>v3_npcs<br/>v3_npc_requests<br/>v3_npc_progress"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

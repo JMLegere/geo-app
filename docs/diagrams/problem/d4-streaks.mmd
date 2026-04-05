@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-D.4: Maintain Daily Streaks"]
+        JP["<b>Job Performer</b><br/>Player building a habit"]
+        ASP["<b>Aspirations</b><br/>Daily connection to the game<br/>Streak as motivation<br/>to keep going"]
+        FJ["<b>Focus Job</b><br/>Maintain daily streaks"]
+        RJ["<b>Related Jobs</b><br/>D.1: Review recap<br/>D.3: Track achievements<br/>A.1: Navigate map"]
+        PLAN["<b>PLAN</b><br/>Open app: streak visible<br/>on recap or home"]
+        PREPARE["<b>PREPARE</b><br/>See current streak count<br/>and what is needed today"]
+        EXECUTE["<b>EXECUTE</b><br/>Perform qualifying daily action:<br/>visit a cell, identify a specimen"]
+        MONITOR["<b>MONITOR</b><br/>Streak counter increments,<br/>milestone rewards at<br/>7 / 30 / 100 days"]
+        MODIFY["<b>MODIFY</b><br/>Prioritize streak-maintaining<br/>actions on busy days"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Streak maintained,<br/>feels like commitment honored"]
+        SC["<b>Success Criteria</b><br/>Streak visible<br/>Daily qualifier clear<br/>Milestone rewards motivating"]
+        EM["<b>Emotions</b><br/>Routine --> Commitment --> Pride --> Fear of breaking"]
+        CIRC["<b>Circumstances</b><br/>Player returns daily<br/>Missing a day resets to 0<br/>or grace period TBD"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-D.4"]
+        IN["<b>Inputs</b><br/>Daily activity check:<br/>any qualifying action per day"]
+        OUT["<b>Outputs</b><br/>Streak count update,<br/>milestone rewards"]
+        SF["<b>Skill Feed</b><br/>None: streak is meta-system,<br/>not skill-specific"]
+        GT["<b>Gating</b><br/>One qualifying action per calendar day"]
+        DR["<b>Data Requirements</b><br/>v3_cell_visits grouped by<br/>DATE visited_at<br/>v3_player_streaks:<br/>current_count, longest_count,<br/>last_active_date"]
+        CP["<b>Components</b><br/>StreakBadge<br/>StreakMilestoneToast"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> CP
+    end
+
+    JTBD --> SystemSpec

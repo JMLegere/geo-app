@@ -25,7 +25,7 @@ flowchart TD
     end
 
     subgraph SystemSpec["System Spec -- L3-C.2"]
-        IN["<b>Inputs</b><br/>Identified item<br/>species.habitats<br/>species.continents<br/>species.taxonomicClass"]
+        IN["<b>Inputs</b><br/>Identified item<br/>species.habitats<br/>species.continents<br/>species.taxonomic_class"]
         OUT["<b>Outputs</b><br/>v3_sanctuary_donations INSERT<br/>v3_items UPDATE status=donated"]
         SF["<b>Skill Feed</b><br/>No skill XP on donation<br/>Collection progress increments"]
         GT["<b>Gating</b><br/>Item must be identified<br/>One instance per slot:<br/>need separate specimens for<br/>same species in different collections"]

@@ -27,7 +27,7 @@ flowchart TD
     subgraph SystemSpec["System Spec -- L3-B.2"]
         IN["<b>Inputs</b><br/>Enriched unidentified item"]
         OUT["<b>Outputs</b><br/>Identified item with rolled stats"]
-        ALG["<b>Algorithm</b><br/>SHA-256 instanceUUID --> seed<br/>brawn/wit/speed sum=90<br/>+/- 30% from species baseline"]
+        ALG["<b>Algorithm</b><br/>SHA-256 instanceUUID --> seed<br/>brawn/wit/speed sum=90<br/>+/- instance variance from species baseline"]
         AFF["<b>Affixes</b><br/>CR: 2 affixes<br/>EN: 1-2 affixes<br/>VU: 0-1 affixes<br/>NT/LC: 0 affixes"]
         WR["<b>Write Path</b><br/>Optimistic --> WriteQueue<br/>UPDATE v3_items<br/>SET identified=true<br/>WHERE identified=false"]
         ANIM["<b>Animation</b><br/>Spring physics:<br/>snappy --> bouncy --> gentle tokens<br/>Particles: 6 for LC to 24 for CR"]

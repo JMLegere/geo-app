@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-I.3: Visit the Town Hub"]
+        JP["<b>Job Performer</b><br/>Player browsing<br/>NPC interactions"]
+        ASP["<b>Aspirations</b><br/>Central place to see all NPCs<br/>Check requests, manage relationships"]
+        FJ["<b>Focus Job</b><br/>Visit the town hub"]
+        RJ["<b>Related Jobs</b><br/>I.1: Discover NPCs<br/>I.2: Accept and complete bundles"]
+        PLAN["<b>PLAN</b><br/>Open town tab"]
+        PREPARE["<b>PREPARE</b><br/>See list of<br/>discovered NPCs"]
+        EXECUTE["<b>EXECUTE</b><br/>Browse NPC profiles,<br/>active requests,<br/>relationship levels"]
+        MONITOR["<b>MONITOR</b><br/>See which requests<br/>are close to completion"]
+        MODIFY["<b>MODIFY</b><br/>Prioritize requests based<br/>on current inventory"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Clear goals for next<br/>exploration session"]
+        SC["<b>Success Criteria</b><br/>All discovered NPCs accessible<br/>Requests clear<br/>Progress visible"]
+        EM["<b>Emotions</b><br/>Overview --> Planning --> Motivation"]
+        CIRC["<b>Circumstances</b><br/>At least one NPC discovered"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-I.3"]
+        IN["<b>Inputs</b><br/>Discovered NPCs<br/>Active requests"]
+        OUT["<b>Outputs</b><br/>Request list<br/>Relationship display"]
+        SF["<b>Skill Feed</b><br/>None -- town hub is<br/>a utility view"]
+        GT["<b>Gating</b><br/>At least one NPC<br/>discovered"]
+        DR["<b>Data Requirements</b><br/>v3_npcs<br/>v3_npc_requests<br/>v3_npc_progress"]
+        COMP["<b>Components</b><br/>TownScreen<br/>NPCCard<br/>RequestList"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> COMP
+    end
+
+    JTBD --> SystemSpec

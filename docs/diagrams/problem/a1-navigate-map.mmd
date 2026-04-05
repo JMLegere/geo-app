@@ -31,7 +31,7 @@ flowchart TD
         GT["<b>Gating</b><br/>GPS permission granted<br/>Accuracy within threshold"]
         DR["<b>Data Requirements</b><br/>Device GPS<br/>MapLibre tiles<br/>v3_cell_visits for fog overlay"]
         COMP["<b>Components</b><br/>LocationProvider<br/>MapScreen<br/>CameraFollowMode"]
-        NOTES["<b>Notes</b><br/>Camera auto-follows GPS,<br/>breaks on manual pan.<br/>1-tile prefetch radius."]
+        NOTES["<b>Notes</b><br/>Camera auto-follows GPS,<br/>breaks on manual pan.<br/>Prefetch strategy TBD."]
 
         IN --> OUT
         SF --> GT

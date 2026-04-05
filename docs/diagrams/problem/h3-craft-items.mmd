@@ -1,0 +1,39 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-H.3: Craft Lures and Cosmetics"]
+        JP["<b>Job Performer</b><br/>Crafter spending<br/>resources"]
+        ASP["<b>Aspirations</b><br/>Convert surplus orbs/materials<br/>into useful or decorative items"]
+        FJ["<b>Focus Job</b><br/>Craft lures and cosmetics"]
+        RJ["<b>Related Jobs</b><br/>H.1: Earn orbs (crafting cost)<br/>H.2: Breed specimens<br/>A: Discover wildlife (use lures)"]
+        PLAN["<b>PLAN</b><br/>Browse crafting recipes"]
+        PREPARE["<b>PREPARE</b><br/>Check orb/material<br/>requirements"]
+        EXECUTE["<b>EXECUTE</b><br/>Select recipe,<br/>consume ingredients,<br/>receive crafted item"]
+        MONITOR["<b>MONITOR</b><br/>New item in inventory"]
+        MODIFY["<b>MODIFY</b><br/>Adjust crafting priorities<br/>based on needs"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Lure for exploration,<br/>cosmetic for sanctuary,<br/>or material for further crafting"]
+        SC["<b>Success Criteria</b><br/>Recipe requirements clear<br/>Crafting instant<br/>Result useful"]
+        EM["<b>Emotions</b><br/>Planning --> Execution --> Satisfaction (new tool/cosmetic)"]
+        CIRC["<b>Circumstances</b><br/>Sufficient orbs and materials<br/>in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-H.3"]
+        IN["<b>Inputs</b><br/>Orbs + materials<br/>per recipe"]
+        OUT["<b>Outputs</b><br/>Crafted item: lure,<br/>cosmetic, breeding material"]
+        SF["<b>Skill Feed</b><br/>Geology level ge 3<br/>for mineral crafts"]
+        GT["<b>Gating</b><br/>Recipe ingredients available<br/>Skill level met"]
+        DR["<b>Data Requirements</b><br/>crafting_recipes<br/>orb_inventory<br/>v3_items"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+    end
+
+    JTBD --> SystemSpec

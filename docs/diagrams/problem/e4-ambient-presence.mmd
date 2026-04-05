@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L3-E.4: Sense Other Explorers"]
+        JP["<b>Job Performer</b><br/>Player exploring who wants<br/>to feel less alone"]
+        ASP["<b>Aspirations</b><br/>Others are here:<br/>the world is shared,<br/>not solitary"]
+        FJ["<b>Focus Job</b><br/>Sense other explorers<br/>(ambient presence)"]
+        RJ["<b>Related Jobs</b><br/>E.1: Trade specimens<br/>E.2: Compare sanctuaries<br/>E.3: Community goals<br/>A.2: Reveal fog"]
+        PLAN["<b>PLAN</b><br/>Open map while exploring"]
+        PREPARE["<b>PREPARE</b><br/>Opt into location sharing"]
+        EXECUTE["<b>EXECUTE</b><br/>See other players fog reveals,<br/>recent activity indicators on map"]
+        MONITOR["<b>MONITOR</b><br/>Sense of shared world:<br/>someone explored here yesterday"]
+        MODIFY["<b>MODIFY</b><br/>Opt out if privacy preferred"]
+        CONCLUDE["<b>CONCLUDE</b><br/>Feel connected to broader<br/>explorer community without<br/>direct interaction"]
+        SC["<b>Success Criteria</b><br/>Presence feels ambient not intrusive<br/>Opt-in only<br/>Adds warmth without pressure"]
+        EM["<b>Emotions</b><br/>Curiosity --> Connection --> Belonging"]
+        CIRC["<b>Circumstances</b><br/>Player has opted in<br/>to location sharing<br/>Authenticated session"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L3-E.4"]
+        IN["<b>Inputs</b><br/>Other players anonymized<br/>activity data:<br/>fog reveals, cell visits"]
+        OUT["<b>Outputs</b><br/>Map overlay showing recent<br/>exploration by others"]
+        SF["<b>Skill Feed</b><br/>None: passive observation"]
+        GT["<b>Gating</b><br/>Opt-in location sharing<br/>Authenticated session"]
+        DR["<b>Data Requirements</b><br/>Aggregated v3_cell_visits: anonymized<br/>Activity heatmap data"]
+        PR["<b>Privacy</b><br/>Anonymized: no player identity,<br/>just someone was here"]
+        CP["<b>Components</b><br/>PresenceOverlay<br/>PrivacyToggle"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> PR
+        PR --> CP
+    end
+
+    JTBD --> SystemSpec

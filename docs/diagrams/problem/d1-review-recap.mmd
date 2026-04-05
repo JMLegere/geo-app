@@ -28,7 +28,7 @@ flowchart TD
         IN["<b>Inputs</b><br/>Player activity data<br/>since last recap"]
         OUT["<b>Outputs</b><br/>4-page card stack:<br/>Whats New, Your Progress,<br/>Community, Pending"]
         SF["<b>Skill Feed</b><br/>Pending card shows<br/>X unidentified specimens<br/>No enriched/unenriched distinction"]
-        GT["<b>Gating</b><br/>Computed on-demand,<br/>no pre-built cron"]
+        GT["<b>Gating</b><br/>Computed on-demand,<br/>no pre-built cron<br/>(Note: PRD §8 specifies hourly cron;<br/>review critique recommends on-demand.<br/>On-demand adopted per review.)"]
         DR["<b>Data Requirements</b><br/>v3_items, v3_cell_visits<br/>skill levels, streaks<br/>Events: recap.shown, recap.dismissed<br/>Components: RecapScreen,<br/>RecapCardStack"]
 
         IN --> OUT

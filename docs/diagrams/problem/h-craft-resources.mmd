@@ -1,0 +1,41 @@
+flowchart TD
+    subgraph JTBD["JTBD Canvas -- L2-H: Craft and Trade Resources"]
+        JP["<b>Job Performer</b><br/>Crafter/breeder: player<br/>with orbs and materials"]
+        ASP["<b>Aspirations</b><br/>Transform raw resources<br/>into valuable items<br/>Breed better specimens"]
+        FJ["<b>Focus Job</b><br/>Craft and trade resources"]
+        RJ["<b>Related Jobs</b><br/>H.1: Earn and manage orbs<br/>H.2: Breed specimens<br/>H.3: Craft lures and cosmetics"]
+        PLAN["<b>PLAN</b><br/>Review orb inventory,<br/>identify crafting goals"]
+        PREPARE["<b>PREPARE</b><br/>Gather required<br/>orbs + materials"]
+        EXECUTE["<b>EXECUTE</b><br/>Craft item or<br/>initiate breeding"]
+        MONITOR["<b>MONITOR</b><br/>See result: new item,<br/>bred offspring"]
+        MODIFY["<b>MODIFY</b><br/>Adjust strategy<br/>based on outcomes"]
+        CONCLUDE["<b>CONCLUDE</b><br/>New valuable items<br/>in inventory"]
+        SC["<b>Success Criteria</b><br/>Resources transformed<br/>New items created<br/>Economy feels purposeful"]
+        EM["<b>Emotions</b><br/>Planning --> Transformation --> Reward"]
+        CIRC["<b>Circumstances</b><br/>Orbs and materials<br/>available in inventory"]
+
+        JP --> FJ
+        ASP --> FJ
+        FJ --> PLAN
+        PLAN --> PREPARE --> EXECUTE --> MONITOR --> MODIFY --> CONCLUDE
+        FJ --> RJ
+        FJ --> SC
+        FJ --> EM
+        FJ --> CIRC
+    end
+
+    subgraph SystemSpec["System Spec -- L2-H"]
+        IN["<b>Inputs</b><br/>Orbs, materials, specimens"]
+        OUT["<b>Outputs</b><br/>Lures, cosmetics,<br/>bred offspring"]
+        SF["<b>Skill Feed</b><br/>Varies by craft type:<br/>Geology for mineral crafts<br/>Zoology for breeding"]
+        GT["<b>Gating</b><br/>Sufficient orbs/materials<br/>for selected recipe"]
+        DR["<b>Data Requirements</b><br/>orb_inventory<br/>v3_items<br/>crafting_recipes"]
+        NOTES["<b>Notes</b><br/>46 orb types:<br/>7 habitat + ~35 class + 4 climate"]
+
+        IN --> OUT
+        SF --> GT
+        GT --> DR
+        DR --> NOTES
+    end
+
+    JTBD --> SystemSpec
