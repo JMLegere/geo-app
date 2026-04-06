@@ -18,23 +18,38 @@ flowchart TD
         FutureNotifiers["future:\nIdentificationNotifier\nSanctuaryNotifier\nRecapNotifier\nSkillProgressNotifier\nWriteQueueNotifier"]
     end
 
-    subgraph ServiceLayer["Service Layer (Pure Dart — no Flutter, no Riverpod)"]
-        AuthService["AuthService"]
-        ItemService["ItemService"]
-        ObservabilityService["ObservabilityService"]
-        FutureServices["future:\nSpeciesSyncService\nIdentificationService\nSanctuaryService\nRecapService\nEncounterService"]
+    subgraph UseCaseLayer["Use Case Layer (Pure Dart — one class per operation)"]
+        AuthUseCases["SignInWithPhone\nSignOut\nRestoreSession\nGetCurrentUser"]
+        ItemUseCases["FetchItems"]
+        FutureUseCases["future:\nSyncSpecies\nQueueWrite\nBuildRecap\n..."]
     end
 
-    subgraph DataLayer["Data Layer"]
+    subgraph DataLayer["Data Layer (Repositories — Pure Dart, no Flutter, no Riverpod)"]
+        AuthRepository["AuthRepository\n(SupabaseAuthRepository)"]
+        ItemRepository["ItemRepository\n(SupabaseItemRepository)"]
+        ObservabilityService["ObservabilityService"]
+        FutureRepositories["future:\nSpeciesSyncRepository\nSanctuaryRepository\nRecapRepository\nEncounterRepository"]
+    end
+
+    subgraph DomainLayer["Domain Layer (Pure Dart — entities + repository interfaces)"]
+        Entities["UserProfile\nItem\nIucnStatus\nPackFilterState\n..."]
+        Interfaces["AuthRepository (interface)\nItemRepository (interface)\n..."]
+    end
+
+    subgraph InfraLayer["Infrastructure Layer"]
         SupabaseClient["Supabase Client\n(auth, from, storage)"]
-        FutureLocal["future:\nLocalSpeciesTable\n(via Drift)"]
     end
 
     UILayer -->|"ref.watch / ref.read"| StateLayer
-    StateLayer -->|"method calls"| ServiceLayer
-    ServiceLayer -->|"Supabase SDK calls"| DataLayer
+    StateLayer -->|"use case calls"| UseCaseLayer
+    UseCaseLayer -->|"repository calls"| DataLayer
+    DataLayer -->|"Supabase SDK calls"| InfraLayer
+    DataLayer -.->|"implements"| DomainLayer
+    UseCaseLayer -.->|"depends on interfaces"| DomainLayer
 
     style UILayer fill:#dbeafe,color:#333
     style StateLayer fill:#fce7f3,color:#333
-    style ServiceLayer fill:#d1fae5,color:#333
-    style DataLayer fill:#fef3c7,color:#333
+    style UseCaseLayer fill:#ede9fe,color:#333
+    style DataLayer fill:#d1fae5,color:#333
+    style DomainLayer fill:#fef9c3,color:#333
+    style InfraLayer fill:#fef3c7,color:#333
