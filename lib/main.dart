@@ -17,6 +17,13 @@ import 'package:earth_nova/features/identification/data/repositories/mock_item_r
 import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/map/data/repositories/geolocator_location_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
+import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -67,6 +74,12 @@ void main() async {
       ? SupabaseItemRepository(client: supabaseClient)
       : MockItemRepository();
 
+  final CellRepository cellRepository = supabaseClient != null
+      ? SupabaseCellRepository(client: supabaseClient)
+      : MockCellRepository();
+
+  final LocationRepository locationRepository = GeolocatorLocationRepository();
+
   FlutterError.onError = (details) {
     obs.logError(details.exception, details.stack ?? StackTrace.current,
         event: 'app.crash.flutter');
@@ -78,7 +91,11 @@ void main() async {
         overrides: [
           authRepositoryProvider.overrideWithValue(authRepository),
           itemRepositoryProvider.overrideWithValue(itemRepository),
+          cellRepositoryProvider.overrideWithValue(cellRepository),
+          locationRepositoryProvider.overrideWithValue(locationRepository),
           observabilityProvider.overrideWithValue(obs),
+          mapObservabilityProvider.overrideWithValue(obs),
+          locationObservabilityProvider.overrideWithValue(obs),
         ],
         child: const _EarthNovaApp(),
       ),

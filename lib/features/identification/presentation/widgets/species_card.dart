@@ -295,11 +295,8 @@ class _InfoZone extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final group = item.taxonomicGroup;
-    final habitatList = item.habitats
-        .map(Habitat.fromString)
-        .whereType<Habitat>()
-        .where((h) => h != Habitat.unknown)
-        .toList();
+    final habitatList =
+        item.habitats.map(Habitat.fromString).whereType<Habitat>().toList();
     final regionList = item.continents
         .map(GameRegion.fromString)
         .whereType<GameRegion>()

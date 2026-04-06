@@ -15,6 +15,8 @@
 | `uuid` | `^4.5.3` | Session IDs in `ObservabilityService`. One UUID per app launch. |
 | `intl` | `^0.20.2` | Date formatting in `SpeciesCard` footer. |
 | `connectivity_plus` | `^6.x` | Network state detection. Powers `network.offline` / `network.online` observability events. Without it, connectivity failures are only detected reactively (fetch fails). |
+| `maplibre_gl` | `^0.20.0` | Map rendering at GPS level. Real-world vector tiles + custom Voronoi polygon overlay. Overrides AGENTS.md ban — see `docs/map-design.md §14`. |
+| `geolocator` | `^13.0.2` | GPS location provider. Adaptive update frequency, accuracy tracking for ring state detection. Overrides AGENTS.md ban — see `docs/map-design.md §14`. |
 
 ---
 
@@ -41,8 +43,8 @@ These packages were in v1/v2 and are **not** in v3. Do not add them back without
 | `riverpod_generator` + `riverpod_annotation` | Riverpod codegen annotations. Replaced by hand-written `NotifierProvider`. Codegen hides the provider structure from AI agents and new developers. Manual providers are ~5 lines each and perfectly readable. |
 | `geobase` | Geographic coordinate type library (`Geographic(lat:, lon:)`). Only needed when map/GPS features are active. Not needed for auth + pack MVP. Add back when map is built. |
 | `h3_flutter_plus` | H3 hexagonal cell system (FFI). Replaced by Voronoi cells in v2. Not needed for MVP. Requires `LD_LIBRARY_PATH=.` hack in CI. |
-| `maplibre` | Map rendering library. Not needed until map screen is built. Has significant bundle size impact. Add back when map is built (post-MVP). |
-| `geolocator` | GPS location service. Not needed until map screen is built. Add back with map. |
+| `maplibre_gl` | ~~Map rendering library. Not needed until map screen is built.~~ **Re-added as `maplibre_gl ^0.20.0`** — map system is now being built. See `docs/map-design.md §14`. |
+| `geolocator` | ~~GPS location service. Not needed until map screen is built.~~ **Re-added as `geolocator ^13.0.2`** — map system is now being built. See `docs/map-design.md §14`. |
 | `pedometer_2` | Step counting (native only, web stub). Removed in v2 simplification. Post-MVP feature. |
 | `web` | Dart JS interop package for web-specific code (OPFS database reset). Not needed in v3 — no SQLite, no OPFS. |
 | `shared_preferences` | Key-value storage. Not needed — no local persistence in MVP. If needed later, consider whether Supabase covers the use case first. |

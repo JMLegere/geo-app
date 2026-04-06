@@ -29,6 +29,12 @@ dependencies:
   # Network state detection — powers network.offline / network.online events
   connectivity_plus: ^6.1.4
 
+  # Map rendering — GPS-level real-world tiles + Voronoi overlay (overrides AGENTS.md ban per docs/map-design.md §14)
+  maplibre_gl: ^0.20.0
+
+  # GPS location provider — adaptive frequency, ring state detection (overrides AGENTS.md ban per docs/map-design.md §14)
+  geolocator: ^13.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

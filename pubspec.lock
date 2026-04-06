@@ -320,6 +320,54 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.5.0"
+  geolocator:
+    dependency: "direct main"
+    description:
+      name: geolocator
+      sha256: f62bcd90459e63210bbf9c35deb6a51c521f992a78de19a1fe5c11704f9530e2
+      url: "https://pub.dev"
+    source: hosted
+    version: "13.0.4"
+  geolocator_android:
+    dependency: transitive
+    description:
+      name: geolocator_android
+      sha256: fcb1760a50d7500deca37c9a666785c047139b5f9ee15aa5469fae7dbbe3170d
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.6.2"
+  geolocator_apple:
+    dependency: transitive
+    description:
+      name: geolocator_apple
+      sha256: dbdd8789d5aaf14cf69f74d4925ad1336b4433a6efdf2fce91e8955dc921bf22
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.3.13"
+  geolocator_platform_interface:
+    dependency: transitive
+    description:
+      name: geolocator_platform_interface
+      sha256: "30cb64f0b9adcc0fb36f628b4ebf4f731a2961a0ebd849f4b56200205056fe67"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.6"
+  geolocator_web:
+    dependency: transitive
+    description:
+      name: geolocator_web
+      sha256: b1ae9bdfd90f861fde8fd4f209c37b953d65e92823cb73c7dee1fa021b06f172
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.1.3"
+  geolocator_windows:
+    dependency: transitive
+    description:
+      name: geolocator_windows
+      sha256: "175435404d20278ffd220de83c2ca293b73db95eafbdc8131fe8609be1421eb6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.5"
   glob:
     dependency: transitive
     description:
@@ -408,6 +456,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
+  js:
+    dependency: transitive
+    description:
+      name: js
+      sha256: "53385261521cc4a0c4658fd0ad07a7d14591cf8fc33abbceae306ddb974888dc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.2"
   json_annotation:
     dependency: transitive
     description:
@@ -464,6 +520,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
+  maplibre_gl:
+    dependency: "direct main"
+    description:
+      name: maplibre_gl
+      sha256: ea2fa443e7d5dc18db7f37a0f6f5af40642888c56b81a14441aeddea077adaea
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.0"
+  maplibre_gl_platform_interface:
+    dependency: transitive
+    description:
+      name: maplibre_gl_platform_interface
+      sha256: "718c3503f36936fbf35c34d6ddf8bf770474c5ba1e6cb1d8caece44efae424af"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.0"
+  maplibre_gl_web:
+    dependency: transitive
+    description:
+      name: maplibre_gl_web
+      sha256: e7d71b08f24dca70e9c9cf841b096704a677e6239447d87220ec071355768149
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.0"
   matcher:
     dependency: transitive
     description:

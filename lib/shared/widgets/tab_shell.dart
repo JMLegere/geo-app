@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
@@ -13,7 +14,7 @@ class TabShell extends StatefulWidget {
 }
 
 class _TabShellState extends State<TabShell> {
-  int _currentIndex = 1; // Default to Pack
+  int _currentIndex = 0; // Default to Map
 
   late final List<Widget> _screens;
 
@@ -21,7 +22,7 @@ class _TabShellState extends State<TabShell> {
   void initState() {
     super.initState();
     _screens = [
-      const StubScreen(label: AppIcons.map),
+      const MapScreen(),
       const PackScreen(),
       const StubScreen(label: AppIcons.sanctuary),
       const SettingsScreen(),
