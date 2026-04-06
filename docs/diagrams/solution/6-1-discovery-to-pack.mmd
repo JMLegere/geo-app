@@ -11,9 +11,11 @@ sequenceDiagram
 
     GPS->>CellService: location coordinates (lat, lng)
     CellService->>CellService: Determine current Voronoi cell from coordinates
+    CellService->>CellService: Resolve cell → district → city → state → country
     CellService->>Supabase: Check if cell is new visit
     alt New cell visit
         CellService->>Supabase: INSERT v3_cell_visits
+        CellService->>CellService: Recompute hierarchy stats (district → city → state → country %)
     end
 
     CellService->>EncounterService: cellId, dailySeed

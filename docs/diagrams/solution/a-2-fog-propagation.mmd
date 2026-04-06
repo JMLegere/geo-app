@@ -1,0 +1,30 @@
+%% Status: NEEDS HUMAN REVIEW
+%% A-branch solution: How fog-of-war stats propagate up the hierarchy
+%% Cell visits bubble up to district → city → state → country → world percentages
+flowchart TD
+    subgraph CellLevel["Cell Level (A.2 fog states)"]
+        GPS["Player GPS position"]
+        CELL["Voronoi cell boundary check"]
+        VISIT["INSERT v3_cell_visits"]
+        FOG["Fog State Transitions:<br/>Unknown → Detected (within 1000m)<br/>Detected → Nearby<br/>Nearby → Explored (visited)<br/>Explored → Present (currently in)"]
+        GPS --> CELL --> VISIT --> FOG
+    end
+
+    subgraph Aggregation["Stats Aggregation (per user)"]
+        DIST["<b>District Stats</b><br/>cells_visited / cells_total = % explored<br/>unique species found in cells<br/>total visits<br/>last_visited_at"]
+        CITY["<b>City Stats</b><br/>districts_touched / districts_total = %<br/>sum(cells_visited) across districts<br/>unique species across districts"]
+        STATE["<b>State Stats</b><br/>cities_touched / cities_total = %<br/>sum(cells_visited) across cities<br/>unique species across cities"]
+        COUNTRY["<b>Country Stats</b><br/>states_touched / states_total = %<br/>sum(cells_visited) across states<br/>unique species across states"]
+        WORLD["<b>World Stats</b><br/>countries_touched / countries_total = %<br/>total cells explored globally"]
+
+        DIST --> CITY --> STATE --> COUNTRY --> WORLD
+    end
+
+    subgraph CardStyling["Infographic Card Fog Display"]
+        FOGGED["<b>Fogged (0%)</b><br/>Greyscale card<br/>Name: ???<br/>Stats: hidden"]
+        PARTIAL["<b>Partial (1-99%)</b><br/>Color tint ∝ %<br/>Name visible<br/>Stats shown"]
+        COMPLETE["<b>Complete (100%)</b><br/>Full color<br/>Checkmark badge<br/>All stats visible"]
+    end
+
+    CellLevel -->|"cell visit triggers<br/>stats recomputation"| Aggregation
+    Aggregation -->|"% explored drives<br/>card appearance"| CardStyling
