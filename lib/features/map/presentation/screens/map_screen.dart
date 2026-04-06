@@ -4,9 +4,16 @@ import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
+import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
@@ -25,6 +32,48 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
+    final playerMarkerState = ref.watch(playerMarkerProvider);
+    final explorationState = ref.watch(explorationProvider);
+    final encounterState = ref.watch(encounterProvider);
+
+    // Listen for cell entry events to trigger encounters
+    ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
+      if (previous?.currentCellId != next.currentCellId &&
+          next.currentCellId != null) {
+        final isFirstVisit = previous == null ||
+            !previous.visitedCellIds.contains(next.currentCellId);
+        ref.read(encounterProvider.notifier).onCellEntered(
+              cellId: next.currentCellId!,
+              isFirstVisit: isFirstVisit,
+            );
+      }
+    });
+
+    // Show encounter Snackbar when triggered
+    if (encounterState.currentEncounter != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              encounterState.currentEncounter!.type.name == 'species'
+                  ? 'You found a ${encounterState.currentEncounter!.speciesId}!'
+                  : 'A critter appeared!',
+            ),
+            backgroundColor: AppTheme.primary,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'Dismiss',
+              textColor: Colors.white,
+              onPressed: () {
+                ref.read(encounterProvider.notifier).dismissEncounter();
+              },
+            ),
+          ),
+        );
+        ref.read(encounterProvider.notifier).dismissEncounter();
+      });
+    }
 
     return switch (locationState) {
       LocationProviderLoading() => const Scaffold(
@@ -70,23 +119,61 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
 
+              // Shimmer while loading
+              if (mapState is MapStateLoading)
+                Positioned.fill(
+                  child: ShimmerCells(
+                    cameraPosition: (lat: location.lat, lng: location.lng),
+                    zoom: _kGpsZoom,
+                  ),
+                ),
+
               // Cell overlay layer - drawn on top of map using Flutter Canvas
               if (mapState is MapStateReady)
                 Positioned.fill(
                   child: IgnorePointer(
+                    child: GestureDetector(
+                      onTapUp: (details) => _onMapTap(
+                        context,
+                        details,
+                        mapState,
+                        location,
+                      ),
+                      child: CustomPaint(
+                        size: Size.infinite,
+                        painter: CellOverlayPainter(
+                          cellsWithStates: _buildCellStates(
+                            mapState.cells,
+                            mapState.visitedCellIds,
+                            explorationState.visitedCellIds,
+                          ),
+                          cameraPosition: (
+                            lat: location.lat,
+                            lng: location.lng,
+                          ),
+                          zoom: _kGpsZoom,
+                          cameraPixelOffset: Offset(
+                            MediaQuery.of(context).size.width / 2,
+                            MediaQuery.of(context).size.height / 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Player marker overlay
+              if (locationState is LocationProviderActive &&
+                  playerMarkerState.lat != 0.0)
+                Positioned.fill(
+                  child: IgnorePointer(
                     child: CustomPaint(
                       size: Size.infinite,
-                      painter: CellOverlayPainter(
-                        cellsWithStates: _buildCellStates(
-                          mapState.cells,
-                          mapState.visitedCellIds,
-                        ),
-                        cameraPosition: (
-                          lat: location.lat,
-                          lng: location.lng,
-                        ),
+                      painter: _PlayerMarkerPainter(
+                        markerState: playerMarkerState,
+                        cameraPosition: (lat: location.lat, lng: location.lng),
                         zoom: _kGpsZoom,
-                        cameraPixelOffset: Offset(
+                        screenCenter: Offset(
                           MediaQuery.of(context).size.width / 2,
                           MediaQuery.of(context).size.height / 2,
                         ),
@@ -132,16 +219,117 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     };
   }
 
-  /// Build cell state list from cells and visited cell IDs.
-  ///
-  /// For now, all cells are marked as 'nearby' since we haven't implemented
-  /// the cell visit detection yet. This will be updated in task 07.
+  void _onMapTap(
+    BuildContext context,
+    TapUpDetails details,
+    MapStateReady mapState,
+    LocationState location,
+  ) {
+    final tapPosition = details.localPosition;
+    final screenCenter = Offset(
+      MediaQuery.of(context).size.width / 2,
+      MediaQuery.of(context).size.height / 2,
+    );
+
+    // Find the cell that was tapped (simplified - find closest cell center)
+    Cell? closestCell;
+    double closestDistance = double.infinity;
+
+    for (final cell in mapState.cells) {
+      if (cell.polygon.isEmpty) continue;
+
+      // Calculate cell center in screen coordinates
+      double sumLat = 0;
+      double sumLng = 0;
+      for (final coord in cell.polygon) {
+        sumLat += coord.lat;
+        sumLng += coord.lng;
+      }
+      final centerLat = sumLat / cell.polygon.length;
+      final centerLng = sumLng / cell.polygon.length;
+
+      final screenPos = _latLngToScreen(
+        (lat: centerLat, lng: centerLng),
+        (lat: location.lat, lng: location.lng),
+        _kGpsZoom,
+        screenCenter,
+      );
+
+      final distance = (tapPosition - screenPos).distance;
+      if (distance < closestDistance && distance < 100) {
+        closestDistance = distance;
+        closestCell = cell;
+      }
+    }
+
+    if (closestCell != null) {
+      final isFirstVisit = !mapState.visitedCellIds.contains(closestCell.id);
+      _showCellDetailSheet(context, closestCell, isFirstVisit);
+    }
+  }
+
+  Offset _latLngToScreen(
+    ({double lat, double lng}) coord,
+    ({double lat, double lng}) cameraPosition,
+    double zoom,
+    Offset screenCenter,
+  ) {
+    const earthCircumference = 156543.03392;
+    final metersPerPixel =
+        earthCircumference * _cos(cameraPosition.lat) / _pow(2, zoom);
+
+    final dx = (coord.lng - cameraPosition.lng) *
+        metersPerPixel *
+        _cos(cameraPosition.lat * 3.14159265359 / 180);
+    final dy = (coord.lat - cameraPosition.lat) * metersPerPixel;
+
+    return Offset(screenCenter.dx + dx, screenCenter.dy - dy);
+  }
+
+  double _cos(double deg) {
+    final rad = deg * 3.14159265359 / 180;
+    var result = 1.0;
+    var term = 1.0;
+    for (var i = 1; i <= 10; i++) {
+      term *= -rad * rad / ((2 * i - 1) * (2 * i));
+      result += term;
+    }
+    return result;
+  }
+
+  double _pow(double base, double exp) {
+    var result = 1.0;
+    for (var i = 0; i < exp.toInt(); i++) {
+      result *= base;
+    }
+    return result;
+  }
+
+  void _showCellDetailSheet(
+    BuildContext context,
+    Cell cell,
+    bool isFirstVisit,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CellDetailSheet(
+        cell: cell,
+        visitCount: 1,
+        isFirstVisit: isFirstVisit,
+      ),
+    );
+  }
+
   List<({Cell cell, CellState state})> _buildCellStates(
     List<Cell> cells,
     Set<String> visitedCellIds,
+    Set<String> explorationVisitedCellIds,
   ) {
+    final allVisited = {...visitedCellIds, ...explorationVisitedCellIds};
+
     return cells.map((cell) {
-      final isVisited = visitedCellIds.contains(cell.id);
+      final isVisited = allVisited.contains(cell.id);
       final relationship =
           isVisited ? CellRelationship.explored : CellRelationship.nearby;
 
@@ -153,6 +341,77 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       );
     }).toList();
+  }
+}
+
+class _PlayerMarkerPainter extends CustomPainter {
+  _PlayerMarkerPainter({
+    required this.markerState,
+    required this.cameraPosition,
+    required this.zoom,
+    required this.screenCenter,
+  });
+
+  final PlayerMarkerState markerState;
+  final ({double lat, double lng}) cameraPosition;
+  final double zoom;
+  final Offset screenCenter;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (markerState.lat == 0.0 && markerState.lng == 0.0) return;
+
+    const earthCircumference = 156543.03392;
+    final metersPerPixel =
+        earthCircumference * _cos(cameraPosition.lat) * _pow(2, zoom);
+
+    final dx = (markerState.lng - cameraPosition.lng) *
+        metersPerPixel *
+        _cos(cameraPosition.lat * 3.14159265359 / 180);
+    final dy = (markerState.lat - cameraPosition.lat) * metersPerPixel;
+
+    final markerPos = Offset(screenCenter.dx + dx, screenCenter.dy - dy);
+
+    if (markerState.isRing) {
+      // Draw accuracy ring
+      final ringPaint = Paint()
+        ..color = Colors.blue.withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+
+      canvas.drawCircle(markerPos, 20, ringPaint);
+    } else {
+      // Draw solid marker dot
+      final markerPaint = Paint()
+        ..color = Colors.blue
+        ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(markerPos, 8, markerPaint);
+    }
+  }
+
+  double _cos(double deg) {
+    final rad = deg * 3.14159265359 / 180;
+    var result = 1.0;
+    var term = 1.0;
+    for (var i = 1; i <= 10; i++) {
+      term *= -rad * rad / ((2 * i - 1) * (2 * i));
+      result += term;
+    }
+    return result;
+  }
+
+  double _pow(double base, double exp) {
+    var result = 1.0;
+    for (var i = 0; i < exp.toInt(); i++) {
+      result *= base;
+    }
+    return result;
+  }
+
+  @override
+  bool shouldRepaint(covariant _PlayerMarkerPainter oldDelegate) {
+    return oldDelegate.markerState != markerState;
   }
 }
 

@@ -14,7 +14,7 @@ class TabShell extends StatefulWidget {
 }
 
 class _TabShellState extends State<TabShell> {
-  int _currentIndex = 1; // Default to Pack
+  int _currentIndex = 0; // Default to Map
 
   late final List<Widget> _screens;
 
