@@ -1,0 +1,47 @@
+%% Status: NEEDS HUMAN REVIEW
+%% A-branch solution: End-to-end exploration flow
+%% Ties together GPS → cell visit → stats update → infographic refresh → encounter
+sequenceDiagram
+    participant Player
+    participant MapTab
+    participant GPS
+    participant CellService
+    participant StatsService
+    participant Supabase
+    participant InfographicScreen
+
+    Player->>MapTab: open Map tab
+    MapTab->>MapTab: show WorldScreen (default)
+
+    Player->>MapTab: drill down to PlayerScreen
+    MapTab->>GPS: request position
+    GPS-->>MapTab: lat, lng
+
+    MapTab->>CellService: position update (lat, lng)
+    CellService->>CellService: determine current Voronoi cell
+    CellService->>CellService: resolve cell → district → city → state → country
+
+    alt New cell visit
+        CellService->>Supabase: INSERT v3_cell_visits (user_id, cell_id)
+        Supabase-->>CellService: confirmed
+
+        CellService->>StatsService: recompute hierarchy stats
+        StatsService->>StatsService: district: cells_visited / cells_total
+        StatsService->>StatsService: city: districts_touched / districts_total
+        StatsService->>StatsService: state: cities_touched / cities_total
+        StatsService->>StatsService: country: states_touched / states_total
+
+        Note over StatsService: Stats cached client-side,<br/>recomputed on cell visit
+
+        CellService-->>MapTab: cell visit recorded + fog cleared
+    end
+
+    Player->>MapTab: pinch-close from PlayerScreen
+    MapTab->>InfographicScreen: show DistrictScreen
+    InfographicScreen->>InfographicScreen: refresh cell grid with new visit highlighted
+
+    Player->>MapTab: pinch-close from DistrictScreen
+    MapTab->>InfographicScreen: show CityScreen
+    InfographicScreen->>InfographicScreen: refresh district cards with updated %
+
+    Note over CellService,Supabase: Encounter trigger connects to<br/>existing 6-1 discovery-to-pack flow

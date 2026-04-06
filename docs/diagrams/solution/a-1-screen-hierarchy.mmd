@@ -1,0 +1,71 @@
+%% Status: NEEDS HUMAN REVIEW
+%% A-branch solution: Map tab screen hierarchy
+%% 6 discrete screens — 5 infographic + 1 GPS map
+%% Default: WorldScreen. Architecture allows changing default later.
+stateDiagram-v2
+    [*] --> WorldScreen : open Map tab
+
+    state WorldScreen {
+        direction LR
+        W1 : Continent sections
+        W2 : Country cards with flags
+        W3 : Per-country % explored + species count
+    }
+
+    state CountryScreen {
+        direction LR
+        C1 : State/province cards
+        C2 : Per-state % explored
+        C3 : Cells visited + species count
+    }
+
+    state StateScreen {
+        direction LR
+        S1 : City/area cards
+        S2 : Per-city % explored
+        S3 : Districts touched + cells visited
+    }
+
+    state CityScreen {
+        direction LR
+        CS1 : District cards
+        CS2 : Per-district cell grid
+        CS3 : Visited/unvisited status
+    }
+
+    state DistrictScreen {
+        direction LR
+        D1 : Cell tiles
+        D2 : Visited badge per cell
+        D3 : Species found per cell
+    }
+
+    state PlayerScreen {
+        direction LR
+        P1 : GPS map (MapLibre)
+        P2 : Voronoi cell fog overlay
+        P3 : Encounter markers
+        P4 : Real-time position
+    }
+
+    WorldScreen --> CountryScreen : tap country / pinch-spread
+    CountryScreen --> StateScreen : tap state / pinch-spread
+    StateScreen --> CityScreen : tap city / pinch-spread
+    CityScreen --> DistrictScreen : tap district / pinch-spread
+    DistrictScreen --> PlayerScreen : tap cell / pinch-spread
+
+    PlayerScreen --> DistrictScreen : pinch-close / back
+    DistrictScreen --> CityScreen : pinch-close / back
+    CityScreen --> StateScreen : pinch-close / back
+    StateScreen --> CountryScreen : pinch-close / back
+    CountryScreen --> WorldScreen : pinch-close / back
+
+    note right of WorldScreen
+        Breadcrumb: World
+        Data: countries + aggregated stats
+    end note
+
+    note right of PlayerScreen
+        Breadcrumb: World > CA > NS > Halifax > North End > Cell
+        Data: GPS, nearby cells, fog, encounters
+    end note
