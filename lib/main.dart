@@ -5,16 +5,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:earth_nova/providers/auth_provider.dart';
-import 'package:earth_nova/screens/loading_screen.dart';
-import 'package:earth_nova/screens/login_screen.dart';
-import 'package:earth_nova/services/auth_service.dart';
-import 'package:earth_nova/services/mock_auth_service.dart';
-import 'package:earth_nova/services/observability_service.dart';
-import 'package:earth_nova/services/supabase_auth_service.dart';
-import 'package:earth_nova/services/supabase_bootstrap.dart';
-import 'package:earth_nova/shared/app_theme.dart';
-import 'package:earth_nova/widgets/tab_shell.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
+import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
+import 'package:earth_nova/features/auth/data/repositories/supabase_auth_repository.dart';
+import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/features/auth/presentation/screens/loading_screen.dart';
+import 'package:earth_nova/features/auth/presentation/screens/login_screen.dart';
+import 'package:earth_nova/features/identification/data/repositories/mock_item_repository.dart';
+import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
+import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
+import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
+import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,9 +59,13 @@ void main() async {
         data: {'error': 'No SUPABASE_URL provided'});
   }
 
-  final AuthService authService = supabaseClient != null
-      ? SupabaseAuthService(client: supabaseClient, observability: obs)
-      : MockAuthService();
+  final AuthRepository authRepository = supabaseClient != null
+      ? SupabaseAuthRepository(client: supabaseClient)
+      : MockAuthRepository();
+
+  final ItemRepository itemRepository = supabaseClient != null
+      ? SupabaseItemRepository(client: supabaseClient)
+      : MockItemRepository();
 
   FlutterError.onError = (details) {
     obs.logError(details.exception, details.stack ?? StackTrace.current,
@@ -68,7 +76,8 @@ void main() async {
     () => runApp(
       ProviderScope(
         overrides: [
-          authServiceProvider.overrideWithValue(authService),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          itemRepositoryProvider.overrideWithValue(itemRepository),
           observabilityProvider.overrideWithValue(obs),
         ],
         child: const _EarthNovaApp(),
