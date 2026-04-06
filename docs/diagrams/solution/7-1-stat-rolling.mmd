@@ -1,4 +1,6 @@
 %% Status: NEEDS HUMAN REVIEW
+%% Problem: b3-understand-stats.mmd, b-identify-specimens.mmd, h2-breed-specimens.mmd
+%% Related: 6-4-identification-flow.mmd, 5-1-item-lifecycle.mmd, 7-2-fully-enriched-predicate.mmd
 flowchart TD
     INPUT[/Input: instanceUUID/] --> HASH[Compute hash =\nSHA-256 of instanceUUID]
     HASH --> EXTRACT[Extract seed bytes:\nbytes 0..7 from 32-byte hash]
