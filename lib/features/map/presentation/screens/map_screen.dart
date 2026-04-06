@@ -163,8 +163,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
 
               // Player marker overlay
-              if (locationState is LocationProviderActive &&
-                  playerMarkerState.lat != 0.0)
+              if (playerMarkerState.lat != 0.0)
                 Positioned.fill(
                   child: IgnorePointer(
                     child: CustomPaint(
