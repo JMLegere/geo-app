@@ -4,8 +4,15 @@ flowchart TD
     observability["observabilityProvider"]
     locationProv["locationProvider\n(GPS — no deps)"]
 
-    authService["authServiceProvider"]
-    itemService["itemServiceProvider"]
+    authRepository["authRepositoryProvider"]
+    itemRepository["itemRepositoryProvider"]
+
+    %% Use case providers
+    signInWithPhone["signInWithPhoneProvider"]
+    signOut["signOutProvider"]
+    restoreSession["restoreSessionProvider"]
+    getCurrentUser["getCurrentUserProvider"]
+    fetchItems["fetchItemsProvider"]
 
     auth["authProvider\n(AuthNotifier)"]
     items["itemsProvider\n(ItemsNotifier)"]
@@ -20,14 +27,25 @@ flowchart TD
     encounter["encounterProvider\n(future)"]
     cellVisit["cellVisitProvider\n(future)"]
 
-    %% Current dependencies
-    supabase --> authService
-    supabase --> itemService
+    %% Repository dependencies
+    supabase --> authRepository
+    supabase --> itemRepository
 
-    authService --> auth
+    %% Use case dependencies
+    authRepository --> signInWithPhone
+    authRepository --> signOut
+    authRepository --> restoreSession
+    authRepository --> getCurrentUser
+    itemRepository --> fetchItems
+
+    %% Notifier dependencies
+    signInWithPhone --> auth
+    signOut --> auth
+    restoreSession --> auth
+    getCurrentUser --> auth
     observability --> auth
 
-    itemService --> items
+    fetchItems --> items
     auth --> items
     observability --> items
 
@@ -61,8 +79,13 @@ flowchart TD
     style locationProv fill:#06b6d4,color:#fff
     style auth fill:#4a9eff,color:#fff
     style items fill:#4a9eff,color:#fff
-    style authService fill:#a3a3a3,color:#fff
-    style itemService fill:#a3a3a3,color:#fff
+    style authRepository fill:#a3a3a3,color:#fff
+    style itemRepository fill:#a3a3a3,color:#fff
+    style signInWithPhone fill:#f59e0b,color:#fff
+    style signOut fill:#f59e0b,color:#fff
+    style restoreSession fill:#f59e0b,color:#fff
+    style getCurrentUser fill:#f59e0b,color:#fff
+    style fetchItems fill:#f59e0b,color:#fff
     style speciesSync fill:#a855f7,color:#fff
     style writeQueue fill:#a855f7,color:#fff
     style identification fill:#a855f7,color:#fff

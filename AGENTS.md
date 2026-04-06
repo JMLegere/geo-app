@@ -95,6 +95,7 @@ These are settled. Do not revisit without explicit instruction from the user.
 | **Observability from day 1** | `ObservableNotifier`, `runZonedGuarded`, `FlutterError.onError` | v2 outage ran undetected for weeks — no structured logging |
 | **2-frame sprite animation** | Real art frames from enrichment pipeline, not programmatic | Real frames from enrichment; `icon_url_frame2` null = static until enriched |
 | **All cell visits** | `v3_cell_visits` records every visit, no UNIQUE constraint | Full history enables fog, counts, streaks, achievements from raw rows |
+| **Clean Architecture** | Strict layering (domain ← data ← presentation), one use case per operation, domain entities pure Dart | Long-term extensibility for 10 feature domains (A-I + S), offline readiness, testability |
 
 ---
 
@@ -109,6 +110,11 @@ These are settled. Do not revisit without explicit instruction from the user.
 - **`dynamic` casts, unchecked `as`** — use sealed classes and pattern matching
 - **Raw phone numbers in logs** — always SHA-256 hash before logging
 - **`debugPrint` for structured events** — use `ObservabilityService.log()`
+- **`import 'package:flutter'` in `core/domain/` or `features/*/domain/`** — domain is pure Dart
+- **Notifiers calling repositories directly** — use cases are the API
+- **`fromJson`/`toJson` on domain entities** — use DTOs in data layer
+- **`AuthService` / `ItemService`** — renamed to `AuthRepository` / `ItemRepository`
+- **Emoji or Color on domain enums** — use shared/extensions
 
 ---
 
@@ -130,7 +136,10 @@ These are settled. Do not revisit without explicit instruction from the user.
 |-------|---------|---------|
 | Provider | `fooProvider` | `authProvider`, `itemsProvider` |
 | Notifier | `FooNotifier` | `AuthNotifier` |
-| Service | `FooService` | `AuthService`, `ItemService` |
+| Service | `FooService` | Reserved for domain services with cross-entity logic (not data access) |
+| Repository | `FooRepository` / `SupabaseFooRepository` | `AuthRepository` / `SupabaseAuthRepository` — data access interface + implementation |
+| Use Case | `VerbNoun` | `SignInWithPhone`, `FetchItems` — one operation, one class |
+| DTO | `FooDto` | `ItemDto`, `UserProfileDto` — JSON serialization in data layer |
 | State | `FooState` | `AuthState`, `ItemsState` |
 | Screen | `FooScreen` | `LoginScreen`, `PackScreen` |
 | Widget | descriptive noun | `ItemSlotWidget`, `RarityBadge` |
