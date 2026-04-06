@@ -3,8 +3,6 @@ import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
-import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
-import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 
 // Provider for observability service (must be overridden)
 final encounterObservabilityProvider = Provider<ObservabilityService>((ref) {

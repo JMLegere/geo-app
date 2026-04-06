@@ -66,6 +66,11 @@ class _ShimmerCellsPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final shimmerColor = Colors.white.withValues(alpha: 0.1);
+    final shimmerPaint = Paint()
+      ..color = shimmerColor
+      ..style = PaintingStyle.fill;
+
     final centerX = size.width / 2;
     final centerY = size.height / 2;
 
