@@ -17,7 +17,21 @@ flowchart TD
         Tab4[Tab 4: SettingsScreen]
     end
 
-    Tab1 -.-|"stub -> future: MapLibre + fog"| MapFuture(MapLibre + Fog of War)
+    Tab1 --> WorldScreen
+    subgraph MapHierarchy [Map Hierarchy -- pinch/tap navigation]
+        direction TB
+        WorldScreen[WorldScreen: country infographics]
+        CountryScreen[CountryScreen: state infographics]
+        StateScreen[StateScreen: city infographics]
+        CityScreen[CityScreen: district infographics]
+        DistrictScreen[DistrictScreen: cell tiles]
+        PlayerScreen[PlayerScreen: GPS + fog overlay]
+        WorldScreen -->|"tap/pinch-spread"| CountryScreen
+        CountryScreen -->|"tap/pinch-spread"| StateScreen
+        StateScreen -->|"tap/pinch-spread"| CityScreen
+        CityScreen -->|"tap/pinch-spread"| DistrictScreen
+        DistrictScreen -->|"tap/pinch-spread"| PlayerScreen
+    end
 
     Tab2 -->|tap item| SpeciesCard{{SpeciesCard Modal}}
     Tab2 -->|hold enriched item| IdentificationReveal{{IdentificationReveal Modal}}
@@ -39,6 +53,6 @@ flowchart TD
     style CollectionPicker fill:#fff3e0,stroke:#FF9800
     style DonationConfirmation fill:#fff3e0,stroke:#FF9800
     style SpeciesCardSanctuary fill:#fff3e0,stroke:#FF9800
-    style MapFuture fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5
+    style MapHierarchy fill:#e8f4fd,stroke:#2196F3,stroke-width:2px
     style SanctuaryFuture fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5
     style SkillView fill:#f3e5f5,stroke:#9C27B0,stroke-dasharray:5 5

@@ -1,0 +1,69 @@
+%% Status: NEEDS HUMAN REVIEW
+%% A-branch solution: Geographic hierarchy data model
+%% Reuses existing tables from migration 027 + v3_cell_visits from migration 032
+erDiagram
+    countries {
+        text id PK "e.g. CA, US, GB"
+        text name "Canada, United States"
+        float centroid_lat
+        float centroid_lon
+        text continent "North America, Europe, etc."
+        text boundary_json "GeoJSON (optional, for Player map)"
+        timestamptz created_at
+    }
+
+    states {
+        text id PK "e.g. CA-NS, US-NY"
+        text name "Nova Scotia, New York"
+        float centroid_lat
+        float centroid_lon
+        text country_id FK "FK countries"
+        text boundary_json
+        timestamptz created_at
+    }
+
+    cities {
+        text id PK "e.g. CA-NS-halifax"
+        text name "Halifax"
+        float centroid_lat
+        float centroid_lon
+        text state_id FK "FK states"
+        text boundary_json
+        int cells_total "Pre-computed Voronoi cell count"
+        timestamptz created_at
+    }
+
+    districts {
+        text id PK "e.g. CA-NS-halifax-north-end"
+        text name "North End"
+        float centroid_lat
+        float centroid_lon
+        text city_id FK "FK cities"
+        text boundary_json
+        int cells_total "Pre-computed Voronoi cell count"
+        text source "whosonfirst"
+        text source_id
+        timestamptz created_at
+    }
+
+    v3_cell_visits {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        text cell_id "Voronoi cell identifier"
+        timestamptz visited_at "Every visit = new row"
+    }
+
+    v3_items {
+        uuid id PK
+        uuid user_id FK "FK auth.users"
+        text acquired_in_cell_id "Links item to cell"
+        text definition_id FK "FK species"
+        text status "active, donated, etc."
+        timestamptz acquired_at
+    }
+
+    countries ||--o{ states : "has states"
+    states ||--o{ cities : "has cities"
+    cities ||--o{ districts : "has districts"
+    districts ||--o{ v3_cell_visits : "cells visited within"
+    districts ||--o{ v3_items : "items found within"

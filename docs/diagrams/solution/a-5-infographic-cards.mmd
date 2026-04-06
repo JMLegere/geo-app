@@ -1,0 +1,59 @@
+%% Status: NEEDS HUMAN REVIEW
+%% A-branch solution: Infographic card anatomy and screen layout
+%% Each hierarchy level has a card component showing aggregated stats
+flowchart TD
+    subgraph ScreenLayout["Screen Layout (all infographic screens)"]
+        HEADER["<b>Header</b><br/>Breadcrumb: World > Canada > Nova Scotia<br/>Back button / pinch-close to go up"]
+        BODY["<b>Body</b><br/>Scrollable grid of child cards<br/>Grouped by category where relevant"]
+        FOOTER["<b>Footer</b><br/>Summary: X/Y explored, Z species found<br/>Progress bar for current level"]
+        HEADER --> BODY --> FOOTER
+    end
+
+    subgraph CountryCard["Country Card"]
+        CC_FLAG["🇨🇦 Flag emoji"]
+        CC_NAME["<b>Canada</b>"]
+        CC_STAT1["42% explored"]
+        CC_STAT2["1,247 species"]
+        CC_STYLE["Color tint ∝ % explored"]
+    end
+
+    subgraph StateCard["State / Province Card"]
+        SC_NAME["<b>Nova Scotia</b>"]
+        SC_STAT1["68% explored"]
+        SC_STAT2["312 cells visited"]
+        SC_STAT3["89 species"]
+        SC_PROGRESS["Progress ring"]
+    end
+
+    subgraph CityCard["City / Area Card"]
+        AC_NAME["<b>Halifax</b>"]
+        AC_STAT1["55% explored"]
+        AC_STAT2["3/5 districts touched"]
+        AC_STAT3["42 species"]
+    end
+
+    subgraph DistrictCard["District Card"]
+        DC_NAME["<b>North End</b>"]
+        DC_STAT1["78% explored"]
+        DC_STAT2["156/200 cells"]
+        DC_STAT3["28 species"]
+    end
+
+    subgraph CellTile["Cell Tile"]
+        CT_ID["Cell ID"]
+        CT_BADGE["✓ Visited / ? Unvisited"]
+        CT_SPECIES["3 species found"]
+    end
+
+    subgraph FogStyling["Card Fog States"]
+        FOGGED["<b>Fogged (never visited)</b><br/>Greyscale, ??? name<br/>Stats hidden, locked icon"]
+        PARTIAL["<b>Partial (1-99%)</b><br/>Color tint ∝ %<br/>Name + stats visible"]
+        COMPLETE["<b>Complete (100%)</b><br/>Full color, ✓ badge<br/>All stats, celebration"]
+    end
+
+    subgraph Gestures["Interaction"]
+        TAP["Tap card → drill into children"]
+        PINCH_IN["Pinch-spread on card → drill in"]
+        PINCH_OUT["Pinch-close → go up one level"]
+        BACK["Back button → go up one level"]
+    end
