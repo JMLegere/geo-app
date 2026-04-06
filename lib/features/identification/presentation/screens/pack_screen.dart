@@ -655,9 +655,7 @@ class _FilterPanel extends StatelessWidget {
               child: Wrap(
                 spacing: Spacing.xs,
                 runSpacing: Spacing.xs,
-                children: Habitat.values
-                    .where((h) => h != Habitat.unknown)
-                    .map((habitat) {
+                children: Habitat.values.map((habitat) {
                   return _IconFilterToggle(
                     icon: habitat.icon,
                     selected: filters.activeHabitats.contains(habitat),

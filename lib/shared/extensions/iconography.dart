@@ -22,7 +22,7 @@ abstract final class AppIcons {
   static const String forest = '🌲';
   static const String plains = '🌾';
   static const String freshwater = '💧';
-  static const String saltwater = '🌊';
+  static const String ocean = '🌊';
   static const String swamp = '🌱';
   static const String mountain = '🏔️';
   static const String desert = '🌵';
@@ -62,11 +62,10 @@ extension HabitatIcon on Habitat {
         Habitat.forest => AppIcons.forest,
         Habitat.plains => AppIcons.plains,
         Habitat.freshwater => AppIcons.freshwater,
-        Habitat.saltwater => AppIcons.saltwater,
+        Habitat.ocean => AppIcons.ocean,
         Habitat.swamp => AppIcons.swamp,
         Habitat.mountain => AppIcons.mountain,
         Habitat.desert => AppIcons.desert,
-        Habitat.unknown => AppIcons.unknown,
       };
 }
 
