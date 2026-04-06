@@ -72,10 +72,11 @@ jobs:
           PCT=$(( HIT * 100 / TOTAL ))
           echo "Coverage: $HIT/$TOTAL lines = ${PCT}%"
 
-          # Fail if coverage drops below 95%
-          if [ "$PCT" -lt 95 ]; then
-            echo "::error::Coverage ${PCT}% is below 95% threshold"
+          # Fail if covered lines < 95% of total (avoids integer division rounding)
+          THRESHOLD=$(( TOTAL * 95 / 100 ))
+          if [ "$HIT" -lt "$THRESHOLD" ]; then
+            echo "::error::Coverage ${PCT}% ($HIT/$TOTAL) is below 95% threshold (need $THRESHOLD)"
             exit 1
           fi
 
-          echo "✅ Coverage ${PCT}% meets 95% threshold"
+          echo "✅ Coverage ${PCT}% ($HIT/$TOTAL) meets 95% threshold (need $THRESHOLD)"
