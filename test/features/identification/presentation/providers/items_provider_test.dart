@@ -212,6 +212,17 @@ void main() {
       freshAuth.dispose();
     });
 
+    test('itemRepositoryProvider throws when not overridden', () {
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+        ],
+      );
+      expect(() => c.read(itemRepositoryProvider), throwsA(anything));
+      c.dispose();
+    });
+
     test('ItemsState copyWith preserves unset fields', () {
       final state = ItemsState(
         items: [_testItem()],
