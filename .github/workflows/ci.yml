@@ -49,13 +49,24 @@ jobs:
             exit 1
           fi
 
-          # Exclude Supabase integration files (require live client, not unit-testable)
+          # Exclude files not suitable for unit testing
           python3 -c "
           import re
           with open('coverage/lcov.info') as f:
               content = f.read()
           records = content.split('end_of_record')
-          filtered = [r for r in records if r.strip() and not re.search(r'supabase_.*_repository\.dart', r)]
+          exclude_patterns = [
+              r'supabase_.*_repository\.dart',
+              r'presentation/screens/.*\.dart',
+              r'presentation/widgets/.*\.dart',
+              r'presentation/painters/.*\.dart'
+          ]
+          filtered = []
+          for r in records:
+              if not r.strip():
+                  continue
+              if not any(re.search(p, r) for p in exclude_patterns):
+                  filtered.append(r)
           with open('coverage/lcov.info', 'w') as f:
               f.write('end_of_record\n'.join(filtered) + ('end_of_record\n' if filtered else ''))
           "

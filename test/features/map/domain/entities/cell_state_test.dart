@@ -78,5 +78,17 @@ void main() {
       );
       expect(a, isNot(equals(b)));
     });
+
+    test('hashCode is consistent for equal states', () {
+      const a = CellState(
+        relationship: CellRelationship.explored,
+        contents: CellContents.empty,
+      );
+      const b = CellState(
+        relationship: CellRelationship.explored,
+        contents: CellContents.empty,
+      );
+      expect(a.hashCode, equals(b.hashCode));
+    });
   });
 }

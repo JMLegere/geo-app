@@ -102,5 +102,93 @@ void main() {
       );
       expect(cell.blendedColor, Habitat.ocean.color);
     });
+
+    test('hashCode is consistent for equal cells', () {
+      const a = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: polygon,
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      const b = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: polygon,
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      expect(a.hashCode, equals(b.hashCode));
+    });
+
+    test('inequality when habitats differ', () {
+      const a = Cell(
+        id: id,
+        habitats: [Habitat.forest],
+        polygon: polygon,
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      const b = Cell(
+        id: id,
+        habitats: [Habitat.ocean],
+        polygon: polygon,
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      expect(a, isNot(equals(b)));
+    });
+
+    test('inequality when polygon differs', () {
+      const a = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: [(lat: 0.0, lng: 0.0)],
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      const b = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: polygon,
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      expect(a, isNot(equals(b)));
+    });
+
+    test('inequality when districtId differs', () {
+      const a = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: polygon,
+        districtId: 'district-a',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      const b = Cell(
+        id: id,
+        habitats: habitats,
+        polygon: polygon,
+        districtId: 'district-b',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
+      expect(a, isNot(equals(b)));
+    });
   });
 }
