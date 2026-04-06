@@ -1,0 +1,12 @@
+{
+  "status": "done",
+  "origin": "plan",
+  "planTitle": "TDD: Core domain entities, DTOs, and shared extensions",
+  "dependsOn": [],
+  "baseCommit": "8fc14f49504bf78be2590c02dc4901b738ee783d",
+  "schemaVersion": 1,
+  "startedAt": "2026-04-06T03:03:47.431Z",
+  "idempotencyKey": "hive-clean-architecture-migration-01-tdd-core-domain-entities-dtos-and-shared-extensions-1",
+  "summary": "Created 11 new lib/ files and 11 matching test files via strict TDD (red→green for each). Core domain entities (UserProfile, AuthState, IucnStatus, TaxonomicGroup, Habitat, GameRegion, Item) are pure Dart with no Flutter imports. DTOs (UserProfileDto, ItemDto) handle serialization in the data layer. Shared extensions (IucnStatusTheme, iconography with AppIcons/PackSortMode) add Flutter/emoji concerns without polluting domain. All 276 tests pass, flutter analyze reports 0 issues.",
+  "completedAt": "2026-04-06T03:17:55.225Z"
+}

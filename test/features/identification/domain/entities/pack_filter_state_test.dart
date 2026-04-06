@@ -78,11 +78,108 @@ void main() {
       expect(filters.matches(_fauna(taxonomicClass: 'AVES')), isFalse);
     });
 
+    test('habitat filter matches items with matching habitat', () {
+      final filters = const PackFilterState().toggleHabitat(Habitat.forest);
+      expect(
+        filters.matches(_fauna(habitats: ['Forest', 'Mountain'])),
+        isTrue,
+      );
+      expect(
+        filters.matches(_fauna(habitats: ['Desert'])),
+        isFalse,
+      );
+    });
+
+    test('habitat filter passes items with no habitats', () {
+      final filters = const PackFilterState().toggleHabitat(Habitat.forest);
+      expect(filters.matches(_fauna(habitats: [])), isTrue);
+    });
+
+    test('region filter matches items with matching continent', () {
+      final filters = const PackFilterState().toggleRegion(GameRegion.africa);
+      expect(
+        filters.matches(_fauna(continents: ['Africa', 'Asia'])),
+        isTrue,
+      );
+      expect(
+        filters.matches(_fauna(continents: ['Europe'])),
+        isFalse,
+      );
+    });
+
+    test('region filter passes items with no continents', () {
+      final filters = const PackFilterState().toggleRegion(GameRegion.africa);
+      expect(filters.matches(_fauna(continents: [])), isTrue);
+    });
+
+    test('rarity filter matches items with matching rarity', () {
+      final filters =
+          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      expect(filters.matches(_fauna(rarity: 'EN')), isTrue);
+      expect(filters.matches(_fauna(rarity: 'LC')), isFalse);
+    });
+
+    test('rarity filter rejects items with null rarity', () {
+      final filters =
+          const PackFilterState().toggleRarity(IucnStatus.endangered);
+      expect(filters.matches(_fauna(rarity: null)), isFalse);
+    });
+
+    test('type filter passes non-fauna items (null taxonomicClass)', () {
+      final filters =
+          const PackFilterState().toggleType(TaxonomicGroup.mammals);
+      final mineral = Item(
+        id: 'test',
+        definitionId: 'def',
+        displayName: 'Quartz',
+        category: ItemCategory.mineral,
+        acquiredAt: DateTime(2026),
+        status: ItemStatus.active,
+      );
+      expect(filters.matches(mineral), isTrue);
+    });
+
+    test('cross-dimension AND: type + habitat both must match', () {
+      var filters = const PackFilterState();
+      filters = filters.toggleType(TaxonomicGroup.mammals);
+      filters = filters.toggleHabitat(Habitat.forest);
+      // Mammal in forest → pass
+      expect(
+        filters.matches(_fauna(
+          taxonomicClass: 'MAMMALIA',
+          habitats: ['Forest'],
+        )),
+        isTrue,
+      );
+      // Mammal in desert → fail habitat
+      expect(
+        filters.matches(_fauna(
+          taxonomicClass: 'MAMMALIA',
+          habitats: ['Desert'],
+        )),
+        isFalse,
+      );
+      // Bird in forest → fail type
+      expect(
+        filters.matches(_fauna(
+          taxonomicClass: 'AVES',
+          habitats: ['Forest'],
+        )),
+        isFalse,
+      );
+    });
+
     test('equality works', () {
       final a = const PackFilterState().toggleType(TaxonomicGroup.mammals);
       final b = const PackFilterState().toggleType(TaxonomicGroup.mammals);
       expect(a, equals(b));
       expect(a.hashCode, b.hashCode);
+    });
+
+    test('inequality when different filters', () {
+      final a = const PackFilterState().toggleType(TaxonomicGroup.mammals);
+      final b = const PackFilterState().toggleType(TaxonomicGroup.birds);
+      expect(a, isNot(equals(b)));
     });
   });
 }

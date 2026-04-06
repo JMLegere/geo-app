@@ -1,12 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
-import 'package:earth_nova/features/identification/data/repositories/mock_item_repository.dart';
-import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/fetch_items.dart';
 
@@ -48,8 +45,7 @@ class ItemsState {
 
 /// Provider for the item repository — overridden with real impl in main.dart.
 final itemRepositoryProvider = Provider<ItemRepository>((ref) {
-  final client = Supabase.instance.client;
-  return SupabaseItemRepository(client: client);
+  throw UnimplementedError('Must be overridden with real or mock repository');
 });
 
 /// Items provider — fetches and caches user's items from Supabase.
@@ -101,8 +97,3 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     }
   }
 }
-
-/// Backwards-compatible alias for tests that use MockItemRepository directly.
-final itemServiceProvider = Provider<ItemRepository>((ref) {
-  return MockItemRepository();
-});

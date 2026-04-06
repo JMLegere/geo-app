@@ -1,0 +1,14 @@
+{
+  "status": "done",
+  "origin": "plan",
+  "planTitle": "TDD: Identification feature + full switchover",
+  "dependsOn": [
+    "02-tdd-auth-feature--repositories-use-cases-presentation"
+  ],
+  "baseCommit": "72caf72f95a478bea3eab8bce58fc51c1b776946",
+  "schemaVersion": 1,
+  "startedAt": "2026-04-06T03:31:43.725Z",
+  "idempotencyKey": "hive-clean-architecture-migration-03-tdd-identification-feature--full-switchover-1",
+  "summary": "Created identification feature domain (ItemRepository, FetchItems use case, PackFilterState entity) and data layer (MockItemRepository, SupabaseItemRepository) via strict TDD. Moved core infrastructure to lib/core/observability/ and lib/core/supabase/. Created all new presentation files (ItemsNotifier, PackScreen, SpeciesCard, TabShell, SettingsScreen, LoadingDots, StubScreen) in feature/shared paths with updated imports. Migrated all 17 old test files to new locations with updated imports. Deleted all old lib/models/, lib/services/, lib/providers/, lib/screens/, lib/widgets/ directories and old test directories. Updated main.dart to wire new repository providers. flutter analyze → 0 issues, flutter test → 207/207 pass.",
+  "completedAt": "2026-04-06T04:22:30.441Z"
+}

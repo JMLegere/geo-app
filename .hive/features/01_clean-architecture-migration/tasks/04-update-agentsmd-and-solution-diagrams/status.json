@@ -1,0 +1,14 @@
+{
+  "status": "done",
+  "origin": "plan",
+  "planTitle": "Update AGENTS.md and solution diagrams",
+  "dependsOn": [
+    "03-tdd-identification-feature--full-switchover"
+  ],
+  "baseCommit": "456b65ec57b585aec2682b094ac1990c4c69baa6",
+  "schemaVersion": 1,
+  "startedAt": "2026-04-06T04:23:55.066Z",
+  "idempotencyKey": "hive-clean-architecture-migration-04-update-agentsmd-and-solution-diagrams-1",
+  "summary": "Updated AGENTS.md with Clean Architecture key decision, Repository/UseCase/DTO naming conventions, and 5 new forbidden patterns (domain purity, no direct repo calls, DTOs for serialization, renamed services, no emoji on domain enums). Updated 3-3-client-layers.mmd to add UseCaseLayer and DomainLayer, rename ServiceLayer to DataLayer. Updated 3-4-provider-graph.mmd to rename authServiceProvider/itemServiceProvider to authRepositoryProvider/itemRepositoryProvider and add use case provider nodes. flutter analyze → 0 issues.",
+  "completedAt": "2026-04-06T04:28:06.418Z"
+}

@@ -61,6 +61,9 @@ class MockAuthRepository implements AuthRepository {
     return false;
   }
 
+  /// Emit an auth event directly on the stream (for testing stream listeners).
+  void emitEvent(AuthEvent event) => _controller.add(event);
+
   @override
   void dispose() => _controller.close();
 }
