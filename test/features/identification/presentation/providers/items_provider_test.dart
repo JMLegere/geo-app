@@ -212,6 +212,28 @@ void main() {
       freshAuth.dispose();
     });
 
+    test('ItemsState copyWith preserves unset fields', () {
+      final state = ItemsState(
+        items: [_testItem()],
+        isLoading: true,
+        error: 'err',
+      );
+      final copied = state.copyWith(isLoading: false);
+      expect(copied.items, hasLength(1));
+      expect(copied.isLoading, isFalse);
+      expect(copied.error, isNull); // error resets via named param default
+    });
+
+    test('ItemsState equality and hashCode', () {
+      const a = ItemsState();
+      const b = ItemsState();
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+
+      final c = ItemsState(items: [_testItem()]);
+      expect(a, isNot(equals(c)));
+    });
+
     test('fetchItems with empty result logs count 0', () async {
       final repo = MockItemRepository();
       final c = ProviderContainer(

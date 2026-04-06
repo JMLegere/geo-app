@@ -1,8 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
+import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 
 void main() {
+  group('AuthException', () {
+    test('toString includes message', () {
+      const e = AuthException('bad credentials');
+      expect(e.toString(), 'AuthException: bad credentials');
+    });
+
+    test('message is accessible', () {
+      const e = AuthException('test');
+      expect(e.message, 'test');
+    });
+  });
   final profile =
       UserProfile(id: 'u1', phone: '555', createdAt: DateTime(2026));
 

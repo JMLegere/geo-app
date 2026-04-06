@@ -49,6 +49,17 @@ jobs:
             exit 1
           fi
 
+          # Exclude Supabase integration files (require live client, not unit-testable)
+          python3 -c "
+          import re
+          with open('coverage/lcov.info') as f:
+              content = f.read()
+          records = content.split('end_of_record')
+          filtered = [r for r in records if r.strip() and not re.search(r'supabase_.*_repository\.dart', r)]
+          with open('coverage/lcov.info', 'w') as f:
+              f.write('end_of_record\n'.join(filtered) + ('end_of_record\n' if filtered else ''))
+          "
+
           # Count lines
           TOTAL=$(grep -c 'DA:' coverage/lcov.info || echo 0)
           HIT=$(grep 'DA:' coverage/lcov.info | grep -cv ',0$' || echo 0)
@@ -61,10 +72,10 @@ jobs:
           PCT=$(( HIT * 100 / TOTAL ))
           echo "Coverage: $HIT/$TOTAL lines = ${PCT}%"
 
-          # Fail if coverage drops below 90%
-          if [ "$PCT" -lt 90 ]; then
-            echo "::error::Coverage ${PCT}% is below 90% threshold"
+          # Fail if coverage drops below 95%
+          if [ "$PCT" -lt 95 ]; then
+            echo "::error::Coverage ${PCT}% is below 95% threshold"
             exit 1
           fi
 
-          echo "✅ Coverage ${PCT}% meets 90% threshold"
+          echo "✅ Coverage ${PCT}% meets 95% threshold"

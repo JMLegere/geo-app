@@ -1,0 +1,58 @@
+{
+  "sessions": [
+    {
+      "sessionId": "ses_29f614687ffe9CFq68O75hX5EN",
+      "startedAt": "2026-04-06T02:28:28.299Z",
+      "lastActiveAt": "2026-04-06T03:02:27.292Z",
+      "agent": "hive-master",
+      "sessionKind": "primary",
+      "baseAgent": "hive-master",
+      "directivePrompt": "use tdd for it",
+      "featureName": "clean-architecture-migration"
+    },
+    {
+      "sessionId": "ses_29f40b5f8ffevAxGjCIMEUsjo8",
+      "startedAt": "2026-04-06T03:04:02.327Z",
+      "lastActiveAt": "2026-04-06T03:17:54.841Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "clean-architecture-migration",
+      "taskFolder": "01-tdd-core-domain-entities-dtos-and-shared-extensions",
+      "workerPromptPath": ".hive/features/01_clean-architecture-migration/tasks/01-tdd-core-domain-entities-dtos-and-shared-extensions/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29f3296f6ffeHcWurT2nTJ2GOl",
+      "startedAt": "2026-04-06T03:19:27.766Z",
+      "lastActiveAt": "2026-04-06T03:30:45.262Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "clean-architecture-migration",
+      "taskFolder": "02-tdd-auth-feature--repositories-use-cases-presentation",
+      "workerPromptPath": ".hive/features/01_clean-architecture-migration/tasks/02-tdd-auth-feature--repositories-use-cases-presentation/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29f2725c8ffeyeBWnArmLEucso",
+      "startedAt": "2026-04-06T03:31:57.639Z",
+      "lastActiveAt": "2026-04-06T04:22:29.179Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "clean-architecture-migration",
+      "taskFolder": "03-tdd-identification-feature--full-switchover",
+      "workerPromptPath": ".hive/features/01_clean-architecture-migration/tasks/03-tdd-identification-feature--full-switchover/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29ef74a8affeWCLYKASFVOoYp2",
+      "startedAt": "2026-04-06T04:24:13.977Z",
+      "lastActiveAt": "2026-04-06T04:28:06.228Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "clean-architecture-migration",
+      "taskFolder": "04-update-agentsmd-and-solution-diagrams",
+      "workerPromptPath": ".hive/features/01_clean-architecture-migration/tasks/04-update-agentsmd-and-solution-diagrams/worker-prompt.md"
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:earth_nova/core/observability/observability_service.dart';
 
 void main() {
@@ -42,6 +43,19 @@ void main() {
     test('logError captures PostgrestException details', () {
       final error = Exception('simulated postgrest error');
       obs.logError(error, StackTrace.current, event: 'items.fetch_error');
+      expect(() => obs.flush(), returnsNormally);
+    });
+
+    test('logError captures Supabase AuthException details', () {
+      final error = supa.AuthException('Invalid login credentials');
+      obs.logError(error, StackTrace.current, event: 'auth.sign_in_error');
+      expect(() => obs.flush(), returnsNormally);
+    });
+
+    test('logError captures Supabase PostgrestException details', () {
+      final error =
+          supa.PostgrestException(message: 'RLS denied', code: '42501');
+      obs.logError(error, StackTrace.current, event: 'data.rls_error');
       expect(() => obs.flush(), returnsNormally);
     });
 

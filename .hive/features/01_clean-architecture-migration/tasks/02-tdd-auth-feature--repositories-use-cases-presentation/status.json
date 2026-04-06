@@ -1,0 +1,14 @@
+{
+  "status": "done",
+  "origin": "plan",
+  "planTitle": "TDD: Auth feature — repositories, use cases, presentation",
+  "dependsOn": [
+    "01-tdd-core-domain-entities-dtos-and-shared-extensions"
+  ],
+  "baseCommit": "0aa6af53e7ed4acbe6875391815bf73612279692",
+  "schemaVersion": 1,
+  "startedAt": "2026-04-06T03:19:08.690Z",
+  "idempotencyKey": "hive-clean-architecture-migration-02-tdd-auth-feature--repositories-use-cases-presentation-1",
+  "summary": "Created auth feature via strict TDD: AuthRepository interface + AuthException/AuthEvent sealed classes in domain; SignInWithPhone (phone→email derivation + sign-in-or-signup fallback), SignOut, RestoreSession, GetCurrentUser use cases each with failing tests first; MockAuthRepository and SupabaseAuthRepository in data layer; AuthNotifier presentation provider with all state = violations fixed to transition(). All 22 auth tests pass, flutter analyze lib/features/auth/ reports 0 issues.",
+  "completedAt": "2026-04-06T03:30:45.455Z"
+}
