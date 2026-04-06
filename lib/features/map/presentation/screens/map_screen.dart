@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
@@ -10,11 +13,16 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 const _kMapStyleUrl = 'https://demotiles.maplibre.org/style.json';
 const _kGpsZoom = 15.0;
 
-class MapScreen extends ConsumerWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MapScreen> createState() => _MapScreenState();
+}
+
+class _MapScreenState extends ConsumerState<MapScreen> {
+  @override
+  Widget build(BuildContext context) {
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
 
@@ -35,14 +43,15 @@ class MapScreen extends ConsumerWidget {
           backgroundColor: AppTheme.surface,
           body: Stack(
             children: [
+              // Base map layer
               Positioned.fill(
-                child: MapLibreMap(
+                child: maplibre.MapLibreMap(
                   key: ValueKey(
                     '${location.timestamp.microsecondsSinceEpoch}:${location.lat}:${location.lng}',
                   ),
                   styleString: _kMapStyleUrl,
-                  initialCameraPosition: CameraPosition(
-                    target: LatLng(location.lat, location.lng),
+                  initialCameraPosition: maplibre.CameraPosition(
+                    target: maplibre.LatLng(location.lat, location.lng),
                     zoom: _kGpsZoom,
                   ),
                   compassEnabled: false,
@@ -53,12 +62,40 @@ class MapScreen extends ConsumerWidget {
                   doubleClickZoomEnabled: false,
                   dragEnabled: false,
                   myLocationEnabled: true,
-                  myLocationTrackingMode: MyLocationTrackingMode.tracking,
+                  myLocationTrackingMode:
+                      maplibre.MyLocationTrackingMode.tracking,
                   onStyleLoadedCallback: () {
                     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
                   },
                 ),
               ),
+
+              // Cell overlay layer - drawn on top of map using Flutter Canvas
+              if (mapState is MapStateReady)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      size: Size.infinite,
+                      painter: CellOverlayPainter(
+                        cellsWithStates: _buildCellStates(
+                          mapState.cells,
+                          mapState.visitedCellIds,
+                        ),
+                        cameraPosition: (
+                          lat: location.lat,
+                          lng: location.lng,
+                        ),
+                        zoom: _kGpsZoom,
+                        cameraPixelOffset: Offset(
+                          MediaQuery.of(context).size.width / 2,
+                          MediaQuery.of(context).size.height / 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Loading indicator
               if (mapState is MapStateLoading)
                 const Positioned(
                   top: 24,
@@ -66,6 +103,8 @@ class MapScreen extends ConsumerWidget {
                   right: 0,
                   child: Center(child: LoadingDots()),
                 ),
+
+              // Error message
               if (mapState is MapStateError)
                 Positioned(
                   left: 16,
@@ -91,6 +130,29 @@ class MapScreen extends ConsumerWidget {
           ),
         ),
     };
+  }
+
+  /// Build cell state list from cells and visited cell IDs.
+  ///
+  /// For now, all cells are marked as 'nearby' since we haven't implemented
+  /// the cell visit detection yet. This will be updated in task 07.
+  List<({Cell cell, CellState state})> _buildCellStates(
+    List<Cell> cells,
+    Set<String> visitedCellIds,
+  ) {
+    return cells.map((cell) {
+      final isVisited = visitedCellIds.contains(cell.id);
+      final relationship =
+          isVisited ? CellRelationship.explored : CellRelationship.nearby;
+
+      return (
+        cell: cell,
+        state: CellState(
+          relationship: relationship,
+          contents: CellContents.empty,
+        ),
+      );
+    }).toList();
   }
 }
 
