@@ -5,8 +5,8 @@ import 'package:earth_nova/features/auth/domain/use_cases/sign_in_with_phone.dar
 import 'package:earth_nova/features/auth/domain/use_cases/sign_out.dart';
 import 'package:earth_nova/features/auth/domain/use_cases/restore_session.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
-import 'package:earth_nova/providers/observable_notifier.dart';
-import 'package:earth_nova/services/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => MockAuthRepository(),

@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
-import 'package:earth_nova/shared/app_theme.dart';
 import 'package:earth_nova/shared/constants.dart';
-import 'package:earth_nova/shared/design_tokens.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
+import 'package:earth_nova/shared/theme/design_tokens.dart';
 
 class _PhoneInputFormatter extends TextInputFormatter {
   @override

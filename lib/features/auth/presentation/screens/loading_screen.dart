@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:earth_nova/shared/app_theme.dart';
 import 'package:earth_nova/shared/constants.dart';
-import 'package:earth_nova/shared/design_tokens.dart';
-import 'package:earth_nova/widgets/loading_dots.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
+import 'package:earth_nova/shared/theme/design_tokens.dart';
+import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
