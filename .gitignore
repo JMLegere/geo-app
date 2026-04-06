@@ -118,6 +118,7 @@ venv/
 .claude/
 .sisyphus/
 .agents/
+.hive/
 
 # ---------------------------------------------------------------------------
 # Ephemeral Artifacts
