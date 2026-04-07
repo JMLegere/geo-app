@@ -277,6 +277,11 @@
         } catch(_) {}
       }
 
+      // Periodic flush every 30s so JS-side events (console_error,
+      // maplibre_version, webgl_unhealthy etc.) reach Supabase during an
+      // active session — not just on page hide/close.
+      setInterval(sendBeacon, 30000);
+
       // --- OPFS cleanup helper for Dart ---
       // Enumerates and deletes all entries in the OPFS root.
       // Called by Dart via JS interop when resetting web database storage.
