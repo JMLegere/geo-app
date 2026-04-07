@@ -22,8 +22,11 @@ import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.d
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
+import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -96,6 +99,9 @@ void main() async {
           observabilityProvider.overrideWithValue(obs),
           mapObservabilityProvider.overrideWithValue(obs),
           locationObservabilityProvider.overrideWithValue(obs),
+          encounterObservabilityProvider.overrideWithValue(obs),
+          explorationObservabilityProvider.overrideWithValue(obs),
+          playerMarkerObservabilityProvider.overrideWithValue(obs),
         ],
         child: const _EarthNovaApp(),
       ),
