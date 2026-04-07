@@ -31,8 +31,9 @@
   <link rel="manifest" href="manifest.json">
   <!-- maplibre_gl Flutter package (0.25.0) requires MapLibre GL JS v4.
        Self-hosted so Arc/WebKit content blockers cannot intercept a
-       cross-origin CDN request. maplibre-gl@4.7.1 — last stable v4. -->
-  <script src="maplibre-gl.js"></script>
+       cross-origin CDN request. maplibre-gl@4.7.1 — last stable v4.
+       LAZY-LOADED: Injected after Flutter bootstrap completes to avoid
+       WebGL context competition on iOS Safari. -->
   <link href="maplibre-gl.css" rel="stylesheet">
   
   
@@ -159,6 +160,59 @@
           localStorage.setItem(OBS_KEY, s);
         } catch(_) {}
       }
+
+      // --- Lazy-load MapLibre after Flutter bootstrap ---
+      // iOS Safari has limited WebGL contexts (~8-16 per tab). Loading MapLibre
+      // in <head> caused a race condition with CanvasKit. Solution: inject
+      // maplibre-gl.js after Flutter's runApp() completes.
+      var _mapLibreInjected = false;
+      function _injectMapLibre() {
+        if (_mapLibreInjected) return;
+        _mapLibreInjected = true;
+        var script = document.createElement('script');
+        script.src = 'maplibre-gl.js';
+        script.async = true;
+        script.onload = function() {
+          try { push('js', 'maplibre_lazy_loaded', maplibregl.version || 'unknown'); } catch(e) {}
+        };
+        script.onerror = function() {
+          push('js', 'maplibre_load_failed', 'script error');
+        };
+        document.head.appendChild(script);
+      }
+
+      // Monkey-patch Flutter loader to inject MapLibre after runApp completes.
+      // Note: This relies on Flutter web internal APIs - may need updating
+      // with Flutter version changes.
+      (function() {
+        var origLoader = window._flutter && window._flutter.loader;
+        if (origLoader && origLoader.load) {
+          window._flutter.loader.load = function(config) {
+            var originalOnEntrypointLoaded = config && config.onEntrypointLoaded;
+            return origLoader.load.call(window._flutter.loader, Object.assign({}, config, {
+              onEntrypointLoaded: async function(engineInitializer) {
+                if (originalOnEntrypointLoaded) {
+                  await originalOnEntrypointLoaded(engineInitializer);
+                }
+                var appRunner = await engineInitializer.initializeEngine();
+                // Add small buffer for first frame commit
+                await appRunner.runApp();
+                await new Promise(function(r) { setTimeout(r, 100); });
+                _injectMapLibre();
+              }
+            }));
+          };
+        }
+      })();
+
+      // Fallback: If loader callback never fires, inject after 5 seconds anyway.
+      // This ensures MapLibre loads even in edge cases.
+      setTimeout(function() {
+        if (!_mapLibreInjected) {
+          push('js', 'maplibre_fallback_inject', 'timeout fallback');
+          _injectMapLibre();
+        }
+      }, 5000);
 
       // Route console.error and console.warn into observability so all JS-level
       // noise (MapLibre tile errors, CanvasKit warnings, browser GL messages)
