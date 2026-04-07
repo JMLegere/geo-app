@@ -170,28 +170,43 @@
       var _origError = console.error;
       var _origWarn  = console.warn;
 
+      // Dedup ring buffer — suppress consecutive identical messages so a
+      // repeated MapLibre tile error doesn't fill the beacon buffer by itself.
+      var _recentMsgs = [];
+      var _DEDUP_SIZE = 8;
+      function _isDup(msg) {
+        if (_recentMsgs.indexOf(msg) !== -1) return true;
+        _recentMsgs.push(msg);
+        if (_recentMsgs.length > _DEDUP_SIZE) _recentMsgs.shift();
+        return false;
+      }
+
       console.error = function() {
         try {
-          var msg = Array.prototype.slice.call(arguments).join(' ');
-          push('js', 'console_error', msg.substring(0, 1000));
+          var msg = Array.prototype.slice.call(arguments).join(' ').substring(0, 500);
+          if (!_isDup(msg)) push('js', 'console_error', msg);
         } catch(_) {}
         _origError.apply(console, arguments);
       };
 
       console.warn = function() {
         try {
-          var msg = Array.prototype.slice.call(arguments).join(' ');
-          push('js', 'console_warn', msg.substring(0, 1000));
+          var msg = Array.prototype.slice.call(arguments).join(' ').substring(0, 500);
+          if (!_isDup(msg)) push('js', 'console_warn', msg);
         } catch(_) {}
         _origWarn.apply(console, arguments);
       };
 
       // Log which MapLibre GL JS version the browser actually executed.
       // Catches CDN-cached v5 being served despite the v4.7.1 pin in index.html.
-      try {
-        var mlVersion = (window.maplibregl && maplibregl.version) || 'not-loaded';
-        push('js', 'maplibre_version', mlVersion);
-      } catch(_) {}
+      // Deferred 500ms so the CDN script (in <head>) has finished executing
+      // before we read window.maplibregl.
+      setTimeout(function() {
+        try {
+          var mlVersion = (window.maplibregl && maplibregl.version) || 'not-loaded';
+          push('js', 'maplibre_version', mlVersion);
+        } catch(_) {}
+      }, 500);
 
       window.onerror = function(msg, src, line, col, err) {
         var detail = msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0);
@@ -266,12 +281,22 @@
           var raw = localStorage.getItem(OBS_KEY);
           if (!raw) return;
           var arr = JSON.parse(raw);
+          if (!arr.length) return;
+
+          // Parse and batch in chunks of 50. Previously >50 entries caused the
+          // entire buffer to be silently skipped — events stuck forever.
           var events = [];
           for (var i = 0; i < arr.length; i++) {
             try { events.push(JSON.parse(arr[i])); } catch(_) {}
           }
-          if (events.length > 0 && events.length <= 50) {
-            navigator.sendBeacon(BEACON_URL, JSON.stringify(events));
+
+          var batch = events.slice(0, 50);
+          var remainder = arr.slice(batch.length); // keep unparsed remainder
+
+          navigator.sendBeacon(BEACON_URL, JSON.stringify(batch));
+          if (remainder.length > 0) {
+            localStorage.setItem(OBS_KEY, JSON.stringify(remainder));
+          } else {
             localStorage.removeItem(OBS_KEY);
           }
         } catch(_) {}
