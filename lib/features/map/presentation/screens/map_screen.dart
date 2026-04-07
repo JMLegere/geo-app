@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
@@ -28,6 +30,14 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
+  maplibre.MapLibreMapController? _mapController;
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationProvider);
@@ -35,6 +45,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final playerMarkerState = ref.watch(playerMarkerProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
+
+    // Move camera when GPS updates — without this, removing the location-keyed
+    // ValueKey would freeze the map on its initial position.
+    ref.listen<LocationProviderState>(locationProvider, (_, next) {
+      if (next is LocationProviderActive && _mapController != null) {
+        _mapController!.moveCamera(
+          maplibre.CameraUpdate.newLatLng(
+            maplibre.LatLng(next.location.lat, next.location.lng),
+          ),
+        );
+      }
+    });
 
     // Listen for cell entry events to trigger encounters
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
@@ -92,12 +114,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           backgroundColor: AppTheme.surface,
           body: Stack(
             children: [
-              // Base map layer
+              // Base map layer — key must NOT include location data.
+              // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
+              // MapLibreMap (and its GL context) to be torn down and rebuilt on
+              // every GPS tick (~1 Hz), making the map constantly flash.
+              // Camera follow is handled via _mapController.moveCamera() above.
               Positioned.fill(
                 child: maplibre.MapLibreMap(
-                  key: ValueKey(
-                    '${location.timestamp.microsecondsSinceEpoch}:${location.lat}:${location.lng}',
-                  ),
                   styleString: _kMapStyleUrl,
                   initialCameraPosition: maplibre.CameraPosition(
                     target: maplibre.LatLng(location.lat, location.lng),
@@ -113,6 +136,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   myLocationEnabled: true,
                   myLocationTrackingMode:
                       maplibre.MyLocationTrackingMode.tracking,
+                  onMapCreated: (controller) => _mapController = controller,
                   onStyleLoadedCallback: () {
                     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
                   },
@@ -274,34 +298,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     Offset screenCenter,
   ) {
     const earthCircumference = 156543.03392;
-    final metersPerPixel =
-        earthCircumference * _cos(cameraPosition.lat) / _pow(2, zoom);
+    final metersPerPixel = earthCircumference *
+        math.cos(cameraPosition.lat * math.pi / 180) /
+        math.pow(2, zoom);
 
     final dx = (coord.lng - cameraPosition.lng) *
         metersPerPixel *
-        _cos(cameraPosition.lat * 3.14159265359 / 180);
+        math.cos(cameraPosition.lat * math.pi / 180);
     final dy = (coord.lat - cameraPosition.lat) * metersPerPixel;
 
     return Offset(screenCenter.dx + dx, screenCenter.dy - dy);
-  }
-
-  double _cos(double deg) {
-    final rad = deg * 3.14159265359 / 180;
-    var result = 1.0;
-    var term = 1.0;
-    for (var i = 1; i <= 10; i++) {
-      term *= -rad * rad / ((2 * i - 1) * (2 * i));
-      result += term;
-    }
-    return result;
-  }
-
-  double _pow(double base, double exp) {
-    var result = 1.0;
-    for (var i = 0; i < exp.toInt(); i++) {
-      result *= base;
-    }
-    return result;
   }
 
   void _showCellDetailSheet(
@@ -361,12 +367,16 @@ class _PlayerMarkerPainter extends CustomPainter {
     if (markerState.lat == 0.0 && markerState.lng == 0.0) return;
 
     const earthCircumference = 156543.03392;
-    final metersPerPixel =
-        earthCircumference * _cos(cameraPosition.lat) * _pow(2, zoom);
+    // Divide by 2^zoom — previously used multiplication which made
+    // metersPerPixel ~5 billion, placing the marker millions of pixels
+    // off-screen and rendering it invisible.
+    final metersPerPixel = earthCircumference *
+        math.cos(cameraPosition.lat * math.pi / 180) /
+        math.pow(2, zoom);
 
     final dx = (markerState.lng - cameraPosition.lng) *
         metersPerPixel *
-        _cos(cameraPosition.lat * 3.14159265359 / 180);
+        math.cos(cameraPosition.lat * math.pi / 180);
     final dy = (markerState.lat - cameraPosition.lat) * metersPerPixel;
 
     final markerPos = Offset(screenCenter.dx + dx, screenCenter.dy - dy);
@@ -387,25 +397,6 @@ class _PlayerMarkerPainter extends CustomPainter {
 
       canvas.drawCircle(markerPos, 8, markerPaint);
     }
-  }
-
-  double _cos(double deg) {
-    final rad = deg * 3.14159265359 / 180;
-    var result = 1.0;
-    var term = 1.0;
-    for (var i = 1; i <= 10; i++) {
-      term *= -rad * rad / ((2 * i - 1) * (2 * i));
-      result += term;
-    }
-    return result;
-  }
-
-  double _pow(double base, double exp) {
-    var result = 1.0;
-    for (var i = 0; i < exp.toInt(); i++) {
-      result *= base;
-    }
-    return result;
   }
 
   @override

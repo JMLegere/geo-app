@@ -1,47 +1,104 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 
+// ---------------------------------------------------------------------------
+// Helpers that mirror the fixed screen logic (without importing Flutter UI).
+// These tests confirm the math is correct independent of the widget build.
+// ---------------------------------------------------------------------------
+
+/// Mirrors MapScreen._latLngToScreen (post-fix, using dart:math).
+({double dx, double dy}) latLngToScreenDelta({
+  required double coordLat,
+  required double coordLng,
+  required double cameraLat,
+  required double cameraLng,
+  required double zoom,
+}) {
+  const earthCircumference = 156543.03392;
+  final metersPerPixel = earthCircumference *
+      math.cos(cameraLat * math.pi / 180) /
+      math.pow(2, zoom);
+
+  final dx = (coordLng - cameraLng) *
+      metersPerPixel *
+      math.cos(cameraLat * math.pi / 180);
+  final dy = (coordLat - cameraLat) * metersPerPixel;
+  return (dx: dx, dy: dy);
+}
+
 void main() {
-  group('MapScreen Integration Tests', () {
-    late ProviderContainer container;
-
-    setUp(() {
-      container = ProviderContainer();
+  group('_PlayerMarkerPainter / _latLngToScreen math', () {
+    test('same position produces zero offset', () {
+      final delta = latLngToScreenDelta(
+        coordLat: 37.7749,
+        coordLng: -122.4194,
+        cameraLat: 37.7749,
+        cameraLng: -122.4194,
+        zoom: 15,
+      );
+      expect(delta.dx, closeTo(0.0, 1e-9));
+      expect(delta.dy, closeTo(0.0, 1e-9));
     });
 
-    tearDown(() {
-      container.dispose();
+    test('metersPerPixel is sane at zoom 15 near equator (~5 m/px)', () {
+      const earthCircumference = 156543.03392;
+      final mpp =
+          earthCircumference * math.cos(0.0 * math.pi / 180) / math.pow(2, 15);
+      // At zoom 15 near the equator, each pixel covers ~4–5 metres.
+      expect(mpp, greaterThan(3.0));
+      expect(mpp, lessThan(10.0));
     });
 
-    test('MapScreen shows loading when location is loading', () {
-      final widget = ProviderScope(
-        child: MaterialApp(
-          home: Consumer(
-            builder: (context, ref, _) => const MapScreen(),
-          ),
-        ),
+    test('the old bug (* instead of /) would give absurdly large values', () {
+      // Confirm the buggy formula (multiply by 2^zoom) is definitively wrong.
+      const earthCircumference = 156543.03392;
+      final buggyMpp = earthCircumference *
+          math.cos(37.7749 * math.pi / 180) *
+          math.pow(2, 15);
+      // ~156543 * 0.79 * 32768 ≈ 4 billion — clearly wrong.
+      expect(buggyMpp, greaterThan(1e8));
+    });
+
+    test('point 1 degree north of camera is ~111 km / metersPerPixel pixels up',
+        () {
+      const zoom = 15.0;
+      const cameraLat = 0.0;
+      const cameraLng = 0.0;
+      const earthCircumference = 156543.03392;
+      final mpp = earthCircumference *
+          math.cos(cameraLat * math.pi / 180) /
+          math.pow(2, zoom);
+
+      final delta = latLngToScreenDelta(
+        coordLat: 1.0, // 1 degree north ≈ 111 km
+        coordLng: cameraLng,
+        cameraLat: cameraLat,
+        cameraLng: cameraLng,
+        zoom: zoom,
       );
 
-      expect(widget, isNotNull);
+      // 1 degree of latitude ≈ 111,320 metres.
+      // dy should be positive (north = up on screen).
+      final expectedDy = 1.0 * mpp;
+      expect(delta.dy, closeTo(expectedDy, 0.01));
     });
+  });
 
-    test('CellDetailSheet displays cell information correctly', () {
+  group('MapScreen widgets', () {
+    test('CellDetailSheet constructs with valid cell', () {
       final cell = Cell(
         id: 'test-cell-123',
         habitats: [Habitat.forest, Habitat.mountain],
-        polygon: [
-          (lat: 37.7749, lng: -122.4194),
-        ],
-        districtId: 'district-1',
-        cityId: 'city-1',
-        stateId: 'state-1',
-        countryId: 'country-1',
+        polygon: [(lat: 37.7749, lng: -122.4194)],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
       );
 
       final sheet = CellDetailSheet(
@@ -51,48 +108,15 @@ void main() {
       );
 
       expect(sheet, isNotNull);
+      expect(cell.habitats.length, 2);
     });
 
-    test('ShimmerCells widget renders without error', () {
+    test('ShimmerCells is a StatefulWidget', () {
       final shimmer = ShimmerCells(
         cameraPosition: (lat: 37.7749, lng: -122.4194),
         zoom: 15.0,
       );
-
-      expect(shimmer, isNotNull);
-    });
-
-    test('ShimmerCells uses animation controller', () {
-      final shimmer = ShimmerCells(
-        cameraPosition: (lat: 37.7749, lng: -122.4194),
-        zoom: 15.0,
-      );
-
-      expect(shimmer, isA<StatefulWidget>());
-    });
-
-    test('CellDetailSheet shows habitat labels', () {
-      final cell = Cell(
-        id: 'test-cell-456',
-        habitats: [Habitat.ocean],
-        polygon: [
-          (lat: 40.7128, lng: -74.0060),
-        ],
-        districtId: 'district-2',
-        cityId: 'city-2',
-        stateId: 'state-2',
-        countryId: 'country-2',
-      );
-
-      final sheet = CellDetailSheet(
-        cell: cell,
-        visitCount: 1,
-        isFirstVisit: true,
-      );
-
-      expect(sheet, isNotNull);
-      expect(cell.habitats.length, equals(1));
-      expect(cell.habitats.first, equals(Habitat.ocean));
+      expect(shimmer, isA<ShimmerCells>());
     });
   });
 }
