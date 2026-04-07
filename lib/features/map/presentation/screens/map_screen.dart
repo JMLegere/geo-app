@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
@@ -48,6 +50,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
     final playerMarkerState = ref.watch(playerMarkerProvider);
+    final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
 
@@ -59,6 +62,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           maplibre.CameraUpdate.newLatLng(
             maplibre.LatLng(next.location.lat, next.location.lng),
           ),
+        );
+      }
+    });
+
+    ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
+      final mapState = ref.read(mapProvider);
+      if (mapState case MapStateReady(:final cells, :final visitedCellIds)) {
+        unawaited(
+          ref.read(explorationProvider.notifier).onPositionUpdate(
+                markerState: markerState,
+                cells: cells,
+                visitedCellIds: visitedCellIds,
+              ),
+        );
+      }
+    });
+
+    ref.listen<MapState>(mapProvider, (_, next) {
+      if (next case MapStateReady(:final cells, :final visitedCellIds)) {
+        unawaited(
+          ref.read(explorationProvider.notifier).onPositionUpdate(
+                markerState: ref.read(playerMarkerProvider),
+                cells: cells,
+                visitedCellIds: visitedCellIds,
+              ),
         );
       }
     });
@@ -199,6 +227,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       size: Size.infinite,
                       painter: _PlayerMarkerPainter(
                         markerState: playerMarkerState,
+                        isPaused: explorationEligibility.isPaused,
                         cameraPosition: (lat: location.lat, lng: location.lng),
                         zoom: _kGpsZoom,
                         screenCenter: Offset(
@@ -385,12 +414,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 class _PlayerMarkerPainter extends CustomPainter {
   _PlayerMarkerPainter({
     required this.markerState,
+    required this.isPaused,
     required this.cameraPosition,
     required this.zoom,
     required this.screenCenter,
   });
 
   final PlayerMarkerState markerState;
+  final bool isPaused;
   final ({double lat, double lng}) cameraPosition;
   final double zoom;
   final Offset screenCenter;
@@ -414,7 +445,7 @@ class _PlayerMarkerPainter extends CustomPainter {
 
     final markerPos = Offset(screenCenter.dx + dx, screenCenter.dy - dy);
 
-    if (markerState.isRing) {
+    if (isPaused) {
       // Draw accuracy ring
       final ringPaint = Paint()
         ..color = Colors.blue.withValues(alpha: 0.3)
@@ -434,7 +465,8 @@ class _PlayerMarkerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PlayerMarkerPainter oldDelegate) {
-    return oldDelegate.markerState != markerState;
+    return oldDelegate.markerState != markerState ||
+        oldDelegate.isPaused != isPaused;
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 
 class TestObservabilityService extends ObservabilityService {
@@ -21,6 +22,53 @@ class TestObservabilityService extends ObservabilityService {
 }
 
 void main() {
+  group('explorationEligibilityForMarkerProvider', () {
+    test('maps ring marker state to paused discovery eligibility', () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForMarkerProvider(
+          const PlayerMarkerState(
+            lat: 0.0,
+            lng: 0.0,
+            isRing: true,
+            gapDistance: 48,
+          ),
+        ),
+      );
+
+      expect(eligibility.canRecordVisits, isFalse);
+      expect(eligibility.isPaused, isTrue);
+      expect(
+        eligibility.reason,
+        equals(ExplorationEligibilityPauseReason.lowGpsConfidence),
+      );
+
+      container.dispose();
+    });
+
+    test('maps non-ring marker state to active discovery eligibility', () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForMarkerProvider(
+          const PlayerMarkerState(
+            lat: 0.0,
+            lng: 0.0,
+            isRing: false,
+            gapDistance: 10,
+          ),
+        ),
+      );
+
+      expect(eligibility.canRecordVisits, isTrue);
+      expect(eligibility.isPaused, isFalse);
+      expect(eligibility.reason, isNull);
+
+      container.dispose();
+    });
+  });
+
   group('ExplorationNotifier', () {
     late ProviderContainer container;
     late TestObservabilityService testObs;
