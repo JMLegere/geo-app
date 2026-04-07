@@ -52,6 +52,8 @@ class ControllableMockLocationRepository implements LocationRepository {
     _controller.add(position);
   }
 
+  void emitError(Object error) => _controller.addError(error);
+
   void setPermissionGranted(bool granted) => _permissionGranted = granted;
   void setThrowOnGetCurrent(bool value) => _throwOnGetCurrent = value;
 
@@ -236,6 +238,76 @@ void main() {
       expect(state, isA<LocationProviderActive>());
       final active = state as LocationProviderActive;
       expect(active.location.lat, 37.7750);
+    });
+
+    test('stream error does not permanently kill the provider', () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      // Confirm active before error
+      expect(container.read(locationProvider), isA<LocationProviderActive>());
+
+      // Emit a stream error (e.g. geolocator timeout)
+      repo.emitError(Exception('GPS timeout'));
+      await Future<void>.delayed(Duration.zero);
+
+      // Must NOT transition to LocationProviderError — last known position kept
+      final state = container.read(locationProvider);
+      expect(
+        state,
+        isA<LocationProviderActive>(),
+        reason: 'A transient stream error must not strand the user on an '
+            'error screen — the last position should be retained.',
+      );
+    });
+
+    test('stream error is logged as map.gps_stream_error', () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      repo.emitError(Exception('GPS timeout'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.gps_stream_error'));
+    });
+
+    test('stream error does not log map.gps_error (no permanent error state)',
+        () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      repo.emitError(Exception('transient error'));
+      await Future<void>.delayed(Duration.zero);
+
+      // map.gps_error is only for getCurrentPosition failures, not stream errors
+      expect(obs.eventNames, isNot(contains('map.gps_error')));
     });
   });
 }

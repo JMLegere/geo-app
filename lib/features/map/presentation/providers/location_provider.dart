@@ -48,6 +48,7 @@ final locationProvider =
 class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   late final LocationRepository _repository;
   StreamSubscription<LocationState>? _subscription;
+  bool _disposed = false;
 
   @override
   ObservabilityService get obs => ref.watch(locationObservabilityProvider);
@@ -58,7 +59,10 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   @override
   LocationProviderState build() {
     _repository = ref.watch(locationRepositoryProvider);
-    ref.onDispose(() => _subscription?.cancel());
+    ref.onDispose(() {
+      _disposed = true;
+      _subscription?.cancel();
+    });
     _start();
     return const LocationProviderLoading();
   }
@@ -81,13 +85,30 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
       return;
     }
 
+    _subscribe();
+  }
+
+  void _subscribe() {
+    _subscription?.cancel();
     _subscription = _repository.positionStream.listen(
       (position) {
         transition(
             LocationProviderActive(position), 'map.gps_position_updated');
       },
-      onError: (Object e) {
-        transition(LocationProviderError(e.toString()), 'map.gps_error');
+      onError: (Object e, StackTrace st) {
+        if (_disposed) return;
+        // Log the error but do NOT transition to LocationProviderError —
+        // a transient GPS hiccup (timeout, brief signal loss) should not
+        // permanently kill the stream and strand the user on an error screen.
+        // Resubscribe after a short delay instead.
+        obs.logError(e, st, event: 'map.gps_stream_error');
+        _subscription?.cancel();
+        Future<void>.delayed(
+          const Duration(seconds: 2),
+          () {
+            if (!_disposed) _subscribe();
+          },
+        );
       },
     );
   }

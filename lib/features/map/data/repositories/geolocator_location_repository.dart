@@ -5,15 +5,17 @@ import 'package:earth_nova/features/map/domain/repositories/location_repository.
 
 const double _kConfidenceAccuracyThresholdMeters = 20.0;
 const int _kDistanceFilterMeters = 5;
-const int _kLocationIntervalMs = 1000;
 
 class GeolocatorLocationRepository implements LocationRepository {
   @override
   Stream<LocationState> get positionStream {
+    // No timeLimit: with distanceFilter the stream is intentionally silent
+    // when the user isn't moving. timeLimit caused a TimeoutException whenever
+    // no position arrived within the window, which permanently killed the
+    // stream — even for someone standing still.
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
       distanceFilter: _kDistanceFilterMeters,
-      timeLimit: Duration(milliseconds: _kLocationIntervalMs),
     );
     return Geolocator.getPositionStream(locationSettings: settings)
         .map(_positionToState);
