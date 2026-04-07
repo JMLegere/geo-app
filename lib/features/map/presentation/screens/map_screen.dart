@@ -233,7 +233,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       child: Text(
-                        _kBuildVersion,
+                        'β $_kBuildVersion',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,

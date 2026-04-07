@@ -162,6 +162,37 @@
         } catch(_) {}
       }
 
+      // Route console.error and console.warn into observability so all JS-level
+      // noise (MapLibre tile errors, CanvasKit warnings, browser GL messages)
+      // flows into app_logs in Supabase automatically — no DevTools needed.
+      // console.log is intentionally excluded: MapLibre logs every tile fetch,
+      // producing hundreds of events per minute with no diagnostic value.
+      var _origError = console.error;
+      var _origWarn  = console.warn;
+
+      console.error = function() {
+        try {
+          var msg = Array.prototype.slice.call(arguments).join(' ');
+          push('js', 'console_error', msg.substring(0, 1000));
+        } catch(_) {}
+        _origError.apply(console, arguments);
+      };
+
+      console.warn = function() {
+        try {
+          var msg = Array.prototype.slice.call(arguments).join(' ');
+          push('js', 'console_warn', msg.substring(0, 1000));
+        } catch(_) {}
+        _origWarn.apply(console, arguments);
+      };
+
+      // Log which MapLibre GL JS version the browser actually executed.
+      // Catches CDN-cached v5 being served despite the v4.7.1 pin in index.html.
+      try {
+        var mlVersion = (window.maplibregl && maplibregl.version) || 'not-loaded';
+        push('js', 'maplibre_version', mlVersion);
+      } catch(_) {}
+
       window.onerror = function(msg, src, line, col, err) {
         var detail = msg + ' @ ' + (src||'?') + ':' + (line||0) + ':' + (col||0);
         if (err && err.stack) detail += '\n' + err.stack.split('\n').slice(0, 5).join('\n');
