@@ -161,38 +161,32 @@
         } catch(_) {}
       }
 
-      // --- Lazy-load MapLibre after Flutter bootstrap ---
-      // iOS Safari has limited WebGL contexts (~8-16 per tab). Loading MapLibre
-      // in <head> caused a race condition with CanvasKit. Solution: inject
-      // maplibre-gl.js after Flutter's runApp() completes.
+      // --- MapLibre lazy-load: inject between initializeEngine and runApp ---
+      //
+      // PROBLEM SPACE (see docs/ios-safari-maplibre.md for full analysis):
+      //
+      // Three constraints must be satisfied simultaneously:
+      //   1. CanvasKit must acquire its WebGL context BEFORE MapLibre (iOS Safari
+      //      has ~8-16 WebGL contexts per tab — first-come, first-served).
+      //   2. window.maplibregl must exist BEFORE MapLibreMap widget builds
+      //      (the Flutter plugin calls `new maplibregl.Map(...)` on first frame).
+      //   3. The injection point must be after flutter_bootstrap.js loads
+      //      (our inline script runs before the async bootstrap; window._flutter
+      //      doesn't exist yet so a direct monkey-patch always silently fails).
+      //
+      // SOLUTION: Object.defineProperty setter on window._flutter.loader
+      //   - Pre-create window._flutter so flutter_bootstrap.js sees it and skips
+      //     re-creating it (the `|| (window._flutter = {})` guard).
+      //   - Define a setter on .loader — fires when flutter_bootstrap.js assigns
+      //     the real FlutterLoader instance.
+      //   - In load(), wrap onEntrypointLoaded:
+      //       await initializeEngine()  → CanvasKit done, WebGL context held
+      //       inject + await maplibre   → maplibregl ready, no context race
+      //       await runApp()            → first frame: MapLibreMap finds maplibregl
+      //
       var _mapLibreInjected = false;
-      function _injectMapLibre() {
-        if (_mapLibreInjected) return;
-        _mapLibreInjected = true;
-        var script = document.createElement('script');
-        script.src = 'maplibre-gl.js';
-        script.async = true;
-        script.onload = function() {
-          try { push('js', 'maplibre_lazy_loaded', maplibregl.version || 'unknown'); } catch(e) {}
-        };
-        script.onerror = function() {
-          push('js', 'maplibre_load_failed', 'script error');
-        };
-        document.head.appendChild(script);
-      }
 
-      // Intercept Flutter loader setup to inject MapLibre after runApp completes.
-      //
-      // WHY: flutter_bootstrap.js (loaded async) does:
-      //   window._flutter.loader || (window._flutter.loader = new FlutterLoader)
-      //   _flutter.loader.load({ serviceWorkerSettings: ... })
-      //
-      // Our inline script runs BEFORE flutter_bootstrap.js loads, so
-      // window._flutter doesn't exist yet — a direct monkey-patch always fails.
-      //
-      // FIX: Pre-create window._flutter and define a property descriptor with a
-      // setter on 'loader'. When flutter_bootstrap.js assigns the real loader
-      // instance, our setter wraps its load() before anyone can call it.
+      // Intercept Flutter loader assignment via property descriptor.
       window._flutter = window._flutter || {};
       (function() {
         var _loaderInstance;
@@ -201,20 +195,47 @@
           enumerable: true,
           get: function() { return _loaderInstance; },
           set: function(loaderInstance) {
-            // Wrap load() so we can hook into the Flutter bootstrap lifecycle.
             var _origLoad = loaderInstance.load.bind(loaderInstance);
             loaderInstance.load = function(config) {
               return _origLoad(Object.assign({}, config, {
                 onEntrypointLoaded: async function(engineInitializer) {
-                  // initializeEngine loads CanvasKit and acquires WebGL contexts.
+                  // Step 1: CanvasKit init — acquires WebGL context(s).
                   var appRunner = await engineInitializer.initializeEngine();
-                  // runApp() renders the first Flutter frame.
+
+                  // Step 2: Inject MapLibre and WAIT for script to execute.
+                  // Running between initializeEngine and runApp ensures:
+                  //   a) CanvasKit already holds its WebGL context (no race).
+                  //   b) maplibregl is defined before the first Flutter frame.
+                  await new Promise(function(resolve) {
+                    if (window.maplibregl) {
+                      push('js', 'maplibre_already_loaded', 'before_runapp');
+                      resolve(); return;
+                    }
+                    if (_mapLibreInjected) {
+                      // Another path started the inject; poll until ready.
+                      var poll = setInterval(function() {
+                        if (window.maplibregl) { clearInterval(poll); resolve(); }
+                      }, 50);
+                      setTimeout(function() { clearInterval(poll); resolve(); }, 3000);
+                      return;
+                    }
+                    _mapLibreInjected = true;
+                    var s = document.createElement('script');
+                    s.src = 'maplibre-gl.js';
+                    s.onload = function() {
+                      try { push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown'); } catch(e) {}
+                      push('js', 'flutter_bootstrap_complete', 'maplibre_ready_before_runapp');
+                      resolve();
+                    };
+                    s.onerror = function() {
+                      push('js', 'maplibre_load_failed', 'script error');
+                      resolve(); // still run app — map shows error state
+                    };
+                    document.head.appendChild(s);
+                  });
+
+                  // Step 3: First Flutter frame — maplibregl is guaranteed ready.
                   await appRunner.runApp();
-                  // Small buffer for first frame to commit before MapLibre
-                  // competes for WebGL contexts.
-                  await new Promise(function(r) { setTimeout(r, 100); });
-                  push('js', 'flutter_bootstrap_complete', 'before_maplibre_inject');
-                  _injectMapLibre();
                 }
               }));
             };
@@ -223,12 +244,21 @@
         });
       })();
 
-      // Fallback: If the defineProperty setter never fired (e.g. flutter_bootstrap.js
-      // set _flutter.loader before our descriptor was in place), inject after 5s.
+      // Fallback: if the defineProperty setter never fired (e.g. flutter_bootstrap.js
+      // ran before our descriptor was registered), inject MapLibre after 5s so the
+      // user at least gets a map eventually. The map widget will likely be in an
+      // error state and need a page reload, but tiles will render if it recovers.
       setTimeout(function() {
         if (!_mapLibreInjected) {
           push('js', 'maplibre_fallback_inject', 'flutter_bootstrap_never_fired');
-          _injectMapLibre();
+          _mapLibreInjected = true;
+          var s = document.createElement('script');
+          s.src = 'maplibre-gl.js';
+          s.onload = function() {
+            try { push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown'); } catch(e) {}
+          };
+          s.onerror = function() { push('js', 'maplibre_load_failed', 'script error'); };
+          document.head.appendChild(s);
         }
       }, 5000);
 
