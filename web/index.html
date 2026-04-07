@@ -181,35 +181,53 @@
         document.head.appendChild(script);
       }
 
-      // Monkey-patch Flutter loader to inject MapLibre after runApp completes.
-      // Note: This relies on Flutter web internal APIs - may need updating
-      // with Flutter version changes.
+      // Intercept Flutter loader setup to inject MapLibre after runApp completes.
+      //
+      // WHY: flutter_bootstrap.js (loaded async) does:
+      //   window._flutter.loader || (window._flutter.loader = new FlutterLoader)
+      //   _flutter.loader.load({ serviceWorkerSettings: ... })
+      //
+      // Our inline script runs BEFORE flutter_bootstrap.js loads, so
+      // window._flutter doesn't exist yet — a direct monkey-patch always fails.
+      //
+      // FIX: Pre-create window._flutter and define a property descriptor with a
+      // setter on 'loader'. When flutter_bootstrap.js assigns the real loader
+      // instance, our setter wraps its load() before anyone can call it.
+      window._flutter = window._flutter || {};
       (function() {
-        var origLoader = window._flutter && window._flutter.loader;
-        if (origLoader && origLoader.load) {
-          window._flutter.loader.load = function(config) {
-            var originalOnEntrypointLoaded = config && config.onEntrypointLoaded;
-            return origLoader.load.call(window._flutter.loader, Object.assign({}, config, {
-              onEntrypointLoaded: async function(engineInitializer) {
-                if (originalOnEntrypointLoaded) {
-                  await originalOnEntrypointLoaded(engineInitializer);
+        var _loaderInstance;
+        Object.defineProperty(window._flutter, 'loader', {
+          configurable: true,
+          enumerable: true,
+          get: function() { return _loaderInstance; },
+          set: function(loaderInstance) {
+            // Wrap load() so we can hook into the Flutter bootstrap lifecycle.
+            var _origLoad = loaderInstance.load.bind(loaderInstance);
+            loaderInstance.load = function(config) {
+              return _origLoad(Object.assign({}, config, {
+                onEntrypointLoaded: async function(engineInitializer) {
+                  // initializeEngine loads CanvasKit and acquires WebGL contexts.
+                  var appRunner = await engineInitializer.initializeEngine();
+                  // runApp() renders the first Flutter frame.
+                  await appRunner.runApp();
+                  // Small buffer for first frame to commit before MapLibre
+                  // competes for WebGL contexts.
+                  await new Promise(function(r) { setTimeout(r, 100); });
+                  push('js', 'flutter_bootstrap_complete', 'before_maplibre_inject');
+                  _injectMapLibre();
                 }
-                var appRunner = await engineInitializer.initializeEngine();
-                // Add small buffer for first frame commit
-                await appRunner.runApp();
-                await new Promise(function(r) { setTimeout(r, 100); });
-                _injectMapLibre();
-              }
-            }));
-          };
-        }
+              }));
+            };
+            _loaderInstance = loaderInstance;
+          }
+        });
       })();
 
-      // Fallback: If loader callback never fires, inject after 5 seconds anyway.
-      // This ensures MapLibre loads even in edge cases.
+      // Fallback: If the defineProperty setter never fired (e.g. flutter_bootstrap.js
+      // set _flutter.loader before our descriptor was in place), inject after 5s.
       setTimeout(function() {
         if (!_mapLibreInjected) {
-          push('js', 'maplibre_fallback_inject', 'timeout fallback');
+          push('js', 'maplibre_fallback_inject', 'flutter_bootstrap_never_fired');
           _injectMapLibre();
         }
       }, 5000);
