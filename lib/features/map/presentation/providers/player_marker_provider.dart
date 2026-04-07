@@ -102,12 +102,15 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
         data: {'time_in_ring_ms': timeInRingMs},
       );
     } else {
-      state = PlayerMarkerState(
+      // silentTransition: 60 fps interpolation tick — logging every frame
+      // (~3600 events/min/user) would flood Supabase. Ring transitions above
+      // are logged; smooth movement is intentionally silent.
+      silentTransition(PlayerMarkerState(
         lat: newLat,
         lng: newLng,
         isRing: isRingNow,
         gapDistance: gapMeters,
-      );
+      ));
     }
   }
 

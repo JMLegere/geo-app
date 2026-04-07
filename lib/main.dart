@@ -97,6 +97,7 @@ void main() async {
           cellRepositoryProvider.overrideWithValue(cellRepository),
           locationRepositoryProvider.overrideWithValue(locationRepository),
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           mapObservabilityProvider.overrideWithValue(obs),
           locationObservabilityProvider.overrideWithValue(obs),
           encounterObservabilityProvider.overrideWithValue(obs),

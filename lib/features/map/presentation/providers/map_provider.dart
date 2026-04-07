@@ -5,7 +5,6 @@ import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
-import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
@@ -42,9 +41,9 @@ final mapObservabilityProvider = Provider<ObservabilityService>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
 });
 
-final cellRepositoryProvider = Provider<CellRepository>(
-  (ref) => MockCellRepository(),
-);
+final cellRepositoryProvider = Provider<CellRepository>((ref) {
+  throw UnimplementedError('Must be overridden with overrideWithValue');
+});
 
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
   (ref) => FetchNearbyCells(ref.watch(cellRepositoryProvider)),

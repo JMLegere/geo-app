@@ -57,6 +57,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
         ],
@@ -79,6 +80,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
         ],
@@ -106,6 +108,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -129,6 +132,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -151,6 +155,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -171,6 +176,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -193,6 +199,7 @@ void main() {
       final freshContainer = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(freshAuth),
           itemRepositoryProvider.overrideWithValue(MockItemRepository()),
         ],
@@ -216,6 +223,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
         ],
       );
@@ -250,6 +258,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],

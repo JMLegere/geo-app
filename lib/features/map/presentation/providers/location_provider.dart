@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/features/map/data/repositories/mock_location_repository.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_location_stream.dart';
@@ -34,9 +33,9 @@ final locationObservabilityProvider = Provider<ObservabilityService>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
 });
 
-final locationRepositoryProvider = Provider<LocationRepository>(
-  (ref) => MockLocationRepository(),
-);
+final locationRepositoryProvider = Provider<LocationRepository>((ref) {
+  throw UnimplementedError('Must be overridden with overrideWithValue');
+});
 
 final getLocationStreamProvider = Provider<GetLocationStream>(
   (ref) => GetLocationStream(ref.watch(locationRepositoryProvider)),

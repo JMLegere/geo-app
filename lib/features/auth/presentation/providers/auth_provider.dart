@@ -4,13 +4,12 @@ import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dar
 import 'package:earth_nova/features/auth/domain/use_cases/sign_in_with_phone.dart';
 import 'package:earth_nova/features/auth/domain/use_cases/sign_out.dart';
 import 'package:earth_nova/features/auth/domain/use_cases/restore_session.dart';
-import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => MockAuthRepository(),
-);
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  throw UnimplementedError('Must be overridden with overrideWithValue');
+});
 
 final observabilityProvider = Provider<ObservabilityService>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');

@@ -7,6 +7,11 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/fetch_items.dart';
 
+/// Observability provider for ItemsNotifier — overridden with real impl in main.dart.
+final itemsObservabilityProvider = Provider<ObservabilityService>((ref) {
+  throw UnimplementedError('Must be overridden with overrideWithValue');
+});
+
 /// Items state — immutable snapshot of the pack.
 class ItemsState {
   const ItemsState({
@@ -56,7 +61,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
   late ItemRepository _itemRepository;
 
   @override
-  ObservabilityService get obs => ref.watch(observabilityProvider);
+  ObservabilityService get obs => ref.watch(itemsObservabilityProvider);
 
   @override
   String get category => 'data';
