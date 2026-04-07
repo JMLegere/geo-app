@@ -22,6 +22,11 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 const _kMapStyleUrl = 'https://demotiles.maplibre.org/style.json';
 const _kGpsZoom = 15.0;
 
+/// Build version injected at compile time via --dart-define=BUILD_TIMESTAMP.
+/// Format: yyyy-mm-dd-hhmm-commit (AST). Falls back to 'dev' for local builds.
+const _kBuildVersion =
+    String.fromEnvironment('BUILD_TIMESTAMP', defaultValue: 'dev');
+
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -213,6 +218,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   right: 0,
                   child: Center(child: LoadingDots()),
                 ),
+
+              // Build version — bottom-left corner, visible to devs during testing
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      child: Text(
+                        _kBuildVersion,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontFamily: 'monospace',
+                          letterSpacing: 0,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
               // Error message
               if (mapState is MapStateError)

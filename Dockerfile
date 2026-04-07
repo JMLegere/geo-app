@@ -8,7 +8,8 @@ COPY . .
 RUN rm -rf build/
 RUN rm -rf build/
 RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
-    BUILD_TS="v3 $(date -u +%Y-%m-%d-%H%M)${SHORT:+-$SHORT}" && \
+    SHORT=${SHORT:-$(git -C /app rev-parse --short HEAD 2>/dev/null || echo "local")}; \
+    BUILD_TS="$(TZ=America/Halifax date +%Y-%m-%d-%H%M)-${SHORT}" && \
     flutter build web \
     --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
     --dart-define=SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmYWN6Y3NycGZjYmlqb2FlY2tiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzE3ODYsImV4cCI6MjA4ODE0Nzc4Nn0.hyjp1NRiteavWfBnch1LpRARtiN5lvpP0PztbRwqPJ8 \
