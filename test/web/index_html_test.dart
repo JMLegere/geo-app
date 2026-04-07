@@ -18,12 +18,17 @@ void main() {
       head = headMatch?.group(1) ?? '';
     });
 
+    // -------------------------------------------------------------------------
+    // Constraint 1: CanvasKit must acquire WebGL contexts BEFORE MapLibre
+    // -------------------------------------------------------------------------
+
     test('does not contain synchronous maplibre-gl.js script in <head>', () {
       expect(
         head,
         isNot(contains('<script src="maplibre-gl.js">')),
         reason: 'maplibre-gl.js must not be loaded synchronously in <head> — '
-            'it causes a WebGL context race with CanvasKit on iOS Safari',
+            'it causes a WebGL context race with CanvasKit on iOS Safari '
+            '(see docs/ios-safari-maplibre.md, Constraint 1)',
       );
     });
 
@@ -35,13 +40,134 @@ void main() {
       );
     });
 
-    group('lazy-loading logic', () {
-      test('defines _injectMapLibre function', () {
+    // -------------------------------------------------------------------------
+    // Constraint 2: maplibregl must exist BEFORE first Flutter frame
+    // -------------------------------------------------------------------------
+
+    group('injection sequence (Constraint 2)', () {
+      test('injects MapLibre BETWEEN initializeEngine and runApp', () {
+        // THE KEY INVARIANT: initializeEngine → inject+await maplibre → runApp.
+        // MapLibre must be defined before runApp so the MapLibreMap widget
+        // finds window.maplibregl when it builds on the first frame.
+        // See docs/ios-safari-maplibre.md — Constraint 2.
+        final initEngineIndex = html.indexOf('initializeEngine()');
+        // Inline injection inside the loader callback uses variable 's'
+        final injectIndex = html.indexOf("s.src = 'maplibre-gl.js'");
+        final runAppIndex = html.indexOf('appRunner.runApp()');
+
+        expect(initEngineIndex, isNot(-1),
+            reason: 'initializeEngine() must be called');
+        expect(injectIndex, isNot(-1),
+            reason: "MapLibre script injection (s.src = 'maplibre-gl.js') "
+                'must be present inside the loader callback');
+        expect(runAppIndex, isNot(-1),
+            reason: 'appRunner.runApp() must be called');
+
+        expect(initEngineIndex, lessThan(injectIndex),
+            reason: 'initializeEngine must precede MapLibre injection '
+                '(CanvasKit acquires WebGL context first)');
+        expect(injectIndex, lessThan(runAppIndex),
+            reason: 'MapLibre must be injected BEFORE runApp — '
+                'MapLibreMap widget builds on first frame and needs maplibregl');
+      });
+
+      test('awaits MapLibre load inside the loader callback before runApp', () {
+        // The loader callback must await the script onload promise so
+        // maplibregl is defined (not just loading) before runApp().
         expect(
           html,
-          contains('function _injectMapLibre()'),
-          reason: '_injectMapLibre must be defined to dynamically inject '
-              'maplibre-gl.js after Flutter bootstrap',
+          contains('await new Promise'),
+          reason: 'Must await MapLibre load promise before calling runApp()',
+        );
+        expect(
+          html,
+          contains('s.onload'),
+          reason: 'Script onload handler must resolve the await promise',
+        );
+      });
+
+      test('logs flutter_bootstrap_complete when MapLibre is ready', () {
+        expect(
+          html,
+          contains("push('js', 'flutter_bootstrap_complete'"),
+          reason: 'Must log flutter_bootstrap_complete when MapLibre is ready '
+              'before runApp — key diagnostic signal in app_logs',
+        );
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Constraint 3: Intercept loader before load() is called
+    // -------------------------------------------------------------------------
+
+    group('Flutter loader intercept (Constraint 3)', () {
+      test('uses Object.defineProperty setter to intercept Flutter loader', () {
+        // Direct monkey-patch of window._flutter.loader.load ALWAYS fails:
+        // window._flutter does not exist when the inline script runs
+        // (flutter_bootstrap.js is async). The defineProperty setter fires
+        // when flutter_bootstrap.js assigns the real loader instance.
+        // See docs/ios-safari-maplibre.md — Constraint 3.
+        expect(
+          html,
+          contains("Object.defineProperty(window._flutter, 'loader'"),
+          reason: 'Must use Object.defineProperty with a setter — '
+              'direct monkey-patch silently fails because window._flutter '
+              'does not exist when the inline script runs',
+        );
+      });
+
+      test('uses onEntrypointLoaded callback to control init sequence', () {
+        expect(
+          html,
+          contains('onEntrypointLoaded'),
+          reason: 'onEntrypointLoaded callback gives control over the '
+              'initializeEngine → inject → runApp sequence',
+        );
+      });
+
+      test('pre-creates window._flutter before flutter_bootstrap.js runs', () {
+        expect(
+          html,
+          contains('window._flutter = window._flutter || {}'),
+          reason: 'window._flutter must be pre-created so that '
+              'flutter_bootstrap.js sees it and does not overwrite the '
+              'property descriptor',
+        );
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // Observability
+    // -------------------------------------------------------------------------
+
+    group('observability events', () {
+      test('logs maplibre_lazy_loaded on successful load', () {
+        expect(
+          html,
+          contains("push('js', 'maplibre_lazy_loaded'"),
+          reason: 'Successful MapLibre load must be logged',
+        );
+      });
+
+      test('logs maplibre_load_failed on script error', () {
+        expect(
+          html,
+          contains("push('js', 'maplibre_load_failed'"),
+          reason: 'MapLibre load failure must be logged',
+        );
+      });
+
+      test('has fallback timeout with diagnostic event', () {
+        expect(
+          html,
+          contains('setTimeout'),
+          reason: 'Fallback timeout required if loader callback never fires',
+        );
+        expect(
+          html,
+          contains("push('js', 'maplibre_fallback_inject'"),
+          reason: 'Fallback must log so we can detect when the '
+              'defineProperty path is not working',
         );
       });
 
@@ -49,105 +175,8 @@ void main() {
         expect(
           html,
           contains('_mapLibreInjected'),
-          reason: 'Guard variable prevents maplibre-gl.js from being injected '
-              'more than once (e.g. if both loader callback and fallback fire)',
-        );
-      });
-
-      test('injects maplibre-gl.js as async script via document.createElement',
-          () {
-        expect(
-          html,
-          contains("script.src = 'maplibre-gl.js'"),
-          reason: 'MapLibre must be injected dynamically as an async script, '
-              'not loaded synchronously',
-        );
-        expect(
-          html,
-          contains('script.async = true'),
-          reason:
-              'Injected script must be async to avoid blocking the main thread',
-        );
-        expect(
-          html,
-          contains('document.head.appendChild(script)'),
-          reason: 'Script must be appended to document.head',
-        );
-      });
-
-      test('logs maplibre_lazy_loaded event on successful script load', () {
-        expect(
-          html,
-          contains("push('js', 'maplibre_lazy_loaded'"),
-          reason: 'Successful MapLibre load must be logged for observability',
-        );
-      });
-
-      test('logs maplibre_load_failed event on script error', () {
-        expect(
-          html,
-          contains("push('js', 'maplibre_load_failed'"),
-          reason: 'MapLibre load failure must be logged for observability',
-        );
-      });
-
-      test(
-          'uses Object.defineProperty on _flutter.loader to intercept bootstrap',
-          () {
-        // The correct approach: pre-define a setter on window._flutter.loader so
-        // that when flutter_bootstrap.js assigns the real loader instance our
-        // setter wraps load() before it is ever called.  A direct monkey-patch of
-        // window._flutter.loader.load fails because window._flutter does not exist
-        // when the inline script runs (flutter_bootstrap.js loads async).
-        expect(
-          html,
-          contains("Object.defineProperty(window._flutter, 'loader'"),
-          reason: 'Must use Object.defineProperty with a setter to intercept '
-              'the Flutter loader after flutter_bootstrap.js assigns it',
-        );
-      });
-
-      test('uses onEntrypointLoaded callback to sequence initialization', () {
-        expect(
-          html,
-          contains('onEntrypointLoaded'),
-          reason: 'onEntrypointLoaded callback is required to intercept the '
-              'Flutter engine initialization sequence',
-        );
-      });
-
-      test('calls appRunner.runApp() before injecting MapLibre', () {
-        // Find the position of runApp() call
-        final runAppIndex = html.indexOf('appRunner.runApp()');
-        expect(runAppIndex, isNot(-1),
-            reason: 'appRunner.runApp() must be called');
-
-        // Find the _injectMapLibre() call that comes AFTER runApp() (not the
-        // function definition which appears earlier in the file)
-        final injectAfterRunApp =
-            html.indexOf('_injectMapLibre()', runAppIndex);
-        expect(
-          injectAfterRunApp,
-          isNot(-1),
-          reason: '_injectMapLibre() must be called after appRunner.runApp() — '
-              'this ensures CanvasKit has acquired its WebGL contexts first',
-        );
-      });
-
-      test(
-          'has fallback timeout to inject MapLibre if loader callback never fires',
-          () {
-        expect(
-          html,
-          contains('setTimeout'),
-          reason: 'Fallback timeout required in case Flutter loader callback '
-              'never fires (e.g. edge cases, older Flutter versions)',
-        );
-        expect(
-          html,
-          contains("push('js', 'maplibre_fallback_inject'"),
-          reason: 'Fallback injection must be logged so we can detect when '
-              'the loader callback path is not working',
+          reason: 'Guard prevents double injection if both loader callback '
+              'and fallback fire',
         );
       });
     });
