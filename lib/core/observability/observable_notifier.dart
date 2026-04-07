@@ -33,4 +33,16 @@ abstract class ObservableNotifier<T> extends Notifier<T> {
     obs.log(event, category, data: data);
     state = newState;
   }
+
+  /// Opt-in silent state update — NO observability log emitted.
+  ///
+  /// Only use for high-frequency paths where logging every update would
+  /// produce excessive noise (e.g. 60 fps animation ticks). The call site
+  /// MUST have a comment explaining why silent is appropriate.
+  ///
+  /// Prefer [transition] for all normal state changes.
+  @protected
+  void silentTransition(T newState) {
+    state = newState;
+  }
 }
