@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
@@ -152,11 +150,6 @@ void main() {
       );
 
       expect(encounter, isNotNull);
-      // The species ID should be derived from SHA-256(seed + "_" + cellId)
-      final expectedHash = sha256
-          .convert(utf8.encode('seed_2026_04_06_cell_test_123'))
-          .toString();
-      // Extract a portion for species ID (in real implementation, this would map to species)
       expect(encounter!.speciesId, isNotEmpty);
     });
   });
