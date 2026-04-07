@@ -29,8 +29,13 @@
 
   <title>Fog of World</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
-  <link href="https://unpkg.com/maplibre-gl@^5.0/dist/maplibre-gl.css" rel="stylesheet">
+  <!-- maplibre_gl Flutter package (0.25.0) is built against the v3/v4 API.
+       MapLibre GL JS v5 changed the internal _classRegistryKey serialization
+       system used for worker tile processing — the map background renders but
+       all vector tile content fails silently, producing a blank screen.
+       Pin to 4.7.1 (last stable v4) until maplibre_gl is upgraded. -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
   
   
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
