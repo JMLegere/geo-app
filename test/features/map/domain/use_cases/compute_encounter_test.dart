@@ -150,7 +150,6 @@ void main() {
       );
 
       expect(encounter, isNotNull);
-      // The species ID should be derived from SHA-256(seed + "_" + cellId)
       expect(encounter!.speciesId, isNotEmpty);
     });
   });
