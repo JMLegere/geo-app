@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
+import 'package:earth_nova/features/map/presentation/screens/city_screen.dart';
+import 'package:earth_nova/features/map/presentation/screens/country_screen.dart';
+import 'package:earth_nova/features/map/presentation/screens/district_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
+import 'package:earth_nova/features/map/presentation/screens/province_screen.dart';
+import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
 
 class MapRootScreen extends ConsumerStatefulWidget {
   const MapRootScreen({super.key});
@@ -24,11 +27,11 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
     super.initState();
     _levelScreens = const [
       MapScreen(),
-      _MapHierarchyLevelScreen(level: MapLevel.district),
-      _MapHierarchyLevelScreen(level: MapLevel.city),
-      _MapHierarchyLevelScreen(level: MapLevel.state),
-      _MapHierarchyLevelScreen(level: MapLevel.country),
-      _MapHierarchyLevelScreen(level: MapLevel.world),
+      DistrictScreen(),
+      CityScreen(),
+      ProvinceScreen(),
+      CountryScreen(),
+      WorldScreen(),
     ];
   }
 
@@ -58,30 +61,6 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
       child: IndexedStack(
         index: level.index,
         children: _levelScreens,
-      ),
-    );
-  }
-}
-
-class _MapHierarchyLevelScreen extends StatelessWidget {
-  const _MapHierarchyLevelScreen({required this.level});
-
-  final MapLevel level;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppTheme.surface,
-      child: Center(
-        child: Text(
-          level.name.toUpperCase(),
-          style: const TextStyle(
-            color: AppTheme.onSurface,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-          ),
-        ),
       ),
     );
   }
