@@ -27,6 +27,7 @@ import 'package:earth_nova/features/map/presentation/providers/exploration_provi
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -103,6 +104,7 @@ void main() async {
           encounterObservabilityProvider.overrideWithValue(obs),
           explorationObservabilityProvider.overrideWithValue(obs),
           playerMarkerObservabilityProvider.overrideWithValue(obs),
+          visitQueueObservabilityProvider.overrideWithValue(obs),
         ],
         child: const _EarthNovaApp(),
       ),

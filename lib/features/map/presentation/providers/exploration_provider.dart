@@ -4,6 +4,9 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
+import 'package:earth_nova/features/map/domain/use_cases/record_cell_visit.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 
 sealed class ExplorationState {
   const ExplorationState();
@@ -41,6 +44,10 @@ final detectCellEntryProvider = Provider<DetectCellEntry>((ref) {
   return const DetectCellEntry();
 });
 
+final recordCellVisitProvider = Provider<RecordCellVisit>(
+  (ref) => RecordCellVisit(ref.watch(cellRepositoryProvider)),
+);
+
 final explorationProvider =
     NotifierProvider<ExplorationNotifier, ExplorationStateData>(
   ExplorationNotifier.new,
@@ -62,6 +69,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     required PlayerMarkerState markerState,
     required List<Cell> cells,
     required Set<String> visitedCellIds,
+    String? userId,
   }) async {
     if (cells.isEmpty) return;
 
@@ -144,6 +152,19 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
             'cellId': currentCell.id,
           },
         );
+      }
+
+      // Persist visit to backend; enqueue on failure
+      if (userId != null && userId.isNotEmpty) {
+        final recordVisit = ref.read(recordCellVisitProvider);
+        try {
+          await recordVisit(userId: userId, cellId: currentCell.id);
+        } catch (_) {
+          ref.read(visitQueueProvider.notifier).enqueue(
+                userId: userId,
+                cellId: currentCell.id,
+              );
+        }
       }
     } else {
       // Same cell, just tracking
