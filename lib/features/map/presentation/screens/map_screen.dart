@@ -17,6 +17,8 @@ import 'package:earth_nova/features/map/presentation/providers/location_provider
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
+import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
@@ -29,6 +31,9 @@ const _kGpsZoom = 15.0;
 const _kBuildVersion =
     String.fromEnvironment('BUILD_TIMESTAMP', defaultValue: 'dev');
 
+/// Duration the discovery notification is visible before auto-dismissing.
+const _kDiscoveryNotificationDuration = Duration(seconds: 3);
+
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -39,10 +44,23 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   maplibre.MapLibreMapController? _mapController;
 
+  /// Cell ID for the currently-shown discovery notification (null = hidden).
+  String? _notificationCellId;
+  Timer? _notificationTimer;
+
   @override
   void dispose() {
+    _notificationTimer?.cancel();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _showDiscoveryNotification(String cellId) {
+    _notificationTimer?.cancel();
+    setState(() => _notificationCellId = cellId);
+    _notificationTimer = Timer(_kDiscoveryNotificationDuration, () {
+      if (mounted) setState(() => _notificationCellId = null);
+    });
   }
 
   @override
@@ -91,7 +109,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     });
 
-    // Listen for cell entry events to trigger encounters
+    // Listen for cell entry events to trigger encounters and discovery notification
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
       if (previous?.currentCellId != next.currentCellId &&
           next.currentCellId != null) {
@@ -101,6 +119,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               cellId: next.currentCellId!,
               isFirstVisit: isFirstVisit,
             );
+        // Show discovery notification on first visit
+        if (isFirstVisit) {
+          _showDiscoveryNotification(next.currentCellId!);
+        }
       }
     });
 
@@ -181,6 +203,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
   }) {
+    // Compute status bar stats from exploration state
+    final cellsObserved = explorationState.visitedCellIds.length +
+        (mapState is MapStateReady ? mapState.visitedCellIds.length : 0);
+
     return Scaffold(
       backgroundColor: AppTheme.surface,
       body: Stack(
@@ -272,6 +298,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       MediaQuery.of(context).size.height / 2,
                     ),
                   ),
+                ),
+              ),
+            ),
+
+          // Frosted glass status bar — overlaid at top of map
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: MapStatusBar(
+              cellsObserved: cellsObserved,
+              totalSteps: 0,
+              streakDays: 0,
+            ),
+          ),
+
+          // Discovery notification — appears just below status bar on new cell entry
+          if (_notificationCellId != null)
+            Positioned(
+              top: 44 + 56 + 8,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
+                child: DiscoveryNotification(
+                  cellName: _notificationCellId!,
                 ),
               ),
             ),
