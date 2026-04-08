@@ -11,7 +11,7 @@ final encounterObservabilityProvider = Provider<ObservabilityService>((ref) {
 
 // Provider for ComputeEncounter use case
 final computeEncounterProvider = Provider<ComputeEncounter>((ref) {
-  return const ComputeEncounter();
+  return ComputeEncounter(ref.watch(encounterObservabilityProvider));
 });
 
 // Main provider
@@ -62,10 +62,12 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
     final effectiveSeed = seed.isEmpty ? _getDailySeed() : seed;
 
     final encounter = computeEncounter.call(
-      cellId: cellId,
-      seed: effectiveSeed,
-      isFirstVisit: isFirstVisit,
-      hasLoot: hasLoot,
+      (
+        cellId: cellId,
+        seed: effectiveSeed,
+        isFirstVisit: isFirstVisit,
+        hasLoot: hasLoot,
+      ),
     );
 
     if (encounter != null) {

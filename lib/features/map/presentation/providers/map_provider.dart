@@ -46,11 +46,17 @@ final cellRepositoryProvider = Provider<CellRepository>((ref) {
 });
 
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
-  (ref) => FetchNearbyCells(ref.watch(cellRepositoryProvider)),
+  (ref) => FetchNearbyCells(
+    ref.watch(cellRepositoryProvider),
+    ref.watch(mapObservabilityProvider),
+  ),
 );
 
 final getVisitedCellsProvider = Provider<GetVisitedCells>(
-  (ref) => GetVisitedCells(ref.watch(cellRepositoryProvider)),
+  (ref) => GetVisitedCells(
+    ref.watch(cellRepositoryProvider),
+    ref.watch(mapObservabilityProvider),
+  ),
 );
 
 final mapProvider = NotifierProvider<MapNotifier, MapState>(MapNotifier.new);
@@ -119,11 +125,13 @@ class MapNotifier extends ObservableNotifier<MapState> {
 
       final results = await Future.wait([
         fetchCells.call(
-          lat: location.lat,
-          lng: location.lng,
-          radiusMeters: _kFetchRadiusMeters,
+          (
+            lat: location.lat,
+            lng: location.lng,
+            radiusMeters: _kFetchRadiusMeters,
+          ),
         ),
-        getVisited.call(userId),
+        getVisited.call((userId: userId)),
       ]);
 
       final cells = results[0] as List<Cell>;

@@ -30,7 +30,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           encounterObservabilityProvider.overrideWithValue(testObs),
-          computeEncounterProvider.overrideWithValue(const ComputeEncounter()),
+          computeEncounterProvider.overrideWithValue(ComputeEncounter(testObs)),
         ],
       );
     });

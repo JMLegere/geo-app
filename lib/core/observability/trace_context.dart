@@ -6,15 +6,15 @@ class TraceContext {
     required this.startTime,
   });
 
-  factory TraceContext.start() {
+  final String traceId;
+  final DateTime startTime;
+
+  static TraceContext start() {
     return TraceContext(
       traceId: const Uuid().v4(),
       startTime: DateTime.now(),
     );
   }
-
-  final String traceId;
-  final DateTime startTime;
 
   Duration get elapsed => DateTime.now().difference(startTime);
 }
