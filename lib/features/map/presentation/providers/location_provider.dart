@@ -24,6 +24,10 @@ class LocationProviderPermissionDenied extends LocationProviderState {
   const LocationProviderPermissionDenied();
 }
 
+class LocationProviderPaused extends LocationProviderState {
+  const LocationProviderPaused();
+}
+
 class LocationProviderError extends LocationProviderState {
   const LocationProviderError(this.message);
   final String message;
@@ -92,24 +96,19 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
     _subscription?.cancel();
     _subscription = _repository.positionStream.listen(
       (position) {
-        transition(
-            LocationProviderActive(position), 'map.gps_position_updated');
+        final wasPaused = state is LocationProviderPaused;
+        transition(LocationProviderActive(position),
+            wasPaused ? 'map.gps_resumed' : 'map.gps_position_updated');
       },
       onError: (Object e, StackTrace st) {
         if (_disposed) return;
-        // Log the error but do NOT transition to LocationProviderError —
-        // a transient GPS hiccup (timeout, brief signal loss) should not
-        // permanently kill the stream and strand the user on an error screen.
-        // Resubscribe after a short delay instead.
         obs.logError(e, st, event: 'map.gps_stream_error');
-        _subscription?.cancel();
-        Future<void>.delayed(
-          const Duration(seconds: 2),
-          () {
-            if (!_disposed) _subscribe();
-          },
-        );
+        transition(const LocationProviderPaused(), 'map.gps_paused');
+        // Do NOT cancel the subscription — keep listening so recovery is
+        // automatic when GPS returns. The stream may emit new positions after
+        // a transient error without needing a resubscribe.
       },
+      cancelOnError: false,
     );
   }
 }

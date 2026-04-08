@@ -240,7 +240,7 @@ void main() {
       expect(active.location.lat, 37.7750);
     });
 
-    test('stream error does not permanently kill the provider', () async {
+    test('stream error transitions to paused (not permanent error)', () async {
       container.read(locationProvider);
 
       final position = LocationState(
@@ -260,14 +260,102 @@ void main() {
       repo.emitError(Exception('GPS timeout'));
       await Future<void>.delayed(Duration.zero);
 
-      // Must NOT transition to LocationProviderError — last known position kept
+      // Must NOT transition to LocationProviderError — shows paused banner instead
+      final state = container.read(locationProvider);
+      expect(
+        state,
+        isA<LocationProviderPaused>(),
+        reason: 'A transient stream error must show a paused banner, '
+            'not strand the user on a permanent error screen.',
+      );
+    });
+
+    test('stream error recovery resumes active state automatically', () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      // Trigger paused state via stream error
+      repo.emitError(Exception('GPS timeout'));
+      await Future<void>.delayed(Duration.zero);
+      expect(container.read(locationProvider), isA<LocationProviderPaused>());
+
+      // GPS recovers — emit a new position
+      final recoveredPosition = LocationState(
+        lat: 37.7750,
+        lng: -122.4195,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 0, 5),
+        isConfident: true,
+      );
+      repo.emitPosition(recoveredPosition);
+      await Future<void>.delayed(Duration.zero);
+
+      // Must resume active without manual refresh
       final state = container.read(locationProvider);
       expect(
         state,
         isA<LocationProviderActive>(),
-        reason: 'A transient stream error must not strand the user on an '
-            'error screen — the last position should be retained.',
+        reason: 'Discovery must resume automatically when GPS returns.',
       );
+      final active = state as LocationProviderActive;
+      expect(active.location.lat, 37.7750);
+    });
+
+    test('stream error logs map.gps_paused event', () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      repo.emitError(Exception('GPS timeout'));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.gps_paused'));
+    });
+
+    test('GPS recovery logs map.gps_resumed event', () async {
+      container.read(locationProvider);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      repo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      repo.emitError(Exception('GPS timeout'));
+      await Future<void>.delayed(Duration.zero);
+
+      final recoveredPosition = LocationState(
+        lat: 37.7750,
+        lng: -122.4195,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 0, 5),
+        isConfident: true,
+      );
+      repo.emitPosition(recoveredPosition);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.gps_resumed'));
     });
 
     test('stream error is logged as map.gps_stream_error', () async {

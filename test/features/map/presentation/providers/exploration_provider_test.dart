@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 
 class TestObservabilityService extends ObservabilityService {
   TestObservabilityService() : super(sessionId: 'test-session');
@@ -64,6 +66,119 @@ void main() {
       expect(eligibility.canRecordVisits, isTrue);
       expect(eligibility.isPaused, isFalse);
       expect(eligibility.reason, isNull);
+
+      container.dispose();
+    });
+  });
+
+  group('explorationEligibilityForLocationProvider', () {
+    test('returns paused with gpsUnavailable reason when location is paused',
+        () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForLocationProvider((
+          const LocationProviderPaused(),
+          const PlayerMarkerState(
+            lat: 0.0,
+            lng: 0.0,
+            isRing: false,
+            gapDistance: 5.0,
+          ),
+        )),
+      );
+
+      expect(eligibility.canRecordVisits, isFalse);
+      expect(eligibility.isPaused, isTrue);
+      expect(
+        eligibility.reason,
+        equals(ExplorationEligibilityPauseReason.gpsUnavailable),
+      );
+
+      container.dispose();
+    });
+
+    test('returns active when location is active and marker is not ring', () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForLocationProvider((
+          LocationProviderActive(LocationState(
+            lat: 1.0,
+            lng: 1.0,
+            accuracy: 5.0,
+            timestamp: DateTime(2026),
+            isConfident: true,
+          )),
+          const PlayerMarkerState(
+            lat: 1.0,
+            lng: 1.0,
+            isRing: false,
+            gapDistance: 5.0,
+          ),
+        )),
+      );
+
+      expect(eligibility.canRecordVisits, isTrue);
+      expect(eligibility.isPaused, isFalse);
+      expect(eligibility.reason, isNull);
+
+      container.dispose();
+    });
+
+    test('returns paused with lowGpsConfidence when location active but ring',
+        () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForLocationProvider((
+          LocationProviderActive(LocationState(
+            lat: 1.0,
+            lng: 1.0,
+            accuracy: 5.0,
+            timestamp: DateTime(2026),
+            isConfident: true,
+          )),
+          const PlayerMarkerState(
+            lat: 1.0,
+            lng: 1.0,
+            isRing: true,
+            gapDistance: 50.0,
+          ),
+        )),
+      );
+
+      expect(eligibility.canRecordVisits, isFalse);
+      expect(eligibility.isPaused, isTrue);
+      expect(
+        eligibility.reason,
+        equals(ExplorationEligibilityPauseReason.lowGpsConfidence),
+      );
+
+      container.dispose();
+    });
+
+    test('returns paused with gpsUnavailable when location is loading', () {
+      final container = ProviderContainer();
+
+      final eligibility = container.read(
+        explorationEligibilityForLocationProvider((
+          const LocationProviderLoading(),
+          const PlayerMarkerState(
+            lat: 0.0,
+            lng: 0.0,
+            isRing: false,
+            gapDistance: 0.0,
+          ),
+        )),
+      );
+
+      expect(eligibility.canRecordVisits, isFalse);
+      expect(eligibility.isPaused, isTrue);
+      expect(
+        eligibility.reason,
+        equals(ExplorationEligibilityPauseReason.gpsUnavailable),
+      );
 
       container.dispose();
     });
