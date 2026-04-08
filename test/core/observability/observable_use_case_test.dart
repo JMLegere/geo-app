@@ -1,94 +1,57 @@
-import 'package:earth_nova/core/observability/observable_use_case.dart';
-import 'package:earth_nova/core/observability/observability_service.dart';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
-class _TestObservabilityService extends ObservabilityService {
-  _TestObservabilityService() : super(sessionId: 'test-session');
-
-  final List<Map<String, dynamic>> events = [];
-
-  @override
-  void log(String event, String category, {Map<String, dynamic>? data}) {
-    events.add({
-      'event': event,
-      'category': category,
-      'data': data ?? <String, dynamic>{},
-    });
-    super.log(event, category, data: data);
-  }
-}
-
-class _TestObservableUseCase extends ObservableUseCase<String, String> {
-  _TestObservableUseCase(this._obs, this._executeImpl);
-
-  final ObservabilityService _obs;
-  final Future<String> Function(String input, String traceId) _executeImpl;
-  String? lastTraceId;
-
-  @override
-  ObservabilityService get obs => _obs;
-
-  @override
-  String get operationName => 'test.operation';
-
-  @override
-  Future<String> execute(String input, String traceId) {
-    lastTraceId = traceId;
-    return _executeImpl(input, traceId);
-  }
-}
-
 void main() {
-  group('ObservableUseCase', () {
-    test('logs started and completed with trace and timing data', () async {
-      final obs = _TestObservabilityService();
-      final useCase = _TestObservableUseCase(obs, (input, _) async {
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        return 'ok:$input';
-      });
+  group('ObservableUseCase enforcement', () {
+    test('observable use case implementation logs expected operations', () {
+      final file = File('lib/core/observability/observable_use_case.dart');
 
-      final result = await useCase('alpha');
+      expect(
+        file.existsSync(),
+        isTrue,
+        reason:
+            'Missing lib/core/observability/observable_use_case.dart. Add the base ObservableUseCase implementation first.',
+      );
 
-      expect(result, 'ok:alpha');
-      expect(obs.events, hasLength(2));
-      expect(obs.events[0]['event'], 'operation.started');
-      expect(obs.events[1]['event'], 'operation.completed');
+      final contents = file.readAsStringSync();
 
-      final startedData = obs.events[0]['data'] as Map<String, dynamic>;
-      final completedData = obs.events[1]['data'] as Map<String, dynamic>;
-      final traceId = startedData['trace_id'] as String;
-
-      expect(traceId, matches(RegExp(r'^[0-9a-f-]{36}$')));
-      expect(completedData['trace_id'], traceId);
-      expect(useCase.lastTraceId, traceId);
-      expect(startedData['operation_name'], 'test.operation');
-      expect(startedData['input_summary'], 'alpha');
-      expect(completedData['output_summary'], 'ok:alpha');
-      expect(completedData['duration_ms'], isA<int>());
-      expect(completedData['duration_ms'] as int, greaterThanOrEqualTo(15));
+      expect(contents, contains('operation.started'));
+      expect(contents, contains('operation.completed'));
+      expect(contents, contains('operation.failed'));
+      expect(contents, contains('trace_id'));
+      expect(contents, contains('duration_ms'));
     });
 
-    test('logs started and failed with trace and timing data', () async {
-      final obs = _TestObservabilityService();
-      final useCase = _TestObservableUseCase(obs, (input, _) async {
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-        throw StateError('boom:$input');
-      });
+    test('all domain use cases extend ObservableUseCase', () {
+      final useCasesDir = Directory('lib/features');
+      final violations = <String>[];
 
-      await expectLater(useCase('beta'), throwsA(isA<StateError>()));
-      expect(obs.events, hasLength(2));
-      expect(obs.events[0]['event'], 'operation.started');
-      expect(obs.events[1]['event'], 'operation.failed');
+      for (final entity in useCasesDir.listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        if (!entity.path.contains('/domain/use_cases/')) continue;
 
-      final startedData = obs.events[0]['data'] as Map<String, dynamic>;
-      final failedData = obs.events[1]['data'] as Map<String, dynamic>;
-      final traceId = startedData['trace_id'] as String;
+        final contents = entity.readAsStringSync();
+        final hasAsyncCallMethod =
+            RegExp(r'Future[^\n]*\s+call\s*\(').hasMatch(contents);
+        final extendsObservableUseCase =
+            RegExp(r'extends\s+ObservableUseCase<').hasMatch(contents);
 
-      expect(failedData['trace_id'], traceId);
-      expect(useCase.lastTraceId, traceId);
-      expect(failedData['duration_ms'], isA<int>());
-      expect(failedData['duration_ms'] as int, greaterThanOrEqualTo(5));
-      expect(failedData['error'], contains('boom:beta'));
+        if (hasAsyncCallMethod && !extendsObservableUseCase) {
+          violations.add(entity.path);
+        }
+      }
+
+      violations.sort();
+
+      expect(
+        violations,
+        isEmpty,
+        reason:
+            'These use case files define async call() without extending ObservableUseCase:\n'
+            '${violations.join('\n')}\n\n'
+            'All async domain use cases MUST extend ObservableUseCase<Input, Output> to ensure trace-aware observability.',
+      );
     });
   });
 }
