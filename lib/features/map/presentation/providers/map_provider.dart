@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
@@ -46,17 +47,17 @@ final cellRepositoryProvider = Provider<CellRepository>((ref) {
 });
 
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
-  (ref) => FetchNearbyCells(
-    ref.watch(cellRepositoryProvider),
-    ref.watch(mapObservabilityProvider),
-  ),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return FetchNearbyCells(ref.watch(cellRepositoryProvider));
+  },
 );
 
 final getVisitedCellsProvider = Provider<GetVisitedCells>(
-  (ref) => GetVisitedCells(
-    ref.watch(cellRepositoryProvider),
-    ref.watch(mapObservabilityProvider),
-  ),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return GetVisitedCells(ref.watch(cellRepositoryProvider));
+  },
 );
 
 final mapProvider = NotifierProvider<MapNotifier, MapState>(MapNotifier.new);

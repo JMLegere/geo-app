@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
@@ -193,6 +194,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
         ],
       );
     });
