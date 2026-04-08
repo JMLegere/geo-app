@@ -10,21 +10,6 @@ class TestObservabilityService extends ObservabilityService {
   final List<Map<String, dynamic>> events = [];
 
   @override
-  void log(String event, String category, {Map<String, dynamic>? data}) {
-    events.add({
-      'event': event,
-      'category': category,
-      'data': data ?? <String, dynamic>{},
-    });
-    super.log(event, category, data: data);
-  }
-}
-
-class FakeAuthRepository implements AuthRepository {
-  bool signOutCalled = false;
-  String? lastTraceId;
-
-  @override
   Future<void> signOut({String? traceId}) async {
     signOutCalled = true;
     lastTraceId = traceId;

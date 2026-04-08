@@ -13,7 +13,6 @@ class FakeItemRepository implements ItemRepository {
 
   @override
   Future<List<Item>> fetchItems(String userId, {String? traceId}) async {
-    receivedTraceId = traceId;
     if (shouldThrow) throw Exception('Fake fetch error');
     return items;
   }

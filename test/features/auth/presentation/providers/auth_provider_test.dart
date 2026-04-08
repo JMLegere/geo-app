@@ -288,26 +288,28 @@ class _FailingAuthRepository implements AuthRepository {
   Stream<AuthEvent> get authStateChanges => _controller.stream;
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async {
+  Future<UserProfile> signInWithEmail(String email, String password,
+      {String? traceId}) async {
     throw Exception('Network error');
   }
 
   @override
   Future<UserProfile> signUpWithEmail(String email, String password,
-      {Map<String, dynamic>? metadata}) async {
+      {Map<String, dynamic>? metadata, String? traceId}) async {
     throw Exception('Network error');
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({String? traceId}) async {
     if (failOnSignOut) throw Exception('Sign out failed');
   }
 
   @override
-  Future<UserProfile?> getCurrentUser() async => null;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => null;
 
   @override
-  Future<bool> restoreSession() async => throw Exception('Restore failed');
+  Future<bool> restoreSession({String? traceId}) async =>
+      throw Exception('Restore failed');
 
   @override
   void dispose() => _controller.close();

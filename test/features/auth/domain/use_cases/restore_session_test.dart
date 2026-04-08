@@ -28,16 +28,10 @@ class FakeAuthRepository implements AuthRepository {
   String? lastCurrentUserTraceId;
 
   @override
-  Future<bool> restoreSession({String? traceId}) async {
-    lastRestoreTraceId = traceId;
-    return sessionValid;
-  }
+  Future<bool> restoreSession({String? traceId}) async => sessionValid;
 
   @override
-  Future<UserProfile?> getCurrentUser({String? traceId}) async {
-    lastCurrentUserTraceId = traceId;
-    return currentUser;
-  }
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => currentUser;
 
   @override
   Future<void> signOut({String? traceId}) async {

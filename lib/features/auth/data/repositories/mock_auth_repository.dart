@@ -11,7 +11,11 @@ class MockAuthRepository implements AuthRepository {
   Stream<AuthEvent> get authStateChanges => _controller.stream;
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async {
+  Future<UserProfile> signInWithEmail(
+    String email,
+    String password, {
+    String? traceId,
+  }) async {
     final digits = email.split('@').first;
     if (digits.length < 10) {
       throw const AuthException('Invalid phone number. Enter 10 digits.');
@@ -31,6 +35,7 @@ class MockAuthRepository implements AuthRepository {
     String email,
     String password, {
     Map<String, dynamic>? metadata,
+    String? traceId,
   }) async {
     final digits = email.split('@').first;
     _user = UserProfile(
@@ -44,16 +49,16 @@ class MockAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({String? traceId}) async {
     _user = null;
     _controller.add(const AuthStateChanged(null));
   }
 
   @override
-  Future<UserProfile?> getCurrentUser() async => _user;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => _user;
 
   @override
-  Future<bool> restoreSession() async {
+  Future<bool> restoreSession({String? traceId}) async {
     if (_user != null) {
       _controller.add(AuthStateChanged(_user));
       return true;

@@ -82,15 +82,15 @@ void main() async {
   }
 
   final AuthRepository authRepository = supabaseClient != null
-      ? SupabaseAuthRepository(client: supabaseClient)
+      ? SupabaseAuthRepository(client: supabaseClient, logEvent: obs.log)
       : MockAuthRepository();
 
   final ItemRepository itemRepository = supabaseClient != null
-      ? SupabaseItemRepository(client: supabaseClient)
+      ? SupabaseItemRepository(client: supabaseClient, logEvent: obs.log)
       : MockItemRepository();
 
   final CellRepository cellRepository = supabaseClient != null
-      ? SupabaseCellRepository(client: supabaseClient)
+      ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
       : MockCellRepository();
 
   final LocationRepository locationRepository = GeolocatorLocationRepository();
