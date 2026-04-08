@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -27,7 +28,17 @@ import 'package:earth_nova/features/map/presentation/providers/exploration_provi
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
+import 'package:earth_nova/features/map/data/repositories/mobile_wake_lock_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/mock_hierarchy_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/noop_wake_lock_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/supabase_hierarchy_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/web_wake_lock_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
+import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -84,6 +95,12 @@ void main() async {
 
   final LocationRepository locationRepository = GeolocatorLocationRepository();
 
+  final WakeLockRepository wakeLockRepository = _buildWakeLockRepository();
+
+  final HierarchyRepository hierarchyRepository = supabaseClient != null
+      ? SupabaseHierarchyRepository(client: supabaseClient)
+      : MockHierarchyRepository();
+
   FlutterError.onError = (details) {
     obs.logError(details.exception, details.stack ?? StackTrace.current,
         event: 'app.crash.flutter');
@@ -105,6 +122,11 @@ void main() async {
           explorationObservabilityProvider.overrideWithValue(obs),
           playerMarkerObservabilityProvider.overrideWithValue(obs),
           visitQueueObservabilityProvider.overrideWithValue(obs),
+          wakeLockObservabilityProvider.overrideWithValue(obs),
+          wakeLockRepositoryProvider.overrideWithValue(wakeLockRepository),
+          mapLevelObservabilityProvider.overrideWithValue(obs),
+          hierarchyObservabilityProvider.overrideWithValue(obs),
+          hierarchyRepositoryProvider.overrideWithValue(hierarchyRepository),
         ],
         child: const _EarthNovaApp(),
       ),
@@ -113,6 +135,15 @@ void main() async {
       obs.logError(error, stack, event: 'app.crash.unhandled');
     },
   );
+}
+
+WakeLockRepository _buildWakeLockRepository() {
+  if (kIsWeb) return WebWakeLockRepository();
+  if (defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.android) {
+    return MobileWakeLockRepository();
+  }
+  return NoopWakeLockRepository();
 }
 
 class _EarthNovaApp extends ConsumerStatefulWidget {
