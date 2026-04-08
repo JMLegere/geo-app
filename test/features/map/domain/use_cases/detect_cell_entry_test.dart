@@ -1,13 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
+
+class TestObservabilityService extends ObservabilityService {
+  TestObservabilityService() : super(sessionId: 'test-session');
+
+  final logs = <Map<String, Object?>>[];
+
+  @override
+  void log(String event, String category, {Map<String, dynamic>? data}) {
+    logs.add({'event': event, 'category': category, 'data': data});
+  }
+}
 
 void main() {
   group('DetectCellEntry', () {
     late DetectCellEntry detectCellEntry;
+    late TestObservabilityService obs;
 
     setUp(() {
-      detectCellEntry = const DetectCellEntry();
+      obs = TestObservabilityService();
+      detectCellEntry = DetectCellEntry(obs);
     });
 
     group('pointInPolygon', () {
@@ -232,12 +246,16 @@ void main() {
         ];
 
         final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: 'cell-A',
-          currentPoint: (lat: 1.5, lng: 0.5),
+          (
+            cells: cells,
+            previousCellId: 'cell-A',
+            currentPoint: (lat: 1.5, lng: 0.5),
+          ),
         );
 
         expect(result, equals('cell-B'));
+        expect(obs.logs[0]['event'], 'operation.started');
+        expect(obs.logs[1]['event'], 'operation.completed');
       });
 
       test('returns null when marker stays in same cell', () {
@@ -259,9 +277,11 @@ void main() {
         ];
 
         final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: 'cell-A',
-          currentPoint: (lat: 0.5, lng: 0.5),
+          (
+            cells: cells,
+            previousCellId: 'cell-A',
+            currentPoint: (lat: 0.5, lng: 0.5),
+          ),
         );
 
         expect(result, isNull);
@@ -286,9 +306,11 @@ void main() {
         ];
 
         final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: null,
-          currentPoint: (lat: 0.5, lng: 0.5),
+          (
+            cells: cells,
+            previousCellId: null,
+            currentPoint: (lat: 0.5, lng: 0.5),
+          ),
         );
 
         expect(result, equals('cell-1'));
@@ -313,9 +335,11 @@ void main() {
         ];
 
         final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: null,
-          currentPoint: (lat: 100.0, lng: 100.0),
+          (
+            cells: cells,
+            previousCellId: null,
+            currentPoint: (lat: 100.0, lng: 100.0),
+          ),
         );
 
         expect(result, isNull);

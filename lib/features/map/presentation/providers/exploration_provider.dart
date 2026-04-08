@@ -41,11 +41,14 @@ final explorationObservabilityProvider = Provider<ObservabilityService>((ref) {
 });
 
 final detectCellEntryProvider = Provider<DetectCellEntry>((ref) {
-  return const DetectCellEntry();
+  return DetectCellEntry(ref.watch(explorationObservabilityProvider));
 });
 
 final recordCellVisitProvider = Provider<RecordCellVisit>(
-  (ref) => RecordCellVisit(ref.watch(cellRepositoryProvider)),
+  (ref) => RecordCellVisit(
+    ref.watch(cellRepositoryProvider),
+    ref.watch(explorationObservabilityProvider),
+  ),
 );
 
 final explorationProvider =
@@ -158,7 +161,10 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       if (userId != null && userId.isNotEmpty) {
         final recordVisit = ref.read(recordCellVisitProvider);
         try {
-          await recordVisit(userId: userId, cellId: currentCell.id);
+          await recordVisit.call((
+            userId: userId,
+            cellId: currentCell.id,
+          ));
         } catch (_) {
           ref.read(visitQueueProvider.notifier).enqueue(
                 userId: userId,

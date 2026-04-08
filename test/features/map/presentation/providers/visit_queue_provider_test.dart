@@ -96,7 +96,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-3');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -110,7 +110,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -124,7 +124,7 @@ void main() {
 
       // First call succeeds, second fails
       final partialRepo = _PartialFailRepo(failAfter: 1);
-      final useCase = RecordCellVisit(partialRepo);
+      final useCase = RecordCellVisit(partialRepo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -138,7 +138,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('visit_queue.flushed'));
@@ -149,7 +149,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('visit_queue.retry_failed'));
@@ -157,7 +157,7 @@ void main() {
 
     test('flush on empty queue is a no-op', () async {
       final notifier = container.read(visitQueueProvider.notifier);
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);

@@ -63,7 +63,7 @@ class VisitQueueNotifier extends ObservableNotifier<VisitQueueState> {
 
     for (final item in state.items) {
       try {
-        await useCase(userId: item.userId, cellId: item.cellId);
+        await useCase.call((userId: item.userId, cellId: item.cellId));
         anySucceeded = true;
       } catch (_) {
         remaining.add(item);

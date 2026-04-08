@@ -1,9 +1,33 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:earth_nova/core/observability/observable_use_case.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 
-class ComputeEncounter {
-  const ComputeEncounter();
+typedef ComputeEncounterInput = ({
+  String cellId,
+  String seed,
+  bool isFirstVisit,
+  bool hasLoot,
+});
+
+class ComputeEncounter
+    extends ObservableUseCase<ComputeEncounterInput, Encounter?> {
+  ComputeEncounter(this._obs);
+
+  final ObservabilityService _obs;
+
+  @override
+  ObservabilityService get obs => _obs;
+
+  @override
+  String get operationName => 'compute_encounter';
+
+  @override
+  Encounter? call(ComputeEncounterInput input) {
+    return super.call(input) as Encounter?;
+  }
 
   /// Computes an encounter based on cellId and seed.
   ///
@@ -13,19 +37,15 @@ class ComputeEncounter {
   /// - Species encounter on first visit
   /// - Critter encounter on revisit with loot (daily repopulated)
   /// - Null if no loot on revisit
-  Encounter? call({
-    required String cellId,
-    required String seed,
-    required bool isFirstVisit,
-    bool hasLoot = false,
-  }) {
+  @override
+  Encounter? execute(ComputeEncounterInput input, TraceContext context) {
     // If not first visit and no loot, no encounter
-    if (!isFirstVisit && !hasLoot) {
+    if (!input.isFirstVisit && !input.hasLoot) {
       return null;
     }
 
     // Compute deterministic species ID from SHA-256(seed + "_" + cellId)
-    final hashInput = '${seed}_$cellId';
+    final hashInput = '${input.seed}_${input.cellId}';
     final hash = sha256.convert(utf8.encode(hashInput));
 
     // Use first 16 characters of hash as species ID
@@ -34,13 +54,13 @@ class ComputeEncounter {
 
     // First visit = species encounter, revisit with loot = critter encounter
     final encounterType =
-        isFirstVisit ? EncounterType.species : EncounterType.critter;
+        input.isFirstVisit ? EncounterType.species : EncounterType.critter;
 
     return Encounter(
       type: encounterType,
       speciesId: speciesId,
-      cellId: cellId,
-      seed: seed,
+      cellId: input.cellId,
+      seed: input.seed,
     );
   }
 }
