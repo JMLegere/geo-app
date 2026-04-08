@@ -7,22 +7,23 @@ class FakeAuthRepository implements AuthRepository {
   UserProfile? currentUser;
 
   @override
-  Future<UserProfile?> getCurrentUser() async => currentUser;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => currentUser;
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async =>
+  Future<UserProfile> signInWithEmail(String email, String password,
+          {String? traceId}) async =>
       throw UnimplementedError();
 
   @override
   Future<UserProfile> signUpWithEmail(String email, String password,
-          {Map<String, dynamic>? metadata}) async =>
+          {Map<String, dynamic>? metadata, String? traceId}) async =>
       throw UnimplementedError();
 
   @override
-  Future<void> signOut() async {}
+  Future<void> signOut({String? traceId}) async {}
 
   @override
-  Future<bool> restoreSession() async => false;
+  Future<bool> restoreSession({String? traceId}) async => false;
 
   @override
   Stream<AuthEvent> get authStateChanges => const Stream.empty();

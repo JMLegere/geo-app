@@ -12,7 +12,7 @@ class MockLocationRepository implements LocationRepository {
   Stream<LocationState> get positionStream => _controller.stream;
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
     if (_lastPosition != null) return _lastPosition!;
     return LocationState(
       lat: 0.0,
@@ -24,7 +24,7 @@ class MockLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async => _permissionGranted;
+  Future<bool> requestPermission({String? traceId}) async => _permissionGranted;
 
   void emitPosition(LocationState position) {
     _lastPosition = position;

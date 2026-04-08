@@ -38,7 +38,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   Stream<LocationState> get positionStream => _controller.stream;
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
     if (_throwOnGetCurrent) throw Exception('Location unavailable');
     if (_currentPosition != null) return _currentPosition!;
     return LocationState(
@@ -51,7 +51,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async => _permissionGranted;
+  Future<bool> requestPermission({String? traceId}) async => _permissionGranted;
 
   void emitPosition(LocationState position) {
     _currentPosition = position;
@@ -73,27 +73,29 @@ class ControllableMockCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-    double lat,
-    double lng,
-    double radiusMeters,
-  ) async {
+      double lat, double lng, double radiusMeters,
+      {String? traceId}) async {
     fetchCallCount++;
     if (shouldThrow) throw Exception('Cell fetch error');
     return cells;
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {}
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {}
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async {
+  Future<Set<String>> getVisitedCellIds(String userId,
+      {String? traceId}) async {
     lastVisitedUserId = userId;
     if (shouldThrow) throw Exception('Visited cells error');
     return visitedIds;
   }
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }
 
 ProviderContainer makeContainer({

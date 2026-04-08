@@ -13,7 +13,8 @@ class FakeAuthRepository implements AuthRepository {
   String signInErrorMessage = 'Invalid login credentials';
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async {
+  Future<UserProfile> signInWithEmail(String email, String password,
+      {String? traceId}) async {
     signInCalled = true;
     lastEmail = email;
     lastPassword = password;
@@ -23,19 +24,19 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<UserProfile> signUpWithEmail(String email, String password,
-      {Map<String, dynamic>? metadata}) async {
+      {Map<String, dynamic>? metadata, String? traceId}) async {
     signUpCalled = true;
     return userToReturn!;
   }
 
   @override
-  Future<void> signOut() async {}
+  Future<void> signOut({String? traceId}) async {}
 
   @override
-  Future<UserProfile?> getCurrentUser() async => null;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => null;
 
   @override
-  Future<bool> restoreSession() async => false;
+  Future<bool> restoreSession({String? traceId}) async => false;
 
   @override
   Stream<AuthEvent> get authStateChanges => const Stream.empty();

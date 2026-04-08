@@ -27,20 +27,26 @@ class _ControlledCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters) async =>
+          double lat, double lng, double radiusMeters,
+          {String? traceId}) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('network error');
     recordedVisits.add((userId: userId, cellId: cellId));
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async => {};
+  Future<Set<String>> getVisitedCellIds(String userId,
+          {String? traceId}) async =>
+      {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }
 
 void main() {
@@ -180,18 +186,24 @@ class _PartialFailRepo implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters) async =>
+          double lat, double lng, double radiusMeters,
+          {String? traceId}) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     _callCount++;
     if (_callCount > failAfter) throw Exception('network error');
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async => {};
+  Future<Set<String>> getVisitedCellIds(String userId,
+          {String? traceId}) async =>
+      {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }
