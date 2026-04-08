@@ -278,6 +278,12 @@
       "featureName": "map-system",
       "taskFolder": "09-integration--wire-to-tab-shell",
       "workerPromptPath": ".hive/features/02_map-system/tasks/09-integration--wire-to-tab-shell/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
+      "startedAt": "2026-04-08T03:06:14.818Z",
+      "lastActiveAt": "2026-04-08T03:06:14.818Z",
+      "directivePrompt": "get it to prod"
     }
   ]
 }

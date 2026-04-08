@@ -48,5 +48,21 @@ void main() {
       expect(dto.userId, 'u1');
       expect(dto.visitedAt, DateTime.utc(2026, 1, 1));
     });
+
+    test('toJson serialises all fields correctly', () {
+      final visitedAt = DateTime.utc(2026, 4, 1, 12, 0);
+      final dto = CellVisitDto.fromJson({
+        'id': 'visit-99',
+        'user_id': 'user-z',
+        'cell_id': 'cell-abc',
+        'visited_at': visitedAt.toIso8601String(),
+      });
+      final out = dto.toJson();
+
+      expect(out['id'], 'visit-99');
+      expect(out['user_id'], 'user-z');
+      expect(out['cell_id'], 'cell-abc');
+      expect(out['visited_at'], visitedAt.toIso8601String());
+    });
   });
 }

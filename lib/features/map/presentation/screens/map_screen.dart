@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,11 +11,14 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
+import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
@@ -27,6 +31,9 @@ const _kGpsZoom = 15.0;
 const _kBuildVersion =
     String.fromEnvironment('BUILD_TIMESTAMP', defaultValue: 'dev');
 
+/// Duration the discovery notification is visible before auto-dismissing.
+const _kDiscoveryNotificationDuration = Duration(seconds: 3);
+
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
@@ -37,10 +44,23 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   maplibre.MapLibreMapController? _mapController;
 
+  /// Cell ID for the currently-shown discovery notification (null = hidden).
+  String? _notificationCellId;
+  Timer? _notificationTimer;
+
   @override
   void dispose() {
+    _notificationTimer?.cancel();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _showDiscoveryNotification(String cellId) {
+    _notificationTimer?.cancel();
+    setState(() => _notificationCellId = cellId);
+    _notificationTimer = Timer(_kDiscoveryNotificationDuration, () {
+      if (mounted) setState(() => _notificationCellId = null);
+    });
   }
 
   @override
@@ -48,6 +68,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
     final playerMarkerState = ref.watch(playerMarkerProvider);
+    final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
 
@@ -63,7 +84,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     });
 
-    // Listen for cell entry events to trigger encounters
+    ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
+      final mapState = ref.read(mapProvider);
+      if (mapState case MapStateReady(:final cells, :final visitedCellIds)) {
+        unawaited(
+          ref.read(explorationProvider.notifier).onPositionUpdate(
+                markerState: markerState,
+                cells: cells,
+                visitedCellIds: visitedCellIds,
+              ),
+        );
+      }
+    });
+
+    ref.listen<MapState>(mapProvider, (_, next) {
+      if (next case MapStateReady(:final cells, :final visitedCellIds)) {
+        unawaited(
+          ref.read(explorationProvider.notifier).onPositionUpdate(
+                markerState: ref.read(playerMarkerProvider),
+                cells: cells,
+                visitedCellIds: visitedCellIds,
+              ),
+        );
+      }
+    });
+
+    // Listen for cell entry events to trigger encounters and discovery notification
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
       if (previous?.currentCellId != next.currentCellId &&
           next.currentCellId != null) {
@@ -73,6 +119,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               cellId: next.currentCellId!,
               isFirstVisit: isFirstVisit,
             );
+        // Show discovery notification on first visit
+        if (isFirstVisit) {
+          _showDiscoveryNotification(next.currentCellId!);
+        }
       }
     });
 
@@ -102,6 +152,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       });
     }
 
+    final effectiveLocation = switch (locationState) {
+      LocationProviderActive(location: final loc) => loc,
+      LocationProviderPaused() => playerMarkerState.lat != 0.0
+          ? LocationState(
+              lat: playerMarkerState.lat,
+              lng: playerMarkerState.lng,
+              accuracy: 0.0,
+              timestamp: DateTime.now(),
+              isConfident: false,
+            )
+          : null,
+      _ => null,
+    };
+
     return switch (locationState) {
       LocationProviderLoading() => const Scaffold(
           backgroundColor: AppTheme.surface,
@@ -115,164 +179,244 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           title: 'Map unavailable',
           message: message,
         ),
-      LocationProviderActive(location: final location) => Scaffold(
-          backgroundColor: AppTheme.surface,
-          body: Stack(
-            children: [
-              // Base map layer — key must NOT include location data.
-              // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
-              // MapLibreMap (and its GL context) to be torn down and rebuilt on
-              // every GPS tick (~1 Hz), making the map constantly flash.
-              // Camera follow is handled via _mapController.moveCamera() above.
-              Positioned.fill(
-                child: maplibre.MapLibreMap(
-                  styleString: _kMapStyleUrl,
-                  initialCameraPosition: maplibre.CameraPosition(
-                    target: maplibre.LatLng(location.lat, location.lng),
-                    zoom: _kGpsZoom,
-                  ),
-                  compassEnabled: false,
-                  rotateGesturesEnabled: false,
-                  scrollGesturesEnabled: false,
-                  zoomGesturesEnabled: false,
-                  tiltGesturesEnabled: false,
-                  doubleClickZoomEnabled: false,
-                  dragEnabled: false,
-                  myLocationEnabled: true,
-                  myLocationTrackingMode:
-                      maplibre.MyLocationTrackingMode.tracking,
-                  onMapCreated: (controller) => _mapController = controller,
-                  onStyleLoadedCallback: () {
-                    ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
-                  },
-                ),
-              ),
-
-              // Shimmer while loading
-              if (mapState is MapStateLoading)
-                Positioned.fill(
-                  child: ShimmerCells(
-                    cameraPosition: (lat: location.lat, lng: location.lng),
-                    zoom: _kGpsZoom,
-                  ),
-                ),
-
-              // Cell overlay layer - drawn on top of map using Flutter Canvas
-              if (mapState is MapStateReady)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: GestureDetector(
-                      onTapUp: (details) => _onMapTap(
-                        context,
-                        details,
-                        mapState,
-                        location,
-                      ),
-                      child: CustomPaint(
-                        size: Size.infinite,
-                        painter: CellOverlayPainter(
-                          cellsWithStates: _buildCellStates(
-                            mapState.cells,
-                            mapState.visitedCellIds,
-                            explorationState.visitedCellIds,
-                          ),
-                          cameraPosition: (
-                            lat: location.lat,
-                            lng: location.lng,
-                          ),
-                          zoom: _kGpsZoom,
-                          cameraPixelOffset: Offset(
-                            MediaQuery.of(context).size.width / 2,
-                            MediaQuery.of(context).size.height / 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Player marker overlay
-              if (playerMarkerState.lat != 0.0)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: _PlayerMarkerPainter(
-                        markerState: playerMarkerState,
-                        cameraPosition: (lat: location.lat, lng: location.lng),
-                        zoom: _kGpsZoom,
-                        screenCenter: Offset(
-                          MediaQuery.of(context).size.width / 2,
-                          MediaQuery.of(context).size.height / 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Loading indicator
-              if (mapState is MapStateLoading)
-                const Positioned(
-                  top: 24,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: LoadingDots()),
-                ),
-
-              // Build version — bottom-left corner, visible to devs during testing
-              Positioned(
-                left: 8,
-                bottom: 8,
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      child: Text(
-                        'β $_kBuildVersion',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontFamily: 'monospace',
-                          letterSpacing: 0,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Error message
-              if (mapState is MapStateError)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 24,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.outline),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        mapState.message,
-                        style: const TextStyle(color: AppTheme.onSurface),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+      LocationProviderPaused() when effectiveLocation == null =>
+        const _MapStatusScaffold(
+          title: 'GPS unavailable',
+          message: 'Waiting for GPS signal to resume discovery.',
+        ),
+      LocationProviderPaused() || LocationProviderActive() => _buildMapScaffold(
+          context,
+          location: effectiveLocation!,
+          mapState: mapState,
+          playerMarkerState: playerMarkerState,
+          explorationEligibility: explorationEligibility,
+          explorationState: explorationState,
         ),
     };
+  }
+
+  Widget _buildMapScaffold(
+    BuildContext context, {
+    required LocationState location,
+    required MapState mapState,
+    required PlayerMarkerState playerMarkerState,
+    required ExplorationEligibility explorationEligibility,
+    required ExplorationStateData explorationState,
+  }) {
+    // Compute status bar stats from exploration state
+    final cellsObserved = explorationState.visitedCellIds.length +
+        (mapState is MapStateReady ? mapState.visitedCellIds.length : 0);
+
+    return Scaffold(
+      backgroundColor: AppTheme.surface,
+      body: Stack(
+        children: [
+          // Base map layer — key must NOT include location data.
+          // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
+          // MapLibreMap (and its GL context) to be torn down and rebuilt on
+          // every GPS tick (~1 Hz), making the map constantly flash.
+          // Camera follow is handled via _mapController.moveCamera() above.
+          Positioned.fill(
+            child: maplibre.MapLibreMap(
+              styleString: _kMapStyleUrl,
+              initialCameraPosition: maplibre.CameraPosition(
+                target: maplibre.LatLng(location.lat, location.lng),
+                zoom: _kGpsZoom,
+              ),
+              compassEnabled: false,
+              rotateGesturesEnabled: false,
+              scrollGesturesEnabled: false,
+              zoomGesturesEnabled: false,
+              tiltGesturesEnabled: false,
+              doubleClickZoomEnabled: false,
+              dragEnabled: false,
+              myLocationEnabled: true,
+              myLocationTrackingMode: maplibre.MyLocationTrackingMode.tracking,
+              onMapCreated: (controller) => _mapController = controller,
+              onStyleLoadedCallback: () {
+                ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
+              },
+            ),
+          ),
+
+          // Shimmer while loading
+          if (mapState is MapStateLoading)
+            Positioned.fill(
+              child: ShimmerCells(
+                cameraPosition: (lat: location.lat, lng: location.lng),
+                zoom: _kGpsZoom,
+              ),
+            ),
+
+          // Cell overlay layer - drawn on top of map using Flutter Canvas
+          if (mapState is MapStateReady)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: GestureDetector(
+                  onTapUp: (details) => _onMapTap(
+                    context,
+                    details,
+                    mapState,
+                    location,
+                  ),
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: CellOverlayPainter(
+                      cellsWithStates: _buildCellStates(
+                        mapState.cells,
+                        mapState.visitedCellIds,
+                        explorationState.visitedCellIds,
+                      ),
+                      cameraPosition: (
+                        lat: location.lat,
+                        lng: location.lng,
+                      ),
+                      zoom: _kGpsZoom,
+                      cameraPixelOffset: Offset(
+                        MediaQuery.of(context).size.width / 2,
+                        MediaQuery.of(context).size.height / 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Player marker overlay
+          if (playerMarkerState.lat != 0.0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: _PlayerMarkerPainter(
+                    markerState: playerMarkerState,
+                    isPaused: explorationEligibility.isPaused,
+                    cameraPosition: (lat: location.lat, lng: location.lng),
+                    zoom: _kGpsZoom,
+                    screenCenter: Offset(
+                      MediaQuery.of(context).size.width / 2,
+                      MediaQuery.of(context).size.height / 2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Frosted glass status bar — overlaid at top of map
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: MapStatusBar(
+              cellsObserved: cellsObserved,
+              totalSteps: 0,
+              streakDays: 0,
+            ),
+          ),
+
+          // Discovery notification — appears just below status bar on new cell entry
+          if (_notificationCellId != null)
+            Positioned(
+              top: 44 + 56 + 8,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
+                child: DiscoveryNotification(
+                  cellName: _notificationCellId!,
+                ),
+              ),
+            ),
+
+          // Loading indicator
+          if (mapState is MapStateLoading)
+            const Positioned(
+              top: 24,
+              left: 0,
+              right: 0,
+              child: Center(child: LoadingDots()),
+            ),
+
+          // Build version — bottom-left corner, visible to devs during testing
+          Positioned(
+            left: 8,
+            bottom: 8,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Text(
+                    'β $_kBuildVersion',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontFamily: 'monospace',
+                      letterSpacing: 0,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Error message
+          if (mapState is MapStateError)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 24,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.outline),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    mapState.message,
+                    style: const TextStyle(color: AppTheme.onSurface),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+
+          // Discovery paused banner — shown when GPS is unavailable or ring state
+          if (explorationEligibility.isPaused)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text(
+                      'Discovery paused',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _onMapTap(
@@ -385,12 +529,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 class _PlayerMarkerPainter extends CustomPainter {
   _PlayerMarkerPainter({
     required this.markerState,
+    required this.isPaused,
     required this.cameraPosition,
     required this.zoom,
     required this.screenCenter,
   });
 
   final PlayerMarkerState markerState;
+  final bool isPaused;
   final ({double lat, double lng}) cameraPosition;
   final double zoom;
   final Offset screenCenter;
@@ -414,7 +560,7 @@ class _PlayerMarkerPainter extends CustomPainter {
 
     final markerPos = Offset(screenCenter.dx + dx, screenCenter.dy - dy);
 
-    if (markerState.isRing) {
+    if (isPaused) {
       // Draw accuracy ring
       final ringPaint = Paint()
         ..color = Colors.blue.withValues(alpha: 0.3)
@@ -434,7 +580,8 @@ class _PlayerMarkerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PlayerMarkerPainter oldDelegate) {
-    return oldDelegate.markerState != markerState;
+    return oldDelegate.markerState != markerState ||
+        oldDelegate.isPaused != isPaused;
   }
 }
 

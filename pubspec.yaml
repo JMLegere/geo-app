@@ -35,6 +35,9 @@ dependencies:
   # GPS location provider — adaptive frequency, ring state detection (overrides AGENTS.md ban per docs/map-design.md §14)
   geolocator: ^13.0.2
 
+  # Screen Wake Lock API for web platform (already a transitive dep via geolocator_web)
+  web: ^1.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
