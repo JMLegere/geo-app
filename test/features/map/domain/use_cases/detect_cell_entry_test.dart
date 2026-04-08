@@ -1,13 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
+
+class TestObservabilityService extends ObservabilityService {
+  TestObservabilityService() : super(sessionId: 'test-session');
+
+  final logs = <Map<String, Object?>>[];
+
+  @override
+  void log(String event, String category, {Map<String, dynamic>? data}) {
+    logs.add({'event': event, 'category': category, 'data': data});
+  }
+}
 
 void main() {
   group('DetectCellEntry', () {
     late DetectCellEntry detectCellEntry;
+    late TestObservabilityService obs;
 
     setUp(() {
-      detectCellEntry = const DetectCellEntry();
+      obs = TestObservabilityService();
+      detectCellEntry = DetectCellEntry(obs);
     });
 
     group('pointInPolygon', () {
@@ -199,7 +213,7 @@ void main() {
 
     group('detectCellEntry', () {
       test('returns new cell when marker transitions from cell A to cell B',
-          () {
+          () async {
         final cells = [
           Cell(
             id: 'cell-A',
@@ -231,16 +245,20 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: 'cell-A',
-          currentPoint: (lat: 1.5, lng: 0.5),
+        final result = await detectCellEntry.call(
+          (
+            cells: cells,
+            previousCellId: 'cell-A',
+            currentPoint: (lat: 1.5, lng: 0.5),
+          ),
         );
 
         expect(result, equals('cell-B'));
+        expect(obs.logs[0]['event'], 'operation.started');
+        expect(obs.logs[1]['event'], 'operation.completed');
       });
 
-      test('returns null when marker stays in same cell', () {
+      test('returns null when marker stays in same cell', () async {
         final cells = [
           Cell(
             id: 'cell-A',
@@ -258,16 +276,18 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: 'cell-A',
-          currentPoint: (lat: 0.5, lng: 0.5),
+        final result = await detectCellEntry.call(
+          (
+            cells: cells,
+            previousCellId: 'cell-A',
+            currentPoint: (lat: 0.5, lng: 0.5),
+          ),
         );
 
         expect(result, isNull);
       });
 
-      test('returns cell id when entering first cell from no cell', () {
+      test('returns cell id when entering first cell from no cell', () async {
         final cells = [
           Cell(
             id: 'cell-1',
@@ -285,16 +305,18 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: null,
-          currentPoint: (lat: 0.5, lng: 0.5),
+        final result = await detectCellEntry.call(
+          (
+            cells: cells,
+            previousCellId: null,
+            currentPoint: (lat: 0.5, lng: 0.5),
+          ),
         );
 
         expect(result, equals('cell-1'));
       });
 
-      test('returns null when marker not in any cell', () {
+      test('returns null when marker not in any cell', () async {
         final cells = [
           Cell(
             id: 'cell-1',
@@ -312,10 +334,12 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
-          cells: cells,
-          previousCellId: null,
-          currentPoint: (lat: 100.0, lng: 100.0),
+        final result = await detectCellEntry.call(
+          (
+            cells: cells,
+            previousCellId: null,
+            currentPoint: (lat: 100.0, lng: 100.0),
+          ),
         );
 
         expect(result, isNull);

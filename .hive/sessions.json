@@ -282,8 +282,133 @@
     {
       "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
       "startedAt": "2026-04-08T03:06:14.818Z",
-      "lastActiveAt": "2026-04-08T03:06:14.818Z",
-      "directivePrompt": "get it to prod"
+      "lastActiveAt": "2026-04-08T15:07:10.403Z",
+      "directivePrompt": "get it to prod",
+      "agent": "hive-master",
+      "sessionKind": "primary",
+      "baseAgent": "hive-master",
+      "replayDirectivePending": false,
+      "featureName": "map-observability-instrumentation"
+    },
+    {
+      "sessionId": "ses_292c5c02affer0a4GNCqsZQYd5",
+      "startedAt": "2026-04-08T13:13:47.237Z",
+      "lastActiveAt": "2026-04-08T13:13:47.237Z",
+      "agent": "fixer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_292c1abb1ffeKjlJ6muVnPACLB",
+      "startedAt": "2026-04-08T13:18:14.619Z",
+      "lastActiveAt": "2026-04-08T13:18:14.619Z",
+      "agent": "fixer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_292996a37ffeWPcNBW4gTx8g87",
+      "startedAt": "2026-04-08T14:02:12.823Z",
+      "lastActiveAt": "2026-04-08T14:02:12.823Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_292780ac5ffedZ3iTLR7y71gNY",
+      "startedAt": "2026-04-08T14:38:40.084Z",
+      "lastActiveAt": "2026-04-08T14:41:52.453Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "02-create-tracecontext-for-propagation",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/02-create-tracecontext-for-propagation/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_292780ab2ffei2KPz5y5B3NeD7",
+      "startedAt": "2026-04-08T14:38:40.115Z",
+      "lastActiveAt": "2026-04-08T14:40:58.700Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "06-update-repository-interfaces-to-accept-traceid",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/06-update-repository-interfaces-to-accept-traceid/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_292780aedffe9OJ37JygeB0ti1",
+      "startedAt": "2026-04-08T14:38:40.140Z",
+      "lastActiveAt": "2026-04-08T14:44:12.128Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "01-create-observableusecase-base-class",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/01-create-observableusecase-base-class/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b302ffeNRteDBDNYplVbv",
+      "startedAt": "2026-04-08T14:45:35.671Z",
+      "lastActiveAt": "2026-04-08T15:04:50.075Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "03-refactor-map-use-cases-to-extend-observableusecase",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/03-refactor-map-use-cases-to-extend-observableusecase/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b2daffebUedAbMgk23qlX",
+      "startedAt": "2026-04-08T14:45:35.756Z",
+      "lastActiveAt": "2026-04-08T14:56:20.112Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "04-refactor-auth-use-cases-to-extend-observableusecase",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/04-refactor-auth-use-cases-to-extend-observableusecase/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b2cfffekMprKVB6q199bL",
+      "startedAt": "2026-04-08T14:45:35.769Z",
+      "lastActiveAt": "2026-04-08T14:54:03.019Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "05-refactor-identification-use-case-to-extend-observableusecase",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/05-refactor-identification-use-case-to-extend-observableusecase/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b2b6ffeAZfE0D2INGAszV",
+      "startedAt": "2026-04-08T14:45:35.781Z",
+      "lastActiveAt": "2026-04-08T15:05:56.817Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "07-update-repository-implementations-to-log-with-traceid",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/07-update-repository-implementations-to-log-with-traceid/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b2acffe89bVtamvAthL7W",
+      "startedAt": "2026-04-08T14:45:35.796Z",
+      "lastActiveAt": "2026-04-08T14:51:15.898Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "08-create-enforcement-test",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/08-create-enforcement-test/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29271b2a4ffex2qxtrpkn5H3EC",
+      "startedAt": "2026-04-08T14:45:35.811Z",
+      "lastActiveAt": "2026-04-08T14:56:48.396Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-observability-instrumentation",
+      "taskFolder": "09-update-maindart-to-provide-observabilityservice-to-use-cases",
+      "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/09-update-maindart-to-provide-observabilityservice-to-use-cases/worker-prompt.md"
     }
   ]
 }

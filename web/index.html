@@ -225,6 +225,28 @@
                     s.onload = function() {
                       try { push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown'); } catch(e) {}
                       push('js', 'flutter_bootstrap_complete', 'maplibre_ready_before_runapp');
+                      // Hook into MapLibre Map lifecycle for render-failure diagnosis.
+                      // Patches the constructor so every Map instance emits error/load/idle
+                      // events into observability — essential for blank-map diagnosis on iOS Safari.
+                      if (window.maplibregl) {
+                        try {
+                          var origMap = maplibregl.Map;
+                          maplibregl.Map = function(opts) {
+                            var map = new origMap(opts);
+                            map.on('error', function(e) {
+                              push('js', 'maplibre_map_error', (e && e.error && e.error.message) || 'unknown');
+                            });
+                            map.on('load', function() {
+                              push('js', 'maplibre_map_load', 'tiles_ready');
+                            });
+                            map.on('idle', function() {
+                              push('js', 'maplibre_map_idle', 'render_complete');
+                            });
+                            return map;
+                          };
+                          maplibregl.Map.prototype = origMap.prototype;
+                        } catch(e) {}
+                      }
                       resolve();
                     };
                     s.onerror = function() {

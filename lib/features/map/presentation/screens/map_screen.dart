@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -65,6 +67,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final userId =
+        authState.status == AuthStatus.authenticated ? authState.user!.id : '';
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
     final playerMarkerState = ref.watch(playerMarkerProvider);
@@ -92,6 +97,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 markerState: markerState,
                 cells: cells,
                 visitedCellIds: visitedCellIds,
+                userId: userId,
               ),
         );
       }
@@ -104,6 +110,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 markerState: ref.read(playerMarkerProvider),
                 cells: cells,
                 visitedCellIds: visitedCellIds,
+                userId: userId,
               ),
         );
       }
@@ -122,6 +129,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         // Show discovery notification on first visit
         if (isFirstVisit) {
           _showDiscoveryNotification(next.currentCellId!);
+          ref.read(mapProvider.notifier).obs.log(
+            'map.discovery_notification_shown',
+            'map',
+            data: {'cell_id': next.currentCellId},
+          );
         }
       }
     });
@@ -232,8 +244,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               dragEnabled: false,
               myLocationEnabled: true,
               myLocationTrackingMode: maplibre.MyLocationTrackingMode.tracking,
-              onMapCreated: (controller) => _mapController = controller,
+              onMapCreated: (controller) {
+                _mapController = controller;
+                ref
+                    .read(mapProvider.notifier)
+                    .obs
+                    .log('map.map_created', 'map');
+              },
               onStyleLoadedCallback: () {
+                ref
+                    .read(mapProvider.notifier)
+                    .obs
+                    .log('map.style_loaded', 'map');
                 ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
               },
             ),

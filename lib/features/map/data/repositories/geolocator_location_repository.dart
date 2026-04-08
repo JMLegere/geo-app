@@ -22,7 +22,7 @@ class GeolocatorLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
@@ -32,7 +32,7 @@ class GeolocatorLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async {
+  Future<bool> requestPermission({String? traceId}) async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();

@@ -52,10 +52,19 @@ class VisitQueueNotifier extends ObservableNotifier<VisitQueueState> {
       'visit_queue.enqueued',
       data: {'userId': userId, 'cellId': cellId, 'queueSize': newItems.length},
     );
+    obs.log('map.visit_queue_enqueued', category, data: {
+      'cell_id': cellId,
+      'queue_size': newItems.length,
+    });
   }
 
   Future<void> flush(RecordCellVisit useCase) async {
     if (state.items.isEmpty) return;
+
+    final initialCount = state.items.length;
+    obs.log('map.visit_queue_flush_started', category, data: {
+      'queue_size': initialCount,
+    });
 
     final remaining = <VisitQueueItem>[];
     var anySucceeded = false;
@@ -63,29 +72,43 @@ class VisitQueueNotifier extends ObservableNotifier<VisitQueueState> {
 
     for (final item in state.items) {
       try {
-        await useCase(userId: item.userId, cellId: item.cellId);
+        await useCase.call((userId: item.userId, cellId: item.cellId));
         anySucceeded = true;
-      } catch (_) {
+      } catch (e) {
         remaining.add(item);
         anyFailed = true;
+        obs.log('map.visit_queue_item_failed', category, data: {
+          'cell_id': item.cellId,
+          'error': e.toString(),
+        });
       }
     }
 
     if (anySucceeded && !anyFailed) {
+      final flushedCount = initialCount - remaining.length;
       transition(
         state.copyWith(items: remaining),
         'visit_queue.flushed',
-        data: {'flushedCount': state.items.length - remaining.length},
+        data: {'flushedCount': flushedCount},
       );
+      obs.log('map.visit_queue_flush_success', category, data: {
+        'flushed_count': flushedCount,
+        'remaining': remaining.length,
+      });
     } else if (anySucceeded) {
+      final flushedCount = initialCount - remaining.length;
       transition(
         state.copyWith(items: remaining),
         'visit_queue.flushed',
         data: {
-          'flushedCount': state.items.length - remaining.length,
+          'flushedCount': flushedCount,
           'remainingCount': remaining.length,
         },
       );
+      obs.log('map.visit_queue_flush_success', category, data: {
+        'flushed_count': flushedCount,
+        'remaining': remaining.length,
+      });
     } else {
       transition(
         state.copyWith(items: remaining),

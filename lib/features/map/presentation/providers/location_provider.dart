@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
@@ -42,7 +43,11 @@ final locationRepositoryProvider = Provider<LocationRepository>((ref) {
 });
 
 final getLocationStreamProvider = Provider<GetLocationStream>(
-  (ref) => GetLocationStream(ref.watch(locationRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return GetLocationStream(ref.watch(locationRepositoryProvider),
+        ref.watch(locationObservabilityProvider));
+  },
 );
 
 final locationProvider =
@@ -53,6 +58,7 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   late final LocationRepository _repository;
   StreamSubscription<LocationState>? _subscription;
   bool _disposed = false;
+  DateTime? _pausedAt;
 
   @override
   ObservabilityService get obs => ref.watch(locationObservabilityProvider);
@@ -85,7 +91,9 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
       final initial = await _repository.getCurrentPosition();
       transition(LocationProviderActive(initial), 'map.gps_position_updated');
     } catch (e) {
-      transition(LocationProviderError(e.toString()), 'map.gps_error');
+      transition(LocationProviderError(e.toString()), 'map.gps_error', data: {
+        'error': e.toString(),
+      });
       return;
     }
 
@@ -97,13 +105,29 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
     _subscription = _repository.positionStream.listen(
       (position) {
         final wasPaused = state is LocationProviderPaused;
-        transition(LocationProviderActive(position),
-            wasPaused ? 'map.gps_resumed' : 'map.gps_position_updated');
+        if (wasPaused) {
+          final timeInPausedMs = _pausedAt != null
+              ? DateTime.now().difference(_pausedAt!).inMilliseconds
+              : 0;
+          _pausedAt = null;
+          transition(
+            LocationProviderActive(position),
+            'map.gps_resumed',
+            data: {'time_in_paused_ms': timeInPausedMs},
+          );
+        } else {
+          transition(
+              LocationProviderActive(position), 'map.gps_position_updated');
+        }
       },
       onError: (Object e, StackTrace st) {
         if (_disposed) return;
         obs.logError(e, st, event: 'map.gps_stream_error');
-        transition(const LocationProviderPaused(), 'map.gps_paused');
+        _pausedAt = DateTime.now();
+        transition(const LocationProviderPaused(), 'map.gps_paused', data: {
+          'reason': 'stream_error',
+          'error': e.toString(),
+        });
         // Do NOT cancel the subscription — keep listening so recovery is
         // automatic when GPS returns. The stream may emit new positions after
         // a transient error without needing a resubscribe.

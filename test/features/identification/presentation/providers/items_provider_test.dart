@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
@@ -58,6 +59,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
         ],
@@ -81,6 +83,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
         ],
@@ -109,6 +112,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -133,6 +137,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -144,7 +149,10 @@ void main() {
       c.read(itemsProvider);
       await c.read(itemsProvider.notifier).fetchItems();
 
-      for (final event in obs.events) {
+      final providerEvents =
+          obs.events.where((event) => event.event.startsWith('items.'));
+
+      for (final event in providerEvents) {
         expect(event.category, 'data');
       }
       c.dispose();
@@ -156,6 +164,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -177,6 +186,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],
@@ -200,6 +210,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(freshAuth),
           itemRepositoryProvider.overrideWithValue(MockItemRepository()),
         ],
@@ -224,6 +235,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
         ],
       );
@@ -259,6 +271,7 @@ void main() {
         overrides: [
           observabilityProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
         ],

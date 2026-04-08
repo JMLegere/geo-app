@@ -6,39 +6,80 @@ import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/features/auth/data/dtos/user_profile_dto.dart';
 import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 
-class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository({required supa.SupabaseClient client})
-      : _client = client;
+typedef RepositoryLogEvent = void Function(
+  String event,
+  String category, {
+  Map<String, dynamic>? data,
+});
+typedef AuthSignInAction = Future<UserProfile> Function(
+    String email, String password);
+typedef AuthSignUpAction = Future<UserProfile> Function(
+  String email,
+  String password,
+  Map<String, dynamic>? metadata,
+);
+typedef AuthSignOutAction = Future<void> Function();
+typedef AuthCurrentUserAction = Future<UserProfile?> Function();
+typedef AuthCurrentSessionAction = supa.Session? Function();
+typedef AuthRefreshSessionAction = Future<void> Function();
 
-  final supa.SupabaseClient _client;
+class SupabaseAuthRepository implements AuthRepository {
+  SupabaseAuthRepository({
+    required supa.SupabaseClient? client,
+    AuthSignInAction? signInAction,
+    AuthSignUpAction? signUpAction,
+    AuthSignOutAction? signOutAction,
+    AuthCurrentUserAction? currentUserAction,
+    AuthCurrentSessionAction? currentSessionAction,
+    AuthRefreshSessionAction? refreshSessionAction,
+    RepositoryLogEvent? logEvent,
+  })  : _client = client,
+        _signInAction = signInAction,
+        _signUpAction = signUpAction,
+        _signOutAction = signOutAction,
+        _currentUserAction = currentUserAction,
+        _currentSessionAction = currentSessionAction,
+        _refreshSessionAction = refreshSessionAction,
+        _logEvent = logEvent;
+
+  final supa.SupabaseClient? _client;
+  final AuthSignInAction? _signInAction;
+  final AuthSignUpAction? _signUpAction;
+  final AuthSignOutAction? _signOutAction;
+  final AuthCurrentUserAction? _currentUserAction;
+  final AuthCurrentSessionAction? _currentSessionAction;
+  final AuthRefreshSessionAction? _refreshSessionAction;
+  final RepositoryLogEvent? _logEvent;
   final _controller = StreamController<AuthEvent>.broadcast();
+  static const _category = 'auth.auth_repository';
 
   @override
   Stream<AuthEvent> get authStateChanges => _controller.stream;
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async {
+  Future<UserProfile> signInWithEmail(
+    String email,
+    String password, {
+    String? traceId,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
     try {
-      final response = await _client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
-      final user = response.user;
-      if (user != null) {
-        final dto = UserProfileDto(
-          id: user.id,
-          phone: user.userMetadata?['phone_number'] as String? ?? '',
-          displayName: user.userMetadata?['display_name'] as String?,
-          createdAt: DateTime.parse(user.createdAt),
-        );
-        final profile = dto.toDomain();
-        _controller.add(AuthStateChanged(profile));
-        return profile;
-      }
-    } on supa.AuthException catch (e) {
-      throw AuthException(e.message);
+      final profile = await _runSignIn(email, password);
+      _controller.add(AuthStateChanged(profile));
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': 1,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return profile;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      rethrow;
     }
-    throw const AuthException('Sign-in failed: no user returned.');
   }
 
   @override
@@ -46,40 +87,208 @@ class SupabaseAuthRepository implements AuthRepository {
     String email,
     String password, {
     Map<String, dynamic>? metadata,
+    String? traceId,
   }) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
     try {
-      final response = await _client.auth.signUp(
+      final profile = await _runSignUp(email, password, metadata);
+      _controller.add(AuthStateChanged(profile));
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': 1,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return profile;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> signOut({String? traceId}) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    try {
+      await _runSignOut();
+      _controller.add(const AuthStateChanged(null));
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': 0,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      rethrow;
+    }
+  }
+
+  @override
+  Future<UserProfile?> getCurrentUser({String? traceId}) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    try {
+      final profile = await _runCurrentUser();
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': profile == null ? 0 : 1,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return profile;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> restoreSession({String? traceId}) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    final session = _runCurrentSession();
+    if (session == null) {
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': 0,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return false;
+    }
+    final rawUser = _client?.auth.currentUser;
+    if (rawUser != null) {
+      final isAnonymous = rawUser.userMetadata?['is_anonymous'] == true ||
+          (rawUser.appMetadata['provider'] == 'anonymous');
+      if (isAnonymous) {
+        await _runSignOut();
+        _controller.add(const AuthStateChanged(null));
+        _logEvent?.call('db.query_completed', _category, data: {
+          'trace_id': traceId,
+          'row_count': 0,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+        return false;
+      }
+    }
+    if (session.isExpired) {
+      try {
+        await _runRefreshSession();
+        final refreshed = _runCurrentSession();
+        if (refreshed != null && !refreshed.isExpired) {
+          final profile = await getCurrentUser(traceId: traceId);
+          if (profile != null) {
+            _controller.add(AuthStateChanged(profile));
+            _logEvent?.call('db.query_completed', _category, data: {
+              'trace_id': traceId,
+              'row_count': 1,
+              'duration_ms': stopwatch.elapsedMilliseconds,
+            });
+            return true;
+          }
+        }
+      } catch (_) {
+        _controller.add(const AuthSessionExpired());
+        _logEvent?.call('db.query_failed', _category, data: {
+          'trace_id': traceId,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+        return false;
+      }
+    }
+    final profile = await getCurrentUser(traceId: traceId);
+    if (profile != null) {
+      _controller.add(AuthStateChanged(profile));
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'row_count': 1,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return true;
+    }
+    _logEvent?.call('db.query_completed', _category, data: {
+      'trace_id': traceId,
+      'row_count': 0,
+      'duration_ms': stopwatch.elapsedMilliseconds,
+    });
+    return false;
+  }
+
+  @override
+  void dispose() => _controller.close();
+
+  Future<UserProfile> _runSignIn(String email, String password) async {
+    if (_signInAction != null) {
+      return _signInAction!(email, password);
+    }
+    final client = _client;
+    if (client == null) {
+      throw const AuthException('Supabase client unavailable for sign-in.');
+    }
+    try {
+      final response = await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      return _profileFromUser(response.user);
+    } on supa.AuthException catch (e) {
+      throw AuthException(e.message);
+    }
+  }
+
+  Future<UserProfile> _runSignUp(
+    String email,
+    String password,
+    Map<String, dynamic>? metadata,
+  ) async {
+    if (_signUpAction != null) {
+      return _signUpAction!(email, password, metadata);
+    }
+    final client = _client;
+    if (client == null) {
+      throw const AuthException('Supabase client unavailable for sign-up.');
+    }
+    try {
+      final response = await client.auth.signUp(
         email: email,
         password: password,
         data: metadata,
       );
-      final user = response.user;
-      if (user != null) {
-        final dto = UserProfileDto(
-          id: user.id,
-          phone: user.userMetadata?['phone_number'] as String? ?? '',
-          displayName: user.userMetadata?['display_name'] as String?,
-          createdAt: DateTime.parse(user.createdAt),
-        );
-        final profile = dto.toDomain();
-        _controller.add(AuthStateChanged(profile));
-        return profile;
-      }
+      return _profileFromUser(response.user);
     } on supa.AuthException catch (e) {
       throw AuthException(e.message);
     }
-    throw const AuthException('Sign-up failed: no user returned.');
   }
 
-  @override
-  Future<void> signOut() async {
-    await _client.auth.signOut();
-    _controller.add(const AuthStateChanged(null));
+  Future<void> _runSignOut() async {
+    if (_signOutAction != null) {
+      await _signOutAction!();
+      return;
+    }
+    final client = _client;
+    if (client == null) {
+      throw const AuthException('Supabase client unavailable for sign-out.');
+    }
+    await client.auth.signOut();
   }
 
-  @override
-  Future<UserProfile?> getCurrentUser() async {
-    final user = _client.auth.currentUser;
+  Future<UserProfile?> _runCurrentUser() async {
+    if (_currentUserAction != null) {
+      return _currentUserAction!();
+    }
+    final client = _client;
+    if (client == null) {
+      return null;
+    }
+    final user = client.auth.currentUser;
     if (user == null) return null;
     return UserProfileDto(
       id: user.id,
@@ -89,44 +298,34 @@ class SupabaseAuthRepository implements AuthRepository {
     ).toDomain();
   }
 
-  @override
-  Future<bool> restoreSession() async {
-    final session = _client.auth.currentSession;
-    if (session == null) return false;
-    final user = _client.auth.currentUser;
-    if (user != null) {
-      final isAnonymous = user.userMetadata?['is_anonymous'] == true ||
-          (user.appMetadata['provider'] == 'anonymous');
-      if (isAnonymous) {
-        await _client.auth.signOut();
-        _controller.add(const AuthStateChanged(null));
-        return false;
-      }
+  supa.Session? _runCurrentSession() {
+    if (_currentSessionAction != null) {
+      return _currentSessionAction!();
     }
-    if (session.isExpired) {
-      try {
-        await _client.auth.refreshSession();
-        final refreshed = _client.auth.currentSession;
-        if (refreshed != null && !refreshed.isExpired) {
-          final profile = await getCurrentUser();
-          if (profile != null) {
-            _controller.add(AuthStateChanged(profile));
-            return true;
-          }
-        }
-      } catch (_) {
-        _controller.add(const AuthSessionExpired());
-        return false;
-      }
-    }
-    final profile = await getCurrentUser();
-    if (profile != null) {
-      _controller.add(AuthStateChanged(profile));
-      return true;
-    }
-    return false;
+    return _client?.auth.currentSession;
   }
 
-  @override
-  void dispose() => _controller.close();
+  Future<void> _runRefreshSession() async {
+    if (_refreshSessionAction != null) {
+      await _refreshSessionAction!();
+      return;
+    }
+    final client = _client;
+    if (client == null) {
+      throw const AuthException('Supabase client unavailable for refresh.');
+    }
+    await client.auth.refreshSession();
+  }
+
+  UserProfile _profileFromUser(supa.User? user) {
+    if (user == null) {
+      throw const AuthException('Auth request failed: no user returned.');
+    }
+    return UserProfileDto(
+      id: user.id,
+      phone: user.userMetadata?['phone_number'] as String? ?? '',
+      displayName: user.userMetadata?['display_name'] as String?,
+      createdAt: DateTime.parse(user.createdAt),
+    ).toDomain();
+  }
 }

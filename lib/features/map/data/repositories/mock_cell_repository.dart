@@ -10,28 +10,29 @@ class MockCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-    double lat,
-    double lng,
-    double radiusMeters,
-  ) async {
+      double lat, double lng, double radiusMeters,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('Mock fetch error');
     return cells;
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('Mock record error');
     _visits.putIfAbsent(userId, () => {}).add(cellId);
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async {
+  Future<Set<String>> getVisitedCellIds(String userId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('Mock get error');
     return _visits[userId] ?? {};
   }
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async {
+  Future<bool> isFirstVisit(String userId, String cellId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('Mock isFirstVisit error');
     return !(_visits[userId]?.contains(cellId) ?? false);
   }

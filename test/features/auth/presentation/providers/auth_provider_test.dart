@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
@@ -51,6 +52,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
         ],
       );
@@ -120,7 +122,11 @@ void main() {
           .read(authProvider.notifier)
           .signInWithPhone('+15551234567');
 
-      for (final event in obs.events) {
+      // Only check events emitted by the notifier itself (auth.* events).
+      // ObservableUseCase internally emits operation.* events with
+      // category='use_case', which is correct and expected.
+      final authEvents = obs.events.where((e) => e.event.startsWith('auth.'));
+      for (final event in authEvents) {
         expect(event.category, 'auth');
       }
     });
@@ -227,6 +233,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(failingAuth),
         ],
       );
@@ -246,6 +253,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(failingAuth),
         ],
       );
@@ -288,26 +296,28 @@ class _FailingAuthRepository implements AuthRepository {
   Stream<AuthEvent> get authStateChanges => _controller.stream;
 
   @override
-  Future<UserProfile> signInWithEmail(String email, String password) async {
+  Future<UserProfile> signInWithEmail(String email, String password,
+      {String? traceId}) async {
     throw Exception('Network error');
   }
 
   @override
   Future<UserProfile> signUpWithEmail(String email, String password,
-      {Map<String, dynamic>? metadata}) async {
+      {Map<String, dynamic>? metadata, String? traceId}) async {
     throw Exception('Network error');
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({String? traceId}) async {
     if (failOnSignOut) throw Exception('Sign out failed');
   }
 
   @override
-  Future<UserProfile?> getCurrentUser() async => null;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async => null;
 
   @override
-  Future<bool> restoreSession() async => throw Exception('Restore failed');
+  Future<bool> restoreSession({String? traceId}) async =>
+      throw Exception('Restore failed');
 
   @override
   void dispose() => _controller.close();

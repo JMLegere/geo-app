@@ -25,19 +25,24 @@ class AuthExternalSignOut extends AuthEvent {
 }
 
 abstract class AuthRepository {
-  Future<UserProfile> signInWithEmail(String email, String password);
+  Future<UserProfile> signInWithEmail(
+    String email,
+    String password, {
+    String? traceId,
+  });
 
   Future<UserProfile> signUpWithEmail(
     String email,
     String password, {
     Map<String, dynamic>? metadata,
+    String? traceId,
   });
 
-  Future<void> signOut();
+  Future<void> signOut({String? traceId});
 
-  Future<UserProfile?> getCurrentUser();
+  Future<UserProfile?> getCurrentUser({String? traceId});
 
-  Future<bool> restoreSession();
+  Future<bool> restoreSession({String? traceId});
 
   Stream<AuthEvent> get authStateChanges;
 
