@@ -28,24 +28,28 @@ class FakeCellRepository implements CellRepository {
   Future<List<Cell>> fetchCellsInRadius(
     double lat,
     double lng,
-    double radiusMeters,
-  ) async {
+    double radiusMeters, {
+    String? traceId,
+  }) async {
     return const [];
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async {
+  Future<Set<String>> getVisitedCellIds(String userId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('Fake get visited error');
     return visitedCellIds;
   }
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async {
+  Future<bool> isFirstVisit(String userId, String cellId,
+      {String? traceId}) async {
     return !visitedCellIds.contains(cellId);
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {}
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {}
 }
 
 void main() {

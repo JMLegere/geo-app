@@ -17,7 +17,8 @@ class _FakeLocationRepository implements LocationRepository {
   Stream<LocationState> get positionStream => const Stream.empty();
 
   @override
-  Future<LocationState> getCurrentPosition() async => LocationState(
+  Future<LocationState> getCurrentPosition({String? traceId}) async =>
+      LocationState(
         lat: 0,
         lng: 0,
         accuracy: 1,
@@ -26,7 +27,7 @@ class _FakeLocationRepository implements LocationRepository {
       );
 
   @override
-  Future<bool> requestPermission() async => true;
+  Future<bool> requestPermission({String? traceId}) async => true;
 }
 
 void main() {
@@ -77,14 +78,18 @@ void main() {
 
   test('use case providers are readable when observableUseCaseProvider is set',
       () {
+    final obs = ObservabilityService(sessionId: 'test-session');
     final container = ProviderContainer(
       overrides: [
-        observableUseCaseProvider.overrideWithValue(
-          ObservabilityService(sessionId: 'test-session'),
-        ),
+        observableUseCaseProvider.overrideWithValue(obs),
         authRepositoryProvider.overrideWithValue(MockAuthRepository()),
         cellRepositoryProvider.overrideWithValue(MockCellRepository()),
         locationRepositoryProvider.overrideWithValue(_FakeLocationRepository()),
+        // Override feature-specific observability providers
+        observabilityProvider.overrideWithValue(obs),
+        mapObservabilityProvider.overrideWithValue(obs),
+        explorationObservabilityProvider.overrideWithValue(obs),
+        locationObservabilityProvider.overrideWithValue(obs),
       ],
     );
 

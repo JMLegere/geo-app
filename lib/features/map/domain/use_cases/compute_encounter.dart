@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:earth_nova/core/observability/observable_use_case.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 
 typedef ComputeEncounterInput = ({
@@ -24,11 +23,6 @@ class ComputeEncounter
   @override
   String get operationName => 'compute_encounter';
 
-  @override
-  Encounter? call(ComputeEncounterInput input) {
-    return super.call(input) as Encounter?;
-  }
-
   /// Computes an encounter based on cellId and seed.
   ///
   /// Uses SHA-256(seed + "_" + cellId) for deterministic species selection.
@@ -38,7 +32,8 @@ class ComputeEncounter
   /// - Critter encounter on revisit with loot (daily repopulated)
   /// - Null if no loot on revisit
   @override
-  Encounter? execute(ComputeEncounterInput input, TraceContext context) {
+  Future<Encounter?> execute(
+      ComputeEncounterInput input, String traceId) async {
     // If not first visit and no loot, no encounter
     if (!input.isFirstVisit && !input.hasLoot) {
       return null;

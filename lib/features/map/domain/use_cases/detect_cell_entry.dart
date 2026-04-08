@@ -1,6 +1,5 @@
 import 'package:earth_nova/core/observability/observable_use_case.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 
 typedef DetectCellEntryInput = ({
@@ -19,11 +18,6 @@ class DetectCellEntry extends ObservableUseCase<DetectCellEntryInput, String?> {
 
   @override
   String get operationName => 'detect_cell_entry';
-
-  @override
-  String? call(DetectCellEntryInput input) {
-    return super.call(input) as String?;
-  }
 
   /// Ray-casting algorithm for point-in-polygon test
   bool pointInPolygon({
@@ -67,7 +61,7 @@ class DetectCellEntry extends ObservableUseCase<DetectCellEntryInput, String?> {
 
   /// Detect cell entry: returns the new cell ID if marker entered a different cell
   @override
-  String? execute(DetectCellEntryInput input, TraceContext context) {
+  Future<String?> execute(DetectCellEntryInput input, String traceId) async {
     final currentCell = detectCell(
       cells: input.cells,
       point: input.currentPoint,

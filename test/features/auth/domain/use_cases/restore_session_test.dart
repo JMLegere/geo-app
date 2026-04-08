@@ -28,10 +28,16 @@ class FakeAuthRepository implements AuthRepository {
   String? lastCurrentUserTraceId;
 
   @override
-  Future<bool> restoreSession({String? traceId}) async => sessionValid;
+  Future<bool> restoreSession({String? traceId}) async {
+    lastRestoreTraceId = traceId;
+    return sessionValid;
+  }
 
   @override
-  Future<UserProfile?> getCurrentUser({String? traceId}) async => currentUser;
+  Future<UserProfile?> getCurrentUser({String? traceId}) async {
+    lastCurrentUserTraceId = traceId;
+    return currentUser;
+  }
 
   @override
   Future<void> signOut({String? traceId}) async {
@@ -103,7 +109,7 @@ void main() {
       final completedData = obs.events[1]['data'] as Map<String, dynamic>;
       final traceId = startedData['trace_id'] as String;
 
-      expect(startedData['operation_name'], 'auth.restore_session');
+      expect(startedData['operation'], 'auth.restore_session');
       expect(completedData['trace_id'], traceId);
       expect(repo.lastRestoreTraceId, traceId);
       expect(repo.lastCurrentUserTraceId, traceId);

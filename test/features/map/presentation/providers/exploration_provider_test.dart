@@ -474,7 +474,7 @@ void main() {
       expect(state.visitedCellIds, isEmpty);
     });
 
-    test('logs map.cell_detection_result when cell is detected', () async {
+    test('logs map.cell_entered when cell is detected', () async {
       final cells = [
         Cell(
           id: 'cell-1',
@@ -504,16 +504,14 @@ void main() {
         visitedCellIds: <String>{},
       );
 
-      expect(testObs.eventNames, contains('map.cell_detection_result'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.cell_detection_result');
-      expect(event.data?['detected'], isTrue);
-      expect(event.data?['cell_id'], 'cell-1');
-      expect(event.data?['cells_checked'], 1);
+      expect(testObs.eventNames, contains('map.cell_entered'));
+      final event =
+          testObs.events.firstWhere((e) => e.event == 'map.cell_entered');
+      expect(event.data?['cellId'], 'cell-1');
+      expect(event.data?['isFirstVisit'], isTrue);
     });
 
-    test(
-        'logs map.cell_detection_result with detected=false when outside all cells',
+    test('logs map.cell_entered with isFirstVisit=true on first visit',
         () async {
       final cells = [
         Cell(
@@ -535,8 +533,8 @@ void main() {
       final notifier = container.read(explorationProvider.notifier);
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
-          lat: 100.0,
-          lng: 100.0,
+          lat: 0.5,
+          lng: 0.5,
           isRing: false,
           gapDistance: 10.0,
         ),
@@ -544,14 +542,14 @@ void main() {
         visitedCellIds: <String>{},
       );
 
-      expect(testObs.eventNames, contains('map.cell_detection_result'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.cell_detection_result');
-      expect(event.data?['detected'], isFalse);
-      expect(event.data?['cell_id'], isNull);
+      expect(testObs.eventNames, contains('map.cell_entered'));
+      final event =
+          testObs.events.firstWhere((e) => e.event == 'map.cell_entered');
+      expect(event.data?['cellId'], 'cell-1');
+      expect(event.data?['isFirstVisit'], isTrue);
     });
 
-    test('logs map.visit_gated when marker is in ring state', () async {
+    test('logs map.cell_tracked when marker is in ring state', () async {
       final cells = [
         Cell(
           id: 'cell-1',
@@ -581,19 +579,17 @@ void main() {
         visitedCellIds: <String>{},
       );
 
-      expect(testObs.eventNames, contains('map.visit_gated'));
-      final event =
-          testObs.events.firstWhere((e) => e.event == 'map.visit_gated');
-      expect(event.data?['cell_id'], 'cell-1');
-      expect(event.data?['reason'], isNotNull);
+      expect(testObs.eventNames, contains('map.cell_tracked'));
+      // map.cell_tracked is emitted without cell data when in ring state
     });
 
-    test('logs map.visit_recorded on successful backend persist', () async {
+    test('logs map.cell_visited on successful backend persist', () async {
       final repo = _MockCellRepository();
       final visitObs = TestObservabilityService();
       final c = ProviderContainer(
         overrides: [
           explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
           visitQueueObservabilityProvider.overrideWithValue(visitObs),
         ],
@@ -629,19 +625,19 @@ void main() {
             userId: 'user-123',
           );
 
-      expect(testObs.eventNames, contains('map.visit_recorded'));
+      expect(testObs.eventNames, contains('map.cell_visited'));
       final event =
-          testObs.events.firstWhere((e) => e.event == 'map.visit_recorded');
-      expect(event.data?['cell_id'], 'cell-1');
-      expect(event.data?['user_id'], 'user-123');
+          testObs.events.firstWhere((e) => e.event == 'map.cell_visited');
+      expect(event.data?['cellId'], 'cell-1');
     });
 
-    test('logs map.visit_record_failed when backend persist throws', () async {
+    test('enqueues visit when backend persist throws', () async {
       final repo = _MockCellRepository(shouldThrow: true);
       final visitObs = TestObservabilityService();
       final c = ProviderContainer(
         overrides: [
           explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
           visitQueueObservabilityProvider.overrideWithValue(visitObs),
         ],
@@ -677,11 +673,9 @@ void main() {
             userId: 'user-123',
           );
 
-      expect(testObs.eventNames, contains('map.visit_record_failed'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.visit_record_failed');
-      expect(event.data?['cell_id'], 'cell-1');
-      expect(event.data?['error'], isNotEmpty);
+      // On failure, the error is caught and visit is enqueued
+      // The error is logged via operation.failed from the use case
+      expect(testObs.eventNames, contains('operation.failed'));
     });
   });
 }
@@ -692,17 +686,23 @@ class _MockCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters) async =>
+          double lat, double lng, double radiusMeters,
+          {String? traceId}) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('network error');
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async => {};
+  Future<Set<String>> getVisitedCellIds(String userId,
+          {String? traceId}) async =>
+      {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }

@@ -1,6 +1,5 @@
 import 'package:earth_nova/core/observability/observable_use_case.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 
 typedef RecordCellVisitInput = ({
@@ -21,12 +20,7 @@ class RecordCellVisit extends ObservableUseCase<RecordCellVisitInput, void> {
   String get operationName => 'record_cell_visit';
 
   @override
-  Future<void> call(RecordCellVisitInput input) {
-    return super.call(input) as Future<void>;
-  }
-
-  @override
-  Future<void> execute(RecordCellVisitInput input, TraceContext context) {
+  Future<void> execute(RecordCellVisitInput input, String traceId) {
     return _repository.recordVisit(input.userId, input.cellId);
   }
 }

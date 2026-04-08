@@ -1,6 +1,5 @@
 import 'package:earth_nova/core/observability/observable_use_case.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 
@@ -20,15 +19,10 @@ class GetLocationStream
   String get operationName => 'get_location_stream';
 
   @override
-  Stream<LocationState> call(GetLocationStreamInput input) {
-    return super.call(input) as Stream<LocationState>;
-  }
-
-  @override
-  Stream<LocationState> execute(
+  Future<Stream<LocationState>> execute(
     GetLocationStreamInput input,
-    TraceContext context,
-  ) {
+    String traceId,
+  ) async {
     return _repository.positionStream;
   }
 }

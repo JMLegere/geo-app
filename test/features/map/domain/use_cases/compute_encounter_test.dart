@@ -46,11 +46,12 @@ void main() {
   });
 
   group('ComputeEncounter', () {
-    test('same cellId and seed produces same encounter (deterministic)', () {
+    test('same cellId and seed produces same encounter (deterministic)',
+        () async {
       final obs = TestObservabilityService();
       final compute = ComputeEncounter(obs);
 
-      final encounter1 = compute.call(
+      final encounter1 = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -59,7 +60,7 @@ void main() {
         ),
       );
 
-      final encounter2 = compute.call(
+      final encounter2 = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -76,10 +77,10 @@ void main() {
       expect(obs.logs[1]['event'], 'operation.completed');
     });
 
-    test('different cellId produces different encounter', () {
+    test('different cellId produces different encounter', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      final encounter1 = compute.call(
+      final encounter1 = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -88,7 +89,7 @@ void main() {
         ),
       );
 
-      final encounter2 = compute.call(
+      final encounter2 = await compute.call(
         (
           cellId: 'cell_456',
           seed: 'daily_seed',
@@ -102,10 +103,10 @@ void main() {
       expect(encounter1!.speciesId, isNot(encounter2!.speciesId));
     });
 
-    test('different seed produces different encounter', () {
+    test('different seed produces different encounter', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      final encounter1 = compute.call(
+      final encounter1 = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'seed_a',
@@ -114,7 +115,7 @@ void main() {
         ),
       );
 
-      final encounter2 = compute.call(
+      final encounter2 = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'seed_b',
@@ -128,10 +129,10 @@ void main() {
       expect(encounter1!.speciesId, isNot(encounter2!.speciesId));
     });
 
-    test('first visit produces species encounter', () {
+    test('first visit produces species encounter', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      final encounter = compute.call(
+      final encounter = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -146,10 +147,10 @@ void main() {
       expect(encounter.seed, 'daily_seed');
     });
 
-    test('revisit with daily loot produces critter encounter', () {
+    test('revisit with daily loot produces critter encounter', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      final encounter = compute.call(
+      final encounter = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -163,10 +164,10 @@ void main() {
       expect(encounter.cellId, 'cell_123');
     });
 
-    test('revisit without loot produces null encounter', () {
+    test('revisit without loot produces null encounter', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      final encounter = compute.call(
+      final encounter = await compute.call(
         (
           cellId: 'cell_123',
           seed: 'daily_seed',
@@ -178,12 +179,12 @@ void main() {
       expect(encounter, isNull);
     });
 
-    test('uses SHA-256 hash for deterministic species selection', () {
+    test('uses SHA-256 hash for deterministic species selection', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
       // The seed + cellId should be hashed to select species
       // Verify that specific input produces consistent output
-      final encounter = compute.call(
+      final encounter = await compute.call(
         (
           cellId: 'cell_test_123',
           seed: 'seed_2026_04_06',

@@ -349,17 +349,17 @@ void main() {
     });
 
     test('map.cells_fetch_started includes lat, lng, radius_meters', () async {
-      container.read(mapProvider);
-      await Future<void>.delayed(Duration.zero);
-
-      final position = LocationState(
+      // Set initial position BEFORE reading mapProvider so the initial fetch uses it
+      final initialPosition = LocationState(
         lat: 37.7749,
         lng: -122.4194,
         accuracy: 5.0,
         timestamp: DateTime(2026),
         isConfident: true,
       );
-      locationRepo.emitPosition(position);
+      locationRepo.emitPosition(initialPosition);
+
+      container.read(mapProvider);
       await Future<void>.delayed(Duration.zero);
 
       final startedEvent =

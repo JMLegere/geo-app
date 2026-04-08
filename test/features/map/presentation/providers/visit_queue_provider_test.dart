@@ -198,7 +198,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('map.visit_queue_flush_started'));
@@ -213,7 +213,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
@@ -230,7 +230,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       final partialRepo = _PartialFailRepo(failAfter: 1);
-      final useCase = RecordCellVisit(partialRepo);
+      final useCase = RecordCellVisit(partialRepo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
@@ -247,7 +247,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final failEvents = testObs.events
@@ -265,7 +265,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(

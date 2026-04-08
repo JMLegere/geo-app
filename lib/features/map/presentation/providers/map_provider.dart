@@ -49,14 +49,16 @@ final cellRepositoryProvider = Provider<CellRepository>((ref) {
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return FetchNearbyCells(ref.watch(cellRepositoryProvider));
+    return FetchNearbyCells(
+        ref.watch(cellRepositoryProvider), ref.watch(mapObservabilityProvider));
   },
 );
 
 final getVisitedCellsProvider = Provider<GetVisitedCells>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return GetVisitedCells(ref.watch(cellRepositoryProvider));
+    return GetVisitedCells(
+        ref.watch(cellRepositoryProvider), ref.watch(mapObservabilityProvider));
   },
 );
 

@@ -213,7 +213,7 @@ void main() {
 
     group('detectCellEntry', () {
       test('returns new cell when marker transitions from cell A to cell B',
-          () {
+          () async {
         final cells = [
           Cell(
             id: 'cell-A',
@@ -245,7 +245,7 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
+        final result = await detectCellEntry.call(
           (
             cells: cells,
             previousCellId: 'cell-A',
@@ -258,7 +258,7 @@ void main() {
         expect(obs.logs[1]['event'], 'operation.completed');
       });
 
-      test('returns null when marker stays in same cell', () {
+      test('returns null when marker stays in same cell', () async {
         final cells = [
           Cell(
             id: 'cell-A',
@@ -276,7 +276,7 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
+        final result = await detectCellEntry.call(
           (
             cells: cells,
             previousCellId: 'cell-A',
@@ -287,7 +287,7 @@ void main() {
         expect(result, isNull);
       });
 
-      test('returns cell id when entering first cell from no cell', () {
+      test('returns cell id when entering first cell from no cell', () async {
         final cells = [
           Cell(
             id: 'cell-1',
@@ -305,7 +305,7 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
+        final result = await detectCellEntry.call(
           (
             cells: cells,
             previousCellId: null,
@@ -316,7 +316,7 @@ void main() {
         expect(result, equals('cell-1'));
       });
 
-      test('returns null when marker not in any cell', () {
+      test('returns null when marker not in any cell', () async {
         final cells = [
           Cell(
             id: 'cell-1',
@@ -334,7 +334,7 @@ void main() {
           ),
         ];
 
-        final result = detectCellEntry.call(
+        final result = await detectCellEntry.call(
           (
             cells: cells,
             previousCellId: null,

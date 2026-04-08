@@ -48,7 +48,8 @@ final detectCellEntryProvider = Provider<DetectCellEntry>((ref) {
 final recordCellVisitProvider = Provider<RecordCellVisit>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return RecordCellVisit(ref.watch(cellRepositoryProvider));
+    return RecordCellVisit(ref.watch(cellRepositoryProvider),
+        ref.watch(explorationObservabilityProvider));
   },
 );
 

@@ -19,21 +19,24 @@ final observabilityProvider = Provider<ObservabilityService>((ref) {
 final signInWithPhoneProvider = Provider<SignInWithPhone>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return SignInWithPhone(ref.watch(authRepositoryProvider));
+    return SignInWithPhone(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
   },
 );
 
 final signOutProvider = Provider<SignOut>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return SignOut(ref.watch(authRepositoryProvider));
+    return SignOut(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
   },
 );
 
 final restoreSessionProvider = Provider<RestoreSession>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return RestoreSession(ref.watch(authRepositoryProvider));
+    return RestoreSession(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
   },
 );
 

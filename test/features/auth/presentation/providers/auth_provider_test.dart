@@ -122,7 +122,11 @@ void main() {
           .read(authProvider.notifier)
           .signInWithPhone('+15551234567');
 
-      for (final event in obs.events) {
+      // Only check events emitted by the notifier itself (auth.* events).
+      // ObservableUseCase internally emits operation.* events with
+      // category='use_case', which is correct and expected.
+      final authEvents = obs.events.where((e) => e.event.startsWith('auth.'));
+      for (final event in authEvents) {
         expect(event.category, 'auth');
       }
     });

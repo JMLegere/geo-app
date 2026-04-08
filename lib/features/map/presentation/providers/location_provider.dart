@@ -45,7 +45,8 @@ final locationRepositoryProvider = Provider<LocationRepository>((ref) {
 final getLocationStreamProvider = Provider<GetLocationStream>(
   (ref) {
     ref.watch(observableUseCaseProvider);
-    return GetLocationStream(ref.watch(locationRepositoryProvider));
+    return GetLocationStream(ref.watch(locationRepositoryProvider),
+        ref.watch(locationObservabilityProvider));
   },
 );
 

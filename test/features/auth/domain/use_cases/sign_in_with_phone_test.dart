@@ -130,7 +130,7 @@ void main() {
       final completedData = obs.events[1]['data'] as Map<String, dynamic>;
       final traceId = startedData['trace_id'] as String;
 
-      expect(startedData['operation_name'], 'auth.sign_in_with_phone');
+      expect(startedData['operation'], 'auth.sign_in_with_phone');
       expect(completedData['trace_id'], traceId);
       expect(repo.lastSignInTraceId, traceId);
     });

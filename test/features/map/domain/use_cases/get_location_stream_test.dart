@@ -24,6 +24,8 @@ class FakeLocationRepository implements LocationRepository {
 
   final bool throwOnAccess;
   final Stream<LocationState> _stream;
+  String? lastTraceId;
+  String? lastPermissionTraceId;
 
   @override
   Stream<LocationState> get positionStream {
@@ -32,7 +34,8 @@ class FakeLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
+    lastTraceId = traceId;
     return LocationState(
       lat: 0,
       lng: 0,
@@ -43,7 +46,10 @@ class FakeLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async => true;
+  Future<bool> requestPermission({String? traceId}) async {
+    lastPermissionTraceId = traceId;
+    return true;
+  }
 }
 
 void main() {
@@ -63,7 +69,7 @@ void main() {
         obs,
       );
 
-      final stream = useCase.call((includeMetadata: false));
+      final stream = await useCase.call((includeMetadata: false));
       controller.add(expected);
 
       await expectLater(stream, emits(expected));
@@ -73,15 +79,15 @@ void main() {
       expect(obs.logs[1]['event'], 'operation.completed');
     });
 
-    test('logs failure and rethrows when repository getter throws', () {
+    test('logs failure and rethrows when repository getter throws', () async {
       final obs = TestObservabilityService();
       final useCase = GetLocationStream(
         FakeLocationRepository(throwOnAccess: true),
         obs,
       );
 
-      expect(
-        () => useCase.call((includeMetadata: false)),
+      await expectLater(
+        useCase.call((includeMetadata: false)),
         throwsException,
       );
       expect(obs.logs[0]['event'], 'operation.started');

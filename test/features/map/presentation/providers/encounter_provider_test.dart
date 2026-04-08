@@ -44,10 +44,10 @@ void main() {
       expect(state.currentEncounter, isNull);
     });
 
-    test('first visit triggers species encounter', () {
+    test('first visit triggers species encounter', () async {
       final notifier = container.read(encounterProvider.notifier);
 
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: true,
         seed: 'daily_seed_2026_04_06',
@@ -66,11 +66,11 @@ void main() {
       expect(encounterLog.data?['encounterType'], 'species');
     });
 
-    test('revisit with loot triggers critter encounter', () {
+    test('revisit with loot triggers critter encounter', () async {
       final notifier = container.read(encounterProvider.notifier);
 
       // First visit - species
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: true,
         seed: 'daily_seed',
@@ -84,7 +84,7 @@ void main() {
       notifier.dismissEncounter();
 
       // Revisit with loot
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: false,
         hasLoot: true,
@@ -96,11 +96,11 @@ void main() {
       expect(state.currentEncounter!.type, EncounterType.critter);
     });
 
-    test('revisit without loot does not trigger encounter', () {
+    test('revisit without loot does not trigger encounter', () async {
       final notifier = container.read(encounterProvider.notifier);
 
       // First visit
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: true,
         seed: 'daily_seed',
@@ -110,7 +110,7 @@ void main() {
       notifier.dismissEncounter();
 
       // Revisit without loot
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: false,
         hasLoot: false,
@@ -121,10 +121,10 @@ void main() {
       expect(state.currentEncounter, isNull);
     });
 
-    test('dismiss encounter clears current encounter', () {
+    test('dismiss encounter clears current encounter', () async {
       final notifier = container.read(encounterProvider.notifier);
 
-      notifier.onCellEntered(
+      await notifier.onCellEntered(
         cellId: 'cell_123',
         isFirstVisit: true,
         seed: 'daily_seed',
