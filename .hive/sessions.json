@@ -282,13 +282,13 @@
     {
       "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
       "startedAt": "2026-04-08T03:06:14.818Z",
-      "lastActiveAt": "2026-04-08T15:07:10.403Z",
-      "directivePrompt": "get it to prod",
+      "lastActiveAt": "2026-04-08T21:40:44.322Z",
+      "directivePrompt": "execute with hive",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
       "replayDirectivePending": false,
-      "featureName": "map-observability-instrumentation"
+      "featureName": "map-bug-fixes"
     },
     {
       "sessionId": "ses_292c5c02affer0a4GNCqsZQYd5",
@@ -409,6 +409,66 @@
       "featureName": "map-observability-instrumentation",
       "taskFolder": "09-update-maindart-to-provide-observabilityservice-to-use-cases",
       "workerPromptPath": ".hive/features/05_map-observability-instrumentation/tasks/09-update-maindart-to-provide-observabilityservice-to-use-cases/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_29134962effeyURRixPD7ZAlik",
+      "startedAt": "2026-04-08T20:31:57.910Z",
+      "lastActiveAt": "2026-04-08T20:31:57.910Z",
+      "agent": "fixer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_29116cd27ffeyVPAGixqCog8dr",
+      "startedAt": "2026-04-08T21:04:30.049Z",
+      "lastActiveAt": "2026-04-08T21:05:15.849Z",
+      "agent": "build",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_29111f3f1ffehlxrR1VV77xus3",
+      "startedAt": "2026-04-08T21:09:47.681Z",
+      "lastActiveAt": "2026-04-08T21:09:47.681Z",
+      "agent": "explorer",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_29111e227ffethp433UkZnOGpg",
+      "startedAt": "2026-04-08T21:09:52.225Z",
+      "lastActiveAt": "2026-04-08T21:09:52.225Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_2910cfa49ffeIjdC7DMxRz2foO",
+      "startedAt": "2026-04-08T21:15:13.728Z",
+      "lastActiveAt": "2026-04-08T21:15:13.728Z",
+      "agent": "librarian",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_290ff5a9affenlvh1svyXOoX3o",
+      "startedAt": "2026-04-08T21:30:06.576Z",
+      "lastActiveAt": "2026-04-08T21:30:06.576Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_290fc12b6ffe3jYQJ3kaYJ4fFj",
+      "startedAt": "2026-04-08T21:33:41.587Z",
+      "lastActiveAt": "2026-04-08T21:33:41.587Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_290f41bf6ffeXyRl8C4E8px3i8",
+      "startedAt": "2026-04-08T21:42:23.521Z",
+      "lastActiveAt": "2026-04-08T21:43:38.711Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "map-bug-fixes",
+      "taskFolder": "01-01-replace-tileset-url",
+      "workerPromptPath": ".hive/features/06_map-bug-fixes/tasks/01-01-replace-tileset-url/worker-prompt.md"
     }
   ]
 }

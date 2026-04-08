@@ -28,7 +28,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
     final notifier = ref.read(mapLevelProvider.notifier);
 
     return GestureDetector(
-      behavior: HitTestBehavior.translucent,
+      behavior: HitTestBehavior.deferToChild,
       onScaleStart: (_) => _lastScale = 1,
       onScaleUpdate: (details) => _lastScale = details.scale,
       onScaleEnd: (_) {
