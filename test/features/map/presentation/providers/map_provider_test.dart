@@ -331,7 +331,7 @@ void main() {
       expect(cellRepo.lastVisitedUserId, 'user-123');
     });
 
-    test('logs map.data_fetch event when cells are fetched', () async {
+    test('logs map.cells_fetch_started when fetch begins', () async {
       container.read(mapProvider);
       await Future<void>.delayed(Duration.zero);
 
@@ -345,7 +345,89 @@ void main() {
       locationRepo.emitPosition(position);
       await Future<void>.delayed(Duration.zero);
 
-      expect(obs.eventNames, contains('map.data_fetch'));
+      expect(obs.eventNames, contains('map.cells_fetch_started'));
+    });
+
+    test('map.cells_fetch_started includes lat, lng, radius_meters', () async {
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      final startedEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_started');
+      expect(startedEvent.data?['lat'], 37.7749);
+      expect(startedEvent.data?['lng'], -122.4194);
+      expect(startedEvent.data?['radius_meters'], isA<double>());
+    });
+
+    test('logs map.cells_fetch_complete with cell stats when ready', () async {
+      final cell = Cell(
+        id: 'cell-1',
+        habitats: [],
+        polygon: [
+          (lat: 0.0, lng: 0.0),
+          (lat: 1.0, lng: 0.0),
+          (lat: 1.0, lng: 1.0),
+        ],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+      cellRepo.cells = [cell];
+      cellRepo.visitedIds = {'cell-1'};
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.cells_fetch_complete'));
+      final completeEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_complete');
+      expect(completeEvent.data?['total_cells'], 1);
+      expect(completeEvent.data?['cells_with_polygon'], 1);
+      expect(completeEvent.data?['cells_without_polygon'], 0);
+      expect(completeEvent.data?['visited_count'], 1);
+    });
+
+    test('logs map.cells_fetch_error on failure', () async {
+      cellRepo.shouldThrow = true;
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.cells_fetch_error'));
+      final errorEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_error');
+      expect(errorEvent.data?['error'], isNotEmpty);
     });
 
     test('logs map.zoom_changed when zoom is updated', () {

@@ -84,6 +84,7 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
         data: {
           'accuracy_meters': gapMeters,
           'gap_meters': gapMeters,
+          'is_confident': false,
         },
       );
     } else if (wasRing && !isRingNow) {
@@ -99,7 +100,7 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
           gapDistance: gapMeters,
         ),
         'map.gps_accuracy_restored',
-        data: {'time_in_ring_ms': timeInRingMs},
+        data: {'time_in_ring_ms': timeInRingMs, 'is_confident': true},
       );
     } else {
       // silentTransition: 60 fps interpolation tick — logging every frame

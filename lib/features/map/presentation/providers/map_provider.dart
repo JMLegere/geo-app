@@ -114,7 +114,11 @@ class MapNotifier extends ObservableNotifier<MapState> {
     if (!_shouldRefetch(location)) return;
     _lastFetchPosition = location;
 
-    transition(const MapStateLoading(), 'map.data_fetch');
+    transition(const MapStateLoading(), 'map.cells_fetch_started', data: {
+      'lat': location.lat,
+      'lng': location.lng,
+      'radius_meters': _kFetchRadiusMeters,
+    });
 
     try {
       final fetchCells = ref.read(fetchNearbyCellsProvider);
@@ -138,17 +142,26 @@ class MapNotifier extends ObservableNotifier<MapState> {
       final cells = results[0] as List<Cell>;
       final visitedIds = results[1] as Set<String>;
 
+      final withPolygon = cells.where((c) => c.polygon.isNotEmpty).length;
       transition(
         MapStateReady(
           cells: cells,
           visitedCellIds: visitedIds,
           location: location,
         ),
-        'map.data_fetch',
+        'map.cells_fetch_complete',
+        data: {
+          'total_cells': cells.length,
+          'cells_with_polygon': withPolygon,
+          'cells_without_polygon': cells.length - withPolygon,
+          'visited_count': visitedIds.length,
+        },
       );
     } catch (e, stack) {
       obs.logError(e, stack, event: 'map.data_fetch_error');
-      transition(MapStateError(e.toString()), 'map.data_fetch_error');
+      transition(MapStateError(e.toString()), 'map.cells_fetch_error', data: {
+        'error': e.toString(),
+      });
     }
   }
 
