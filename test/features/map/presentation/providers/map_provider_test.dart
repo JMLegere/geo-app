@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -106,6 +107,7 @@ ProviderContainer makeContainer({
     overrides: [
       authProvider.overrideWith(() => _FakeAuthNotifier(authState)),
       mapObservabilityProvider.overrideWithValue(obs),
+      observableUseCaseProvider.overrideWithValue(obs),
       locationObservabilityProvider.overrideWithValue(obs),
       locationRepositoryProvider.overrideWithValue(locationRepo),
       cellRepositoryProvider.overrideWithValue(cellRepo),

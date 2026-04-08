@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
@@ -45,7 +46,10 @@ final detectCellEntryProvider = Provider<DetectCellEntry>((ref) {
 });
 
 final recordCellVisitProvider = Provider<RecordCellVisit>(
-  (ref) => RecordCellVisit(ref.watch(cellRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return RecordCellVisit(ref.watch(cellRepositoryProvider));
+  },
 );
 
 final explorationProvider =

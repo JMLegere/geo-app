@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
@@ -51,6 +52,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
         ],
       );
@@ -227,6 +229,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(failingAuth),
         ],
       );
@@ -246,6 +249,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(failingAuth),
         ],
       );

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -72,6 +73,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -113,6 +115,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -131,6 +134,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -174,6 +178,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );

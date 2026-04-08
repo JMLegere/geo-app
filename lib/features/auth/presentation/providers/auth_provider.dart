@@ -6,6 +6,7 @@ import 'package:earth_nova/features/auth/domain/use_cases/sign_out.dart';
 import 'package:earth_nova/features/auth/domain/use_cases/restore_session.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
@@ -16,15 +17,24 @@ final observabilityProvider = Provider<ObservabilityService>((ref) {
 });
 
 final signInWithPhoneProvider = Provider<SignInWithPhone>(
-  (ref) => SignInWithPhone(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return SignInWithPhone(ref.watch(authRepositoryProvider));
+  },
 );
 
 final signOutProvider = Provider<SignOut>(
-  (ref) => SignOut(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return SignOut(ref.watch(authRepositoryProvider));
+  },
 );
 
 final restoreSessionProvider = Provider<RestoreSession>(
-  (ref) => RestoreSession(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return RestoreSession(ref.watch(authRepositoryProvider));
+  },
 );
 
 final authProvider =
