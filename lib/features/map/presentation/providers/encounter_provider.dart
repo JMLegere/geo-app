@@ -11,7 +11,7 @@ final encounterObservabilityProvider = Provider<ObservabilityService>((ref) {
 
 // Provider for ComputeEncounter use case
 final computeEncounterProvider = Provider<ComputeEncounter>((ref) {
-  return const ComputeEncounter();
+  return ComputeEncounter(ref.watch(encounterObservabilityProvider));
 });
 
 // Main provider
@@ -50,22 +50,24 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
   /// - First visit: computes species encounter
   /// - Revisit with loot: computes critter encounter
   /// - Revisit without loot: no encounter
-  void onCellEntered({
+  Future<void> onCellEntered({
     required String cellId,
     required bool isFirstVisit,
     String seed = '',
     bool hasLoot = false,
-  }) {
+  }) async {
     final computeEncounter = ref.read(computeEncounterProvider);
 
     // For now, use daily seed if not provided
     final effectiveSeed = seed.isEmpty ? _getDailySeed() : seed;
 
-    final encounter = computeEncounter.call(
-      cellId: cellId,
-      seed: effectiveSeed,
-      isFirstVisit: isFirstVisit,
-      hasLoot: hasLoot,
+    final encounter = await computeEncounter.call(
+      (
+        cellId: cellId,
+        seed: effectiveSeed,
+        isFirstVisit: isFirstVisit,
+        hasLoot: hasLoot,
+      ),
     );
 
     if (encounter != null) {

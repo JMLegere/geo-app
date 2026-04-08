@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -38,7 +39,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   Stream<LocationState> get positionStream => _controller.stream;
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
     if (_throwOnGetCurrent) throw Exception('Location unavailable');
     if (_currentPosition != null) return _currentPosition!;
     return LocationState(
@@ -51,7 +52,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async => _permissionGranted;
+  Future<bool> requestPermission({String? traceId}) async => _permissionGranted;
 
   void emitPosition(LocationState position) {
     _currentPosition = position;
@@ -73,27 +74,29 @@ class ControllableMockCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-    double lat,
-    double lng,
-    double radiusMeters,
-  ) async {
+      double lat, double lng, double radiusMeters,
+      {String? traceId}) async {
     fetchCallCount++;
     if (shouldThrow) throw Exception('Cell fetch error');
     return cells;
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {}
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {}
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async {
+  Future<Set<String>> getVisitedCellIds(String userId,
+      {String? traceId}) async {
     lastVisitedUserId = userId;
     if (shouldThrow) throw Exception('Visited cells error');
     return visitedIds;
   }
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }
 
 ProviderContainer makeContainer({
@@ -106,6 +109,7 @@ ProviderContainer makeContainer({
     overrides: [
       authProvider.overrideWith(() => _FakeAuthNotifier(authState)),
       mapObservabilityProvider.overrideWithValue(obs),
+      observableUseCaseProvider.overrideWithValue(obs),
       locationObservabilityProvider.overrideWithValue(obs),
       locationRepositoryProvider.overrideWithValue(locationRepo),
       cellRepositoryProvider.overrideWithValue(cellRepo),
@@ -327,7 +331,7 @@ void main() {
       expect(cellRepo.lastVisitedUserId, 'user-123');
     });
 
-    test('logs map.data_fetch event when cells are fetched', () async {
+    test('logs map.cells_fetch_started when fetch begins', () async {
       container.read(mapProvider);
       await Future<void>.delayed(Duration.zero);
 
@@ -341,7 +345,89 @@ void main() {
       locationRepo.emitPosition(position);
       await Future<void>.delayed(Duration.zero);
 
-      expect(obs.eventNames, contains('map.data_fetch'));
+      expect(obs.eventNames, contains('map.cells_fetch_started'));
+    });
+
+    test('map.cells_fetch_started includes lat, lng, radius_meters', () async {
+      // Set initial position BEFORE reading mapProvider so the initial fetch uses it
+      final initialPosition = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(initialPosition);
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final startedEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_started');
+      expect(startedEvent.data?['lat'], 37.7749);
+      expect(startedEvent.data?['lng'], -122.4194);
+      expect(startedEvent.data?['radius_meters'], isA<double>());
+    });
+
+    test('logs map.cells_fetch_complete with cell stats when ready', () async {
+      final cell = Cell(
+        id: 'cell-1',
+        habitats: [],
+        polygon: [
+          (lat: 0.0, lng: 0.0),
+          (lat: 1.0, lng: 0.0),
+          (lat: 1.0, lng: 1.0),
+        ],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+      cellRepo.cells = [cell];
+      cellRepo.visitedIds = {'cell-1'};
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.cells_fetch_complete'));
+      final completeEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_complete');
+      expect(completeEvent.data?['total_cells'], 1);
+      expect(completeEvent.data?['cells_with_polygon'], 1);
+      expect(completeEvent.data?['cells_without_polygon'], 0);
+      expect(completeEvent.data?['visited_count'], 1);
+    });
+
+    test('logs map.cells_fetch_error on failure', () async {
+      cellRepo.shouldThrow = true;
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final position = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(position);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(obs.eventNames, contains('map.cells_fetch_error'));
+      final errorEvent =
+          obs.events.firstWhere((e) => e.event == 'map.cells_fetch_error');
+      expect(errorEvent.data?['error'], isNotEmpty);
     });
 
     test('logs map.zoom_changed when zoom is updated', () {

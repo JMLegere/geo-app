@@ -27,20 +27,26 @@ class _ControlledCellRepository implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters) async =>
+          double lat, double lng, double radiusMeters,
+          {String? traceId}) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     if (shouldThrow) throw Exception('network error');
     recordedVisits.add((userId: userId, cellId: cellId));
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async => {};
+  Future<Set<String>> getVisitedCellIds(String userId,
+          {String? traceId}) async =>
+      {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }
 
 void main() {
@@ -96,7 +102,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-3');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -110,7 +116,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -124,7 +130,7 @@ void main() {
 
       // First call succeeds, second fails
       final partialRepo = _PartialFailRepo(failAfter: 1);
-      final useCase = RecordCellVisit(partialRepo);
+      final useCase = RecordCellVisit(partialRepo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -138,7 +144,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
 
       repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('visit_queue.flushed'));
@@ -149,7 +155,7 @@ void main() {
       notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
 
       repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       expect(testObs.eventNames, contains('visit_queue.retry_failed'));
@@ -157,7 +163,7 @@ void main() {
 
     test('flush on empty queue is a no-op', () async {
       final notifier = container.read(visitQueueProvider.notifier);
-      final useCase = RecordCellVisit(repo);
+      final useCase = RecordCellVisit(repo, testObs);
       await notifier.flush(useCase);
 
       final state = container.read(visitQueueProvider);
@@ -170,6 +176,103 @@ void main() {
 
       expect(testObs.eventNames, contains('visit_queue.enqueued'));
     });
+
+    test('enqueue emits map.visit_queue_enqueued with cell_id and queue_size',
+        () {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+
+      expect(testObs.eventNames, contains('map.visit_queue_enqueued'));
+      final events = testObs.events
+          .where((e) => e.event == 'map.visit_queue_enqueued')
+          .toList();
+      expect(events, hasLength(2));
+      expect(events.last.data?['cell_id'], 'cell-2');
+      expect(events.last.data?['queue_size'], 2);
+    });
+
+    test('flush emits map.visit_queue_flush_started with queue_size', () async {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+
+      repo.shouldThrow = false;
+      final useCase = RecordCellVisit(repo, testObs);
+      await notifier.flush(useCase);
+
+      expect(testObs.eventNames, contains('map.visit_queue_flush_started'));
+      final event = testObs.events
+          .firstWhere((e) => e.event == 'map.visit_queue_flush_started');
+      expect(event.data?['queue_size'], 2);
+    });
+
+    test('flush emits map.visit_queue_flush_success on full success', () async {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+
+      repo.shouldThrow = false;
+      final useCase = RecordCellVisit(repo, testObs);
+      await notifier.flush(useCase);
+
+      expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
+      final event = testObs.events
+          .firstWhere((e) => e.event == 'map.visit_queue_flush_success');
+      expect(event.data?['flushed_count'], 2);
+      expect(event.data?['remaining'], 0);
+    });
+
+    test('flush emits map.visit_queue_flush_success on partial success',
+        () async {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+
+      final partialRepo = _PartialFailRepo(failAfter: 1);
+      final useCase = RecordCellVisit(partialRepo, testObs);
+      await notifier.flush(useCase);
+
+      expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
+      final event = testObs.events
+          .firstWhere((e) => e.event == 'map.visit_queue_flush_success');
+      expect(event.data?['flushed_count'], 1);
+      expect(event.data?['remaining'], 1);
+    });
+
+    test('flush emits map.visit_queue_item_failed for each failed item',
+        () async {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+
+      repo.shouldThrow = true;
+      final useCase = RecordCellVisit(repo, testObs);
+      await notifier.flush(useCase);
+
+      final failEvents = testObs.events
+          .where((e) => e.event == 'map.visit_queue_item_failed')
+          .toList();
+      expect(failEvents, hasLength(2));
+      expect(failEvents.first.data?['cell_id'], isNotEmpty);
+      expect(failEvents.first.data?['error'], isNotEmpty);
+    });
+
+    test(
+        'flush does not emit map.visit_queue_flush_success when all items fail',
+        () async {
+      final notifier = container.read(visitQueueProvider.notifier);
+      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
+
+      repo.shouldThrow = true;
+      final useCase = RecordCellVisit(repo, testObs);
+      await notifier.flush(useCase);
+
+      expect(
+        testObs.eventNames,
+        isNot(contains('map.visit_queue_flush_success')),
+      );
+    });
   });
 }
 
@@ -180,18 +283,24 @@ class _PartialFailRepo implements CellRepository {
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters) async =>
+          double lat, double lng, double radiusMeters,
+          {String? traceId}) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId) async {
+  Future<void> recordVisit(String userId, String cellId,
+      {String? traceId}) async {
     _callCount++;
     if (_callCount > failAfter) throw Exception('network error');
   }
 
   @override
-  Future<Set<String>> getVisitedCellIds(String userId) async => {};
+  Future<Set<String>> getVisitedCellIds(String userId,
+          {String? traceId}) async =>
+      {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId) async => true;
+  Future<bool> isFirstVisit(String userId, String cellId,
+          {String? traceId}) async =>
+      true;
 }

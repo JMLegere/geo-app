@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
@@ -46,11 +47,19 @@ final cellRepositoryProvider = Provider<CellRepository>((ref) {
 });
 
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
-  (ref) => FetchNearbyCells(ref.watch(cellRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return FetchNearbyCells(
+        ref.watch(cellRepositoryProvider), ref.watch(mapObservabilityProvider));
+  },
 );
 
 final getVisitedCellsProvider = Provider<GetVisitedCells>(
-  (ref) => GetVisitedCells(ref.watch(cellRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return GetVisitedCells(
+        ref.watch(cellRepositoryProvider), ref.watch(mapObservabilityProvider));
+  },
 );
 
 final mapProvider = NotifierProvider<MapNotifier, MapState>(MapNotifier.new);
@@ -107,7 +116,11 @@ class MapNotifier extends ObservableNotifier<MapState> {
     if (!_shouldRefetch(location)) return;
     _lastFetchPosition = location;
 
-    transition(const MapStateLoading(), 'map.data_fetch');
+    transition(const MapStateLoading(), 'map.cells_fetch_started', data: {
+      'lat': location.lat,
+      'lng': location.lng,
+      'radius_meters': _kFetchRadiusMeters,
+    });
 
     try {
       final fetchCells = ref.read(fetchNearbyCellsProvider);
@@ -119,27 +132,38 @@ class MapNotifier extends ObservableNotifier<MapState> {
 
       final results = await Future.wait([
         fetchCells.call(
-          lat: location.lat,
-          lng: location.lng,
-          radiusMeters: _kFetchRadiusMeters,
+          (
+            lat: location.lat,
+            lng: location.lng,
+            radiusMeters: _kFetchRadiusMeters,
+          ),
         ),
-        getVisited.call(userId),
+        getVisited.call((userId: userId)),
       ]);
 
       final cells = results[0] as List<Cell>;
       final visitedIds = results[1] as Set<String>;
 
+      final withPolygon = cells.where((c) => c.polygon.isNotEmpty).length;
       transition(
         MapStateReady(
           cells: cells,
           visitedCellIds: visitedIds,
           location: location,
         ),
-        'map.data_fetch',
+        'map.cells_fetch_complete',
+        data: {
+          'total_cells': cells.length,
+          'cells_with_polygon': withPolygon,
+          'cells_without_polygon': cells.length - withPolygon,
+          'visited_count': visitedIds.length,
+        },
       );
     } catch (e, stack) {
       obs.logError(e, stack, event: 'map.data_fetch_error');
-      transition(MapStateError(e.toString()), 'map.data_fetch_error');
+      transition(MapStateError(e.toString()), 'map.cells_fetch_error', data: {
+        'error': e.toString(),
+      });
     }
   }
 

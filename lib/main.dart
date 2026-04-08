@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/data/repositories/supabase_auth_repository.dart';
@@ -82,15 +83,15 @@ void main() async {
   }
 
   final AuthRepository authRepository = supabaseClient != null
-      ? SupabaseAuthRepository(client: supabaseClient)
+      ? SupabaseAuthRepository(client: supabaseClient, logEvent: obs.log)
       : MockAuthRepository();
 
   final ItemRepository itemRepository = supabaseClient != null
-      ? SupabaseItemRepository(client: supabaseClient)
+      ? SupabaseItemRepository(client: supabaseClient, logEvent: obs.log)
       : MockItemRepository();
 
   final CellRepository cellRepository = supabaseClient != null
-      ? SupabaseCellRepository(client: supabaseClient)
+      ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
       : MockCellRepository();
 
   final LocationRepository locationRepository = GeolocatorLocationRepository();
@@ -115,6 +116,7 @@ void main() async {
           cellRepositoryProvider.overrideWithValue(cellRepository),
           locationRepositoryProvider.overrideWithValue(locationRepository),
           observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
           mapObservabilityProvider.overrideWithValue(obs),
           locationObservabilityProvider.overrideWithValue(obs),

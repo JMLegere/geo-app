@@ -6,6 +6,7 @@ import 'package:earth_nova/features/auth/domain/use_cases/sign_out.dart';
 import 'package:earth_nova/features/auth/domain/use_cases/restore_session.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
@@ -16,15 +17,27 @@ final observabilityProvider = Provider<ObservabilityService>((ref) {
 });
 
 final signInWithPhoneProvider = Provider<SignInWithPhone>(
-  (ref) => SignInWithPhone(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return SignInWithPhone(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
+  },
 );
 
 final signOutProvider = Provider<SignOut>(
-  (ref) => SignOut(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return SignOut(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
+  },
 );
 
 final restoreSessionProvider = Provider<RestoreSession>(
-  (ref) => RestoreSession(ref.watch(authRepositoryProvider)),
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return RestoreSession(
+        ref.watch(authRepositoryProvider), ref.watch(observabilityProvider));
+  },
 );
 
 final authProvider =
@@ -88,7 +101,7 @@ class AuthNotifier extends ObservableNotifier<AuthState> {
   Future<void> signOut() async {
     try {
       final useCase = ref.read(signOutProvider);
-      await useCase.call();
+      await useCase.call(null);
       transition(const AuthState.unauthenticated(), 'auth.sign_out');
     } catch (e, stack) {
       obs.logError(e, stack, event: 'auth.sign_out_error');
@@ -99,7 +112,7 @@ class AuthNotifier extends ObservableNotifier<AuthState> {
     transition(const AuthState.loading(), 'auth.session_restore_started');
     try {
       final useCase = ref.read(restoreSessionProvider);
-      final user = await useCase.call();
+      final user = await useCase.call(null);
       if (user != null) {
         obs.setUserId(user.id);
         transition(AuthState.authenticated(user), 'auth.session_restored');

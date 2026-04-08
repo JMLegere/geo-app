@@ -1,7 +1,23 @@
+import 'package:earth_nova/core/observability/observable_use_case.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 
-class DetectCellEntry {
-  const DetectCellEntry();
+typedef DetectCellEntryInput = ({
+  List<Cell> cells,
+  String? previousCellId,
+  GeoCoord currentPoint,
+});
+
+class DetectCellEntry extends ObservableUseCase<DetectCellEntryInput, String?> {
+  DetectCellEntry(this._obs);
+
+  final ObservabilityService _obs;
+
+  @override
+  ObservabilityService get obs => _obs;
+
+  @override
+  String get operationName => 'detect_cell_entry';
 
   /// Ray-casting algorithm for point-in-polygon test
   bool pointInPolygon({
@@ -44,24 +60,24 @@ class DetectCellEntry {
   }
 
   /// Detect cell entry: returns the new cell ID if marker entered a different cell
-  String? call({
-    required List<Cell> cells,
-    required String? previousCellId,
-    required GeoCoord currentPoint,
-  }) {
-    final currentCell = detectCell(cells: cells, point: currentPoint);
+  @override
+  Future<String?> execute(DetectCellEntryInput input, String traceId) async {
+    final currentCell = detectCell(
+      cells: input.cells,
+      point: input.currentPoint,
+    );
 
     if (currentCell == null) {
       return null;
     }
 
     // If no previous cell, this is the first cell entry
-    if (previousCellId == null) {
+    if (input.previousCellId == null) {
       return currentCell.id;
     }
 
     // If previous cell is different, this is a cell entry event
-    if (currentCell.id != previousCellId) {
+    if (currentCell.id != input.previousCellId) {
       return currentCell.id;
     }
 

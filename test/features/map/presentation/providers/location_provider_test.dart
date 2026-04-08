@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -32,7 +33,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   Stream<LocationState> get positionStream => _controller.stream;
 
   @override
-  Future<LocationState> getCurrentPosition() async {
+  Future<LocationState> getCurrentPosition({String? traceId}) async {
     if (_throwOnGetCurrent) throw Exception('Location unavailable');
     if (_currentPosition != null) return _currentPosition!;
     return LocationState(
@@ -45,7 +46,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission() async => _permissionGranted;
+  Future<bool> requestPermission({String? traceId}) async => _permissionGranted;
 
   void emitPosition(LocationState position) {
     _currentPosition = position;
@@ -72,6 +73,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -113,6 +115,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -131,6 +134,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
@@ -174,6 +178,7 @@ void main() {
       final c = ProviderContainer(
         overrides: [
           locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
           locationRepositoryProvider.overrideWithValue(repo),
         ],
       );
