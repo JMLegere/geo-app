@@ -4,12 +4,13 @@ abstract class CellRepository {
   Future<List<Cell>> fetchCellsInRadius(
     double lat,
     double lng,
-    double radiusMeters,
-  );
+    double radiusMeters, {
+    String? traceId,
+  });
 
-  Future<void> recordVisit(String userId, String cellId);
+  Future<void> recordVisit(String userId, String cellId, {String? traceId});
 
-  Future<Set<String>> getVisitedCellIds(String userId);
+  Future<Set<String>> getVisitedCellIds(String userId, {String? traceId});
 
-  Future<bool> isFirstVisit(String userId, String cellId);
+  Future<bool> isFirstVisit(String userId, String cellId, {String? traceId});
 }

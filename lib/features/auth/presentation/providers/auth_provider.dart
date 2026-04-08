@@ -16,15 +16,24 @@ final observabilityProvider = Provider<ObservabilityService>((ref) {
 });
 
 final signInWithPhoneProvider = Provider<SignInWithPhone>(
-  (ref) => SignInWithPhone(ref.watch(authRepositoryProvider)),
+  (ref) => SignInWithPhone(
+    ref.watch(authRepositoryProvider),
+    ref.watch(observabilityProvider),
+  ),
 );
 
 final signOutProvider = Provider<SignOut>(
-  (ref) => SignOut(ref.watch(authRepositoryProvider)),
+  (ref) => SignOut(
+    ref.watch(authRepositoryProvider),
+    ref.watch(observabilityProvider),
+  ),
 );
 
 final restoreSessionProvider = Provider<RestoreSession>(
-  (ref) => RestoreSession(ref.watch(authRepositoryProvider)),
+  (ref) => RestoreSession(
+    ref.watch(authRepositoryProvider),
+    ref.watch(observabilityProvider),
+  ),
 );
 
 final authProvider =
@@ -88,7 +97,7 @@ class AuthNotifier extends ObservableNotifier<AuthState> {
   Future<void> signOut() async {
     try {
       final useCase = ref.read(signOutProvider);
-      await useCase.call();
+      await useCase.call(null);
       transition(const AuthState.unauthenticated(), 'auth.sign_out');
     } catch (e, stack) {
       obs.logError(e, stack, event: 'auth.sign_out_error');
@@ -99,7 +108,7 @@ class AuthNotifier extends ObservableNotifier<AuthState> {
     transition(const AuthState.loading(), 'auth.session_restore_started');
     try {
       final useCase = ref.read(restoreSessionProvider);
-      final user = await useCase.call();
+      final user = await useCase.call(null);
       if (user != null) {
         obs.setUserId(user.id);
         transition(AuthState.authenticated(user), 'auth.session_restored');
