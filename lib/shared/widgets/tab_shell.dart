@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
-import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
+import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
@@ -28,7 +28,7 @@ class _TabShellState extends ConsumerState<TabShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _screens = [
-      const MapScreen(),
+      const MapRootScreen(),
       const PackScreen(),
       const StubScreen(label: AppIcons.sanctuary),
       const SettingsScreen(),
