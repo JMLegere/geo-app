@@ -144,7 +144,10 @@ void main() {
       c.read(itemsProvider);
       await c.read(itemsProvider.notifier).fetchItems();
 
-      for (final event in obs.events) {
+      final providerEvents =
+          obs.events.where((event) => event.event.startsWith('items.'));
+
+      for (final event in providerEvents) {
         expect(event.category, 'data');
       }
       c.dispose();

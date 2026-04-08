@@ -9,7 +9,7 @@ class SupabaseItemRepository implements ItemRepository {
   final SupabaseClient _client;
 
   @override
-  Future<List<Item>> fetchItems(String userId) async {
+  Future<List<Item>> fetchItems(String userId, {String? traceId}) async {
     final response = await _client
         .from('v3_items')
         .select()

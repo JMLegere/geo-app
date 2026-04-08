@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
 
@@ -9,74 +7,40 @@ abstract class ObservableUseCase<Input, Output> {
   ObservabilityService get obs;
   String get operationName;
 
-  FutureOr<Output> execute(Input input, TraceContext context);
-
-  FutureOr<Output> call(Input input) {
-    final context = TraceContext.start();
-    final stopwatch = Stopwatch()..start();
+  Future<Output> call(Input input) async {
+    final trace = TraceContext.start();
 
     obs.log(
       'operation.started',
       'use_case',
       data: {
         'operation': operationName,
-        'trace_id': context.traceId,
-        'input_summary': _summarize(input),
+        'trace_id': trace.traceId,
+        'input': summarizeInput(input),
       },
     );
 
     try {
-      final result = execute(input, context);
-
-      if (result is Future<Output>) {
-        return result.then((value) {
-          obs.log(
-            'operation.completed',
-            'use_case',
-            data: {
-              'operation': operationName,
-              'trace_id': context.traceId,
-              'duration_ms': stopwatch.elapsedMilliseconds,
-              'output_summary': _summarize(value),
-            },
-          );
-          return value;
-        }).catchError((Object error, StackTrace stack) {
-          obs.log(
-            'operation.failed',
-            'use_case',
-            data: {
-              'operation': operationName,
-              'trace_id': context.traceId,
-              'duration_ms': stopwatch.elapsedMilliseconds,
-              'error_type': error.runtimeType.toString(),
-              'error_message': error.toString(),
-            },
-          );
-          throw error;
-        });
-      }
-
+      final output = await execute(input, trace.traceId);
       obs.log(
         'operation.completed',
         'use_case',
         data: {
           'operation': operationName,
-          'trace_id': context.traceId,
-          'duration_ms': stopwatch.elapsedMilliseconds,
-          'output_summary': _summarize(result),
+          'trace_id': trace.traceId,
+          'duration_ms': trace.elapsed.inMilliseconds,
+          'output': summarizeOutput(output),
         },
       );
-
-      return result;
+      return output;
     } catch (error) {
       obs.log(
         'operation.failed',
         'use_case',
         data: {
           'operation': operationName,
-          'trace_id': context.traceId,
-          'duration_ms': stopwatch.elapsedMilliseconds,
+          'trace_id': trace.traceId,
+          'duration_ms': trace.elapsed.inMilliseconds,
           'error_type': error.runtimeType.toString(),
           'error_message': error.toString(),
         },
@@ -85,42 +49,8 @@ abstract class ObservableUseCase<Input, Output> {
     }
   }
 
-  Map<String, Object?> _summarize(Object? value) {
-    if (value == null) {
-      return {'kind': 'null'};
-    }
+  Future<Output> execute(Input input, String traceId);
 
-    if (value is String) {
-      return {
-        'kind': 'string',
-        'length': value.length,
-      };
-    }
-
-    if (value is Map) {
-      return {
-        'kind': 'map',
-        'length': value.length,
-      };
-    }
-
-    if (value is Iterable) {
-      return {
-        'kind': 'iterable',
-        'length': value.length,
-      };
-    }
-
-    if (value is num || value is bool) {
-      return {
-        'kind': 'primitive',
-        'type': value.runtimeType.toString(),
-      };
-    }
-
-    return {
-      'kind': 'object',
-      'type': value.runtimeType.toString(),
-    };
-  }
+  Object? summarizeInput(Input input) => null;
+  Object? summarizeOutput(Output output) => null;
 }
