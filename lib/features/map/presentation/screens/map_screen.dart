@@ -25,7 +25,7 @@ import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart'
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
-const _kMapStyleUrl = 'https://demotiles.maplibre.org/style.json';
+const _kMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 const _kGpsZoom = 15.0;
 
 /// Build version injected at compile time via --dart-define=BUILD_TIMESTAMP.
