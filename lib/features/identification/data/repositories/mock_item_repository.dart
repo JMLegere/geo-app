@@ -8,7 +8,7 @@ class MockItemRepository implements ItemRepository {
   final bool shouldThrow;
 
   @override
-  Future<List<Item>> fetchItems(String userId) async {
+  Future<List<Item>> fetchItems(String userId, {String? traceId}) async {
     if (shouldThrow) throw Exception('Mock fetch error');
     return items;
   }

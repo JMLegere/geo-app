@@ -83,8 +83,8 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
 
     try {
       final userId = authState.user!.id;
-      final useCase = FetchItems(_itemRepository);
-      final items = await useCase.call(userId);
+      final useCase = FetchItems(_itemRepository, obs);
+      final items = await useCase(userId);
       transition(
         state.copyWith(items: items, isLoading: false),
         'items.fetch_success',
