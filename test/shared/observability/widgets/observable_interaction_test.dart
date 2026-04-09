@@ -101,5 +101,65 @@ void main() {
         'target': 'cell_overlay',
       });
     });
+
+    test('wrapScaleEnd logs action payload and forwards details', () {
+      final events = <Map<String, dynamic>>[];
+      ScaleEndDetails? received;
+
+      final callback = ObservableInteraction.wrapScaleEnd(
+        logger: ({required event, required category, data}) {
+          events.add({
+            'event': event,
+            'category': category,
+            'data': data,
+          });
+        },
+        screenName: 'map_root_screen',
+        widgetName: 'map_level_gesture_detector',
+        actionType: 'pinch_level_change',
+        payloadBuilder: (_) => const {'gesture_direction': 'close'},
+        callback: (details) => received = details,
+      );
+
+      final details = ScaleEndDetails(
+        velocity: Velocity.zero,
+      );
+      callback(details);
+
+      expect(received, details);
+      expect(events, hasLength(1));
+      expect(events.single['data'], {
+        'action_type': 'pinch_level_change',
+        'screen_name': 'map_root_screen',
+        'widget_name': 'map_level_gesture_detector',
+        'gesture_direction': 'close',
+      });
+    });
+
+    test('log uses base payload fields when no extra payload is provided', () {
+      final events = <Map<String, dynamic>>[];
+
+      ObservableInteraction.log(
+        logger: ({required event, required category, data}) {
+          events.add({
+            'event': event,
+            'category': category,
+            'data': data,
+          });
+        },
+        screenName: 'settings_screen',
+        widgetName: 'sign_out_button',
+        actionType: 'tap',
+      );
+
+      expect(events, hasLength(1));
+      expect(events.single['event'], 'ui.interaction');
+      expect(events.single['category'], 'ui');
+      expect(events.single['data'], {
+        'action_type': 'tap',
+        'screen_name': 'settings_screen',
+        'widget_name': 'sign_out_button',
+      });
+    });
   });
 }
