@@ -245,8 +245,8 @@ void main() {
     });
 
     testWidgets(
-        'debug gesture overlay is present when debugModeProvider is true',
-        (tester) async {
+        'debug nav button appears when debugModeProvider is true, '
+        'tapping it shows the overlay', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -276,11 +276,25 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      // Debug nav button is visible in the bottom nav bar.
+      expect(find.byKey(const Key('debug_nav_button')), findsOneWidget);
+      // Overlay is NOT yet shown — requires a tap first.
+      expect(find.byType(DebugGestureOverlay), findsNothing);
+
+      // Tap the debug nav button to show the overlay.
+      await tester.tap(find.byKey(const Key('debug_nav_button')));
+      await tester.pump();
+
       expect(find.byType(DebugGestureOverlay), findsOneWidget);
+
+      // Tap again to dismiss.
+      await tester.tap(find.byKey(const Key('debug_nav_button')));
+      await tester.pump();
+
+      expect(find.byType(DebugGestureOverlay), findsNothing);
     });
 
-    testWidgets(
-        'debug gesture overlay is absent when debugModeProvider is false',
+    testWidgets('debug nav button is absent when debugModeProvider is false',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -311,6 +325,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      expect(find.byKey(const Key('debug_nav_button')), findsNothing);
       expect(find.byType(DebugGestureOverlay), findsNothing);
     });
 
