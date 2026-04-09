@@ -5,6 +5,8 @@ import 'package:earth_nova/features/identification/presentation/screens/pack_scr
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
+import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -99,9 +101,14 @@ class _TabShellState extends ConsumerState<TabShell>
       screenName: 'tab_shell',
       observability: obs,
       builder: (_) => Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: _currentIndex,
+              children: _screens,
+            ),
+            if (ref.watch(debugModeProvider)) const DebugGestureOverlay(),
+          ],
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: _currentIndex,

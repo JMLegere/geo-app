@@ -47,7 +47,7 @@ These packages were in v1/v2 and are **not** in v3. Do not add them back without
 | `geolocator` | ~~GPS location service. Not needed until map screen is built.~~ **Re-added as `geolocator ^13.0.2`** — map system is now being built. See `docs/map-design.md §14`. |
 | `pedometer_2` | Step counting (native only, web stub). Removed in v2 simplification. Post-MVP feature. |
 | `web` | Dart JS interop package for web-specific code (OPFS database reset). Not needed in v3 — no SQLite, no OPFS. |
-| `shared_preferences` | Key-value storage. Not needed — no local persistence in MVP. If needed later, consider whether Supabase covers the use case first. |
+| `shared_preferences` | ~~Key-value storage. Not needed — no local persistence in MVP.~~ **Re-added as `^2.3.5`** — persists the runtime debug toggle (`debug_mode_enabled`) so the setting survives app restarts. Supabase is not appropriate for a local-only developer flag. |
 | `image` | Image processing dev dependency (icon generation). Not needed — icon is pre-generated. |
 
 ---

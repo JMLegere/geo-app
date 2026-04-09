@@ -20,6 +20,7 @@ import 'package:earth_nova/features/identification/data/repositories/mock_item_r
 import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/map/data/repositories/fallback_location_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/geolocator_location_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
@@ -41,6 +42,8 @@ import 'package:earth_nova/features/map/presentation/providers/hierarchy_provide
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
@@ -98,9 +101,12 @@ void main() async {
       ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
       : MockCellRepository();
 
-  final LocationRepository locationRepository = GeolocatorLocationRepository();
+  final LocationRepository locationRepository =
+      FallbackLocationRepository(real: GeolocatorLocationRepository());
 
   final WakeLockRepository wakeLockRepository = _buildWakeLockRepository();
+
+  final prefs = await SharedPreferences.getInstance();
 
   final HierarchyRepository hierarchyRepository = supabaseClient != null
       ? SupabaseHierarchyRepository(client: supabaseClient)
@@ -136,6 +142,8 @@ void main() async {
           hierarchyRepositoryProvider.overrideWithValue(hierarchyRepository),
           navigationScreenTransitionLoggerProvider
               .overrideWithValue(navigationLogger),
+          debugModeObservabilityProvider.overrideWithValue(obs),
+          sharedPreferencesProvider.overrideWithValue(prefs),
         ],
         child: const _EarthNovaApp(),
       ),
