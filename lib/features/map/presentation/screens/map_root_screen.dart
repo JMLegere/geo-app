@@ -8,6 +8,7 @@ import 'package:earth_nova/features/map/presentation/screens/district_screen.dar
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/province_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
+import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 
 class MapRootScreen extends ConsumerStatefulWidget {
   const MapRootScreen({super.key});
@@ -21,6 +22,29 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   static const _kPinchSpreadThreshold = 1.08;
 
   double _lastScale = 1;
+  ProviderSubscription<MapLevel>? _mapLevelSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapLevelSubscription = ref.listenManual<MapLevel>(
+      mapLevelProvider,
+      (previous, next) {
+        if (previous == null) return;
+        ref.read(navigationScreenTransitionLoggerProvider).logScreenChanged(
+              source: 'map_level',
+              fromScreen: 'map.${previous.name}',
+              toScreen: 'map.${next.name}',
+            );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _mapLevelSubscription?.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
