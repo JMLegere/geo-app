@@ -41,6 +41,8 @@ import 'package:earth_nova/features/map/presentation/providers/hierarchy_provide
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
@@ -102,6 +104,8 @@ void main() async {
 
   final WakeLockRepository wakeLockRepository = _buildWakeLockRepository();
 
+  final prefs = await SharedPreferences.getInstance();
+
   final HierarchyRepository hierarchyRepository = supabaseClient != null
       ? SupabaseHierarchyRepository(client: supabaseClient)
       : MockHierarchyRepository();
@@ -136,6 +140,8 @@ void main() async {
           hierarchyRepositoryProvider.overrideWithValue(hierarchyRepository),
           navigationScreenTransitionLoggerProvider
               .overrideWithValue(navigationLogger),
+          debugModeObservabilityProvider.overrideWithValue(obs),
+          sharedPreferencesProvider.overrideWithValue(prefs),
         ],
         child: const _EarthNovaApp(),
       ),
