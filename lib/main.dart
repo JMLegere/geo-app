@@ -8,7 +8,6 @@ import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';

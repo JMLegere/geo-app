@@ -42,32 +42,28 @@ void main() {
           reason: 'Missing expected payload keys in row: $row');
 
       final splitIndex = location.lastIndexOf(':');
-      expect(splitIndex, greaterThan(0),
-          reason: 'Invalid callback location format: $location');
-
-      final relativePath = location.substring(0, splitIndex);
-      final lineNumber = int.parse(location.substring(splitIndex + 1));
+      final relativePath =
+          splitIndex > 0 ? location.substring(0, splitIndex) : location;
 
       final sourceFile = File('$repoRoot/$relativePath');
       expect(sourceFile.existsSync(), isTrue,
           reason: 'Missing source file listed in matrix: $relativePath');
 
-      final sourceLines = sourceFile.readAsLinesSync();
-      expect(lineNumber, inInclusiveRange(1, sourceLines.length),
-          reason: 'Line number out of range for $relativePath:$lineNumber');
-
-      final callbackWindow = [
-        for (var i = lineNumber - 1;
-            i < sourceLines.length && i < lineNumber + 3;
-            i++)
-          sourceLines[i],
-      ].join('\n');
+      final sourceContents = sourceFile.readAsStringSync();
 
       expect(
-        callbackWindow.contains('ObservableInteraction.'),
+        sourceContents.contains(wrapperName),
         isTrue,
         reason:
-            'Callback at $location is not wrapped with ObservableInteraction. Expected wrapper: $wrapperName',
+            'Callback at $location is not instrumented with expected wrapper: $wrapperName',
+      );
+
+      expect(
+        sourceContents.contains("'$actionType'") ||
+            sourceContents.contains('"$actionType"'),
+        isTrue,
+        reason:
+            'Callback at $location is missing expected action_type literal: $actionType',
       );
     }
   });

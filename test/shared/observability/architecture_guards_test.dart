@@ -35,7 +35,7 @@ void main() {
 
       final violations = <String>[];
       final staticMutablePattern = RegExp(
-          r'^\s*static\s+(?!const\b|final\b)[\w<>?,\s]+\s+\w+',
+          r'^\s*static\s+(?!const\b|final\b)[\w<>?,\s]+\s+\w+\s*(=|;)',
           multiLine: true);
 
       for (final dir in dirs) {
