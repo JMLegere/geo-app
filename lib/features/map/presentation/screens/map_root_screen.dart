@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/city_screen.dart';
@@ -8,6 +9,9 @@ import 'package:earth_nova/features/map/presentation/screens/district_screen.dar
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/province_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
+import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 class MapRootScreen extends ConsumerStatefulWidget {
   const MapRootScreen({super.key});
@@ -21,45 +25,95 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   static const _kPinchSpreadThreshold = 1.08;
 
   double _lastScale = 1;
+  ProviderSubscription<MapLevel>? _mapLevelSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapLevelSubscription = ref.listenManual<MapLevel>(
+      mapLevelProvider,
+      (previous, next) {
+        if (previous == null) return;
+        ref.read(navigationScreenTransitionLoggerProvider).logScreenChanged(
+              source: 'map_level',
+              fromScreen: 'map.${previous.name}',
+              toScreen: 'map.${next.name}',
+            );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _mapLevelSubscription?.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final obs = ref.watch(appObservabilityProvider);
     final level = ref.watch(mapLevelProvider);
     final notifier = ref.read(mapLevelProvider.notifier);
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      notifier.obs.log(event, category, data: data);
+    }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.deferToChild,
-      onScaleStart: (_) => _lastScale = 1,
-      onScaleUpdate: (details) => _lastScale = details.scale,
-      onScaleEnd: (_) {
-        if (_lastScale <= _kPinchCloseThreshold) {
-          notifier.pinchClose();
-          return;
-        }
-        if (_lastScale >= _kPinchSpreadThreshold) {
-          notifier.pinchSpread();
-        }
-      },
-      child: Stack(
-        children: [
-          // MapScreen stays mounted at all times so WebGL context is preserved.
-          Offstage(
-            offstage: level != MapLevel.cell,
-            child: const MapScreen(),
-          ),
-          // Hierarchy screens are only mounted when active.
-          if (level != MapLevel.cell)
-            Positioned.fill(
-              child: switch (level) {
-                MapLevel.district => const DistrictScreen(),
-                MapLevel.city => const CityScreen(),
-                MapLevel.state => const ProvinceScreen(),
-                MapLevel.country => const CountryScreen(),
-                MapLevel.world => const WorldScreen(),
-                MapLevel.cell => const SizedBox.shrink(),
-              },
+    return ObservableScreen(
+      screenName: 'map_root_screen',
+      observability: obs,
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.deferToChild,
+        onScaleStart: (_) => _lastScale = 1,
+        onScaleUpdate: (details) => _lastScale = details.scale,
+        onScaleEnd: ObservableInteraction.wrapScaleEnd(
+          logger: logger,
+          screenName: 'map_root_screen',
+          widgetName: 'map_level_gesture_detector',
+          actionType: 'pinch_level_change',
+          payloadBuilder: (_) {
+            if (_lastScale <= _kPinchCloseThreshold) {
+              return {'gesture_direction': 'close'};
+            }
+            if (_lastScale >= _kPinchSpreadThreshold) {
+              return {'gesture_direction': 'spread'};
+            }
+            return {'gesture_direction': 'none'};
+          },
+          callback: (_) {
+            if (_lastScale <= _kPinchCloseThreshold) {
+              notifier.pinchClose();
+              return;
+            }
+            if (_lastScale >= _kPinchSpreadThreshold) {
+              notifier.pinchSpread();
+            }
+          },
+        ),
+        child: Stack(
+          children: [
+            // MapScreen stays mounted at all times so WebGL context is preserved.
+            Offstage(
+              offstage: level != MapLevel.cell,
+              child: const MapScreen(),
             ),
-        ],
+            // Hierarchy screens are only mounted when active.
+            if (level != MapLevel.cell)
+              Positioned.fill(
+                child: switch (level) {
+                  MapLevel.district => const DistrictScreen(),
+                  MapLevel.city => const CityScreen(),
+                  MapLevel.state => const ProvinceScreen(),
+                  MapLevel.country => const CountryScreen(),
+                  MapLevel.world => const WorldScreen(),
+                  MapLevel.cell => const SizedBox.shrink(),
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

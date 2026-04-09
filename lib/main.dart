@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
@@ -40,6 +41,8 @@ import 'package:earth_nova/features/map/presentation/providers/hierarchy_provide
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
+import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -68,6 +71,7 @@ void main() async {
     sessionId: sessionId,
     client: supabaseClient,
   );
+  final navigationLogger = NavigationScreenTransitionLogger(logEvent: obs.log);
   obs.startPeriodicFlush();
 
   obs.log('app.cold_start', 'lifecycle', data: {
@@ -116,6 +120,7 @@ void main() async {
           cellRepositoryProvider.overrideWithValue(cellRepository),
           locationRepositoryProvider.overrideWithValue(locationRepository),
           observabilityProvider.overrideWithValue(obs),
+          appObservabilityProvider.overrideWithValue(obs),
           observableUseCaseProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
           mapObservabilityProvider.overrideWithValue(obs),
@@ -129,6 +134,8 @@ void main() async {
           mapLevelObservabilityProvider.overrideWithValue(obs),
           hierarchyObservabilityProvider.overrideWithValue(obs),
           hierarchyRepositoryProvider.overrideWithValue(hierarchyRepository),
+          navigationScreenTransitionLoggerProvider
+              .overrideWithValue(navigationLogger),
         ],
         child: const _EarthNovaApp(),
       ),
@@ -156,9 +163,14 @@ class _EarthNovaApp extends ConsumerStatefulWidget {
 }
 
 class _EarthNovaAppState extends ConsumerState<_EarthNovaApp> {
+  late final AuthHomeNavigationTransitionTracker _authHomeTracker;
+
   @override
   void initState() {
     super.initState();
+    _authHomeTracker = AuthHomeNavigationTransitionTracker(
+      logger: ref.read(navigationScreenTransitionLoggerProvider),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).restoreSession();
     });
@@ -167,11 +179,21 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final screenName = authState.when(
+      loading: () => 'loading',
+      unauthenticated: () => 'login',
+      authenticated: (_) => 'home',
+      error: (_) => 'login',
+    );
+    _authHomeTracker.onScreenVisible(screenName);
 
     return MaterialApp(
       title: 'EarthNova',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
+      navigatorObservers: [
+        AppNavigationObserver(logEvent: ref.read(observabilityProvider).log),
+      ],
       home: authState.when(
         loading: () => const LoadingScreen(),
         unauthenticated: () => const LoginScreen(),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 void main() {
   group('PackScreen', () {
@@ -188,6 +191,12 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           itemsProvider.overrideWith(() => _ErrorItemsNotifier()),
+          itemsObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -305,6 +314,15 @@ void main() {
         '2',
       );
     });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await _pumpPack(tester, [_item('1', 'Red Fox', ItemCategory.fauna)]);
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'pack_screen');
+    });
   });
 }
 
@@ -342,6 +360,12 @@ Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
   final container = ProviderContainer(
     overrides: [
       itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
+      itemsObservabilityProvider.overrideWithValue(
+        ObservabilityService(sessionId: 'test-session'),
+      ),
+      appObservabilityProvider.overrideWithValue(
+        ObservabilityService(sessionId: 'test-session'),
+      ),
     ],
   );
 

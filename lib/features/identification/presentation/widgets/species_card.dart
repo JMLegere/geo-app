@@ -6,11 +6,16 @@ import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 
 /// Shows a TCG-style species card as a centered modal overlay.
-void showSpeciesCard(BuildContext context, Item item) {
+void showSpeciesCard(
+  BuildContext context,
+  Item item, {
+  InteractionLogger? logger,
+}) {
   showGeneralDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.78),
@@ -37,14 +42,15 @@ void showSpeciesCard(BuildContext context, Item item) {
         ),
       );
     },
-    pageBuilder: (context, _, __) => SpeciesCard(item: item),
+    pageBuilder: (context, _, __) => SpeciesCard(item: item, logger: logger),
   );
 }
 
 /// TCG card widget — can be used standalone or via [showSpeciesCard].
 class SpeciesCard extends StatelessWidget {
-  const SpeciesCard({super.key, required this.item});
+  const SpeciesCard({super.key, required this.item, this.logger});
   final Item item;
+  final InteractionLogger? logger;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +69,14 @@ class SpeciesCard extends StatelessWidget {
       child: GestureDetector(
         onVerticalDragEnd: (details) {
           if ((details.primaryVelocity ?? 0) > 300) {
+            if (logger != null) {
+              ObservableInteraction.log(
+                logger: logger!,
+                screenName: 'species_card',
+                widgetName: 'species_card_sheet',
+                actionType: 'species_card_swipe_dismiss',
+              );
+            }
             Navigator.of(context).pop();
           }
         },
@@ -93,6 +107,7 @@ class SpeciesCard extends StatelessWidget {
                   _ArtZone(
                     item: item,
                     status: status,
+                    logger: logger,
                     width: cardWidth,
                     height: artHeight,
                   ),
@@ -127,12 +142,14 @@ class _ArtZone extends StatelessWidget {
   const _ArtZone({
     required this.item,
     required this.status,
+    required this.logger,
     required this.width,
     required this.height,
   });
 
   final Item item;
   final IucnStatus? status;
+  final InteractionLogger? logger;
   final double width;
   final double height;
 
@@ -177,7 +194,17 @@ class _ArtZone extends StatelessWidget {
                 ),
                 const SizedBox(width: Spacing.xs),
                 GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
+                  onTap: ObservableInteraction.wrapVoidCallback(
+                    logger: logger ??
+                        (
+                            {required String event,
+                            required String category,
+                            Map<String, dynamic>? data}) {},
+                    screenName: 'species_card',
+                    widgetName: 'close_button',
+                    actionType: 'species_card_close',
+                    callback: () => Navigator.of(context).pop(),
+                  ),
                   child: Container(
                     width: 28,
                     height: 28,

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/presentation/screens/login_screen.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 void main() {
   group('LoginScreen', () {
@@ -24,6 +26,7 @@ void main() {
         overrides: [
           authRepositoryProvider.overrideWithValue(auth),
           observabilityProvider.overrideWithValue(obs),
+          appObservabilityProvider.overrideWithValue(obs),
           observableUseCaseProvider.overrideWithValue(obs),
         ],
         child: const MaterialApp(home: LoginScreen()),
@@ -142,6 +145,15 @@ void main() {
       expect(rawDigits.length, lessThanOrEqualTo(10),
           reason:
               'Formatter must cap input at 10 raw digits regardless of formatting');
+    });
+
+    testWidgets('wraps root in ObservableScreen with stable screen name',
+        (tester) async {
+      await pumpLogin(tester);
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'login_screen');
     });
   });
 }

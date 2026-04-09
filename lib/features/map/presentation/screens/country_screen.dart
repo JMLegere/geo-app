@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
 import 'package:earth_nova/features/map/presentation/widgets/pinch_hint.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class CountryScreen extends ConsumerWidget {
@@ -16,6 +18,7 @@ class CountryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final obs = ref.watch(appObservabilityProvider);
     final authState = ref.watch(authProvider);
     final userId =
         authState.status == AuthStatus.authenticated ? authState.user!.id : '';
@@ -26,14 +29,18 @@ class CountryScreen extends ConsumerWidget {
     );
     final hierarchyState = ref.watch(provider);
 
-    return ColoredBox(
-      color: AppTheme.surface,
-      child: Column(
-        children: [
-          _buildHeader(hierarchyState),
-          Expanded(child: _buildMap(hierarchyState)),
-          _buildPinchHint(),
-        ],
+    return ObservableScreen(
+      screenName: 'country_screen',
+      observability: obs,
+      builder: (_) => ColoredBox(
+        color: AppTheme.surface,
+        child: Column(
+          children: [
+            _buildHeader(hierarchyState),
+            Expanded(child: _buildMap(hierarchyState)),
+            _buildPinchHint(),
+          ],
+        ),
       ),
     );
   }

@@ -165,6 +165,111 @@ SELECT
 FROM v3_items;
 ```
 
+### UI observability queries
+
+Use these against `app_logs` after releasing UI observability changes.
+
+```sql
+-- Jank events above threshold (>100ms) in last 24h
+WITH parsed_jank AS (
+  SELECT
+    session_id,
+    user_id,
+    event,
+    data->>'screen_name' AS screen_name,
+    data,
+    created_at,
+    CASE
+      WHEN jsonb_typeof(data->'build_duration_ms') = 'number'
+        THEN (data->>'build_duration_ms')::numeric
+      WHEN (data->>'build_duration_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (data->>'build_duration_ms')::numeric
+      ELSE NULL
+    END AS build_duration_ms
+  FROM app_logs
+  WHERE event = 'ui.widget.build_jank'
+    AND created_at > now() - interval '24 hours'
+)
+SELECT session_id, user_id, screen_name, build_duration_ms, created_at, data
+FROM parsed_jank
+WHERE build_duration_ms > 100
+ORDER BY build_duration_ms DESC, created_at DESC;
+
+-- Interaction coverage by screen/widget/action in last 24h
+SELECT
+  COALESCE(data->>'screen_name', 'unknown') AS screen_name,
+  COALESCE(data->>'widget_name', 'unknown') AS widget_name,
+  COALESCE(data->>'action_type', 'unknown') AS action_type,
+  count(*) AS events,
+  count(DISTINCT session_id) AS sessions,
+  max(created_at) AS last_seen_at
+FROM app_logs
+WHERE event = 'interaction.action'
+  AND created_at > now() - interval '24 hours'
+GROUP BY 1, 2, 3
+ORDER BY events DESC, screen_name, widget_name, action_type;
+
+-- Route/non-route navigation funnel pairs in last 24h
+WITH nav AS (
+  SELECT
+    session_id,
+    created_at,
+    COALESCE(data->>'transition_type', 'unknown') AS transition_type,
+    COALESCE(data->>'from_screen', lag(data->>'screen_name') OVER (
+      PARTITION BY session_id
+      ORDER BY created_at
+    ), 'unknown') AS from_screen,
+    COALESCE(data->>'to_screen', data->>'screen_name', 'unknown') AS to_screen
+  FROM app_logs
+  WHERE event LIKE 'navigation.%'
+    AND created_at > now() - interval '24 hours'
+)
+SELECT
+  transition_type,
+  from_screen,
+  to_screen,
+  count(*) AS transitions,
+  count(DISTINCT session_id) AS sessions
+FROM nav
+GROUP BY 1, 2, 3
+ORDER BY transitions DESC, transition_type, from_screen, to_screen;
+
+-- Per-screen error boundary counts in last 24h
+SELECT
+  COALESCE(data->>'screen_name', 'unknown') AS screen_name,
+  count(*) AS errors,
+  count(DISTINCT session_id) AS sessions,
+  max(created_at) AS last_seen_at
+FROM app_logs
+WHERE event = 'error.screen_boundary_caught'
+  AND created_at > now() - interval '24 hours'
+GROUP BY 1
+ORDER BY errors DESC, screen_name;
+```
+
+### Post-deploy UI observability validation playbook
+
+Run after every production deploy that touches UI observability, navigation, or screen composition.
+
+1. Open `https://geo-app-production-47b0.up.railway.app` in a fresh browser session (incognito is preferred).
+2. Exercise major flows end-to-end:
+   - loading → login → tab shell transitions
+   - each tab switch in the bottom navigation
+   - map root toggles and hierarchy navigation (all available levels)
+   - pack interactions (card taps, list interactions)
+   - settings actions
+3. Trigger representative gestures: tap, long-press, drag/pan/zoom where supported.
+4. Validate observability rows in Supabase using the queries above (`app_logs`, last 24h):
+   - `interaction.action`
+   - `navigation.%`
+   - `ui.widget.build_jank`
+   - `error.screen_boundary_caught`
+5. Confirm route and non-route transitions both appear in navigation funnel results.
+6. Confirm interaction coverage output includes expected `screen_name` / `widget_name` / `action_type` combinations for exercised flows.
+7. Confirm no unexpected spikes in `error.screen_boundary_caught` for any single screen.
+8. Confirm hierarchy navigation remains usable (no blocked transitions, no stuck level changes, no broken back-navigation).
+9. Record the deploy SHA, validation timestamp, and any anomalies in the incident/deploy notes.
+
 ### Edge Functions
 
 ```bash

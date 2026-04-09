@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class HierarchyHeader extends StatelessWidget {
@@ -14,6 +15,7 @@ class HierarchyHeader extends StatelessWidget {
     required this.explorerCount,
     this.parentScopeName,
     this.onBackTap,
+    this.interactionLogger,
   });
 
   final String scopeLevel;
@@ -26,6 +28,7 @@ class HierarchyHeader extends StatelessWidget {
   final int explorerCount;
   final String? parentScopeName;
   final VoidCallback? onBackTap;
+  final InteractionLogger? interactionLogger;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +42,7 @@ class HierarchyHeader extends StatelessWidget {
           _BackNavRow(
             parentScopeName: parentScopeName,
             onBackTap: onBackTap,
+            interactionLogger: interactionLogger,
           ),
           const SizedBox(height: 8),
           _ScopeRow(
@@ -66,15 +70,36 @@ class HierarchyHeader extends StatelessWidget {
 }
 
 class _BackNavRow extends StatelessWidget {
-  const _BackNavRow({this.parentScopeName, this.onBackTap});
+  const _BackNavRow({
+    this.parentScopeName,
+    this.onBackTap,
+    this.interactionLogger,
+  });
 
   final String? parentScopeName;
   final VoidCallback? onBackTap;
+  final InteractionLogger? interactionLogger;
 
   @override
   Widget build(BuildContext context) {
+    final logger = interactionLogger ??
+        (
+            {required String event,
+            required String category,
+            Map<String, dynamic>? data}) {};
+
+    final wrappedOnTap = onBackTap == null
+        ? null
+        : ObservableInteraction.wrapVoidCallback(
+            logger: logger,
+            screenName: 'hierarchy_header',
+            widgetName: 'back_navigation_row',
+            actionType: 'back_tap',
+            callback: onBackTap!,
+          );
+
     return GestureDetector(
-      onTap: onBackTap,
+      onTap: wrappedOnTap,
       child: Row(
         children: [
           const Icon(
