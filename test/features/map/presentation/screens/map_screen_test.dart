@@ -174,6 +174,22 @@ void main() {
     });
   });
 
+  group('Tileset URL verification', () {
+    test('_kMapStyleUrl uses OpenFreeMap liberty style', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      // Verify the tileset URL is set to OpenFreeMap liberty style
+      expect(
+        mapSource,
+        contains(
+            "const _kMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty'"),
+        reason: '_kMapStyleUrl must be set to OpenFreeMap liberty style URL',
+      );
+    });
+  });
+
   group('Startup/recovery — no blank screen', () {
     test('LoadingDots is used for GPS loading state (not blank scaffold)', () {
       // Verify the loading state uses LoadingDots widget (non-blank UI).
