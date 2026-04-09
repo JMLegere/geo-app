@@ -38,6 +38,9 @@ dependencies:
   # Screen Wake Lock API for web platform (already a transitive dep via geolocator_web)
   web: ^1.1.1
 
+  # Runtime debug toggle persistence — debug_mode_provider.dart
+  shared_preferences: ^2.3.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
