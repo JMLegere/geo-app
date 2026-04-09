@@ -85,4 +85,197 @@ void main() {
     expect(source, contains('late final List<Widget> _screens;'));
     expect(source, contains('children: _screens'));
   });
+
+  group('TabShell MapRootScreen wiring', () {
+    test('imports MapRootScreen', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+
+      expect(
+        source,
+        contains(
+            "import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';"),
+      );
+    });
+
+    test('instantiates MapRootScreen as first tab in default screens', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+
+      // Verify MapRootScreen is instantiated in default screens list
+      expect(source, contains('const MapRootScreen()'));
+      // Verify it's the first screen in the list
+      final mapRootScreenIndex = source.indexOf('const MapRootScreen()');
+      final packScreenIndex = source.indexOf('const PackScreen()');
+      expect(mapRootScreenIndex, lessThan(packScreenIndex));
+    });
+
+    test('does not instantiate MapScreen directly in TabShell', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+
+      // MapScreen should NOT be instantiated directly in TabShell
+      // It should only be inside MapRootScreen
+      expect(source, isNot(contains('const MapScreen()')));
+      expect(source, isNot(contains('MapScreen()')));
+    });
+
+    testWidgets('renders injected screens correctly', (tester) async {
+      // Use injected screens to avoid complex dependencies
+      final screenKeys = [
+        const ValueKey('screen-0'),
+        const ValueKey('screen-1'),
+        const ValueKey('screen-2'),
+        const ValueKey('screen-3'),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+          ],
+          child: MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox(key: screenKeys[0]),
+                SizedBox(key: screenKeys[1]),
+                SizedBox(key: screenKeys[2]),
+                SizedBox(key: screenKeys[3]),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // First screen should be visible (onstage in IndexedStack)
+      expect(find.byKey(screenKeys[0]), findsOneWidget);
+      // Verify IndexedStack is present
+      expect(find.byType(IndexedStack), findsOneWidget);
+    });
+
+    testWidgets('tab switching works with IndexedStack', (tester) async {
+      final transitions = <Map<String, dynamic>>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(
+                logEvent: (event, category, {data}) {
+                  if (event == 'navigation.screen_changed') {
+                    transitions.add(data ?? {});
+                  }
+                },
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify IndexedStack is present
+      expect(find.byType(IndexedStack), findsOneWidget);
+
+      // Tap on Pack tab (index 1)
+      await tester.tap(find.text('Pack'));
+      await tester.pumpAndSettle();
+
+      // Should have logged the transition
+      expect(transitions.length, 1);
+      expect(transitions.last['from_screen'], 'map');
+      expect(transitions.last['to_screen'], 'pack');
+
+      // Tap on Sanctuary tab (index 2)
+      await tester.tap(find.text('Sanctuary'));
+      await tester.pumpAndSettle();
+
+      expect(transitions.length, 2);
+      expect(transitions.last['from_screen'], 'pack');
+      expect(transitions.last['to_screen'], 'sanctuary');
+
+      // Tap back to Map tab (index 0)
+      await tester.tap(find.text('Map'));
+      await tester.pumpAndSettle();
+
+      expect(transitions.length, 3);
+      expect(transitions.last['from_screen'], 'sanctuary');
+      expect(transitions.last['to_screen'], 'map');
+    });
+
+    testWidgets('tapping same tab does not trigger transition', (tester) async {
+      final transitions = <Map<String, dynamic>>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(
+                logEvent: (event, category, {data}) {
+                  if (event == 'navigation.screen_changed') {
+                    transitions.add(data ?? {});
+                  }
+                },
+              ),
+            ),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap same tab multiple times
+      await tester.tap(find.text('Map'));
+      await tester.pump();
+      await tester.tap(find.text('Map'));
+      await tester.pump();
+      await tester.tap(find.text('Map'));
+      await tester.pump();
+
+      // Should have no transitions (already on Map tab)
+      expect(transitions.where((t) => t['from_screen'] == 'map').length, 0);
+    });
+  });
 }
