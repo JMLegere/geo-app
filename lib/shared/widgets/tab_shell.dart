@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -7,6 +6,7 @@ import 'package:earth_nova/features/map/presentation/providers/wake_lock_provide
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -107,7 +107,7 @@ class _TabShellState extends ConsumerState<TabShell>
               index: _currentIndex,
               children: _screens,
             ),
-            if (kDebugMode) const DebugGestureOverlay(),
+            if (ref.watch(debugModeProvider)) const DebugGestureOverlay(),
           ],
         ),
         bottomNavigationBar: NavigationBar(
