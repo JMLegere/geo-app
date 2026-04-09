@@ -32,6 +32,7 @@ class TabShell extends ConsumerStatefulWidget {
 class _TabShellState extends ConsumerState<TabShell>
     with WidgetsBindingObserver {
   int _currentIndex = _mapTabIndex;
+  bool _debugOverlayVisible = false;
 
   late final List<Widget> _screens;
 
@@ -97,6 +98,8 @@ class _TabShellState extends ConsumerState<TabShell>
       ref.read(wakeLockProvider.notifier).obs.log(event, category, data: data);
     }
 
+    final debugMode = ref.watch(debugModeProvider);
+
     return ObservableScreen(
       screenName: 'tab_shell',
       observability: obs,
@@ -107,27 +110,56 @@ class _TabShellState extends ConsumerState<TabShell>
               index: _currentIndex,
               children: _screens,
             ),
-            if (ref.watch(debugModeProvider)) const DebugGestureOverlay(),
+            if (debugMode && _debugOverlayVisible) const DebugGestureOverlay(),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: ObservableInteraction.wrapValueChanged<int>(
-            logger: logger,
-            screenName: 'tab_shell',
-            widgetName: 'bottom_navigation_bar',
-            actionType: 'tab_selected',
-            payloadBuilder: (tabIndex) => {
-              'tab_index': tabIndex,
-            },
-            callback: _onTabSelected,
-          ),
-          destinations: const [
-            NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
-            NavigationDestination(icon: Icon(Icons.backpack), label: 'Pack'),
-            NavigationDestination(icon: Icon(Icons.nature), label: 'Sanctuary'),
-            NavigationDestination(
-                icon: Icon(Icons.settings), label: 'Settings'),
+        bottomNavigationBar: Stack(
+          children: [
+            NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected:
+                  ObservableInteraction.wrapValueChanged<int>(
+                logger: logger,
+                screenName: 'tab_shell',
+                widgetName: 'bottom_navigation_bar',
+                actionType: 'tab_selected',
+                payloadBuilder: (tabIndex) => {
+                  'tab_index': tabIndex,
+                },
+                callback: _onTabSelected,
+              ),
+              destinations: const [
+                NavigationDestination(
+                    icon: Icon(Icons.map_outlined), label: 'Map'),
+                NavigationDestination(
+                    icon: Icon(Icons.backpack), label: 'Pack'),
+                NavigationDestination(
+                    icon: Icon(Icons.nature), label: 'Sanctuary'),
+                NavigationDestination(
+                    icon: Icon(Icons.settings), label: 'Settings'),
+              ],
+            ),
+            if (debugMode)
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: IconButton(
+                  key: const Key('debug_nav_button'),
+                  icon: Icon(
+                    Icons.bug_report,
+                    size: 20,
+                    color: _debugOverlayVisible
+                        ? const Color(0xFF006D77)
+                        : const Color(0xFFADB5BD),
+                  ),
+                  onPressed: () => setState(
+                      () => _debugOverlayVisible = !_debugOverlayVisible),
+                  tooltip: 'Debug overlay',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ),
           ],
         ),
       ),
