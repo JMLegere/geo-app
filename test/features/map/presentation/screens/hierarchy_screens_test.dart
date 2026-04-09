@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
@@ -92,9 +95,29 @@ class _TestObservabilityService extends ObservabilityService {
   _TestObservabilityService() : super(sessionId: 'test-session');
 }
 
+class _FakeAuthNotifier extends AuthNotifier {
+  _FakeAuthNotifier(this._state);
+
+  final AuthState _state;
+
+  @override
+  AuthState build() => _state;
+}
+
 Widget _wrap(Widget child, {HierarchyRepository? repo}) {
   return ProviderScope(
     overrides: [
+      authProvider.overrideWith(
+        () => _FakeAuthNotifier(
+          AuthState.authenticated(
+            UserProfile(
+              id: 'user-123',
+              phone: '5551234567',
+              createdAt: DateTime(2026),
+            ),
+          ),
+        ),
+      ),
       hierarchyRepositoryProvider.overrideWithValue(
         repo ?? _FakeHierarchyRepository(),
       ),

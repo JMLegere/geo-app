@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
@@ -14,10 +16,13 @@ class CityScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final userId =
+        authState.status == AuthStatus.authenticated ? authState.user!.id : '';
     final provider = hierarchyScopeProvider(
       level: MapLevel.city,
       scopeId: scopeId,
-      userId: '',
+      userId: userId,
     );
     final hierarchyState = ref.watch(provider);
 

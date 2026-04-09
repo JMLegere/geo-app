@@ -282,7 +282,7 @@
     {
       "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
       "startedAt": "2026-04-08T03:06:14.818Z",
-      "lastActiveAt": "2026-04-08T21:40:44.322Z",
+      "lastActiveAt": "2026-04-09T00:42:44.856Z",
       "directivePrompt": "execute with hive",
       "agent": "hive-master",
       "sessionKind": "primary",
@@ -469,6 +469,21 @@
       "featureName": "map-bug-fixes",
       "taskFolder": "01-01-replace-tileset-url",
       "workerPromptPath": ".hive/features/06_map-bug-fixes/tasks/01-01-replace-tileset-url/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_2906483a0ffeFmIlKTDi0GksoJ",
+      "startedAt": "2026-04-09T00:19:14.196Z",
+      "lastActiveAt": "2026-04-09T00:19:14.196Z",
+      "agent": "oracle",
+      "sessionKind": "unknown"
+    },
+    {
+      "sessionId": "ses_29047d5c6ffeoJuiYoaiBw9yLq",
+      "startedAt": "2026-04-09T00:50:33.666Z",
+      "lastActiveAt": "2026-04-09T00:50:33.666Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker"
     }
   ]
 }
