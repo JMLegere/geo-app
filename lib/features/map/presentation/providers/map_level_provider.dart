@@ -49,4 +49,13 @@ class MapLevelNotifier extends ObservableNotifier<MapLevel> {
       },
     );
   }
+
+  void jumpTo(MapLevel level) {
+    if (state == level) return;
+    transition(
+      level,
+      'map.level.jump_to',
+      data: {'from': state.name, 'to': level.name},
+    );
+  }
 }
