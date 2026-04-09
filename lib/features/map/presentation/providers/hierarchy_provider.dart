@@ -49,12 +49,18 @@ class HierarchyScopeNotifier extends ObservableNotifier<HierarchyState> {
     required String? scopeId,
     required String userId,
   })  : _level = level,
-        _scopeId = scopeId,
+        _scopeId = _normalizeScopeId(scopeId),
         _userId = userId;
 
   final MapLevel _level;
   final String? _scopeId;
   final String _userId;
+
+  static String? _normalizeScopeId(String? scopeId) {
+    final trimmed = scopeId?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
 
   @override
   ObservabilityService get obs => ref.watch(hierarchyObservabilityProvider);
