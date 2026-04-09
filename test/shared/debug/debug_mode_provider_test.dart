@@ -16,7 +16,7 @@ class _TestObservabilityService extends ObservabilityService {
   }
 }
 
-ProviderContainer makeContainer({
+ProviderContainer _makeContainer({
   required SharedPreferences prefs,
   _TestObservabilityService? obs,
 }) {
@@ -38,7 +38,7 @@ void main() {
 
     test('default state is false', () async {
       final prefs = await SharedPreferences.getInstance();
-      final container = makeContainer(prefs: prefs);
+      final container = _makeContainer(prefs: prefs);
       addTearDown(container.dispose);
 
       expect(container.read(debugModeProvider), false);
@@ -46,7 +46,7 @@ void main() {
 
     test('toggle() changes state to true', () async {
       final prefs = await SharedPreferences.getInstance();
-      final container = makeContainer(prefs: prefs);
+      final container = _makeContainer(prefs: prefs);
       addTearDown(container.dispose);
 
       container.read(debugModeProvider.notifier).toggle();
@@ -57,7 +57,7 @@ void main() {
 
     test('second toggle() changes state back to false', () async {
       final prefs = await SharedPreferences.getInstance();
-      final container = makeContainer(prefs: prefs);
+      final container = _makeContainer(prefs: prefs);
       addTearDown(container.dispose);
 
       container.read(debugModeProvider.notifier).toggle();
@@ -72,12 +72,12 @@ void main() {
         () async {
       final prefs = await SharedPreferences.getInstance();
 
-      final container1 = makeContainer(prefs: prefs);
+      final container1 = _makeContainer(prefs: prefs);
       container1.read(debugModeProvider.notifier).toggle();
       await Future<void>.delayed(Duration.zero);
       container1.dispose();
 
-      final container2 = makeContainer(prefs: prefs);
+      final container2 = _makeContainer(prefs: prefs);
       addTearDown(container2.dispose);
 
       expect(container2.read(debugModeProvider), true);
@@ -86,7 +86,7 @@ void main() {
     test('toggle() calls transition() — observability event emitted', () async {
       final prefs = await SharedPreferences.getInstance();
       final obs = _TestObservabilityService();
-      final container = makeContainer(prefs: prefs, obs: obs);
+      final container = _makeContainer(prefs: prefs, obs: obs);
       addTearDown(container.dispose);
 
       container.read(debugModeProvider.notifier).toggle();
