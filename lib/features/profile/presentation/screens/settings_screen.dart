@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 
@@ -10,6 +11,7 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final debugMode = ref.watch(debugModeProvider);
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -34,6 +36,14 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: Spacing.xxxl),
+              SwitchListTile(
+                key: const Key('debug_mode_toggle'),
+                title: const Text('Developer Mode'),
+                subtitle: const Text('Debug controls'),
+                value: debugMode,
+                onChanged: (_) => ref.read(debugModeProvider.notifier).toggle(),
+              ),
+              const SizedBox(height: Spacing.md),
               OutlinedButton(
                 onPressed: () => _showSignOutDialog(context, ref),
                 style: OutlinedButton.styleFrom(
