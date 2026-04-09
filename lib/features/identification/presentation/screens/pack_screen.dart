@@ -11,6 +11,7 @@ import 'package:earth_nova/features/identification/presentation/providers/items_
 import 'package:earth_nova/features/identification/presentation/widgets/species_card.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
@@ -34,6 +35,13 @@ class _PackScreenState extends ConsumerState<PackScreen> {
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
+  InteractionLogger get _logger => (
+          {required String event,
+          required String category,
+          Map<String, dynamic>? data}) {
+        ref.read(itemsProvider.notifier).obs.log(event, category, data: data);
+      };
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +63,15 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     if (page == null) return;
     final newIndex = page.round();
     if (newIndex != _categoryIndex) {
+      ObservableInteraction.log(
+        logger: _logger,
+        screenName: 'pack_screen',
+        widgetName: 'category_page_view',
+        actionType: 'category_page_swipe',
+        payload: {
+          'category_index': newIndex,
+        },
+      );
       HapticFeedback.selectionClick();
       setState(() {
         _categoryIndex = newIndex;
@@ -81,7 +98,16 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       body: state.isLoading
           ? const Center(child: LoadingDots())
           : state.error != null
-              ? _ErrorState(message: state.error!, onRetry: _fetch)
+              ? _ErrorState(
+                  message: state.error!,
+                  onRetry: ObservableInteraction.wrapVoidCallback(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'retry_button',
+                    actionType: 'retry_fetch',
+                    callback: _fetch,
+                  ),
+                )
               : _PackBody(
                   allItems: state.items,
                   category: _category,
@@ -89,16 +115,86 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                   filters: _filters,
                   panelExpanded: _panelExpanded,
                   searchQuery: _searchQuery,
+                  logger: _logger,
                   pageController: _pageController,
-                  onCategoryChanged: _onCategoryChanged,
-                  onSortChanged: _onSortChanged,
-                  onToggleType: _onToggleType,
-                  onToggleHabitat: _onToggleHabitat,
-                  onToggleRegion: _onToggleRegion,
-                  onToggleRarity: _onToggleRarity,
-                  onClearFilters: _onClearFilters,
-                  onTogglePanel: _onTogglePanel,
-                  onSearchChanged: _onSearchChanged,
+                  onCategoryChanged:
+                      ObservableInteraction.wrapValueChanged<int>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'category_chip',
+                    actionType: 'category_tab_tap',
+                    payloadBuilder: (index) => {'category_index': index},
+                    callback: _onCategoryChanged,
+                  ),
+                  onSortChanged:
+                      ObservableInteraction.wrapValueChanged<PackSortMode>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'sort_toggle',
+                    actionType: 'sort_mode_toggle',
+                    payloadBuilder: (mode) => {'sort_mode': mode.name},
+                    callback: _onSortChanged,
+                  ),
+                  onToggleType:
+                      ObservableInteraction.wrapValueChanged<TaxonomicGroup>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'type_filter_toggle',
+                    actionType: 'type_filter_toggle',
+                    payloadBuilder: (group) => {'taxonomic_group': group.name},
+                    callback: _onToggleType,
+                  ),
+                  onToggleHabitat:
+                      ObservableInteraction.wrapValueChanged<Habitat>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'habitat_filter_toggle',
+                    actionType: 'habitat_filter_toggle',
+                    payloadBuilder: (habitat) => {'habitat': habitat.name},
+                    callback: _onToggleHabitat,
+                  ),
+                  onToggleRegion:
+                      ObservableInteraction.wrapValueChanged<GameRegion>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'region_filter_toggle',
+                    actionType: 'region_filter_toggle',
+                    payloadBuilder: (region) => {'region': region.name},
+                    callback: _onToggleRegion,
+                  ),
+                  onToggleRarity:
+                      ObservableInteraction.wrapValueChanged<IucnStatus>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'rarity_filter_toggle',
+                    actionType: 'rarity_filter_toggle',
+                    payloadBuilder: (rarity) => {'rarity': rarity.name},
+                    callback: _onToggleRarity,
+                  ),
+                  onClearFilters: ObservableInteraction.wrapVoidCallback(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'clear_filters_button',
+                    actionType: 'clear_filters',
+                    callback: _onClearFilters,
+                  ),
+                  onTogglePanel: ObservableInteraction.wrapVoidCallback(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'compact_filter_bar',
+                    actionType: 'toggle_filter_panel',
+                    payload: {'panel_expanded': !_panelExpanded},
+                    callback: _onTogglePanel,
+                  ),
+                  onSearchChanged:
+                      ObservableInteraction.wrapValueChanged<String>(
+                    logger: _logger,
+                    screenName: 'pack_screen',
+                    widgetName: 'search_field',
+                    actionType: 'search_changed',
+                    payloadBuilder: (query) => {'query_length': query.length},
+                    callback: _onSearchChanged,
+                  ),
                 ),
     );
   }
@@ -184,6 +280,7 @@ class _PackBody extends StatelessWidget {
     required this.filters,
     required this.panelExpanded,
     required this.searchQuery,
+    required this.logger,
     required this.pageController,
     required this.onCategoryChanged,
     required this.onSortChanged,
@@ -202,6 +299,7 @@ class _PackBody extends StatelessWidget {
   final PackFilterState filters;
   final bool panelExpanded;
   final String searchQuery;
+  final InteractionLogger logger;
   final PageController pageController;
   final void Function(int) onCategoryChanged;
   final void Function(PackSortMode) onSortChanged;
@@ -253,6 +351,7 @@ class _PackBody extends StatelessWidget {
         ),
         _SearchBar(
           query: searchQuery,
+          logger: logger,
           onChanged: onSearchChanged,
         ),
         Expanded(
@@ -270,7 +369,7 @@ class _PackBody extends StatelessWidget {
                       filters.hasActiveFilters || searchQuery.isNotEmpty,
                 );
               }
-              return _ItemGrid(items: items);
+              return _ItemGrid(items: items, logger: logger);
             },
           ),
         ),
@@ -960,9 +1059,14 @@ class _RarityFilterToggle extends StatelessWidget {
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
 class _SearchBar extends StatefulWidget {
-  const _SearchBar({required this.query, required this.onChanged});
+  const _SearchBar({
+    required this.query,
+    required this.onChanged,
+    required this.logger,
+  });
   final String query;
   final void Function(String) onChanged;
+  final InteractionLogger logger;
 
   @override
   State<_SearchBar> createState() => _SearchBarState();
@@ -993,7 +1097,13 @@ class _SearchBarState extends State<_SearchBar> {
 
   void _clear() {
     _controller.clear();
-    widget.onChanged('');
+    ObservableInteraction.wrapVoidCallback(
+      logger: widget.logger,
+      screenName: 'pack_screen',
+      widgetName: 'search_clear_button',
+      actionType: 'search_clear',
+      callback: () => widget.onChanged(''),
+    )();
   }
 
   @override
@@ -1057,8 +1167,9 @@ class _SearchBarState extends State<_SearchBar> {
 // ─── Item grid ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
-  const _ItemGrid({required this.items});
+  const _ItemGrid({required this.items, required this.logger});
   final List<Item> items;
+  final InteractionLogger logger;
 
   static int _columns(double width) {
     if (width < 600) return 3;
@@ -1086,7 +1197,7 @@ class _ItemGrid extends StatelessWidget {
             mainAxisSpacing: Spacing.sm,
           ),
           itemCount: items.length,
-          itemBuilder: (_, i) => _ItemSlot(item: items[i]),
+          itemBuilder: (_, i) => _ItemSlot(item: items[i], logger: logger),
         );
       },
     );
@@ -1096,8 +1207,9 @@ class _ItemGrid extends StatelessWidget {
 // ─── Item slot ────────────────────────────────────────────────────────────────
 
 class _ItemSlot extends StatelessWidget {
-  const _ItemSlot({required this.item});
+  const _ItemSlot({required this.item, required this.logger});
   final Item item;
+  final InteractionLogger logger;
 
   @override
   Widget build(BuildContext context) {
@@ -1105,7 +1217,18 @@ class _ItemSlot extends StatelessWidget {
     final hasFrame2 = item.iconUrlFrame2 != null;
 
     return GestureDetector(
-      onTap: () => showSpeciesCard(context, item),
+      onTap: ObservableInteraction.wrapVoidCallback(
+        logger: logger,
+        screenName: 'pack_screen',
+        widgetName: 'species_item_slot',
+        actionType: 'species_card_open',
+        payload: {'item_id': item.id},
+        callback: () => showSpeciesCard(
+          context,
+          item,
+          logger: logger,
+        ),
+      ),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(

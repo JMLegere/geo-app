@@ -22,6 +22,7 @@ import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.d
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
@@ -76,6 +77,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      ref.read(mapProvider.notifier).obs.log(event, category, data: data);
+    }
 
     // Move camera when GPS updates — without this, removing the location-keyed
     // ValueKey would freeze the map on its initial position.
@@ -154,9 +162,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             action: SnackBarAction(
               label: 'Dismiss',
               textColor: Colors.white,
-              onPressed: () {
-                ref.read(encounterProvider.notifier).dismissEncounter();
-              },
+              onPressed: ObservableInteraction.wrapVoidCallback(
+                logger: logger,
+                screenName: 'map_screen',
+                widgetName: 'encounter_snackbar_dismiss',
+                actionType: 'snackbar_dismiss',
+                callback: () {
+                  ref.read(encounterProvider.notifier).dismissEncounter();
+                },
+              ),
             ),
           ),
         );
@@ -215,6 +229,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
   }) {
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      ref.read(mapProvider.notifier).obs.log(event, category, data: data);
+    }
+
     // Compute status bar stats from exploration state
     final cellsObserved = explorationState.visitedCellIds.length +
         (mapState is MapStateReady ? mapState.visitedCellIds.length : 0);
@@ -275,11 +297,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             Positioned.fill(
               child: IgnorePointer(
                 child: GestureDetector(
-                  onTapUp: (details) => _onMapTap(
-                    context,
-                    details,
-                    mapState,
-                    location,
+                  onTapUp: ObservableInteraction.wrapTapUp(
+                    logger: logger,
+                    screenName: 'map_screen',
+                    widgetName: 'cell_overlay',
+                    actionType: 'cell_overlay_tap',
+                    callback: (details) => _onMapTap(
+                      context,
+                      details,
+                      mapState,
+                      location,
+                    ),
                   ),
                   child: CustomPaint(
                     size: Size.infinite,

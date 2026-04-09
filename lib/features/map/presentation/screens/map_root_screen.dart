@@ -9,6 +9,7 @@ import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/province_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 
 class MapRootScreen extends ConsumerStatefulWidget {
   const MapRootScreen({super.key});
@@ -50,20 +51,42 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   Widget build(BuildContext context) {
     final level = ref.watch(mapLevelProvider);
     final notifier = ref.read(mapLevelProvider.notifier);
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      notifier.obs.log(event, category, data: data);
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.deferToChild,
       onScaleStart: (_) => _lastScale = 1,
       onScaleUpdate: (details) => _lastScale = details.scale,
-      onScaleEnd: (_) {
-        if (_lastScale <= _kPinchCloseThreshold) {
-          notifier.pinchClose();
-          return;
-        }
-        if (_lastScale >= _kPinchSpreadThreshold) {
-          notifier.pinchSpread();
-        }
-      },
+      onScaleEnd: ObservableInteraction.wrapScaleEnd(
+        logger: logger,
+        screenName: 'map_root_screen',
+        widgetName: 'map_level_gesture_detector',
+        actionType: 'pinch_level_change',
+        payloadBuilder: (_) {
+          if (_lastScale <= _kPinchCloseThreshold) {
+            return {'gesture_direction': 'close'};
+          }
+          if (_lastScale >= _kPinchSpreadThreshold) {
+            return {'gesture_direction': 'spread'};
+          }
+          return {'gesture_direction': 'none'};
+        },
+        callback: (_) {
+          if (_lastScale <= _kPinchCloseThreshold) {
+            notifier.pinchClose();
+            return;
+          }
+          if (_lastScale >= _kPinchSpreadThreshold) {
+            notifier.pinchSpread();
+          }
+        },
+      ),
       child: Stack(
         children: [
           // MapScreen stays mounted at all times so WebGL context is preserved.

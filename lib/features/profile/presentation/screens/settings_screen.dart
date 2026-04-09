@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 
@@ -10,6 +11,14 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      ref.read(authProvider.notifier).obs.log(event, category, data: data);
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.surface,
       appBar: AppBar(
@@ -35,7 +44,13 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: Spacing.xxxl),
               OutlinedButton(
-                onPressed: () => _showSignOutDialog(context, ref),
+                onPressed: ObservableInteraction.wrapVoidCallback(
+                  logger: logger,
+                  screenName: 'settings_screen',
+                  widgetName: 'sign_out_button',
+                  actionType: 'sign_out_dialog_open',
+                  callback: () => _showSignOutDialog(context, ref, logger),
+                ),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.error,
                   side: const BorderSide(color: AppTheme.error),
@@ -53,7 +68,11 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showSignOutDialog(BuildContext context, WidgetRef ref) {
+  void _showSignOutDialog(
+    BuildContext context,
+    WidgetRef ref,
+    InteractionLogger logger,
+  ) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -61,14 +80,26 @@ class SettingsScreen extends ConsumerWidget {
         content: const Text('Are you sure you want to sign out?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: ObservableInteraction.wrapVoidCallback(
+              logger: logger,
+              screenName: 'settings_screen',
+              widgetName: 'sign_out_cancel_button',
+              actionType: 'sign_out_cancel',
+              callback: () => Navigator.of(context).pop(),
+            ),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ref.read(authProvider.notifier).signOut();
-            },
+            onPressed: ObservableInteraction.wrapVoidCallback(
+              logger: logger,
+              screenName: 'settings_screen',
+              widgetName: 'sign_out_confirm_button',
+              actionType: 'sign_out_confirm',
+              callback: () {
+                Navigator.of(context).pop();
+                ref.read(authProvider.notifier).signOut();
+              },
+            ),
             child: const Text('Sign Out'),
           ),
         ],

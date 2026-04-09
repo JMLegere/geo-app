@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/constants.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
@@ -82,6 +83,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      ref.read(authProvider.notifier).obs.log(event, category, data: data);
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -134,7 +142,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isValid && !isLoading ? _onContinue : null,
+                    onPressed: _isValid && !isLoading
+                        ? ObservableInteraction.wrapVoidCallback(
+                            logger: logger,
+                            screenName: 'login_screen',
+                            widgetName: 'continue_button',
+                            actionType: 'tap',
+                            payload: {
+                              'input_valid': _isValid,
+                            },
+                            callback: _onContinue,
+                          )
+                        : null,
                     child: isLoading
                         ? const SizedBox(
                             height: 20,

@@ -5,6 +5,7 @@ import 'package:earth_nova/features/map/presentation/providers/wake_lock_provide
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
@@ -82,6 +83,14 @@ class _TabShellState extends ConsumerState<TabShell>
 
   @override
   Widget build(BuildContext context) {
+    void logger({
+      required String event,
+      required String category,
+      Map<String, dynamic>? data,
+    }) {
+      ref.read(wakeLockProvider.notifier).obs.log(event, category, data: data);
+    }
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
@@ -89,7 +98,16 @@ class _TabShellState extends ConsumerState<TabShell>
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: _onTabSelected,
+        onDestinationSelected: ObservableInteraction.wrapValueChanged<int>(
+          logger: logger,
+          screenName: 'tab_shell',
+          widgetName: 'bottom_navigation_bar',
+          actionType: 'tab_selected',
+          payloadBuilder: (tabIndex) => {
+            'tab_index': tabIndex,
+          },
+          callback: _onTabSelected,
+        ),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
           NavigationDestination(icon: Icon(Icons.backpack), label: 'Pack'),
