@@ -8,6 +8,7 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
@@ -21,6 +22,16 @@ class _FakeWakeLockRepository implements WakeLockRepository {
 
 class _TestObservabilityService extends ObservabilityService {
   _TestObservabilityService() : super(sessionId: 'test-session');
+}
+
+class _TrueDebugMode extends DebugModeNotifier {
+  @override
+  bool build() => true;
+}
+
+class _FalseDebugMode extends DebugModeNotifier {
+  @override
+  bool build() => false;
 }
 
 void main() {
@@ -46,6 +57,7 @@ void main() {
                 .overrideWithValue(_TestObservabilityService()),
             navigationScreenTransitionLoggerProvider
                 .overrideWithValue(navigation),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
           ],
           child: const MaterialApp(
             home: TabShell(
@@ -142,6 +154,7 @@ void main() {
             navigationScreenTransitionLoggerProvider.overrideWithValue(
               NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
             ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
           ],
           child: MaterialApp(
             home: TabShell(
@@ -185,6 +198,7 @@ void main() {
                 },
               ),
             ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
           ],
           child: const MaterialApp(
             home: TabShell(
@@ -230,7 +244,8 @@ void main() {
       expect(transitions.last['to_screen'], 'map');
     });
 
-    testWidgets('debug gesture overlay is present in widget tree',
+    testWidgets(
+        'debug gesture overlay is present when debugModeProvider is true',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -244,6 +259,7 @@ void main() {
             navigationScreenTransitionLoggerProvider.overrideWithValue(
               NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
             ),
+            debugModeProvider.overrideWith(() => _TrueDebugMode()),
           ],
           child: const MaterialApp(
             home: TabShell(
@@ -261,6 +277,41 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DebugGestureOverlay), findsOneWidget);
+    });
+
+    testWidgets(
+        'debug gesture overlay is absent when debugModeProvider is false',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DebugGestureOverlay), findsNothing);
     });
 
     testWidgets('tapping same tab does not trigger transition', (tester) async {
@@ -284,6 +335,7 @@ void main() {
                 },
               ),
             ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
           ],
           child: const MaterialApp(
             home: TabShell(
