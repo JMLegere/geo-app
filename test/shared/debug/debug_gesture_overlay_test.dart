@@ -134,6 +134,34 @@ void main() {
       expect(find.byIcon(Icons.zoom_out), findsNothing);
     });
 
+    testWidgets('default injector delegates all 7 gestures without throwing',
+        (tester) async {
+      // Uses _DefaultInjector (no injector param) — exercises all delegation
+      // methods that forward to GestureInjector static calls.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Stack(children: [const DebugGestureOverlay()]),
+          ),
+        ),
+      );
+
+      for (final tooltip in [
+        'Pinch',
+        'Spread',
+        'Up',
+        'Down',
+        'Left',
+        'Right',
+        'DblTap',
+      ]) {
+        await tester.tap(find.byTooltip(tooltip));
+        await tester.pump();
+      }
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('does not throw when MediaQuery is absent', (tester) async {
       final injector = _FakeInjector();
       await tester.pumpWidget(
