@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
@@ -38,6 +41,8 @@ void main() {
                 .overrideWithValue(_FakeWakeLockRepository()),
             wakeLockObservabilityProvider
                 .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
             navigationScreenTransitionLoggerProvider
                 .overrideWithValue(navigation),
           ],
@@ -71,5 +76,13 @@ void main() {
         'to_screen': 'pack',
       });
     });
+  });
+
+  test('tab shell keeps cached IndexedStack screen list', () {
+    final source = File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+
+    expect(source, contains('IndexedStack('));
+    expect(source, contains('late final List<Widget> _screens;'));
+    expect(source, contains('children: _screens'));
   });
 }

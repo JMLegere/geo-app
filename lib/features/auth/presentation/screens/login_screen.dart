@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/constants.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 
@@ -81,6 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final obs = ref.watch(appObservabilityProvider);
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
     void logger({
@@ -91,82 +94,87 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ref.read(authProvider.notifier).obs.log(event, category, data: data);
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.surface,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  AppConstants.appName,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: Spacing.xs),
-                Text(
-                  'Explore. Discover. Reveal.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: Spacing.huge),
-                TextField(
-                  controller: _phoneController,
-                  enabled: !isLoading,
-                  keyboardType: TextInputType.phone,
-                  inputFormatters: [_PhoneInputFormatter()],
-                  decoration: InputDecoration(
-                    prefixText: '+1 ',
-                    prefixStyle: TextStyle(
-                      color: AppTheme.onSurfaceVariant,
-                      fontSize: 16,
+    return ObservableScreen(
+      screenName: 'login_screen',
+      observability: obs,
+      builder: (_) => Scaffold(
+        backgroundColor: AppTheme.surface,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    AppConstants.appName,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.onSurface,
+                      letterSpacing: -0.5,
                     ),
-                    hintText: '(555) 123-4567',
-                    counterText: '',
-                    errorText: _errorText,
                   ),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.onSurface,
+                  const SizedBox(height: Spacing.xs),
+                  Text(
+                    'Explore. Discover. Reveal.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: Spacing.lg),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isValid && !isLoading
-                        ? ObservableInteraction.wrapVoidCallback(
-                            logger: logger,
-                            screenName: 'login_screen',
-                            widgetName: 'continue_button',
-                            actionType: 'tap',
-                            payload: {
-                              'input_valid': _isValid,
-                            },
-                            callback: _onContinue,
-                          )
-                        : null,
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          )
-                        : const Text('Continue'),
+                  const SizedBox(height: Spacing.huge),
+                  TextField(
+                    controller: _phoneController,
+                    enabled: !isLoading,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [_PhoneInputFormatter()],
+                    decoration: InputDecoration(
+                      prefixText: '+1 ',
+                      prefixStyle: TextStyle(
+                        color: AppTheme.onSurfaceVariant,
+                        fontSize: 16,
+                      ),
+                      hintText: '(555) 123-4567',
+                      counterText: '',
+                      errorText: _errorText,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppTheme.onSurface,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: Spacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isValid && !isLoading
+                          ? ObservableInteraction.wrapVoidCallback(
+                              logger: logger,
+                              screenName: 'login_screen',
+                              widgetName: 'continue_button',
+                              actionType: 'tap',
+                              payload: {
+                                'input_valid': _isValid,
+                              },
+                              callback: _onContinue,
+                            )
+                          : null,
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation(Colors.white),
+                              ),
+                            )
+                          : const Text('Continue'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
@@ -192,6 +193,18 @@ void main() {
       );
       // The status bar must have paddingTop >= 44 to clear the iOS status bar.
       expect(bar.paddingTop, greaterThanOrEqualTo(44.0));
+    });
+
+    test('map and root screen are wrapped with ObservableScreen', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+      final rootSource =
+          File('lib/features/map/presentation/screens/map_root_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('ObservableScreen('));
+      expect(rootSource, contains('ObservableScreen('));
     });
   });
 }

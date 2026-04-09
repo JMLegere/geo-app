@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
@@ -23,6 +24,7 @@ import 'package:earth_nova/features/map/presentation/widgets/discovery_notificat
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
@@ -68,6 +70,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final obs = ref.watch(appObservabilityProvider);
     final authState = ref.watch(authProvider);
     final userId =
         authState.status == AuthStatus.authenticated ? authState.user!.id : '';
@@ -192,33 +195,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _ => null,
     };
 
-    return switch (locationState) {
-      LocationProviderLoading() => const Scaffold(
-          backgroundColor: AppTheme.surface,
-          body: Center(child: LoadingDots()),
-        ),
-      LocationProviderPermissionDenied() => const _MapStatusScaffold(
-          title: 'Location needed',
-          message: 'Enable location access to explore the map.',
-        ),
-      LocationProviderError(message: final message) => _MapStatusScaffold(
-          title: 'Map unavailable',
-          message: message,
-        ),
-      LocationProviderPaused() when effectiveLocation == null =>
-        const _MapStatusScaffold(
-          title: 'GPS unavailable',
-          message: 'Waiting for GPS signal to resume discovery.',
-        ),
-      LocationProviderPaused() || LocationProviderActive() => _buildMapScaffold(
-          context,
-          location: effectiveLocation!,
-          mapState: mapState,
-          playerMarkerState: playerMarkerState,
-          explorationEligibility: explorationEligibility,
-          explorationState: explorationState,
-        ),
-    };
+    return ObservableScreen(
+      screenName: 'map_screen',
+      observability: obs,
+      builder: (_) => switch (locationState) {
+        LocationProviderLoading() => const Scaffold(
+            backgroundColor: AppTheme.surface,
+            body: Center(child: LoadingDots()),
+          ),
+        LocationProviderPermissionDenied() => const _MapStatusScaffold(
+            title: 'Location needed',
+            message: 'Enable location access to explore the map.',
+          ),
+        LocationProviderError(message: final message) => _MapStatusScaffold(
+            title: 'Map unavailable',
+            message: message,
+          ),
+        LocationProviderPaused() when effectiveLocation == null =>
+          const _MapStatusScaffold(
+            title: 'GPS unavailable',
+            message: 'Waiting for GPS signal to resume discovery.',
+          ),
+        LocationProviderPaused() ||
+        LocationProviderActive() =>
+          _buildMapScaffold(
+            context,
+            location: effectiveLocation!,
+            mapState: mapState,
+            playerMarkerState: playerMarkerState,
+            explorationEligibility: explorationEligibility,
+            explorationState: explorationState,
+          ),
+      },
+    );
   }
 
   Widget _buildMapScaffold(

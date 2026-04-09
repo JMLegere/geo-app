@@ -6,12 +6,14 @@ import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/identification/domain/entities/pack_filter_state.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/widgets/species_card.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
@@ -83,119 +85,125 @@ class _PackScreenState extends ConsumerState<PackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final obs = ref.watch(appObservabilityProvider);
     final state = ref.watch(itemsProvider);
 
-    return Scaffold(
-      backgroundColor: AppTheme.surface,
-      appBar: AppBar(
-        title: const Text('Pack'),
-        backgroundColor: AppTheme.surfaceContainer,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppTheme.outline),
+    return ObservableScreen(
+      screenName: 'pack_screen',
+      observability: obs,
+      builder: (_) => Scaffold(
+        backgroundColor: AppTheme.surface,
+        appBar: AppBar(
+          title: const Text('Pack'),
+          backgroundColor: AppTheme.surfaceContainer,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: AppTheme.outline),
+          ),
         ),
+        body: state.isLoading
+            ? const Center(child: LoadingDots())
+            : state.error != null
+                ? _ErrorState(
+                    message: state.error!,
+                    onRetry: ObservableInteraction.wrapVoidCallback(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'retry_button',
+                      actionType: 'retry_fetch',
+                      callback: _fetch,
+                    ),
+                  )
+                : _PackBody(
+                    allItems: state.items,
+                    category: _category,
+                    sort: _sort,
+                    filters: _filters,
+                    panelExpanded: _panelExpanded,
+                    searchQuery: _searchQuery,
+                    logger: _logger,
+                    pageController: _pageController,
+                    onCategoryChanged:
+                        ObservableInteraction.wrapValueChanged<int>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'category_chip',
+                      actionType: 'category_tab_tap',
+                      payloadBuilder: (index) => {'category_index': index},
+                      callback: _onCategoryChanged,
+                    ),
+                    onSortChanged:
+                        ObservableInteraction.wrapValueChanged<PackSortMode>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'sort_toggle',
+                      actionType: 'sort_mode_toggle',
+                      payloadBuilder: (mode) => {'sort_mode': mode.name},
+                      callback: _onSortChanged,
+                    ),
+                    onToggleType:
+                        ObservableInteraction.wrapValueChanged<TaxonomicGroup>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'type_filter_toggle',
+                      actionType: 'type_filter_toggle',
+                      payloadBuilder: (group) =>
+                          {'taxonomic_group': group.name},
+                      callback: _onToggleType,
+                    ),
+                    onToggleHabitat:
+                        ObservableInteraction.wrapValueChanged<Habitat>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'habitat_filter_toggle',
+                      actionType: 'habitat_filter_toggle',
+                      payloadBuilder: (habitat) => {'habitat': habitat.name},
+                      callback: _onToggleHabitat,
+                    ),
+                    onToggleRegion:
+                        ObservableInteraction.wrapValueChanged<GameRegion>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'region_filter_toggle',
+                      actionType: 'region_filter_toggle',
+                      payloadBuilder: (region) => {'region': region.name},
+                      callback: _onToggleRegion,
+                    ),
+                    onToggleRarity:
+                        ObservableInteraction.wrapValueChanged<IucnStatus>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'rarity_filter_toggle',
+                      actionType: 'rarity_filter_toggle',
+                      payloadBuilder: (rarity) => {'rarity': rarity.name},
+                      callback: _onToggleRarity,
+                    ),
+                    onClearFilters: ObservableInteraction.wrapVoidCallback(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'clear_filters_button',
+                      actionType: 'clear_filters',
+                      callback: _onClearFilters,
+                    ),
+                    onTogglePanel: ObservableInteraction.wrapVoidCallback(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'compact_filter_bar',
+                      actionType: 'toggle_filter_panel',
+                      payload: {'panel_expanded': !_panelExpanded},
+                      callback: _onTogglePanel,
+                    ),
+                    onSearchChanged:
+                        ObservableInteraction.wrapValueChanged<String>(
+                      logger: _logger,
+                      screenName: 'pack_screen',
+                      widgetName: 'search_field',
+                      actionType: 'search_changed',
+                      payloadBuilder: (query) => {'query_length': query.length},
+                      callback: _onSearchChanged,
+                    ),
+                  ),
       ),
-      body: state.isLoading
-          ? const Center(child: LoadingDots())
-          : state.error != null
-              ? _ErrorState(
-                  message: state.error!,
-                  onRetry: ObservableInteraction.wrapVoidCallback(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'retry_button',
-                    actionType: 'retry_fetch',
-                    callback: _fetch,
-                  ),
-                )
-              : _PackBody(
-                  allItems: state.items,
-                  category: _category,
-                  sort: _sort,
-                  filters: _filters,
-                  panelExpanded: _panelExpanded,
-                  searchQuery: _searchQuery,
-                  logger: _logger,
-                  pageController: _pageController,
-                  onCategoryChanged:
-                      ObservableInteraction.wrapValueChanged<int>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'category_chip',
-                    actionType: 'category_tab_tap',
-                    payloadBuilder: (index) => {'category_index': index},
-                    callback: _onCategoryChanged,
-                  ),
-                  onSortChanged:
-                      ObservableInteraction.wrapValueChanged<PackSortMode>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'sort_toggle',
-                    actionType: 'sort_mode_toggle',
-                    payloadBuilder: (mode) => {'sort_mode': mode.name},
-                    callback: _onSortChanged,
-                  ),
-                  onToggleType:
-                      ObservableInteraction.wrapValueChanged<TaxonomicGroup>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'type_filter_toggle',
-                    actionType: 'type_filter_toggle',
-                    payloadBuilder: (group) => {'taxonomic_group': group.name},
-                    callback: _onToggleType,
-                  ),
-                  onToggleHabitat:
-                      ObservableInteraction.wrapValueChanged<Habitat>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'habitat_filter_toggle',
-                    actionType: 'habitat_filter_toggle',
-                    payloadBuilder: (habitat) => {'habitat': habitat.name},
-                    callback: _onToggleHabitat,
-                  ),
-                  onToggleRegion:
-                      ObservableInteraction.wrapValueChanged<GameRegion>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'region_filter_toggle',
-                    actionType: 'region_filter_toggle',
-                    payloadBuilder: (region) => {'region': region.name},
-                    callback: _onToggleRegion,
-                  ),
-                  onToggleRarity:
-                      ObservableInteraction.wrapValueChanged<IucnStatus>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'rarity_filter_toggle',
-                    actionType: 'rarity_filter_toggle',
-                    payloadBuilder: (rarity) => {'rarity': rarity.name},
-                    callback: _onToggleRarity,
-                  ),
-                  onClearFilters: ObservableInteraction.wrapVoidCallback(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'clear_filters_button',
-                    actionType: 'clear_filters',
-                    callback: _onClearFilters,
-                  ),
-                  onTogglePanel: ObservableInteraction.wrapVoidCallback(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'compact_filter_bar',
-                    actionType: 'toggle_filter_panel',
-                    payload: {'panel_expanded': !_panelExpanded},
-                    callback: _onTogglePanel,
-                  ),
-                  onSearchChanged:
-                      ObservableInteraction.wrapValueChanged<String>(
-                    logger: _logger,
-                    screenName: 'pack_screen',
-                    widgetName: 'search_field',
-                    actionType: 'search_changed',
-                    payloadBuilder: (query) => {'query_length': query.length},
-                    callback: _onSearchChanged,
-                  ),
-                ),
     );
   }
 

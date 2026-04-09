@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
@@ -16,6 +17,7 @@ import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/pinch_hint.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Fake repository for tests
@@ -122,6 +124,9 @@ Widget _wrap(Widget child, {HierarchyRepository? repo}) {
         repo ?? _FakeHierarchyRepository(),
       ),
       hierarchyObservabilityProvider.overrideWithValue(
+        _TestObservabilityService(),
+      ),
+      appObservabilityProvider.overrideWithValue(
         _TestObservabilityService(),
       ),
     ],
@@ -427,6 +432,18 @@ void main() {
       expect(hint.lowerLevelLabel, 'Map');
       expect(hint.upperLevelLabel, 'City');
     });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const DistrictScreen(scopeId: 'district-1')),
+      );
+      await tester.pump();
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'district_screen');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -462,6 +479,18 @@ void main() {
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
       expect(hint.lowerLevelLabel, 'District');
       expect(hint.upperLevelLabel, 'Province');
+    });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const CityScreen(scopeId: 'city-1')),
+      );
+      await tester.pump();
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'city_screen');
     });
   });
 
@@ -499,6 +528,18 @@ void main() {
       expect(hint.lowerLevelLabel, 'City');
       expect(hint.upperLevelLabel, 'Country');
     });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const ProvinceScreen(scopeId: 'state-1')),
+      );
+      await tester.pump();
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'province_screen');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -535,6 +576,18 @@ void main() {
       expect(hint.lowerLevelLabel, 'Province');
       expect(hint.upperLevelLabel, 'World');
     });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const CountryScreen(scopeId: 'country-1')),
+      );
+      await tester.pump();
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'country_screen');
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -569,6 +622,18 @@ void main() {
 
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
       expect(hint.upperLevelLabel, isNull);
+    });
+
+    testWidgets('wraps root in ObservableScreen with stable name',
+        (tester) async {
+      await tester.pumpWidget(
+        _wrap(const WorldScreen()),
+      );
+      await tester.pump();
+
+      final wrapper =
+          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      expect(wrapper.screenName, 'world_screen');
     });
   });
 
