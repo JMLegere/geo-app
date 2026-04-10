@@ -488,7 +488,83 @@ void main() {
       expect(source, contains('EdgeSwipeDirection.right'));
       expect(source, contains('_sanctuaryTabIndex'));
     });
+
+    test('source: TabShell wraps IndexedStack in GestureDetector for map swipe',
+        () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+      // A GestureDetector with onHorizontalDragEnd (or onPanEnd) must wrap the
+      // IndexedStack so a rightward swipe on the map tab navigates to Pack.
+      expect(source, contains('onHorizontalDragEnd'));
+      expect(source, contains('_packTabIndex'));
+    });
   }); // end cross-tab swipe group
+
+  group('TabShell swipe-from-map', () {
+    Future<void> pumpShellWithFakeScreens(
+      WidgetTester tester, {
+      required List<String> transitions,
+    }) async {
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(
+                logEvent: (event, category, {data}) {
+                  if (event == 'navigation.screen_changed') {
+                    transitions
+                        .add('${data?['from_screen']}→${data?['to_screen']}');
+                  }
+                },
+              ),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: MaterialApp(
+            home: TabShell(
+              screens: const [
+                // Use SizedBox.expand so the GestureDetector has a hit area.
+                SizedBox.expand(), // map
+                SizedBox.expand(), // pack
+                SizedBox.expand(), // sanctuary
+                SizedBox.expand(), // settings
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('rightward fling on map tab navigates to Pack tab',
+        (tester) async {
+      final transitions = <String>[];
+      await pumpShellWithFakeScreens(tester, transitions: transitions);
+
+      // We are on Map (index 0). Fling rightward (positive x velocity) to
+      // trigger onHorizontalDragEnd with primaryVelocity > 0 → Pack tab.
+      // Use the GestureDetector directly — IndexedStack children are SizedBox.shrink()
+      // and have no hit area.
+      await tester.fling(
+        find.byType(GestureDetector).first,
+        const Offset(300, 0), // positive x = rightward fling
+        800, // px/s — enough to produce positive primaryVelocity
+      );
+      await tester.pumpAndSettle();
+
+      expect(transitions, contains('map→pack'));
+    });
+  }); // end swipe-from-map group
 } // end main()
 
 class _TrackingWakeLockRepository implements WakeLockRepository {

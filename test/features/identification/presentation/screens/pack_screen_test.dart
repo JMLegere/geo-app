@@ -372,6 +372,14 @@ void main() {
       expect(source, contains('_ownsController'));
     });
 
+    test('source: main.dart enables mouse drag via scrollBehavior', () {
+      // OverscrollNotification fires correctly with default ClampingScrollPhysics
+      // once mouse is included in dragDevices. The fix lives in MaterialApp.
+      final mainSource = File('lib/main.dart').readAsStringSync();
+      expect(mainSource, contains('scrollBehavior'));
+      expect(mainSource, contains('PointerDeviceKind.mouse'));
+    });
+
     testWidgets('calls onEdgeSwipe(left) when overscrolling past page 0',
         (tester) async {
       tester.view.physicalSize = const Size(800, 900);
