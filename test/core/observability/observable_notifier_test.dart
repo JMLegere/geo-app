@@ -1,8 +1,37 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/observable_notifier.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
+
+// Minimal concrete subclass that does NOT override category — exercises the
+// default 'state' value on line 27 of observable_notifier.dart.
+class _DefaultCategoryNotifier extends ObservableNotifier<int> {
+  @override
+  ObservabilityService get obs => ObservabilityService(sessionId: 'test');
+
+  @override
+  int build() => 0;
+}
 
 void main() {
+  group('ObservableNotifier default category', () {
+    test('returns "state" when category is not overridden', () {
+      final container = ProviderContainer(
+        overrides: [],
+      );
+      addTearDown(container.dispose);
+
+      final provider = NotifierProvider<_DefaultCategoryNotifier, int>(
+        _DefaultCategoryNotifier.new,
+      );
+
+      final notifier = container.read(provider.notifier);
+      expect(notifier.category, 'state');
+    });
+  });
+
   group('ObservableNotifier enforcement', () {
     test('no Notifier subclass bypasses ObservableNotifier', () {
       final libDir = Directory('lib');
