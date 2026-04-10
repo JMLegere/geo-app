@@ -138,7 +138,7 @@ class _TabShellState extends ConsumerState<TabShell>
               onHorizontalDragEnd: _currentIndex == _mapTabIndex
                   ? (details) {
                       if (details.primaryVelocity != null &&
-                          details.primaryVelocity! > 0) {
+                          details.primaryVelocity! < 0) {
                         _onTabSelected(_packTabIndex);
                       }
                     }

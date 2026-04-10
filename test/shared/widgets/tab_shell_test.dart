@@ -494,7 +494,7 @@ void main() {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
       // A GestureDetector with onHorizontalDragEnd (or onPanEnd) must wrap the
-      // IndexedStack so a rightward swipe on the map tab navigates to Pack.
+      // IndexedStack so a leftward swipe on the map tab navigates to Pack.
       expect(source, contains('onHorizontalDragEnd'));
       expect(source, contains('_packTabIndex'));
     });
@@ -546,19 +546,20 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('rightward fling on map tab navigates to Pack tab',
+    testWidgets('leftward fling on map tab navigates to Pack tab',
         (tester) async {
       final transitions = <String>[];
       await pumpShellWithFakeScreens(tester, transitions: transitions);
 
-      // We are on Map (index 0). Fling rightward (positive x velocity) to
-      // trigger onHorizontalDragEnd with primaryVelocity > 0 → Pack tab.
-      // Use the GestureDetector directly — IndexedStack children are SizedBox.shrink()
-      // and have no hit area.
+      // We are on Map (index 0). Fling leftward (negative x velocity) to
+      // trigger onHorizontalDragEnd with primaryVelocity < 0 → Pack tab.
+      // Matches the natural "next page" swipe convention (right→left).
+      // Use the GestureDetector directly — IndexedStack children are SizedBox.expand()
+      // and have a hit area.
       await tester.fling(
         find.byType(GestureDetector).first,
-        const Offset(300, 0), // positive x = rightward fling
-        800, // px/s — enough to produce positive primaryVelocity
+        const Offset(-300, 0), // negative x = leftward fling
+        800, // px/s — enough to produce negative primaryVelocity
       );
       await tester.pumpAndSettle();
 
