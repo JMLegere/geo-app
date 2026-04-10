@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -215,6 +216,17 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp> {
       title: 'EarthNova',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
+      // Include mouse as a drag device so PageView horizontal scroll and
+      // OverscrollNotification work correctly on Flutter web/desktop.
+      // Flutter's default ScrollBehavior only enables drag for touch.
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.trackpad,
+        },
+      ),
       navigatorObservers: [
         AppNavigationObserver(logEvent: ref.read(observabilityProvider).log),
       ],

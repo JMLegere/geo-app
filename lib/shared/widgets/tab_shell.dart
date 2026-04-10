@@ -14,6 +14,7 @@ import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
 const int _mapTabIndex = 0;
+const int _packTabIndex = 1;
 const int _sanctuaryTabIndex = 2;
 const _tabScreenNames = ['map', 'pack', 'sanctuary', 'settings'];
 
@@ -128,9 +129,24 @@ class _TabShellState extends ConsumerState<TabShell>
       builder: (_) => Scaffold(
         body: Stack(
           children: [
-            IndexedStack(
-              index: _currentIndex,
-              children: _screens,
+            // Wrap in GestureDetector to catch horizontal swipes on the map
+            // tab. Only the map tab triggers a cross-tab swipe (rightward →
+            // Pack). Pack's own PageView handles its own edge overscroll via
+            // onEdgeSwipe; other tabs have no swipe gesture.
+            GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onHorizontalDragEnd: _currentIndex == _mapTabIndex
+                  ? (details) {
+                      if (details.primaryVelocity != null &&
+                          details.primaryVelocity! > 0) {
+                        _onTabSelected(_packTabIndex);
+                      }
+                    }
+                  : null,
+              child: IndexedStack(
+                index: _currentIndex,
+                children: _screens,
+              ),
             ),
             if (debugMode && _debugOverlayVisible) const DebugGestureOverlay(),
           ],
