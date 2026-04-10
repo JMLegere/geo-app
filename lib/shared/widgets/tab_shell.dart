@@ -14,6 +14,7 @@ import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
 const int _mapTabIndex = 0;
+const int _sanctuaryTabIndex = 2;
 const _tabScreenNames = ['map', 'pack', 'sanctuary', 'settings'];
 
 /// 4-tab bottom navigation. Pack is real, others are stubs.
@@ -34,16 +35,24 @@ class _TabShellState extends ConsumerState<TabShell>
   int _currentIndex = _mapTabIndex;
   bool _debugOverlayVisible = false;
 
+  /// PageController owned by TabShell and injected into PackScreen so that
+  /// cross-tab edge swipes can be detected and handled here.
+  late final PageController _packPageController;
+
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _packPageController = PageController();
     _screens = widget.screens ??
         [
           const MapRootScreen(),
-          const PackScreen(),
+          PackScreen(
+            pageController: _packPageController,
+            onEdgeSwipe: _onPackEdgeSwipe,
+          ),
           const StubScreen(label: AppIcons.sanctuary),
           const SettingsScreen(),
         ];
@@ -54,8 +63,21 @@ class _TabShellState extends ConsumerState<TabShell>
 
   @override
   void dispose() {
+    _packPageController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Called by [PackScreen] when the user overscrolls past a category edge.
+  void _onPackEdgeSwipe(EdgeSwipeDirection direction) {
+    switch (direction) {
+      case EdgeSwipeDirection.left:
+        // Swiped right past page 0 → go to Map (tab to the left of Pack).
+        _onTabSelected(_mapTabIndex);
+      case EdgeSwipeDirection.right:
+        // Swiped left past last page → go to Sanctuary (tab to the right).
+        _onTabSelected(_sanctuaryTabIndex);
+    }
   }
 
   @override

@@ -15,10 +15,20 @@ import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
+/// Direction of a cross-tab edge swipe on [PackScreen].
+///
+/// [left]  — user dragged right past page 0 (go to the tab to the left).
+/// [right] — user dragged left past the last page (go to the tab to the right).
+enum EdgeSwipeDirection { left, right }
+
 /// Pack screen — responsive grid of discovered species with collapsible
 /// filter panel and compact filter bar.
 class PackScreen extends ConsumerStatefulWidget {
-  const PackScreen({super.key, this.pageController});
+  const PackScreen({
+    super.key,
+    this.pageController,
+    this.onEdgeSwipe,
+  });
 
   /// Number of sub-pages (one per [ItemCategory]).
   static int get subPageCount => ItemCategory.values.length;
@@ -26,6 +36,11 @@ class PackScreen extends ConsumerStatefulWidget {
   /// Optional external [PageController]. When provided, [PackScreen] will
   /// attach to it but will NOT dispose it on unmount — the caller owns it.
   final PageController? pageController;
+
+  /// Called when the user overscrolls past the first or last category page.
+  /// [EdgeSwipeDirection.left]  → swiped right past page 0.
+  /// [EdgeSwipeDirection.right] → swiped left past the last page.
+  final void Function(EdgeSwipeDirection)? onEdgeSwipe;
 
   @override
   ConsumerState<PackScreen> createState() => _PackScreenState();
@@ -120,6 +135,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                   onClearFilters: _onClearFilters,
                   onTogglePanel: _onTogglePanel,
                   onSearchChanged: _onSearchChanged,
+                  onEdgeSwipe: widget.onEdgeSwipe,
                 ),
     );
   }
@@ -215,6 +231,7 @@ class _PackBody extends StatelessWidget {
     required this.onClearFilters,
     required this.onTogglePanel,
     required this.onSearchChanged,
+    this.onEdgeSwipe,
   });
 
   final List<Item> allItems;
@@ -233,6 +250,7 @@ class _PackBody extends StatelessWidget {
   final VoidCallback onClearFilters;
   final VoidCallback onTogglePanel;
   final void Function(String) onSearchChanged;
+  final void Function(EdgeSwipeDirection)? onEdgeSwipe;
 
   @override
   Widget build(BuildContext context) {
@@ -277,22 +295,34 @@ class _PackBody extends StatelessWidget {
           onChanged: onSearchChanged,
         ),
         Expanded(
-          child: PageView.builder(
-            controller: pageController,
-            itemCount: ItemCategory.values.length,
-            itemBuilder: (_, index) {
-              final cat = ItemCategory.values[index];
-              final items = _applyFilterAndSort(
-                  allItems, cat, filters, sort, searchQuery);
-              if (items.isEmpty) {
-                return _EmptyState(
-                  category: cat,
-                  hasFilters:
-                      filters.hasActiveFilters || searchQuery.isNotEmpty,
-                );
+          child: NotificationListener<OverscrollNotification>(
+            onNotification: (notification) {
+              final cb = onEdgeSwipe;
+              if (cb == null) return false;
+              if (notification.overscroll < 0) {
+                cb(EdgeSwipeDirection.left);
+              } else if (notification.overscroll > 0) {
+                cb(EdgeSwipeDirection.right);
               }
-              return _ItemGrid(items: items);
+              return false; // let the notification bubble
             },
+            child: PageView.builder(
+              controller: pageController,
+              itemCount: ItemCategory.values.length,
+              itemBuilder: (_, index) {
+                final cat = ItemCategory.values[index];
+                final items = _applyFilterAndSort(
+                    allItems, cat, filters, sort, searchQuery);
+                if (items.isEmpty) {
+                  return _EmptyState(
+                    category: cat,
+                    hasFilters:
+                        filters.hasActiveFilters || searchQuery.isNotEmpty,
+                  );
+                }
+                return _ItemGrid(items: items);
+              },
+            ),
           ),
         ),
       ],

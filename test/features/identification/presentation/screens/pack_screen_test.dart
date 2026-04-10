@@ -371,6 +371,79 @@ void main() {
       // The accepted pattern is a bool flag: _ownsController.
       expect(source, contains('_ownsController'));
     });
+
+    testWidgets('calls onEdgeSwipe(left) when overscrolling past page 0',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final swipes = <EdgeSwipeDirection>[];
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([
+                _item('1', 'Red Fox', ItemCategory.fauna),
+              ])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: PackScreen(onEdgeSwipe: swipes.add),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Drag right (overscroll past page 0 = left edge).
+      await tester.drag(find.byType(PageView), const Offset(400, 0));
+      await tester.pumpAndSettle();
+
+      expect(swipes, contains(EdgeSwipeDirection.left));
+    });
+
+    testWidgets(
+        'calls onEdgeSwipe(right) when overscrolling past the last page',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final swipes = <EdgeSwipeDirection>[];
+      final controller = PageController(
+        initialPage: PackScreen.subPageCount - 1,
+      );
+      addTearDown(controller.dispose);
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([
+                _item('1', 'Red Fox', ItemCategory.fauna),
+              ])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: PackScreen(
+              pageController: controller,
+              onEdgeSwipe: swipes.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Drag left (overscroll past last page = right edge).
+      await tester.drag(find.byType(PageView), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      expect(swipes, contains(EdgeSwipeDirection.right));
+    });
   });
 }
 
