@@ -69,6 +69,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
   static const double _defaultHeight = 812;
   static const double _panelWidth = 64;
   static const double _handleWidth = 24;
+  static const double _kGestureTargetY = 80.0;
 
   static const BoxDecoration _panelDecoration = BoxDecoration(
     color: _kPanelBg,
@@ -92,6 +93,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
       size.width / 2,
       (size.height - _bottomNavHeight) / 2,
     );
+    final gestureCenter = Offset(size.width / 2, _kGestureTargetY);
     final swipeDistance = size.height * 0.25;
     final pinchDistance = size.width * 0.4;
 
@@ -112,10 +114,10 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
             if (_expanded) ...[
               const SizedBox(height: 8),
               _btn('Pinch', Icons.zoom_out, 'Pinch',
-                  () => widget._injector.pinch(center, pinchDistance)),
+                  () => widget._injector.pinch(gestureCenter, pinchDistance)),
               const SizedBox(height: 4),
               _btn('Spread', Icons.zoom_in, 'Spread',
-                  () => widget._injector.spread(center, pinchDistance)),
+                  () => widget._injector.spread(gestureCenter, pinchDistance)),
               const SizedBox(height: 4),
               _btn('↑ Up', Icons.arrow_upward, 'Up',
                   () => widget._injector.swipeUp(center, swipeDistance)),
