@@ -4,27 +4,49 @@ import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 
 class _FakeInjector implements GestureInjectorInterface {
   final List<String> calls = [];
+  final List<Offset> centers = [];
 
   @override
-  Future<void> swipeUp(Offset center, double distance) async =>
-      calls.add('swipeUp');
+  Future<void> swipeUp(Offset center, double distance) async {
+    calls.add('swipeUp');
+    centers.add(center);
+  }
+
   @override
-  Future<void> swipeDown(Offset center, double distance) async =>
-      calls.add('swipeDown');
+  Future<void> swipeDown(Offset center, double distance) async {
+    calls.add('swipeDown');
+    centers.add(center);
+  }
+
   @override
-  Future<void> swipeLeft(Offset center, double distance) async =>
-      calls.add('swipeLeft');
+  Future<void> swipeLeft(Offset center, double distance) async {
+    calls.add('swipeLeft');
+    centers.add(center);
+  }
+
   @override
-  Future<void> swipeRight(Offset center, double distance) async =>
-      calls.add('swipeRight');
+  Future<void> swipeRight(Offset center, double distance) async {
+    calls.add('swipeRight');
+    centers.add(center);
+  }
+
   @override
-  Future<void> pinch(Offset center, double distance) async =>
-      calls.add('pinch');
+  Future<void> pinch(Offset center, double distance) async {
+    calls.add('pinch');
+    centers.add(center);
+  }
+
   @override
-  Future<void> spread(Offset center, double distance) async =>
-      calls.add('spread');
+  Future<void> spread(Offset center, double distance) async {
+    calls.add('spread');
+    centers.add(center);
+  }
+
   @override
-  Future<void> doubleTap(Offset center) async => calls.add('doubleTap');
+  Future<void> doubleTap(Offset center) async {
+    calls.add('doubleTap');
+    centers.add(center);
+  }
 }
 
 Widget _wrap(_FakeInjector injector) {
@@ -184,6 +206,43 @@ void main() {
       expect(tester.takeException(), isNull);
       // Each gesture button is wrapped in a Tooltip; the toggle handle is not.
       expect(find.byType(Tooltip), findsNWidgets(7));
+    });
+
+    testWidgets('pinch uses y=80 gesture target, swipeUp uses screen-center y',
+        (tester) async {
+      final injector = _FakeInjector();
+      await tester.pumpWidget(_wrap(injector));
+
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+
+      await tester.tap(find.byTooltip('Pinch'));
+      await tester.pump();
+      final pinchCenter = injector.centers.last;
+      expect(pinchCenter.dy, equals(80.0),
+          reason: 'pinch should use y=80 gesture target');
+      expect(pinchCenter.dx, equals(size.width / 2),
+          reason: 'pinch should use horizontal center');
+
+      await tester.tap(find.byTooltip('Up'));
+      await tester.pump();
+      final swipeUpCenter = injector.centers.last;
+      expect(swipeUpCenter.dy, isNot(equals(80.0)),
+          reason: 'swipeUp should use screen-center y, not gesture target y');
+    });
+
+    testWidgets('spread uses y=80 gesture target', (tester) async {
+      final injector = _FakeInjector();
+      await tester.pumpWidget(_wrap(injector));
+
+      final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+
+      await tester.tap(find.byTooltip('Spread'));
+      await tester.pump();
+      final spreadCenter = injector.centers.last;
+      expect(spreadCenter.dy, equals(80.0),
+          reason: 'spread should use y=80 gesture target');
+      expect(spreadCenter.dx, equals(size.width / 2),
+          reason: 'spread should use horizontal center');
     });
   });
 }
