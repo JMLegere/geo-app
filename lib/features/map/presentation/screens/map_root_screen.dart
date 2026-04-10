@@ -9,8 +9,6 @@ import 'package:earth_nova/features/map/presentation/screens/district_screen.dar
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/province_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
-import 'package:earth_nova/features/map/presentation/widgets/test_buttons_overlay.dart';
-import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -114,7 +112,6 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
                   MapLevel.cell => const SizedBox.shrink(),
                 },
               ),
-            if (ref.watch(debugModeProvider)) const TestButtonsOverlay(),
           ],
         ),
       ),

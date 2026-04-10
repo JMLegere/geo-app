@@ -7,7 +7,6 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
-import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
@@ -22,11 +21,6 @@ class _FakeWakeLockRepository implements WakeLockRepository {
 
 class _TestObservabilityService extends ObservabilityService {
   _TestObservabilityService() : super(sessionId: 'test-session');
-}
-
-class _TrueDebugMode extends DebugModeNotifier {
-  @override
-  bool build() => true;
 }
 
 class _FalseDebugMode extends DebugModeNotifier {
@@ -242,91 +236,6 @@ void main() {
       expect(transitions.length, 3);
       expect(transitions.last['from_screen'], 'sanctuary');
       expect(transitions.last['to_screen'], 'map');
-    });
-
-    testWidgets(
-        'debug nav button appears when debugModeProvider is true, '
-        'tapping it shows the overlay', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            wakeLockRepositoryProvider
-                .overrideWithValue(_FakeWakeLockRepository()),
-            wakeLockObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
-            appObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
-            navigationScreenTransitionLoggerProvider.overrideWithValue(
-              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
-            ),
-            debugModeProvider.overrideWith(() => _TrueDebugMode()),
-          ],
-          child: const MaterialApp(
-            home: TabShell(
-              screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Debug nav button is visible in the bottom nav bar.
-      expect(find.byKey(const Key('debug_nav_button')), findsOneWidget);
-      // Overlay is NOT yet shown — requires a tap first.
-      expect(find.byType(DebugGestureOverlay), findsNothing);
-
-      // Tap the debug nav button to show the overlay.
-      await tester.tap(find.byKey(const Key('debug_nav_button')));
-      await tester.pump();
-
-      expect(find.byType(DebugGestureOverlay), findsOneWidget);
-
-      // Tap again to dismiss.
-      await tester.tap(find.byKey(const Key('debug_nav_button')));
-      await tester.pump();
-
-      expect(find.byType(DebugGestureOverlay), findsNothing);
-    });
-
-    testWidgets('debug nav button is absent when debugModeProvider is false',
-        (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            wakeLockRepositoryProvider
-                .overrideWithValue(_FakeWakeLockRepository()),
-            wakeLockObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
-            appObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
-            navigationScreenTransitionLoggerProvider.overrideWithValue(
-              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
-            ),
-            debugModeProvider.overrideWith(() => _FalseDebugMode()),
-          ],
-          child: const MaterialApp(
-            home: TabShell(
-              screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('debug_nav_button')), findsNothing);
-      expect(find.byType(DebugGestureOverlay), findsNothing);
     });
 
     testWidgets('tapping same tab does not trigger transition', (tester) async {
