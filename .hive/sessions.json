@@ -282,13 +282,13 @@
     {
       "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
       "startedAt": "2026-04-08T03:06:14.818Z",
-      "lastActiveAt": "2026-04-10T00:46:31.820Z",
-      "directivePrompt": "continue",
+      "lastActiveAt": "2026-04-10T03:33:49.751Z",
+      "directivePrompt": "that's correct. make sure changes are in prod before testing",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
       "replayDirectivePending": false,
-      "featureName": "map-bug-fixes"
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix"
     },
     {
       "sessionId": "ses_292c5c02affer0a4GNCqsZQYd5",
@@ -484,6 +484,83 @@
       "agent": "forager-worker",
       "sessionKind": "task-worker",
       "baseAgent": "forager-worker"
+    },
+    {
+      "sessionId": "ses_28ac79442ffe2C3XlFEppi9awk",
+      "startedAt": "2026-04-10T02:28:45.146Z",
+      "lastActiveAt": "2026-04-10T02:29:12.346Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "01-delete-gesture-overlay-source-files-and-their-tests",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/01-delete-gesture-overlay-source-files-and-their-tests/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ac6674affeNB6JIi6B22Lxtr",
+      "startedAt": "2026-04-10T02:30:02.196Z",
+      "lastActiveAt": "2026-04-10T02:32:18.357Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "02-remove-overlay-mounts-and-imports-from-tabshell-maprootscreen-mapscreen",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/02-remove-overlay-mounts-and-imports-from-tabshell-maprootscreen-mapscreen/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ac38423ffe7WkU1nI1PyujXU",
+      "startedAt": "2026-04-10T02:33:11.419Z",
+      "lastActiveAt": "2026-04-10T02:34:03.527Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "03-update-tabshelltest-to-remove-debug-overlay-assertions",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/03-update-tabshelltest-to-remove-debug-overlay-assertions/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ac2208effe5RjZ9GlN16iZHM",
+      "startedAt": "2026-04-10T02:34:42.455Z",
+      "lastActiveAt": "2026-04-10T02:36:01.079Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "04-full-test-suite--analyze--track-a-complete",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/04-full-test-suite--analyze--track-a-complete/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ac018daffeHdEx37DrosCoOZ",
+      "startedAt": "2026-04-10T02:36:55.486Z",
+      "lastActiveAt": "2026-04-10T02:46:44.652Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "05-convert-hierarchyscopeprovider-to-notifierproviderfamily",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/05-convert-hierarchyscopeprovider-to-notifierproviderfamily/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ab65d96ffejc2AOKA7G3Dkwj",
+      "startedAt": "2026-04-10T02:47:33.302Z",
+      "lastActiveAt": "2026-04-10T02:49:12.084Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "06-update-all-5-hierarchy-screens-to-use-family-api",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/06-update-all-5-hierarchy-screens-to-use-family-api/worker-prompt.md"
+    },
+    {
+      "sessionId": "ses_28ab42699ffe1LxdJH5Lh7QDkd",
+      "startedAt": "2026-04-10T02:49:58.413Z",
+      "lastActiveAt": "2026-04-10T02:51:20.762Z",
+      "agent": "forager-worker",
+      "sessionKind": "task-worker",
+      "baseAgent": "forager-worker",
+      "featureName": "debug-overlay-removal-and-pinch-crash-fix",
+      "taskFolder": "07-full-test-suite--analyze--track-b-complete-commit",
+      "workerPromptPath": ".hive/features/11_debug-overlay-removal-and-pinch-crash-fix/tasks/07-full-test-suite--analyze--track-b-complete-commit/worker-prompt.md"
     }
   ]
 }

@@ -54,8 +54,52 @@ class _TrackingHierarchyRepository implements HierarchyRepository {
   }
 }
 
+class _NeverCalledRepository implements HierarchyRepository {
+  bool called = false;
+
+  @override
+  Future<HierarchyProgressSummary> getScopeSummary({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    called = true;
+    throw StateError('should not be called');
+  }
+
+  @override
+  Future<List<HierarchyProgressSummary>> getChildSummaries({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    called = true;
+    throw StateError('should not be called');
+  }
+}
+
+Future<HierarchyState> _waitForNonLoading(
+  ProviderContainer container,
+  NotifierProvider<HierarchyScopeNotifier, HierarchyState> provider,
+) async {
+  final completer = Completer<HierarchyState>();
+  final sub = container.listen(provider, (_, next) {
+    if (next is! HierarchyStateLoading && !completer.isCompleted) {
+      completer.complete(next);
+    }
+  });
+  final current = container.read(provider);
+  if (current is! HierarchyStateLoading) {
+    sub.close();
+    return current;
+  }
+  final result = await completer.future;
+  sub.close();
+  return result;
+}
+
 void main() {
-  ProviderContainer makeContainer(_TrackingHierarchyRepository repo) {
+  ProviderContainer makeContainer(HierarchyRepository repo) {
     return ProviderContainer(
       overrides: [
         hierarchyRepositoryProvider.overrideWithValue(repo),
@@ -66,59 +110,152 @@ void main() {
     );
   }
 
-  group('HierarchyScopeNotifier scopeId normalization', () {
-    test('normalizes empty scopeId to null before repository calls', () async {
-      final repo = _TrackingHierarchyRepository();
-      final container = makeContainer(repo);
+  group('hierarchyScopeProvider family caching', () {
+    test('same args return the same cached provider instance', () {
+      final container = makeContainer(_TrackingHierarchyRepository());
       addTearDown(container.dispose);
 
-      container.read(
-        hierarchyScopeProvider(
-          level: MapLevel.city,
-          scopeId: '',
-          userId: 'user-1',
-        ),
+      final args = (
+        level: MapLevel.city,
+        scopeId: 'city-1',
+        userId: 'user-1',
       );
 
-      await repo.allCallsCompleted.future;
+      final p1 = hierarchyScopeProvider(args);
+      final p2 = hierarchyScopeProvider(args);
 
-      expect(repo.scopeIds, [null, null]);
+      expect(p1, equals(p2));
     });
 
-    test('keeps null scopeId as null', () async {
+    test('different args return different provider instances', () {
+      final container = makeContainer(_TrackingHierarchyRepository());
+      addTearDown(container.dispose);
+
+      final p1 = hierarchyScopeProvider((
+        level: MapLevel.city,
+        scopeId: 'city-1',
+        userId: 'user-1',
+      ));
+      final p2 = hierarchyScopeProvider((
+        level: MapLevel.city,
+        scopeId: 'city-2',
+        userId: 'user-1',
+      ));
+
+      expect(p1, isNot(equals(p2)));
+    });
+  });
+
+  group('HierarchyScopeNotifier _load() null scopeId guard', () {
+    test(
+        'transitions to HierarchyStateError without calling repository when scopeId is null',
+        () async {
+      final repo = _NeverCalledRepository();
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+
+      final provider = hierarchyScopeProvider((
+        level: MapLevel.world,
+        scopeId: null,
+        userId: 'user-1',
+      ));
+
+      final state = await _waitForNonLoading(container, provider);
+
+      expect(state, isA<HierarchyStateError>());
+      expect(repo.called, isFalse);
+    });
+
+    test(
+        'transitions to HierarchyStateError without calling repository when scopeId is empty',
+        () async {
+      final repo = _NeverCalledRepository();
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+
+      final provider = hierarchyScopeProvider((
+        level: MapLevel.world,
+        scopeId: '',
+        userId: 'user-1',
+      ));
+
+      final state = await _waitForNonLoading(container, provider);
+
+      expect(state, isA<HierarchyStateError>());
+      expect(repo.called, isFalse);
+    });
+  });
+
+  group('HierarchyScopeNotifier _load() with valid scopeId', () {
+    test('transitions to HierarchyStateData when repository returns data',
+        () async {
+      final repo = _TrackingHierarchyRepository();
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+
+      final provider = hierarchyScopeProvider((
+        level: MapLevel.district,
+        scopeId: 'district-1',
+        userId: 'user-1',
+      ));
+
+      final state = await _waitForNonLoading(container, provider);
+
+      expect(state, isA<HierarchyStateData>());
+    });
+
+    test('passes non-empty scopeId unchanged to repository', () async {
       final repo = _TrackingHierarchyRepository();
       final container = makeContainer(repo);
       addTearDown(container.dispose);
 
       container.read(
-        hierarchyScopeProvider(
-          level: MapLevel.country,
-          scopeId: null,
-          userId: 'user-1',
-        ),
-      );
-
-      await repo.allCallsCompleted.future;
-
-      expect(repo.scopeIds, [null, null]);
-    });
-
-    test('keeps non-empty scopeId unchanged', () async {
-      final repo = _TrackingHierarchyRepository();
-      final container = makeContainer(repo);
-      addTearDown(container.dispose);
-
-      container.read(
-        hierarchyScopeProvider(
+        hierarchyScopeProvider((
           level: MapLevel.district,
           scopeId: 'district-uuid-1',
           userId: 'user-1',
-        ),
+        )),
       );
 
       await repo.allCallsCompleted.future;
 
       expect(repo.scopeIds, ['district-uuid-1', 'district-uuid-1']);
     });
+
+    test('transitions to HierarchyStateError when repository throws', () async {
+      final repo = _ThrowingHierarchyRepository();
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+
+      final provider = hierarchyScopeProvider((
+        level: MapLevel.district,
+        scopeId: 'district-1',
+        userId: 'user-1',
+      ));
+
+      final state = await _waitForNonLoading(container, provider);
+
+      expect(state, isA<HierarchyStateError>());
+    });
   });
+}
+
+class _ThrowingHierarchyRepository implements HierarchyRepository {
+  @override
+  Future<HierarchyProgressSummary> getScopeSummary({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    throw Exception('db error');
+  }
+
+  @override
+  Future<List<HierarchyProgressSummary>> getChildSummaries({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    throw Exception('db error');
+  }
 }
