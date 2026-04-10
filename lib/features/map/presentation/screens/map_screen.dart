@@ -17,6 +17,7 @@ import 'package:earth_nova/features/map/presentation/providers/encounter_provide
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_controller_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
@@ -56,6 +57,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void dispose() {
     _notificationTimer?.cancel();
+    ref.read(mapControllerProvider.notifier).clear();
     _mapController?.dispose();
     super.dispose();
   }
@@ -277,6 +279,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               myLocationTrackingMode: maplibre.MyLocationTrackingMode.tracking,
               onMapCreated: (controller) {
                 _mapController = controller;
+                ref.read(mapControllerProvider.notifier).set(controller);
                 ref
                     .read(mapProvider.notifier)
                     .obs

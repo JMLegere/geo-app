@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
+import 'package:earth_nova/features/map/presentation/providers/map_controller_provider.dart';
 import 'package:earth_nova/shared/debug/gesture_injector.dart';
 
 // ─── Colour palette ───────────────────────────────────────────────────────────
@@ -22,7 +25,11 @@ abstract interface class GestureInjectorInterface {
   Future<void> doubleTap(Offset center);
 }
 
-// ─── Default injector (unchanged) ────────────────────────────────────────────
+// ─── Default injector ─────────────────────────────────────────────────────────
+// Used as a test-seam fallback when no MapLibreMapController is available
+// (e.g. in widget tests). Swipe methods fire Flutter pointer events which do
+// NOT reach the MapLibre WebGL canvas in production; use _MapControllerInjector
+// for real map panning.
 class _DefaultInjector implements GestureInjectorInterface {
   const _DefaultInjector();
 
@@ -48,8 +55,40 @@ class _DefaultInjector implements GestureInjectorInterface {
   Future<void> doubleTap(Offset center) => GestureInjector.doubleTap(center);
 }
 
+// ─── Controller-backed injector ───────────────────────────────────────────────
+// Swipe methods issue programmatic camera moves via CameraUpdate.scrollBy so
+// that the MapLibre map actually pans — pointer injection does not reach the
+// native WebGL canvas. Pinch/spread/doubleTap keep using pointer injection
+// because those gestures are caught by Flutter's ScaleGestureRecognizer.
+class _MapControllerInjector implements GestureInjectorInterface {
+  const _MapControllerInjector(this._controller);
+
+  final maplibre.MapLibreMapController _controller;
+
+  @override
+  Future<void> swipeUp(Offset center, double distance) =>
+      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(0, -distance));
+  @override
+  Future<void> swipeDown(Offset center, double distance) =>
+      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(0, distance));
+  @override
+  Future<void> swipeLeft(Offset center, double distance) =>
+      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(-distance, 0));
+  @override
+  Future<void> swipeRight(Offset center, double distance) =>
+      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(distance, 0));
+  @override
+  Future<void> pinch(Offset center, double distance) =>
+      GestureInjector.pinch(center, distance);
+  @override
+  Future<void> spread(Offset center, double distance) =>
+      GestureInjector.spread(center, distance);
+  @override
+  Future<void> doubleTap(Offset center) => GestureInjector.doubleTap(center);
+}
+
 // ─── Widget ───────────────────────────────────────────────────────────────────
-class DebugGestureOverlay extends StatefulWidget {
+class DebugGestureOverlay extends ConsumerStatefulWidget {
   const DebugGestureOverlay({
     super.key,
     GestureInjectorInterface? injector,
@@ -58,10 +97,11 @@ class DebugGestureOverlay extends StatefulWidget {
   final GestureInjectorInterface _injector;
 
   @override
-  State<DebugGestureOverlay> createState() => _DebugGestureOverlayState();
+  ConsumerState<DebugGestureOverlay> createState() =>
+      _DebugGestureOverlayState();
 }
 
-class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
+class _DebugGestureOverlayState extends ConsumerState<DebugGestureOverlay> {
   bool _expanded = true;
 
   static const double _bottomNavHeight = 80;
@@ -97,6 +137,13 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
     final swipeDistance = size.height * 0.25;
     final pinchDistance = size.width * 0.4;
 
+    // Use controller-backed swipe panning when the map is active; fall back to
+    // pointer injection (test-seam / no-map contexts).
+    final mapController = ref.watch(mapControllerProvider);
+    final injector = mapController != null
+        ? _MapControllerInjector(mapController)
+        : widget._injector;
+
     return Positioned(
       top: 100,
       right: 0,
@@ -114,25 +161,25 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
             if (_expanded) ...[
               const SizedBox(height: 8),
               _btn('Pinch', Icons.zoom_out, 'Pinch',
-                  () => widget._injector.pinch(gestureCenter, pinchDistance)),
+                  () => injector.pinch(gestureCenter, pinchDistance)),
               const SizedBox(height: 4),
               _btn('Spread', Icons.zoom_in, 'Spread',
-                  () => widget._injector.spread(gestureCenter, pinchDistance)),
+                  () => injector.spread(gestureCenter, pinchDistance)),
               const SizedBox(height: 4),
               _btn('↑ Up', Icons.arrow_upward, 'Up',
-                  () => widget._injector.swipeUp(center, swipeDistance)),
+                  () => injector.swipeUp(center, swipeDistance)),
               const SizedBox(height: 4),
               _btn('↓ Dn', Icons.arrow_downward, 'Down',
-                  () => widget._injector.swipeDown(center, swipeDistance)),
+                  () => injector.swipeDown(center, swipeDistance)),
               const SizedBox(height: 4),
               _btn('← L', Icons.arrow_back, 'Left',
-                  () => widget._injector.swipeLeft(center, swipeDistance)),
+                  () => injector.swipeLeft(center, swipeDistance)),
               const SizedBox(height: 4),
               _btn('→ R', Icons.arrow_forward, 'Right',
-                  () => widget._injector.swipeRight(center, swipeDistance)),
+                  () => injector.swipeRight(center, swipeDistance)),
               const SizedBox(height: 4),
               _btn('2×tap', Icons.touch_app, 'DblTap',
-                  () => widget._injector.doubleTap(center)),
+                  () => injector.doubleTap(center)),
               const SizedBox(height: 8),
             ],
           ],

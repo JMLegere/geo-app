@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 
@@ -50,12 +51,14 @@ class _FakeInjector implements GestureInjectorInterface {
 }
 
 Widget _wrap(_FakeInjector injector) {
-  return MaterialApp(
-    home: Scaffold(
-      body: Stack(
-        children: [
-          DebugGestureOverlay(injector: injector),
-        ],
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        body: Stack(
+          children: [
+            DebugGestureOverlay(injector: injector),
+          ],
+        ),
       ),
     ),
   );
@@ -161,9 +164,11 @@ void main() {
       // Uses _DefaultInjector (no injector param) — exercises all delegation
       // methods that forward to GestureInjector static calls.
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Stack(children: [const DebugGestureOverlay()]),
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Stack(children: [const DebugGestureOverlay()]),
+            ),
           ),
         ),
       );
@@ -187,18 +192,20 @@ void main() {
     testWidgets('does not throw when MediaQuery is absent', (tester) async {
       final injector = _FakeInjector();
       await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Overlay(
-            initialEntries: [
-              OverlayEntry(
-                builder: (_) => Stack(
-                  children: [
-                    DebugGestureOverlay(injector: injector),
-                  ],
+        ProviderScope(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Overlay(
+              initialEntries: [
+                OverlayEntry(
+                  builder: (_) => Stack(
+                    children: [
+                      DebugGestureOverlay(injector: injector),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
