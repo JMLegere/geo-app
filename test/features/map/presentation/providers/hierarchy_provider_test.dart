@@ -221,5 +221,41 @@ void main() {
 
       expect(repo.scopeIds, ['district-uuid-1', 'district-uuid-1']);
     });
+
+    test('transitions to HierarchyStateError when repository throws', () async {
+      final repo = _ThrowingHierarchyRepository();
+      final container = makeContainer(repo);
+      addTearDown(container.dispose);
+
+      final provider = hierarchyScopeProvider((
+        level: MapLevel.district,
+        scopeId: 'district-1',
+        userId: 'user-1',
+      ));
+
+      final state = await _waitForNonLoading(container, provider);
+
+      expect(state, isA<HierarchyStateError>());
+    });
   });
+}
+
+class _ThrowingHierarchyRepository implements HierarchyRepository {
+  @override
+  Future<HierarchyProgressSummary> getScopeSummary({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    throw Exception('db error');
+  }
+
+  @override
+  Future<List<HierarchyProgressSummary>> getChildSummaries({
+    required String userId,
+    required MapLevel level,
+    String? scopeId,
+  }) async {
+    throw Exception('db error');
+  }
 }
