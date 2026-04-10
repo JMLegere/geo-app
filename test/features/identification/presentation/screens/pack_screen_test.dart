@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
+import 'dart:io';
 
 void main() {
   group('PackScreen', () {
@@ -304,6 +305,144 @@ void main() {
         tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
         '2',
       );
+    });
+
+    test('subPageCount equals ItemCategory.values.length', () {
+      expect(PackScreen.subPageCount, ItemCategory.values.length);
+    });
+
+    testWidgets('accepts and uses an injected PageController', (tester) async {
+      final controller = PageController();
+      addTearDown(controller.dispose);
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: PackScreen(pageController: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The injected controller should now be attached to the PageView.
+      expect(controller.hasClients, isTrue);
+    });
+
+    testWidgets('does not dispose an injected PageController on unmount',
+        (tester) async {
+      final controller = PageController();
+      // No addTearDown here — this test verifies that PackScreen does NOT
+      // dispose the injected controller, so we dispose it ourselves at the end.
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: PackScreen(pageController: controller)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Unmount the widget.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      await tester.pumpAndSettle();
+
+      // Controller was injected — PackScreen must NOT have disposed it.
+      // Calling dispose() on an already-disposed controller throws.
+      expect(() => controller.dispose(), returnsNormally);
+    });
+
+    test('source: PackScreen does not dispose injected controller', () {
+      final source = File(
+        'lib/features/identification/presentation/screens/pack_screen.dart',
+      ).readAsStringSync();
+
+      // When a controller is injected, the widget must NOT call dispose() on it.
+      // The accepted pattern is a bool flag: _ownsController.
+      expect(source, contains('_ownsController'));
+    });
+
+    testWidgets('calls onEdgeSwipe(left) when overscrolling past page 0',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final swipes = <EdgeSwipeDirection>[];
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([
+                _item('1', 'Red Fox', ItemCategory.fauna),
+              ])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: PackScreen(onEdgeSwipe: swipes.add),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Drag right (overscroll past page 0 = left edge).
+      await tester.drag(find.byType(PageView), const Offset(400, 0));
+      await tester.pumpAndSettle();
+
+      expect(swipes, contains(EdgeSwipeDirection.left));
+    });
+
+    testWidgets(
+        'calls onEdgeSwipe(right) when overscrolling past the last page',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final swipes = <EdgeSwipeDirection>[];
+      final controller = PageController(
+        initialPage: PackScreen.subPageCount - 1,
+      );
+      addTearDown(controller.dispose);
+
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => _MockItemsNotifier([
+                _item('1', 'Red Fox', ItemCategory.fauna),
+              ])),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: PackScreen(
+              pageController: controller,
+              onEdgeSwipe: swipes.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Drag left (overscroll past last page = right edge).
+      await tester.drag(find.byType(PageView), const Offset(-400, 0));
+      await tester.pumpAndSettle();
+
+      expect(swipes, contains(EdgeSwipeDirection.right));
     });
   });
 }

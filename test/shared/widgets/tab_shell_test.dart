@@ -117,9 +117,11 @@ void main() {
 
       // Verify MapRootScreen is instantiated in default screens list
       expect(source, contains('const MapRootScreen()'));
+      // Verify PackScreen is instantiated (with injected controller)
+      expect(source, contains('PackScreen('));
       // Verify it's the first screen in the list
       final mapRootScreenIndex = source.indexOf('const MapRootScreen()');
-      final packScreenIndex = source.indexOf('const PackScreen()');
+      final packScreenIndex = source.indexOf('PackScreen(');
       expect(mapRootScreenIndex, lessThan(packScreenIndex));
     });
 
@@ -458,7 +460,36 @@ void main() {
       expect(wakeLockCalls, containsAllInOrder(['release', 'acquire']));
     });
   });
-}
+
+  // ─── Cross-tab swipe ───────────────────────────────────────────────────────
+
+  group('TabShell cross-tab swipe', () {
+    // Source-level wiring checks — no widget pump needed.
+    test('source: TabShell injects PageController into PackScreen', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+      expect(source, contains('_packPageController'));
+      expect(source, contains('PackScreen('));
+      expect(source, contains('pageController:'));
+      expect(source, contains('onEdgeSwipe:'));
+    });
+
+    test('source: TabShell handles EdgeSwipeDirection.left → map tab', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+      expect(source, contains('EdgeSwipeDirection.left'));
+      expect(source, contains('_mapTabIndex'));
+    });
+
+    test('source: TabShell handles EdgeSwipeDirection.right → sanctuary tab',
+        () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+      expect(source, contains('EdgeSwipeDirection.right'));
+      expect(source, contains('_sanctuaryTabIndex'));
+    });
+  }); // end cross-tab swipe group
+} // end main()
 
 class _TrackingWakeLockRepository implements WakeLockRepository {
   _TrackingWakeLockRepository(this._calls);
