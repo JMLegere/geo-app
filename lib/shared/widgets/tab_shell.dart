@@ -8,6 +8,8 @@ import 'package:earth_nova/features/profile/presentation/screens/settings_screen
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
+import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
+import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
@@ -30,6 +32,7 @@ class TabShell extends ConsumerStatefulWidget {
 class _TabShellState extends ConsumerState<TabShell>
     with WidgetsBindingObserver {
   int _currentIndex = _mapTabIndex;
+  bool _debugOverlayVisible = false;
 
   late final List<Widget> _screens;
 
@@ -95,6 +98,8 @@ class _TabShellState extends ConsumerState<TabShell>
       ref.read(wakeLockProvider.notifier).obs.log(event, category, data: data);
     }
 
+    final debugMode = ref.watch(debugModeProvider);
+
     return ObservableScreen(
       screenName: 'tab_shell',
       observability: obs,
@@ -105,6 +110,7 @@ class _TabShellState extends ConsumerState<TabShell>
               index: _currentIndex,
               children: _screens,
             ),
+            if (debugMode && _debugOverlayVisible) const DebugGestureOverlay(),
           ],
         ),
         bottomNavigationBar: Stack(
@@ -133,6 +139,27 @@ class _TabShellState extends ConsumerState<TabShell>
                     icon: Icon(Icons.settings), label: 'Settings'),
               ],
             ),
+            if (debugMode)
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: IconButton(
+                  key: const Key('debug_nav_button'),
+                  icon: Icon(
+                    Icons.bug_report,
+                    size: 20,
+                    color: _debugOverlayVisible
+                        ? const Color(0xFF006D77)
+                        : const Color(0xFFADB5BD),
+                  ),
+                  onPressed: () => setState(
+                      () => _debugOverlayVisible = !_debugOverlayVisible),
+                  tooltip: 'Debug overlay',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                ),
+              ),
           ],
         ),
       ),

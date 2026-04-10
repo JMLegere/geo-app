@@ -7,6 +7,7 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
@@ -21,6 +22,11 @@ class _FakeWakeLockRepository implements WakeLockRepository {
 
 class _TestObservabilityService extends ObservabilityService {
   _TestObservabilityService() : super(sessionId: 'test-session');
+}
+
+class _TrueDebugMode extends DebugModeNotifier {
+  @override
+  bool build() => true;
 }
 
 class _FalseDebugMode extends DebugModeNotifier {
@@ -286,6 +292,88 @@ void main() {
 
       // Should have no transitions (already on Map tab)
       expect(transitions.where((t) => t['from_screen'] == 'map').length, 0);
+    });
+
+    testWidgets(
+        'debug nav button appears when debug mode is on and toggles overlay',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _TrueDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Bug icon button is present when debug mode is on.
+      expect(find.byKey(const Key('debug_nav_button')), findsOneWidget);
+
+      // Overlay is hidden initially.
+      expect(find.byType(DebugGestureOverlay), findsNothing);
+
+      // Tap the bug icon — overlay appears.
+      await tester.tap(find.byKey(const Key('debug_nav_button')));
+      await tester.pump();
+      expect(find.byType(DebugGestureOverlay), findsOneWidget);
+
+      // Tap again — overlay disappears.
+      await tester.tap(find.byKey(const Key('debug_nav_button')));
+      await tester.pump();
+      expect(find.byType(DebugGestureOverlay), findsNothing);
+    });
+
+    testWidgets('debug nav button is absent when debug mode is off',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('debug_nav_button')), findsNothing);
+      expect(find.byType(DebugGestureOverlay), findsNothing);
     });
 
     testWidgets('releases wake lock when app is paused', (tester) async {
