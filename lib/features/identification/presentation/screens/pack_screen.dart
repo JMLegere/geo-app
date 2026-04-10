@@ -18,7 +18,14 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 /// Pack screen — responsive grid of discovered species with collapsible
 /// filter panel and compact filter bar.
 class PackScreen extends ConsumerStatefulWidget {
-  const PackScreen({super.key});
+  const PackScreen({super.key, this.pageController});
+
+  /// Number of sub-pages (one per [ItemCategory]).
+  static int get subPageCount => ItemCategory.values.length;
+
+  /// Optional external [PageController]. When provided, [PackScreen] will
+  /// attach to it but will NOT dispose it on unmount — the caller owns it.
+  final PageController? pageController;
 
   @override
   ConsumerState<PackScreen> createState() => _PackScreenState();
@@ -30,13 +37,24 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   PackFilterState _filters = const PackFilterState();
   bool _panelExpanded = false;
   String _searchQuery = '';
-  late final PageController _pageController = PageController();
+
+  /// True when this widget created the controller and is responsible for
+  /// disposing it. False when the controller was injected by the caller.
+  late final bool _ownsController;
+  late final PageController _pageController;
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
   @override
   void initState() {
     super.initState();
+    if (widget.pageController != null) {
+      _ownsController = false;
+      _pageController = widget.pageController!;
+    } else {
+      _ownsController = true;
+      _pageController = PageController();
+    }
     _pageController.addListener(_onPageScrolled);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(itemsProvider.notifier).fetchItems();
@@ -45,7 +63,10 @@ class _PackScreenState extends ConsumerState<PackScreen> {
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController.removeListener(_onPageScrolled);
+    if (_ownsController) {
+      _pageController.dispose();
+    }
     super.dispose();
   }
 

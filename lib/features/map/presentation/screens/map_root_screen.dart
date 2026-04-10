@@ -66,7 +66,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
       screenName: 'map_root_screen',
       observability: obs,
       builder: (_) => GestureDetector(
-        behavior: HitTestBehavior.deferToChild,
+        behavior: HitTestBehavior.translucent,
         onScaleStart: (_) => _lastScale = 1,
         onScaleUpdate: (details) => _lastScale = details.scale,
         onScaleEnd: ObservableInteraction.wrapScaleEnd(
