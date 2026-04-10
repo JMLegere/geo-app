@@ -4,6 +4,12 @@ import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:earth_nova/features/map/presentation/providers/map_controller_provider.dart';
 import 'package:earth_nova/shared/debug/gesture_injector.dart';
 
+/// Camera animation callback — matches [maplibre.MapLibreMapController.animateCamera].
+///
+/// Abstracted here so [DebugGestureOverlay] can be tested without a real
+/// platform-backed [maplibre.MapLibreMapController].
+typedef CameraAnimator = Future<bool?> Function(maplibre.CameraUpdate);
+
 // ─── Colour palette ───────────────────────────────────────────────────────────
 // Hardcoded to decouple debug tooling from AppTheme.
 // Mirrors: surfaceContainerHighest · tertiary · onSurfaceVariant · outline · primary
@@ -61,22 +67,22 @@ class _DefaultInjector implements GestureInjectorInterface {
 // native WebGL canvas. Pinch/spread/doubleTap keep using pointer injection
 // because those gestures are caught by Flutter's ScaleGestureRecognizer.
 class _MapControllerInjector implements GestureInjectorInterface {
-  const _MapControllerInjector(this._controller);
+  const _MapControllerInjector(this._animate);
 
-  final maplibre.MapLibreMapController _controller;
+  final CameraAnimator _animate;
 
   @override
   Future<void> swipeUp(Offset center, double distance) =>
-      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(0, -distance));
+      _animate(maplibre.CameraUpdate.scrollBy(0, -distance));
   @override
   Future<void> swipeDown(Offset center, double distance) =>
-      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(0, distance));
+      _animate(maplibre.CameraUpdate.scrollBy(0, distance));
   @override
   Future<void> swipeLeft(Offset center, double distance) =>
-      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(-distance, 0));
+      _animate(maplibre.CameraUpdate.scrollBy(-distance, 0));
   @override
   Future<void> swipeRight(Offset center, double distance) =>
-      _controller.animateCamera(maplibre.CameraUpdate.scrollBy(distance, 0));
+      _animate(maplibre.CameraUpdate.scrollBy(distance, 0));
   @override
   Future<void> pinch(Offset center, double distance) =>
       GestureInjector.pinch(center, distance);
@@ -92,9 +98,15 @@ class DebugGestureOverlay extends ConsumerStatefulWidget {
   const DebugGestureOverlay({
     super.key,
     GestureInjectorInterface? injector,
-  }) : _injector = injector ?? const _DefaultInjector();
+    @visibleForTesting CameraAnimator? cameraAnimatorForTest,
+  })  : _injector = injector ?? const _DefaultInjector(),
+        _cameraAnimatorForTest = cameraAnimatorForTest;
 
   final GestureInjectorInterface _injector;
+
+  /// Test seam: supply a [CameraAnimator] directly to exercise
+  /// [_MapControllerInjector] without a real [maplibre.MapLibreMapController].
+  final CameraAnimator? _cameraAnimatorForTest;
 
   @override
   ConsumerState<DebugGestureOverlay> createState() =>
@@ -140,8 +152,10 @@ class _DebugGestureOverlayState extends ConsumerState<DebugGestureOverlay> {
     // Use controller-backed swipe panning when the map is active; fall back to
     // pointer injection (test-seam / no-map contexts).
     final mapController = ref.watch(mapControllerProvider);
-    final injector = mapController != null
-        ? _MapControllerInjector(mapController)
+    final cameraAnimator =
+        widget._cameraAnimatorForTest ?? mapController?.animateCamera;
+    final injector = cameraAnimator != null
+        ? _MapControllerInjector(cameraAnimator)
         : widget._injector;
 
     return Positioned(

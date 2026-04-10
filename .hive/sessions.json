@@ -282,8 +282,8 @@
     {
       "sessionId": "ses_296571df8ffeqOn1WTpwuqW4OA",
       "startedAt": "2026-04-08T03:06:14.818Z",
-      "lastActiveAt": "2026-04-09T00:42:44.856Z",
-      "directivePrompt": "execute with hive",
+      "lastActiveAt": "2026-04-10T00:46:31.820Z",
+      "directivePrompt": "continue",
       "agent": "hive-master",
       "sessionKind": "primary",
       "baseAgent": "hive-master",
