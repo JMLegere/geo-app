@@ -22,12 +22,13 @@ class ProvinceScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final userId =
         authState.status == AuthStatus.authenticated ? authState.user!.id : '';
-    final provider = hierarchyScopeProvider((
-      level: MapLevel.state,
-      scopeId: scopeId,
-      userId: userId,
-    ));
-    final hierarchyState = ref.watch(provider);
+    final hierarchyState = ref.watch(
+      hierarchyScopeProvider((
+        level: MapLevel.state,
+        scopeId: scopeId,
+        userId: userId,
+      )),
+    );
 
     return ObservableScreen(
       screenName: 'province_screen',
