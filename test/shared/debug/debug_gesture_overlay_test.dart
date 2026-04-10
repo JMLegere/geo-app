@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 
 class _FakeInjector implements GestureInjectorInterface {
@@ -50,12 +52,14 @@ class _FakeInjector implements GestureInjectorInterface {
 }
 
 Widget _wrap(_FakeInjector injector) {
-  return MaterialApp(
-    home: Scaffold(
-      body: Stack(
-        children: [
-          DebugGestureOverlay(injector: injector),
-        ],
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        body: Stack(
+          children: [
+            DebugGestureOverlay(injector: injector),
+          ],
+        ),
       ),
     ),
   );
@@ -161,9 +165,11 @@ void main() {
       // Uses _DefaultInjector (no injector param) — exercises all delegation
       // methods that forward to GestureInjector static calls.
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Stack(children: [const DebugGestureOverlay()]),
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: Stack(children: [const DebugGestureOverlay()]),
+            ),
           ),
         ),
       );
@@ -187,18 +193,20 @@ void main() {
     testWidgets('does not throw when MediaQuery is absent', (tester) async {
       final injector = _FakeInjector();
       await tester.pumpWidget(
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Overlay(
-            initialEntries: [
-              OverlayEntry(
-                builder: (_) => Stack(
-                  children: [
-                    DebugGestureOverlay(injector: injector),
-                  ],
+        ProviderScope(
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Overlay(
+              initialEntries: [
+                OverlayEntry(
+                  builder: (_) => Stack(
+                    children: [
+                      DebugGestureOverlay(injector: injector),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -243,6 +251,147 @@ void main() {
           reason: 'spread should use y=80 gesture target');
       expect(spreadCenter.dx, equals(size.width / 2),
           reason: 'spread should use horizontal center');
+    });
+
+    group('_MapControllerInjector (via cameraAnimatorForTest seam)', () {
+      testWidgets('swipeUp calls animateCamera with scrollBy(0, -distance)',
+          (tester) async {
+        final captured = <maplibre.CameraUpdate>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    DebugGestureOverlay(
+                      cameraAnimatorForTest: (update) async {
+                        captured.add(update);
+                        return true;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byTooltip('Up'));
+        await tester.pump();
+        expect(captured.length, 1,
+            reason: 'swipeUp should call animateCamera once');
+      });
+
+      testWidgets('swipeDown calls animateCamera with scrollBy(0, +distance)',
+          (tester) async {
+        final captured = <maplibre.CameraUpdate>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    DebugGestureOverlay(
+                      cameraAnimatorForTest: (update) async {
+                        captured.add(update);
+                        return true;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byTooltip('Down'));
+        await tester.pump();
+        expect(captured.length, 1);
+      });
+
+      testWidgets('swipeLeft calls animateCamera', (tester) async {
+        final captured = <maplibre.CameraUpdate>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    DebugGestureOverlay(
+                      cameraAnimatorForTest: (update) async {
+                        captured.add(update);
+                        return true;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byTooltip('Left'));
+        await tester.pump();
+        expect(captured.length, 1);
+      });
+
+      testWidgets('swipeRight calls animateCamera', (tester) async {
+        final captured = <maplibre.CameraUpdate>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    DebugGestureOverlay(
+                      cameraAnimatorForTest: (update) async {
+                        captured.add(update);
+                        return true;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byTooltip('Right'));
+        await tester.pump();
+        expect(captured.length, 1);
+      });
+
+      testWidgets(
+          'pinch/spread/doubleTap use pointer injection (not animateCamera)',
+          (tester) async {
+        final captured = <maplibre.CameraUpdate>[];
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: Stack(
+                  children: [
+                    DebugGestureOverlay(
+                      cameraAnimatorForTest: (update) async {
+                        captured.add(update);
+                        return true;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        for (final tooltip in ['Pinch', 'Spread', 'DblTap']) {
+          await tester.tap(find.byTooltip(tooltip));
+          await tester.pump();
+        }
+
+        expect(captured, isEmpty,
+            reason: 'pinch/spread/doubleTap bypass animateCamera');
+      });
     });
   });
 }
