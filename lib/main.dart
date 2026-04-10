@@ -43,6 +43,7 @@ import 'package:earth_nova/features/map/presentation/providers/map_level_provide
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/shared/debug/debug_level_param.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
@@ -181,7 +182,22 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).restoreSession();
+      _applyDebugLevelParam();
     });
+  }
+
+  /// Reads `?level=<name>` from the URL and jumps to that map level.
+  /// Only active when debug mode is enabled — no-op in production.
+  /// Supported values: cell, district, city, state, country, world.
+  void _applyDebugLevelParam() {
+    if (!kIsWeb) return;
+    if (!ref.read(debugModeProvider)) return;
+
+    final param = Uri.base.queryParameters['level'];
+    final level = debugLevelFromParam(param);
+    if (level == null) return;
+
+    ref.read(mapLevelProvider.notifier).jumpTo(level);
   }
 
   @override
