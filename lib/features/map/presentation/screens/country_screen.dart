@@ -22,11 +22,11 @@ class CountryScreen extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final userId =
         authState.status == AuthStatus.authenticated ? authState.user!.id : '';
-    final provider = hierarchyScopeProvider(
+    final provider = hierarchyScopeProvider((
       level: MapLevel.country,
       scopeId: scopeId,
       userId: userId,
-    );
+    ));
     final hierarchyState = ref.watch(provider);
 
     return ObservableScreen(

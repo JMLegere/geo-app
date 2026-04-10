@@ -40,6 +40,16 @@ class HierarchyStateError extends HierarchyState {
 }
 
 // ---------------------------------------------------------------------------
+// Args typedef — record type used as family key
+// ---------------------------------------------------------------------------
+
+typedef HierarchyScopeArgs = ({
+  MapLevel level,
+  String? scopeId,
+  String userId,
+});
+
+// ---------------------------------------------------------------------------
 // Notifier — used by hierarchy screens
 // ---------------------------------------------------------------------------
 
@@ -75,6 +85,15 @@ class HierarchyScopeNotifier extends ObservableNotifier<HierarchyState> {
   }
 
   Future<void> _load() async {
+    if (_scopeId == null) {
+      await Future<void>.value();
+      transition(
+        const HierarchyStateError('No scope available for this location'),
+        'hierarchy.no_scope',
+      );
+      return;
+    }
+
     final repo = ref.read(hierarchyRepositoryProvider);
     try {
       final results = await Future.wait([
@@ -111,20 +130,14 @@ class HierarchyScopeNotifier extends ObservableNotifier<HierarchyState> {
 }
 
 // ---------------------------------------------------------------------------
-// Provider factory — creates a scoped provider for a given level + scopeId
+// Provider — NotifierProvider.family keyed by HierarchyScopeArgs
 // ---------------------------------------------------------------------------
 
-NotifierProvider<HierarchyScopeNotifier, HierarchyState>
-    hierarchyScopeProvider({
-  required MapLevel level,
-  required String? scopeId,
-  required String userId,
-}) {
-  return NotifierProvider<HierarchyScopeNotifier, HierarchyState>(
-    () => HierarchyScopeNotifier(
-      level: level,
-      scopeId: scopeId,
-      userId: userId,
-    ),
-  );
-}
+final hierarchyScopeProvider = NotifierProvider.family<HierarchyScopeNotifier,
+    HierarchyState, HierarchyScopeArgs>(
+  (arg) => HierarchyScopeNotifier(
+    level: arg.level,
+    scopeId: arg.scopeId,
+    userId: arg.userId,
+  ),
+);
