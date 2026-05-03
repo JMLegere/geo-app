@@ -35,7 +35,7 @@ import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart'
 }
 
 void main() {
-  group('_PlayerMarkerPainter / _latLngToScreen math', () {
+  group('MapScreen projection math', () {
     test('same position produces zero offset', () {
       final delta = latLngToScreenDelta(
         coordLat: 37.7749,
@@ -97,7 +97,11 @@ void main() {
       final cell = Cell(
         id: 'test-cell-123',
         habitats: [Habitat.forest, Habitat.mountain],
-        polygons: [[[(lat: 37.7749, lng: -122.4194)]]],
+        polygons: [
+          [
+            [(lat: 37.7749, lng: -122.4194)]
+          ]
+        ],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',
@@ -256,10 +260,52 @@ void main() {
       expect(mapSource, contains('myLocationEnabled: false'));
       expect(
         mapSource,
-        contains('myLocationTrackingMode: maplibre.MyLocationTrackingMode.none'),
+        contains(
+            'myLocationTrackingMode: maplibre.MyLocationTrackingMode.none'),
       );
       expect(mapSource, contains('child: PlayerMarker()'));
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
+    });
+
+    test('uses map layout constraints for overlay projection math', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('body: LayoutBuilder('));
+      expect(mapSource, contains('final mapSize = constraints.biggest'));
+      expect(
+        mapSource,
+        isNot(contains('MediaQuery.of(context).size')),
+        reason:
+            'Map overlay math must use actual map body constraints, not full viewport.',
+      );
+    });
+
+    test('moves MapLibre attribution out of the bottom overlay area', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(
+        mapSource,
+        contains('attributionButtonPosition:'),
+      );
+      expect(
+        mapSource,
+        contains('maplibre.AttributionButtonPosition.topRight'),
+      );
+      expect(mapSource, contains('attributionButtonMargins: const math.Point'));
+    });
+
+    test('uses controlled encounter toast instead of Scaffold snackbar', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_EncounterToast('));
+      expect(mapSource, isNot(contains('showSnackBar')));
+      expect(mapSource, isNot(contains('SnackBar(')));
     });
   });
 }
