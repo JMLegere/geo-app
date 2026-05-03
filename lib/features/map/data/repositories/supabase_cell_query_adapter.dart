@@ -31,7 +31,7 @@ class SupabaseCellQueryAdapter implements CellQueryPort {
 
     return response
         .map((json) => CellDto.fromJson(json).toDomain())
-        .where((cell) => cell.polygon.isNotEmpty)
+        .where((cell) => cell.hasRenderableGeometry)
         .toList(growable: false);
   }
 

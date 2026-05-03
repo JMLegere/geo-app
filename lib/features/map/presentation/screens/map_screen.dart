@@ -494,17 +494,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     double closestDistance = double.infinity;
 
     for (final cell in mapState.cells) {
-      if (cell.polygon.isEmpty) continue;
+      final exteriorPoints = cell.exteriorPoints;
+      if (exteriorPoints.isEmpty) continue;
 
-      // Calculate cell center in screen coordinates
       double sumLat = 0;
       double sumLng = 0;
-      for (final coord in cell.polygon) {
+      for (final coord in exteriorPoints) {
         sumLat += coord.lat;
         sumLng += coord.lng;
       }
-      final centerLat = sumLat / cell.polygon.length;
-      final centerLng = sumLng / cell.polygon.length;
+      final centerLat = sumLat / exteriorPoints.length;
+      final centerLng = sumLng / exteriorPoints.length;
 
       final screenPos = _latLngToScreen(
         (lat: centerLat, lng: centerLng),

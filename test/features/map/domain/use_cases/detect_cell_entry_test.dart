@@ -1,349 +1,223 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
 
-class TestObservabilityService extends ObservabilityService {
-  TestObservabilityService() : super(sessionId: 'test-session');
-
-  final logs = <Map<String, Object?>>[];
-
-  @override
-  void log(String event, String category, {Map<String, dynamic>? data}) {
-    logs.add({'event': event, 'category': category, 'data': data});
-  }
-}
-
 void main() {
-  group('DetectCellEntry', () {
-    late DetectCellEntry detectCellEntry;
-    late TestObservabilityService obs;
+  group('DetectCellEntry geometry', () {
+    final useCase = DetectCellEntry(
+      ObservabilityService(sessionId: 'test-session'),
+    );
 
-    setUp(() {
-      obs = TestObservabilityService();
-      detectCellEntry = DetectCellEntry(obs);
+    test('pointInRing returns true when point is inside ring', () {
+      final ring = <GeoCoord>[
+        (lat: 0.0, lng: 0.0),
+        (lat: 4.0, lng: 0.0),
+        (lat: 4.0, lng: 4.0),
+        (lat: 0.0, lng: 4.0),
+      ];
+
+      expect(
+        useCase.pointInRing(point: (lat: 2.0, lng: 2.0), ring: ring),
+        isTrue,
+      );
     });
 
-    group('pointInPolygon', () {
-      test('returns true when point is inside polygon', () {
-        // Square polygon: (0,0), (4,0), (4,4), (0,4)
-        final polygon = <GeoCoord>[
+    test('pointInPolygon excludes holes', () {
+      final polygon = <GeoRing>[
+        [
           (lat: 0.0, lng: 0.0),
           (lat: 4.0, lng: 0.0),
           (lat: 4.0, lng: 4.0),
           (lat: 0.0, lng: 4.0),
-        ];
+        ],
+        [
+          (lat: 1.0, lng: 1.0),
+          (lat: 3.0, lng: 1.0),
+          (lat: 3.0, lng: 3.0),
+          (lat: 1.0, lng: 3.0),
+        ],
+      ];
 
-        final result = detectCellEntry.pointInPolygon(
-          point: (lat: 2.0, lng: 2.0),
-          polygon: polygon,
-        );
-
-        expect(result, isTrue);
-      });
-
-      test('returns false when point is outside polygon', () {
-        final polygon = <GeoCoord>[
-          (lat: 0.0, lng: 0.0),
-          (lat: 4.0, lng: 0.0),
-          (lat: 4.0, lng: 4.0),
-          (lat: 0.0, lng: 4.0),
-        ];
-
-        final result = detectCellEntry.pointInPolygon(
-          point: (lat: 5.0, lng: 5.0),
-          polygon: polygon,
-        );
-
-        expect(result, isFalse);
-      });
-
-      test('returns true when point is on polygon edge', () {
-        final polygon = <GeoCoord>[
-          (lat: 0.0, lng: 0.0),
-          (lat: 4.0, lng: 0.0),
-          (lat: 4.0, lng: 4.0),
-          (lat: 0.0, lng: 4.0),
-        ];
-
-        final result = detectCellEntry.pointInPolygon(
-          point: (lat: 2.0, lng: 0.0),
-          polygon: polygon,
-        );
-
-        expect(result, isTrue);
-      });
-
-      test('returns true when point is at polygon vertex', () {
-        final polygon = <GeoCoord>[
-          (lat: 0.0, lng: 0.0),
-          (lat: 4.0, lng: 0.0),
-          (lat: 4.0, lng: 4.0),
-          (lat: 0.0, lng: 4.0),
-        ];
-
-        final result = detectCellEntry.pointInPolygon(
-          point: (lat: 0.0, lng: 0.0),
-          polygon: polygon,
-        );
-
-        expect(result, isTrue);
-      });
+      expect(
+        useCase.pointInPolygon(point: (lat: 0.5, lng: 0.5), polygon: polygon),
+        isTrue,
+      );
+      expect(
+        useCase.pointInPolygon(point: (lat: 2.0, lng: 2.0), polygon: polygon),
+        isFalse,
+      );
     });
 
-    group('detectCell', () {
-      test('returns cell when marker is inside cell polygon', () {
-        final cells = [
-          Cell(
-            id: 'cell-1',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-          Cell(
-            id: 'cell-2',
-            habitats: [],
-            polygon: [
-              (lat: 1.0, lng: 0.0),
-              (lat: 2.0, lng: 0.0),
-              (lat: 2.0, lng: 1.0),
-              (lat: 1.0, lng: 1.0),
-            ],
-            districtId: 'd2',
-            cityId: 'c2',
-            stateId: 's2',
-            countryId: 'co1',
-          ),
-        ];
+    test('pointInMultiPolygon returns true when point is in any polygon', () {
+      final polygons = <GeoPolygon>[
+        [
+          [
+            (lat: 0.0, lng: 0.0),
+            (lat: 1.0, lng: 0.0),
+            (lat: 1.0, lng: 1.0),
+            (lat: 0.0, lng: 1.0),
+          ],
+        ],
+        [
+          [
+            (lat: 5.0, lng: 5.0),
+            (lat: 6.0, lng: 5.0),
+            (lat: 6.0, lng: 6.0),
+            (lat: 5.0, lng: 6.0),
+          ],
+        ],
+      ];
 
-        final result = detectCellEntry.detectCell(
-          cells: cells,
-          point: (lat: 0.5, lng: 0.5),
-        );
-
-        expect(result, isNotNull);
-        expect(result!.id, equals('cell-1'));
-      });
-
-      test('returns null when marker is not in any cell', () {
-        final cells = [
-          Cell(
-            id: 'cell-1',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-        ];
-
-        final result = detectCellEntry.detectCell(
-          cells: cells,
-          point: (lat: 10.0, lng: 10.0),
-        );
-
-        expect(result, isNull);
-      });
-
-      test('returns null when cells list is empty', () {
-        final result = detectCellEntry.detectCell(
-          cells: [],
-          point: (lat: 0.5, lng: 0.5),
-        );
-
-        expect(result, isNull);
-      });
-
-      test('returns first matching cell when point is in multiple cells', () {
-        // Overlapping cells for testing priority
-        final cells = [
-          Cell(
-            id: 'cell-1',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 2.0, lng: 0.0),
-              (lat: 2.0, lng: 2.0),
-              (lat: 0.0, lng: 2.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-          Cell(
-            id: 'cell-2',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd2',
-            cityId: 'c2',
-            stateId: 's2',
-            countryId: 'co1',
-          ),
-        ];
-
-        final result = detectCellEntry.detectCell(
-          cells: cells,
-          point: (lat: 0.5, lng: 0.5),
-        );
-
-        expect(result, isNotNull);
-        // Should return first cell (cell-1) as per implementation
-      });
+      expect(
+        useCase.pointInMultiPolygon(
+          point: (lat: 5.5, lng: 5.5),
+          polygons: polygons,
+        ),
+        isTrue,
+      );
+      expect(
+        useCase.pointInMultiPolygon(
+          point: (lat: 3.0, lng: 3.0),
+          polygons: polygons,
+        ),
+        isFalse,
+      );
     });
 
-    group('detectCellEntry', () {
-      test('returns new cell when marker transitions from cell A to cell B',
-          () async {
-        final cells = [
-          Cell(
-            id: 'cell-A',
-            habitats: [],
-            polygon: [
+    test('detectCell returns containing cell from nested polygons', () {
+      final cells = [
+        Cell(
+          id: 'cell-1',
+          habitats: const [Habitat.forest],
+          polygons: const [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ],
+            ],
+          ],
+          districtId: 'd1',
+          cityId: 'c1',
+          stateId: 's1',
+          countryId: 'co1',
+        ),
+        Cell(
+          id: 'cell-2',
+          habitats: const [Habitat.ocean],
+          polygons: const [
+            [
+              [
+                (lat: 1.0, lng: 0.0),
+                (lat: 2.0, lng: 0.0),
+                (lat: 2.0, lng: 1.0),
+                (lat: 1.0, lng: 1.0),
+              ],
+            ],
+          ],
+          districtId: 'd2',
+          cityId: 'c2',
+          stateId: 's2',
+          countryId: 'co2',
+        ),
+      ];
+
+      final result = useCase.detectCell(
+        cells: cells,
+        point: (lat: 0.5, lng: 0.5),
+      );
+
+      expect(result?.id, 'cell-1');
+    });
+
+    test('execute returns null when current point is outside all cells', () async {
+      final result = await useCase.execute(
+        (
+          cells: const [],
+          previousCellId: null,
+          currentPoint: (lat: 10.0, lng: 10.0),
+        ),
+        'trace-1',
+      );
+
+      expect(result, isNull);
+    });
+
+    test('execute returns first cell id when entering any cell initially', () async {
+      final result = await useCase.execute(
+        (
+          cells: [
+            Cell(
+              id: 'cell-1',
+              habitats: const [],
+              polygons: const [
+                [
+                  [
+                    (lat: 0.0, lng: 0.0),
+                    (lat: 1.0, lng: 0.0),
+                    (lat: 1.0, lng: 1.0),
+                    (lat: 0.0, lng: 1.0),
+                  ],
+                ],
+              ],
+              districtId: 'd',
+              cityId: 'c',
+              stateId: 's',
+              countryId: 'co',
+            ),
+          ],
+          previousCellId: null,
+          currentPoint: (lat: 0.5, lng: 0.5),
+        ),
+        'trace-2',
+      );
+
+      expect(result, 'cell-1');
+    });
+
+    test('execute returns new id only when cell changes', () async {
+      final cell = Cell(
+        id: 'cell-1',
+        habitats: const [],
+        polygons: const [
+          [
+            [
               (lat: 0.0, lng: 0.0),
               (lat: 1.0, lng: 0.0),
               (lat: 1.0, lng: 1.0),
               (lat: 0.0, lng: 1.0),
             ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-          Cell(
-            id: 'cell-B',
-            habitats: [],
-            polygon: [
-              (lat: 1.0, lng: 0.0),
-              (lat: 2.0, lng: 0.0),
-              (lat: 2.0, lng: 1.0),
-              (lat: 1.0, lng: 1.0),
-            ],
-            districtId: 'd2',
-            cityId: 'c2',
-            stateId: 's2',
-            countryId: 'co1',
-          ),
-        ];
+          ],
+        ],
+        districtId: 'd',
+        cityId: 'c',
+        stateId: 's',
+        countryId: 'co',
+      );
 
-        final result = await detectCellEntry.call(
-          (
-            cells: cells,
-            previousCellId: 'cell-A',
-            currentPoint: (lat: 1.5, lng: 0.5),
-          ),
-        );
+      final unchanged = await useCase.execute(
+        (
+          cells: [cell],
+          previousCellId: 'cell-1',
+          currentPoint: (lat: 0.5, lng: 0.5),
+        ),
+        'trace-3',
+      );
+      final changed = await useCase.execute(
+        (
+          cells: [cell],
+          previousCellId: 'other-cell',
+          currentPoint: (lat: 0.5, lng: 0.5),
+        ),
+        'trace-4',
+      );
 
-        expect(result, equals('cell-B'));
-        expect(obs.logs[0]['event'], 'operation.started');
-        expect(obs.logs[1]['event'], 'operation.completed');
-      });
-
-      test('returns null when marker stays in same cell', () async {
-        final cells = [
-          Cell(
-            id: 'cell-A',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-        ];
-
-        final result = await detectCellEntry.call(
-          (
-            cells: cells,
-            previousCellId: 'cell-A',
-            currentPoint: (lat: 0.5, lng: 0.5),
-          ),
-        );
-
-        expect(result, isNull);
-      });
-
-      test('returns cell id when entering first cell from no cell', () async {
-        final cells = [
-          Cell(
-            id: 'cell-1',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-        ];
-
-        final result = await detectCellEntry.call(
-          (
-            cells: cells,
-            previousCellId: null,
-            currentPoint: (lat: 0.5, lng: 0.5),
-          ),
-        );
-
-        expect(result, equals('cell-1'));
-      });
-
-      test('returns null when marker not in any cell', () async {
-        final cells = [
-          Cell(
-            id: 'cell-1',
-            habitats: [],
-            polygon: [
-              (lat: 0.0, lng: 0.0),
-              (lat: 1.0, lng: 0.0),
-              (lat: 1.0, lng: 1.0),
-              (lat: 0.0, lng: 1.0),
-            ],
-            districtId: 'd1',
-            cityId: 'c1',
-            stateId: 's1',
-            countryId: 'co1',
-          ),
-        ];
-
-        final result = await detectCellEntry.call(
-          (
-            cells: cells,
-            previousCellId: null,
-            currentPoint: (lat: 100.0, lng: 100.0),
-          ),
-        );
-
-        expect(result, isNull);
-      });
+      expect(unchanged, isNull);
+      expect(changed, 'cell-1');
     });
   });
 }

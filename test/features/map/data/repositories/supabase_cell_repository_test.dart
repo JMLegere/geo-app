@@ -88,9 +88,9 @@ void main() {
       expect(cell.id, 'cell_forest_1');
       expect(cell.habitats.map((h) => h.name),
           containsAll(['forest', 'freshwater']));
-      expect(cell.polygon, hasLength(4));
-      expect(cell.polygon.first.lat, 45.0);
-      expect(cell.polygon.first.lng, -66.0);
+      expect(cell.polygons.first.first, hasLength(4));
+      expect(cell.polygons.first.first.first.lat, 45.0);
+      expect(cell.polygons.first.first.first.lng, -66.0);
       expect(cell.districtId, 'district_downtown');
       expect(cell.cityId, 'city_fredericton');
       expect(cell.stateId, 'state_nb');

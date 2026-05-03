@@ -97,7 +97,7 @@ void main() {
       final cell = Cell(
         id: 'test-cell-123',
         habitats: [Habitat.forest, Habitat.mountain],
-        polygon: [(lat: 37.7749, lng: -122.4194)],
+        polygons: [[[(lat: 37.7749, lng: -122.4194)]]],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',

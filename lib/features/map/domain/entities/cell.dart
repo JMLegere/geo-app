@@ -3,12 +3,15 @@ import 'dart:ui';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 
 typedef GeoCoord = ({double lat, double lng});
+typedef GeoRing = List<GeoCoord>;
+typedef GeoPolygon = List<GeoRing>;
+typedef GeoMultiPolygon = List<GeoPolygon>;
 
 class Cell {
   const Cell({
     required this.id,
     required this.habitats,
-    required this.polygon,
+    required this.polygons,
     required this.districtId,
     required this.cityId,
     required this.stateId,
@@ -17,11 +20,29 @@ class Cell {
 
   final String id;
   final List<Habitat> habitats;
-  final List<GeoCoord> polygon;
+  final GeoMultiPolygon polygons;
   final String districtId;
   final String cityId;
   final String stateId;
   final String countryId;
+
+  bool get hasRenderableGeometry => polygons.any(
+        (polygon) => polygon.isNotEmpty && polygon.first.length >= 3,
+      );
+
+  GeoRing get primaryExteriorRing {
+    for (final polygon in polygons) {
+      if (polygon.isNotEmpty && polygon.first.length >= 3) {
+        return polygon.first;
+      }
+    }
+    return const [];
+  }
+
+  List<GeoCoord> get exteriorPoints => [
+        for (final polygon in polygons)
+          if (polygon.isNotEmpty) ...polygon.first,
+      ];
 
   Color get blendedColor => Habitat.blendHabitats(habitats);
 
@@ -32,7 +53,7 @@ class Cell {
           runtimeType == other.runtimeType &&
           id == other.id &&
           _listEquals(habitats, other.habitats) &&
-          _geoCoordListEquals(polygon, other.polygon) &&
+          _multiPolygonEquals(polygons, other.polygons) &&
           districtId == other.districtId &&
           cityId == other.cityId &&
           stateId == other.stateId &&
@@ -42,7 +63,17 @@ class Cell {
   int get hashCode => Object.hashAll([
         id,
         habitats.join(','),
-        polygon.map((p) => '${p.lat},${p.lng}').join(';'),
+        polygons
+            .map(
+              (polygon) => polygon
+                  .map(
+                    (ring) => ring
+                        .map((p) => '${p.lat},${p.lng}')
+                        .join(';'),
+                  )
+                  .join('|'),
+            )
+            .join('||'),
         districtId,
         cityId,
         stateId,
@@ -62,6 +93,22 @@ bool _geoCoordListEquals(List<GeoCoord> a, List<GeoCoord> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i].lat != b[i].lat || a[i].lng != b[i].lng) return false;
+  }
+  return true;
+}
+
+bool _polygonEquals(GeoPolygon a, GeoPolygon b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!_geoCoordListEquals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+bool _multiPolygonEquals(GeoMultiPolygon a, GeoMultiPolygon b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!_polygonEquals(a[i], b[i])) return false;
   }
   return true;
 }

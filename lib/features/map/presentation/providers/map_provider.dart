@@ -144,7 +144,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
       final cells = results[0] as List<Cell>;
       final visitedIds = results[1] as Set<String>;
 
-      final withPolygon = cells.where((c) => c.polygon.isNotEmpty).length;
+      final withPolygon = cells.where((c) => c.hasRenderableGeometry).length;
       transition(
         MapStateReady(
           cells: cells,

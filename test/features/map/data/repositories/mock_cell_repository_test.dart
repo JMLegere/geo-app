@@ -7,7 +7,7 @@ import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart
 Cell _testCell(String id) => Cell(
       id: id,
       habitats: [Habitat.forest],
-      polygon: const [(lat: 1.0, lng: 2.0)],
+      polygons: const [[[(lat: 1.0, lng: 2.0)]]],
       districtId: 'district-1',
       cityId: 'city-1',
       stateId: 'state-1',

@@ -51,7 +51,7 @@ void main() {
       ]);
       expect(cells, hasLength(1));
       expect(cells.single.id, 'cell_rpc_1');
-      expect(cells.single.polygon, hasLength(4));
+      expect(cells.single.polygons.first.first, hasLength(4));
       expect(cells.single.cityId, 'city_fredericton');
     });
 

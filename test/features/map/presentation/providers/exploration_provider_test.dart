@@ -218,12 +218,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -256,12 +256,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -294,12 +294,12 @@ void main() {
         Cell(
           id: 'cell-A',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -308,12 +308,12 @@ void main() {
         Cell(
           id: 'cell-B',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 1.0, lng: 0.0),
             (lat: 2.0, lng: 0.0),
             (lat: 2.0, lng: 1.0),
             (lat: 1.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd2',
           cityId: 'c2',
           stateId: 's2',
@@ -358,12 +358,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -394,12 +394,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -442,12 +442,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -479,12 +479,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -517,12 +517,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -554,12 +554,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -600,12 +600,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -648,12 +648,12 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygon: [
+          polygons: [[[
             (lat: 0.0, lng: 0.0),
             (lat: 1.0, lng: 0.0),
             (lat: 1.0, lng: 1.0),
             (lat: 0.0, lng: 1.0),
-          ],
+          ]]],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
