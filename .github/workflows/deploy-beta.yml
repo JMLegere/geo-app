@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
       RAILWAY_PROJECT_ID: e693a14e-316c-4280-842a-6258a048d326
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha != '' && inputs.commit_sha || github.event.workflow_run.head_sha || github.sha }}
     steps:

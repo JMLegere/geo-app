@@ -364,7 +364,7 @@ See `.env.example` for the full list. Required secrets and variables:
 | `SUPABASE_PRODUCTION_PROJECT_REF` | GitHub secret | `bfaczcsrpfcbijoaeckb` |
 | `SUPABASE_BETA_DB_PASSWORD` | GitHub secret | Enables non-interactive beta `supabase db push` |
 | `SUPABASE_PRODUCTION_DB_PASSWORD` | GitHub secret | Enables non-interactive production `supabase db push` |
-| `RAILWAY_TOKEN` | GitHub secret | Required by Railway CLI workflows |
+| `RAILWAY_API_TOKEN` | GitHub secret | Required by Railway CLI workflows |
 | `RAILWAY_PROJECT_ID` | Workflow env or secret | `e693a14e-316c-4280-842a-6258a048d326` |
 
 To rotate an anon key: update the Railway environment variable for the affected environment, then redeploy that environment.
