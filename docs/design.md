@@ -1,6 +1,8 @@
 # EarthNova v3 Design Document
 
-> The single source of truth for what we're building. Everything else points here.
+> Source of truth for the v3 MVP baseline and core product direction. For current
+> Map & Exploration execution details, use `docs/map-design.md`; that doc
+> intentionally supersedes the older MVP-era map stubs here.
 
 ---
 

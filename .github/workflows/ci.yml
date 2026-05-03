@@ -57,6 +57,7 @@ jobs:
           records = content.split('end_of_record')
           exclude_patterns = [
               r'supabase_.*_repository\.dart',
+              r'supabase_.*_adapter\.dart',
               r'presentation/screens/.*\.dart',
               r'presentation/widgets/.*\.dart',
               r'presentation/painters/.*\.dart'

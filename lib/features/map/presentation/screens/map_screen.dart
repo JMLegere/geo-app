@@ -12,6 +12,7 @@ import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
+import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
@@ -304,37 +305,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           // Cell overlay layer - drawn on top of map using Flutter Canvas
           if (mapState is MapStateReady)
             Positioned.fill(
-              child: IgnorePointer(
-                child: GestureDetector(
-                  onTapUp: ObservableInteraction.wrapTapUp(
-                    logger: logger,
-                    screenName: 'map_screen',
-                    widgetName: 'cell_overlay',
-                    actionType: 'cell_overlay_tap',
-                    callback: (details) => _onMapTap(
-                      context,
-                      details,
-                      mapState,
-                      location,
-                    ),
+              child: GestureDetector(
+                onTapUp: ObservableInteraction.wrapTapUp(
+                  logger: logger,
+                  screenName: 'map_screen',
+                  widgetName: 'cell_overlay',
+                  actionType: 'cell_overlay_tap',
+                  callback: (details) => _onMapTap(
+                    context,
+                    details,
+                    mapState,
+                    location,
                   ),
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: CellOverlayPainter(
-                      cellsWithStates: _buildCellStates(
-                        mapState.cells,
-                        mapState.visitedCellIds,
-                        explorationState.visitedCellIds,
-                      ),
-                      cameraPosition: (
-                        lat: location.lat,
-                        lng: location.lng,
-                      ),
-                      zoom: _kGpsZoom,
-                      cameraPixelOffset: Offset(
-                        MediaQuery.of(context).size.width / 2,
-                        MediaQuery.of(context).size.height / 2,
-                      ),
+                ),
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: CellOverlayPainter(
+                    cellsWithStates: _buildCellStates(
+                      mapState.cells,
+                      mapState.visitedCellIds,
+                      explorationState,
+                    ),
+                    cameraPosition: (
+                      lat: location.lat,
+                      lng: location.lng,
+                    ),
+                    zoom: _kGpsZoom,
+                    cameraPixelOffset: Offset(
+                      MediaQuery.of(context).size.width / 2,
+                      MediaQuery.of(context).size.height / 2,
                     ),
                   ),
                 ),
@@ -564,24 +563,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   List<({Cell cell, CellState state})> _buildCellStates(
     List<Cell> cells,
-    Set<String> visitedCellIds,
-    Set<String> explorationVisitedCellIds,
+    Set<String> persistedVisitedCellIds,
+    ExplorationStateData explorationState,
   ) {
-    final allVisited = {...visitedCellIds, ...explorationVisitedCellIds};
-
-    return cells.map((cell) {
-      final isVisited = allVisited.contains(cell.id);
-      final relationship =
-          isVisited ? CellRelationship.explored : CellRelationship.nearby;
-
-      return (
-        cell: cell,
-        state: CellState(
-          relationship: relationship,
-          contents: CellContents.empty,
-        ),
-      );
-    }).toList();
+    return const FogStateService().compute(
+      cells: cells,
+      currentCellId: explorationState.currentCellId,
+      persistedVisitedCellIds: persistedVisitedCellIds,
+      optimisticVisitedCellIds: explorationState.visitedCellIds,
+    );
   }
 }
 
