@@ -26,8 +26,7 @@ void main() {
       final states = service.compute(
         cells: [_cell('cell-a'), _cell('cell-b')],
         currentCellId: 'cell-a',
-        persistedVisitedCellIds: const {},
-        optimisticVisitedCellIds: const {},
+        exploredCellIds: const {},
       );
 
       final state =
@@ -35,43 +34,30 @@ void main() {
       expect(state.relationship, CellRelationship.present);
     });
 
-    test('marks persisted visited cells as explored when not present', () {
+    test('marks explored footprint cells as explored when not present', () {
       final service = FogStateService();
 
       final states = service.compute(
         cells: [_cell('cell-a')],
         currentCellId: null,
-        persistedVisitedCellIds: {'cell-a'},
-        optimisticVisitedCellIds: const {},
+        exploredCellIds: {'cell-a'},
       );
 
       expect(states.single.state.relationship, CellRelationship.explored);
     });
 
-    test('marks optimistic visited cells as explored when not present', () {
+
+
+    test('marks fetched unvisited non-present cells as frontier', () {
       final service = FogStateService();
 
       final states = service.compute(
         cells: [_cell('cell-a')],
         currentCellId: null,
-        persistedVisitedCellIds: const {},
-        optimisticVisitedCellIds: {'cell-a'},
+        exploredCellIds: const {},
       );
 
-      expect(states.single.state.relationship, CellRelationship.explored);
-    });
-
-    test('marks fetched unvisited non-present cells as nearby', () {
-      final service = FogStateService();
-
-      final states = service.compute(
-        cells: [_cell('cell-a')],
-        currentCellId: null,
-        persistedVisitedCellIds: const {},
-        optimisticVisitedCellIds: const {},
-      );
-
-      expect(states.single.state.relationship, CellRelationship.nearby);
+      expect(states.single.state.relationship, CellRelationship.frontier);
     });
 
     test('present wins over visited state', () {
@@ -80,8 +66,7 @@ void main() {
       final states = service.compute(
         cells: [_cell('cell-a')],
         currentCellId: 'cell-a',
-        persistedVisitedCellIds: {'cell-a'},
-        optimisticVisitedCellIds: const {},
+        exploredCellIds: {'cell-a'},
       );
 
       expect(states.single.state.relationship, CellRelationship.present);

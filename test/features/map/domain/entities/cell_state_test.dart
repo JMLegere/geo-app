@@ -3,18 +3,19 @@ import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 
 void main() {
   group('CellRelationship', () {
-    test('has present, explored, nearby values', () {
+    test('has present, explored, frontier, unknown values', () {
       expect(
           CellRelationship.values,
           containsAll([
             CellRelationship.present,
             CellRelationship.explored,
-            CellRelationship.nearby,
+            CellRelationship.frontier,
+            CellRelationship.unknown,
           ]));
     });
 
-    test('has exactly 3 values', () {
-      expect(CellRelationship.values.length, 3);
+    test('has exactly 4 values', () {
+      expect(CellRelationship.values.length, 4);
     });
   });
 
@@ -61,7 +62,7 @@ void main() {
         contents: CellContents.empty,
       );
       const b = CellState(
-        relationship: CellRelationship.nearby,
+        relationship: CellRelationship.frontier,
         contents: CellContents.empty,
       );
       expect(a, isNot(equals(b)));

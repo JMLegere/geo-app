@@ -10,9 +10,10 @@ class FogRenderer {
 
   static Color fillColor(CellState state) {
     return switch (state.relationship) {
-      CellRelationship.present => _presentFillColor(state.contents),
-      CellRelationship.explored => _exploredFillColor(state.contents),
-      CellRelationship.nearby => _nearbyFillColor(state.contents),
+      CellRelationship.present => _presentFillColor(),
+      CellRelationship.explored => _exploredFillColor(),
+      CellRelationship.frontier => _frontierFillColor(),
+      CellRelationship.unknown => _unknownFillColor(),
     };
   }
 
@@ -20,13 +21,18 @@ class FogRenderer {
     return switch (state.relationship) {
       CellRelationship.present => _presentStrokeColor(),
       CellRelationship.explored => _exploredStrokeColor(),
-      CellRelationship.nearby => _nearbyStrokeColor(),
+      CellRelationship.frontier => _frontierStrokeColor(),
+      CellRelationship.unknown => _unknownStrokeColor(),
     };
+  }
+
+  static bool animatesFog(CellState state) {
+    return state.relationship == CellRelationship.frontier;
   }
 
   static bool shouldRender(CellState state) {
     if (state.contents == CellContents.hasLoot) return true;
-    return state.relationship != CellRelationship.nearby ||
+    return state.relationship != CellRelationship.frontier ||
         isWithinRenderDistance(2.0);
   }
 
@@ -39,36 +45,35 @@ class FogRenderer {
     return cell.blendedColor;
   }
 
-  static Color _presentFillColor(CellContents contents) {
-    if (contents == CellContents.hasLoot) {
-      return const Color(0xFFE06D77);
-    }
-    return const Color(0xCC006D77);
+  static Color _presentFillColor() {
+    return const Color(0x00000000);
   }
 
-  static Color _exploredFillColor(CellContents contents) {
-    if (contents == CellContents.hasLoot) {
-      return const Color(0xDDE29578);
-    }
-    return const Color(0x99E29578);
+  static Color _exploredFillColor() {
+    return const Color(0x66D8C49A);
   }
 
-  static Color _nearbyFillColor(CellContents contents) {
-    if (contents == CellContents.hasLoot) {
-      return const Color(0xFF83C5BE);
-    }
-    return const Color(0x4083C5BE);
+  static Color _frontierFillColor() {
+    return const Color(0xB3000000);
+  }
+
+  static Color _unknownFillColor() {
+    return const Color(0xE6000000);
   }
 
   static Color _presentStrokeColor() {
-    return const Color(0xFF006D77);
+    return const Color(0xF2FFFFFF);
   }
 
   static Color _exploredStrokeColor() {
-    return const Color(0xAAE29578);
+    return const Color(0x99F1DEC0);
   }
 
-  static Color _nearbyStrokeColor() {
-    return const Color(0x5583C5BE);
+  static Color _frontierStrokeColor() {
+    return const Color(0xCCFFFFFF);
+  }
+
+  static Color _unknownStrokeColor() {
+    return const Color(0x66FFFFFF);
   }
 }

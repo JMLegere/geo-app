@@ -22,7 +22,7 @@ void main() {
     test('shouldRepaint returns true when cells change', () {
       final cell = _createTestCell('cell-1');
       final state = const CellState(
-        relationship: CellRelationship.nearby,
+        relationship: CellRelationship.frontier,
         contents: CellContents.empty,
       );
 
@@ -100,7 +100,7 @@ void main() {
     test('shouldRepaint returns false when nothing changes', () {
       final cell = _createTestCell('cell-1');
       final state = const CellState(
-        relationship: CellRelationship.nearby,
+        relationship: CellRelationship.frontier,
         contents: CellContents.empty,
       );
       final cellsWithStates = [(cell: cell, state: state)];

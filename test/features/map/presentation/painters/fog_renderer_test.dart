@@ -1,152 +1,93 @@
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
+
+CellState _state(CellRelationship relationship) => CellState(
+      relationship: relationship,
+      contents: CellContents.empty,
+    );
 
 void main() {
   group('FogRenderer', () {
     group('fillColor', () {
-      test('present cell returns bright fill', () {
-        const state = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        final color = FogRenderer.fillColor(state);
-        expect(color.a, greaterThan(0.5));
+      test('present/current cells are fully clear', () {
+        final color = FogRenderer.fillColor(_state(CellRelationship.present));
+
+        expect(color.a, 0.0);
       });
 
-      test('explored cell returns muted fill', () {
-        const state = CellState(
-          relationship: CellRelationship.explored,
-          contents: CellContents.empty,
-        );
-        final presentState = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        final presentColor = FogRenderer.fillColor(presentState);
-        final exploredColor = FogRenderer.fillColor(state);
-        expect(exploredColor.a, lessThan(presentColor.a));
+      test('explored cells use a faded parchment veil', () {
+        final color = FogRenderer.fillColor(_state(CellRelationship.explored));
+
+        expect(color.a, greaterThan(0.0));
+        expect(color.a, lessThan(0.5));
+        expect(color.r, greaterThan(color.b));
       });
 
-      test('nearby cell returns dark fill with light fog', () {
-        const state = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.empty,
-        );
-        final color = FogRenderer.fillColor(state);
-        expect(color.a, lessThan(0.3));
+      test('frontier cells use heavy black fog', () {
+        final color = FogRenderer.fillColor(_state(CellRelationship.frontier));
+
+        expect(color.a, greaterThan(0.65));
+        expect(color.r, 0.0);
+        expect(color.g, 0.0);
+        expect(color.b, 0.0);
       });
 
-      test('cell with loot returns fill regardless of relationship', () {
-        const presentWithLoot = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.hasLoot,
-        );
-        const nearbyWithLoot = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.hasLoot,
-        );
-        final presentColor = FogRenderer.fillColor(presentWithLoot);
-        final nearbyColor = FogRenderer.fillColor(nearbyWithLoot);
-        expect(presentColor.a, greaterThan(0.5));
-        expect(nearbyColor.a, greaterThan(0.5));
+      test('unknown cells are more opaque than frontier cells', () {
+        final frontier = FogRenderer.fillColor(_state(CellRelationship.frontier));
+        final unknown = FogRenderer.fillColor(_state(CellRelationship.unknown));
+
+        expect(unknown.a, greaterThan(frontier.a));
       });
     });
 
     group('strokeColor', () {
-      test('present cell has crisp habitat border', () {
-        const state = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        final color = FogRenderer.strokeColor(state);
-        expect(color.a, greaterThan(0.5));
+      test('all reveal states keep a visible boundary channel', () {
+        for (final relationship in CellRelationship.values) {
+          final color = FogRenderer.strokeColor(_state(relationship));
+
+          expect(color.a, greaterThan(0.0), reason: relationship.name);
+        }
       });
 
-      test('explored cell has visible habitat border', () {
-        const state = CellState(
-          relationship: CellRelationship.explored,
-          contents: CellContents.empty,
-        );
-        final color = FogRenderer.strokeColor(state);
-        expect(color.a, greaterThan(0.0));
-      });
+      test('current seam glow is stronger than explored and unknown', () {
+        final present = FogRenderer.strokeColor(_state(CellRelationship.present));
+        final explored = FogRenderer.strokeColor(_state(CellRelationship.explored));
+        final unknown = FogRenderer.strokeColor(_state(CellRelationship.unknown));
 
-      test('nearby cell has dimmed habitat border', () {
-        const state = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.empty,
-        );
-        final presentState = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        final presentColor = FogRenderer.strokeColor(presentState);
-        final nearbyColor = FogRenderer.strokeColor(state);
-        expect(nearbyColor.a, lessThan(presentColor.a));
+        expect(present.a, greaterThan(explored.a));
+        expect(present.a, greaterThan(unknown.a));
+      });
+    });
+
+    group('animation', () {
+      test('only frontier fog animates', () {
+        expect(FogRenderer.animatesFog(_state(CellRelationship.present)), isFalse);
+        expect(FogRenderer.animatesFog(_state(CellRelationship.explored)), isFalse);
+        expect(FogRenderer.animatesFog(_state(CellRelationship.frontier)), isTrue);
+        expect(FogRenderer.animatesFog(_state(CellRelationship.unknown)), isFalse);
       });
     });
 
     group('shouldRender', () {
-      test('present cell is rendered', () {
-        const state = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        expect(FogRenderer.shouldRender(state), isTrue);
+      test('all visible reveal states are renderable', () {
+        for (final relationship in CellRelationship.values) {
+          expect(
+            FogRenderer.shouldRender(_state(relationship)),
+            isTrue,
+            reason: relationship.name,
+          );
+        }
       });
 
-      test('explored cell is rendered', () {
-        const state = CellState(
-          relationship: CellRelationship.explored,
-          contents: CellContents.empty,
-        );
-        expect(FogRenderer.shouldRender(state), isTrue);
-      });
-
-      test('nearby cell is rendered', () {
-        const state = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.empty,
-        );
-        expect(FogRenderer.shouldRender(state), isTrue);
-      });
-
-      test('cell with loot is rendered regardless of state', () {
-        const nearbyWithLoot = CellState(
-          relationship: CellRelationship.nearby,
+      test('cell with loot is rendered regardless of reveal state', () {
+        const frontierWithLoot = CellState(
+          relationship: CellRelationship.frontier,
           contents: CellContents.hasLoot,
         );
-        expect(FogRenderer.shouldRender(nearbyWithLoot), isTrue);
-      });
-    });
 
-    group('renderDistance', () {
-      test('cells within render distance (~2km) are shown', () {
-        const nearbyState = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.empty,
-        );
-        expect(FogRenderer.shouldRender(nearbyState), isTrue);
-      });
-
-      test('cells beyond render distance are not rendered', () {
-        const beyondDistance = CellState(
-          relationship: CellRelationship.nearby,
-          contents: CellContents.empty,
-        );
-        expect(FogRenderer.shouldRender(beyondDistance), isTrue);
-      });
-    });
-
-    group('habitat blend', () {
-      test('habitat border color is weighted average of cell habitats', () {
-        const state = CellState(
-          relationship: CellRelationship.present,
-          contents: CellContents.empty,
-        );
-        final strokeColor = FogRenderer.strokeColor(state);
-        expect(strokeColor.a, greaterThan(0.0));
+        expect(FogRenderer.shouldRender(frontierWithLoot), isTrue);
       });
     });
   });
