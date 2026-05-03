@@ -1,0 +1,70 @@
+{
+  "schema_version": "cell-geometry-artifact/v1",
+  "source": "fixture",
+  "source_version": "fixture-minimal-v1",
+  "generated_at": "2026-05-03T00:00:00Z",
+  "generator": {
+    "name": "manual-fixture",
+    "version": "1.0.0",
+    "parameters": {
+      "purpose": "importer SQL validation only"
+    }
+  },
+  "coverage": {
+    "geometry": {
+      "type": "MultiPolygon",
+      "coordinates": [
+        [
+          [
+            [-66.65, 45.95],
+            [-66.64, 45.95],
+            [-66.64, 45.96],
+            [-66.65, 45.96],
+            [-66.65, 45.95]
+          ]
+        ]
+      ]
+    },
+    "properties": {
+      "label": "minimal fixture coverage"
+    }
+  },
+  "cells": [
+    {
+      "cell_id": "fixture-cell-1",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-66.65, 45.95],
+            [-66.645, 45.95],
+            [-66.645, 45.96],
+            [-66.65, 45.96],
+            [-66.65, 45.95]
+          ]
+        ]
+      },
+      "properties": {
+        "fixture_index": 1
+      }
+    },
+    {
+      "cell_id": "fixture-cell-2",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-66.645, 45.95],
+            [-66.64, 45.95],
+            [-66.64, 45.96],
+            [-66.645, 45.96],
+            [-66.645, 45.95]
+          ]
+        ]
+      },
+      "properties": {
+        "fixture_index": 2
+      }
+    }
+  ]
+}

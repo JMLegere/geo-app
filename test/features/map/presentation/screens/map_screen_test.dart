@@ -222,5 +222,19 @@ void main() {
       expect(mapSource, contains('ObservableScreen('));
       expect(rootSource, contains('ObservableScreen('));
     });
+
+    test('cell overlay gesture detector is not blocked by IgnorePointer', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(
+        mapSource,
+        isNot(contains(
+            'IgnorePointer(\\n                child: GestureDetector')),
+        reason:
+            'Cell overlay taps must reach the GestureDetector so cell details open.',
+      );
+    });
   });
 }
