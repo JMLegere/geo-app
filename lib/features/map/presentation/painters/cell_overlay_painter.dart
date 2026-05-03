@@ -78,8 +78,11 @@ class CellOverlayPainter extends CustomPainter {
           Paint()
             ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 4.0
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
+            ..strokeWidth = FogRenderer.seamGlowStrokeWidth(state)
+            ..maskFilter = MaskFilter.blur(
+              BlurStyle.normal,
+              FogRenderer.seamGlowBlurSigma(state),
+            ),
         );
 
         canvas.drawPath(
@@ -87,7 +90,7 @@ class CellOverlayPainter extends CustomPainter {
           Paint()
             ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5,
+            ..strokeWidth = FogRenderer.seamStrokeWidth(state),
         );
       }
 

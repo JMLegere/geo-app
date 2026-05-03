@@ -11,6 +11,7 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
@@ -84,13 +85,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
-    void logger({
-      required String event,
-      required String category,
-      Map<String, dynamic>? data,
-    }) {
-      ref.read(mapProvider.notifier).obs.log(event, category, data: data);
-    }
 
     // Move camera when GPS updates — without this, removing the location-keyed
     // ValueKey would freeze the map on its initial position.
@@ -153,37 +147,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     });
 
-    // Show encounter Snackbar when triggered
-    if (encounterState.currentEncounter != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              encounterState.currentEncounter!.type.name == 'species'
-                  ? 'You found a ${encounterState.currentEncounter!.speciesId}!'
-                  : 'A critter appeared!',
-            ),
-            backgroundColor: AppTheme.primary,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'Dismiss',
-              textColor: Colors.white,
-              onPressed: ObservableInteraction.wrapVoidCallback(
-                logger: logger,
-                screenName: 'map_screen',
-                widgetName: 'encounter_snackbar_dismiss',
-                actionType: 'snackbar_dismiss',
-                callback: () {
-                  ref.read(encounterProvider.notifier).dismissEncounter();
-                },
-              ),
-            ),
-          ),
-        );
-        ref.read(encounterProvider.notifier).dismissEncounter();
-      });
-    }
+    // Encounter notifications are rendered as an in-map overlay below so they
+    // do not fight the root bottom navigation or MapLibre attribution DOM.
 
     final effectiveLocation = switch (locationState) {
       LocationProviderActive(location: final loc) => loc,
@@ -229,6 +194,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             playerMarkerState: playerMarkerState,
             explorationEligibility: explorationEligibility,
             explorationState: explorationState,
+            encounterState: encounterState,
           ),
       },
     );
@@ -241,6 +207,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     required PlayerMarkerState playerMarkerState,
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
+    required EncounterState encounterState,
   }) {
     void logger({
       required String event,
@@ -257,225 +224,256 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
     final cellsObserved = footprint.uniqueCount;
     final visitQueueState = ref.watch(visitQueueProvider);
-    final screenSize = MediaQuery.of(context).size;
-    final screenCenter = Offset(screenSize.width / 2, screenSize.height / 2);
-    final markerScreenPosition = _latLngToScreen(
-      (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
-      (lat: location.lat, lng: location.lng),
-      _kGpsZoom,
-      screenCenter,
-    );
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
-      body: Stack(
-        children: [
-          // Base map layer — key must NOT include location data.
-          // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
-          // MapLibreMap (and its GL context) to be torn down and rebuilt on
-          // every GPS tick (~1 Hz), making the map constantly flash.
-          // Camera follow is handled via _mapController.moveCamera() above.
-          Positioned.fill(
-            child: maplibre.MapLibreMap(
-              styleString: _kMapStyleUrl,
-              initialCameraPosition: maplibre.CameraPosition(
-                target: maplibre.LatLng(location.lat, location.lng),
-                zoom: _kGpsZoom,
-              ),
-              compassEnabled: false,
-              rotateGesturesEnabled: false,
-              scrollGesturesEnabled: false,
-              zoomGesturesEnabled: false,
-              tiltGesturesEnabled: false,
-              doubleClickZoomEnabled: false,
-              dragEnabled: false,
-              myLocationEnabled: false,
-              myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
-              onMapCreated: (controller) {
-                _mapController = controller;
-                ref
-                    .read(mapProvider.notifier)
-                    .obs
-                    .log('map.map_created', 'map');
-              },
-              onStyleLoadedCallback: () {
-                ref
-                    .read(mapProvider.notifier)
-                    .obs
-                    .log('map.style_loaded', 'map');
-                ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
-              },
-            ),
-          ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final mapSize = constraints.biggest;
+          final screenCenter = Offset(mapSize.width / 2, mapSize.height / 2);
+          final markerScreenPosition = _latLngToScreen(
+            (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
+            (lat: location.lat, lng: location.lng),
+            _kGpsZoom,
+            screenCenter,
+          );
 
-          // Shimmer while loading
-          if (mapState is MapStateLoading)
-            Positioned.fill(
-              child: ShimmerCells(
-                cameraPosition: (lat: location.lat, lng: location.lng),
-                zoom: _kGpsZoom,
-              ),
-            ),
-
-          // Cell overlay layer - drawn on top of map using Flutter Canvas
-          if (mapState is MapStateReady)
-            Positioned.fill(
-              child: GestureDetector(
-                onTapUp: ObservableInteraction.wrapTapUp(
-                  logger: logger,
-                  screenName: 'map_screen',
-                  widgetName: 'cell_overlay',
-                  actionType: 'cell_overlay_tap',
-                  callback: (details) => _onMapTap(
-                    context,
-                    details,
-                    mapState,
-                    location,
-                  ),
-                ),
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: CellOverlayPainter(
-                    cellsWithStates: _buildCellStates(
-                      mapState.cells,
-                      footprint.visitedCellIds,
-                      explorationState,
-                    ),
-                    cameraPosition: (
-                      lat: location.lat,
-                      lng: location.lng,
-                    ),
+          return Stack(
+            children: [
+              // Base map layer — key must NOT include location data.
+              // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
+              // MapLibreMap (and its GL context) to be torn down and rebuilt on
+              // every GPS tick (~1 Hz), making the map constantly flash.
+              // Camera follow is handled via _mapController.moveCamera() above.
+              Positioned.fill(
+                child: maplibre.MapLibreMap(
+                  styleString: _kMapStyleUrl,
+                  initialCameraPosition: maplibre.CameraPosition(
+                    target: maplibre.LatLng(location.lat, location.lng),
                     zoom: _kGpsZoom,
-                    cameraPixelOffset: screenCenter,
+                  ),
+                  compassEnabled: false,
+                  rotateGesturesEnabled: false,
+                  scrollGesturesEnabled: false,
+                  zoomGesturesEnabled: false,
+                  tiltGesturesEnabled: false,
+                  doubleClickZoomEnabled: false,
+                  dragEnabled: false,
+                  myLocationEnabled: false,
+                  myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
+                  attributionButtonPosition:
+                      maplibre.AttributionButtonPosition.topRight,
+                  attributionButtonMargins: const math.Point(12, 96),
+                  onMapCreated: (controller) {
+                    _mapController = controller;
+                    ref
+                        .read(mapProvider.notifier)
+                        .obs
+                        .log('map.map_created', 'map');
+                  },
+                  onStyleLoadedCallback: () {
+                    ref
+                        .read(mapProvider.notifier)
+                        .obs
+                        .log('map.style_loaded', 'map');
+                    ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
+                  },
+                ),
+              ),
+
+              // Shimmer while loading
+              if (mapState is MapStateLoading)
+                Positioned.fill(
+                  child: ShimmerCells(
+                    cameraPosition: (lat: location.lat, lng: location.lng),
+                    zoom: _kGpsZoom,
                   ),
                 ),
-              ),
-            ),
 
-          // Player marker overlay — the app owns one gameplay marker.
-          if (playerMarkerState.lat != 0.0)
-            Positioned(
-              left: markerScreenPosition.dx - 24,
-              top: markerScreenPosition.dy - 24,
-              child: const IgnorePointer(
-                child: PlayerMarker(),
-              ),
-            ),
-
-          // Frosted glass status bar — overlaid at top of map
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: MapStatusBar(
-              cellsObserved: cellsObserved,
-              totalSteps: 0,
-              streakDays: 0,
-              pendingVisits: visitQueueState.pendingCount,
-            ),
-          ),
-
-          // Discovery notification — appears just below status bar on new cell entry
-          if (_notificationCellId != null)
-            Positioned(
-              top: 44 + 56 + 8,
-              left: 16,
-              right: 16,
-              child: IgnorePointer(
-                child: DiscoveryNotification(
-                  cellName: _notificationCellId!,
-                ),
-              ),
-            ),
-
-          // Loading indicator
-          if (mapState is MapStateLoading)
-            const Positioned(
-              top: 24,
-              left: 0,
-              right: 0,
-              child: Center(child: LoadingDots()),
-            ),
-
-          // Build version — bottom-left corner, visible to devs during testing
-          Positioned(
-            left: 8,
-            bottom: 8,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  child: Text(
-                    'β $_kBuildVersion',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontFamily: 'monospace',
-                      letterSpacing: 0,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Error message
-          if (mapState is MapStateError)
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 24,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.outline),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    mapState.message,
-                    style: const TextStyle(color: AppTheme.onSurface),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ),
-
-          // Discovery paused banner — shown when GPS is unavailable or ring state
-          if (explorationEligibility.isPaused)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      'Discovery paused',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+              // Cell overlay layer - drawn on top of map using Flutter Canvas
+              if (mapState is MapStateReady)
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTapUp: ObservableInteraction.wrapTapUp(
+                      logger: logger,
+                      screenName: 'map_screen',
+                      widgetName: 'cell_overlay',
+                      actionType: 'cell_overlay_tap',
+                      callback: (details) => _onMapTap(
+                        context,
+                        details,
+                        mapState,
+                        location,
+                        screenCenter,
                       ),
-                      textAlign: TextAlign.center,
+                    ),
+                    child: CustomPaint(
+                      size: Size.infinite,
+                      painter: CellOverlayPainter(
+                        cellsWithStates: _buildCellStates(
+                          mapState.cells,
+                          footprint.visitedCellIds,
+                          explorationState,
+                        ),
+                        cameraPosition: (
+                          lat: location.lat,
+                          lng: location.lng,
+                        ),
+                        zoom: _kGpsZoom,
+                        cameraPixelOffset: screenCenter,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Player marker overlay — the app owns one gameplay marker.
+              if (playerMarkerState.lat != 0.0)
+                Positioned(
+                  left: markerScreenPosition.dx - 24,
+                  top: markerScreenPosition.dy - 24,
+                  child: const IgnorePointer(
+                    child: PlayerMarker(),
+                  ),
+                ),
+
+              // Frosted glass status bar — overlaid at top of map
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: MapStatusBar(
+                  cellsObserved: cellsObserved,
+                  totalSteps: 0,
+                  streakDays: 0,
+                  pendingVisits: visitQueueState.pendingCount,
+                ),
+              ),
+
+              // Discovery notification — appears just below status bar on new cell entry
+              if (_notificationCellId != null)
+                Positioned(
+                  top: 44 + 56 + 8,
+                  left: 16,
+                  right: 16,
+                  child: IgnorePointer(
+                    child: DiscoveryNotification(
+                      cellName: _notificationCellId!,
+                    ),
+                  ),
+                ),
+
+              if (encounterState.currentEncounter != null)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 96,
+                  child: _EncounterToast(
+                    encounter: encounterState.currentEncounter!,
+                    onDismiss: ObservableInteraction.wrapVoidCallback(
+                      logger: logger,
+                      screenName: 'map_screen',
+                      widgetName: 'encounter_toast_dismiss',
+                      actionType: 'toast_dismiss',
+                      callback: () {
+                        ref.read(encounterProvider.notifier).dismissEncounter();
+                      },
+                    ),
+                  ),
+                ),
+
+              // Loading indicator
+              if (mapState is MapStateLoading)
+                const Positioned(
+                  top: 24,
+                  left: 0,
+                  right: 0,
+                  child: Center(child: LoadingDots()),
+                ),
+
+              // Build version — bottom-left corner, visible to devs during testing
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        'β $_kBuildVersion',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontFamily: 'monospace',
+                          letterSpacing: 0,
+                          height: 1.4,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+
+              // Error message
+              if (mapState is MapStateError)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 24,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.outline),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        mapState.message,
+                        style: const TextStyle(color: AppTheme.onSurface),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Discovery paused banner — shown when GPS is unavailable or ring state
+              if (explorationEligibility.isPaused)
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          'Discovery paused',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -485,12 +483,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     TapUpDetails details,
     MapStateReady mapState,
     LocationState location,
+    Offset screenCenter,
   ) {
     final tapPosition = details.localPosition;
-    final screenCenter = Offset(
-      MediaQuery.of(context).size.width / 2,
-      MediaQuery.of(context).size.height / 2,
-    );
 
     // Find the cell that was tapped (simplified - find closest cell center)
     Cell? closestCell;
@@ -577,6 +572,86 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
+class _EncounterToast extends StatelessWidget {
+  const _EncounterToast({
+    required this.encounter,
+    required this.onDismiss,
+  });
+
+  final Encounter encounter;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.18),
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Expanded(
+              child: Text(
+                _encounterMessage(encounter),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: onDismiss,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                minimumSize: const Size(64, 34),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: const Text('Dismiss'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _encounterMessage(Encounter encounter) {
+    return switch (encounter.type) {
+      EncounterType.species =>
+        'You found ${_shortSpeciesName(encounter.speciesId)}',
+      EncounterType.critter => 'A critter appeared',
+      EncounterType.loot => 'You found supplies',
+    };
+  }
+
+  static String _shortSpeciesName(String speciesId) {
+    final cleaned = speciesId
+        .replaceFirst(RegExp(r'^species[_-]?'), '')
+        .replaceAll(RegExp(r'[_-]+'), ' ')
+        .trim();
+    if (cleaned.isEmpty) return 'a new species';
+    if (cleaned.length <= 24) return cleaned;
+    return '${cleaned.substring(0, 20)}…';
+  }
+}
 
 class _MapStatusScaffold extends StatelessWidget {
   const _MapStatusScaffold({required this.title, required this.message});
