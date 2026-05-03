@@ -13,13 +13,16 @@ import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
+import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
@@ -247,9 +250,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ref.read(mapProvider.notifier).obs.log(event, category, data: data);
     }
 
-    // Compute status bar stats from exploration state
-    final cellsObserved = explorationState.visitedCellIds.length +
-        (mapState is MapStateReady ? mapState.visitedCellIds.length : 0);
+    final footprint = const ExploredFootprintService().project(
+      persistedVisitedCellIds:
+          mapState is MapStateReady ? mapState.visitedCellIds : const {},
+      optimisticVisitedCellIds: explorationState.visitedCellIds,
+    );
+    final cellsObserved = footprint.uniqueCount;
+    final visitQueueState = ref.watch(visitQueueProvider);
+    final screenSize = MediaQuery.of(context).size;
+    final screenCenter = Offset(screenSize.width / 2, screenSize.height / 2);
+    final markerScreenPosition = _latLngToScreen(
+      (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
+      (lat: location.lat, lng: location.lng),
+      _kGpsZoom,
+      screenCenter,
+    );
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -274,8 +289,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               tiltGesturesEnabled: false,
               doubleClickZoomEnabled: false,
               dragEnabled: false,
-              myLocationEnabled: true,
-              myLocationTrackingMode: maplibre.MyLocationTrackingMode.tracking,
+              myLocationEnabled: false,
+              myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
               onMapCreated: (controller) {
                 _mapController = controller;
                 ref
@@ -323,7 +338,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   painter: CellOverlayPainter(
                     cellsWithStates: _buildCellStates(
                       mapState.cells,
-                      mapState.visitedCellIds,
+                      footprint.visitedCellIds,
                       explorationState,
                     ),
                     cameraPosition: (
@@ -331,32 +346,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       lng: location.lng,
                     ),
                     zoom: _kGpsZoom,
-                    cameraPixelOffset: Offset(
-                      MediaQuery.of(context).size.width / 2,
-                      MediaQuery.of(context).size.height / 2,
-                    ),
+                    cameraPixelOffset: screenCenter,
                   ),
                 ),
               ),
             ),
 
-          // Player marker overlay
+          // Player marker overlay — the app owns one gameplay marker.
           if (playerMarkerState.lat != 0.0)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: _PlayerMarkerPainter(
-                    markerState: playerMarkerState,
-                    isPaused: explorationEligibility.isPaused,
-                    cameraPosition: (lat: location.lat, lng: location.lng),
-                    zoom: _kGpsZoom,
-                    screenCenter: Offset(
-                      MediaQuery.of(context).size.width / 2,
-                      MediaQuery.of(context).size.height / 2,
-                    ),
-                  ),
-                ),
+            Positioned(
+              left: markerScreenPosition.dx - 24,
+              top: markerScreenPosition.dy - 24,
+              child: const IgnorePointer(
+                child: PlayerMarker(),
               ),
             ),
 
@@ -369,6 +371,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               cellsObserved: cellsObserved,
               totalSteps: 0,
               streakDays: 0,
+              pendingVisits: visitQueueState.pendingCount,
             ),
           ),
 
@@ -563,76 +566,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   List<({Cell cell, CellState state})> _buildCellStates(
     List<Cell> cells,
-    Set<String> persistedVisitedCellIds,
+    Set<String> exploredCellIds,
     ExplorationStateData explorationState,
   ) {
     return const FogStateService().compute(
       cells: cells,
       currentCellId: explorationState.currentCellId,
-      persistedVisitedCellIds: persistedVisitedCellIds,
-      optimisticVisitedCellIds: explorationState.visitedCellIds,
+      exploredCellIds: exploredCellIds,
     );
   }
 }
 
-class _PlayerMarkerPainter extends CustomPainter {
-  _PlayerMarkerPainter({
-    required this.markerState,
-    required this.isPaused,
-    required this.cameraPosition,
-    required this.zoom,
-    required this.screenCenter,
-  });
-
-  final PlayerMarkerState markerState;
-  final bool isPaused;
-  final ({double lat, double lng}) cameraPosition;
-  final double zoom;
-  final Offset screenCenter;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (markerState.lat == 0.0 && markerState.lng == 0.0) return;
-
-    const earthCircumference = 156543.03392;
-    // Divide by 2^zoom — previously used multiplication which made
-    // metersPerPixel ~5 billion, placing the marker millions of pixels
-    // off-screen and rendering it invisible.
-    final metersPerPixel = earthCircumference *
-        math.cos(cameraPosition.lat * math.pi / 180) /
-        math.pow(2, zoom);
-
-    final dx = (markerState.lng - cameraPosition.lng) *
-        metersPerPixel *
-        math.cos(cameraPosition.lat * math.pi / 180);
-    final dy = (markerState.lat - cameraPosition.lat) * metersPerPixel;
-
-    final markerPos = Offset(screenCenter.dx + dx, screenCenter.dy - dy);
-
-    if (isPaused) {
-      // Draw accuracy ring
-      final ringPaint = Paint()
-        ..color = Colors.blue.withValues(alpha: 0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-
-      canvas.drawCircle(markerPos, 20, ringPaint);
-    } else {
-      // Draw solid marker dot
-      final markerPaint = Paint()
-        ..color = Colors.blue
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(markerPos, 8, markerPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PlayerMarkerPainter oldDelegate) {
-    return oldDelegate.markerState != markerState ||
-        oldDelegate.isPaused != isPaused;
-  }
-}
 
 class _MapStatusScaffold extends StatelessWidget {
   const _MapStatusScaffold({required this.title, required this.message});

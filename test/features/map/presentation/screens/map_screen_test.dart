@@ -136,6 +136,17 @@ void main() {
       expect(bar.streakDays, 4);
     });
 
+    test('can expose subtle pending visit sync state', () {
+      const bar = MapStatusBar(
+        cellsObserved: 3,
+        totalSteps: 0,
+        streakDays: 0,
+        pendingVisits: 2,
+      );
+
+      expect(bar.pendingVisits, 2);
+    });
+
     test('constructs with zero values', () {
       const bar = MapStatusBar(
         cellsObserved: 0,
@@ -235,6 +246,20 @@ void main() {
         reason:
             'Cell overlay taps must reach the GestureDetector so cell details open.',
       );
+    });
+
+    test('uses one app-owned gameplay marker and disables native map puck', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('myLocationEnabled: false'));
+      expect(
+        mapSource,
+        contains('myLocationTrackingMode: maplibre.MyLocationTrackingMode.none'),
+      );
+      expect(mapSource, contains('child: PlayerMarker()'));
+      expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
     });
   });
 }

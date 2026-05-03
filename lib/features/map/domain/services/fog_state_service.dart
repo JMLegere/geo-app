@@ -7,19 +7,14 @@ class FogStateService {
   List<({Cell cell, CellState state})> compute({
     required List<Cell> cells,
     required String? currentCellId,
-    required Set<String> persistedVisitedCellIds,
-    required Set<String> optimisticVisitedCellIds,
+    required Set<String> exploredCellIds,
   }) {
-    final allVisited = {
-      ...persistedVisitedCellIds,
-      ...optimisticVisitedCellIds,
-    };
 
     return cells.map((cell) {
       final relationship = _relationshipFor(
         cellId: cell.id,
         currentCellId: currentCellId,
-        visitedCellIds: allVisited,
+        exploredCellIds: exploredCellIds,
       );
 
       return (
@@ -35,10 +30,10 @@ class FogStateService {
   CellRelationship _relationshipFor({
     required String cellId,
     required String? currentCellId,
-    required Set<String> visitedCellIds,
+    required Set<String> exploredCellIds,
   }) {
     if (cellId == currentCellId) return CellRelationship.present;
-    if (visitedCellIds.contains(cellId)) return CellRelationship.explored;
-    return CellRelationship.nearby;
+    if (exploredCellIds.contains(cellId)) return CellRelationship.explored;
+    return CellRelationship.frontier;
   }
 }

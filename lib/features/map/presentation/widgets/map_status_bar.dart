@@ -11,12 +11,14 @@ class MapStatusBar extends StatelessWidget {
     required this.cellsObserved,
     required this.totalSteps,
     required this.streakDays,
+    this.pendingVisits = 0,
     this.paddingTop = 44.0,
   });
 
   final int cellsObserved;
   final int totalSteps;
   final int streakDays;
+  final int pendingVisits;
 
   /// Top padding to clear the system status bar (44px on iOS).
   final double paddingTop;
@@ -58,6 +60,12 @@ class MapStatusBar extends StatelessWidget {
               value: '$streakDays',
               label: 'days',
             ),
+            if (pendingVisits > 0)
+              _StatPill(
+                emoji: '⟳',
+                value: _formatCount(pendingVisits),
+                label: 'syncing',
+              ),
           ],
         ),
       ),

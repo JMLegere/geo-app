@@ -76,17 +76,18 @@ class CellOverlayPainter extends CustomPainter {
         canvas.drawPath(
           ringPath,
           Paint()
-            ..color = habitatStrokeColor.withAlpha(strokeColor.a.toInt())
+            ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 2.0,
+            ..strokeWidth = 4.0
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
         );
 
         canvas.drawPath(
           ringPath,
           Paint()
-            ..color = strokeColor
+            ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.0,
+            ..strokeWidth = 1.5,
         );
       }
 

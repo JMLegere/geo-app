@@ -1,7 +1,8 @@
 enum CellRelationship {
   present,
   explored,
-  nearby,
+  frontier,
+  unknown,
 }
 
 enum CellContents {

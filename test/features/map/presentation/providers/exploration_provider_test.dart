@@ -673,8 +673,11 @@ void main() {
             userId: 'user-123',
           );
 
-      // On failure, the error is caught and visit is enqueued
-      // The error is logged via operation.failed from the use case
+      final explorationState = c.read(explorationProvider);
+      final queueState = c.read(visitQueueProvider);
+
+      expect(explorationState.visitedCellIds, contains('cell-1'));
+      expect(queueState.pendingCount, 1);
       expect(testObs.eventNames, contains('operation.failed'));
     });
   });
