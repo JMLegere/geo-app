@@ -1,0 +1,53 @@
+name: Deploy Beta
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Optional commit SHA to deploy to beta
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-beta
+  cancel-in-progress: true
+
+jobs:
+  deploy-app:
+    name: Deploy Railway beta app
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: e693a14e-316c-4280-842a-6258a048d326
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha != '' && inputs.commit_sha || github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Deploy to Railway beta
+        run: |
+          npx -y @railway/cli up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service geo-app \
+            --environment beta \
+            --ci \
+            --detach
+
+  deploy-supabase:
+    name: Deploy beta Supabase
+    needs: deploy-app
+    uses: ./.github/workflows/deploy-supabase.yml
+    with:
+      environment_name: beta
+      commit_sha: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha != '' && inputs.commit_sha || github.event.workflow_run.head_sha || github.sha }}
+    secrets:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_BETA_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_BETA_DB_PASSWORD }}
