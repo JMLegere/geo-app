@@ -203,7 +203,7 @@ void main() {
       final cell = Cell(
         id: 'cell-1',
         habitats: [],
-        polygon: [],
+        polygons: [[[]]],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',
@@ -373,11 +373,11 @@ void main() {
       final cell = Cell(
         id: 'cell-1',
         habitats: [],
-        polygon: [
+        polygons: [[[
           (lat: 0.0, lng: 0.0),
           (lat: 1.0, lng: 0.0),
           (lat: 1.0, lng: 1.0),
-        ],
+        ]]],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',

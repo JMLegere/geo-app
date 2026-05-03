@@ -128,11 +128,15 @@ Cell _createTestCell(String id) {
   return Cell(
     id: id,
     habitats: [Habitat.forest],
-    polygon: const [
-      (lat: 0.0, lng: 0.0),
-      (lat: 0.001, lng: 0.0),
-      (lat: 0.001, lng: 0.001),
-      (lat: 0.0, lng: 0.001),
+    polygons: const [
+      [
+        [
+          (lat: 0.0, lng: 0.0),
+          (lat: 0.001, lng: 0.0),
+          (lat: 0.001, lng: 0.001),
+          (lat: 0.0, lng: 0.001),
+        ],
+      ],
     ],
     districtId: 'district-1',
     cityId: 'city-1',

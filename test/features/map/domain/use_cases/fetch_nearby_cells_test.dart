@@ -57,7 +57,7 @@ class FakeCellRepository implements CellRepository {
 Cell _testCell(String id) => Cell(
       id: id,
       habitats: [Habitat.forest],
-      polygon: const [(lat: 1.0, lng: 2.0)],
+      polygons: const [[[(lat: 1.0, lng: 2.0)]]],
       districtId: '',
       cityId: '',
       stateId: '',

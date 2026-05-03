@@ -5,7 +5,7 @@ import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 
-/// CustomPainter that renders Voronoi cell polygons with fog-of-war styling.
+/// CustomPainter that renders cell polygons with fog-of-war styling.
 ///
 /// Converts cell lat/lng coordinates to screen pixels using mercator projection
 /// based on the current camera position and zoom level.
@@ -22,7 +22,6 @@ class CellOverlayPainter extends CustomPainter {
   final double zoom;
   final Offset cameraPixelOffset;
 
-  // Map tile size in pixels at zoom 0
   static const double _tileSize = 256.0;
 
   @override
@@ -32,69 +31,79 @@ class CellOverlayPainter extends CustomPainter {
       final state = entry.state;
 
       if (!FogRenderer.shouldRender(state)) continue;
-      if (cell.polygon.length < 3) continue;
+      if (!cell.hasRenderableGeometry) continue;
 
       final fillColor = FogRenderer.fillColor(state);
       final strokeColor = FogRenderer.strokeColor(state);
       final habitatStrokeColor = FogRenderer.getHabitatStrokeColor(cell);
 
-      final path = Path();
-      final points = cell.polygon.map(_geoCoordToScreen).toList();
+      final fillPath = Path()..fillType = PathFillType.evenOdd;
+      final ringPaths = <Path>[];
+      final centroidPoints = <Offset>[];
 
-      if (points.isEmpty) continue;
+      for (final polygon in cell.polygons) {
+        for (final ring in polygon) {
+          if (ring.length < 3) continue;
+          final path = Path();
+          final points = ring.map(_geoCoordToScreen).toList(growable: false);
+          if (points.isEmpty) continue;
 
-      path.moveTo(points.first.dx, points.first.dy);
-      for (var i = 1; i < points.length; i++) {
-        path.lineTo(points[i].dx, points[i].dy);
+          path.moveTo(points.first.dx, points.first.dy);
+          for (var i = 1; i < points.length; i++) {
+            path.lineTo(points[i].dx, points[i].dy);
+          }
+          path.close();
+
+          fillPath.addPath(path, Offset.zero);
+          ringPaths.add(path);
+
+          if (identical(ring, polygon.first)) {
+            centroidPoints.addAll(points);
+          }
+        }
       }
-      path.close();
 
-      // Fill with fog color
+      if (ringPaths.isEmpty) continue;
+
       canvas.drawPath(
-        path,
+        fillPath,
         Paint()
           ..color = fillColor
           ..style = PaintingStyle.fill,
       );
 
-      // Draw habitat-colored border (inner stroke)
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = habitatStrokeColor.withAlpha(strokeColor.a.toInt())
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0,
-      );
+      for (final ringPath in ringPaths) {
+        canvas.drawPath(
+          ringPath,
+          Paint()
+            ..color = habitatStrokeColor.withAlpha(strokeColor.a.toInt())
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.0,
+        );
 
-      // Draw state-colored border (outer stroke)
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = strokeColor
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.0,
-      );
+        canvas.drawPath(
+          ringPath,
+          Paint()
+            ..color = strokeColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.0,
+        );
+      }
 
-      // Draw loot icon if present
-      if (state.contents == CellContents.hasLoot) {
-        final centroid = _calculateCentroid(points);
+      if (state.contents == CellContents.hasLoot && centroidPoints.isNotEmpty) {
+        final centroid = _calculateCentroid(centroidPoints);
         _drawLootIcon(canvas, centroid);
       }
     }
   }
 
-  /// Convert lat/lng to screen pixel coordinates.
-  ///
-  /// Uses spherical mercator projection scaled to the current zoom level.
   Offset _geoCoordToScreen(GeoCoord coord) {
     final scale = pow(2.0, zoom) * _tileSize;
 
-    // Mercator projection
     final x = (coord.lng + 180.0) / 360.0 * scale;
     final latRad = coord.lat * pi / 180.0;
     final y = (1.0 - log(tan(latRad) + (1.0 / cos(latRad))) / pi) / 2.0 * scale;
 
-    // Camera center in world pixels
     final cameraX = (cameraPosition.lng + 180.0) / 360.0 * scale;
     final cameraLatRad = cameraPosition.lat * pi / 180.0;
     final cameraY =
@@ -102,7 +111,6 @@ class CellOverlayPainter extends CustomPainter {
             2.0 *
             scale;
 
-    // Offset from camera center, then apply camera offset
     return Offset(
       x - cameraX + cameraPixelOffset.dx,
       y - cameraY + cameraPixelOffset.dy,
@@ -124,7 +132,6 @@ class CellOverlayPainter extends CustomPainter {
   void _drawLootIcon(Canvas canvas, Offset center) {
     const size = 12.0;
 
-    // Draw star shape
     final path = Path();
     const points = 5;
     const innerRadius = size * 0.4;
@@ -144,19 +151,17 @@ class CellOverlayPainter extends CustomPainter {
     }
     path.close();
 
-    // Fill
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFFFFD700) // Gold
+        ..color = const Color(0xFFFFD700)
         ..style = PaintingStyle.fill,
     );
 
-    // Stroke
     canvas.drawPath(
       path,
       Paint()
-        ..color = const Color(0xFFB8860B) // Dark goldenrod
+        ..color = const Color(0xFFB8860B)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );

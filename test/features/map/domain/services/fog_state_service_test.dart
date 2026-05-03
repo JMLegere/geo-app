@@ -7,11 +7,11 @@ import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 Cell _cell(String id) => Cell(
       id: id,
       habitats: const [],
-      polygon: const [
+      polygons: const [[[
         (lat: 0.0, lng: 0.0),
         (lat: 1.0, lng: 0.0),
         (lat: 1.0, lng: 1.0),
-      ],
+      ]]],
       districtId: 'district',
       cityId: 'city',
       stateId: 'state',
