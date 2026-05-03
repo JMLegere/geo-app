@@ -1,58 +1,77 @@
 name: Deploy Supabase
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-  workflow_dispatch:
-
-env:
-  PROJECT_REF: bfaczcsrpfcbijoaeckb
+  workflow_call:
+    inputs:
+      environment_name:
+        required: true
+        type: string
+      commit_sha:
+        required: false
+        type: string
+        default: ''
+    secrets:
+      SUPABASE_ACCESS_TOKEN:
+        required: true
+      SUPABASE_PROJECT_REF:
+        required: true
+      SUPABASE_DB_PASSWORD:
+        required: false
 
 jobs:
   deploy:
-    name: Deploy Migrations & Edge Functions
+    name: Deploy Supabase (${{ inputs.environment_name }})
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      HAS_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
 
       - name: Install Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
 
       - name: Link Supabase project
-        run: supabase link --project-ref ${{ env.PROJECT_REF }}
+        if: ${{ env.HAS_DB_PASSWORD == 'true' }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Apply pending migrations
-        run: supabase db push --linked
+        if: ${{ env.HAS_DB_PASSWORD == 'true' }}
+        run: yes | supabase db push --linked
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+      - name: Skip migrations without DB password
+        if: ${{ env.HAS_DB_PASSWORD != 'true' }}
+        run: |
+          echo "SUPABASE_DB_PASSWORD was not provided for ${{ inputs.environment_name }}."
+          echo "Skipping database migrations; edge functions will still deploy."
 
       - name: Deploy Edge Functions
         run: |
-          # Inject pipeline version (commit SHA) for enrichment versioning
           PIPELINE_VERSION=$(git rev-parse --short HEAD)
-          echo "Setting PIPELINE_VERSION=$PIPELINE_VERSION"
-          supabase secrets set PIPELINE_VERSION=$PIPELINE_VERSION --project-ref ${{ env.PROJECT_REF }}
-
-          supabase functions deploy validate-encounter --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-location --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy enrich-locations-batch --project-ref ${{ env.PROJECT_REF }}
-          supabase functions deploy process-enrichment-queue --no-verify-jwt --project-ref ${{ env.PROJECT_REF }}
+          supabase secrets set PIPELINE_VERSION="$PIPELINE_VERSION" --project-ref "$SUPABASE_PROJECT_REF"
+          for fn_dir in supabase/functions/*; do
+            [ -d "$fn_dir" ] || continue
+            fn_name=$(basename "$fn_dir")
+            echo "Deploying $fn_name"
+            supabase functions deploy "$fn_name" --project-ref "$SUPABASE_PROJECT_REF"
+          done
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Deployment summary
         run: |
-          echo "✅ Supabase deployment complete"
-          echo "  - Migrations: applied via supabase db push"
-          echo "  - Edge Functions: deployed"
-          echo "  - Project: ${{ env.PROJECT_REF }}"
+          echo "Supabase deployment complete"
+          echo "  - Environment: ${{ inputs.environment_name }}"
+          echo "  - Project: $SUPABASE_PROJECT_REF"
+          echo "  - Commit: $(git rev-parse --short HEAD)"

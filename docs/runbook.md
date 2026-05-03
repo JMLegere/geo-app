@@ -9,10 +9,11 @@
 | Thing | Value |
 |-------|-------|
 | Prod URL | https://geo-app-production-47b0.up.railway.app |
-| Supabase project | `bfaczcsrpfcbijoaeckb` |
-| Supabase dashboard | https://supabase.com/dashboard/project/bfaczcsrpfcbijoaeckb |
+| Beta URL | https://geo-app-beta.up.railway.app |
+| Prod Supabase project | `bfaczcsrpfcbijoaeckb` |
+| Beta Supabase project | `ggkvcpgvxqaqzwxehlns` |
 | Railway dashboard | https://railway.app |
-| Git main branch | `main` — auto-deploys to Railway on push |
+| Git main branch | `main` — auto-deploys to beta first |
 
 ---
 
@@ -40,45 +41,56 @@ flutter analyze
 
 # Build web (local)
 flutter build web \
-  --dart-define=SUPABASE_URL=https://bfaczcsrpfcbijoaeckb.supabase.co \
+  --dart-define=SUPABASE_URL=https://your-project-ref.supabase.co \
   --dart-define=SUPABASE_ANON_KEY=<anon_key>
 
-# Run all common tasks
-just          # lists all available commands
-just test     # flutter test
-just analyze  # flutter analyze
-just build    # flutter build web
-just deploy   # trigger Railway deploy (manual)
+# Trigger a beta deploy from the current checkout
+gh workflow run deploy-beta.yml
+
+# Promote a beta-validated commit to production
+gh workflow run deploy-production.yml
 ```
 
-See `Justfile` for full task list.
+See `.github/workflows/` for the deploy flow.
 
 ---
 
 ## Deploy
 
-Railway auto-deploys from `main`. Push to main → CI runs → on success, Railway picks up the new commit and builds the Dockerfile.
+`main` is the trunk branch. CI runs on PRs and on pushes to `main`.
 
-**Manual deploy trigger:**
+**Automatic path:**
+1. Merge to `main`
+2. CI passes
+3. `deploy-beta.yml` deploys the same commit to Railway `beta`
+4. The reusable `deploy-supabase.yml` applies migrations/functions to beta Supabase
+5. Validate beta before any production rollout
+
+**Manual promotion:**
 ```bash
-# Via Railway CLI
-railway up
-
-# Or trigger via GitHub Actions
-gh workflow run deploy-supabase.yml
+gh workflow run deploy-production.yml
 ```
 
-**Deploy checklist:**
+Optional input: `commit_sha` if you want to promote a specific already-validated commit.
+
+**Beta checklist:**
 1. CI green (`flutter analyze` + `flutter test`)
-2. Push to `main`
-3. Watch Railway dashboard for build progress
-4. Verify prod URL loads within 60s of deploy finishing
-5. Check `app_logs` for `app.cold_start` + `supabase.init_success` within 2 min
+2. Beta Railway deploy green
+3. Beta login succeeds
+4. Core frontend smoke flows succeed
+5. Beta Supabase migrations/functions finished cleanly
+
+**Production checklist:**
+1. Beta validation complete
+2. Trigger `deploy-production.yml`
+3. Verify prod URL loads within 60s
+4. Check `app_logs` for `app.cold_start` + `supabase.init_success`
+5. Keep rollback target handy in Railway Deployments
 
 **If deploy fails:**
-- Check Railway build logs: Railway dashboard → Deployments → latest
-- Common cause: `flutter build web` failed — check Dockerfile asset validation lines
-- Rollback: Railway dashboard → previous deployment → Redeploy
+- Check GitHub Actions logs first
+- Check Railway build logs for the affected environment
+- Redeploy the previous healthy Railway deployment if needed
 
 ---
 
@@ -90,10 +102,10 @@ gh workflow run deploy-supabase.yml
 # Link CLI to prod project
 supabase link --project-ref bfaczcsrpfcbijoaeckb
 
-# Run a query against prod
-supabase db query --linked "SELECT count(*) FROM v3_items"
+# Link CLI to beta project
+supabase link --project-ref ggkvcpgvxqaqzwxehlns
 
-# Or via API (useful in scripts)
+# Run a management API query
 curl -X POST \
   "https://api.supabase.com/v1/projects/bfaczcsrpfcbijoaeckb/database/query" \
   -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
@@ -104,10 +116,14 @@ curl -X POST \
 ### Apply migrations
 
 ```bash
-# Check which migrations are pending
-supabase migration list --linked
+# GitHub Actions is the default path. Beta migrations require
+# SUPABASE_BETA_DB_PASSWORD; production migrations require
+# SUPABASE_PRODUCTION_DB_PASSWORD. If no DB password is configured,
+# the workflow skips migrations and still deploys Edge Functions.
+gh workflow run deploy-beta.yml
 
-# Push pending migrations
+# For direct CLI work, link the target project first and then push.
+# Set SUPABASE_DB_PASSWORD in non-interactive shells.
 supabase db push --linked
 ```
 
@@ -337,13 +353,18 @@ ORDER BY n DESC;
 
 ## Environment Variables
 
-See `.env.example` for the full list. Required in Railway:
+See `.env.example` for the full list. Required secrets and variables:
 
 | Variable | Where set | Notes |
 |----------|-----------|-------|
-| `SUPABASE_URL` | Dockerfile (hardcoded) | Prod Supabase URL |
-| `SUPABASE_ANON_KEY` | Dockerfile (hardcoded) | Public anon key — safe to commit |
-| `SUPABASE_ACCESS_TOKEN` | Railway / GitHub secret | CLI auth — never commit |
-| `PIPELINE_VERSION` | Set by deploy CI | Git short SHA — triggers enrichment rerun |
+| `SUPABASE_URL` | Railway env variable | Set per environment at build time |
+| `SUPABASE_ANON_KEY` | Railway env variable | Public anon key for the target Supabase project |
+| `SUPABASE_ACCESS_TOKEN` | GitHub secret | Required by Supabase CLI workflows |
+| `SUPABASE_BETA_PROJECT_REF` | GitHub secret | `ggkvcpgvxqaqzwxehlns` |
+| `SUPABASE_PRODUCTION_PROJECT_REF` | GitHub secret | `bfaczcsrpfcbijoaeckb` |
+| `SUPABASE_BETA_DB_PASSWORD` | GitHub secret | Enables non-interactive beta `supabase db push` |
+| `SUPABASE_PRODUCTION_DB_PASSWORD` | GitHub secret | Enables non-interactive production `supabase db push` |
+| `RAILWAY_TOKEN` | GitHub secret | Required by Railway CLI workflows |
+| `RAILWAY_PROJECT_ID` | Workflow env or secret | `e693a14e-316c-4280-842a-6258a048d326` |
 
-To rotate the anon key: update Dockerfile, push to main.
+To rotate an anon key: update the Railway environment variable for the affected environment, then redeploy that environment.

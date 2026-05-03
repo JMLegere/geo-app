@@ -1,0 +1,48 @@
+name: Promote Beta to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Optional beta-validated commit SHA to promote
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-app:
+    name: Deploy Railway production app
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: e693a14e-316c-4280-842a-6258a048d326
+      DEPLOY_REF: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Deploy to Railway production
+        run: |
+          npx -y @railway/cli up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service geo-app \
+            --environment production \
+            --ci \
+            --detach
+
+  deploy-supabase:
+    name: Deploy production Supabase
+    needs: deploy-app
+    uses: ./.github/workflows/deploy-supabase.yml
+    with:
+      environment_name: production
+      commit_sha: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
+    secrets:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
