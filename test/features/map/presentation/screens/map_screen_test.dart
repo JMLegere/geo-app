@@ -318,6 +318,34 @@ void main() {
       expect(mapSource, contains('map.readiness_waiting'));
     });
 
+    test('uses web MapLibre idle bridge before the timer fallback', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+      final signalFile = File(
+        'lib/features/map/presentation/platform/base_map_settled_signal_web.dart',
+      );
+      final signalFacade = File(
+        'lib/features/map/presentation/platform/base_map_settled_signal.dart',
+      );
+
+      expect(
+        signalFile.existsSync(),
+        isTrue,
+        reason: 'MapScreen needs an app-owned web bridge because '
+            'maplibre_gl_web 0.25.0 does not forward MapLibre JS idle '
+            'events into onMapIdle.',
+      );
+
+      final signalSource = signalFile.readAsStringSync();
+      expect(mapSource, contains('BaseMapSettledSignal('));
+      expect(mapSource, contains('_kBaseMapSettledFallbackDelay'));
+      expect(mapSource, contains('Duration(seconds: 5)'));
+      expect(signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
+      expect(signalSource, contains('earthnova.maplibre.idle'));
+      expect(signalSource, contains('maplibre_js_idle'));
+    });
+
     test('encounters are keyed to gameplay entry events, not tracking state',
         () {
       final mapSource =

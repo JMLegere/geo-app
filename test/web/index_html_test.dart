@@ -179,6 +179,28 @@ void main() {
               'and fallback fire',
         );
       });
+
+      test('bridges real MapLibre JS idle into Dart readiness', () {
+        expect(
+          html,
+          contains("window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle'"),
+          reason: 'The Flutter web plugin does not currently forward MapLibre '
+              'GL JS idle to onMapIdle, so the app must bridge the real JS '
+              'idle event into Dart before relying on a timer fallback.',
+        );
+        expect(
+          html,
+          contains('map.loaded()'),
+          reason: 'The bridge should prove the map reports loaded before '
+              'clearing the startup gate.',
+        );
+        expect(
+          html,
+          contains('map.areTilesLoaded()'),
+          reason: 'The bridge should prove viewport tiles are loaded before '
+              'clearing the startup gate.',
+        );
+      });
     });
 
     group('MapLibre attribution presentation', () {

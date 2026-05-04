@@ -279,6 +279,26 @@
                       if (window.maplibregl) {
                         try {
                           var origMap = maplibregl.Map;
+                          var emitMapLibreIdle = function(map) {
+                            try {
+                              var loaded = !!(map.loaded && map.loaded());
+                              var tilesLoaded = !!(map.areTilesLoaded && map.areTilesLoaded());
+                              var detail = {
+                                source: 'maplibre_js_idle',
+                                loaded: loaded,
+                                tilesLoaded: tilesLoaded,
+                                at: Date.now()
+                              };
+                              if (loaded && tilesLoaded) {
+                                window.__earthnovaMapLibreIdle = detail;
+                                window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle', { detail: detail }));
+                              } else {
+                                push('js', 'maplibre_map_idle_pending', JSON.stringify(detail));
+                              }
+                            } catch(e) {
+                              push('js', 'maplibre_map_idle_bridge_failed', (e && e.message) || String(e));
+                            }
+                          };
                           maplibregl.Map = function(opts) {
                             var map = new origMap(opts);
                             map.on('error', function(e) {
@@ -289,6 +309,7 @@
                             });
                             map.on('idle', function() {
                               push('js', 'maplibre_map_idle', 'render_complete');
+                              emitMapLibreIdle(map);
                             });
                             return map;
                           };
