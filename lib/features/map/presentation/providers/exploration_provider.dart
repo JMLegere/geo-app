@@ -18,21 +18,41 @@ class ExplorationStateData extends ExplorationState {
     this.currentCellId,
     this.visitedCellIds = const {},
     this.lastVisitTimestamp,
+    this.lastEnteredCellId,
+    this.lastEntryWasFirstVisit,
+    this.lastEntrySequence = 0,
   });
 
   final String? currentCellId;
   final Set<String> visitedCellIds;
   final DateTime? lastVisitTimestamp;
+  final String? lastEnteredCellId;
+  final bool? lastEntryWasFirstVisit;
+  final int lastEntrySequence;
 
   ExplorationStateData copyWith({
     String? currentCellId,
+    bool clearCurrentCellId = false,
     Set<String>? visitedCellIds,
     DateTime? lastVisitTimestamp,
+    String? lastEnteredCellId,
+    bool clearLastEnteredCellId = false,
+    bool? lastEntryWasFirstVisit,
+    bool clearLastEntryWasFirstVisit = false,
+    int? lastEntrySequence,
   }) {
     return ExplorationStateData(
-      currentCellId: currentCellId ?? this.currentCellId,
+      currentCellId:
+          clearCurrentCellId ? null : (currentCellId ?? this.currentCellId),
       visitedCellIds: visitedCellIds ?? this.visitedCellIds,
       lastVisitTimestamp: lastVisitTimestamp ?? this.lastVisitTimestamp,
+      lastEnteredCellId: clearLastEnteredCellId
+          ? null
+          : (lastEnteredCellId ?? this.lastEnteredCellId),
+      lastEntryWasFirstVisit: clearLastEntryWasFirstVisit
+          ? null
+          : (lastEntryWasFirstVisit ?? this.lastEntryWasFirstVisit),
+      lastEntrySequence: lastEntrySequence ?? this.lastEntrySequence,
     );
   }
 }
@@ -88,10 +108,14 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     );
 
     if (currentCell == null) {
-      // Not in any cell - clear current cell but preserve visited
+      // Not in any cell - clear current cell and allow a future re-entry to count.
       if (state.currentCellId != null) {
         transition(
-          state.copyWith(currentCellId: null),
+          state.copyWith(
+            clearCurrentCellId: true,
+            clearLastEnteredCellId: true,
+            clearLastEntryWasFirstVisit: true,
+          ),
           'map.cell_exited',
           data: {'cellId': state.currentCellId},
         );
@@ -100,83 +124,90 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     }
 
     final previousCellId = state.currentCellId;
-    final isNewCell = currentCell.id != previousCellId;
 
     // Update current cell (always track where we are)
     var newState = state.copyWith(currentCellId: currentCell.id);
 
-    // If marker is in ring state, do NOT record visits
+    // If marker is in ring state, track position but do NOT record visits and do
+    // NOT create gameplay entry fields. The marker may be interpolating from a
+    // stale point; triggering encounters here causes load-time discovery bursts.
     if (markerState.isRing) {
       transition(newState, 'map.cell_tracked');
       return;
     }
 
-    // Check if this is a cell entry event
-    final isCellEntry = isNewCell || previousCellId == null;
+    // A gameplay entry means this confident marker has not recorded an entry for
+    // the current occupancy yet. Ring-state tracking may have already set
+    // currentCellId, so currentCellId alone cannot decide whether a visit is due.
+    final isCellEntry = state.lastEnteredCellId != currentCell.id;
 
-    if (isCellEntry) {
-      // Check if this is a first visit
-      final isFirstVisit = !visitedCellIds.contains(currentCell.id) &&
-          !state.visitedCellIds.contains(currentCell.id);
+    if (!isCellEntry) {
+      // Same confident cell after an already-recorded entry: state is unchanged.
+      return;
+    }
 
-      // Record visit optimistically
-      final now = DateTime.now();
-      final newVisited = {...state.visitedCellIds, currentCell.id};
+    // Check if this is a first visit.
+    final isFirstVisit = !visitedCellIds.contains(currentCell.id) &&
+        !state.visitedCellIds.contains(currentCell.id);
 
-      newState = newState.copyWith(
-        visitedCellIds: newVisited,
-        lastVisitTimestamp: now,
-      );
+    // Record visit optimistically.
+    final now = DateTime.now();
+    final newVisited = {...state.visitedCellIds, currentCell.id};
 
-      // Log cell_entered event
-      transition(
-        newState,
-        'map.cell_entered',
-        data: {
-          'cellId': currentCell.id,
-          'isFirstVisit': isFirstVisit,
-        },
-      );
+    newState = newState.copyWith(
+      visitedCellIds: newVisited,
+      lastVisitTimestamp: now,
+      lastEnteredCellId: currentCell.id,
+      lastEntryWasFirstVisit: isFirstVisit,
+      lastEntrySequence: state.lastEntrySequence + 1,
+    );
 
-      // Log cell_visited event
+    // Log cell_entered event.
+    transition(
+      newState,
+      'map.cell_entered',
+      data: {
+        'cellId': currentCell.id,
+        'isFirstVisit': isFirstVisit,
+        'previousCellId': previousCellId,
+      },
+    );
+
+    // Log cell_visited event.
+    obs.log(
+      'map.cell_visited',
+      category,
+      data: {
+        'cellId': currentCell.id,
+        'firstVisit': isFirstVisit,
+      },
+    );
+
+    // If first visit, log fog_cleared event.
+    if (isFirstVisit) {
       obs.log(
-        'map.cell_visited',
+        'map.fog_cleared',
         category,
         data: {
           'cellId': currentCell.id,
-          'firstVisit': isFirstVisit,
         },
       );
+    }
 
-      // If first visit, log fog_cleared event
-      if (isFirstVisit) {
-        obs.log(
-          'map.fog_cleared',
-          category,
-          data: {
-            'cellId': currentCell.id,
-          },
-        );
+    // Persist visit to backend; enqueue on failure.
+    if (userId != null && userId.isNotEmpty) {
+      final recordVisit = ref.read(recordCellVisitProvider);
+      try {
+        await recordVisit.call((
+          userId: userId,
+          cellId: currentCell.id,
+        ));
+      } catch (_) {
+        ref.read(visitQueueProvider.notifier).enqueue(
+              userId: userId,
+              cellId: currentCell.id,
+            );
       }
-
-      // Persist visit to backend; enqueue on failure
-      if (userId != null && userId.isNotEmpty) {
-        final recordVisit = ref.read(recordCellVisitProvider);
-        try {
-          await recordVisit.call((
-            userId: userId,
-            cellId: currentCell.id,
-          ));
-        } catch (_) {
-          ref.read(visitQueueProvider.notifier).enqueue(
-                userId: userId,
-                cellId: currentCell.id,
-              );
-        }
-      }
-    } else {
-      // Same cell, just tracking
-      transition(newState, 'map.cell_tracked');
     }
   }
 

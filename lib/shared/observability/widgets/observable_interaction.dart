@@ -7,7 +7,7 @@ typedef InteractionLogger = void Function({
 });
 
 class ObservableInteraction {
-  static const String _event = 'ui.interaction';
+  static const String _event = 'interaction.action';
   static const String _category = 'ui';
 
   static Map<String, dynamic> payload({

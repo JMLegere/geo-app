@@ -29,7 +29,7 @@ void main() {
 
       expect(invoked, isTrue);
       expect(events, hasLength(1));
-      expect(events.single['event'], 'ui.interaction');
+      expect(events.single['event'], 'interaction.action');
       expect(events.single['category'], 'ui');
       expect(events.single['data'], {
         'action_type': 'tap',
@@ -153,7 +153,7 @@ void main() {
       );
 
       expect(events, hasLength(1));
-      expect(events.single['event'], 'ui.interaction');
+      expect(events.single['event'], 'interaction.action');
       expect(events.single['category'], 'ui');
       expect(events.single['data'], {
         'action_type': 'tap',

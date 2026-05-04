@@ -218,12 +218,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -256,12 +260,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -289,17 +297,120 @@ void main() {
       expect(state.visitedCellIds, isEmpty);
     });
 
+    test('ring tracking does not create a gameplay entry event', () async {
+      final cells = [
+        Cell(
+          id: 'cell-1',
+          habitats: [],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
+          districtId: 'd1',
+          cityId: 'c1',
+          stateId: 's1',
+          countryId: 'co1',
+        ),
+      ];
+
+      await container.read(explorationProvider.notifier).onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: true,
+          gapDistance: 50.0,
+        ),
+        cells: cells,
+        visitedCellIds: <String>{},
+      );
+
+      final state = container.read(explorationProvider);
+      expect(state.currentCellId, 'cell-1');
+      expect(state.visitedCellIds, isEmpty);
+      expect(state.lastEnteredCellId, isNull);
+      expect(state.lastEntrySequence, 0);
+      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
+      expect(testObs.eventNames, isNot(contains('map.cell_visited')));
+    });
+
+    test('confident marker records entry after prior ring tracking same cell',
+        () async {
+      final cells = [
+        Cell(
+          id: 'cell-1',
+          habitats: [],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
+          districtId: 'd1',
+          cityId: 'c1',
+          stateId: 's1',
+          countryId: 'co1',
+        ),
+      ];
+
+      final notifier = container.read(explorationProvider.notifier);
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: true,
+          gapDistance: 50.0,
+        ),
+        cells: cells,
+        visitedCellIds: <String>{},
+      );
+      testObs.events.clear();
+
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 5.0,
+        ),
+        cells: cells,
+        visitedCellIds: <String>{},
+      );
+
+      final state = container.read(explorationProvider);
+      expect(state.currentCellId, 'cell-1');
+      expect(state.visitedCellIds, contains('cell-1'));
+      expect(state.lastEnteredCellId, 'cell-1');
+      expect(state.lastEntryWasFirstVisit, isTrue);
+      expect(state.lastEntrySequence, 1);
+      expect(testObs.eventNames, contains('map.cell_entered'));
+      expect(testObs.eventNames, contains('map.cell_visited'));
+    });
+
     test('records visit on cell transition from A to B', () async {
       final cells = [
         Cell(
           id: 'cell-A',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -308,12 +419,16 @@ void main() {
         Cell(
           id: 'cell-B',
           habitats: [],
-          polygons: [[[
-            (lat: 1.0, lng: 0.0),
-            (lat: 2.0, lng: 0.0),
-            (lat: 2.0, lng: 1.0),
-            (lat: 1.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 1.0, lng: 0.0),
+                (lat: 2.0, lng: 0.0),
+                (lat: 2.0, lng: 1.0),
+                (lat: 1.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd2',
           cityId: 'c2',
           stateId: 's2',
@@ -358,12 +473,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -394,12 +513,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -442,12 +565,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -479,12 +606,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -517,12 +648,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -554,12 +689,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -600,12 +739,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
@@ -648,12 +791,16 @@ void main() {
         Cell(
           id: 'cell-1',
           habitats: [],
-          polygons: [[[
-            (lat: 0.0, lng: 0.0),
-            (lat: 1.0, lng: 0.0),
-            (lat: 1.0, lng: 1.0),
-            (lat: 0.0, lng: 1.0),
-          ]]],
+          polygons: [
+            [
+              [
+                (lat: 0.0, lng: 0.0),
+                (lat: 1.0, lng: 0.0),
+                (lat: 1.0, lng: 1.0),
+                (lat: 0.0, lng: 1.0),
+              ]
+            ]
+          ],
           districtId: 'd1',
           cityId: 'c1',
           stateId: 's1',
