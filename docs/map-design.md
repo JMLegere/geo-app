@@ -357,7 +357,7 @@ Each cell has:
 |-------|--------|------------|
 | **Present** | Bright, full reveal, real map tiles visible | Everything: terrain, markers, species |
 | **Explored** | Muted parchment veil, real map tiles dimmed | Species found, visit count, loot icon if repopulated |
-| **Frontier / Nearby** | Heavy black reveal fog, interior hidden, grid seams suppressed | Reachable unexplored territory, "something's here" tease |
+| **Frontier / Nearby** | Translucent black reveal fog, interior details deemphasized, grid seams suppressed | Reachable unexplored territory, "something's here" tease |
 | **Beyond render distance** | Not rendered / black void | Nothing |
 
 **Axis 2 — Contents** (what's in the cell right now):

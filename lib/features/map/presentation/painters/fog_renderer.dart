@@ -81,7 +81,7 @@ class FogRenderer {
   }
 
   static Color _frontierFillColor() {
-    return const Color(0xA6000000);
+    return const Color(0x73000000);
   }
 
   static Color _unknownFillColor() {
