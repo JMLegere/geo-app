@@ -25,10 +25,11 @@ void main() {
         expect(color.r, greaterThan(color.b));
       });
 
-      test('frontier cells use heavy black fog', () {
+      test('frontier cells dim the map without becoming black void', () {
         final color = FogRenderer.fillColor(_state(CellRelationship.frontier));
 
-        expect(color.a, greaterThan(0.65));
+        expect(color.a, greaterThan(0.40));
+        expect(color.a, lessThan(0.56));
         expect(color.r, 0.0);
         expect(color.g, 0.0);
         expect(color.b, 0.0);
