@@ -346,6 +346,32 @@ void main() {
       expect(signalSource, contains('maplibre_js_idle'));
     });
 
+    test('uses web MapLibre load bridge before relying on plugin style callback',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+      final signalFile = File(
+        'lib/features/map/presentation/platform/base_map_style_loaded_signal_web.dart',
+      );
+      final signalFacade = File(
+        'lib/features/map/presentation/platform/base_map_style_loaded_signal.dart',
+      );
+
+      expect(
+        signalFile.existsSync(),
+        isTrue,
+        reason: 'MapScreen needs an app-owned web bridge because style readiness '
+            'must not depend only on the plugin web callback.',
+      );
+
+      final signalSource = signalFile.readAsStringSync();
+      expect(mapSource, contains('BaseMapStyleLoadedSignal('));
+      expect(signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
+      expect(signalSource, contains('earthnova.maplibre.load'));
+      expect(signalSource, contains('maplibre_js_load'));
+    });
+
     test('encounters are keyed to gameplay entry events, not tracking state',
         () {
       final mapSource =

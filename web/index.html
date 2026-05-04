@@ -299,6 +299,18 @@
                               push('js', 'maplibre_map_idle_bridge_failed', (e && e.message) || String(e));
                             }
                           };
+                          var emitMapLibreLoad = function() {
+                            try {
+                              var detail = {
+                                source: 'maplibre_js_load',
+                                at: Date.now()
+                              };
+                              window.__earthnovaMapLibreLoad = detail;
+                              window.dispatchEvent(new CustomEvent('earthnova.maplibre.load', { detail: detail }));
+                            } catch(e) {
+                              push('js', 'maplibre_map_load_bridge_failed', (e && e.message) || String(e));
+                            }
+                          };
                           maplibregl.Map = function(opts) {
                             var map = new origMap(opts);
                             map.on('error', function(e) {
@@ -306,6 +318,7 @@
                             });
                             map.on('load', function() {
                               push('js', 'maplibre_map_load', 'tiles_ready');
+                              emitMapLibreLoad(map);
                             });
                             map.on('idle', function() {
                               push('js', 'maplibre_map_idle', 'render_complete');
