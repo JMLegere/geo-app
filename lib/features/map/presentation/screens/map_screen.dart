@@ -19,6 +19,7 @@ import 'package:earth_nova/features/map/presentation/painters/cell_overlay_paint
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
+import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
 import 'package:earth_nova/features/map/presentation/presenters/encounter_presenter.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
@@ -65,6 +66,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _steadyStateLogged = false;
   bool _readinessWaitingLogged = false;
   BaseMapSettledSignal? _baseMapSettledSignal;
+  BaseMapStyleLoadedSignal? _baseMapStyleLoadedSignal;
   Timer? _mapSettledFallbackTimer;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
@@ -80,12 +82,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _markBaseMapSettled(source: source);
       },
     );
+    _baseMapStyleLoadedSignal = BaseMapStyleLoadedSignal(
+      onLoaded: (source) {
+        if (!mounted) return;
+        _handleStyleLoaded(source: source);
+      },
+    );
   }
 
   @override
   void dispose() {
     _notificationTimer?.cancel();
     _baseMapSettledSignal?.dispose();
+    _baseMapStyleLoadedSignal?.dispose();
     _mapSettledFallbackTimer?.cancel();
     _mapController?.dispose();
     super.dispose();
@@ -109,6 +118,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       setState(() => _mapStyleLoaded = true);
     }
     _scheduleBaseMapSettledFallback();
+  }
+
+  void _handleStyleLoaded({required String source}) {
+    if (_mapStyleLoaded) return;
+    ref.read(mapProvider.notifier).obs.log(
+      'map.style_loaded',
+      'map',
+      data: {'source': source},
+    );
+    ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
+    _markStyleLoaded();
   }
 
   void _scheduleBaseMapSettledFallback() {
@@ -409,12 +429,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         .log('map.map_created', 'map');
                   },
                   onStyleLoadedCallback: () {
-                    ref
-                        .read(mapProvider.notifier)
-                        .obs
-                        .log('map.style_loaded', 'map');
-                    ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
-                    _markStyleLoaded();
+                    _handleStyleLoaded(source: 'plugin_style_loaded');
                   },
                   onMapIdle: () {
                     _markBaseMapSettled(source: 'map_idle');

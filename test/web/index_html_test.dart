@@ -201,6 +201,21 @@ void main() {
               'clearing the startup gate.',
         );
       });
+
+      test('bridges real MapLibre JS load into Dart style readiness', () {
+        expect(
+          html,
+          contains("window.dispatchEvent(new CustomEvent('earthnova.maplibre.load'"),
+          reason: 'The Flutter web plugin style callback is not reliable enough '
+              'to be the only source of truth for style readiness on web, so the '
+              'app should bridge the real MapLibre JS load event into Dart.',
+        );
+        expect(
+          html,
+          contains("map.on('load'"),
+          reason: 'The bridge should listen to the real MapLibre JS load event.',
+        );
+      });
     });
 
     group('MapLibre attribution presentation', () {
