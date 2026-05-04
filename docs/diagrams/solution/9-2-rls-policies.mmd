@@ -66,10 +66,10 @@ flowchart TD
         SP_D["DELETE\n---"]
     end
 
-    subgraph app_logs ["app_logs"]
+    subgraph telemetry ["telemetry_logs / telemetry_spans"]
         direction LR
-        AL_S["SELECT\nown rows"]
-        AL_I["INSERT\nown rows"]
+        AL_S["SELECT\nservice role / agent queries"]
+        AL_I["INSERT\ntelemetry-ingest service role"]
         AL_U["UPDATE\n---"]
         AL_D["DELETE\n---"]
     end
@@ -82,7 +82,7 @@ flowchart TD
     style v3_sanctuary_donations fill:#e8f5e9,stroke:#4CAF50
     style v3_recap_snapshots fill:#e3f2fd,stroke:#1976D2
     style species fill:#fff3e0,stroke:#FF9800
-    style app_logs fill:#e8f5e9,stroke:#4CAF50
+    style telemetry fill:#e8f5e9,stroke:#4CAF50
 
     style P_S fill:#c8e6c9,stroke:#388E3C
     style P_I fill:#ffe0b2,stroke:#F57C00

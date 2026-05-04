@@ -38,13 +38,12 @@ serve(async (_req: Request) => {
     .select("definition_id", { count: "exact", head: true })
     .not("art_url", "is", null);
 
-  // 3. Recent errors from app_logs
+  // 3. Recent errors from OTel-shaped telemetry
   const { data: recentErrors } = await supabase
-    .from("app_logs")
-    .select("lines")
-    .gte("created_at", oneHourAgo)
-    .like("lines", "%error%")
-    .order("created_at", { ascending: false })
+    .from("telemetry_recent_errors_v")
+    .select("name, body, error_at")
+    .gte("error_at", oneHourAgo)
+    .order("error_at", { ascending: false })
     .limit(5);
 
   const errorCount = recentErrors?.length ?? 0;

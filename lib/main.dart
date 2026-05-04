@@ -76,19 +76,28 @@ void main() async {
     sessionId: sessionId,
     client: supabaseClient,
   );
+  final startupSpan = obs.startSpan('app.startup');
   final navigationLogger = NavigationScreenTransitionLogger(logEvent: obs.log);
   obs.startPeriodicFlush();
 
   obs.log('app.cold_start', 'lifecycle', data: {
     'version': const String.fromEnvironment('APP_VERSION', defaultValue: 'dev'),
     'platform': 'web',
+    'trace_id': startupSpan.traceId,
+    'span_id': startupSpan.spanId,
   });
 
   if (supabaseClient != null) {
-    obs.log('supabase.init_success', 'infrastructure');
+    obs.log('supabase.init_success', 'infrastructure', data: {
+      'trace_id': startupSpan.traceId,
+      'span_id': startupSpan.spanId,
+    });
   } else {
-    obs.log('supabase.init_failure', 'infrastructure',
-        data: {'error': 'No SUPABASE_URL provided'});
+    obs.log('supabase.init_failure', 'infrastructure', data: {
+      'error': 'No SUPABASE_URL provided',
+      'trace_id': startupSpan.traceId,
+      'span_id': startupSpan.spanId,
+    });
   }
 
   final AuthRepository authRepository = supabaseClient != null
@@ -153,6 +162,11 @@ void main() async {
     (error, stack) {
       obs.logError(error, stack, event: 'app.crash.unhandled');
     },
+  );
+  obs.endSpan(
+    startupSpan,
+    statusCode: TelemetrySpanStatus.ok,
+    statusMessage: 'run_app_invoked',
   );
 }
 

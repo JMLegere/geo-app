@@ -27,7 +27,7 @@ flowchart TD
         OUT["<b>Outputs</b><br/>Fully enriched species:<br/>all 8 columns non-null"]
         APIS["<b>External APIs</b><br/>OpenAI (LLM classification + prompts)<br/>Image Generation API (icon + art)<br/>Supabase Storage (image hosting)"]
         DATA["<b>Data</b><br/>species table (17+ columns)<br/>Supabase Storage bucket<br/>enrichver columns for versioning"]
-        EVENTS["<b>Events</b><br/>Logged to Edge Function logs<br/>(Railway dashboard)<br/>Future: app_logs pipeline events"]
+        EVENTS["<b>Events</b><br/>Logged to Edge Function logs<br/>(Railway dashboard)<br/>Future: telemetry_logs pipeline events"]
         RESOLVES["<b>Resolves Critique</b><br/>2.2: Enrichment gap<br/>(paired with S.2 delta-sync)<br/>2.3: Fully enriched = 8 columns NOT NULL"]
 
         IN --- OUT --- APIS

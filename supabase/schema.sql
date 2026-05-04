@@ -21,7 +21,8 @@
 --   districts           — geo hierarchy level 4 (v2)
 --
 -- OBSERVABILITY
---   app_logs            — all client events, errors, lifecycle (unified in 024)
+--   telemetry_logs      — OTel-shaped point-in-time records (047)
+--   telemetry_spans     — OTel-shaped timed operations (047)
 --
 -- V3 (new, alongside legacy)
 --   v3_profiles         — clean user profiles for v3
@@ -165,26 +166,61 @@ CREATE TABLE cities     ( id TEXT PRIMARY KEY, state_id TEXT REFERENCES states(i
 CREATE TABLE districts  ( id TEXT PRIMARY KEY, city_id TEXT REFERENCES cities(id), name TEXT );
 
 -- ============================================================================
--- OBSERVABILITY (migrations 010–024)
+-- OBSERVABILITY (migration 047)
 -- ============================================================================
 
--- app_logs (010 + 011 + 013 + 024)
--- All client observability. Auth events, lifecycle, errors, data events.
--- Structured events use category + event + data columns.
--- Retention: 7 days (pg_cron purge at 3am UTC daily).
-CREATE TABLE app_logs (
-  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id     UUID,
-  session_id  UUID NOT NULL,
-  lines       TEXT,              -- legacy: raw debugPrint output (v3: unused)
-  app_version TEXT,
-  platform    TEXT,
-  device_id   TEXT,              -- SHA-256 hash of device info (first 12 chars)
-  phone_number TEXT,             -- deprecated in v3 (never log raw phone)
-  category    TEXT,              -- lifecycle | infrastructure | auth | data | network | error
-  event       TEXT,              -- e.g. auth.sign_in_success
-  data        JSONB,             -- event-specific payload
-  created_at  TIMESTAMPTZ DEFAULT now() NOT NULL
+-- telemetry_logs
+-- OTel-shaped point-in-time records: lifecycle, auth, UI, map, and errors.
+CREATE TABLE telemetry_logs (
+  id                     UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  occurred_at            TIMESTAMPTZ NOT NULL,
+  observed_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  service_name           TEXT NOT NULL DEFAULT 'earthnova-app',
+  service_version        TEXT,
+  deployment_environment TEXT,
+  platform               TEXT,
+  session_id             UUID NOT NULL,
+  device_id              TEXT,
+  user_id                UUID,
+  trace_id               TEXT,
+  span_id                TEXT,
+  trace_flags            TEXT NOT NULL DEFAULT '01',
+  severity_text          TEXT NOT NULL DEFAULT 'INFO',
+  category               TEXT NOT NULL,
+  event_name             TEXT NOT NULL,
+  body                   TEXT,
+  attributes             JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
+-- telemetry_spans
+-- OTel-shaped timed work with trace/span parent-child linkage.
+CREATE TABLE telemetry_spans (
+  trace_id               TEXT NOT NULL,
+  span_id                TEXT NOT NULL,
+  parent_span_id         TEXT,
+  span_name              TEXT NOT NULL,
+  span_kind              TEXT NOT NULL DEFAULT 'internal',
+  started_at             TIMESTAMPTZ NOT NULL,
+  ended_at               TIMESTAMPTZ,
+  duration_ms            BIGINT GENERATED ALWAYS AS (
+    CASE
+      WHEN ended_at IS NULL THEN NULL
+      ELSE GREATEST(0, floor(EXTRACT(EPOCH FROM (ended_at - started_at)) * 1000)::bigint)
+    END
+  ) STORED,
+  status_code            TEXT NOT NULL DEFAULT 'unset',
+  status_message         TEXT,
+  service_name           TEXT NOT NULL DEFAULT 'earthnova-app',
+  service_version        TEXT,
+  deployment_environment TEXT,
+  platform               TEXT,
+  session_id             UUID NOT NULL,
+  device_id              TEXT,
+  user_id                UUID,
+  attributes             JSONB NOT NULL DEFAULT '{}'::jsonb,
+  events                 JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (trace_id, span_id)
 );
 
 -- ============================================================================

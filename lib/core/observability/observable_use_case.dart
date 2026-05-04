@@ -1,5 +1,4 @@
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/core/observability/trace_context.dart';
 
 abstract class ObservableUseCase<Input, Output> {
   const ObservableUseCase();
@@ -8,7 +7,14 @@ abstract class ObservableUseCase<Input, Output> {
   String get operationName;
 
   Future<Output> call(Input input) async {
-    final trace = TraceContext.start();
+    final span = obs.startSpan(
+      operationName,
+      attributes: {
+        'operation': operationName,
+        'input': summarizeInput(input),
+      },
+    );
+    final trace = span.context;
 
     obs.log(
       'operation.started',
@@ -16,6 +22,7 @@ abstract class ObservableUseCase<Input, Output> {
       data: {
         'operation': operationName,
         'trace_id': trace.traceId,
+        'span_id': trace.spanId,
         'input': summarizeInput(input),
       },
     );
@@ -28,9 +35,15 @@ abstract class ObservableUseCase<Input, Output> {
         data: {
           'operation': operationName,
           'trace_id': trace.traceId,
+          'span_id': trace.spanId,
           'duration_ms': trace.elapsed.inMilliseconds,
           'output': summarizeOutput(output),
         },
+      );
+      obs.endSpan(
+        span,
+        statusCode: TelemetrySpanStatus.ok,
+        attributes: {'output': summarizeOutput(output)},
       );
       return output;
     } catch (error) {
@@ -40,7 +53,17 @@ abstract class ObservableUseCase<Input, Output> {
         data: {
           'operation': operationName,
           'trace_id': trace.traceId,
+          'span_id': trace.spanId,
           'duration_ms': trace.elapsed.inMilliseconds,
+          'error_type': error.runtimeType.toString(),
+          'error_message': error.toString(),
+        },
+      );
+      obs.endSpan(
+        span,
+        statusCode: TelemetrySpanStatus.error,
+        statusMessage: error.toString(),
+        attributes: {
           'error_type': error.runtimeType.toString(),
           'error_message': error.toString(),
         },
