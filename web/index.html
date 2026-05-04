@@ -250,9 +250,9 @@
       //   - Define a setter on .loader — fires when flutter_bootstrap.js assigns
       //     the real FlutterLoader instance.
       //   - In load(), wrap onEntrypointLoaded:
-      //       await initializeEngine()  → CanvasKit done, WebGL context held
-      //       inject + await maplibre   → maplibregl ready, no context race
-      //       await runApp()            → first frame: MapLibreMap finds maplibregl
+      //       await initializeEngine(engineConfig) → CanvasKit done, WebGL context held
+      //       inject + await maplibre             → maplibregl ready, no context race
+      //       await runApp()                      → first frame: MapLibreMap finds maplibregl
       //
       var _mapLibreInjected = false;
 
@@ -270,7 +270,11 @@
               return _origLoad(Object.assign({}, config, {
                 onEntrypointLoaded: async function(engineInitializer) {
                   // Step 1: CanvasKit init — acquires WebGL context(s).
-                  var appRunner = await engineInitializer.initializeEngine();
+                  // Preserve Flutter's engine config instead of calling
+                  // initializeEngine() bare; newer web engine paths can fail
+                  // before the first frame if the config object is dropped.
+                  var engineConfig = (config && config.config) || {};
+                  var appRunner = await engineInitializer.initializeEngine(engineConfig);
 
                   // Step 2: Inject MapLibre and WAIT for script to execute.
                   // Running between initializeEngine and runApp ensures:

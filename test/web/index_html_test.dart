@@ -50,13 +50,13 @@ void main() {
         // MapLibre must be defined before runApp so the MapLibreMap widget
         // finds window.maplibregl when it builds on the first frame.
         // See docs/ios-safari-maplibre.md — Constraint 2.
-        final initEngineIndex = html.indexOf('initializeEngine()');
+        final initEngineIndex = html.indexOf('initializeEngine(engineConfig)');
         // Inline injection inside the loader callback uses variable 's'
         final injectIndex = html.indexOf("s.src = 'maplibre-gl.js'");
         final runAppIndex = html.indexOf('appRunner.runApp()');
 
         expect(initEngineIndex, isNot(-1),
-            reason: 'initializeEngine() must be called');
+            reason: 'initializeEngine(engineConfig) must be called');
         expect(injectIndex, isNot(-1),
             reason: "MapLibre script injection (s.src = 'maplibre-gl.js') "
                 'must be present inside the loader callback');
@@ -83,6 +83,21 @@ void main() {
           html,
           contains('s.onload'),
           reason: 'Script onload handler must resolve the await promise',
+        );
+      });
+      test('preserves Flutter engine config when initializing engine', () {
+        expect(
+          html,
+          contains('var engineConfig = (config && config.config) || {};'),
+          reason: 'The custom bootstrap wrapper must preserve Flutter engine '
+              'config instead of calling initializeEngine() with no args, or '
+              'the web engine can fail before the first frame.',
+        );
+        expect(
+          html,
+          contains('initializeEngine(engineConfig)'),
+          reason: 'The wrapper should pass the preserved engine config into '
+              'initializeEngine(engineConfig).',
         );
       });
 
