@@ -37,6 +37,54 @@
   <link href="maplibre-gl.css" rel="stylesheet">
   
   
+  <style id="earthnova-maplibre-attribution-compact">
+    /*
+      Keep MapLibre attribution legally available without letting the expanded
+      compact pill cover EarthNova's mobile status bar. MapLibre GL JS can mark
+      compact attribution as open (`maplibregl-compact-show`) on narrow screens;
+      Flutter's attribution margin options are not consistently applied by the
+      web platform view, so we enforce a small info button here and only reveal
+      the full attribution text on hover/focus.
+    */
+    .maplibregl-ctrl-top-right .maplibregl-ctrl-attrib {
+      margin: 88px 10px 0 0 !important;
+    }
+
+    .maplibregl-ctrl-attrib.maplibregl-compact {
+      width: 24px !important;
+      max-width: 24px !important;
+      min-height: 24px !important;
+      overflow: hidden !important;
+      border-radius: 999px !important;
+      background: rgba(255, 255, 255, 0.92) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+    }
+
+    .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner {
+      display: none !important;
+    }
+
+    .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button {
+      position: static !important;
+      display: block !important;
+      width: 24px !important;
+      height: 24px !important;
+    }
+
+    .maplibregl-ctrl-attrib.maplibregl-compact:hover,
+    .maplibregl-ctrl-attrib.maplibregl-compact:focus-within {
+      width: auto !important;
+      max-width: calc(100vw - 24px) !important;
+      overflow: visible !important;
+      border-radius: 12px !important;
+    }
+
+    .maplibregl-ctrl-attrib.maplibregl-compact:hover .maplibregl-ctrl-attrib-inner,
+    .maplibregl-ctrl-attrib.maplibregl-compact:focus-within .maplibregl-ctrl-attrib-inner {
+      display: block !important;
+      padding-right: 28px !important;
+    }
+  </style>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   <style id="splash-screen-style">
     html {

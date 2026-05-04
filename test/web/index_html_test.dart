@@ -180,5 +180,27 @@ void main() {
         );
       });
     });
+
+    group('MapLibre attribution presentation', () {
+      test('forces compact attribution so it cannot crowd the status bar', () {
+        expect(
+          html,
+          contains('earthnova-maplibre-attribution-compact'),
+          reason: 'MapLibre attribution must stay available but collapsed; '
+              'the expanded attribution pill covers the map status bar on mobile.',
+        );
+        expect(
+          html,
+          contains('.maplibregl-ctrl-attrib.maplibregl-compact'),
+          reason: 'Override must target MapLibre compact attribution.',
+        );
+        expect(
+          html,
+          contains('display: none !important'),
+          reason:
+              'Attribution text should be hidden until the user taps the info button.',
+        );
+      });
+    });
   });
 }
