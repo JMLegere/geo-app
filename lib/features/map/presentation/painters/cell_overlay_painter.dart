@@ -72,26 +72,37 @@ class CellOverlayPainter extends CustomPainter {
           ..style = PaintingStyle.fill,
       );
 
-      for (final ringPath in ringPaths) {
-        canvas.drawPath(
-          ringPath,
-          Paint()
-            ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = FogRenderer.seamGlowStrokeWidth(state)
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.normal,
-              FogRenderer.seamGlowBlurSigma(state),
-            ),
-        );
+      final seamAlpha = strokeColor.a;
+      final glowStrokeWidth = FogRenderer.seamGlowStrokeWidth(state);
+      final seamStrokeWidth = FogRenderer.seamStrokeWidth(state);
+      final glowBlurSigma = FogRenderer.seamGlowBlurSigma(state);
 
-        canvas.drawPath(
-          ringPath,
-          Paint()
-            ..color = habitatStrokeColor.withValues(alpha: strokeColor.a)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = FogRenderer.seamStrokeWidth(state),
-        );
+      if (seamAlpha > 0.0 && glowStrokeWidth > 0.0 && glowBlurSigma > 0.0) {
+        for (final ringPath in ringPaths) {
+          canvas.drawPath(
+            ringPath,
+            Paint()
+              ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = glowStrokeWidth
+              ..maskFilter = MaskFilter.blur(
+                BlurStyle.normal,
+                glowBlurSigma,
+              ),
+          );
+        }
+      }
+
+      if (seamAlpha > 0.0 && seamStrokeWidth > 0.0) {
+        for (final ringPath in ringPaths) {
+          canvas.drawPath(
+            ringPath,
+            Paint()
+              ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = seamStrokeWidth,
+          );
+        }
       }
 
       if (state.contents == CellContents.hasLoot && centroidPoints.isNotEmpty) {

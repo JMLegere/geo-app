@@ -18,6 +18,7 @@ import 'package:earth_nova/features/map/domain/services/explored_footprint_servi
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/presenters/encounter_presenter.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -263,7 +264,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
                   attributionButtonPosition:
                       maplibre.AttributionButtonPosition.topRight,
-                  attributionButtonMargins: const math.Point(12, 96),
+                  attributionButtonMargins: const math.Point(12, 144),
                   onMapCreated: (controller) {
                     _mapController = controller;
                     ref
@@ -336,6 +337,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 156,
+                child: IgnorePointer(child: _MapTopFogFeather()),
+              ),
               // Frosted glass status bar — overlaid at top of map
               Positioned(
                 top: 0,
@@ -572,6 +580,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
+class _MapTopFogFeather extends StatelessWidget {
+  const _MapTopFogFeather();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppTheme.surface.withValues(alpha: 0.62),
+            AppTheme.surface.withValues(alpha: 0.32),
+            AppTheme.surface.withValues(alpha: 0.0),
+          ],
+          stops: const [0.0, 0.48, 1.0],
+        ),
+      ),
+    );
+  }
+}
+
 class _EncounterToast extends StatelessWidget {
   const _EncounterToast({
     required this.encounter,
@@ -606,7 +636,7 @@ class _EncounterToast extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                _encounterMessage(encounter),
+                EncounterPresenter.message(encounter),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -631,25 +661,6 @@ class _EncounterToast extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static String _encounterMessage(Encounter encounter) {
-    return switch (encounter.type) {
-      EncounterType.species =>
-        'You found ${_shortSpeciesName(encounter.speciesId)}',
-      EncounterType.critter => 'A critter appeared',
-      EncounterType.loot => 'You found supplies',
-    };
-  }
-
-  static String _shortSpeciesName(String speciesId) {
-    final cleaned = speciesId
-        .replaceFirst(RegExp(r'^species[_-]?'), '')
-        .replaceAll(RegExp(r'[_-]+'), ' ')
-        .trim();
-    if (cleaned.isEmpty) return 'a new species';
-    if (cleaned.length <= 24) return cleaned;
-    return '${cleaned.substring(0, 20)}…';
   }
 }
 
