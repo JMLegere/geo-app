@@ -306,6 +306,22 @@ void main() {
       expect(mapSource, contains('LinearGradient('));
     });
 
+    test('encounters are keyed to gameplay entry events, not tracking state',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('lastEntrySequence'));
+      expect(mapSource, contains('lastEnteredCellId'));
+      expect(
+        mapSource,
+        isNot(contains('previous?.currentCellId != next.currentCellId')),
+        reason:
+            'Ring-state tracking can update currentCellId before a visit is eligible.',
+      );
+    });
+
     test('uses controlled encounter toast instead of Scaffold snackbar', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

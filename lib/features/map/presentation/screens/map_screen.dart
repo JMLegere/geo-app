@@ -126,25 +126,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     });
 
-    // Listen for cell entry events to trigger encounters and discovery notification
+    // Listen for gameplay entry events to trigger encounters and discovery
+    // notification. Do not key this off currentCellId alone: ring-state marker
+    // tracking can update currentCellId before visits are eligible.
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
-      if (previous?.currentCellId != next.currentCellId &&
-          next.currentCellId != null) {
-        final isFirstVisit = previous == null ||
-            !previous.visitedCellIds.contains(next.currentCellId);
-        ref.read(encounterProvider.notifier).onCellEntered(
-              cellId: next.currentCellId!,
-              isFirstVisit: isFirstVisit,
-            );
-        // Show discovery notification on first visit
-        if (isFirstVisit) {
-          _showDiscoveryNotification(next.currentCellId!);
-          ref.read(mapProvider.notifier).obs.log(
-            'map.discovery_notification_shown',
-            'map',
-            data: {'cell_id': next.currentCellId},
+      final previousEntrySequence = previous?.lastEntrySequence ?? 0;
+      final isNewGameplayEntry = next.lastEntrySequence > previousEntrySequence;
+      final enteredCellId = next.lastEnteredCellId;
+      if (!isNewGameplayEntry || enteredCellId == null) return;
+
+      final isFirstVisit = next.lastEntryWasFirstVisit ?? false;
+      ref.read(encounterProvider.notifier).onCellEntered(
+            cellId: enteredCellId,
+            isFirstVisit: isFirstVisit,
           );
-        }
+      // Show discovery notification on first visit.
+      if (isFirstVisit) {
+        _showDiscoveryNotification(enteredCellId);
+        ref.read(mapProvider.notifier).obs.log(
+          'map.discovery_notification_shown',
+          'map',
+          data: {'cell_id': enteredCellId},
+        );
       }
     });
 
