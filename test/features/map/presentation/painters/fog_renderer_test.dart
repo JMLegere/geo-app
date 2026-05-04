@@ -78,6 +78,20 @@ void main() {
         expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });
 
+      test('present and explored seams are subtle territory accents', () {
+        final present = _state(CellRelationship.present);
+        final explored = _state(CellRelationship.explored);
+
+        expect(
+            FogRenderer.seamGlowStrokeWidth(present), lessThanOrEqualTo(1.8));
+        expect(
+            FogRenderer.seamGlowStrokeWidth(explored), lessThanOrEqualTo(1.2));
+        expect(FogRenderer.seamStrokeWidth(present), lessThanOrEqualTo(0.9));
+        expect(FogRenderer.seamStrokeWidth(explored), lessThanOrEqualTo(0.6));
+        expect(FogRenderer.seamGlowBlurSigma(present), lessThanOrEqualTo(1.4));
+        expect(FogRenderer.seamGlowBlurSigma(explored), lessThanOrEqualTo(1.0));
+      });
+
       test('frontier and unknown glow blur is disabled', () {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);

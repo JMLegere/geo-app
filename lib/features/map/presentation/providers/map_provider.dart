@@ -145,6 +145,16 @@ class MapNotifier extends ObservableNotifier<MapState> {
       final visitedIds = results[1] as Set<String>;
 
       final withPolygon = cells.where((c) => c.hasRenderableGeometry).length;
+      final geometrySourceVersions = _nonEmptySortedSet(
+        cells.map((cell) => cell.geometrySourceVersion),
+      );
+      final geometryGenerationModes = _nonEmptySortedSet(
+        cells.map((cell) => cell.geometryGenerationMode),
+      );
+      final geometryContracts = _nonEmptySortedSet(
+        cells.map((cell) => cell.geometryContract),
+      );
+
       transition(
         MapStateReady(
           cells: cells,
@@ -157,6 +167,9 @@ class MapNotifier extends ObservableNotifier<MapState> {
           'cells_with_polygon': withPolygon,
           'cells_without_polygon': cells.length - withPolygon,
           'visited_count': visitedIds.length,
+          'geometry_source_versions': geometrySourceVersions,
+          'geometry_generation_modes': geometryGenerationModes,
+          'geometry_contracts': geometryContracts,
         },
       );
     } catch (e, stack) {
@@ -195,4 +208,10 @@ class MapNotifier extends ObservableNotifier<MapState> {
   }
 
   double _toRad(double deg) => deg * pi / 180;
+
+  List<String> _nonEmptySortedSet(Iterable<String> values) {
+    final set = values.where((value) => value.isNotEmpty).toSet().toList();
+    set.sort();
+    return set;
+  }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
+import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
 
 /// CustomPainter that renders cell polygons with fog-of-war styling.
 ///
@@ -26,89 +27,78 @@ class CellOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (final entry in cellsWithStates) {
-      final cell = entry.cell;
-      final state = entry.state;
+    final renderableEntries = [
+      for (final entry in cellsWithStates)
+        if (FogRenderer.shouldRender(entry.state) &&
+            entry.cell.hasRenderableGeometry)
+          entry,
+    ];
 
-      if (!FogRenderer.shouldRender(state)) continue;
-      if (!cell.hasRenderableGeometry) continue;
+    final renderModel = CellTessellationRenderModel.build(
+      cellsWithStates: renderableEntries,
+      project: _geoCoordToScreen,
+    );
 
-      final fillColor = FogRenderer.fillColor(state);
-      final strokeColor = FogRenderer.strokeColor(state);
-      final habitatStrokeColor = FogRenderer.getHabitatStrokeColor(cell);
-
-      final fillPath = Path()..fillType = PathFillType.evenOdd;
-      final ringPaths = <Path>[];
-      final centroidPoints = <Offset>[];
-
-      for (final polygon in cell.polygons) {
-        for (final ring in polygon) {
-          if (ring.length < 3) continue;
-          final path = Path();
-          final points = ring.map(_geoCoordToScreen).toList(growable: false);
-          if (points.isEmpty) continue;
-
-          path.moveTo(points.first.dx, points.first.dy);
-          for (var i = 1; i < points.length; i++) {
-            path.lineTo(points[i].dx, points[i].dy);
-          }
-          path.close();
-
-          fillPath.addPath(path, Offset.zero);
-          ringPaths.add(path);
-
-          if (identical(ring, polygon.first)) {
-            centroidPoints.addAll(points);
-          }
-        }
-      }
-
-      if (ringPaths.isEmpty) continue;
-
-      canvas.drawPath(
-        fillPath,
-        Paint()
-          ..color = fillColor
-          ..style = PaintingStyle.fill,
+    for (final fill in renderModel.fillPaths) {
+      final fillState = CellState(
+        relationship: fill.relationship,
+        contents: CellContents.empty,
       );
+      canvas.drawPath(
+        fill.path,
+        Paint()
+          ..color = FogRenderer.fillColor(fillState)
+          ..style = PaintingStyle.fill
+          ..isAntiAlias = false,
+      );
+    }
 
+    for (final edge in renderModel.boundaryEdges) {
+      final strokeColor = FogRenderer.strokeColor(edge.state);
+      final habitatStrokeColor = FogRenderer.getHabitatStrokeColor(edge.cell);
       final seamAlpha = strokeColor.a;
-      final glowStrokeWidth = FogRenderer.seamGlowStrokeWidth(state);
-      final seamStrokeWidth = FogRenderer.seamStrokeWidth(state);
-      final glowBlurSigma = FogRenderer.seamGlowBlurSigma(state);
+      final glowStrokeWidth = FogRenderer.seamGlowStrokeWidth(edge.state);
+      final seamStrokeWidth = FogRenderer.seamStrokeWidth(edge.state);
+      final glowBlurSigma = FogRenderer.seamGlowBlurSigma(edge.state);
+      final edgePath = Path()
+        ..moveTo(edge.start.dx, edge.start.dy)
+        ..lineTo(edge.end.dx, edge.end.dy);
 
       if (seamAlpha > 0.0 && glowStrokeWidth > 0.0 && glowBlurSigma > 0.0) {
-        for (final ringPath in ringPaths) {
-          canvas.drawPath(
-            ringPath,
-            Paint()
-              ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = glowStrokeWidth
-              ..maskFilter = MaskFilter.blur(
-                BlurStyle.normal,
-                glowBlurSigma,
-              ),
-          );
-        }
+        canvas.drawPath(
+          edgePath,
+          Paint()
+            ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = glowStrokeWidth
+            ..maskFilter = MaskFilter.blur(
+              BlurStyle.normal,
+              glowBlurSigma,
+            ),
+        );
       }
 
       if (seamAlpha > 0.0 && seamStrokeWidth > 0.0) {
-        for (final ringPath in ringPaths) {
-          canvas.drawPath(
-            ringPath,
-            Paint()
-              ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = seamStrokeWidth,
-          );
-        }
+        canvas.drawPath(
+          edgePath,
+          Paint()
+            ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = seamStrokeWidth,
+        );
       }
+    }
 
-      if (state.contents == CellContents.hasLoot && centroidPoints.isNotEmpty) {
-        final centroid = _calculateCentroid(centroidPoints);
-        _drawLootIcon(canvas, centroid);
-      }
+    for (final entry in renderableEntries) {
+      if (entry.state.contents != CellContents.hasLoot) continue;
+      final centroidPoints = [
+        for (final polygon in entry.cell.polygons)
+          if (polygon.isNotEmpty)
+            for (final coord in polygon.first) _geoCoordToScreen(coord),
+      ];
+      if (centroidPoints.isEmpty) continue;
+      final centroid = _calculateCentroid(centroidPoints);
+      _drawLootIcon(canvas, centroid);
     }
   }
 

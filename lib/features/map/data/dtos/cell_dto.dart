@@ -10,6 +10,10 @@ class CellDto {
     required this.cityId,
     required this.stateId,
     required this.countryId,
+    required this.geometrySourceVersion,
+    required this.geometryGenerationMode,
+    required this.centroidDatasetVersion,
+    required this.geometryContract,
   });
 
   final String cellId;
@@ -19,6 +23,10 @@ class CellDto {
   final String cityId;
   final String stateId;
   final String countryId;
+  final String geometrySourceVersion;
+  final String geometryGenerationMode;
+  final String centroidDatasetVersion;
+  final String geometryContract;
 
   factory CellDto.fromJson(Map<String, dynamic> json) => CellDto(
         cellId: json['cell_id'] as String,
@@ -30,6 +38,12 @@ class CellDto {
         cityId: json['city_id'] as String? ?? '',
         stateId: json['state_id'] as String? ?? '',
         countryId: json['country_id'] as String? ?? '',
+        geometrySourceVersion: json['geometry_source_version'] as String? ?? '',
+        geometryGenerationMode:
+            json['geometry_generation_mode'] as String? ?? '',
+        centroidDatasetVersion:
+            json['centroid_dataset_version'] as String? ?? '',
+        geometryContract: json['geometry_contract'] as String? ?? '',
       );
 
   Cell toDomain() => Cell(
@@ -40,13 +54,20 @@ class CellDto {
           for (final polygon in polygons)
             [
               for (final ring in polygon)
-                [for (final point in ring) (lat: point['lat']!, lng: point['lng']!)],
+                [
+                  for (final point in ring)
+                    (lat: point['lat']!, lng: point['lng']!)
+                ],
             ],
         ],
         districtId: districtId,
         cityId: cityId,
         stateId: stateId,
         countryId: countryId,
+        geometrySourceVersion: geometrySourceVersion,
+        geometryGenerationMode: geometryGenerationMode,
+        centroidDatasetVersion: centroidDatasetVersion,
+        geometryContract: geometryContract,
       );
 
   static List<List<List<Map<String, double>>>> _parsePolygons(
@@ -62,7 +83,8 @@ class CellDto {
                 .map(
                   (ring) => ring
                       .whereType<Map>()
-                      .map((point) => _parsePoint(Map<String, dynamic>.from(point)))
+                      .map((point) =>
+                          _parsePoint(Map<String, dynamic>.from(point)))
                       .toList(growable: false),
                 )
                 .toList(growable: false),

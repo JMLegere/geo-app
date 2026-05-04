@@ -203,7 +203,9 @@ void main() {
       final cell = Cell(
         id: 'cell-1',
         habitats: [],
-        polygons: [[[]]],
+        polygons: [
+          [[]]
+        ],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',
@@ -373,15 +375,23 @@ void main() {
       final cell = Cell(
         id: 'cell-1',
         habitats: [],
-        polygons: [[[
-          (lat: 0.0, lng: 0.0),
-          (lat: 1.0, lng: 0.0),
-          (lat: 1.0, lng: 1.0),
-        ]]],
+        polygons: [
+          [
+            [
+              (lat: 0.0, lng: 0.0),
+              (lat: 1.0, lng: 0.0),
+              (lat: 1.0, lng: 1.0),
+            ]
+          ]
+        ],
         districtId: 'd1',
         cityId: 'c1',
         stateId: 's1',
         countryId: 'co1',
+        geometrySourceVersion: 'organic-voronoi-beta-v1',
+        geometryGenerationMode: 'db-deterministic-jittered-centroid-voronoi',
+        centroidDatasetVersion: 'earthnova-organic-centroids-beta-v1',
+        geometryContract: 'true-voronoi-clipped-to-lattice-coverage',
       );
       cellRepo.cells = [cell];
       cellRepo.visitedIds = {'cell-1'};
@@ -406,6 +416,12 @@ void main() {
       expect(completeEvent.data?['cells_with_polygon'], 1);
       expect(completeEvent.data?['cells_without_polygon'], 0);
       expect(completeEvent.data?['visited_count'], 1);
+      expect(completeEvent.data?['geometry_source_versions'],
+          ['organic-voronoi-beta-v1']);
+      expect(completeEvent.data?['geometry_generation_modes'],
+          ['db-deterministic-jittered-centroid-voronoi']);
+      expect(completeEvent.data?['geometry_contracts'],
+          ['true-voronoi-clipped-to-lattice-coverage']);
     });
 
     test('logs map.cells_fetch_error on failure', () async {

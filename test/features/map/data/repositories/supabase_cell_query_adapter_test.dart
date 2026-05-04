@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('SupabaseCellQueryAdapter', () {
-    test('delegates nearby geometry fetch to injected RPC query parameters', () async {
+    test('delegates nearby geometry fetch to injected RPC query parameters',
+        () async {
       final calls = <({double lat, double lng, double radiusMeters})>[];
       final adapter = SupabaseCellQueryAdapter(
         client: null,
@@ -34,6 +35,10 @@ void main() {
               'state_id': 'state_nb',
               'country_id': 'country_ca',
               'geometry_source_version': 'db-lattice-voronoi-beta-v1',
+              'geometry_generation_mode':
+                  'db-deterministic-jittered-centroid-voronoi',
+              'centroid_dataset_version': 'earthnova-organic-centroids-beta-v1',
+              'geometry_contract': 'true-voronoi-clipped-to-lattice-coverage',
             },
           ];
         },
@@ -53,6 +58,13 @@ void main() {
       expect(cells.single.id, 'cell_rpc_1');
       expect(cells.single.polygons.first.first, hasLength(4));
       expect(cells.single.cityId, 'city_fredericton');
+      expect(cells.single.geometrySourceVersion, 'db-lattice-voronoi-beta-v1');
+      expect(cells.single.geometryGenerationMode,
+          'db-deterministic-jittered-centroid-voronoi');
+      expect(cells.single.centroidDatasetVersion,
+          'earthnova-organic-centroids-beta-v1');
+      expect(cells.single.geometryContract,
+          'true-voronoi-clipped-to-lattice-coverage');
     });
 
     test('filters empty polygons before returning domain cells', () async {

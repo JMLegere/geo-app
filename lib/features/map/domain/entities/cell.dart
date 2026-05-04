@@ -16,6 +16,10 @@ class Cell {
     required this.cityId,
     required this.stateId,
     required this.countryId,
+    this.geometrySourceVersion = '',
+    this.geometryGenerationMode = '',
+    this.centroidDatasetVersion = '',
+    this.geometryContract = '',
   });
 
   final String id;
@@ -25,6 +29,10 @@ class Cell {
   final String cityId;
   final String stateId;
   final String countryId;
+  final String geometrySourceVersion;
+  final String geometryGenerationMode;
+  final String centroidDatasetVersion;
+  final String geometryContract;
 
   bool get hasRenderableGeometry => polygons.any(
         (polygon) => polygon.isNotEmpty && polygon.first.length >= 3,
@@ -57,7 +65,11 @@ class Cell {
           districtId == other.districtId &&
           cityId == other.cityId &&
           stateId == other.stateId &&
-          countryId == other.countryId;
+          countryId == other.countryId &&
+          geometrySourceVersion == other.geometrySourceVersion &&
+          geometryGenerationMode == other.geometryGenerationMode &&
+          centroidDatasetVersion == other.centroidDatasetVersion &&
+          geometryContract == other.geometryContract;
 
   @override
   int get hashCode => Object.hashAll([
@@ -67,9 +79,7 @@ class Cell {
             .map(
               (polygon) => polygon
                   .map(
-                    (ring) => ring
-                        .map((p) => '${p.lat},${p.lng}')
-                        .join(';'),
+                    (ring) => ring.map((p) => '${p.lat},${p.lng}').join(';'),
                   )
                   .join('|'),
             )
@@ -78,6 +88,10 @@ class Cell {
         cityId,
         stateId,
         countryId,
+        geometrySourceVersion,
+        geometryGenerationMode,
+        centroidDatasetVersion,
+        geometryContract,
       ]);
 }
 
