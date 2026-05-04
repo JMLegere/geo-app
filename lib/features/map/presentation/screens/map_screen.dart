@@ -28,6 +28,7 @@ import 'package:earth_nova/features/map/presentation/providers/visit_queue_provi
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
+import 'package:earth_nova/features/map/presentation/state/map_readiness_state.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -55,6 +56,14 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   maplibre.MapLibreMapController? _mapController;
 
+  bool _mapCreated = false;
+  bool _mapStyleLoaded = false;
+  bool _baseMapSettled = false;
+  bool _overlayFramePainted = false;
+  bool _steadyStateLogged = false;
+  bool _readinessWaitingLogged = false;
+  Timer? _mapSettledFallbackTimer;
+
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
   Timer? _notificationTimer;
@@ -62,6 +71,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void dispose() {
     _notificationTimer?.cancel();
+    _mapSettledFallbackTimer?.cancel();
     _mapController?.dispose();
     super.dispose();
   }
@@ -72,6 +82,103 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _notificationTimer = Timer(_kDiscoveryNotificationDuration, () {
       if (mounted) setState(() => _notificationCellId = null);
     });
+  }
+
+  void _markMapCreated() {
+    if (_mapCreated) return;
+    setState(() => _mapCreated = true);
+  }
+
+  void _markStyleLoaded() {
+    if (!_mapStyleLoaded) {
+      setState(() => _mapStyleLoaded = true);
+    }
+    _scheduleBaseMapSettledFallback();
+  }
+
+  void _scheduleBaseMapSettledFallback() {
+    _mapSettledFallbackTimer?.cancel();
+    _mapSettledFallbackTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) _markBaseMapSettled(source: 'style_loaded_fallback');
+    });
+  }
+
+  void _markBaseMapSettled({required String source}) {
+    if (_baseMapSettled) return;
+    _mapSettledFallbackTimer?.cancel();
+    setState(() => _baseMapSettled = true);
+    ref.read(mapProvider.notifier).obs.log(
+      'map.base_map_settled',
+      'map',
+      data: {'source': source},
+    );
+  }
+
+  void _resetOverlayReadinessForRefetch() {
+    if (!_overlayFramePainted && !_steadyStateLogged) return;
+    setState(() {
+      _overlayFramePainted = false;
+      _steadyStateLogged = false;
+      _readinessWaitingLogged = false;
+    });
+  }
+
+  MapReadinessState _readinessFor({
+    required bool locationReady,
+    required MapState mapState,
+  }) {
+    return MapReadinessState(
+      locationReady: locationReady,
+      mapCreated: _mapCreated,
+      styleLoaded: _mapStyleLoaded,
+      baseMapSettled: _baseMapSettled,
+      cellsFetched: mapState is MapStateReady,
+      overlayFramePainted: _overlayFramePainted,
+    );
+  }
+
+  void _armOverlayFrameReadiness(MapReadinessState readiness) {
+    final canPaintSteadyOverlay = readiness.locationReady &&
+        readiness.mapCreated &&
+        readiness.styleLoaded &&
+        readiness.baseMapSettled &&
+        readiness.cellsFetched;
+
+    if (!canPaintSteadyOverlay || readiness.overlayFramePainted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _overlayFramePainted) return;
+      setState(() => _overlayFramePainted = true);
+      _logSteadyStateReady();
+    });
+  }
+
+  void _logReadinessWaiting(MapReadinessState readiness) {
+    if (readiness.isSteadyStateReady || _readinessWaitingLogged) return;
+    _readinessWaitingLogged = true;
+    ref.read(mapProvider.notifier).obs.log(
+          'map.readiness_waiting',
+          'map',
+          data: readiness.toLogData(),
+        );
+  }
+
+  void _logSteadyStateReady() {
+    if (_steadyStateLogged) return;
+    _steadyStateLogged = true;
+    final readiness = MapReadinessState(
+      locationReady: true,
+      mapCreated: _mapCreated,
+      styleLoaded: _mapStyleLoaded,
+      baseMapSettled: _baseMapSettled,
+      cellsFetched: true,
+      overlayFramePainted: true,
+    );
+    ref.read(mapProvider.notifier).obs.log(
+          'map.steady_state_ready',
+          'map',
+          data: readiness.toLogData(),
+        );
   }
 
   @override
@@ -114,6 +221,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
 
     ref.listen<MapState>(mapProvider, (_, next) {
+      if (next is MapStateLoading) {
+        _resetOverlayReadinessForRefetch();
+      }
       if (next case MapStateReady(:final cells, :final visitedCellIds)) {
         unawaited(
           ref.read(explorationProvider.notifier).onPositionUpdate(
@@ -241,6 +351,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             _kGpsZoom,
             screenCenter,
           );
+          final readiness = _readinessFor(
+            locationReady: true,
+            mapState: mapState,
+          );
+          _armOverlayFrameReadiness(readiness);
+          _logReadinessWaiting(readiness);
 
           return Stack(
             children: [
@@ -270,6 +386,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   attributionButtonMargins: const math.Point(12, 144),
                   onMapCreated: (controller) {
                     _mapController = controller;
+                    _markMapCreated();
                     ref
                         .read(mapProvider.notifier)
                         .obs
@@ -281,6 +398,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         .obs
                         .log('map.style_loaded', 'map');
                     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
+                    _markStyleLoaded();
+                  },
+                  onMapIdle: () {
+                    _markBaseMapSettled(source: 'map_idle');
                   },
                 ),
               ),
@@ -482,6 +603,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                 ),
+
+              if (!readiness.isSteadyStateReady)
+                Positioned.fill(
+                  child: _MapSteadyStateLoadingOverlay(
+                    waitingFor: readiness.waitingFor,
+                  ),
+                ),
             ],
           );
         },
@@ -599,6 +727,41 @@ class _MapTopFogFeather extends StatelessWidget {
             AppTheme.surface.withValues(alpha: 0.0),
           ],
           stops: const [0.0, 0.48, 1.0],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapSteadyStateLoadingOverlay extends StatelessWidget {
+  const _MapSteadyStateLoadingOverlay({required this.waitingFor});
+
+  final List<String> waitingFor;
+
+  @override
+  Widget build(BuildContext context) {
+    final waitingText = waitingFor.isEmpty
+        ? 'Revealing map…'
+        : 'Revealing map… ${waitingFor.first.replaceAll('_', ' ')}';
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppTheme.surface),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const LoadingDots(),
+            const SizedBox(height: 16),
+            Text(
+              waitingText,
+              style: const TextStyle(
+                color: AppTheme.onSurfaceVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

@@ -32,4 +32,22 @@ void main() {
     expect(sql, contains('validate_cell_geometry_source_version'));
     expect(sql, contains("statement_timeout = '600s'"));
   });
+
+  test('geometry visual quality migration surfaces provenance contract', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/046_cell_geometry_visual_quality_and_provenance.sql',
+    );
+
+    expect(migration.existsSync(), isTrue);
+
+    final sql = migration.readAsStringSync();
+    expect(sql, contains('cell_geometry_visual_quality_summary'));
+    expect(sql, contains('cell-geometry-visual-quality-v1'));
+    expect(sql, contains('visual_quality_passed'));
+    expect(sql, contains('geometry_generation_mode'));
+    expect(sql, contains('centroid_dataset_version'));
+    expect(sql, contains('geometry_contract'));
+    expect(sql, contains('geometry_visual_quality'));
+    expect(sql, contains('fetch_nearby_cells'));
+  });
 }

@@ -29,6 +29,11 @@ void main() {
         'city_id': 'city-1',
         'state_id': 'state-1',
         'country_id': 'country-1',
+        'geometry_source_version': 'organic-voronoi-beta-v1',
+        'geometry_generation_mode':
+            'db-deterministic-jittered-centroid-voronoi',
+        'centroid_dataset_version': 'earthnova-organic-centroids-beta-v1',
+        'geometry_contract': 'true-voronoi-clipped-to-lattice-coverage',
       };
 
       final dto = CellDto.fromJson(json);
@@ -44,6 +49,12 @@ void main() {
       expect(cell.cityId, 'city-1');
       expect(cell.stateId, 'state-1');
       expect(cell.countryId, 'country-1');
+      expect(cell.geometrySourceVersion, 'organic-voronoi-beta-v1');
+      expect(cell.geometryGenerationMode,
+          'db-deterministic-jittered-centroid-voronoi');
+      expect(
+          cell.centroidDatasetVersion, 'earthnova-organic-centroids-beta-v1');
+      expect(cell.geometryContract, 'true-voronoi-clipped-to-lattice-coverage');
     });
 
     test('falls back from legacy polygon field to canonical polygons', () {

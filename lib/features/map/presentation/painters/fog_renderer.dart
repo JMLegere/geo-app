@@ -28,8 +28,8 @@ class FogRenderer {
 
   static double seamGlowStrokeWidth(CellState state) {
     return switch (state.relationship) {
-      CellRelationship.present => 3.0,
-      CellRelationship.explored => 2.0,
+      CellRelationship.present => 1.6,
+      CellRelationship.explored => 1.0,
       CellRelationship.frontier => 0.0,
       CellRelationship.unknown => 0.0,
     };
@@ -37,8 +37,8 @@ class FogRenderer {
 
   static double seamStrokeWidth(CellState state) {
     return switch (state.relationship) {
-      CellRelationship.present => 1.1,
-      CellRelationship.explored => 0.8,
+      CellRelationship.present => 0.8,
+      CellRelationship.explored => 0.5,
       CellRelationship.frontier => 0.0,
       CellRelationship.unknown => 0.0,
     };
@@ -46,8 +46,8 @@ class FogRenderer {
 
   static double seamGlowBlurSigma(CellState state) {
     return switch (state.relationship) {
-      CellRelationship.present => 2.4,
-      CellRelationship.explored => 1.8,
+      CellRelationship.present => 1.2,
+      CellRelationship.explored => 0.8,
       CellRelationship.frontier => 0.0,
       CellRelationship.unknown => 0.0,
     };
@@ -89,11 +89,11 @@ class FogRenderer {
   }
 
   static Color _presentStrokeColor() {
-    return const Color(0xF2FFFFFF);
+    return const Color(0xB8FFFFFF);
   }
 
   static Color _exploredStrokeColor() {
-    return const Color(0x99F1DEC0);
+    return const Color(0x66F1DEC0);
   }
 
   static Color _frontierStrokeColor() {

@@ -306,6 +306,18 @@ void main() {
       expect(mapSource, contains('LinearGradient('));
     });
 
+    test('gates visible board until map reaches steady state', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('MapReadinessState('));
+      expect(mapSource, contains('onMapIdle:'));
+      expect(mapSource, contains('_MapSteadyStateLoadingOverlay('));
+      expect(mapSource, contains('map.steady_state_ready'));
+      expect(mapSource, contains('map.readiness_waiting'));
+    });
+
     test('encounters are keyed to gameplay entry events, not tracking state',
         () {
       final mapSource =
