@@ -91,7 +91,7 @@ void main() {
           html,
           contains("push('js', 'flutter_bootstrap_complete'"),
           reason: 'Must log flutter_bootstrap_complete when MapLibre is ready '
-              'before runApp — key diagnostic signal in app_logs',
+              'before runApp — key diagnostic signal in telemetry_logs',
         );
       });
     });
@@ -183,7 +183,8 @@ void main() {
       test('bridges real MapLibre JS idle into Dart readiness', () {
         expect(
           html,
-          contains("window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle'"),
+          contains(
+              "window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle'"),
           reason: 'The Flutter web plugin does not currently forward MapLibre '
               'GL JS idle to onMapIdle, so the app must bridge the real JS '
               'idle event into Dart before relying on a timer fallback.',
@@ -205,15 +206,18 @@ void main() {
       test('bridges real MapLibre JS load into Dart style readiness', () {
         expect(
           html,
-          contains("window.dispatchEvent(new CustomEvent('earthnova.maplibre.load'"),
-          reason: 'The Flutter web plugin style callback is not reliable enough '
+          contains(
+              "window.dispatchEvent(new CustomEvent('earthnova.maplibre.load'"),
+          reason:
+              'The Flutter web plugin style callback is not reliable enough '
               'to be the only source of truth for style readiness on web, so the '
               'app should bridge the real MapLibre JS load event into Dart.',
         );
         expect(
           html,
           contains("map.on('load'"),
-          reason: 'The bridge should listen to the real MapLibre JS load event.',
+          reason:
+              'The bridge should listen to the real MapLibre JS load event.',
         );
       });
     });

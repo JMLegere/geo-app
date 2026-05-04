@@ -173,7 +173,24 @@
   <script>
     (function() {
       var OBS_KEY = 'earthnova_obs';
-      var BEACON_URL = 'https://bfaczcsrpfcbijoaeckb.supabase.co/functions/v1/beacon-events';
+      function telemetryEnvironment() {
+        var host = window.location.hostname;
+        if (host.indexOf('geo-app-beta') !== -1) return 'beta';
+        if (host === 'localhost' || host === '127.0.0.1') return 'local';
+        return 'production';
+      }
+
+      function telemetrySupabaseRef() {
+        var env = telemetryEnvironment();
+        if (env === 'beta') return 'ggkvcpgvxqaqzwxehlns';
+        if (env === 'local') return '';
+        return 'bfaczcsrpfcbijoaeckb';
+      }
+
+      var TELEMETRY_SUPABASE_REF = telemetrySupabaseRef();
+      var BEACON_URL = TELEMETRY_SUPABASE_REF
+        ? 'https://' + TELEMETRY_SUPABASE_REF + '.supabase.co/functions/v1/telemetry-ingest'
+        : '';
       var MAX_BYTES = 2097152;
 
       function ensureUuid(key) {
@@ -196,10 +213,15 @@
           var sid = ensureUuid('earthnova_session_id');
           var did = ensureUuid('earthnova_device_id');
           var entry = JSON.stringify({
-            session_id: sid, device_id: did, user_id: null,
-            category: category, event: event,
-            data: { msg: msg },
-            created_at: new Date().toISOString()
+            session_id: sid,
+            device_id: did,
+            user_id: null,
+            severity_text: category === 'js' && event.indexOf('error') !== -1 ? 'ERROR' : 'INFO',
+            category: category,
+            event_name: category + '.' + event,
+            body: msg || null,
+            attributes: { msg: msg },
+            occurred_at: new Date().toISOString()
           });
           var arr = JSON.parse(localStorage.getItem(OBS_KEY) || '[]');
           arr.push(entry);
@@ -368,7 +390,7 @@
 
       // Route console.error and console.warn into observability so all JS-level
       // noise (MapLibre tile errors, CanvasKit warnings, browser GL messages)
-      // flows into app_logs in Supabase automatically — no DevTools needed.
+      // flows into Supabase telemetry automatically — no DevTools needed.
       // console.log is intentionally excluded: MapLibre logs every tile fetch,
       // producing hundreds of events per minute with no diagnostic value.
       var _origError = console.error;
@@ -497,7 +519,22 @@
           var batch = events.slice(0, 50);
           var remainder = arr.slice(batch.length); // keep unparsed remainder
 
-          navigator.sendBeacon(BEACON_URL, JSON.stringify(batch));
+          if (!BEACON_URL) {
+            localStorage.removeItem(OBS_KEY);
+            return;
+          }
+
+          var envelope = {
+            resource: {
+              service_name: 'earthnova-web-bootstrap',
+              deployment_environment: telemetryEnvironment(),
+              platform: 'web'
+            },
+            logs: batch,
+            spans: []
+          };
+
+          navigator.sendBeacon(BEACON_URL, JSON.stringify(envelope));
           if (remainder.length > 0) {
             localStorage.setItem(OBS_KEY, JSON.stringify(remainder));
           } else {

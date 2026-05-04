@@ -24,7 +24,7 @@ v3 restores a working foundation: login and your collection. Everything else is 
 - **Pack screen** — Grid of user's existing items fetched from `v3_items`. Category filter chips. Sort by recent/rarity/name. Art display with fallback. Empty state.
 - **Tab shell** — 4-tab bottom navigation. Pack is real. Map, Sanctuary, Settings are stubs.
 - **Settings stub** — Sign out button only.
-- **Observability** — Every auth and data state transition logged to Supabase `app_logs` from day 1.
+- **Observability** — Every auth and data state transition logged to Supabase `telemetry_logs` / `telemetry_spans` from day 1.
 - **Session persistence** — Close browser, reopen, still signed in.
 
 ### What Doesn't Ship (explicitly deferred)
@@ -57,7 +57,7 @@ graph LR
     Screens -->|ref.watch| Providers
     Providers -->|call| Services
     Services -->|query/insert| Supabase
-    Services -->|log| app_logs
+    Services -->|log| telemetry_logs
 ```
 
 No domain layer. No engine. No repositories. MVP is thin — screens read providers, providers call services, services talk to Supabase.
@@ -73,7 +73,7 @@ sequenceDiagram
     participant P as PackScreen
     participant I as ItemsProvider
     participant D as Supabase DB
-    participant O as app_logs
+    participant O as telemetry_logs
 
     U->>L: enter phone
     L->>A: signInWithPhone(phone)
@@ -170,7 +170,7 @@ Every tool, constraint, and operational procedure is a file in the repo. Nothing
 | **lcov** | CI + `flutter test --coverage` | Test coverage tracking with minimum threshold enforcement |
 | **`.editorconfig`** | `.editorconfig` | Consistent formatting (indent size, line endings, trailing whitespace) across all editors and agents |
 | **Dart doc comments** | `///` on public APIs | Generated API docs. Every service method, model, and provider gets a one-liner. |
-| **JSON Schema** | `docs/schemas/` | Event payload shapes (`app_logs` events, write queue entries). Machine-validatable contracts. |
+| **JSON Schema** | `docs/schemas/` | Event payload shapes (`telemetry_logs` events, write queue entries). Machine-validatable contracts. |
 | **Docker Compose** | `docker-compose.yml` | Local Supabase + app — fully reproducible dev environment in one command |
 | **Renovate** | `renovate.json` | Automated dependency update PRs. Dependency policy as code. |
 | **analysis_options** | `analysis_options.yaml` | Lint rules, analyzer config |
@@ -324,7 +324,7 @@ final ItemStatus status;
 | Cell visits | `v3_cell_visits` | Full history — fog, counts, streaks all derivable |
 | Offline writes | `v3_write_queue` | Reserved for offline support |
 | Species catalog | `species` (existing) | 32,752 rows, already seeded. `icon_url_frame2` column added for 2-frame animation. |
-| Event logs | `app_logs` (existing) | Reused from v2, structured columns |
+| Event logs/spans | `telemetry_logs`, `telemetry_spans` | OTel-shaped operational telemetry |
 
 ---
 
@@ -332,46 +332,33 @@ final ItemStatus status;
 
 ### Why
 
-The v2 outage ran undetected for weeks because there was no structured logging. In v3, observability is structural — not an add-on, not a nice-to-have. Every state transition emits an event. Every crash is caught. Every unexpected external event is recorded. If it's not in `app_logs`, it didn't happen.
+The v2 outage ran undetected for weeks because there was no structured logging. In v3, observability is structural — not an add-on, not a nice-to-have. Every state transition emits an event. Every crash is caught. Every unexpected external event is recorded. If it is not in Supabase telemetry, it did not happen.
 
 ### Destinations
 
 | Data | Destination | Notes |
 |------|-------------|-------|
-| All structured events | Supabase `app_logs` | Primary. Queryable, persistent, RLS-protected. |
-| All events in dev/mock mode | `debugPrint` only | No Supabase client — can't write. Never crashes. |
-| Crashes | `app_logs` + `debugPrint` | Both. Console for local dev, Supabase for prod diagnosis. |
+| Structured log events | Supabase `telemetry_logs` | Primary. Queryable, persistent, RLS-protected, OTel-shaped. |
+| Timed operations | Supabase `telemetry_spans` | Trace/span tree for startup, use cases, repositories, and map readiness. |
+| All events in dev/mock mode | `debugPrint` only | No Supabase client — cannot write. Never crashes. |
+| Crashes | `telemetry_logs` + `debugPrint` | Both. Console for local dev, Supabase for prod diagnosis. |
 | Server output | Railway logs | Edge function logs, deploy output — server-side only. |
 | Crashes (post-MVP) | Sentry | Symbolicated stack traces, grouping, alerts. Crash handler written to accept Sentry without restructuring. |
 
-The `lines` column from v2 (batched raw `debugPrint` output) is not used in v3. `ObservabilityService` writes structured events only. Raw print output stays in the console.
+The v2 `lines` column and old event-row table are retired. `ObservabilityService` now buffers OTel-shaped log records and spans, then flushes one envelope to the `telemetry-ingest` Edge Function.
 
-### Table
+### Tables
 
-Reuse existing `app_logs` (migration 024). Relevant columns:
+Canonical telemetry tables start in migration 047:
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | UUID PK | |
-| user_id | UUID? | Null until auth completes. Set via `setUserId()`. |
-| session_id | TEXT | UUID generated at app start. Constant for session lifetime. |
-| category | TEXT | lifecycle, infrastructure, auth, data, network, error |
-| event | TEXT | e.g. `auth.sign_in_success` |
-| data | JSONB | Event-specific payload. Phone is always hashed, never raw. |
-| platform | TEXT | web, ios, android |
-| app_version | TEXT | From `APP_VERSION` dart-define |
-| created_at | TIMESTAMPTZ | |
+| Table | What it stores | Key columns |
+|-------|----------------|-------------|
+| `telemetry_logs` | Point-in-time facts | `occurred_at`, `session_id`, `trace_id`, `span_id`, `category`, `event_name`, `severity_text`, `attributes` |
+| `telemetry_spans` | Timed units of work | `trace_id`, `span_id`, `parent_span_id`, `span_name`, `started_at`, `ended_at`, `duration_ms`, `status_code`, `attributes` |
 
 ### Retention Policy
 
-Managed by `pg_cron` job. Different categories have different lifetimes:
-
-| Category | Retention |
-|----------|-----------|
-| error | 90 days |
-| auth, lifecycle, infrastructure | 30 days |
-| data, network | 14 days |
-| performance (future) | 7 days |
+Managed by `pg_cron` via `cleanup_old_telemetry()`. First-pass retention is a simple 30-day rolling window for both logs and spans; category-specific retention can be added later if telemetry volume requires it.
 
 ### Event Catalog
 
@@ -449,7 +436,7 @@ class ObservabilityService {
   /// Log an error with full raw detail for diagnosis.
   /// Captures: exception type, message, full stack trace,
   /// and for Supabase errors: statusCode, error code, response body.
-  /// This detail goes to app_logs only — never shown to the user.
+  /// This detail goes to telemetry_logs only — never shown to the user.
   void logError(Object error, StackTrace stack, {String event = 'app.crash.unhandled'});
 
   /// Attach user ID to all subsequent events.
@@ -474,7 +461,7 @@ class ObservabilityService {
   - `supabase_code` — Supabase error code if applicable (e.g. `invalid_credentials`)
   - `supabase_status` — HTTP status code if applicable (e.g. `400`, `503`)
   - `supabase_message` — raw Supabase error message
-- Raw error detail goes to `app_logs` only — never surfaced to the user
+- Raw error detail goes to `telemetry_logs` only — never surfaced to the user
 
 #### `ObservableNotifier<T>`
 
@@ -531,7 +518,7 @@ Every error event captures two parallel representations:
 // What the user sees (from error catalog):
 "Couldn't sign in. Try again."
 
-// What app_logs captures (full raw detail):
+// What telemetry_logs captures (full raw detail):
 {
   "error_type": "AuthException",
   "error_message": "Invalid login credentials",
@@ -590,13 +577,13 @@ await runZonedGuarded(() async {
 Errors are split across two audiences:
 
 - **Users** see plain language only — no exception messages, no stack traces, no Supabase error codes, no HTTP status codes. A message they can act on, and a way forward.
-- **`app_logs`** captures full raw detail — exception type, message, stack trace, Supabase code, HTTP status. Everything needed to diagnose the failure. See §6 Error Serialization.
+- **`telemetry_logs`** captures full raw detail — exception type, message, stack trace, Supabase code, HTTP status. Everything needed to diagnose the failure. See §6 Error Serialization.
 
-An error shown to a user with a raw stack trace is a failure of the error handling system. An error not captured in `app_logs` is a blind spot. Both are unacceptable.
+An error shown to a user with a raw stack trace is a failure of the error handling system. An error not captured in `telemetry_logs` is a blind spot. Both are unacceptable.
 
 ### Error Catalog
 
-| Code | User message | Cause | `app_logs` captures | Resolution |
+| Code | User message | Cause | `telemetry_logs` captures | Resolution |
 |------|-------------|-------|---------------------|------------|
 | `AUTH_INVALID_PHONE` | "Enter a valid 10-digit phone number" | Input < 10 digits or non-numeric | Validation only — no Supabase call | Inline error, no log needed |
 | `AUTH_NETWORK` | "No connection. Check your network and try again." | Supabase unreachable | `error_type`, `error_message` | Show error, user retries |
@@ -677,7 +664,7 @@ The animated ellipsis is the minimum viable animation: `"Loading Pack."` → `"L
 | Flutter web bundle (gzipped) | < 5MB | Low |
 | Scroll performance | 60 FPS | Medium |
 
-Timing is measured via observability — timed transitions log elapsed milliseconds to `app_logs`. Budgets are monitored by querying `app_logs`, not enforced in CI for MVP.
+Timing is measured via observability — timed operations write spans to `telemetry_spans`, and point events write to `telemetry_logs`. Budgets are monitored by querying telemetry views, not enforced in CI for MVP.
 
 ---
 
@@ -1232,8 +1219,8 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 - [ ] Phone > 10 digits: not accepted (input masks to 10)
 - [ ] Network error during sign-in: "No connection. Check your network and try again." shown, no crash
 - [ ] Auth failure (wrong credentials): "Couldn't sign in. Try again." shown, no crash
-- [ ] Sign in → `app_logs` has `auth.sign_in_started` (phone hashed) + `auth.sign_in_success`
-- [ ] Sign in error → `app_logs` has `auth.sign_in_error` with full `supabase_code`, `supabase_status`, `error_message`, `stack_trace`
+- [ ] Sign in → `telemetry_logs` has `auth.sign_in_started` (phone hashed) + `auth.sign_in_success`
+- [ ] Sign in error → `telemetry_logs` has `auth.sign_in_error` with full `supabase_code`, `supabase_status`, `error_message`, `stack_trace`
 - [ ] `_deriveEmail('+15551234567')` == `'15551234567@earthnova.app'` ← regression, must never change
 - [ ] `_derivePassword('+15551234567')` == known hardcoded SHA-256 hash ← regression, must never change
 
@@ -1322,7 +1309,7 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 - [ ] `auth.session_restore_started` logged on every launch
 - [ ] All auth events logged with correct `category: 'auth'`
 - [ ] All error events include: `error_type`, `error_message`, `stack_trace`, Supabase fields where applicable
-- [ ] Phone never appears raw in any `app_logs` row
+- [ ] Phone never appears raw in any `telemetry_logs` row
 - [ ] `app.backgrounded` flushes the observability buffer
 - [ ] `ObservableNotifier` subclass without `obs` getter → compile error
 

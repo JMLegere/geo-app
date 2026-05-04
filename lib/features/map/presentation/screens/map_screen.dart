@@ -7,6 +7,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
 
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
@@ -68,6 +69,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   BaseMapSettledSignal? _baseMapSettledSignal;
   BaseMapStyleLoadedSignal? _baseMapStyleLoadedSignal;
   Timer? _mapSettledFallbackTimer;
+  TelemetrySpan? _mapBootstrapSpan;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -76,6 +78,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _mapBootstrapSpan = ref.read(appObservabilityProvider).startSpan(
+      'map.bootstrap',
+      attributes: {'screen': 'map_screen'},
+    );
     _baseMapSettledSignal = BaseMapSettledSignal(
       onSettled: (source) {
         if (!mounted) return;
@@ -96,8 +102,56 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _baseMapSettledSignal?.dispose();
     _baseMapStyleLoadedSignal?.dispose();
     _mapSettledFallbackTimer?.cancel();
+    _endMapBootstrapSpan(
+      statusCode: TelemetrySpanStatus.unset,
+      statusMessage: 'disposed_before_steady_state',
+    );
     _mapController?.dispose();
     super.dispose();
+  }
+
+  TelemetrySpan _ensureMapBootstrapSpan() {
+    final existing = _mapBootstrapSpan;
+    if (existing != null) return existing;
+    final span = ref.read(appObservabilityProvider).startSpan(
+      'map.bootstrap',
+      attributes: {'screen': 'map_screen'},
+    );
+    _mapBootstrapSpan = span;
+    return span;
+  }
+
+  void _endMapBootstrapSpan({
+    required TelemetrySpanStatus statusCode,
+    String? statusMessage,
+    Map<String, dynamic>? attributes,
+  }) {
+    final span = _mapBootstrapSpan;
+    if (span == null) return;
+    ref.read(appObservabilityProvider).endSpan(
+          span,
+          statusCode: statusCode,
+          statusMessage: statusMessage,
+          attributes: attributes,
+        );
+    _mapBootstrapSpan = null;
+  }
+
+  void _logMapEvent(
+    String event, {
+    String category = 'map',
+    Map<String, dynamic>? data,
+  }) {
+    final span = _ensureMapBootstrapSpan();
+    ref.read(appObservabilityProvider).log(
+      event,
+      category,
+      data: {
+        ...?data,
+        'trace_id': span.traceId,
+        'span_id': span.spanId,
+      },
+    );
   }
 
   void _showDiscoveryNotification(String cellId) {
@@ -122,9 +176,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _handleStyleLoaded({required String source}) {
     if (_mapStyleLoaded) return;
-    ref.read(mapProvider.notifier).obs.log(
+    _logMapEvent(
       'map.style_loaded',
-      'map',
       data: {'source': source},
     );
     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
@@ -143,9 +196,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (_baseMapSettled) return;
     _mapSettledFallbackTimer?.cancel();
     setState(() => _baseMapSettled = true);
-    ref.read(mapProvider.notifier).obs.log(
+    _logMapEvent(
       'map.base_map_settled',
-      'map',
       data: {'source': source},
     );
   }
@@ -192,11 +244,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _logReadinessWaiting(MapReadinessState readiness) {
     if (readiness.isSteadyStateReady || _readinessWaitingLogged) return;
     _readinessWaitingLogged = true;
-    ref.read(mapProvider.notifier).obs.log(
-          'map.readiness_waiting',
-          'map',
-          data: readiness.toLogData(),
-        );
+    _logMapEvent(
+      'map.readiness_waiting',
+      data: readiness.toLogData(),
+    );
   }
 
   void _logSteadyStateReady() {
@@ -210,11 +261,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       cellsFetched: true,
       overlayFramePainted: true,
     );
-    ref.read(mapProvider.notifier).obs.log(
-          'map.steady_state_ready',
-          'map',
-          data: readiness.toLogData(),
-        );
+    _logMapEvent(
+      'map.steady_state_ready',
+      data: readiness.toLogData(),
+    );
+    _endMapBootstrapSpan(
+      statusCode: TelemetrySpanStatus.ok,
+      attributes: readiness.toLogData(),
+    );
   }
 
   @override
@@ -289,9 +343,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       // Show discovery notification on first visit.
       if (isFirstVisit) {
         _showDiscoveryNotification(enteredCellId);
-        ref.read(mapProvider.notifier).obs.log(
+        _logMapEvent(
           'map.discovery_notification_shown',
-          'map',
           data: {'cell_id': enteredCellId},
         );
       }
@@ -364,7 +417,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       required String category,
       Map<String, dynamic>? data,
     }) {
-      ref.read(mapProvider.notifier).obs.log(event, category, data: data);
+      _logMapEvent(event, category: category, data: data);
     }
 
     final footprint = const ExploredFootprintService().project(
@@ -423,10 +476,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   onMapCreated: (controller) {
                     _mapController = controller;
                     _markMapCreated();
-                    ref
-                        .read(mapProvider.notifier)
-                        .obs
-                        .log('map.map_created', 'map');
+                    _logMapEvent('map.map_created');
                   },
                   onStyleLoadedCallback: () {
                     _handleStyleLoaded(source: 'plugin_style_loaded');

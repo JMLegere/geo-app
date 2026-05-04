@@ -24,7 +24,7 @@ flowchart TD
         IN["<b>Inputs</b><br/>pg_cron triggers<br/>App lifecycle events<br/>Unenriched species"]
         OUT["<b>Outputs</b><br/>Enriched species rows<br/>Synced client cache<br/>Confirmed writes"]
         GT["<b>Gating</b><br/>Backend services running<br/>Edge functions deployed"]
-        DR["<b>Data Requirements</b><br/>species, v3_items, v3_write_queue,<br/>v3_cell_visits, v3_sanctuary_donations,<br/>app_logs, Supabase Storage"]
+        DR["<b>Data Requirements</b><br/>species, v3_items, v3_write_queue,<br/>v3_cell_visits, v3_sanctuary_donations,<br/>telemetry_logs/spans, Supabase Storage"]
         RES["<b>Resolves Critiques</b><br/>2.2: Enrichment gap<br/>2.3: Fully enriched definition<br/>2.4: Fire-and-forget unsafe"]
 
         IN --> OUT

@@ -13,9 +13,9 @@ flowchart TD
 
     subgraph SupabaseCloud["Supabase"]
         Auth["Auth"]
-        Postgres["PostgreSQL\n(v3_tables + species\n+ app_logs)"]
+        Postgres["PostgreSQL\n(v3_tables + species\n+ telemetry_logs/spans)"]
         Storage["Storage\n(species images)"]
-        EdgeFn["Edge Functions\n(process-enrichment-queue)"]
+        EdgeFn["Edge Functions\n(process-enrichment-queue,\ntelemetry-ingest)"]
         PgCronExt["pg_cron"]
         Realtime["Realtime"]
         Auth --- Postgres

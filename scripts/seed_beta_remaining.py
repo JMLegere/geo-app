@@ -21,7 +21,6 @@ TABLES = [
     'v3_cell_visits',
     'claimed_species',
     'collected_species',
-    'app_logs',
 ]
 USER_ID_COLUMNS = {
     'profiles': ['id'],
@@ -33,7 +32,6 @@ USER_ID_COLUMNS = {
     'v3_cell_visits': ['user_id'],
     'claimed_species': ['claimed_by'],
     'collected_species': ['user_id'],
-    'app_logs': ['user_id'],
 }
 BETA_DB_URL = os.environ['BETA_DB_URL']
 

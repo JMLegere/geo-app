@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 
 void main() {
   group('ObservabilityService', () {
@@ -24,6 +25,39 @@ void main() {
         'phone_hash': 'abc123',
       });
       expect(() => obs.flush(), returnsNormally);
+    });
+
+    test('log stores OTel-shaped log records', () {
+      final trace = TraceContext.start();
+
+      obs.log('map.map_created', 'map', data: {
+        'trace_id': trace.traceId,
+        'span_id': trace.spanId,
+        'source': 'test',
+      });
+
+      final row = obs.pendingLogRecords.single;
+      expect(row['event_name'], 'map.map_created');
+      expect(row['category'], 'map');
+      expect(row['trace_id'], trace.traceId);
+      expect(row['span_id'], trace.spanId);
+      expect(row['attributes'], containsPair('source', 'test'));
+      expect(row, contains('occurred_at'));
+      expect(row, isNot(contains('event')));
+      expect(row, isNot(contains('data')));
+    });
+
+    test('startSpan and endSpan store OTel-shaped spans', () {
+      final span = obs.startSpan('map.bootstrap');
+      obs.endSpan(span, statusCode: TelemetrySpanStatus.ok);
+
+      final row = obs.pendingSpanRecords.single;
+      expect(row['trace_id'], span.traceId);
+      expect(row['span_id'], span.spanId);
+      expect(row['span_name'], 'map.bootstrap');
+      expect(row['status_code'], 'ok');
+      expect(row, contains('started_at'));
+      expect(row, contains('ended_at'));
     });
 
     test('log with null data defaults to empty map', () {

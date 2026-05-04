@@ -30,7 +30,7 @@ exhaust the pool before CanvasKit can initialise. CanvasKit then silently fails
 and the app never boots.
 
 **Observable signal:**
-- `health: canvas element missing` in `app_logs`
+- `health: canvas element missing` in `telemetry_logs`
 - No `app.cold_start` Dart event
 
 ### Constraint 2 — maplibregl Must Exist Before First Flutter Frame
@@ -176,7 +176,7 @@ This satisfies all three constraints:
 - Constraint 2 ✓ — `maplibregl` is available before first Flutter frame
 - Constraint 3 ✓ — setter intercepts the loader before `load()` is called
 
-### Observability Signals (what to look for in `app_logs`)
+### Observability Signals (what to look for in `telemetry_logs`)
 
 | Event | Meaning |
 |-------|---------|
@@ -204,7 +204,7 @@ Fires 2× per page load, ~2s after `visibility_visible`. Source is opaque
 
 **Not yet diagnosed.** Does not appear to block Flutter or MapLibre from loading.
 
-### No Dart events in `app_logs` for long-running sessions
+### No Dart events in `telemetry_logs` for long-running sessions
 
 Session `9a6cec99` was created April 3rd. JS beacon events appear but zero
 Dart events appear post-April 3rd. Possible causes:
@@ -214,7 +214,7 @@ Dart events appear post-April 3rd. Possible causes:
 3. Session ID persists from localStorage but Supabase auth token has expired
 
 `flush()` is fire-and-forget with `try/catch` that only `debugPrint`s on error.
-Failures are invisible in `app_logs`.
+Failures are invisible in `telemetry_logs`.
 
 ### `maplibre_version: not-loaded` always fires
 

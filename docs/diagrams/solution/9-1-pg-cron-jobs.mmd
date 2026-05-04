@@ -22,11 +22,11 @@ flowchart TD
             J2_schedule --- J2_target --- J2_desc --- J2_status
         end
 
-        subgraph J3 ["app-logs-retention"]
+        subgraph J3 ["telemetry-retention"]
             J3_schedule["Schedule: 0 3 * * *\n(daily at 03:00 UTC)"]
-            J3_target["Target: SQL function\nprune_app_logs()"]
-            J3_desc["Prunes app_logs:\nerrors 90d, auth 30d, data 14d"]
-            J3_status([STATUS: PLANNED])
+            J3_target["Target: SQL function\ncleanup_old_telemetry()"]
+            J3_desc["Prunes telemetry_logs/spans:\n30-day rolling window"]
+            J3_status([STATUS: IMPLEMENTED])
             J3_schedule --- J3_target --- J3_desc --- J3_status
         end
 

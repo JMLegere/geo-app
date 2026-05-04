@@ -84,7 +84,7 @@ Optional input: `commit_sha` if you want to promote a specific already-validated
 1. Beta validation complete
 2. Trigger `deploy-production.yml`
 3. Verify prod URL loads within 60s
-4. Check `app_logs` for `app.cold_start` + `supabase.init_success`
+4. Check `telemetry_logs` for `app.cold_start` + `supabase.init_success`
 5. Keep rollback target handy in Railway Deployments
 
 **If deploy fails:**
@@ -144,27 +144,40 @@ SELECT
   (SELECT count(*) FROM item_instances) AS old_items,
   (SELECT count(*) FROM v3_items)       AS v3_items;
 
--- Check recent app_logs (last 50)
-SELECT session_id, user_id, category, event, data, created_at
-FROM app_logs
-ORDER BY created_at DESC
+-- Check recent telemetry logs (last 50)
+SELECT occurred_at,
+       session_id,
+       user_id,
+       trace_id,
+       span_id,
+       category,
+       event_name,
+       severity_text,
+       attributes
+FROM telemetry_logs
+ORDER BY occurred_at DESC
 LIMIT 50;
 
+-- Check a session timeline across logs + spans
+SELECT event_at, signal_type, name, status_or_severity, duration_ms, attributes
+FROM telemetry_session_timeline_v
+WHERE session_id = '<uuid>'
+ORDER BY event_at;
+
 -- Find all errors in the last hour
-SELECT session_id, user_id, event, data, created_at
-FROM app_logs
-WHERE category = 'error'
-  AND created_at > now() - interval '1 hour'
-ORDER BY created_at DESC;
+SELECT error_at, signal_type, session_id, user_id, trace_id, name, body, attributes
+FROM telemetry_recent_errors_v
+WHERE error_at > now() - interval '1 hour'
+ORDER BY error_at DESC;
 
 -- Find all sign-in errors in the last 24h
-SELECT data->>'error_message'    AS error,
-       data->>'supabase_code'    AS code,
-       data->>'supabase_status'  AS status,
-       count(*)                  AS occurrences
-FROM app_logs
-WHERE event = 'auth.sign_in_error'
-  AND created_at > now() - interval '24 hours'
+SELECT attributes->>'error_message'   AS error,
+       attributes->>'supabase_code'   AS code,
+       attributes->>'supabase_status' AS status,
+       count(*)                       AS occurrences
+FROM telemetry_logs
+WHERE event_name = 'auth.sign_in_error'
+  AND occurred_at > now() - interval '24 hours'
 GROUP BY 1, 2, 3
 ORDER BY occurrences DESC;
 
@@ -183,7 +196,7 @@ FROM v3_items;
 
 ### UI observability queries
 
-Use these against `app_logs` after releasing UI observability changes.
+Use these against `telemetry_logs` after releasing UI observability changes.
 
 ```sql
 -- Jank events above threshold (>100ms) in last 24h
@@ -191,37 +204,37 @@ WITH parsed_jank AS (
   SELECT
     session_id,
     user_id,
-    event,
-    data->>'screen_name' AS screen_name,
-    data,
-    created_at,
+    event_name,
+    attributes->>'screen_name' AS screen_name,
+    attributes,
+    occurred_at,
     CASE
-      WHEN jsonb_typeof(data->'build_duration_ms') = 'number'
-        THEN (data->>'build_duration_ms')::numeric
-      WHEN (data->>'build_duration_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
-        THEN (data->>'build_duration_ms')::numeric
+      WHEN jsonb_typeof(attributes->'build_duration_ms') = 'number'
+        THEN (attributes->>'build_duration_ms')::numeric
+      WHEN (attributes->>'build_duration_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'build_duration_ms')::numeric
       ELSE NULL
     END AS build_duration_ms
-  FROM app_logs
-  WHERE event = 'ui.widget.build_jank'
-    AND created_at > now() - interval '24 hours'
+  FROM telemetry_logs
+  WHERE event_name = 'ui.widget.build_jank'
+    AND occurred_at > now() - interval '24 hours'
 )
-SELECT session_id, user_id, screen_name, build_duration_ms, created_at, data
+SELECT session_id, user_id, screen_name, build_duration_ms, occurred_at, attributes
 FROM parsed_jank
 WHERE build_duration_ms > 100
-ORDER BY build_duration_ms DESC, created_at DESC;
+ORDER BY build_duration_ms DESC, occurred_at DESC;
 
 -- Interaction coverage by screen/widget/action in last 24h
 SELECT
-  COALESCE(data->>'screen_name', 'unknown') AS screen_name,
-  COALESCE(data->>'widget_name', 'unknown') AS widget_name,
-  COALESCE(data->>'action_type', 'unknown') AS action_type,
+  COALESCE(attributes->>'screen_name', 'unknown') AS screen_name,
+  COALESCE(attributes->>'widget_name', 'unknown') AS widget_name,
+  COALESCE(attributes->>'action_type', 'unknown') AS action_type,
   count(*) AS events,
   count(DISTINCT session_id) AS sessions,
-  max(created_at) AS last_seen_at
-FROM app_logs
-WHERE event = 'interaction.action'
-  AND created_at > now() - interval '24 hours'
+  max(occurred_at) AS last_seen_at
+FROM telemetry_logs
+WHERE event_name = 'interaction.action'
+  AND occurred_at > now() - interval '24 hours'
 GROUP BY 1, 2, 3
 ORDER BY events DESC, screen_name, widget_name, action_type;
 
@@ -229,16 +242,16 @@ ORDER BY events DESC, screen_name, widget_name, action_type;
 WITH nav AS (
   SELECT
     session_id,
-    created_at,
-    COALESCE(data->>'transition_type', 'unknown') AS transition_type,
-    COALESCE(data->>'from_screen', lag(data->>'screen_name') OVER (
+    occurred_at,
+    COALESCE(attributes->>'transition_type', 'unknown') AS transition_type,
+    COALESCE(attributes->>'from_screen', lag(attributes->>'screen_name') OVER (
       PARTITION BY session_id
-      ORDER BY created_at
+      ORDER BY occurred_at
     ), 'unknown') AS from_screen,
-    COALESCE(data->>'to_screen', data->>'screen_name', 'unknown') AS to_screen
-  FROM app_logs
-  WHERE event LIKE 'navigation.%'
-    AND created_at > now() - interval '24 hours'
+    COALESCE(attributes->>'to_screen', attributes->>'screen_name', 'unknown') AS to_screen
+  FROM telemetry_logs
+  WHERE event_name LIKE 'navigation.%'
+    AND occurred_at > now() - interval '24 hours'
 )
 SELECT
   transition_type,
@@ -252,13 +265,13 @@ ORDER BY transitions DESC, transition_type, from_screen, to_screen;
 
 -- Per-screen error boundary counts in last 24h
 SELECT
-  COALESCE(data->>'screen_name', 'unknown') AS screen_name,
+  COALESCE(attributes->>'screen_name', 'unknown') AS screen_name,
   count(*) AS errors,
   count(DISTINCT session_id) AS sessions,
-  max(created_at) AS last_seen_at
-FROM app_logs
-WHERE event = 'error.screen_boundary_caught'
-  AND created_at > now() - interval '24 hours'
+  max(occurred_at) AS last_seen_at
+FROM telemetry_logs
+WHERE event_name = 'error.screen_boundary_caught'
+  AND occurred_at > now() - interval '24 hours'
 GROUP BY 1
 ORDER BY errors DESC, screen_name;
 ```
@@ -275,7 +288,7 @@ Run after every production deploy that touches UI observability, navigation, or 
    - pack interactions (card taps, list interactions)
    - settings actions
 3. Trigger representative gestures: tap, long-press, drag/pan/zoom where supported.
-4. Validate observability rows in Supabase using the queries above (`app_logs`, last 24h):
+4. Validate observability rows in Supabase using the queries above (`telemetry_logs`, last 24h):
    - `interaction.action`
    - `navigation.%`
    - `ui.widget.build_jank`
@@ -308,14 +321,14 @@ supabase functions logs process-enrichment-queue --project-ref bfaczcsrpfcbijoae
 ### App not loading
 
 1. Check Railway dashboard — is the latest deploy green?
-2. Check `app_logs` for `supabase.init_failure` events in the last hour
+2. Check `telemetry_logs` for `supabase.init_failure` events in the last hour
 3. Check Supabase dashboard — is the project healthy? (Database → Health)
 4. Check Railway build logs for any startup errors
 5. If Supabase is down: users see "Couldn't connect" banner — this is expected behaviour
 
 ### Users can't log in
 
-1. Query `app_logs` for `auth.sign_in_error` — what's the `supabase_code`?
+1. Query `telemetry_logs` for `auth.sign_in_error` — what's the `supabase_code`?
 2. Common codes:
    - `invalid_credentials` — user has never signed up, or derived password mismatch. Check `_deriveEmail`/`_derivePassword` hasn't changed.
    - `over_email_send_rate_limit` — too many sign-up attempts
@@ -328,7 +341,7 @@ supabase functions logs process-enrichment-queue --project-ref bfaczcsrpfcbijoae
 1. Query `v3_items` for the affected user — does data exist?
 2. If no rows: check data migration ran (`SELECT count(*) FROM v3_items` vs `item_instances`)
 3. If rows exist: check RLS — test with authenticated client that `SELECT * FROM v3_items` returns rows
-4. Check `app_logs` for `items.fetch_error` — what's the `error_message`?
+4. Check `telemetry_logs` for `items.fetch_error` — what's the `error_message`?
 
 ### Enrichment pipeline stalled
 
@@ -338,14 +351,13 @@ supabase functions logs process-enrichment-queue --project-ref bfaczcsrpfcbijoae
 4. Check Railway logs for the last deploy — did `PIPELINE_VERSION` change?
 5. See postmortem: `docs/post-mortem.md`
 
-### High error rate in app_logs
+### High error rate in telemetry
 
 ```sql
-SELECT event, count(*) AS n
-FROM app_logs
-WHERE category = 'error'
-  AND created_at > now() - interval '1 hour'
-GROUP BY event
+SELECT name, count(*) AS n
+FROM telemetry_recent_errors_v
+WHERE error_at > now() - interval '1 hour'
+GROUP BY name
 ORDER BY n DESC;
 ```
 

@@ -3,20 +3,25 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('TraceContext', () {
-    test('start generates trace id and captures start time', () {
+    test('start generates OTel trace/span ids and captures start time', () {
       final before = DateTime.now();
       final context = TraceContext.start();
       final after = DateTime.now();
 
-      expect(context.traceId, isNotEmpty);
-      expect(
-        RegExp(
-          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
-        ).hasMatch(context.traceId),
-        isTrue,
-      );
+      expect(context.traceId, matches(RegExp(r'^[0-9a-f]{32}$')));
+      expect(context.spanId, matches(RegExp(r'^[0-9a-f]{16}$')));
+      expect(context.parentSpanId, isNull);
       expect(context.startTime.isBefore(before), isFalse);
       expect(context.startTime.isAfter(after), isFalse);
+    });
+
+    test('child keeps trace id and links parent span', () {
+      final parent = TraceContext.start();
+      final child = parent.child();
+
+      expect(child.traceId, parent.traceId);
+      expect(child.parentSpanId, parent.spanId);
+      expect(child.spanId, isNot(parent.spanId));
     });
 
     test('elapsed returns positive duration after some time', () async {

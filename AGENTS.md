@@ -125,7 +125,7 @@ These are settled. Do not revisit without explicit instruction from the user.
 | Project ref | `bfaczcsrpfcbijoaeckb` |
 | v3 tables | `v3_profiles`, `v3_items`, `v3_cell_visits`, `v3_write_queue` |
 | Old tables | `profiles`, `item_instances`, `cell_progress` — untouched, data preserved |
-| Logs | `app_logs` — query for debugging, see `docs/runbook.md` |
+| Logs | `telemetry_logs`, `telemetry_spans` — query for debugging, see `docs/runbook.md` |
 | Auth | `auth.users` — email is `<digits>@earthnova.app` |
 
 ---

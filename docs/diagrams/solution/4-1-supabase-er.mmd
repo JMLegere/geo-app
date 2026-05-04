@@ -108,14 +108,26 @@ erDiagram
         timestamp dismissed_at
     }
 
-    app_logs {
+    telemetry_logs {
         uuid id PK
         uuid session_id
         uuid user_id FK "FK auth.users"
+        text trace_id
+        text span_id
         text category
-        text event
-        jsonb data
-        timestamp created_at
+        text event_name
+        jsonb attributes
+        timestamp occurred_at
+    }
+
+    telemetry_spans {
+        text trace_id PK
+        text span_id PK
+        text parent_span_id
+        text span_name
+        bigint duration_ms
+        text status_code
+        jsonb attributes
     }
 
     AUTH_USERS ||--o| v3_profiles : "has profile"
@@ -124,5 +136,6 @@ erDiagram
     AUTH_USERS ||--o{ v3_write_queue : "queues writes"
     AUTH_USERS ||--o{ v3_sanctuary_donations : "donates"
     AUTH_USERS ||--o{ v3_recap_snapshots : "has recaps"
-    AUTH_USERS ||--o{ app_logs : "generates logs"
+    AUTH_USERS ||--o{ telemetry_logs : "generates logs"
+    AUTH_USERS ||--o{ telemetry_spans : "generates spans"
     v3_items ||--o{ v3_sanctuary_donations : "donated via"
