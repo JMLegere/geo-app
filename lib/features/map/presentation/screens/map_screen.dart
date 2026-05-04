@@ -18,6 +18,7 @@ import 'package:earth_nova/features/map/domain/services/explored_footprint_servi
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/presenters/encounter_presenter.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
@@ -45,6 +46,7 @@ const _kBuildVersion =
 
 /// Duration the discovery notification is visible before auto-dismissing.
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
+const _kBaseMapSettledFallbackDelay = Duration(seconds: 5);
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -62,6 +64,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _overlayFramePainted = false;
   bool _steadyStateLogged = false;
   bool _readinessWaitingLogged = false;
+  BaseMapSettledSignal? _baseMapSettledSignal;
   Timer? _mapSettledFallbackTimer;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
@@ -69,8 +72,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _notificationTimer;
 
   @override
+  void initState() {
+    super.initState();
+    _baseMapSettledSignal = BaseMapSettledSignal(
+      onSettled: (source) {
+        if (!mounted) return;
+        _markBaseMapSettled(source: source);
+      },
+    );
+  }
+
+  @override
   void dispose() {
     _notificationTimer?.cancel();
+    _baseMapSettledSignal?.dispose();
     _mapSettledFallbackTimer?.cancel();
     _mapController?.dispose();
     super.dispose();
@@ -97,8 +112,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _scheduleBaseMapSettledFallback() {
+    if (_baseMapSettled) return;
     _mapSettledFallbackTimer?.cancel();
-    _mapSettledFallbackTimer = Timer(const Duration(milliseconds: 1200), () {
+    _mapSettledFallbackTimer = Timer(_kBaseMapSettledFallbackDelay, () {
       if (mounted) _markBaseMapSettled(source: 'style_loaded_fallback');
     });
   }
