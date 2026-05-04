@@ -1,4 +1,4 @@
-FROM instrumentisto/flutter:3.41 AS build
+FROM instrumentisto/flutter:3.41.3 AS build
 ARG RAILWAY_GIT_COMMIT_SHA=""
 ARG SUPABASE_URL=""
 ARG SUPABASE_ANON_KEY=""
