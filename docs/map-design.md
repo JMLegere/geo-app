@@ -295,6 +295,26 @@ move (GPS level) or pinch to change zoom levels.
 - Pre-computed during a cell generation pipeline
 - **Every point on Earth is a cell**, including oceans — no gaps
 
+
+### Current Beta Geometry Source
+
+The active beta source after the May 2026 visual-correctness pass is
+`organic-voronoi-beta-v1`. It preserves existing `v_<x>_<y>` cell IDs and visit
+history, but no longer uses the encoded lattice centers as Voronoi sites.
+Instead, Supabase stages deterministic jittered centroids, generates true
+PostGIS Voronoi polygons, clips them to the existing beta coverage footprint,
+validates topology, and publishes through the immutable `cell_geometry_*`
+source-version flow.
+
+Traceability:
+
+- staging function: `stage_cell_geometry_from_organic_centroids(...)`
+- centroid dataset version: `earthnova-organic-centroids-beta-v1`
+- generation mode: `db-deterministic-jittered-centroid-voronoi`
+- geometry contract: `true-voronoi-clipped-to-lattice-coverage`
+- validation/publish audit: `cell_geometry_validation_runs`,
+  `cell_geometry_validation_issues`, `cell_geometry_publish_events`
+
 ### Cell ID
 
 Implementation-defined. Must be deterministic and support the encounter formula
@@ -336,9 +356,9 @@ Each cell has:
 | State | Visual | Info Shown |
 |-------|--------|------------|
 | **Present** | Bright, full reveal, real map tiles visible | Everything: terrain, markers, species |
-| **Explored** | Noticeably muted, real map tiles dimmed | Species found, visit count, loot icon if repopulated |
-| **Nearby** | Light fog, details hidden | Habitat border visible (dimmed), encounter types, "something's here" tease |
-| **Beyond render distance** | Not rendered (black void) | Nothing |
+| **Explored** | Muted parchment veil, real map tiles dimmed | Species found, visit count, loot icon if repopulated |
+| **Frontier / Nearby** | Heavy black reveal fog, interior hidden, grid seams suppressed | Reachable unexplored territory, "something's here" tease |
+| **Beyond render distance** | Not rendered / black void | Nothing |
 
 **Axis 2 — Contents** (what's in the cell right now):
 
@@ -354,7 +374,10 @@ on Present, Explored, and Nearby cells. On Nearby cells it doubles as the
 ### Cell Border
 
 The cell border color is the **weighted RGB average** of all the cell's habitat
-colors, producing a single solid blended color.
+colors, producing a single solid blended color. In the current beta renderer,
+that habitat seam is visible for Present and Explored cells only; Frontier and
+Unknown seams are suppressed so unrevealed territory does not turn into a debug
+grid.
 
 - Single-habitat cells have pure colors
 - Multi-habitat cells produce unique blended hues
@@ -362,8 +385,9 @@ colors, producing a single solid blended color.
 
 ### Cell Interior
 
-Neutral fill. Brightness controlled by relationship state. The interior is NOT
-habitat-colored — habitat is communicated only through the border.
+Neutral fill. Brightness/opacity is controlled by relationship state. The
+interior is NOT habitat-colored — habitat is communicated only through the
+border on revealed territory.
 
 ### Render Distance
 

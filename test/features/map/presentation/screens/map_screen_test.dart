@@ -282,20 +282,28 @@ void main() {
       );
     });
 
-    test('moves MapLibre attribution out of the bottom overlay area', () {
+    test('keeps MapLibre attribution away from status and bottom overlays', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
-      expect(
-        mapSource,
-        contains('attributionButtonPosition:'),
-      );
+      expect(mapSource, contains('attributionButtonPosition:'));
       expect(
         mapSource,
         contains('maplibre.AttributionButtonPosition.topRight'),
       );
-      expect(mapSource, contains('attributionButtonMargins: const math.Point'));
+      expect(mapSource,
+          contains('attributionButtonMargins: const math.Point(12, 144)'));
+    });
+
+    test('adds a top fog feather below the status area', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_MapTopFogFeather('));
+      expect(mapSource, contains('height: 156'));
+      expect(mapSource, contains('LinearGradient('));
     });
 
     test('uses controlled encounter toast instead of Scaffold snackbar', () {

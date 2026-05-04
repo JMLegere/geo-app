@@ -44,68 +44,45 @@ void main() {
     });
 
     group('strokeColor', () {
-      test('all reveal states keep a visible boundary channel', () {
-        for (final relationship in CellRelationship.values) {
-          final color = FogRenderer.strokeColor(_state(relationship));
-
-          expect(color.a, greaterThan(0.0), reason: relationship.name);
-        }
-      });
-
-      test('current seam glow is stronger than explored and unknown', () {
+      test('present and explored states keep the habitat boundary channel', () {
         final present =
             FogRenderer.strokeColor(_state(CellRelationship.present));
         final explored =
             FogRenderer.strokeColor(_state(CellRelationship.explored));
-        final unknown =
-            FogRenderer.strokeColor(_state(CellRelationship.unknown));
 
-        expect(present.a, greaterThan(explored.a));
-        expect(present.a, greaterThan(unknown.a));
+        expect(present.a, greaterThan(0.0));
+        expect(explored.a, greaterThan(0.0));
       });
 
-      test('frontier and unknown seams are subdued below explored seams', () {
-        final explored =
-            FogRenderer.strokeColor(_state(CellRelationship.explored));
+      test('frontier and unknown seams are hidden so fog does not form a grid',
+          () {
         final frontier =
             FogRenderer.strokeColor(_state(CellRelationship.frontier));
         final unknown =
             FogRenderer.strokeColor(_state(CellRelationship.unknown));
 
-        expect(frontier.a, lessThan(explored.a));
-        expect(unknown.a, lessThan(frontier.a));
+        expect(frontier.a, 0.0);
+        expect(unknown.a, 0.0);
       });
     });
 
     group('seam styling', () {
-      test('frontier and unknown glow widths are narrower than explored', () {
-        final explored = _state(CellRelationship.explored);
+      test('frontier and unknown glow widths are zero', () {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);
 
-        expect(
-          FogRenderer.seamGlowStrokeWidth(frontier),
-          lessThan(FogRenderer.seamGlowStrokeWidth(explored)),
-        );
-        expect(
-          FogRenderer.seamGlowStrokeWidth(unknown),
-          lessThan(FogRenderer.seamGlowStrokeWidth(frontier)),
-        );
+        expect(FogRenderer.seamGlowStrokeWidth(frontier), 0.0);
+        expect(FogRenderer.seamGlowStrokeWidth(unknown), 0.0);
+        expect(FogRenderer.seamStrokeWidth(frontier), 0.0);
+        expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });
 
-      test('frontier and unknown glow blur is reduced', () {
-        final present = _state(CellRelationship.present);
+      test('frontier and unknown glow blur is disabled', () {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);
 
-        expect(
-          FogRenderer.seamGlowBlurSigma(frontier),
-          lessThan(FogRenderer.seamGlowBlurSigma(present)),
-        );
-        expect(
-          FogRenderer.seamGlowBlurSigma(unknown),
-          lessThan(FogRenderer.seamGlowBlurSigma(frontier)),
-        );
+        expect(FogRenderer.seamGlowBlurSigma(frontier), 0.0);
+        expect(FogRenderer.seamGlowBlurSigma(unknown), 0.0);
       });
     });
 
