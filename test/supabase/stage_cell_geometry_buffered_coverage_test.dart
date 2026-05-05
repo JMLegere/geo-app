@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/054_parameterize_coverage_buffer.sql',
+      '${Directory.current.path}/supabase/migrations/055_stage_invalid_buffered_rows_with_reasons.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -26,5 +26,10 @@ void main() {
     expect(sql, contains('validation_summary'));
     expect(sql, contains('p_coverage_buffer_meters DOUBLE PRECISION DEFAULT 250.0'));
     expect(sql, isNot(contains('metadata = EXCLUDED.metadata')));
+    expect(sql, contains('geometry_null_after_clip'));
+    expect(sql, contains('geometry_empty_after_clip'));
+    expect(sql, contains('geometry_invalid_after_clip'));
+    expect(sql, contains('geometry_nonpositive_area_after_clip'));
+    expect(sql, isNot(contains('WHERE geom IS NOT NULL')));
   });
 }
