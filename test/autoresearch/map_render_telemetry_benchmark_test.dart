@@ -1379,6 +1379,10 @@ _WebLayoutObservabilityScore _webLayoutObservabilityScore() {
       !html.contains("push('map', 'map.web_layout_sample'");
   final hasContainer = html.contains('canvas_container_height_px');
   final hasPlatformView = html.contains('platform_view_height_px');
+  final hasContainerAfter = html.contains('canvas_container_height_after_px');
+  final hasPlatformViewAfter = html.contains('platform_view_height_after_px');
+  final hasNormalization = html.contains('layout_normalized') &&
+      html.contains('layout_normalization_requested_resize');
   final hasLifecycle = html.contains("flow: 'map.web_layout'") &&
       html.contains("phase: 'state_changed'") &&
       html.contains("dependency: 'maplibre_layout'");
@@ -1386,12 +1390,15 @@ _WebLayoutObservabilityScore _webLayoutObservabilityScore() {
     score: hasEvent &&
             avoidsDoublePrefixedEvent &&
             hasContainer &&
+            hasContainerAfter &&
             hasPlatformView &&
+            hasPlatformViewAfter &&
+            hasNormalization &&
             hasLifecycle
         ? 0
         : 1,
     breakdown:
-        'has_event=$hasEvent avoids_double_prefixed_event=$avoidsDoublePrefixedEvent has_canvas_container_height=$hasContainer has_platform_view_height=$hasPlatformView has_lifecycle=$hasLifecycle',
+        'has_event=$hasEvent avoids_double_prefixed_event=$avoidsDoublePrefixedEvent has_canvas_container_height=$hasContainer has_canvas_container_height_after=$hasContainerAfter has_platform_view_height=$hasPlatformView has_platform_view_height_after=$hasPlatformViewAfter has_normalization=$hasNormalization has_lifecycle=$hasLifecycle',
   );
 }
 

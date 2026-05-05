@@ -263,12 +263,32 @@ void main() {
               'already-prefixed event would create map.map.web_layout_sample.',
         );
         expect(html, contains('canvas_container_height_px'));
+        expect(html, contains('canvas_container_height_after_px'));
+        expect(html, contains('platform_view_height_px'));
+        expect(html, contains('platform_view_height_after_px'));
+        expect(html, contains('layout_normalized'));
+        expect(html, contains('layout_normalization_requested_resize'));
+        expect(html, contains("map.on('resize'"));
+        expect(html, contains("'maplibre_js_resize'"));
         expect(html, contains("flow: 'map.web_layout'"));
         expect(html, contains("phase: 'state_changed'"));
         expect(html, contains("dependency: 'maplibre_layout'"));
-        expect(html, contains('platform_view_height_px'));
         expect(html, contains('map_height_px'));
         expect(html, contains('map_width_px'));
+
+      });
+      test('normalizes zero-height platform hosts before logging layout', () {
+        expect(
+          html,
+          contains("mapEl.closest('flt-platform-view')"),
+          reason: 'Layout fixes should target the actual platform-view host '
+              'for the active MapLibre instance, not a global guess.',
+        );
+        expect(html, contains("canvasContainer.style.height = mapHeightPx + 'px'"));
+        expect(html, contains("platformView.style.display = 'block'"));
+        expect(html, contains("platformView.style.position = 'absolute'"));
+        expect(html, contains("platformView.style.height = mapHeightPx + 'px'"));
+        expect(html, contains('map.resize()'));
       });
     });
 
