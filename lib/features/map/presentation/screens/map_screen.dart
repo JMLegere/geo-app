@@ -14,11 +14,13 @@ import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
+import 'package:earth_nova/features/map/domain/entities/camera_follow_state.dart';
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
+import 'package:earth_nova/features/map/presentation/providers/camera_follow_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
@@ -370,18 +372,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         authState.status == AuthStatus.authenticated ? authState.user!.id : '';
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
+    final cameraFollowState = ref.watch(cameraFollowProvider);
     final playerMarkerState = ref.watch(playerMarkerProvider);
     final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
 
-    // Move camera when GPS updates — without this, removing the location-keyed
-    // ValueKey would freeze the map on its initial position.
-    ref.listen<LocationProviderState>(locationProvider, (_, next) {
-      if (next is LocationProviderActive && _mapController != null) {
+    // Move camera from the fast smoothed camera-follow state, not directly from
+    // raw GPS. Raw GPS remains the target, but smoothing removes jitter.
+    ref.listen(cameraFollowProvider, (_, cameraState) {
+      if (cameraState.hasFix && _mapController != null) {
         _mapController!.moveCamera(
           maplibre.CameraUpdate.newLatLng(
-            maplibre.LatLng(next.location.lat, next.location.lng),
+            maplibre.LatLng(cameraState.lat, cameraState.lng),
           ),
         );
       }
@@ -485,6 +488,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             context,
             location: effectiveLocation!,
             mapState: mapState,
+            cameraFollowState: cameraFollowState,
             playerMarkerState: playerMarkerState,
             explorationEligibility: explorationEligibility,
             explorationState: explorationState,
@@ -499,6 +503,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     required LocationState location,
     required MapState mapState,
     required PlayerMarkerState playerMarkerState,
+    required CameraFollowState cameraFollowState,
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
     required EncounterState encounterState,
@@ -525,9 +530,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         builder: (context, constraints) {
           final mapSize = constraints.biggest;
           final screenCenter = Offset(mapSize.width / 2, mapSize.height / 2);
+          final cameraPosition = cameraFollowState.hasFix
+              ? (lat: cameraFollowState.lat, lng: cameraFollowState.lng)
+              : (lat: location.lat, lng: location.lng);
           final markerScreenPosition = _latLngToScreen(
             (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
-            (lat: location.lat, lng: location.lng),
+            cameraPosition,
             _kGpsZoom,
             screenCenter,
           );
@@ -544,7 +552,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             viewportSize: mapSize,
             project: (coord) => CellOverlayPainter.projectGeoCoord(
               coord: coord,
-              cameraPosition: (lat: location.lat, lng: location.lng),
+              cameraPosition: cameraPosition,
               zoom: _kGpsZoom,
               cameraPixelOffset: screenCenter,
             ),
@@ -574,12 +582,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               // Previously `ValueKey('$timestamp:$lat:$lng')` caused the entire
               // MapLibreMap (and its GL context) to be torn down and rebuilt on
               // every GPS tick (~1 Hz), making the map constantly flash.
-              // Camera follow is handled via _mapController.moveCamera() above.
+              // Camera follow is handled by cameraFollowProvider above so raw
+              // GPS remains the target without hard-snapping the camera.
               Positioned.fill(
                 child: maplibre.MapLibreMap(
                   styleString: _kMapStyleUrl,
                   initialCameraPosition: maplibre.CameraPosition(
-                    target: maplibre.LatLng(location.lat, location.lng),
+                    target: maplibre.LatLng(cameraPosition.lat, cameraPosition.lng),
                     zoom: _kGpsZoom,
                   ),
                   compassEnabled: false,
@@ -616,7 +625,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               if (mapState is MapStateLoading)
                 Positioned.fill(
                   child: ShimmerCells(
-                    cameraPosition: (lat: location.lat, lng: location.lng),
+                    cameraPosition: cameraPosition,
                     zoom: _kGpsZoom,
                   ),
                 ),
@@ -634,7 +643,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         context,
                         details,
                         mapState,
-                        location,
+                        cameraPosition,
                         screenCenter,
                       ),
                     ),
@@ -642,10 +651,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       size: Size.infinite,
                       painter: CellOverlayPainter(
                         cellsWithStates: cellsWithStates,
-                        cameraPosition: (
-                          lat: location.lat,
-                          lng: location.lng,
-                        ),
+                        cameraPosition: cameraPosition,
                         zoom: _kGpsZoom,
                         cameraPixelOffset: screenCenter,
                       ),
@@ -823,7 +829,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     BuildContext context,
     TapUpDetails details,
     MapStateReady mapState,
-    LocationState location,
+    ({double lat, double lng}) cameraPosition,
     Offset screenCenter,
   ) {
     final tapPosition = details.localPosition;
@@ -847,7 +853,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
       final screenPos = _latLngToScreen(
         (lat: centerLat, lng: centerLng),
-        (lat: location.lat, lng: location.lng),
+        cameraPosition,
         _kGpsZoom,
         screenCenter,
       );
