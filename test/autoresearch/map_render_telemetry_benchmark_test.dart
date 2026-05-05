@@ -70,6 +70,7 @@ void main() {
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
+    final overlapPreviewDeployable = _overlapPreviewDeployableScore();
     final stageDecode = _stageDecodeScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
@@ -127,6 +128,10 @@ void main() {
     print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
     print('ASI overlap_preview_breakdown=${overlapPreview.breakdown}');
     print(
+      'ASI overlap_preview_deployable_breakdown='
+      '${overlapPreviewDeployable.breakdown}',
+    );
+    print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
@@ -153,6 +158,10 @@ void main() {
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print('METRIC strict_containment_gap_count=${strictContainment.score}');
     print('METRIC overlap_preview_gap_count=${overlapPreview.score}');
+    print(
+      'METRIC overlap_preview_deployable_gap_count='
+      '${overlapPreviewDeployable.score}',
+    );
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -1058,9 +1067,13 @@ _OverlapPreviewScore _overlapPreviewScore() {
       .toList()
     ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
-    (file) => file.readAsStringSync().contains(
-          'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
-        ),
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ),
   );
   if (matches.isEmpty) {
     return const _OverlapPreviewScore(
@@ -1082,6 +1095,53 @@ _OverlapPreviewScore _overlapPreviewScore() {
 
 class _OverlapPreviewScore {
   const _OverlapPreviewScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ),
+  );
+  if (matches.isEmpty) {
+    return const _OverlapPreviewDeployableScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final avoidsReservedOverlapCte = !sql.contains('), overlaps AS (');
+  final usesOverlapRows = sql.contains('), overlap_rows AS (') &&
+      sql.contains('FROM overlap_rows;');
+  return _OverlapPreviewDeployableScore(
+    score: avoidsReservedOverlapCte && usesOverlapRows ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} avoids_reserved_overlap_cte=$avoidsReservedOverlapCte uses_overlap_rows=$usesOverlapRows',
+  );
+}
+
+class _OverlapPreviewDeployableScore {
+  const _OverlapPreviewDeployableScore({
     required this.score,
     required this.breakdown,
   });

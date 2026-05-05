@@ -95,7 +95,7 @@ void main() {
 
   test('overlap preview migration exposes local overlap aggregates', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/064_preview_staged_overlap_window.sql',
+      '${Directory.current.path}/supabase/migrations/065_fix_overlap_preview_sql_shape.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -103,7 +103,7 @@ void main() {
     final sql = migration.readAsStringSync();
     expect(
       sql,
-      contains('CREATE FUNCTION diagnose_staged_geometry_overlap_window'),
+      contains('CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window'),
     );
     expect(sql, contains('p_source_version TEXT'));
     expect(sql, contains('p_focus_lat DOUBLE PRECISION'));
@@ -116,5 +116,7 @@ void main() {
     expect(sql, contains('total_overlap_area_m2'));
     expect(sql, contains('max_overlap_area_m2'));
     expect(sql, contains('ST_Intersection(a.parsed_geom, b.parsed_geom)'));
+    expect(sql, contains('overlap_rows AS'));
+    expect(sql, contains('FROM overlap_rows;'));
   });
 }
