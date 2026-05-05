@@ -69,6 +69,7 @@ void main() {
     final clusterPartition = _clusterPartitionScore();
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
+    final overlapPreview = _overlapPreviewScore();
     final stageDecode = _stageDecodeScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
@@ -124,6 +125,7 @@ void main() {
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
     print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
     print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
+    print('ASI overlap_preview_breakdown=${overlapPreview.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -150,6 +152,7 @@ void main() {
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print('METRIC strict_containment_gap_count=${strictContainment.score}');
+    print('METRIC overlap_preview_gap_count=${overlapPreview.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -1036,6 +1039,49 @@ _StrictContainmentScore _strictContainmentScore() {
 
 class _StrictContainmentScore {
   const _StrictContainmentScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_OverlapPreviewScore _overlapPreviewScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) => file.readAsStringSync().contains(
+          'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ),
+  );
+  if (matches.isEmpty) {
+    return const _OverlapPreviewScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final hasOverlapOutputs = sql.contains('overlap_pair_count') &&
+      sql.contains('total_overlap_area_m2') &&
+      sql.contains('max_overlap_area_m2');
+  return _OverlapPreviewScore(
+    score: hasOverlapOutputs ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} function_present=true has_overlap_outputs=$hasOverlapOutputs',
+  );
+}
+
+class _OverlapPreviewScore {
+  const _OverlapPreviewScore({
     required this.score,
     required this.breakdown,
   });
