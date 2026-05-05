@@ -6,6 +6,12 @@ import 'package:earth_nova/features/map/data/repositories/mock_location_reposito
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 
+typedef _LoggedEvent = ({
+  String event,
+  String category,
+  Map<String, dynamic>? data
+});
+
 class _ThrowingLocationRepository implements LocationRepository {
   @override
   Stream<LocationState> get positionStream => const Stream.empty();
@@ -23,6 +29,7 @@ void main() {
     late MockLocationRepository realRepo;
     late MockLocationRepository mockRepo;
     late FallbackLocationRepository fallback;
+    late List<_LoggedEvent> events;
 
     final sfPosition = LocationState(
       lat: 37.7749,
@@ -32,11 +39,20 @@ void main() {
       isConfident: true,
     );
 
+    void logEvent(String event, String category, {Map<String, dynamic>? data}) {
+      events.add((event: event, category: category, data: data));
+    }
+
     setUp(() {
       realRepo = MockLocationRepository();
       mockRepo = MockLocationRepository();
       mockRepo.emitPosition(sfPosition);
-      fallback = FallbackLocationRepository(real: realRepo, mock: mockRepo);
+      events = [];
+      fallback = FallbackLocationRepository(
+        real: realRepo,
+        mock: mockRepo,
+        logEvent: logEvent,
+      );
     });
 
     tearDown(() {
@@ -56,16 +72,43 @@ void main() {
       expect(result, isTrue);
     });
 
+    test('requestPermission logs fallback enable when real denies', () async {
+      realRepo.setPermissionGranted(false);
+
+      final result = await fallback.requestPermission();
+
+      expect(result, isTrue);
+      final permissionEvent = events.singleWhere(
+        (event) => event.event == 'map.gps_permission_fallback_enabled',
+      );
+      expect(permissionEvent.category, 'map');
+      expect(permissionEvent.data?['source'], 'fallback_mock');
+      expect(permissionEvent.data?['flow'], 'map.bootstrap');
+      expect(permissionEvent.data?['phase'], 'state_changed');
+      expect(permissionEvent.data?['dependency'], 'gps');
+    });
+
     test('getCurrentPosition returns SF position when real throws', () async {
-      final throwingReal = _ThrowingLocationRepository();
-      final repo =
-          FallbackLocationRepository(real: throwingReal, mock: mockRepo);
+      final repo = FallbackLocationRepository(
+        real: _ThrowingLocationRepository(),
+        mock: mockRepo,
+        logEvent: logEvent,
+      );
 
       final position = await repo.getCurrentPosition();
       expect(position.lat, 37.7749);
       expect(position.lng, -122.4194);
       expect(position.accuracy, 5.0);
       expect(position.isConfident, isTrue);
+
+      final sourceEvent = events.singleWhere(
+        (event) => event.event == 'map.gps_source_selected',
+      );
+      expect(sourceEvent.category, 'map');
+      expect(sourceEvent.data?['source'], 'fallback_current_position');
+      expect(sourceEvent.data?['flow'], 'map.bootstrap');
+      expect(sourceEvent.data?['phase'], 'state_changed');
+      expect(sourceEvent.data?['dependency'], 'gps');
     });
 
     test('getCurrentPosition returns real position when real succeeds',
@@ -82,6 +125,14 @@ void main() {
       final position = await fallback.getCurrentPosition();
       expect(position.lat, 10.0);
       expect(position.lng, 20.0);
+
+      final sourceEvent = events.singleWhere(
+        (event) => event.event == 'map.gps_source_selected',
+      );
+      expect(sourceEvent.data?['source'], 'real_current_position');
+      expect(sourceEvent.data?['flow'], 'map.bootstrap');
+      expect(sourceEvent.data?['phase'], 'state_changed');
+      expect(sourceEvent.data?['dependency'], 'gps');
     });
 
     test('positionStream switches to mock after real stream emits error',
@@ -96,6 +147,22 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(received, contains(sfPosition));
+      await sub.cancel();
+    });
+
+    test('positionStream logs when it falls back to mock stream', () async {
+      final sub = fallback.positionStream.listen((_) {});
+
+      realRepo.emitError(Exception('GPS error'));
+      await Future<void>.delayed(Duration.zero);
+
+      final sourceEvent = events.singleWhere(
+        (event) => event.event == 'map.gps_source_selected',
+      );
+      expect(sourceEvent.data?['source'], 'fallback_stream');
+      expect(sourceEvent.data?['flow'], 'map.bootstrap');
+      expect(sourceEvent.data?['phase'], 'state_changed');
+      expect(sourceEvent.data?['dependency'], 'gps');
 
       await sub.cancel();
     });
@@ -115,7 +182,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(received, contains(realPos));
-
       await sub.cancel();
     });
   });

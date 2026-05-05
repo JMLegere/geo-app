@@ -248,6 +248,22 @@ void main() {
               'The bridge should listen to the real MapLibre JS load event.',
         );
       });
+
+      test('logs MapLibre layout samples with bounded size attributes', () {
+        expect(
+          html,
+          contains("push('map', 'map.web_layout_sample'"),
+          reason: 'Web MapLibre layout should be queryable from telemetry '
+              'without browser DOM inspection.',
+        );
+        expect(html, contains('canvas_container_height_px'));
+        expect(html, contains("flow: 'map.web_layout'"));
+        expect(html, contains("phase: 'state_changed'"));
+        expect(html, contains("dependency: 'maplibre_layout'"));
+        expect(html, contains('platform_view_height_px'));
+        expect(html, contains('map_height_px'));
+        expect(html, contains('map_width_px'));
+      });
     });
 
     group('MapLibre attribution presentation', () {
