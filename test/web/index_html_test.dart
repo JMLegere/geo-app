@@ -386,6 +386,15 @@ void main() {
           reason: 'Clipboard telemetry must never read copied/pasted content.',
         );
       });
+
+      test('stitches low-level telemetry to the active Dart app session', () {
+        expect(html, contains('earthnova_app_session_id'));
+        expect(html, contains('function activeSessionId()'));
+        expect(html, contains('window.earthnovaSetAppSessionId'));
+        expect(html, contains('sessionStorage'));
+        expect(html, contains('entry.session_id = sid'));
+        expect(html, contains('bootstrap_session_id'));
+      });
  
  
       test('normalizes zero-height platform hosts before logging layout', () {

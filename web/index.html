@@ -193,25 +193,49 @@
         : '';
       var MAX_BYTES = 2097152;
 
-      function ensureUuid(key) {
-        var existing = localStorage.getItem(key);
-        if (existing) return existing;
-        var value = (window.crypto && window.crypto.randomUUID)
+      var SESSION_KEY = 'earthnova_session_id';
+      var APP_SESSION_KEY = 'earthnova_app_session_id';
+      var DEVICE_KEY = 'earthnova_device_id';
+
+      function newUuid() {
+        return (window.crypto && window.crypto.randomUUID)
           ? window.crypto.randomUUID()
           : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, function(c) {
               return (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16);
             });
-        localStorage.setItem(key, value);
+      }
+
+      function ensureUuid(key, storage) {
+        var existing = storage.getItem(key);
+        if (existing) return existing;
+        var value = newUuid();
+        storage.setItem(key, value);
         return value;
       }
 
-      ensureUuid('earthnova_session_id');
-      ensureUuid('earthnova_device_id');
+      function activeSessionId() {
+        return sessionStorage.getItem(APP_SESSION_KEY) ||
+          sessionStorage.getItem(SESSION_KEY) ||
+          ensureUuid(SESSION_KEY, sessionStorage);
+      }
+
+      function activeDeviceId() {
+        return ensureUuid(DEVICE_KEY, localStorage);
+      }
+
+      window.earthnovaSetAppSessionId = function(sessionId) {
+        if (!sessionId) return;
+        sessionStorage.setItem(APP_SESSION_KEY, sessionId);
+        sessionStorage.setItem(SESSION_KEY, sessionId);
+      };
+
+      activeSessionId();
+      activeDeviceId();
 
       function push(category, event, msg, attrs) {
         try {
-          var sid = ensureUuid('earthnova_session_id');
-          var did = ensureUuid('earthnova_device_id');
+          var sid = activeSessionId();
+          var did = activeDeviceId();
           var attributes = Object.assign({ msg: msg }, attrs || {});
           var entry = JSON.stringify({
             session_id: sid,
@@ -1112,8 +1136,20 @@
           // Parse and batch in chunks of 50. Previously >50 entries caused the
           // entire buffer to be silently skipped — events stuck forever.
           var events = [];
+          var sid = activeSessionId();
+          var did = activeDeviceId();
           for (var i = 0; i < arr.length; i++) {
-            try { events.push(JSON.parse(arr[i])); } catch(_) {}
+            try {
+              var entry = JSON.parse(arr[i]);
+              if (entry.session_id !== sid) {
+                entry.attributes = Object.assign({}, entry.attributes || {}, {
+                  bootstrap_session_id: entry.session_id
+                });
+                entry.session_id = sid;
+              }
+              entry.device_id = entry.device_id || did;
+              events.push(entry);
+            } catch(_) {}
           }
 
           var batch = events.slice(0, 50);

@@ -85,8 +85,10 @@ void main() {
       expect(screenChangedEvents.single.category, 'navigation');
       expect(screenChangedEvents.single.data, {
         'source': 'tab_shell',
-        'from_screen': 'map',
-        'to_screen': 'pack',
+        'from_screen': 'map_root_screen',
+        'to_screen': 'pack_screen',
+        'raw_from_screen': 'map',
+        'raw_to_screen': 'pack',
       });
     });
   });
@@ -226,24 +228,24 @@ void main() {
 
       // Should have logged the transition
       expect(transitions.length, 1);
-      expect(transitions.last['from_screen'], 'map');
-      expect(transitions.last['to_screen'], 'pack');
+      expect(transitions.last['from_screen'], 'map_root_screen');
+      expect(transitions.last['to_screen'], 'pack_screen');
 
       // Tap on Sanctuary tab (index 2)
       await tester.tap(find.text('Sanctuary'));
       await tester.pumpAndSettle();
 
       expect(transitions.length, 2);
-      expect(transitions.last['from_screen'], 'pack');
-      expect(transitions.last['to_screen'], 'sanctuary');
+      expect(transitions.last['from_screen'], 'pack_screen');
+      expect(transitions.last['to_screen'], 'stub_screen');
 
       // Tap back to Map tab (index 0)
       await tester.tap(find.text('Map'));
       await tester.pumpAndSettle();
 
       expect(transitions.length, 3);
-      expect(transitions.last['from_screen'], 'sanctuary');
-      expect(transitions.last['to_screen'], 'map');
+      expect(transitions.last['from_screen'], 'stub_screen');
+      expect(transitions.last['to_screen'], 'map_root_screen');
     });
 
     testWidgets('tapping same tab does not trigger transition', (tester) async {
@@ -293,7 +295,11 @@ void main() {
       await tester.pump();
 
       // Should have no transitions (already on Map tab)
-      expect(transitions.where((t) => t['from_screen'] == 'map').length, 0);
+      expect(
+          transitions
+              .where((t) => t['from_screen'] == 'map_root_screen')
+              .length,
+          0);
     });
 
     testWidgets(
@@ -563,7 +569,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(transitions, contains('map→pack'));
+      expect(transitions, contains('map_root_screen→pack_screen'));
     });
   }); // end swipe-from-map group
 } // end main()

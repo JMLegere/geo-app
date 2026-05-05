@@ -66,10 +66,11 @@ void main() {
       expect(source, contains("'source': source"));
       expect(source, contains("'screen_name': toScreen"));
       expect(source, contains("'from_screen': fromScreen"));
-      expect(source, contains("'source': routeEventSource"));
-      expect(source, contains("'screen_name': _routeName(toRoute)"));
+      expect(source, contains('normalizeScreenNameForTelemetry'));
+      expect(source, contains("'raw_screen_name': rawToScreen"));
+      expect(source, contains('source: routeEventSource'));
+      expect(source, contains('rawToScreen: toName'));
     });
-
 
     test('interactive screen files declare ObservableInteraction coverage', () {
       final interactivePatterns = [

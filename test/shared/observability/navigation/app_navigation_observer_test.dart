@@ -41,8 +41,18 @@ void main() {
         'navigation.route.remove',
         'ui.screen.expected',
       ]);
-      expect(events.where((event) => event.event.startsWith('navigation.')).map((event) => event.category).toSet(), {'navigation'});
-      expect(events.where((event) => event.event == 'ui.screen.expected').map((event) => event.category).toSet(), {'ui'});
+      expect(
+          events
+              .where((event) => event.event.startsWith('navigation.'))
+              .map((event) => event.category)
+              .toSet(),
+          {'navigation'});
+      expect(
+          events
+              .where((event) => event.event == 'ui.screen.expected')
+              .map((event) => event.category)
+              .toSet(),
+          {'ui'});
 
       expect(events[0].data, {
         'from_route': '/from',
@@ -106,6 +116,37 @@ void main() {
         'source': 'tab_shell',
         'screen_name': 'map_root_screen',
         'from_screen': 'pack_screen',
+      });
+    });
+
+    test('normalizes expected screen names to ObservableScreen names', () {
+      final events =
+          <({String event, String category, Map<String, dynamic>? data})>[];
+      final logger = NavigationScreenTransitionLogger(
+        logEvent: (event, category, {data}) {
+          events.add((event: event, category: category, data: data));
+        },
+      );
+
+      logger.logScreenChanged(
+        source: 'map_level',
+        fromScreen: 'map.cell',
+        toScreen: 'map.district',
+      );
+
+      expect(events.first.data, {
+        'source': 'map_level',
+        'from_screen': 'map_screen',
+        'to_screen': 'district_screen',
+        'raw_from_screen': 'map.cell',
+        'raw_to_screen': 'map.district',
+      });
+      expect(events.last.data, {
+        'source': 'map_level',
+        'screen_name': 'district_screen',
+        'from_screen': 'map_screen',
+        'raw_screen_name': 'map.district',
+        'raw_from_screen': 'map.cell',
       });
     });
 

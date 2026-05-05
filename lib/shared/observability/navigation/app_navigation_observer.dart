@@ -7,6 +7,70 @@ typedef NavigationLogEvent = void Function(
   Map<String, dynamic>? data,
 });
 
+String normalizeScreenNameForTelemetry(String screenName) {
+  final trimmed = screenName.trim();
+  if (trimmed.isEmpty) return 'unknown';
+
+  const aliases = {
+    'loading': 'loading_screen',
+    'login': 'login_screen',
+    'home': 'tab_shell',
+    'map': 'map_root_screen',
+    'pack': 'pack_screen',
+    'sanctuary': 'stub_screen',
+    'settings': 'settings_screen',
+    'map.cell': 'map_screen',
+    'map.district': 'district_screen',
+    'map.city': 'city_screen',
+    'map.state': 'province_screen',
+    'map.province': 'province_screen',
+    'map.country': 'country_screen',
+    'map.world': 'world_screen',
+  };
+
+  final alias = aliases[trimmed];
+  if (alias != null) return alias;
+
+  if (trimmed.startsWith('/')) {
+    final routeAlias = aliases[trimmed.substring(1)];
+    if (routeAlias != null) return routeAlias;
+  }
+
+  return trimmed;
+}
+
+Map<String, dynamic> _screenChangedPayload({
+  required String source,
+  required String rawFromScreen,
+  required String rawToScreen,
+}) {
+  final fromScreen = normalizeScreenNameForTelemetry(rawFromScreen);
+  final toScreen = normalizeScreenNameForTelemetry(rawToScreen);
+  return {
+    'source': source,
+    'from_screen': fromScreen,
+    'to_screen': toScreen,
+    if (fromScreen != rawFromScreen) 'raw_from_screen': rawFromScreen,
+    if (toScreen != rawToScreen) 'raw_to_screen': rawToScreen,
+  };
+}
+
+Map<String, dynamic> _expectedScreenPayload({
+  required String source,
+  required String rawFromScreen,
+  required String rawToScreen,
+}) {
+  final fromScreen = normalizeScreenNameForTelemetry(rawFromScreen);
+  final toScreen = normalizeScreenNameForTelemetry(rawToScreen);
+  return {
+    'source': source,
+    'screen_name': toScreen,
+    'from_screen': fromScreen,
+    if (toScreen != rawToScreen) 'raw_screen_name': rawToScreen,
+    if (fromScreen != rawFromScreen) 'raw_from_screen': rawFromScreen,
+  };
+}
+
 final navigationScreenTransitionLoggerProvider =
     Provider<NavigationScreenTransitionLogger>((ref) {
   return NavigationScreenTransitionLogger(
@@ -19,6 +83,7 @@ class NavigationScreenTransitionLogger {
       : _logEvent = logEvent;
 
   final NavigationLogEvent _logEvent;
+
   String? _lastSignature;
 
   void logScreenChanged({
@@ -34,20 +99,20 @@ class NavigationScreenTransitionLogger {
 
     _safeLog(
       'navigation.screen_changed',
-      data: {
-        'source': source,
-        'from_screen': fromScreen,
-        'to_screen': toScreen,
-      },
+      data: _screenChangedPayload(
+        source: source,
+        rawFromScreen: fromScreen,
+        rawToScreen: toScreen,
+      ),
     );
     _safeLog(
       'ui.screen.expected',
       category: 'ui',
-      data: {
-        'source': source,
-        'screen_name': toScreen,
-        'from_screen': fromScreen,
-      },
+      data: _expectedScreenPayload(
+        source: source,
+        rawFromScreen: fromScreen,
+        rawToScreen: toScreen,
+      ),
     );
   }
 
@@ -132,11 +197,11 @@ class AppNavigationObserver extends NavigatorObserver {
       _logEvent(
         'ui.screen.expected',
         'ui',
-        data: {
-          'source': routeEventSource,
-          'screen_name': _routeName(toRoute),
-          'from_screen': fromName,
-        },
+        data: _expectedScreenPayload(
+          source: routeEventSource,
+          rawFromScreen: fromName,
+          rawToScreen: toName,
+        ),
       );
     } catch (_) {}
   }
