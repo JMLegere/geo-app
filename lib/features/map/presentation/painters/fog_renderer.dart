@@ -7,6 +7,7 @@ class FogRenderer {
   FogRenderer._();
 
   static const double _kRenderDistanceKm = 2.0;
+  static const bool overlayAntiAlias = true;
 
   static Color fillColor(CellState state) {
     return switch (state.relationship) {
@@ -77,11 +78,11 @@ class FogRenderer {
   }
 
   static Color _exploredFillColor() {
-    return const Color(0x66D8C49A);
+    return const Color(0x2ED8C49A);
   }
 
   static Color _frontierFillColor() {
-    return const Color(0x73000000);
+    return const Color(0x4D000000);
   }
 
   static Color _unknownFillColor() {

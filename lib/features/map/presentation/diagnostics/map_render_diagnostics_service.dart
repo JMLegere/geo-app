@@ -116,7 +116,7 @@ class MapRenderDiagnosticsService {
         'style_frontier_stroke_alpha': _alpha(
           FogRenderer.strokeColor(_state(CellRelationship.frontier)),
         ),
-        'style_overlay_antialias': false,
+        'style_overlay_antialias': FogRenderer.overlayAntiAlias,
         'style_fill_grouping_mode': 'single_path_per_relationship_even_odd',
       };
 

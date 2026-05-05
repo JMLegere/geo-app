@@ -21,15 +21,16 @@ void main() {
         final color = FogRenderer.fillColor(_state(CellRelationship.explored));
 
         expect(color.a, greaterThan(0.0));
-        expect(color.a, lessThan(0.5));
+        expect(color.a, greaterThan(0.10));
+        expect(color.a, lessThan(0.25));
         expect(color.r, greaterThan(color.b));
       });
 
       test('frontier cells dim the map without becoming black void', () {
         final color = FogRenderer.fillColor(_state(CellRelationship.frontier));
 
-        expect(color.a, greaterThan(0.40));
-        expect(color.a, lessThan(0.56));
+        expect(color.a, greaterThan(0.20));
+        expect(color.a, lessThan(0.36));
         expect(color.r, 0.0);
         expect(color.g, 0.0);
         expect(color.b, 0.0);
@@ -65,6 +66,10 @@ void main() {
         expect(frontier.a, 0.0);
         expect(unknown.a, 0.0);
       });
+    });
+
+    test('overlay fills are antialiased to soften reveal boundaries', () {
+      expect(FogRenderer.overlayAntiAlias, isTrue);
     });
 
     group('seam styling', () {

@@ -74,7 +74,7 @@ class CellOverlayPainter extends CustomPainter {
         Paint()
           ..color = FogRenderer.fillColor(fillState)
           ..style = PaintingStyle.fill
-          ..isAntiAlias = false,
+          ..isAntiAlias = FogRenderer.overlayAntiAlias,
       );
     }
 
