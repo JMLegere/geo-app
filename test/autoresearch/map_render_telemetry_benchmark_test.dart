@@ -60,6 +60,7 @@ void main() {
 
     final coverageSource = _coverageSourceScore();
     final assignmentSource = _assignmentSourceScore();
+    final coverageBufferParam = _coverageBufferParamScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -99,6 +100,9 @@ void main() {
     print('ASI fetch_selection_breakdown=${fetchSelection.breakdown}');
     print('ASI coverage_source_breakdown=${coverageSource.breakdown}');
     print('ASI assignment_source_breakdown=${assignmentSource.breakdown}');
+    print(
+      'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
+    );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
@@ -107,6 +111,9 @@ void main() {
     print('METRIC marker_gap_count=$markerGapCount');
     print('METRIC coverage_source_gap_count=${coverageSource.score}');
     print('METRIC assignment_source_gap_count=${assignmentSource.score}');
+    print(
+      'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
+    );
     print('METRIC fog_hardness_score=${fogHardness.score}');
     print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
@@ -543,25 +550,8 @@ class _FetchSelectionScore {
 }
 
 _CoverageSourceScore _coverageSourceScore() {
-  final migrationsDir = Directory(
-    '${Directory.current.path}/supabase/migrations',
-  );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
-  final target = candidates.reversed.firstWhere(
-    (file) => file.readAsStringSync().contains(
-          'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
-        ),
-  );
-  final sql = target.readAsStringSync();
-  final createIndex = sql.lastIndexOf(
-    'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
-  );
-  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
   final usesBufferedCoverage = functionSql.contains('ST_Buffer(');
   final writesMissingMetadataColumn =
       functionSql.contains('INSERT INTO cell_geometry_versions (') &&
@@ -580,7 +570,7 @@ _CoverageSourceScore _coverageSourceScore() {
         ? 0
         : 1,
     breakdown:
-        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage writes_missing_metadata_column=$writesMissingMetadataColumn writes_missing_validation_message_column=$writesMissingValidationMessageColumn includes_staging_runtime_columns=$includesStagingRuntimeColumns',
+        'migration=${stageFunction.migrationName} buffered_coverage=$usesBufferedCoverage writes_missing_metadata_column=$writesMissingMetadataColumn writes_missing_validation_message_column=$writesMissingValidationMessageColumn includes_staging_runtime_columns=$includesStagingRuntimeColumns',
   );
 }
 
@@ -595,30 +585,13 @@ class _CoverageSourceScore {
 }
 
 _AssignmentSourceScore _assignmentSourceScore() {
-  final migrationsDir = Directory(
-    '${Directory.current.path}/supabase/migrations',
-  );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
-  final target = candidates.reversed.firstWhere(
-    (file) => file.readAsStringSync().contains(
-          'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
-        ),
-  );
-  final sql = target.readAsStringSync();
-  final createIndex = sql.lastIndexOf(
-    'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
-  );
-  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
   final usesContainmentAssignment = functionSql.contains('ST_Covers(');
   return _AssignmentSourceScore(
     score: usesContainmentAssignment ? 0 : 1,
     breakdown:
-        'migration=${target.uri.pathSegments.last} uses_containment_assignment=$usesContainmentAssignment',
+        'migration=${stageFunction.migrationName} uses_containment_assignment=$usesContainmentAssignment',
   );
 }
 
@@ -630,4 +603,63 @@ class _AssignmentSourceScore {
 
   final int score;
   final String breakdown;
+}
+
+_CoverageBufferParamScore _coverageBufferParamScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final exposesBufferParam = functionSql.contains(
+    'p_coverage_buffer_meters DOUBLE PRECISION',
+  );
+  final usesBufferParam = functionSql.contains('p_coverage_buffer_meters');
+  return _CoverageBufferParamScore(
+    score: exposesBufferParam && usesBufferParam ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} exposes_buffer_param=$exposesBufferParam uses_buffer_param=$usesBufferParam',
+  );
+}
+
+class _CoverageBufferParamScore {
+  const _CoverageBufferParamScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+({String migrationName, String functionSql}) _latestStageFunctionDefinition() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final target = candidates.reversed.firstWhere(
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION stage_cell_geometry_from_organic_centroids(',
+            ),
+  );
+  final sql = target.readAsStringSync();
+  const createOrReplace =
+      'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(';
+  const createOnly =
+      'CREATE FUNCTION stage_cell_geometry_from_organic_centroids(';
+  final createIndex = [
+    sql.lastIndexOf(createOrReplace),
+    sql.lastIndexOf(createOnly),
+  ].reduce((a, b) => a > b ? a : b);
+  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  return (
+    migrationName: target.uri.pathSegments.last,
+    functionSql: functionSql,
+  );
 }
