@@ -7,6 +7,7 @@ import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_fetch_coverage_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -55,6 +56,21 @@ void main() {
         .where((key) => !telemetry.containsKey(key))
         .length;
 
+    final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
+      cellsWithStates: [
+        for (final entry in _coverageFixtureScene())
+          if (entry.distanceMeters <= MapFetchCoveragePolicy.fetchRadiusMeters)
+            (cell: entry.cell, state: entry.state),
+      ],
+      viewportSize: const Size(390, 844),
+      project: _projectCoverageFixtureViewport,
+      markerScreenPosition: const Offset(195, 422),
+      currentCellId: 'coverage-present',
+      visitedCellCount: 1,
+      markerIsRing: false,
+      markerGapDistanceMeters: 0,
+    );
+    final coverageShortfall = _coverageShortfallScore(coverageTelemetry);
     expect(telemetry['render_cell_count'], cellsWithStates.length);
     expect(renderModel.fillPaths, isNotEmpty);
     expect(renderModel.boundaryEdges, isNotEmpty);
@@ -72,6 +88,9 @@ void main() {
     print(
       'ASI unknown_backdrop_hardness_breakdown='
       '${unknownBackdropHardness.breakdown}',
+    );
+    print(
+      'ASI coverage_shortfall_breakdown=${coverageShortfall.breakdown}',
     );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
@@ -98,6 +117,17 @@ void main() {
       '${unknownBackdropHardness.unknownFrontierDeltaExcess}',
     );
     print('METRIC unknown_coverage_gap_count=$unknownCoverageGapCount');
+    print(
+      'METRIC fetch_coverage_shortfall_score=${coverageShortfall.score}',
+    );
+    print(
+      'METRIC coverage_unknown_visible_excess='
+      '${coverageShortfall.unknownVisibleExcess}',
+    );
+    print(
+      'METRIC coverage_unknown_left_edge_excess='
+      '${coverageShortfall.unknownLeftEdgeExcess}',
+    );
   });
 }
 
@@ -174,6 +204,65 @@ Offset _projectToFixtureViewport(GeoCoord coord) {
     422 - ((coord.lat - centerLat) * pixelsPerDegree),
   );
 }
+
+List<({Cell cell, CellState state, double distanceMeters})>
+    _coverageFixtureScene() => [
+          (
+            cell: _screenRectCell('coverage-present', 60, 260, 260, 600),
+            state: _presentState,
+            distanceMeters: 0,
+          ),
+          (
+            cell: _screenRectCell('coverage-top', 60, 0, 390, 260),
+            state: _frontierState,
+            distanceMeters: 1800,
+          ),
+          (
+            cell: _screenRectCell('coverage-right', 260, 260, 390, 844),
+            state: _frontierState,
+            distanceMeters: 1800,
+          ),
+          (
+            cell: _screenRectCell('coverage-bottom', 60, 600, 260, 844),
+            state: _frontierState,
+            distanceMeters: 1800,
+          ),
+          (
+            cell: _screenRectCell('coverage-left', 0, 0, 60, 844),
+            state: _frontierState,
+            distanceMeters: 2200,
+          ),
+        ];
+
+Cell _screenRectCell(
+  String id,
+  double left,
+  double top,
+  double right,
+  double bottom,
+) =>
+    Cell(
+      id: id,
+      habitats: const [],
+      polygons: [
+        [
+          [
+            (lat: top, lng: left),
+            (lat: top, lng: right),
+            (lat: bottom, lng: right),
+            (lat: bottom, lng: left),
+            (lat: top, lng: left),
+          ],
+        ],
+      ],
+      districtId: 'coverage',
+      cityId: 'coverage',
+      stateId: 'coverage',
+      countryId: 'coverage',
+    );
+
+Offset _projectCoverageFixtureViewport(GeoCoord coord) =>
+    Offset(coord.lng, coord.lat);
 
 List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
   const requiredKeys = [
@@ -369,5 +458,38 @@ class _UnknownBackdropHardnessScore {
   final int score;
   final int unknownAlphaExcess;
   final int unknownFrontierDeltaExcess;
+  final String breakdown;
+}
+
+_CoverageShortfallScore _coverageShortfallScore(
+    Map<String, dynamic> telemetry) {
+  final unknownVisibleRatio =
+      telemetry['projection_unknown_visible_ratio'] as double;
+  final unknownLeftEdgeRatio =
+      telemetry['projection_unknown_left_edge_ratio'] as double;
+  final unknownVisibleExcess =
+      _scaledExcess(value: unknownVisibleRatio, targetMax: 0.0);
+  final unknownLeftEdgeExcess =
+      _scaledExcess(value: unknownLeftEdgeRatio, targetMax: 0.0);
+  return _CoverageShortfallScore(
+    score: unknownVisibleExcess + unknownLeftEdgeExcess,
+    unknownVisibleExcess: unknownVisibleExcess,
+    unknownLeftEdgeExcess: unknownLeftEdgeExcess,
+    breakdown:
+        'unknown_visible=$unknownVisibleRatio unknown_left=$unknownLeftEdgeRatio fetch_radius=${MapFetchCoveragePolicy.fetchRadiusMeters}',
+  );
+}
+
+class _CoverageShortfallScore {
+  const _CoverageShortfallScore({
+    required this.score,
+    required this.unknownVisibleExcess,
+    required this.unknownLeftEdgeExcess,
+    required this.breakdown,
+  });
+
+  final int score;
+  final int unknownVisibleExcess;
+  final int unknownLeftEdgeExcess;
   final String breakdown;
 }

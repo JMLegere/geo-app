@@ -13,6 +13,7 @@ import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart
 import 'package:earth_nova/features/map/domain/use_cases/fetch_nearby_cells.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_visited_cells.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_fetch_coverage_policy.dart';
 
 sealed class MapState {
   const MapState();
@@ -65,7 +66,7 @@ final getVisitedCellsProvider = Provider<GetVisitedCells>(
 
 final mapProvider = NotifierProvider<MapNotifier, MapState>(MapNotifier.new);
 
-const _kFetchRadiusMeters = 2000.0;
+const _kFetchRadiusMeters = MapFetchCoveragePolicy.fetchRadiusMeters;
 const _kRefetchThresholdMeters = 500.0;
 
 class MapNotifier extends ObservableNotifier<MapState> {
