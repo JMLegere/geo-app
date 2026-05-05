@@ -51,6 +51,9 @@ void main() {
         .length;
     final fogHardness = _fogHardnessScore(telemetry);
     final unknownBackdropHardness = _unknownBackdropHardnessScore(telemetry);
+    final unknownCoverageGapCount = _unknownCoverageDiagnosticKeys
+        .where((key) => !telemetry.containsKey(key))
+        .length;
 
     expect(telemetry['render_cell_count'], cellsWithStates.length);
     expect(renderModel.fillPaths, isNotEmpty);
@@ -94,6 +97,7 @@ void main() {
       'METRIC unknown_frontier_delta_excess='
       '${unknownBackdropHardness.unknownFrontierDeltaExcess}',
     );
+    print('METRIC unknown_coverage_gap_count=$unknownCoverageGapCount');
   });
 }
 
@@ -217,6 +221,7 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
     'projection_viewport_edge_crossing_count',
     'projection_axis_aligned_screen_edge_ratio',
     ..._edgeClipDiagnosticKeys,
+    ..._unknownCoverageDiagnosticKeys,
 
     // Marker context explains whether the visible circle is fog or player chrome.
     'marker_screen_x',
@@ -250,6 +255,14 @@ const _edgeClipDiagnosticKeys = [
 const _unknownBackdropDiagnosticKeys = [
   'style_uses_unknown_backdrop',
   'style_fill_compositing_mode',
+];
+
+const _unknownCoverageDiagnosticKeys = [
+  'projection_unknown_visible_ratio',
+  'projection_unknown_left_edge_ratio',
+  'projection_unknown_top_edge_ratio',
+  'projection_unknown_right_edge_ratio',
+  'projection_unknown_bottom_edge_ratio',
 ];
 
 List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
