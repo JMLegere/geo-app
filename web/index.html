@@ -85,6 +85,18 @@
       padding-right: 28px !important;
     }
   </style>
+  <style id="earthnova-maplibre-gesture-contract">
+    /*
+      EarthNova owns map-level pinch gestures. MapLibre is rendered as the base
+      map only, so its DOM layer must not trigger browser or MapLibre native
+      pinch behavior that can bypass Flutter and strand the hierarchy screen.
+    */
+    .maplibregl-map,
+    .maplibregl-canvas-container,
+    .maplibregl-canvas {
+      touch-action: none !important;
+    }
+  </style>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   <style id="splash-screen-style">
     html {
@@ -274,6 +286,10 @@
         var touchPinch = null;
         var safariGesturePinch = null;
         var viewportTimer = null;
+        var lastMapLevelPinchAt = 0;
+        var lastMapLevelPinchDirection = null;
+        var mapLevelPinchCloseEvent = 'earthnova.map_level_pinch.close';
+        var mapLevelPinchSpreadEvent = 'earthnova.map_level_pinch.spread';
 
         function round(value) {
           return typeof value === 'number' && isFinite(value)
@@ -393,6 +409,48 @@
           };
         }
 
+        function emitMapLevelPinch(gesture, target, scale, attrsExtra) {
+          var direction = (attrsExtra && attrsExtra.gesture_direction) || scaleDirection(scale);
+          var met = attrsExtra && typeof attrsExtra.threshold_met === 'boolean'
+            ? attrsExtra.threshold_met
+            : thresholdMet(scale);
+          var meta = targetMetadata(target || gesture.target);
+          if (!met || !meta.within_maplibre || (direction !== 'close' && direction !== 'spread')) {
+            return;
+          }
+
+          var at = nowMs();
+          if (lastMapLevelPinchDirection === direction && at - lastMapLevelPinchAt < 350) {
+            return;
+          }
+          lastMapLevelPinchDirection = direction;
+          lastMapLevelPinchAt = at;
+
+          try {
+            window.dispatchEvent(new CustomEvent(
+              direction === 'close' ? mapLevelPinchCloseEvent : mapLevelPinchSpreadEvent,
+              {
+                detail: {
+                  direction: direction,
+                  source: gesture.source,
+                  scale: round(scale),
+                  at: at
+                }
+              }
+            ));
+            push('low_level', 'gesture_map_level_bridge_dispatched', gesture.source, Object.assign(meta, {
+              flow: 'low_level.input',
+              phase: 'completed',
+              source: gesture.source,
+              gesture_direction: direction,
+              scale: round(scale),
+              threshold_met: true
+            }));
+          } catch (e) {
+            push('js', 'map_level_pinch_bridge_failed', (e && e.message) || String(e));
+          }
+        }
+
         function logPinchEnded(gesture, target, endDistance, extra) {
           if (!gesture) return;
           var attrsExtra = extra || {};
@@ -417,6 +475,7 @@
               duration_ms: nowMs() - gesture.startedAt
             })
           ));
+          emitMapLevelPinch(gesture, target || gesture.target, scale, attrsExtra);
         }
 
         document.addEventListener('pointerdown', function(event) {

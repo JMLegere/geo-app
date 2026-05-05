@@ -275,7 +275,6 @@ void main() {
         expect(html, contains("dependency: 'maplibre_layout'"));
         expect(html, contains('map_height_px'));
         expect(html, contains('map_width_px'));
-
       });
       test('installs one broad low-level event telemetry surface', () {
         expect(
@@ -292,14 +291,17 @@ void main() {
         expect(html, contains('window.__earthnovaLowLevelTelemetryInstalled'));
       });
 
-      test('covers core browser input, viewport, lifecycle, network, and resource events', () {
+      test(
+          'covers core browser input, viewport, lifecycle, network, and resource events',
+          () {
         const requiredListeners = {
           "document.addEventListener('pointerdown'": 'pointer sequence start',
           "document.addEventListener('pointermove'": 'pointer movement summary',
           "document.addEventListener('pointerup'": 'pointer sequence end',
           "document.addEventListener('pointercancel'": 'pointer cancellation',
           "document.addEventListener('touchstart'": 'touch sequence start',
-          "document.addEventListener('touchmove'": 'touch/pinch movement summary',
+          "document.addEventListener('touchmove'":
+              'touch/pinch movement summary',
           "document.addEventListener('touchend'": 'touch sequence end',
           "document.addEventListener('touchcancel'": 'touch cancellation',
           "document.addEventListener('gesturestart'": 'Safari gesture start',
@@ -326,7 +328,9 @@ void main() {
         expect(html, contains('capture: true'));
       });
 
-      test('emits bounded low-level event names and privacy-safe payload fields', () {
+      test(
+          'emits bounded low-level event names and privacy-safe payload fields',
+          () {
         const requiredEvents = [
           "push('low_level', 'pointer_sequence_started'",
           "push('low_level', 'pointer_sequence_ended'",
@@ -345,7 +349,8 @@ void main() {
         ];
 
         for (final event in requiredEvents) {
-          expect(html, contains(event), reason: 'Missing low-level event $event');
+          expect(html, contains(event),
+              reason: 'Missing low-level event $event');
         }
 
         const requiredPayloadFields = [
@@ -395,8 +400,22 @@ void main() {
         expect(html, contains('entry.session_id = sid'));
         expect(html, contains('bootstrap_session_id'));
       });
- 
- 
+
+      test('bridges thresholded MapLibre pinches into Dart map-level events',
+          () {
+        expect(html, contains('earthnova.map_level_pinch.close'));
+        expect(html, contains('earthnova.map_level_pinch.spread'));
+        expect(html, contains('emitMapLevelPinch'));
+        expect(html, contains('lastMapLevelPinchAt'));
+        expect(html, contains('gesture_map_level_bridge_dispatched'));
+        expect(
+          html,
+          contains('meta.within_maplibre'),
+          reason: 'Only pinches that start inside the MapLibre platform view '
+              'need the JS-to-Dart bridge; Flutter gestures cover other areas.',
+        );
+      });
+
       test('normalizes zero-height platform hosts before logging layout', () {
         expect(
           html,
@@ -404,10 +423,12 @@ void main() {
           reason: 'Layout fixes should target the actual platform-view host '
               'for the active MapLibre instance, not a global guess.',
         );
-        expect(html, contains("canvasContainer.style.height = mapHeightPx + 'px'"));
+        expect(html,
+            contains("canvasContainer.style.height = mapHeightPx + 'px'"));
         expect(html, contains("platformView.style.display = 'block'"));
         expect(html, contains("platformView.style.position = 'absolute'"));
-        expect(html, contains("platformView.style.height = mapHeightPx + 'px'"));
+        expect(
+            html, contains("platformView.style.height = mapHeightPx + 'px'"));
         expect(html, contains('map.resize()'));
       });
     });
