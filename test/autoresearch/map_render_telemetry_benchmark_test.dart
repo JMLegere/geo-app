@@ -71,7 +71,9 @@ void main() {
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
     final overlapPreviewDeployable = _overlapPreviewDeployableScore();
+    final polygonAssignment = _polygonAssignmentScore();
     final stageDecode = _stageDecodeScore();
+    final positiveOverlapPreview = _positiveOverlapPreviewScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -131,6 +133,8 @@ void main() {
       'ASI overlap_preview_deployable_breakdown='
       '${overlapPreviewDeployable.breakdown}',
     );
+    print('ASI polygon_assignment_breakdown=${polygonAssignment.breakdown}');
+    print('ASI positive_overlap_preview_breakdown=${positiveOverlapPreview.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -156,12 +160,14 @@ void main() {
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
+    print('METRIC polygon_assignment_gap_count=${polygonAssignment.score}');
     print('METRIC strict_containment_gap_count=${strictContainment.score}');
     print('METRIC overlap_preview_gap_count=${overlapPreview.score}');
     print(
       'METRIC overlap_preview_deployable_gap_count='
       '${overlapPreviewDeployable.score}',
     );
+    print('METRIC positive_overlap_preview_gap_count=${positiveOverlapPreview.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -1154,6 +1160,77 @@ _OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
 
 class _OverlapPreviewDeployableScore {
   const _OverlapPreviewDeployableScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_PolygonAssignmentScore _polygonAssignmentScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final startsFromVoronoi =
+      functionSql.contains('FROM tmp_cell_geometry_cluster_voronoi voronoi');
+  final coalescesCellIdentity =
+      functionSql.contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id');
+  return _PolygonAssignmentScore(
+    score: startsFromVoronoi && coalescesCellIdentity ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} starts_from_voronoi=$startsFromVoronoi coalesces_cell_identity=$coalescesCellIdentity',
+  );
+}
+
+class _PolygonAssignmentScore {
+  const _PolygonAssignmentScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_PositiveOverlapPreviewScore _positiveOverlapPreviewScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+            ),
+  );
+  if (matches.isEmpty) {
+    return const _PositiveOverlapPreviewScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final filtersPositiveArea =
+      sql.contains('WHERE overlap_area_m2 > 0') ||
+      sql.contains('WHERE overlap_area_m2 > 0.0');
+  return _PositiveOverlapPreviewScore(
+    score: filtersPositiveArea ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} filters_positive_area=$filtersPositiveArea',
+  );
+}
+
+class _PositiveOverlapPreviewScore {
+  const _PositiveOverlapPreviewScore({
     required this.score,
     required this.breakdown,
   });
