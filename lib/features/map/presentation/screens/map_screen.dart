@@ -71,6 +71,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   BaseMapStyleLoadedSignal? _baseMapStyleLoadedSignal;
   Timer? _mapSettledFallbackTimer;
   TelemetrySpan? _mapBootstrapSpan;
+  String? _lastGeometryDiagnosticsKey;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -315,6 +316,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  void _logGeometryRenderDiagnostics({
+    required List<({Cell cell, CellState state})> cellsWithStates,
+    required Map<String, dynamic> renderDiagnostics,
+  }) {
+    if (cellsWithStates.isEmpty) return;
+    final key = [
+      renderDiagnostics['render_cell_count'],
+      renderDiagnostics['render_present_cell_count'],
+      renderDiagnostics['render_explored_cell_count'],
+      renderDiagnostics['render_frontier_cell_count'],
+      renderDiagnostics['render_rectangular_cell_count'],
+      renderDiagnostics['render_axis_aligned_edge_ratio'],
+    ].join(':');
+    if (_lastGeometryDiagnosticsKey == key) return;
+    _lastGeometryDiagnosticsKey = key;
+    _logMapEvent(
+      'map.geometry_rendered',
+      data: renderDiagnostics,
+    );
+  }
+
   void _logSteadyStateReady() {
     if (_steadyStateLogged) return;
     _steadyStateLogged = true;
@@ -526,6 +548,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             renderDiagnostics: renderDiagnostics,
           );
           _logReadinessWaiting(readiness);
+          _logGeometryRenderDiagnostics(
+            cellsWithStates: cellsWithStates,
+            renderDiagnostics: renderDiagnostics,
+          );
 
           return Stack(
             children: [

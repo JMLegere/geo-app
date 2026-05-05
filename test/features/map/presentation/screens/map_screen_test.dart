@@ -321,6 +321,7 @@ void main() {
       expect(mapSource, contains('map.overlay_frame_painted'));
       expect(mapSource, contains('map.bootstrap.cancelled'));
       expect(mapSource, contains('summarizeRenderedCells'));
+      expect(mapSource, contains('map.geometry_rendered'));
       expect(mapSource, contains('renderDiagnostics: renderDiagnostics'));
     });
 
