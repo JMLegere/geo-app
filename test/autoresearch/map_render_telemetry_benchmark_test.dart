@@ -59,6 +59,7 @@ void main() {
     final fetchSelection = _fetchSelectionScore();
 
     final coverageSource = _coverageSourceScore();
+    final assignmentSource = _assignmentSourceScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -97,6 +98,7 @@ void main() {
     );
     print('ASI fetch_selection_breakdown=${fetchSelection.breakdown}');
     print('ASI coverage_source_breakdown=${coverageSource.breakdown}');
+    print('ASI assignment_source_breakdown=${assignmentSource.breakdown}');
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
@@ -104,6 +106,7 @@ void main() {
     print('METRIC projection_gap_count=$projectionGapCount');
     print('METRIC marker_gap_count=$markerGapCount');
     print('METRIC coverage_source_gap_count=${coverageSource.score}');
+    print('METRIC assignment_source_gap_count=${assignmentSource.score}');
     print('METRIC fog_hardness_score=${fogHardness.score}');
     print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
@@ -583,6 +586,44 @@ _CoverageSourceScore _coverageSourceScore() {
 
 class _CoverageSourceScore {
   const _CoverageSourceScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_AssignmentSourceScore _assignmentSourceScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final target = candidates.reversed.firstWhere(
+    (file) => file.readAsStringSync().contains(
+          'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+        ),
+  );
+  final sql = target.readAsStringSync();
+  final createIndex = sql.lastIndexOf(
+    'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+  );
+  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  final usesContainmentAssignment = functionSql.contains('ST_Covers(');
+  return _AssignmentSourceScore(
+    score: usesContainmentAssignment ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} uses_containment_assignment=$usesContainmentAssignment',
+  );
+}
+
+class _AssignmentSourceScore {
+  const _AssignmentSourceScore({
     required this.score,
     required this.breakdown,
   });
