@@ -69,6 +69,7 @@ void main() {
     final clusterPartition = _clusterPartitionScore();
     final componentCluster = _componentClusterScore();
     final safeClustering = _safeClusteringScore();
+    final bufferedComponentCluster = _bufferedComponentClusterScore();
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
@@ -130,6 +131,10 @@ void main() {
     print('ASI component_cluster_breakdown=${componentCluster.breakdown}');
     print('ASI safe_clustering_breakdown=${safeClustering.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
+    print(
+      'ASI buffered_component_cluster_breakdown='
+      '${bufferedComponentCluster.breakdown}',
+    );
     print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
     print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
     print('ASI overlap_preview_breakdown=${overlapPreview.breakdown}');
@@ -166,6 +171,10 @@ void main() {
     print('METRIC component_cluster_gap_count=${componentCluster.score}');
     print('METRIC safe_clustering_score=${safeClustering.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
+    print(
+      'METRIC buffered_component_cluster_gap_count='
+      '${bufferedComponentCluster.score}',
+    );
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print('METRIC polygon_assignment_gap_count=${polygonAssignment.score}');
     print('METRIC strict_containment_gap_count=${strictContainment.score}');
@@ -1026,6 +1035,29 @@ _SafeClusteringScore _safeClusteringScore() {
 
 class _SafeClusteringScore {
   const _SafeClusteringScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_BufferedComponentClusterScore _bufferedComponentClusterScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final usesBufferedSquareClustering =
+      functionSql.contains('ST_ClusterIntersecting(buffered_square)') ||
+      functionSql.contains('unnest(ST_ClusterIntersecting(buffered_square))');
+  return _BufferedComponentClusterScore(
+    score: usesBufferedSquareClustering ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} uses_buffered_square_clustering=$usesBufferedSquareClustering',
+  );
+}
+
+class _BufferedComponentClusterScore {
+  const _BufferedComponentClusterScore({
     required this.score,
     required this.breakdown,
   });
