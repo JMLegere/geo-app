@@ -63,6 +63,7 @@ void main() {
     final coverageBufferParam = _coverageBufferParamScore();
     final stagingDropDiagnostics = _stagingDropDiagnosticScore();
     final previewDiagnostics = _previewDiagnosticsScore();
+    final focusedPreview = _focusedPreviewScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -107,6 +108,7 @@ void main() {
       '${stagingDropDiagnostics.breakdown}',
     );
     print('ASI preview_diagnostics_breakdown=${previewDiagnostics.breakdown}');
+    print('ASI focused_preview_breakdown=${focusedPreview.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -123,6 +125,7 @@ void main() {
       '${stagingDropDiagnostics.score}',
     );
     print('METRIC preview_diagnostics_gap_count=${previewDiagnostics.score}');
+    print('METRIC focused_preview_gap_count=${focusedPreview.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -746,6 +749,53 @@ _PreviewDiagnosticsScore _previewDiagnosticsScore() {
 
 class _PreviewDiagnosticsScore {
   const _PreviewDiagnosticsScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_FocusedPreviewScore _focusedPreviewScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) => file.readAsStringSync().contains(
+          'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+        ),
+  );
+  if (matches.isEmpty) {
+    return const _FocusedPreviewScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final hasFocusParams = sql.contains('p_focus_lat DOUBLE PRECISION') &&
+      sql.contains('p_focus_lng DOUBLE PRECISION') &&
+      sql.contains('p_focus_radius_meters DOUBLE PRECISION');
+  final hasReasonCounts = sql.contains('null_geom_count') &&
+      sql.contains('empty_geom_count') &&
+      sql.contains('invalid_geom_count') &&
+      sql.contains('nonpositive_area_count');
+  return _FocusedPreviewScore(
+    score: hasFocusParams && hasReasonCounts ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} function_present=true has_focus_params=$hasFocusParams has_reason_counts=$hasReasonCounts',
+  );
+}
+
+class _FocusedPreviewScore {
+  const _FocusedPreviewScore({
     required this.score,
     required this.breakdown,
   });
