@@ -89,7 +89,7 @@ class FogRenderer {
   }
 
   static Color _unknownFillColor() {
-    return const Color(0xD9000000);
+    return const Color(0x79000000);
   }
 
   static Color _presentStrokeColor() {

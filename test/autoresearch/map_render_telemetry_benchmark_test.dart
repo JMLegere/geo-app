@@ -50,6 +50,7 @@ void main() {
         .where((key) => !telemetry.containsKey(key))
         .length;
     final fogHardness = _fogHardnessScore(telemetry);
+    final unknownBackdropHardness = _unknownBackdropHardnessScore(telemetry);
 
     expect(telemetry['render_cell_count'], cellsWithStates.length);
     expect(renderModel.fillPaths, isNotEmpty);
@@ -65,6 +66,10 @@ void main() {
       '${FogRenderer.fillColor(_frontierState).a.toStringAsFixed(3)}',
     );
     print('ASI fog_hardness_breakdown=${fogHardness.breakdown}');
+    print(
+      'ASI unknown_backdrop_hardness_breakdown='
+      '${unknownBackdropHardness.breakdown}',
+    );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
@@ -77,6 +82,18 @@ void main() {
     print('METRIC antialias_penalty=${fogHardness.antialiasPenalty}');
     print('METRIC edge_clip_diagnostic_gap_count=$edgeClipDiagnosticGapCount');
     print('METRIC unknown_backdrop_gap_count=$unknownBackdropGapCount');
+    print(
+      'METRIC unknown_backdrop_hardness_score='
+      '${unknownBackdropHardness.score}',
+    );
+    print(
+      'METRIC unknown_alpha_excess='
+      '${unknownBackdropHardness.unknownAlphaExcess}',
+    );
+    print(
+      'METRIC unknown_frontier_delta_excess='
+      '${unknownBackdropHardness.unknownFrontierDeltaExcess}',
+    );
   });
 }
 
@@ -305,5 +322,39 @@ class _FogHardnessScore {
   final int frontierAlphaExcess;
   final int exploredAlphaExcess;
   final int antialiasPenalty;
+  final String breakdown;
+}
+
+_UnknownBackdropHardnessScore _unknownBackdropHardnessScore(
+  Map<String, dynamic> telemetry,
+) {
+  final unknownAlpha = telemetry['style_unknown_fill_alpha'] as double;
+  final frontierAlpha = telemetry['style_frontier_fill_alpha'] as double;
+  final unknownAlphaExcess =
+      _scaledExcess(value: unknownAlpha, targetMax: 0.48);
+  final unknownFrontierDeltaExcess = _scaledExcess(
+    value: unknownAlpha - frontierAlpha,
+    targetMax: 0.18,
+  );
+  return _UnknownBackdropHardnessScore(
+    score: unknownAlphaExcess + unknownFrontierDeltaExcess,
+    unknownAlphaExcess: unknownAlphaExcess,
+    unknownFrontierDeltaExcess: unknownFrontierDeltaExcess,
+    breakdown:
+        'unknown_alpha=$unknownAlpha frontier_alpha=$frontierAlpha delta=${unknownAlpha - frontierAlpha}',
+  );
+}
+
+class _UnknownBackdropHardnessScore {
+  const _UnknownBackdropHardnessScore({
+    required this.score,
+    required this.unknownAlphaExcess,
+    required this.unknownFrontierDeltaExcess,
+    required this.breakdown,
+  });
+
+  final int score;
+  final int unknownAlphaExcess;
+  final int unknownFrontierDeltaExcess;
   final String breakdown;
 }
