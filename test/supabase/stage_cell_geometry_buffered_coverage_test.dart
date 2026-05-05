@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/061_handle_singleton_buffered_clusters.sql',
+      '${Directory.current.path}/supabase/migrations/062_fix_stage_cell_id_decode.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -35,6 +35,8 @@ void main() {
     expect(sql, contains('cluster_id'));
     expect(sql, contains('clusters.centroid_count = 1'));
     expect(sql, contains('ST_Dump(clusters.coverage_geom)'));
+    expect(sql, contains('grid_x / v_grid_scale AS original_center_lat'));
+    expect(sql, contains('grid_y / v_grid_scale AS original_center_lng'));
   });
 
   test('preview diagnostics migration exposes buffered drop reason counts', () {
