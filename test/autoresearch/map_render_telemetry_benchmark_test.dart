@@ -67,6 +67,7 @@ void main() {
     final latticePreviewSource = _latticePreviewSourceScore();
     final latticeDecode = _latticeDecodeScore();
     final clusterPartition = _clusterPartitionScore();
+    final componentCluster = _componentClusterScore();
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
@@ -125,6 +126,7 @@ void main() {
     );
     print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
     print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
+    print('ASI component_cluster_breakdown=${componentCluster.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
     print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
     print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
@@ -158,6 +160,7 @@ void main() {
     );
     print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
+    print('METRIC component_cluster_gap_count=${componentCluster.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print('METRIC polygon_assignment_gap_count=${polygonAssignment.score}');
@@ -971,6 +974,30 @@ _ClusterPartitionScore _clusterPartitionScore() {
 
 class _ClusterPartitionScore {
   const _ClusterPartitionScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_ComponentClusterScore _componentClusterScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final usesCoverageSquareClustering =
+      functionSql.contains('ST_ClusterIntersecting(') ||
+      functionSql.contains('unnest(ST_ClusterIntersecting');
+  final stillUsesDbscan = functionSql.contains('ST_ClusterDBSCAN(');
+  return _ComponentClusterScore(
+    score: usesCoverageSquareClustering && !stillUsesDbscan ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} uses_coverage_square_clustering=$usesCoverageSquareClustering still_uses_dbscan=$stillUsesDbscan',
+  );
+}
+
+class _ComponentClusterScore {
+  const _ComponentClusterScore({
     required this.score,
     required this.breakdown,
   });
