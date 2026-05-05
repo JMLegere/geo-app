@@ -197,6 +197,7 @@ class MapRenderDiagnosticsService {
         relationship: _ProjectionRelationshipSummary(),
     };
     final viewportArea = viewportSize.width * viewportSize.height;
+    final projectedExteriors = <_ProjectedExterior>[];
 
     for (final entry in cellsWithStates) {
       for (final polygon in entry.cell.polygons) {
@@ -205,6 +206,12 @@ class MapRenderDiagnosticsService {
         if (exterior.length < 3) continue;
         polygonCount++;
         final bounds = _boundsFor(exterior);
+        projectedExteriors.add(
+          _ProjectedExterior(
+            points: exterior,
+            bounds: bounds,
+          ),
+        );
         final areaRatio = viewportArea == 0
             ? 0.0
             : (bounds.width * bounds.height) / viewportArea;
@@ -234,6 +241,10 @@ class MapRenderDiagnosticsService {
         }
       }
     }
+    final unknownCoverage = _summarizeUnknownCoverage(
+      projectedExteriors,
+      viewportSize,
+    );
 
     return {
       'projection_viewport_width_px': _roundPx(viewportSize.width),
@@ -256,6 +267,7 @@ class MapRenderDiagnosticsService {
         CellRelationship.frontier,
         relationshipSummaries[CellRelationship.frontier]!,
       ),
+      ...unknownCoverage,
     };
   }
 
@@ -270,6 +282,83 @@ class MapRenderDiagnosticsService {
           summary.viewportEdgeCrossingCount,
       '${prefix}_largest_bbox_area_ratio':
           _roundRatio(summary.largestAreaRatio),
+    };
+  }
+
+  Map<String, dynamic> _summarizeUnknownCoverage(
+    List<_ProjectedExterior> projectedExteriors,
+    Size viewportSize,
+  ) {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return {
+        'projection_unknown_visible_ratio': 0.0,
+        'projection_unknown_left_edge_ratio': 0.0,
+        'projection_unknown_top_edge_ratio': 0.0,
+        'projection_unknown_right_edge_ratio': 0.0,
+        'projection_unknown_bottom_edge_ratio': 0.0,
+      };
+    }
+
+    const columns = 12;
+    const rows = 8;
+    const edgeBandFraction = 0.12;
+    final leftThreshold = viewportSize.width * edgeBandFraction;
+    final rightThreshold = viewportSize.width * (1 - edgeBandFraction);
+    final topThreshold = viewportSize.height * edgeBandFraction;
+    final bottomThreshold = viewportSize.height * (1 - edgeBandFraction);
+    var totalSamples = 0;
+    var unknownSamples = 0;
+    var leftSamples = 0;
+    var leftUnknownSamples = 0;
+    var topSamples = 0;
+    var topUnknownSamples = 0;
+    var rightSamples = 0;
+    var rightUnknownSamples = 0;
+    var bottomSamples = 0;
+    var bottomUnknownSamples = 0;
+
+    for (var row = 0; row < rows; row++) {
+      final y = viewportSize.height * ((row + 0.5) / rows);
+      for (var column = 0; column < columns; column++) {
+        final x = viewportSize.width * ((column + 0.5) / columns);
+        final sample = Offset(x, y);
+        totalSamples++;
+        final isCovered = projectedExteriors.any(
+          (exterior) =>
+              exterior.bounds.contains(sample) &&
+              _pointInPolygon(sample, exterior.points),
+        );
+        final isUnknown = !isCovered;
+        if (isUnknown) unknownSamples++;
+        if (x <= leftThreshold) {
+          leftSamples++;
+          if (isUnknown) leftUnknownSamples++;
+        }
+        if (x >= rightThreshold) {
+          rightSamples++;
+          if (isUnknown) rightUnknownSamples++;
+        }
+        if (y <= topThreshold) {
+          topSamples++;
+          if (isUnknown) topUnknownSamples++;
+        }
+        if (y >= bottomThreshold) {
+          bottomSamples++;
+          if (isUnknown) bottomUnknownSamples++;
+        }
+      }
+    }
+
+    return {
+      'projection_unknown_visible_ratio': _ratio(unknownSamples, totalSamples),
+      'projection_unknown_left_edge_ratio':
+          _ratio(leftUnknownSamples, leftSamples),
+      'projection_unknown_top_edge_ratio':
+          _ratio(topUnknownSamples, topSamples),
+      'projection_unknown_right_edge_ratio':
+          _ratio(rightUnknownSamples, rightSamples),
+      'projection_unknown_bottom_edge_ratio':
+          _ratio(bottomUnknownSamples, bottomSamples),
     };
   }
 
@@ -338,6 +427,11 @@ class MapRenderDiagnosticsService {
 
   double _roundRatio(num value) => (value * 1000).round() / 1000;
 
+  double _ratio(int numerator, int denominator) {
+    if (denominator == 0) return 0.0;
+    return _roundRatio(numerator / denominator);
+  }
+
   double _roundPx(double value) => (value * 10).round() / 10;
 }
 
@@ -403,4 +497,14 @@ class _ProjectionRelationshipSummary {
   int polygonCount = 0;
   int viewportEdgeCrossingCount = 0;
   double largestAreaRatio = 0.0;
+}
+
+class _ProjectedExterior {
+  const _ProjectedExterior({
+    required this.points,
+    required this.bounds,
+  });
+
+  final List<Offset> points;
+  final Rect bounds;
 }
