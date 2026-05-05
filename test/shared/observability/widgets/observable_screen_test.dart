@@ -11,7 +11,8 @@ void main() {
       observability = _TestObservabilityService();
     });
 
-    testWidgets('emits lifecycle events on init and dispose', (tester) async {
+    testWidgets('emits screen and widget lifecycle events on init and dispose',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: ObservableScreen(
@@ -22,18 +23,17 @@ void main() {
         ),
       );
 
-      expect(
-        observability.findEvent('ui.widget.init'),
-        isNotNull,
-      );
+      expect(observability.findEvent('ui.widget.init'), isNotNull);
+      expect(observability.findEvent('ui.screen.mounted'), isNotNull);
+      expect(observability.findEvent('ui.screen.first_build'), isNotNull);
+      expect(observability.findEvent('ui.screen.ready'), isNotNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
 
-      expect(
-        observability.findEvent('ui.widget.dispose'),
-        isNotNull,
-      );
+      expect(observability.findEvent('ui.widget.dispose'), isNotNull);
+      expect(observability.findEvent('ui.screen.disposed'), isNotNull);
+      expect(observability.findEvent('ui.screen.disposed_before_ready'), isNull);
     });
 
     testWidgets('emits build jank event for 101ms build', (tester) async {
@@ -122,6 +122,35 @@ void main() {
 
       expect(retryCount, 1);
       expect(find.text('Recovered'), findsOneWidget);
+    });
+
+    testWidgets('emits load_timeout and disposed_before_ready when screen never becomes ready',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ObservableScreen(
+            screenName: 'BrokenScreen',
+            observability: observability,
+            readyTimeoutOverride: const Duration(milliseconds: 1),
+            builder: (_) => throw StateError('boom'),
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 2));
+
+      final timeout = observability.findEvent('ui.screen.load_timeout');
+      expect(timeout, isNotNull);
+      expect(timeout?['data']?['screen_name'], 'BrokenScreen');
+      expect(timeout?['data']?['timeout_ms'], 1);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      expect(
+        observability.findEvent('ui.screen.disposed_before_ready'),
+        isNotNull,
+      );
     });
   });
 }

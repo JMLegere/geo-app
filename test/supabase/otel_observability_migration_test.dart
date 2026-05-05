@@ -65,4 +65,25 @@ void main() {
     expect(sql, contains('DROP TABLE IF EXISTS app_events CASCADE'));
     expect(sql, contains('purge_old_app_logs'));
   });
+
+  test('telemetry retention keeps only the last 14 days', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/072_telemetry_14_day_retention.sql',
+    );
+
+    expect(
+      migration.existsSync(),
+      isTrue,
+      reason: 'Changing observability retention requires an explicit migration '
+          'so beta/prod Supabase enforce the same data window.',
+    );
+
+    final sql = migration.readAsStringSync();
+    expect(sql, contains('CREATE OR REPLACE FUNCTION cleanup_old_telemetry()'));
+    expect(sql, contains("occurred_at < now() - interval '14 days'"));
+    expect(sql, contains("started_at < now() - interval '14 days'"));
+    expect(sql, contains("created_at < now() - interval '14 days'"));
+    expect(sql, contains("'purge_old_telemetry'"));
+    expect(sql, isNot(contains("interval '30 days'")));
+  });
 }

@@ -33,6 +33,44 @@ void main() {
       );
     });
 
+    test('ObservableScreen enforces screen lifecycle terminal coverage', () {
+      final source = File(
+        'lib/shared/observability/widgets/observable_screen.dart',
+      ).readAsStringSync();
+
+      final requiredEvents = [
+        'ui.screen.mounted',
+        'ui.screen.first_build',
+        'ui.screen.ready',
+        'ui.screen.disposed',
+        'ui.screen.load_timeout',
+        'ui.screen.disposed_before_ready',
+        'error.screen_boundary_caught',
+        'ui.widget.build_jank',
+      ];
+
+      for (final event in requiredEvents) {
+        expect(source, contains("'$event'"), reason: 'Missing $event');
+      }
+      expect(source, contains('Timer? _readyTimer'));
+      expect(source, contains('readyTimeoutOverride'));
+      expect(source, contains("'ready': _ready"));
+    });
+
+    test('navigation emits expected-screen events for load correlation', () {
+      final source = File(
+        'lib/shared/observability/navigation/app_navigation_observer.dart',
+      ).readAsStringSync();
+
+      expect(source, contains("'ui.screen.expected'"));
+      expect(source, contains("'source': source"));
+      expect(source, contains("'screen_name': toScreen"));
+      expect(source, contains("'from_screen': fromScreen"));
+      expect(source, contains("'source': routeEventSource"));
+      expect(source, contains("'screen_name': _routeName(toRoute)"));
+    });
+
+
     test('interactive screen files declare ObservableInteraction coverage', () {
       final interactivePatterns = [
         RegExp(r'onPressed\s*:'),

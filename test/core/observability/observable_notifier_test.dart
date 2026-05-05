@@ -171,5 +171,36 @@ void main() {
             'comment explaining why silent is appropriate.',
       );
     });
+
+    test('silentTransition calls document why telemetry is intentionally skipped', () {
+      final libDir = Directory('lib');
+      final violations = <String>[];
+
+      for (final file in libDir.listSync(recursive: true)) {
+        if (file is! File || !file.path.endsWith('.dart')) continue;
+        if (file.path.contains('observable_notifier.dart')) continue;
+
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (!lines[i].contains('silentTransition(')) continue;
+          final context = lines
+              .sublist(i >= 3 ? i - 3 : 0, i)
+              .map((line) => line.trim())
+              .join(' ');
+          if (!context.contains('silentTransition:')) {
+            violations.add('${file.path}:${i + 1}  ${lines[i].trim()}');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'silentTransition intentionally skips telemetry. Every call '
+            'must have a nearby `silentTransition:` comment explaining why the '
+            'state change is too noisy or non-diagnostic to log.\n'
+            '${violations.join('\n')}',
+      );
+    });
   });
 }
