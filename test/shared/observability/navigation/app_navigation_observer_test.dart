@@ -150,6 +150,10 @@ void main() {
       });
     });
 
+    test('normalizes the root material route to the loading screen', () {
+      expect(normalizeScreenNameForTelemetry('/'), 'loading_screen');
+    });
+
     test('does not block navigation when log callback throws', () {
       final observer = AppNavigationObserver(
         logEvent: (_, __, {data}) => throw StateError('log failed'),

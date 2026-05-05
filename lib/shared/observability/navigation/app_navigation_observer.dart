@@ -10,6 +10,7 @@ typedef NavigationLogEvent = void Function(
 String normalizeScreenNameForTelemetry(String screenName) {
   final trimmed = screenName.trim();
   if (trimmed.isEmpty) return 'unknown';
+  if (trimmed == '/') return 'loading_screen';
 
   const aliases = {
     'loading': 'loading_screen',
