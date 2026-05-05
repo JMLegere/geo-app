@@ -68,6 +68,7 @@ void main() {
     final latticeDecode = _latticeDecodeScore();
     final clusterPartition = _clusterPartitionScore();
     final componentCluster = _componentClusterScore();
+    final safeClustering = _safeClusteringScore();
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
@@ -127,6 +128,7 @@ void main() {
     print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
     print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
     print('ASI component_cluster_breakdown=${componentCluster.breakdown}');
+    print('ASI safe_clustering_breakdown=${safeClustering.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
     print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
     print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
@@ -136,7 +138,8 @@ void main() {
       '${overlapPreviewDeployable.breakdown}',
     );
     print('ASI polygon_assignment_breakdown=${polygonAssignment.breakdown}');
-    print('ASI positive_overlap_preview_breakdown=${positiveOverlapPreview.breakdown}');
+    print(
+        'ASI positive_overlap_preview_breakdown=${positiveOverlapPreview.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -161,6 +164,7 @@ void main() {
     print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
     print('METRIC component_cluster_gap_count=${componentCluster.score}');
+    print('METRIC safe_clustering_score=${safeClustering.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print('METRIC polygon_assignment_gap_count=${polygonAssignment.score}');
@@ -170,7 +174,8 @@ void main() {
       'METRIC overlap_preview_deployable_gap_count='
       '${overlapPreviewDeployable.score}',
     );
-    print('METRIC positive_overlap_preview_gap_count=${positiveOverlapPreview.score}');
+    print(
+        'METRIC positive_overlap_preview_gap_count=${positiveOverlapPreview.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -987,7 +992,7 @@ _ComponentClusterScore _componentClusterScore() {
   final functionSql = stageFunction.functionSql;
   final usesCoverageSquareClustering =
       functionSql.contains('ST_ClusterIntersecting(') ||
-      functionSql.contains('unnest(ST_ClusterIntersecting');
+          functionSql.contains('unnest(ST_ClusterIntersecting');
   final stillUsesDbscan = functionSql.contains('ST_ClusterDBSCAN(');
   return _ComponentClusterScore(
     score: usesCoverageSquareClustering && !stillUsesDbscan ? 0 : 1,
@@ -998,6 +1003,29 @@ _ComponentClusterScore _componentClusterScore() {
 
 class _ComponentClusterScore {
   const _ComponentClusterScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_SafeClusteringScore _safeClusteringScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final usesCoverageSquareClustering =
+      functionSql.contains('ST_ClusterIntersecting(') ||
+          functionSql.contains('unnest(ST_ClusterIntersecting');
+  return _SafeClusteringScore(
+    score: usesCoverageSquareClustering ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} uses_coverage_square_clustering=$usesCoverageSquareClustering',
+  );
+}
+
+class _SafeClusteringScore {
+  const _SafeClusteringScore({
     required this.score,
     required this.breakdown,
   });
@@ -1167,8 +1195,9 @@ _OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
         name: file.uri.pathSegments.last,
         avoidsReservedOverlapCte:
             !file.readAsStringSync().contains('), overlaps AS ('),
-        usesOverlapRows: file.readAsStringSync().contains('), overlap_rows AS (') &&
-            file.readAsStringSync().contains('FROM overlap_rows;'),
+        usesOverlapRows:
+            file.readAsStringSync().contains('), overlap_rows AS (') &&
+                file.readAsStringSync().contains('FROM overlap_rows;'),
       ),
   ];
   final allDeployable = inspected.every(
@@ -1200,8 +1229,8 @@ _PolygonAssignmentScore _polygonAssignmentScore() {
   final functionSql = stageFunction.functionSql;
   final startsFromVoronoi =
       functionSql.contains('FROM tmp_cell_geometry_cluster_voronoi voronoi');
-  final coalescesCellIdentity =
-      functionSql.contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id');
+  final coalescesCellIdentity = functionSql
+      .contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id');
   return _PolygonAssignmentScore(
     score: startsFromVoronoi && coalescesCellIdentity ? 0 : 1,
     breakdown:
@@ -1246,8 +1275,7 @@ _PositiveOverlapPreviewScore _positiveOverlapPreviewScore() {
   }
   final target = matches.first;
   final sql = target.readAsStringSync();
-  final filtersPositiveArea =
-      sql.contains('WHERE overlap_area_m2 > 0') ||
+  final filtersPositiveArea = sql.contains('WHERE overlap_area_m2 > 0') ||
       sql.contains('WHERE overlap_area_m2 > 0.0');
   return _PositiveOverlapPreviewScore(
     score: filtersPositiveArea ? 0 : 1,
