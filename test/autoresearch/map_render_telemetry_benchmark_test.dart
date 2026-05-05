@@ -43,6 +43,7 @@ void main() {
         _missingKeysWithPrefix(missingKeys, 'projection_').length;
     final markerGapCount =
         _missingKeysWithPrefix(missingKeys, 'marker_').length;
+    final fogHardness = _fogHardnessScore(telemetry);
 
     expect(telemetry['render_cell_count'], cellsWithStates.length);
     expect(renderModel.fillPaths, isNotEmpty);
@@ -57,12 +58,17 @@ void main() {
       'ASI truth_frontier_fill_alpha='
       '${FogRenderer.fillColor(_frontierState).a.toStringAsFixed(3)}',
     );
+    print('ASI fog_hardness_breakdown=${fogHardness.breakdown}');
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
     print('METRIC render_model_gap_count=$renderModelGapCount');
     print('METRIC projection_gap_count=$projectionGapCount');
     print('METRIC marker_gap_count=$markerGapCount');
+    print('METRIC fog_hardness_score=${fogHardness.score}');
+    print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
+    print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
+    print('METRIC antialias_penalty=${fogHardness.antialiasPenalty}');
   });
 }
 
@@ -234,3 +240,43 @@ List<String> _missingKeysWithPrefix(List<String> missingKeys, String prefix) =>
       for (final key in missingKeys)
         if (key.startsWith(prefix)) key,
     ];
+
+_FogHardnessScore _fogHardnessScore(Map<String, dynamic> telemetry) {
+  final frontierAlpha = telemetry['style_frontier_fill_alpha'] as double;
+  final exploredAlpha = telemetry['style_explored_fill_alpha'] as double;
+  final antialias = telemetry['style_overlay_antialias'] as bool;
+  final frontierAlphaExcess =
+      _scaledExcess(value: frontierAlpha, targetMax: 0.32);
+  final exploredAlphaExcess =
+      _scaledExcess(value: exploredAlpha, targetMax: 0.22);
+  final antialiasPenalty = antialias ? 0 : 10;
+  return _FogHardnessScore(
+    score: frontierAlphaExcess + exploredAlphaExcess + antialiasPenalty,
+    frontierAlphaExcess: frontierAlphaExcess,
+    exploredAlphaExcess: exploredAlphaExcess,
+    antialiasPenalty: antialiasPenalty,
+    breakdown:
+        'frontier_alpha=$frontierAlpha explored_alpha=$exploredAlpha antialias=$antialias',
+  );
+}
+
+int _scaledExcess({required double value, required double targetMax}) {
+  final excess = value - targetMax;
+  return excess <= 0 ? 0 : (excess * 100).round();
+}
+
+class _FogHardnessScore {
+  const _FogHardnessScore({
+    required this.score,
+    required this.frontierAlphaExcess,
+    required this.exploredAlphaExcess,
+    required this.antialiasPenalty,
+    required this.breakdown,
+  });
+
+  final int score;
+  final int frontierAlphaExcess;
+  final int exploredAlphaExcess;
+  final int antialiasPenalty;
+  final String breakdown;
+}
