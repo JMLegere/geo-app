@@ -28,13 +28,17 @@ class SupabaseItemRepository implements ItemRepository {
   @override
   Future<List<Item>> fetchItems(String userId, {String? traceId}) async {
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': 'fetch_items',
+    });
     try {
       final response = await _runFetchItemsQuery(userId);
       final items =
           response.map((json) => ItemDto.fromJson(json).toDomain()).toList();
       _logEvent?.call('db.query_completed', _category, data: {
         'trace_id': traceId,
+        'operation': 'fetch_items',
         'row_count': response.length,
         'duration_ms': stopwatch.elapsedMilliseconds,
       });
@@ -42,7 +46,10 @@ class SupabaseItemRepository implements ItemRepository {
     } catch (error) {
       _logEvent?.call('db.query_failed', _category, data: {
         'trace_id': traceId,
+        'operation': 'fetch_items',
         'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': error.toString(),
       });
       rethrow;
     }

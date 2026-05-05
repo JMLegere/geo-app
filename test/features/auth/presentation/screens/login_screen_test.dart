@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
@@ -25,6 +26,7 @@ void main() {
           authRepositoryProvider.overrideWithValue(auth),
           observabilityProvider.overrideWithValue(obs),
           observableUseCaseProvider.overrideWithValue(obs),
+          appObservabilityProvider.overrideWithValue(obs),
         ],
         child: const MaterialApp(home: LoginScreen()),
       );

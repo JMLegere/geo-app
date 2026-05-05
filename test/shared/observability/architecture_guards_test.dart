@@ -94,4 +94,36 @@ void main() {
       );
     });
   });
+
+  test('all root app screens are wrapped with ObservableScreen', () {
+    final screenFiles = {
+      'loading_screen':
+          'lib/features/auth/presentation/screens/loading_screen.dart',
+      'login_screen':
+          'lib/features/auth/presentation/screens/login_screen.dart',
+      'pack_screen':
+          'lib/features/identification/presentation/screens/pack_screen.dart',
+      'map_root_screen':
+          'lib/features/map/presentation/screens/map_root_screen.dart',
+      'map_screen': 'lib/features/map/presentation/screens/map_screen.dart',
+      'settings_screen':
+          'lib/features/profile/presentation/screens/settings_screen.dart',
+    };
+
+    final missing = <String>[];
+    for (final entry in screenFiles.entries) {
+      final source = File(entry.value).readAsStringSync();
+      if (!source.contains('ObservableScreen(') ||
+          !source.contains("screenName: '${entry.key}'")) {
+        missing.add('${entry.key} (${entry.value})');
+      }
+    }
+
+    expect(
+      missing,
+      isEmpty,
+      reason:
+          'Root screens must be wrapped in ObservableScreen with stable screen names:\n${missing.join('\n')}',
+    );
+  });
 }

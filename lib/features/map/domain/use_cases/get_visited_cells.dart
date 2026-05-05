@@ -19,6 +19,6 @@ class GetVisitedCells
 
   @override
   Future<Set<String>> execute(GetVisitedCellsInput input, String traceId) {
-    return _repository.getVisitedCellIds(input.userId);
+    return _repository.getVisitedCellIds(input.userId, traceId: traceId);
   }
 }

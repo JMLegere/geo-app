@@ -32,9 +32,37 @@ void main() {
       expect(events, hasLength(2));
       expect(events[0]['event'], 'db.query_started');
       expect(events[1]['event'], 'db.query_completed');
+      expect(events[0]['data']['operation'], 'fetch_items');
       expect(events[1]['data']['trace_id'], 'trace-item');
       expect(events[1]['data']['row_count'], 1);
+      expect(events[1]['data']['operation'], 'fetch_items');
       expect(events[1]['data']['duration_ms'], isA<int>());
+    });
+
+    test('logs query failure with operation and error details', () async {
+      final events = <Map<String, dynamic>>[];
+      final repository = SupabaseItemRepository(
+        client: null,
+        fetchItemsQuery: (_) async => throw StateError('items broken'),
+        logEvent: (event, category, {data}) {
+          events
+              .add({'event': event, 'category': category, 'data': data ?? {}});
+        },
+      );
+
+      await expectLater(
+        () => repository.fetchItems('u1', traceId: 'trace-item-fail'),
+        throwsStateError,
+      );
+
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_failed',
+      ]);
+      expect(events.last['data']['operation'], 'fetch_items');
+      expect(events.last['data']['trace_id'], 'trace-item-fail');
+      expect(events.last['data']['error_type'], 'StateError');
+      expect(events.last['data']['error_message'], contains('items broken'));
     });
   });
 }

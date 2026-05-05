@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 typedef InteractionLogger = void Function({
@@ -63,6 +65,29 @@ class ObservableInteraction {
         ),
       );
       callback();
+    };
+  }
+
+  static VoidCallback wrapAsyncCallback({
+    required InteractionLogger logger,
+    required String screenName,
+    required String widgetName,
+    required String actionType,
+    Map<String, dynamic>? payload,
+    required Future<void> Function() callback,
+  }) {
+    return () {
+      logger(
+        event: _event,
+        category: _category,
+        data: ObservableInteraction.payload(
+          actionType: actionType,
+          screenName: screenName,
+          widgetName: widgetName,
+          extra: payload,
+        ),
+      );
+      unawaited(callback());
     };
   }
 

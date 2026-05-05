@@ -53,6 +53,42 @@ class SupabaseAuthRepository implements AuthRepository {
   final _controller = StreamController<AuthEvent>.broadcast();
   static const _category = 'auth.auth_repository';
 
+  void _logQueryStarted(String operation, String? traceId) {
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': operation,
+    });
+  }
+
+  void _logQueryCompleted({
+    required String operation,
+    required String? traceId,
+    required int rowCount,
+    required int durationMs,
+  }) {
+    _logEvent?.call('db.query_completed', _category, data: {
+      'trace_id': traceId,
+      'operation': operation,
+      'row_count': rowCount,
+      'duration_ms': durationMs,
+    });
+  }
+
+  void _logQueryFailed({
+    required String operation,
+    required String? traceId,
+    required int durationMs,
+    required Object error,
+  }) {
+    _logEvent?.call('db.query_failed', _category, data: {
+      'trace_id': traceId,
+      'operation': operation,
+      'duration_ms': durationMs,
+      'error_type': error.runtimeType.toString(),
+      'error_message': error.toString(),
+    });
+  }
+
   @override
   Stream<AuthEvent> get authStateChanges => _controller.stream;
 
@@ -62,22 +98,26 @@ class SupabaseAuthRepository implements AuthRepository {
     String password, {
     String? traceId,
   }) async {
+    const operation = 'auth.sign_in_with_email';
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logQueryStarted(operation, traceId);
     try {
       final profile = await _runSignIn(email, password);
       _controller.add(AuthStateChanged(profile));
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': 1,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: 1,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
       return profile;
     } catch (error) {
-      _logEvent?.call('db.query_failed', _category, data: {
-        'trace_id': traceId,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryFailed(
+        operation: operation,
+        traceId: traceId,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
       rethrow;
     }
   }
@@ -89,79 +129,93 @@ class SupabaseAuthRepository implements AuthRepository {
     Map<String, dynamic>? metadata,
     String? traceId,
   }) async {
+    const operation = 'auth.sign_up_with_email';
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logQueryStarted(operation, traceId);
     try {
       final profile = await _runSignUp(email, password, metadata);
       _controller.add(AuthStateChanged(profile));
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': 1,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: 1,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
       return profile;
     } catch (error) {
-      _logEvent?.call('db.query_failed', _category, data: {
-        'trace_id': traceId,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryFailed(
+        operation: operation,
+        traceId: traceId,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
       rethrow;
     }
   }
 
   @override
   Future<void> signOut({String? traceId}) async {
+    const operation = 'auth.sign_out';
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logQueryStarted(operation, traceId);
     try {
       await _runSignOut();
       _controller.add(const AuthStateChanged(null));
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': 0,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: 0,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
     } catch (error) {
-      _logEvent?.call('db.query_failed', _category, data: {
-        'trace_id': traceId,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryFailed(
+        operation: operation,
+        traceId: traceId,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
       rethrow;
     }
   }
 
   @override
   Future<UserProfile?> getCurrentUser({String? traceId}) async {
+    const operation = 'auth.get_current_user';
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logQueryStarted(operation, traceId);
     try {
       final profile = await _runCurrentUser();
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': profile == null ? 0 : 1,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: profile == null ? 0 : 1,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
       return profile;
     } catch (error) {
-      _logEvent?.call('db.query_failed', _category, data: {
-        'trace_id': traceId,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryFailed(
+        operation: operation,
+        traceId: traceId,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: error,
+      );
       rethrow;
     }
   }
 
   @override
   Future<bool> restoreSession({String? traceId}) async {
+    const operation = 'auth.restore_session';
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logQueryStarted(operation, traceId);
     final session = _runCurrentSession();
     if (session == null) {
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': 0,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: 0,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
       return false;
     }
     final rawUser = _client?.auth.currentUser;
@@ -171,11 +225,12 @@ class SupabaseAuthRepository implements AuthRepository {
       if (isAnonymous) {
         await _runSignOut();
         _controller.add(const AuthStateChanged(null));
-        _logEvent?.call('db.query_completed', _category, data: {
-          'trace_id': traceId,
-          'row_count': 0,
-          'duration_ms': stopwatch.elapsedMilliseconds,
-        });
+        _logQueryCompleted(
+          operation: operation,
+          traceId: traceId,
+          rowCount: 0,
+          durationMs: stopwatch.elapsedMilliseconds,
+        );
         return false;
       }
     }
@@ -187,38 +242,43 @@ class SupabaseAuthRepository implements AuthRepository {
           final profile = await getCurrentUser(traceId: traceId);
           if (profile != null) {
             _controller.add(AuthStateChanged(profile));
-            _logEvent?.call('db.query_completed', _category, data: {
-              'trace_id': traceId,
-              'row_count': 1,
-              'duration_ms': stopwatch.elapsedMilliseconds,
-            });
+            _logQueryCompleted(
+              operation: operation,
+              traceId: traceId,
+              rowCount: 1,
+              durationMs: stopwatch.elapsedMilliseconds,
+            );
             return true;
           }
         }
-      } catch (_) {
+      } catch (error) {
         _controller.add(const AuthSessionExpired());
-        _logEvent?.call('db.query_failed', _category, data: {
-          'trace_id': traceId,
-          'duration_ms': stopwatch.elapsedMilliseconds,
-        });
+        _logQueryFailed(
+          operation: operation,
+          traceId: traceId,
+          durationMs: stopwatch.elapsedMilliseconds,
+          error: error,
+        );
         return false;
       }
     }
     final profile = await getCurrentUser(traceId: traceId);
     if (profile != null) {
       _controller.add(AuthStateChanged(profile));
-      _logEvent?.call('db.query_completed', _category, data: {
-        'trace_id': traceId,
-        'row_count': 1,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
+      _logQueryCompleted(
+        operation: operation,
+        traceId: traceId,
+        rowCount: 1,
+        durationMs: stopwatch.elapsedMilliseconds,
+      );
       return true;
     }
-    _logEvent?.call('db.query_completed', _category, data: {
-      'trace_id': traceId,
-      'row_count': 0,
-      'duration_ms': stopwatch.elapsedMilliseconds,
-    });
+    _logQueryCompleted(
+      operation: operation,
+      traceId: traceId,
+      rowCount: 0,
+      durationMs: stopwatch.elapsedMilliseconds,
+    );
     return false;
   }
 

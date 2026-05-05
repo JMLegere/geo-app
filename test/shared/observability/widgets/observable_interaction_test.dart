@@ -39,6 +39,43 @@ void main() {
       });
     });
 
+    test('wrapAsyncCallback logs action payload and invokes future callback',
+        () async {
+      final events = <Map<String, dynamic>>[];
+      var invoked = false;
+
+      final callback = ObservableInteraction.wrapAsyncCallback(
+        logger: ({required event, required category, data}) {
+          events.add({
+            'event': event,
+            'category': category,
+            'data': data,
+          });
+        },
+        screenName: 'login_screen',
+        widgetName: 'continue_button',
+        actionType: 'submit',
+        payload: const {'entry_point': 'login'},
+        callback: () async {
+          invoked = true;
+        },
+      );
+
+      callback();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(invoked, isTrue);
+      expect(events, hasLength(1));
+      expect(events.single['event'], 'interaction.action');
+      expect(events.single['category'], 'ui');
+      expect(events.single['data'], {
+        'action_type': 'submit',
+        'screen_name': 'login_screen',
+        'widget_name': 'continue_button',
+        'entry_point': 'login',
+      });
+    });
+
     test('wrapValueChanged logs action payload and forwards input value', () {
       final events = <Map<String, dynamic>>[];
       String? received;

@@ -32,9 +32,11 @@ void main() {
       expect(events, hasLength(2));
       expect(events[0]['event'], 'db.query_started');
       expect(events[0]['data']['trace_id'], 'trace-auth');
+      expect(events[0]['data']['operation'], 'auth.sign_in_with_email');
       expect(events[1]['event'], 'db.query_completed');
       expect(events[1]['data']['trace_id'], 'trace-auth');
       expect(events[1]['data']['row_count'], 1);
+      expect(events[1]['data']['operation'], 'auth.sign_in_with_email');
       expect(events[1]['data']['duration_ms'], isA<int>());
     });
 
@@ -63,6 +65,9 @@ void main() {
       expect(events[0]['event'], 'db.query_started');
       expect(events[1]['event'], 'db.query_failed');
       expect(events[1]['data']['trace_id'], 'trace-auth-fail');
+      expect(events[1]['data']['operation'], 'auth.sign_in_with_email');
+      expect(events[1]['data']['error_type'], 'AuthException');
+      expect(events[1]['data']['error_message'], contains('bad creds'));
     });
   });
 }
