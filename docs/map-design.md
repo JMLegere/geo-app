@@ -91,6 +91,20 @@ The first map release succeeds when a player can open the Map tab, see where the
 - When GPS is inaccurate, I want discovery to pause visibly, so I know why walking is not revealing cells.
 - When GPS stabilizes, I want the marker to reform and exploration to resume, so the game feels fair.
 
+#### Project 2.3 — Fast smoothed camera follow
+
+**Outcome:** The map camera follows raw GPS without visible jitter.
+
+**Work:**
+- Keep raw GPS as the camera target.
+- Smooth the camera separately from the gameplay marker, with a faster catch-up curve.
+- Preserve the custom player marker as exploration truth; camera smoothing must never record visits or affect discovery eligibility.
+- Keep the native MapLibre GPS puck hidden so there is no second confusing dot.
+
+**JTBD user stories:**
+- When GPS jitters, I want the camera to ease rather than snap, so the map feels stable while I walk.
+- When I ask “where am I,” I want the green dot to mean my gameplay marker, not a hidden raw GPS point.
+
 ### Initiative 3 — Fog State Engine
 
 **Strategic intent:** Fog must be computed from visits and current position, not manually stored.

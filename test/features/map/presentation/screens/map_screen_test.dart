@@ -267,6 +267,21 @@ void main() {
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
     });
 
+    test('uses smoothed camera follow instead of raw GPS camera snaps', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('ref.watch(cameraFollowProvider)'));
+      expect(mapSource, contains('ref.listen(cameraFollowProvider'));
+      expect(
+        mapSource,
+        isNot(contains('ref.listen<LocationProviderState>(locationProvider')),
+        reason:
+            'Camera movement should follow the fast smoothed camera state, not every raw GPS update.',
+      );
+    });
+
     test('uses map layout constraints for overlay projection math', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

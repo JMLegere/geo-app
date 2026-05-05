@@ -96,3 +96,9 @@
 - Canonical phases are `started`, `waiting_on`, `dependency_requested`, `dependency_ready`, `dependency_failed`, `state_changed`, `completed`, `failed`, `timed_out`, and `cancelled`.
 - Keep existing domain event names where they are already useful (`map.style_loaded`, `auth.no_session`, etc.), but add lifecycle grammar attributes so SQL can detect missing terminal events and dependency failures without brittle event-name parsing.
 - Add terminal-agent query surfaces over the raw OTel-shaped tables: `telemetry_flow_lifecycle_v`, `telemetry_incomplete_flows_v`, and `telemetry_dependency_failures_v`.
+
+## 2026-05-05 — split gameplay marker from camera follow smoothing
+- The green map dot is the app-owned gameplay/player marker, not the raw GPS location; MapLibre's native puck remains disabled.
+- Raw GPS remains the target for map framing, but camera movement now runs through a separate fast smoothed `cameraFollowProvider`.
+- Camera smoothing is intentionally faster than the gameplay marker spline and never affects exploration eligibility, cell visits, or encounter triggering.
+- The first camera fix snaps to GPS to avoid panning from `(0,0)` across the globe; later GPS updates ease toward the new target to suppress jitter.
