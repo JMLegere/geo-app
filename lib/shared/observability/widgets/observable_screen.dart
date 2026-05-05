@@ -93,6 +93,7 @@ class _ObservableScreenState extends State<ObservableScreen> {
           ..._payload(),
           'duration_ms': duration.inMilliseconds,
           'threshold_ms': _jankThresholdMs,
+          'build_duration_ms': duration.inMilliseconds,
         },
       );
     }

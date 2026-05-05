@@ -136,7 +136,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
 
   final HierarchyRepository hierarchyRepository = supabaseClient != null
-      ? SupabaseHierarchyRepository(client: supabaseClient)
+      ? SupabaseHierarchyRepository(client: supabaseClient, logEvent: obs.log)
       : MockHierarchyRepository();
 
   FlutterError.onError = (details) {
@@ -210,19 +210,77 @@ class _EarthNovaApp extends ConsumerStatefulWidget {
   ConsumerState<_EarthNovaApp> createState() => _EarthNovaAppState();
 }
 
-class _EarthNovaAppState extends ConsumerState<_EarthNovaApp> {
+class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
+    with WidgetsBindingObserver {
   late final AuthHomeNavigationTransitionTracker _authHomeTracker;
-
+  String? _lastLifecycleState;
+  bool _wasBackgrounded = false;
   @override
   void initState() {
     super.initState();
     _authHomeTracker = AuthHomeNavigationTransitionTracker(
       logger: ref.read(navigationScreenTransitionLoggerProvider),
     );
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).restoreSession();
       _applyDebugLevelParam();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final obs = ref.read(appObservabilityProvider);
+    final previousState = _lastLifecycleState;
+    _lastLifecycleState = state.name;
+    obs.logFlowEvent(
+      'app.lifecycle',
+      TelemetryFlowPhase.stateChanged,
+      'lifecycle',
+      eventName: 'app.lifecycle_changed',
+      previousState: previousState ?? 'unknown',
+      nextState: state.name,
+    );
+
+    final isBackgrounded = state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden;
+    if (isBackgrounded) {
+      _wasBackgrounded = true;
+      obs.logFlowEvent(
+        'app.lifecycle',
+        TelemetryFlowPhase.completed,
+        'lifecycle',
+        eventName: 'app.backgrounded',
+        nextState: state.name,
+      );
+      unawaited(obs.flush());
+      return;
+    }
+
+    if (state == AppLifecycleState.resumed && _wasBackgrounded) {
+      _wasBackgrounded = false;
+      obs.logFlowEvent(
+        'app.lifecycle',
+        TelemetryFlowPhase.completed,
+        'lifecycle',
+        eventName: 'app.foregrounded',
+        nextState: state.name,
+      );
+      obs.logFlowEvent(
+        'app.lifecycle',
+        TelemetryFlowPhase.completed,
+        'lifecycle',
+        eventName: 'app.warm_start',
+        reason: 'resumed_after_background',
+      );
+    }
   }
 
   /// Reads `?level=<name>` from the URL and jumps to that map level.

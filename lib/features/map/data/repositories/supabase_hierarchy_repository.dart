@@ -6,16 +6,25 @@ typedef HierarchyRpcCaller = Future<List<Map<String, dynamic>>> Function(
   String functionName,
   Map<String, dynamic> params,
 );
+typedef RepositoryLogEvent = void Function(
+  String event,
+  String category, {
+  Map<String, dynamic>? data,
+});
 
 class SupabaseHierarchyRepository implements HierarchyRepository {
   SupabaseHierarchyRepository({
     required SupabaseClient client,
     HierarchyRpcCaller? rpcCaller,
+    RepositoryLogEvent? logEvent,
   })  : _client = client,
-        _rpcCaller = rpcCaller;
+        _rpcCaller = rpcCaller,
+        _logEvent = logEvent;
 
   final SupabaseClient _client;
   final HierarchyRpcCaller? _rpcCaller;
+  final RepositoryLogEvent? _logEvent;
+  static const _category = 'map.hierarchy_repository';
 
   @override
   Future<HierarchyProgressSummary> getScopeSummary({
@@ -57,17 +66,48 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     String functionName,
     Map<String, dynamic> params,
   ) async {
-    if (_rpcCaller != null) {
-      return _rpcCaller!(functionName, params);
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.rpc_started', _category, data: {
+      'operation': functionName,
+      'rpc_function': functionName,
+      'scope_level': params['p_scope_level'],
+      'scope_id': params['p_scope_id'],
+    });
+    try {
+      final response = _rpcCaller != null
+          ? await _rpcCaller!(functionName, params)
+          : await _client.rpc(functionName, params: params);
+      if (response is! List) {
+        _logEvent?.call('db.rpc_completed', _category, data: {
+          'operation': functionName,
+          'rpc_function': functionName,
+          'row_count': 0,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+        return [];
+      }
+
+      final rows = response
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+      _logEvent?.call('db.rpc_completed', _category, data: {
+        'operation': functionName,
+        'rpc_function': functionName,
+        'row_count': rows.length,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return rows;
+    } catch (error) {
+      _logEvent?.call('db.rpc_failed', _category, data: {
+        'operation': functionName,
+        'rpc_function': functionName,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': error.toString(),
+      });
+      rethrow;
     }
-
-    final response = await _client.rpc(functionName, params: params);
-    if (response is! List) return [];
-
-    return response
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
   }
 
   HierarchyProgressSummary _summaryFromRow(Map<String, dynamic> row) {

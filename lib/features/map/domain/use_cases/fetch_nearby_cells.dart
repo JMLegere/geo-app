@@ -28,6 +28,7 @@ class FetchNearbyCells
       input.lat,
       input.lng,
       input.radiusMeters,
+      traceId: traceId,
     );
   }
 }

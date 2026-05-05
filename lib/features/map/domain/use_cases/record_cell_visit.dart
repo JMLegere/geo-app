@@ -21,6 +21,7 @@ class RecordCellVisit extends ObservableUseCase<RecordCellVisitInput, void> {
 
   @override
   Future<void> execute(RecordCellVisitInput input, String traceId) {
-    return _repository.recordVisit(input.userId, input.cellId);
+    return _repository.recordVisit(input.userId, input.cellId,
+        traceId: traceId);
   }
 }

@@ -53,9 +53,11 @@ void main() {
       expect(events, hasLength(2));
       expect(events[0]['event'], 'db.query_started');
       expect(events[0]['data']['trace_id'], 'trace-123');
+      expect(events[0]['data']['operation'], 'fetch_cells_in_radius');
       expect(events[1]['event'], 'db.query_completed');
       expect(events[1]['data']['trace_id'], 'trace-123');
       expect(events[1]['data']['row_count'], 2);
+      expect(events[1]['data']['operation'], 'fetch_cells_in_radius');
       expect(events[1]['data']['duration_ms'], isA<int>());
     });
 
@@ -152,6 +154,9 @@ void main() {
       expect(events[0]['event'], 'db.query_started');
       expect(events[1]['event'], 'db.query_failed');
       expect(events[1]['data']['trace_id'], 'trace-999');
+      expect(events[1]['data']['operation'], 'record_cell_visit');
+      expect(events[1]['data']['error_type'], 'StateError');
+      expect(events[1]['data']['error_message'], contains('boom'));
     });
   });
 }

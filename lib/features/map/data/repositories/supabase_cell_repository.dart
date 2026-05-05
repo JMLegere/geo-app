@@ -56,6 +56,7 @@ class SupabaseCellRepository implements CellRepository {
   }) async {
     return _trace<List<Cell>>(
       traceId: traceId,
+      operation: 'fetch_cells_in_radius',
       rowCount: (cells) => cells.length,
       action: () => _queryPort.fetchNearbyCells(
         lat: lat,
@@ -74,6 +75,7 @@ class SupabaseCellRepository implements CellRepository {
   }) async {
     await _trace<void>(
       traceId: traceId,
+      operation: 'record_cell_visit',
       rowCount: (_) => 1,
       action: () => _visitPort.recordVisit(
         userId: userId,
@@ -90,6 +92,7 @@ class SupabaseCellRepository implements CellRepository {
   }) async {
     return _trace<Set<String>>(
       traceId: traceId,
+      operation: 'get_visited_cell_ids',
       rowCount: (ids) => ids.length,
       action: () => _visitPort.getVisitedCellIds(
         userId: userId,
@@ -106,6 +109,7 @@ class SupabaseCellRepository implements CellRepository {
   }) async {
     return _trace<bool>(
       traceId: traceId,
+      operation: 'is_first_visit',
       rowCount: (_) => 1,
       action: () => _visitPort.isFirstVisit(
         userId: userId,
@@ -117,24 +121,32 @@ class SupabaseCellRepository implements CellRepository {
 
   Future<T> _trace<T>({
     required String? traceId,
+    required String operation,
     required Future<T> Function() action,
     required int Function(T result) rowCount,
   }) async {
     final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.query_started', _category, data: {'trace_id': traceId});
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': operation,
+    });
 
     try {
       final result = await action();
       _logEvent?.call('db.query_completed', _category, data: {
         'trace_id': traceId,
+        'operation': operation,
         'row_count': rowCount(result),
         'duration_ms': stopwatch.elapsedMilliseconds,
       });
       return result;
-    } catch (_) {
+    } catch (error) {
       _logEvent?.call('db.query_failed', _category, data: {
         'trace_id': traceId,
+        'operation': operation,
         'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': error.toString(),
       });
       rethrow;
     }

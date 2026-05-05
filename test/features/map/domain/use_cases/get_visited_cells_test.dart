@@ -23,6 +23,7 @@ class FakeCellRepository implements CellRepository {
 
   final Set<String> visitedCellIds;
   final bool shouldThrow;
+  String? lastVisitedTraceId;
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
@@ -37,6 +38,7 @@ class FakeCellRepository implements CellRepository {
   @override
   Future<Set<String>> getVisitedCellIds(String userId,
       {String? traceId}) async {
+    lastVisitedTraceId = traceId;
     if (shouldThrow) throw Exception('Fake get visited error');
     return visitedCellIds;
   }
@@ -56,16 +58,15 @@ void main() {
   group('GetVisitedCells', () {
     test('delegates to repository and logs operation lifecycle', () async {
       final obs = TestObservabilityService();
-      final useCase = GetVisitedCells(
-        FakeCellRepository(visitedCellIds: {'c1', 'c2'}),
-        obs,
-      );
+      final repo = FakeCellRepository(visitedCellIds: {'c1', 'c2'});
+      final useCase = GetVisitedCells(repo, obs);
 
       final result = await useCase.call((userId: 'u1'));
 
       expect(result, {'c1', 'c2'});
       expect(obs.logs[0]['event'], 'operation.started');
       expect(obs.logs[1]['event'], 'operation.completed');
+      expect(repo.lastVisitedTraceId, isNotNull);
     });
 
     test('logs failure and rethrows repository exceptions', () async {

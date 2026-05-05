@@ -20,6 +20,7 @@ class FakeCellRepository implements CellRepository {
 
   final bool shouldThrow;
   final _visits = <String, Set<String>>{};
+  String? lastRecordTraceId;
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
@@ -30,6 +31,7 @@ class FakeCellRepository implements CellRepository {
   @override
   Future<void> recordVisit(String userId, String cellId,
       {String? traceId}) async {
+    lastRecordTraceId = traceId;
     if (shouldThrow) throw Exception('Fake record error');
     _visits.putIfAbsent(userId, () => {}).add(cellId);
   }
@@ -60,6 +62,7 @@ void main() {
       expect(visited, contains('cell-1'));
       expect(obs.logs[0]['event'], 'operation.started');
       expect(obs.logs[1]['event'], 'operation.completed');
+      expect(repo.lastRecordTraceId, isNotNull);
     });
 
     test('propagates repository exceptions', () async {

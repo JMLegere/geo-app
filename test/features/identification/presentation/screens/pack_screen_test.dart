@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
@@ -189,6 +191,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           itemsProvider.overrideWith(() => _ErrorItemsNotifier()),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -318,6 +323,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           itemsProvider.overrideWith(() => _MockItemsNotifier([])),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -342,6 +350,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           itemsProvider.overrideWith(() => _MockItemsNotifier([])),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -392,6 +403,9 @@ void main() {
           itemsProvider.overrideWith(() => _MockItemsNotifier([
                 _item('1', 'Red Fox', ItemCategory.fauna),
               ])),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -430,6 +444,9 @@ void main() {
           itemsProvider.overrideWith(() => _MockItemsNotifier([
                 _item('1', 'Red Fox', ItemCategory.fauna),
               ])),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
         ],
       );
 
@@ -489,6 +506,9 @@ Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
   final container = ProviderContainer(
     overrides: [
       itemsProvider.overrideWith(() => _MockItemsNotifier(items)),
+      appObservabilityProvider.overrideWithValue(
+        ObservabilityService(sessionId: 'test-session'),
+      ),
     ],
   );
 

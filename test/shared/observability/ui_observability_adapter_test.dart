@@ -58,11 +58,12 @@ void main() {
       );
 
       expect(obs.events.length, 1);
-      expect(obs.events.single.event, 'ui.build_jank');
+      expect(obs.events.single.event, 'ui.widget.build_jank');
       expect(obs.events.single.category, UiObservabilityAdapter.uiCategory);
       expect(obs.events.single.data, {
         'screen_name': 'map',
         'widget_name': 'MapScreen',
+        'duration_ms': 101,
         'build_duration_ms': 101,
       });
     });
@@ -75,7 +76,7 @@ void main() {
         data: {'result': 'success'},
       );
 
-      expect(obs.events.single.event, 'interaction.user_action');
+      expect(obs.events.single.event, 'interaction.action');
       expect(
         obs.events.single.category,
         UiObservabilityAdapter.interactionCategory,
@@ -99,8 +100,8 @@ void main() {
       expect(obs.events.single.category,
           UiObservabilityAdapter.navigationCategory);
       expect(obs.events.single.data, {
-        'from_screen_name': 'login',
-        'to_screen_name': 'pack',
+        'from_screen': 'login',
+        'to_screen': 'pack',
         'trigger': 'auth_success',
       });
     });

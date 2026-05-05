@@ -20,9 +20,10 @@ class UiObservabilityAdapter {
     final durationMs = buildDuration.inMilliseconds;
     if (durationMs <= jankThresholdMs) return;
 
-    _obs.log('ui.build_jank', uiCategory, data: {
+    _obs.log('ui.widget.build_jank', uiCategory, data: {
       'screen_name': screenName,
       'widget_name': widgetName,
+      'duration_ms': durationMs,
       'build_duration_ms': durationMs,
     });
   }
@@ -33,7 +34,7 @@ class UiObservabilityAdapter {
     required String screenName,
     Map<String, dynamic>? data,
   }) {
-    _obs.log('interaction.user_action', interactionCategory, data: {
+    _obs.log('interaction.action', interactionCategory, data: {
       'action_type': actionType,
       'widget_name': widgetName,
       'screen_name': screenName,
@@ -47,8 +48,8 @@ class UiObservabilityAdapter {
     Map<String, dynamic>? data,
   }) {
     _obs.log('navigation.screen_changed', navigationCategory, data: {
-      'from_screen_name': fromScreenName,
-      'to_screen_name': toScreenName,
+      'from_screen': fromScreenName,
+      'to_screen': toScreenName,
       ...?data,
     });
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/domain/entities/game_region.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
@@ -14,6 +15,8 @@ import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 /// Direction of a cross-tab edge swipe on [PackScreen].
 ///
@@ -60,6 +63,22 @@ class _PackScreenState extends ConsumerState<PackScreen> {
 
   ItemCategory get _category => ItemCategory.values[_categoryIndex];
 
+  void _logInteraction(
+    String actionType,
+    String widgetName, {
+    Map<String, dynamic>? data,
+  }) {
+    ObservableInteraction.log(
+      logger: ({required event, required category, data}) {
+        ref.read(appObservabilityProvider).log(event, category, data: data);
+      },
+      screenName: 'pack_screen',
+      widgetName: widgetName,
+      actionType: actionType,
+      payload: data,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +110,10 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     if (page == null) return;
     final newIndex = page.round();
     if (newIndex != _categoryIndex) {
+      _logInteraction('category_page_changed', 'pack_page_view', data: {
+        'category': ItemCategory.values[newIndex].name,
+        'category_index': newIndex,
+      });
       HapticFeedback.selectionClick();
       setState(() {
         _categoryIndex = newIndex;
@@ -103,46 +126,59 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(itemsProvider);
+    final obs = ref.watch(appObservabilityProvider);
 
-    return Scaffold(
-      backgroundColor: AppTheme.surface,
-      appBar: AppBar(
-        title: const Text('Pack'),
-        backgroundColor: AppTheme.surfaceContainer,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: AppTheme.outline),
+    return ObservableScreen(
+      screenName: 'pack_screen',
+      observability: obs,
+      builder: (_) => Scaffold(
+        backgroundColor: AppTheme.surface,
+        appBar: AppBar(
+          title: const Text('Pack'),
+          backgroundColor: AppTheme.surfaceContainer,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: AppTheme.outline),
+          ),
         ),
+        body: state.isLoading
+            ? const Center(child: LoadingDots())
+            : state.error != null
+                ? _ErrorState(message: state.error!, onRetry: _fetch)
+                : _PackBody(
+                    allItems: state.items,
+                    category: _category,
+                    sort: _sort,
+                    filters: _filters,
+                    panelExpanded: _panelExpanded,
+                    searchQuery: _searchQuery,
+                    pageController: _pageController,
+                    onCategoryChanged: _onCategoryChanged,
+                    onSortChanged: _onSortChanged,
+                    onToggleType: _onToggleType,
+                    onToggleHabitat: _onToggleHabitat,
+                    onToggleRegion: _onToggleRegion,
+                    onToggleRarity: _onToggleRarity,
+                    onClearFilters: _onClearFilters,
+                    onTogglePanel: _onTogglePanel,
+                    onSearchChanged: _onSearchChanged,
+                    onEdgeSwipe: widget.onEdgeSwipe,
+                    onItemTapped: _onItemTapped,
+                  ),
       ),
-      body: state.isLoading
-          ? const Center(child: LoadingDots())
-          : state.error != null
-              ? _ErrorState(message: state.error!, onRetry: _fetch)
-              : _PackBody(
-                  allItems: state.items,
-                  category: _category,
-                  sort: _sort,
-                  filters: _filters,
-                  panelExpanded: _panelExpanded,
-                  searchQuery: _searchQuery,
-                  pageController: _pageController,
-                  onCategoryChanged: _onCategoryChanged,
-                  onSortChanged: _onSortChanged,
-                  onToggleType: _onToggleType,
-                  onToggleHabitat: _onToggleHabitat,
-                  onToggleRegion: _onToggleRegion,
-                  onToggleRarity: _onToggleRarity,
-                  onClearFilters: _onClearFilters,
-                  onTogglePanel: _onTogglePanel,
-                  onSearchChanged: _onSearchChanged,
-                  onEdgeSwipe: widget.onEdgeSwipe,
-                ),
     );
   }
 
-  void _fetch() => ref.read(itemsProvider.notifier).fetchItems();
+  void _fetch() {
+    _logInteraction('retry_fetch_items', 'pack_error_retry');
+    ref.read(itemsProvider.notifier).fetchItems();
+  }
 
   void _onCategoryChanged(int index) {
+    _logInteraction('select_category', 'category_chip', data: {
+      'category': ItemCategory.values[index].name,
+      'category_index': index,
+    });
     HapticFeedback.selectionClick();
     _pageController.animateToPage(
       index,
@@ -151,23 +187,73 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     );
   }
 
-  void _onSortChanged(PackSortMode mode) => setState(() => _sort = mode);
+  void _onSortChanged(PackSortMode mode) {
+    _logInteraction('sort_changed', 'sort_chip', data: {'sort': mode.name});
+    setState(() => _sort = mode);
+  }
 
-  void _onToggleType(TaxonomicGroup group) =>
-      setState(() => _filters = _filters.toggleType(group));
+  void _onToggleType(TaxonomicGroup group) {
+    _logInteraction('filter_type_toggled', 'type_filter_chip', data: {
+      'type': group.name,
+      'active_after': !_filters.activeTypes.contains(group),
+    });
+    setState(() => _filters = _filters.toggleType(group));
+  }
 
-  void _onToggleHabitat(Habitat habitat) =>
-      setState(() => _filters = _filters.toggleHabitat(habitat));
+  void _onToggleHabitat(Habitat habitat) {
+    _logInteraction('filter_habitat_toggled', 'habitat_filter_chip', data: {
+      'habitat': habitat.name,
+      'active_after': !_filters.activeHabitats.contains(habitat),
+    });
+    setState(() => _filters = _filters.toggleHabitat(habitat));
+  }
 
-  void _onToggleRegion(GameRegion region) =>
-      setState(() => _filters = _filters.toggleRegion(region));
+  void _onToggleRegion(GameRegion region) {
+    _logInteraction('filter_region_toggled', 'region_filter_chip', data: {
+      'region': region.name,
+      'active_after': !_filters.activeRegions.contains(region),
+    });
+    setState(() => _filters = _filters.toggleRegion(region));
+  }
 
-  void _onToggleRarity(IucnStatus rarity) =>
-      setState(() => _filters = _filters.toggleRarity(rarity));
-  void _onClearFilters() => setState(() => _filters = const PackFilterState());
-  void _onTogglePanel() => setState(() => _panelExpanded = !_panelExpanded);
+  void _onToggleRarity(IucnStatus rarity) {
+    _logInteraction('filter_rarity_toggled', 'rarity_filter_chip', data: {
+      'rarity': rarity.name,
+      'active_after': !_filters.activeRarities.contains(rarity),
+    });
+    setState(() => _filters = _filters.toggleRarity(rarity));
+  }
 
-  void _onSearchChanged(String query) => setState(() => _searchQuery = query);
+  void _onClearFilters() {
+    _logInteraction('clear_filters', 'clear_filters_button', data: {
+      'active_filter_count': _filters.activeFilterCount,
+    });
+    setState(() => _filters = const PackFilterState());
+  }
+
+  void _onTogglePanel() {
+    _logInteraction('toggle_filter_panel', 'compact_filter_bar', data: {
+      'expanded_after': !_panelExpanded,
+    });
+    setState(() => _panelExpanded = !_panelExpanded);
+  }
+
+  void _onSearchChanged(String query) {
+    _logInteraction('search_changed', 'search_field', data: {
+      'query_length': query.length,
+      'had_previous_query': _searchQuery.isNotEmpty,
+    });
+    setState(() => _searchQuery = query);
+  }
+
+  void _onItemTapped(Item item) {
+    _logInteraction('open_species_card', 'species_card', data: {
+      'item_id': item.id,
+      'category': item.category.name,
+      'rarity': item.rarity,
+      'has_frame2': item.iconUrlFrame2 != null,
+    });
+  }
 }
 
 // ─── Shared filter + sort helper ──────────────────────────────────────────────
@@ -232,6 +318,7 @@ class _PackBody extends StatelessWidget {
     required this.onTogglePanel,
     required this.onSearchChanged,
     this.onEdgeSwipe,
+    required this.onItemTapped,
   });
 
   final List<Item> allItems;
@@ -251,6 +338,7 @@ class _PackBody extends StatelessWidget {
   final VoidCallback onTogglePanel;
   final void Function(String) onSearchChanged;
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
+  final void Function(Item) onItemTapped;
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +408,7 @@ class _PackBody extends StatelessWidget {
                         filters.hasActiveFilters || searchQuery.isNotEmpty,
                   );
                 }
-                return _ItemGrid(items: items);
+                return _ItemGrid(items: items, onItemTap: onItemTapped);
               },
             ),
           ),
@@ -1108,8 +1196,9 @@ class _SearchBarState extends State<_SearchBar> {
 // ─── Item grid ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
-  const _ItemGrid({required this.items});
+  const _ItemGrid({required this.items, required this.onItemTap});
   final List<Item> items;
+  final void Function(Item) onItemTap;
 
   static int _columns(double width) {
     if (width < 600) return 3;
@@ -1137,7 +1226,8 @@ class _ItemGrid extends StatelessWidget {
             mainAxisSpacing: Spacing.sm,
           ),
           itemCount: items.length,
-          itemBuilder: (_, i) => _ItemSlot(item: items[i]),
+          itemBuilder: (_, i) =>
+              _ItemSlot(item: items[i], onItemTap: onItemTap),
         );
       },
     );
@@ -1147,8 +1237,9 @@ class _ItemGrid extends StatelessWidget {
 // ─── Item slot ────────────────────────────────────────────────────────────────
 
 class _ItemSlot extends StatelessWidget {
-  const _ItemSlot({required this.item});
+  const _ItemSlot({required this.item, required this.onItemTap});
   final Item item;
+  final void Function(Item) onItemTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1156,7 +1247,10 @@ class _ItemSlot extends StatelessWidget {
     final hasFrame2 = item.iconUrlFrame2 != null;
 
     return GestureDetector(
-      onTap: () => showSpeciesCard(context, item),
+      onTap: () {
+        onItemTap(item);
+        showSpeciesCard(context, item);
+      },
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
