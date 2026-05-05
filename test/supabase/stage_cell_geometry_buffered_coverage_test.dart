@@ -52,4 +52,28 @@ void main() {
     expect(sql, contains('invalid_geom_count'));
     expect(sql, contains('nonpositive_area_count'));
   });
+
+  test('focused boundary preview migration exposes local drop reason counts', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/057_diagnose_boundary_window_drop_reasons.sql',
+    );
+
+    expect(migration.existsSync(), isTrue);
+
+    final sql = migration.readAsStringSync();
+    expect(
+      sql,
+      contains('CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window'),
+    );
+    expect(sql, contains('p_focus_lat DOUBLE PRECISION'));
+    expect(sql, contains('p_focus_lng DOUBLE PRECISION'));
+    expect(sql, contains('p_focus_radius_meters DOUBLE PRECISION DEFAULT 500.0'));
+    expect(sql, contains('p_site_radius_meters DOUBLE PRECISION DEFAULT 1200.0'));
+    expect(sql, contains('p_boundary_band_meters DOUBLE PRECISION DEFAULT 300.0'));
+    expect(sql, contains('focus_cell_count'));
+    expect(sql, contains('null_geom_count'));
+    expect(sql, contains('empty_geom_count'));
+    expect(sql, contains('invalid_geom_count'));
+    expect(sql, contains('nonpositive_area_count'));
+  });
 }
