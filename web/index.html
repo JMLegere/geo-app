@@ -96,6 +96,11 @@
     .maplibregl-canvas {
       touch-action: none !important;
     }
+
+    .earthnova-maplibre-hidden {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
   </style>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   <style id="splash-screen-style">
@@ -267,6 +272,40 @@
           localStorage.setItem(OBS_KEY, s);
         } catch(_) {}
       }
+
+      function setMapLibrePlatformViewVisible(visible) {
+        try {
+          var maps = Array.prototype.slice.call(
+            document.querySelectorAll('.maplibregl-map')
+          );
+          maps.forEach(function(mapEl) {
+            var platformView = mapEl.closest('flt-platform-view');
+            mapEl.classList.toggle('earthnova-maplibre-hidden', !visible);
+            mapEl.style.pointerEvents = visible ? '' : 'none';
+            mapEl.style.visibility = visible ? '' : 'hidden';
+            if (platformView) {
+              platformView.classList.toggle('earthnova-maplibre-hidden', !visible);
+              platformView.style.pointerEvents = visible ? '' : 'none';
+              platformView.style.visibility = visible ? '' : 'hidden';
+            }
+          });
+          push('js', 'maplibre_visibility_changed', visible ? 'visible' : 'hidden', {
+            flow: 'map.platform_view_visibility',
+            phase: 'state_changed',
+            visible: !!visible,
+            map_count: maps.length
+          });
+        } catch (e) {
+          push('js', 'maplibre_visibility_failed', (e && e.message) || String(e));
+        }
+      }
+
+      window.addEventListener('earthnova.maplibre.visibility.show', function() {
+        setMapLibrePlatformViewVisible(true);
+      });
+      window.addEventListener('earthnova.maplibre.visibility.hide', function() {
+        setMapLibrePlatformViewVisible(false);
+      });
 
       push('js', 'bootstrap_started', 'inline_script_ready', {
         flow: 'web.bootstrap',

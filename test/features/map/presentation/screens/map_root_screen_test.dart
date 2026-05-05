@@ -33,6 +33,23 @@ void main() {
     });
   });
 
+  group('MapLibre platform-view visibility', () {
+    test('source hides the web platform view when hierarchy screens are active',
+        () {
+      final source = File(
+        'lib/features/map/presentation/screens/map_root_screen.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('MapLibrePlatformViewVisibilityBridge'));
+      expect(source, contains('setVisible(level == MapLevel.cell)'));
+      expect(
+        source,
+        contains(
+            'MapScreen stays mounted at all times so WebGL context is preserved'),
+      );
+    });
+  });
+
   group('hierarchyScopeIdForLevel', () {
     final mapState = MapStateReady(
       cells: [

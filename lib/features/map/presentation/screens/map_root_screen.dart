@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_level_gesture_bridge.dart';
+import 'package:earth_nova/features/map/presentation/platform/maplibre_platform_view_visibility_bridge.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_level_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
@@ -30,6 +31,8 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   double _lastScale = 1;
   ProviderSubscription<MapLevel>? _mapLevelSubscription;
   MapLevelGestureBridge? _mapLevelGestureBridge;
+  final MapLibrePlatformViewVisibilityBridge _platformViewVisibilityBridge =
+      MapLibrePlatformViewVisibilityBridge();
   DateTime? _lastHandledPinchAt;
   String? _lastHandledPinchDirection;
 
@@ -59,6 +62,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   void dispose() {
     _mapLevelSubscription?.close();
     _mapLevelGestureBridge?.dispose();
+    _platformViewVisibilityBridge.dispose();
     super.dispose();
   }
 
@@ -73,6 +77,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
       mapState: mapState,
       explorationState: explorationState,
     );
+    _platformViewVisibilityBridge.setVisible(level == MapLevel.cell);
     void logger({
       required String event,
       required String category,
