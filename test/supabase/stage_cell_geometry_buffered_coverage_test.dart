@@ -92,4 +92,29 @@ void main() {
     expect(sql, contains('invalid_geom_count'));
     expect(sql, contains('nonpositive_area_count'));
   });
+
+  test('overlap preview migration exposes local overlap aggregates', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/064_preview_staged_overlap_window.sql',
+    );
+
+    expect(migration.existsSync(), isTrue);
+
+    final sql = migration.readAsStringSync();
+    expect(
+      sql,
+      contains('CREATE FUNCTION diagnose_staged_geometry_overlap_window'),
+    );
+    expect(sql, contains('p_source_version TEXT'));
+    expect(sql, contains('p_focus_lat DOUBLE PRECISION'));
+    expect(sql, contains('p_focus_lng DOUBLE PRECISION'));
+    expect(
+      sql,
+      contains('p_focus_radius_meters DOUBLE PRECISION DEFAULT 1500.0'),
+    );
+    expect(sql, contains('overlap_pair_count'));
+    expect(sql, contains('total_overlap_area_m2'));
+    expect(sql, contains('max_overlap_area_m2'));
+    expect(sql, contains('ST_Intersection(a.parsed_geom, b.parsed_geom)'));
+  });
 }
