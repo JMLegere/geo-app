@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/062_fix_stage_cell_id_decode.sql',
+      '${Directory.current.path}/supabase/migrations/063_use_strict_containment_for_stage_assignment.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -22,7 +22,8 @@ void main() {
     expect(sql, contains('parsed_area_m2'));
     expect(sql, contains('validation_errors'));
     expect(sql, isNot(contains('validation_message')));
-    expect(sql, contains('ST_Covers('));
+    expect(sql, contains('ST_Contains('));
+    expect(sql, isNot(contains('ST_Covers(')));
     expect(sql, contains('validation_summary'));
     expect(sql, contains('p_coverage_buffer_meters DOUBLE PRECISION DEFAULT 250.0'));
     expect(sql, isNot(contains('metadata = EXCLUDED.metadata')));
