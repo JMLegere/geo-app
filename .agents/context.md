@@ -193,3 +193,36 @@
   - `flutter analyze --no-pub`
   - `flutter test --no-pub --reporter=compact`
   - `git diff --check`
+
+## Completed 2026-05-04 — beta OTel trace validation
+- PR #490 merged as `5823d02` and beta deploy passed; `telemetry_logs`, `telemetry_spans`, and `telemetry-ingest` are live on beta.
+- Querying recent beta sessions confirmed Dart-side startup telemetry is flowing:
+  - `app.cold_start`
+  - `supabase.init_success`
+  - `auth.session_restore_started`
+  - `auth.no_session`
+  - `navigation.screen_changed` to login
+- Browser screenshot validation showed beta reaches the login screen normally after the OTel cutover; the app is not stuck before first frame.
+- The earlier `Cannot read properties of null (reading 'appendChild')` trace was a false lead from the browser harness itself:
+  - CDP `Debugger.getScriptSource` for the failing script id resolved to the harness's injected stealth script
+  - the failing line was `document.head.appendChild(iframe)` inside the tool's own anti-detection prelude
+  - this was reported via `report_tool_issue(browser, ...)`
+- Remaining observability gap:
+  - JS bootstrap/beacon telemetry uses persistent `earthnova_session_id` from localStorage
+  - Dart/app telemetry generates a fresh per-load UUID in `main.dart`
+  - cross-layer startup traces therefore require timestamp correlation instead of a shared session/trace id
+
+## In Progress 2026-05-05 — lifecycle grammar for terminal-agent debugging
+- Added a lifecycle grammar on top of OTel-shaped telemetry for reactive debugging by terminal agents.
+- Canonical lifecycle attributes: `flow`, `phase`, `dependency`, `previous_state`, `next_state`, `reason`.
+- Canonical phases: `started`, `waiting_on`, `dependency_requested`, `dependency_ready`, `dependency_failed`, `state_changed`, `completed`, `failed`, `timed_out`, `cancelled`.
+- Instrumented startup, use-case, JS bootstrap, map bootstrap/readiness, GPS, and cell fetch telemetry with lifecycle attributes while preserving existing event names where useful.
+- Added migration `048_telemetry_lifecycle_views.sql` with:
+  - `telemetry_flow_lifecycle_v`
+  - `telemetry_incomplete_flows_v`
+  - `telemetry_dependency_failures_v`
+- Local verification passed:
+  - focused lifecycle telemetry tests
+  - `flutter analyze --no-pub`
+  - `flutter test --no-pub --reporter=compact`
+  - `git diff --check`

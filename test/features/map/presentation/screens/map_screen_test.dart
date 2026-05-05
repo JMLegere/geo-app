@@ -316,6 +316,10 @@ void main() {
       expect(mapSource, contains('_MapSteadyStateLoadingOverlay('));
       expect(mapSource, contains('map.steady_state_ready'));
       expect(mapSource, contains('map.readiness_waiting'));
+      expect(mapSource, contains('TelemetryFlowPhase.waitingOn'));
+      expect(mapSource, contains('TelemetryFlowPhase.dependencyReady'));
+      expect(mapSource, contains('map.overlay_frame_painted'));
+      expect(mapSource, contains('map.bootstrap.cancelled'));
     });
 
     test('uses web MapLibre idle bridge before the timer fallback', () {
@@ -341,12 +345,14 @@ void main() {
       expect(mapSource, contains('BaseMapSettledSignal('));
       expect(mapSource, contains('_kBaseMapSettledFallbackDelay'));
       expect(mapSource, contains('Duration(seconds: 5)'));
-      expect(signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
+      expect(
+          signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
       expect(signalSource, contains('earthnova.maplibre.idle'));
       expect(signalSource, contains('maplibre_js_idle'));
     });
 
-    test('uses web MapLibre load bridge before relying on plugin style callback',
+    test(
+        'uses web MapLibre load bridge before relying on plugin style callback',
         () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
@@ -361,13 +367,15 @@ void main() {
       expect(
         signalFile.existsSync(),
         isTrue,
-        reason: 'MapScreen needs an app-owned web bridge because style readiness '
+        reason:
+            'MapScreen needs an app-owned web bridge because style readiness '
             'must not depend only on the plugin web callback.',
       );
 
       final signalSource = signalFile.readAsStringSync();
       expect(mapSource, contains('BaseMapStyleLoadedSignal('));
-      expect(signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
+      expect(
+          signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
       expect(signalSource, contains('earthnova.maplibre.load'));
       expect(signalSource, contains('maplibre_js_load'));
     });

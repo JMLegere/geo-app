@@ -23,6 +23,9 @@
 -- OBSERVABILITY
 --   telemetry_logs      — OTel-shaped point-in-time records (047)
 --   telemetry_spans     — OTel-shaped timed operations (047)
+--   telemetry_flow_lifecycle_v       — lifecycle grammar event surface (048)
+--   telemetry_incomplete_flows_v     — flows with start but no terminal event (048)
+--   telemetry_dependency_failures_v  — dependency failure lookup (048)
 --
 -- V3 (new, alongside legacy)
 --   v3_profiles         — clean user profiles for v3
@@ -222,6 +225,84 @@ CREATE TABLE telemetry_spans (
   created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (trace_id, span_id)
 );
+
+-- telemetry_flow_lifecycle_v (048)
+-- Terminal-agent surface for flow/phase/dependency/state-transition logs.
+CREATE VIEW telemetry_flow_lifecycle_v AS
+SELECT
+  occurred_at AS event_at,
+  session_id,
+  user_id,
+  trace_id,
+  span_id,
+  category,
+  event_name,
+  severity_text,
+  attributes->>'flow' AS flow,
+  attributes->>'phase' AS phase,
+  attributes->>'dependency' AS dependency,
+  attributes->>'previous_state' AS previous_state,
+  attributes->>'next_state' AS next_state,
+  attributes->>'reason' AS reason,
+  body,
+  attributes
+FROM telemetry_logs
+WHERE attributes ? 'flow'
+   OR attributes ? 'phase';
+
+-- telemetry_incomplete_flows_v (048)
+-- Started flows older than 30s with no completed/failed/timed_out/cancelled.
+CREATE VIEW telemetry_incomplete_flows_v AS
+WITH flow_events AS (
+  SELECT *
+  FROM telemetry_flow_lifecycle_v
+  WHERE flow IS NOT NULL
+    AND phase IS NOT NULL
+), summaries AS (
+  SELECT
+    session_id,
+    user_id,
+    trace_id,
+    flow,
+    min(event_at) AS first_event_at,
+    max(event_at) AS last_event_at,
+    (array_agg(phase ORDER BY event_at DESC))[1] AS last_phase,
+    COALESCE(
+      array_remove(
+        array_agg(DISTINCT dependency)
+          FILTER (WHERE phase = 'waiting_on' AND dependency IS NOT NULL),
+        NULL
+      ),
+      ARRAY[]::text[]
+    ) AS waiting_on_dependencies,
+    bool_or(phase = 'started') AS saw_started,
+    bool_or(phase IN ('completed', 'failed', 'timed_out', 'cancelled'))
+      AS saw_terminal,
+    jsonb_agg(
+      jsonb_build_object(
+        'event_at', event_at,
+        'event_name', event_name,
+        'phase', phase,
+        'dependency', dependency,
+        'reason', reason
+      ) ORDER BY event_at
+    ) AS lifecycle_events
+  FROM flow_events
+  GROUP BY session_id, user_id, trace_id, flow
+)
+SELECT *
+FROM summaries
+WHERE saw_started
+  AND NOT saw_terminal
+  AND last_event_at < now() - interval '30 seconds';
+
+-- telemetry_dependency_failures_v (048)
+-- Dependency-level failures extracted from lifecycle grammar attributes.
+CREATE VIEW telemetry_dependency_failures_v AS
+SELECT *
+FROM telemetry_flow_lifecycle_v
+WHERE phase = 'dependency_failed'
+   OR (phase = 'failed' AND dependency IS NOT NULL);
 
 -- ============================================================================
 -- V3 TABLES (migration 032 — planned)

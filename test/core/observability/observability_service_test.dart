@@ -47,6 +47,32 @@ void main() {
       expect(row, isNot(contains('data')));
     });
 
+    test('logFlowEvent stores lifecycle grammar attributes', () {
+      final span = obs.startSpan('map.bootstrap');
+
+      obs.logFlowEvent(
+        'map.bootstrap',
+        TelemetryFlowPhase.waitingOn,
+        'map',
+        eventName: 'map.readiness_waiting',
+        span: span,
+        dependency: 'cells',
+        reason: 'cells_fetch_started',
+        data: {'screen': 'map_screen'},
+      );
+
+      final row = obs.pendingLogRecords.single;
+      final attributes = row['attributes'] as Map<String, dynamic>;
+      expect(row['event_name'], 'map.readiness_waiting');
+      expect(row['trace_id'], span.traceId);
+      expect(row['span_id'], span.spanId);
+      expect(attributes, containsPair('flow', 'map.bootstrap'));
+      expect(attributes, containsPair('phase', 'waiting_on'));
+      expect(attributes, containsPair('dependency', 'cells'));
+      expect(attributes, containsPair('reason', 'cells_fetch_started'));
+      expect(attributes, containsPair('screen', 'map_screen'));
+    });
+
     test('startSpan and endSpan store OTel-shaped spans', () {
       final span = obs.startSpan('map.bootstrap');
       obs.endSpan(span, statusCode: TelemetrySpanStatus.ok);
@@ -58,6 +84,7 @@ void main() {
       expect(row['status_code'], 'ok');
       expect(row, contains('started_at'));
       expect(row, contains('ended_at'));
+      expect(row['attributes'], containsPair('flow', 'map.bootstrap'));
     });
 
     test('log with null data defaults to empty map', () {

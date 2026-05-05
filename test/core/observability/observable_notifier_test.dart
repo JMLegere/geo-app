@@ -15,6 +15,21 @@ class _DefaultCategoryNotifier extends ObservableNotifier<int> {
   int build() => 0;
 }
 
+late ObservabilityService _transitionObs;
+
+class _TransitionProbeNotifier extends ObservableNotifier<int> {
+  @override
+  ObservabilityService get obs => _transitionObs;
+
+  @override
+  String get category => 'probe';
+
+  @override
+  int build() => 0;
+
+  void advance() => transition(1, 'probe.advanced');
+}
+
 void main() {
   group('ObservableNotifier default category', () {
     test('returns "state" when category is not overridden', () {
@@ -29,6 +44,30 @@ void main() {
 
       final notifier = container.read(provider.notifier);
       expect(notifier.category, 'state');
+    });
+  });
+
+  group('ObservableNotifier transition telemetry', () {
+    test('adds lifecycle state_changed attributes to every transition', () {
+      _transitionObs = ObservabilityService(sessionId: 'test');
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final provider = NotifierProvider<_TransitionProbeNotifier, int>(
+        _TransitionProbeNotifier.new,
+      );
+
+      container.read(provider.notifier).advance();
+
+      final row = _transitionObs.pendingLogRecords.single;
+      final attributes = row['attributes'] as Map<String, dynamic>;
+      expect(row['event_name'], 'probe.advanced');
+      expect(attributes, containsPair('flow', 'probe'));
+      expect(attributes, containsPair('phase', 'state_changed'));
+      expect(attributes, containsPair('previous_state', 'int:0'));
+      expect(attributes, containsPair('next_state', 'int:1'));
+      expect(attributes, containsPair('reason', 'probe.advanced'));
+      expect(attributes, containsPair('transition_event', 'probe.advanced'));
     });
   });
 

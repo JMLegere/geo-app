@@ -19,8 +19,12 @@ void main() {
       expect(contents, contains('operation.started'));
       expect(contents, contains('operation.completed'));
       expect(contents, contains('operation.failed'));
-      expect(contents, contains('trace_id'));
+      expect(contents, contains('span: span'));
       expect(contents, contains('duration_ms'));
+      expect(contents, contains('logFlowEvent'));
+      expect(contents, contains('TelemetryFlowPhase.started'));
+      expect(contents, contains('TelemetryFlowPhase.completed'));
+      expect(contents, contains('TelemetryFlowPhase.failed'));
     });
 
     test('all domain use cases extend ObservableUseCase', () {

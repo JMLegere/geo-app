@@ -37,6 +37,22 @@ void main() {
     expect(sql, contains('telemetry_map_readiness_v'));
   });
 
+  test('telemetry lifecycle migration adds agent-queryable flow views', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/048_telemetry_lifecycle_views.sql',
+    );
+
+    expect(migration.existsSync(), isTrue);
+
+    final sql = migration.readAsStringSync();
+    expect(sql, contains('telemetry_flow_lifecycle_v'));
+    expect(sql, contains('telemetry_incomplete_flows_v'));
+    expect(sql, contains('telemetry_dependency_failures_v'));
+    expect(sql, contains("attributes->>'flow'"));
+    expect(sql, contains("attributes->>'phase'"));
+    expect(sql, contains("'completed', 'failed', 'timed_out', 'cancelled'"));
+  });
+
   test('OTel observability migration kills old app_logs surface', () {
     final migration = File(
       '${Directory.current.path}/supabase/migrations/047_otel_observability.sql',

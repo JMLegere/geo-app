@@ -10,32 +10,35 @@ abstract class ObservableUseCase<Input, Output> {
     final span = obs.startSpan(
       operationName,
       attributes: {
+        'flow': operationName,
         'operation': operationName,
         'input': summarizeInput(input),
       },
     );
     final trace = span.context;
 
-    obs.log(
-      'operation.started',
+    obs.logFlowEvent(
+      operationName,
+      TelemetryFlowPhase.started,
       'use_case',
+      eventName: 'operation.started',
+      span: span,
       data: {
         'operation': operationName,
-        'trace_id': trace.traceId,
-        'span_id': trace.spanId,
         'input': summarizeInput(input),
       },
     );
 
     try {
       final output = await execute(input, trace.traceId);
-      obs.log(
-        'operation.completed',
+      obs.logFlowEvent(
+        operationName,
+        TelemetryFlowPhase.completed,
         'use_case',
+        eventName: 'operation.completed',
+        span: span,
         data: {
           'operation': operationName,
-          'trace_id': trace.traceId,
-          'span_id': trace.spanId,
           'duration_ms': trace.elapsed.inMilliseconds,
           'output': summarizeOutput(output),
         },
@@ -47,13 +50,14 @@ abstract class ObservableUseCase<Input, Output> {
       );
       return output;
     } catch (error) {
-      obs.log(
-        'operation.failed',
+      obs.logFlowEvent(
+        operationName,
+        TelemetryFlowPhase.failed,
         'use_case',
+        eventName: 'operation.failed',
+        span: span,
         data: {
           'operation': operationName,
-          'trace_id': trace.traceId,
-          'span_id': trace.spanId,
           'duration_ms': trace.elapsed.inMilliseconds,
           'error_type': error.runtimeType.toString(),
           'error_message': error.toString(),

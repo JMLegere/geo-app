@@ -80,7 +80,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.initState();
     _mapBootstrapSpan = ref.read(appObservabilityProvider).startSpan(
       'map.bootstrap',
-      attributes: {'screen': 'map_screen'},
+      attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
+    );
+    ref.read(appObservabilityProvider).logFlowEvent(
+      'map.bootstrap',
+      TelemetryFlowPhase.started,
+      'map',
+      span: _mapBootstrapSpan,
+      data: {'screen': 'map_screen'},
     );
     _baseMapSettledSignal = BaseMapSettledSignal(
       onSettled: (source) {
@@ -102,6 +109,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _baseMapSettledSignal?.dispose();
     _baseMapStyleLoadedSignal?.dispose();
     _mapSettledFallbackTimer?.cancel();
+    final span = _mapBootstrapSpan;
+    if (span != null && !_steadyStateLogged) {
+      ref.read(appObservabilityProvider).logFlowEvent(
+            'map.bootstrap',
+            TelemetryFlowPhase.cancelled,
+            'map',
+            eventName: 'map.bootstrap.cancelled',
+            span: span,
+            reason: 'disposed_before_steady_state',
+          );
+    }
     _endMapBootstrapSpan(
       statusCode: TelemetrySpanStatus.unset,
       statusMessage: 'disposed_before_steady_state',
@@ -115,7 +133,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (existing != null) return existing;
     final span = ref.read(appObservabilityProvider).startSpan(
       'map.bootstrap',
-      attributes: {'screen': 'map_screen'},
+      attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
     );
     _mapBootstrapSpan = span;
     return span;
@@ -128,12 +146,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }) {
     final span = _mapBootstrapSpan;
     if (span == null) return;
+    final terminalPhase = switch (statusCode) {
+      TelemetrySpanStatus.ok => TelemetryFlowPhase.completed,
+      TelemetrySpanStatus.error => TelemetryFlowPhase.failed,
+      TelemetrySpanStatus.unset => TelemetryFlowPhase.cancelled,
+    };
     ref.read(appObservabilityProvider).endSpan(
-          span,
-          statusCode: statusCode,
-          statusMessage: statusMessage,
-          attributes: attributes,
-        );
+      span,
+      statusCode: statusCode,
+      statusMessage: statusMessage,
+      attributes: {
+        ...?attributes,
+        'flow': 'map.bootstrap',
+        'phase': terminalPhase.wireName,
+      },
+    );
     _mapBootstrapSpan = null;
   }
 
@@ -148,10 +175,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       category,
       data: {
         ...?data,
+        'flow': data?['flow'] ?? 'map.bootstrap',
         'trace_id': span.traceId,
         'span_id': span.spanId,
       },
     );
+  }
+
+  void _logMapFlowEvent(
+    TelemetryFlowPhase phase, {
+    String? eventName,
+    String? dependency,
+    String? reason,
+    Map<String, dynamic>? data,
+  }) {
+    final span = _ensureMapBootstrapSpan();
+    ref.read(appObservabilityProvider).logFlowEvent(
+          'map.bootstrap',
+          phase,
+          'map',
+          eventName: eventName,
+          span: span,
+          dependency: dependency,
+          reason: reason,
+          data: data,
+        );
   }
 
   void _showDiscoveryNotification(String cellId) {
@@ -176,8 +224,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _handleStyleLoaded({required String source}) {
     if (_mapStyleLoaded) return;
-    _logMapEvent(
-      'map.style_loaded',
+    _logMapFlowEvent(
+      TelemetryFlowPhase.dependencyReady,
+      eventName: 'map.style_loaded',
+      dependency: 'map_style',
       data: {'source': source},
     );
     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
@@ -196,8 +246,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (_baseMapSettled) return;
     _mapSettledFallbackTimer?.cancel();
     setState(() => _baseMapSettled = true);
-    _logMapEvent(
-      'map.base_map_settled',
+    _logMapFlowEvent(
+      TelemetryFlowPhase.dependencyReady,
+      eventName: 'map.base_map_settled',
+      dependency: 'base_map',
       data: {'source': source},
     );
   }
@@ -237,6 +289,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _overlayFramePainted) return;
       setState(() => _overlayFramePainted = true);
+      _logMapFlowEvent(
+        TelemetryFlowPhase.dependencyReady,
+        eventName: 'map.overlay_frame_painted',
+        dependency: 'overlay_frame',
+      );
       _logSteadyStateReady();
     });
   }
@@ -244,8 +301,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _logReadinessWaiting(MapReadinessState readiness) {
     if (readiness.isSteadyStateReady || _readinessWaitingLogged) return;
     _readinessWaitingLogged = true;
-    _logMapEvent(
-      'map.readiness_waiting',
+    _logMapFlowEvent(
+      TelemetryFlowPhase.waitingOn,
+      eventName: 'map.readiness_waiting',
+      dependency:
+          readiness.waitingFor.isEmpty ? null : readiness.waitingFor.first,
       data: readiness.toLogData(),
     );
   }
@@ -261,8 +321,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       cellsFetched: true,
       overlayFramePainted: true,
     );
-    _logMapEvent(
-      'map.steady_state_ready',
+    _logMapFlowEvent(
+      TelemetryFlowPhase.completed,
+      eventName: 'map.steady_state_ready',
       data: readiness.toLogData(),
     );
     _endMapBootstrapSpan(
@@ -476,7 +537,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   onMapCreated: (controller) {
                     _mapController = controller;
                     _markMapCreated();
-                    _logMapEvent('map.map_created');
+                    _logMapFlowEvent(
+                      TelemetryFlowPhase.dependencyReady,
+                      eventName: 'map.map_created',
+                      dependency: 'map_widget',
+                    );
                   },
                   onStyleLoadedCallback: () {
                     _handleStyleLoaded(source: 'plugin_style_loaded');

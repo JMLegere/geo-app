@@ -208,10 +208,11 @@
       ensureUuid('earthnova_session_id');
       ensureUuid('earthnova_device_id');
 
-      function push(category, event, msg) {
+      function push(category, event, msg, attrs) {
         try {
           var sid = ensureUuid('earthnova_session_id');
           var did = ensureUuid('earthnova_device_id');
+          var attributes = Object.assign({ msg: msg }, attrs || {});
           var entry = JSON.stringify({
             session_id: sid,
             device_id: did,
@@ -220,7 +221,7 @@
             category: category,
             event_name: category + '.' + event,
             body: msg || null,
-            attributes: { msg: msg },
+            attributes: attributes,
             occurred_at: new Date().toISOString()
           });
           var arr = JSON.parse(localStorage.getItem(OBS_KEY) || '[]');
@@ -230,6 +231,11 @@
           localStorage.setItem(OBS_KEY, s);
         } catch(_) {}
       }
+
+      push('js', 'bootstrap_started', 'inline_script_ready', {
+        flow: 'web.bootstrap',
+        phase: 'started'
+      });
 
       // --- MapLibre lazy-load: inject between initializeEngine and runApp ---
       //
@@ -282,7 +288,11 @@
                   //   b) maplibregl is defined before the first Flutter frame.
                   await new Promise(function(resolve) {
                     if (window.maplibregl) {
-                      push('js', 'maplibre_already_loaded', 'before_runapp');
+                      push('js', 'maplibre_already_loaded', 'before_runapp', {
+                        flow: 'web.bootstrap',
+                        phase: 'dependency_ready',
+                        dependency: 'maplibre'
+                      });
                       resolve(); return;
                     }
                     if (_mapLibreInjected) {
@@ -297,8 +307,17 @@
                     var s = document.createElement('script');
                     s.src = 'maplibre-gl.js';
                     s.onload = function() {
-                      try { push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown'); } catch(e) {}
-                      push('js', 'flutter_bootstrap_complete', 'maplibre_ready_before_runapp');
+                      try {
+                        push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown', {
+                          flow: 'web.bootstrap',
+                          phase: 'dependency_ready',
+                          dependency: 'maplibre'
+                        });
+                      } catch(e) {}
+                      push('js', 'flutter_bootstrap_complete', 'maplibre_ready_before_runapp', {
+                        flow: 'web.bootstrap',
+                        phase: 'completed'
+                      });
                       // Hook into MapLibre Map lifecycle for render-failure diagnosis.
                       // Patches the constructor so every Map instance emits error/load/idle
                       // events into observability — essential for blank-map diagnosis on iOS Safari.
@@ -358,7 +377,11 @@
                       resolve();
                     };
                     s.onerror = function() {
-                      push('js', 'maplibre_load_failed', 'script error');
+                      push('js', 'maplibre_load_failed', 'script error', {
+                        flow: 'web.bootstrap',
+                        phase: 'dependency_failed',
+                        dependency: 'maplibre'
+                      });
                       resolve(); // still run app — map shows error state
                     };
                     document.head.appendChild(s);
@@ -380,14 +403,30 @@
       // error state and need a page reload, but tiles will render if it recovers.
       setTimeout(function() {
         if (!_mapLibreInjected) {
-          push('js', 'maplibre_fallback_inject', 'flutter_bootstrap_never_fired');
+          push('js', 'maplibre_fallback_inject', 'flutter_bootstrap_never_fired', {
+            flow: 'web.bootstrap',
+            phase: 'waiting_on',
+            dependency: 'flutter_loader'
+          });
           _mapLibreInjected = true;
           var s = document.createElement('script');
           s.src = 'maplibre-gl.js';
           s.onload = function() {
-            try { push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown'); } catch(e) {}
+            try {
+              push('js', 'maplibre_lazy_loaded', (maplibregl && maplibregl.version) || 'unknown', {
+                flow: 'web.bootstrap',
+                phase: 'dependency_ready',
+                dependency: 'maplibre'
+              });
+            } catch(e) {}
           };
-          s.onerror = function() { push('js', 'maplibre_load_failed', 'script error'); };
+          s.onerror = function() {
+            push('js', 'maplibre_load_failed', 'script error', {
+              flow: 'web.bootstrap',
+              phase: 'dependency_failed',
+              dependency: 'maplibre'
+            });
+          };
           document.head.appendChild(s);
         }
       }, 5000);
