@@ -42,6 +42,8 @@ void main() {
         final unknown = FogRenderer.fillColor(_state(CellRelationship.unknown));
 
         expect(unknown.a, greaterThan(frontier.a));
+        expect(unknown.a, lessThan(0.50));
+        expect(unknown.a - frontier.a, lessThan(0.20));
       });
     });
 
