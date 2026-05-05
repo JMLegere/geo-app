@@ -64,6 +64,7 @@ void main() {
     final stagingDropDiagnostics = _stagingDropDiagnosticScore();
     final previewDiagnostics = _previewDiagnosticsScore();
     final focusedPreview = _focusedPreviewScore();
+    final latticePreviewSource = _latticePreviewSourceScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -110,6 +111,10 @@ void main() {
     print('ASI preview_diagnostics_breakdown=${previewDiagnostics.breakdown}');
     print('ASI focused_preview_breakdown=${focusedPreview.breakdown}');
     print(
+      'ASI lattice_preview_source_breakdown='
+      '${latticePreviewSource.breakdown}',
+    );
+    print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
@@ -126,6 +131,10 @@ void main() {
     );
     print('METRIC preview_diagnostics_gap_count=${previewDiagnostics.score}');
     print('METRIC focused_preview_gap_count=${focusedPreview.score}');
+    print(
+      'METRIC lattice_preview_source_gap_count='
+      '${latticePreviewSource.score}',
+    );
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -796,6 +805,61 @@ _FocusedPreviewScore _focusedPreviewScore() {
 
 class _FocusedPreviewScore {
   const _FocusedPreviewScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_LatticePreviewSourceScore _latticePreviewSourceScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+            ),
+  );
+  if (matches.isEmpty) {
+    return const _LatticePreviewSourceScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final focusStart = sql.indexOf('focus_cells AS (');
+  final siteStart = sql.indexOf('site_cells AS (');
+  final jitteredStart = sql.indexOf('jittered AS (');
+  final focusSql = focusStart >= 0 && siteStart > focusStart
+      ? sql.substring(focusStart, siteStart)
+      : '';
+  final siteSql = siteStart >= 0 && jitteredStart > siteStart
+      ? sql.substring(siteStart, jitteredStart)
+      : '';
+  final focusUsesCellProperties = focusSql.contains('FROM lattice_cells lattice');
+  final siteUsesCellProperties = siteSql.contains('FROM lattice_cells lattice');
+  return _LatticePreviewSourceScore(
+    score: focusUsesCellProperties && siteUsesCellProperties ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} focus_uses_cell_properties=$focusUsesCellProperties site_uses_cell_properties=$siteUsesCellProperties',
+  );
+}
+
+class _LatticePreviewSourceScore {
+  const _LatticePreviewSourceScore({
     required this.score,
     required this.breakdown,
   });
