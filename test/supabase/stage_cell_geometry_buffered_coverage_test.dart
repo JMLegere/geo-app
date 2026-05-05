@@ -6,7 +6,7 @@ void main() {
   test('buffered coverage migration expands organic geometry source footprint',
       () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/070_cluster_by_buffered_square_intersection.sql',
+      '${Directory.current.path}/supabase/migrations/071_merge_overlapping_cluster_coverages.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -35,12 +35,12 @@ void main() {
     expect(sql, contains('geometry_invalid_after_clip'));
     expect(sql, contains('geometry_nonpositive_area_after_clip'));
     expect(sql, isNot(contains('WHERE geom IS NOT NULL')));
-    expect(sql, contains('ST_ClusterIntersecting(buffered_square)'));
-    expect(sql, isNot(contains('ST_ClusterDBSCAN(')));
-    expect(sql, contains('clusters.centroid_count = 1'));
-    expect(sql, contains('ST_Dump(clusters.coverage_geom)'));
-    expect(sql, contains('grid_x / v_grid_scale AS original_center_lat'));
-    expect(sql, contains('grid_y / v_grid_scale AS original_center_lng'));
+    expect(sql, contains('ST_ClusterDBSCAN('));
+    expect(sql, isNot(contains('ST_ClusterIntersecting(buffered_square)')));
+    expect(sql, contains('tmp_cell_geometry_cluster_supermembers'));
+    expect(sql, contains('tmp_cell_geometry_cluster_supercoverage'));
+    expect(sql, contains('ST_ClusterIntersecting(coverage_geom)'));
+    expect(sql, contains('supercluster_strategy'));
     expect(sql,
         contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id'));
   });

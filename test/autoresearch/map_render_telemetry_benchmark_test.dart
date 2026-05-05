@@ -70,6 +70,7 @@ void main() {
     final componentCluster = _componentClusterScore();
     final safeClustering = _safeClusteringScore();
     final bufferedComponentCluster = _bufferedComponentClusterScore();
+    final superclusterMerge = _superclusterMergeScore();
     final singletonCluster = _singletonClusterScore();
     final strictContainment = _strictContainmentScore();
     final overlapPreview = _overlapPreviewScore();
@@ -131,6 +132,7 @@ void main() {
     print('ASI component_cluster_breakdown=${componentCluster.breakdown}');
     print('ASI safe_clustering_breakdown=${safeClustering.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
+    print('ASI supercluster_merge_breakdown=${superclusterMerge.breakdown}');
     print(
       'ASI buffered_component_cluster_breakdown='
       '${bufferedComponentCluster.breakdown}',
@@ -171,6 +173,7 @@ void main() {
     print('METRIC component_cluster_gap_count=${componentCluster.score}');
     print('METRIC safe_clustering_score=${safeClustering.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
+    print('METRIC supercluster_merge_gap_count=${superclusterMerge.score}');
     print(
       'METRIC buffered_component_cluster_gap_count='
       '${bufferedComponentCluster.score}',
@@ -1058,6 +1061,29 @@ _BufferedComponentClusterScore _bufferedComponentClusterScore() {
 
 class _BufferedComponentClusterScore {
   const _BufferedComponentClusterScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_SuperclusterMergeScore _superclusterMergeScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final mergesClusterCoverage =
+      functionSql.contains('ST_ClusterIntersecting(coverage_geom)') ||
+      functionSql.contains('tmp_cell_geometry_cluster_supercoverage');
+  return _SuperclusterMergeScore(
+    score: mergesClusterCoverage ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} merges_cluster_coverage=$mergesClusterCoverage',
+  );
+}
+
+class _SuperclusterMergeScore {
+  const _SuperclusterMergeScore({
     required this.score,
     required this.breakdown,
   });
