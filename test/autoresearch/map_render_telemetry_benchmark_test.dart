@@ -68,6 +68,7 @@ void main() {
     final latticeDecode = _latticeDecodeScore();
     final clusterPartition = _clusterPartitionScore();
     final singletonCluster = _singletonClusterScore();
+    final strictContainment = _strictContainmentScore();
     final stageDecode = _stageDecodeScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
@@ -122,6 +123,7 @@ void main() {
     print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
     print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
+    print('ASI strict_containment_breakdown=${strictContainment.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -147,6 +149,7 @@ void main() {
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print('METRIC stage_decode_gap_count=${stageDecode.score}');
+    print('METRIC strict_containment_gap_count=${strictContainment.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -623,7 +626,8 @@ class _CoverageSourceScore {
 _AssignmentSourceScore _assignmentSourceScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final usesContainmentAssignment = functionSql.contains('ST_Covers(');
+  final usesContainmentAssignment = functionSql.contains('ST_Covers(') ||
+      functionSql.contains('ST_Contains(');
   return _AssignmentSourceScore(
     score: usesContainmentAssignment ? 0 : 1,
     breakdown:
@@ -1010,6 +1014,28 @@ _StageDecodeScore _stageDecodeScore() {
 
 class _StageDecodeScore {
   const _StageDecodeScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_StrictContainmentScore _strictContainmentScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final usesStrictContainment = functionSql.contains('ST_Contains(');
+  final stillUsesCovers = functionSql.contains('ST_Covers(');
+  return _StrictContainmentScore(
+    score: usesStrictContainment && !stillUsesCovers ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} uses_strict_containment=$usesStrictContainment still_uses_covers=$stillUsesCovers',
+  );
+}
+
+class _StrictContainmentScore {
+  const _StrictContainmentScore({
     required this.score,
     required this.breakdown,
   });
