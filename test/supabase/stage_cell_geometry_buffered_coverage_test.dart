@@ -32,4 +32,24 @@ void main() {
     expect(sql, contains('geometry_nonpositive_area_after_clip'));
     expect(sql, isNot(contains('WHERE geom IS NOT NULL')));
   });
+
+  test('preview diagnostics migration exposes buffered drop reason counts', () {
+    final migration = File(
+      '${Directory.current.path}/supabase/migrations/056_preview_buffered_stage_drop_reasons.sql',
+    );
+
+    expect(migration.existsSync(), isTrue);
+
+    final sql = migration.readAsStringSync();
+    expect(
+      sql,
+      contains('CREATE FUNCTION diagnose_stage_cell_geometry_from_organic_centroids'),
+    );
+    expect(sql, contains('candidate_row_count'));
+    expect(sql, contains('valid_candidate_count'));
+    expect(sql, contains('null_geom_count'));
+    expect(sql, contains('empty_geom_count'));
+    expect(sql, contains('invalid_geom_count'));
+    expect(sql, contains('nonpositive_area_count'));
+  });
 }

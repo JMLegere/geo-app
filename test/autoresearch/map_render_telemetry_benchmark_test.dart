@@ -62,6 +62,7 @@ void main() {
     final assignmentSource = _assignmentSourceScore();
     final coverageBufferParam = _coverageBufferParamScore();
     final stagingDropDiagnostics = _stagingDropDiagnosticScore();
+    final previewDiagnostics = _previewDiagnosticsScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -105,6 +106,7 @@ void main() {
       'ASI staging_drop_diagnostics_breakdown='
       '${stagingDropDiagnostics.breakdown}',
     );
+    print('ASI preview_diagnostics_breakdown=${previewDiagnostics.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -120,6 +122,7 @@ void main() {
       'METRIC staging_drop_diagnostic_gap_count='
       '${stagingDropDiagnostics.score}',
     );
+    print('METRIC preview_diagnostics_gap_count=${previewDiagnostics.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -699,6 +702,50 @@ _StagingDropDiagnosticScore _stagingDropDiagnosticScore() {
 
 class _StagingDropDiagnosticScore {
   const _StagingDropDiagnosticScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_PreviewDiagnosticsScore _previewDiagnosticsScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) => file.readAsStringSync().contains(
+          'CREATE FUNCTION diagnose_stage_cell_geometry_from_organic_centroids(',
+        ),
+  );
+  if (matches.isEmpty) {
+    return const _PreviewDiagnosticsScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final hasReasonCounts = sql.contains('null_geom_count') &&
+      sql.contains('empty_geom_count') &&
+      sql.contains('invalid_geom_count') &&
+      sql.contains('nonpositive_area_count');
+  return _PreviewDiagnosticsScore(
+    score: hasReasonCounts ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} function_present=true has_reason_counts=$hasReasonCounts',
+  );
+}
+
+class _PreviewDiagnosticsScore {
+  const _PreviewDiagnosticsScore({
     required this.score,
     required this.breakdown,
   });
