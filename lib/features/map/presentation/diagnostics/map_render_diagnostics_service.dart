@@ -118,6 +118,8 @@ class MapRenderDiagnosticsService {
         ),
         'style_overlay_antialias': FogRenderer.overlayAntiAlias,
         'style_fill_grouping_mode': 'single_path_per_relationship_even_odd',
+        'style_uses_unknown_backdrop': FogRenderer.usesUnknownBackdrop,
+        'style_fill_compositing_mode': FogRenderer.fillCompositingMode,
       };
 
   CellState _state(CellRelationship relationship) => CellState(

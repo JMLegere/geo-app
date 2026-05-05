@@ -64,6 +64,21 @@ class CellOverlayPainter extends CustomPainter {
       project: _geoCoordToScreen,
     );
 
+    final overlayBounds = Offset.zero & size;
+    canvas.saveLayer(overlayBounds, Paint());
+    canvas.drawRect(
+      overlayBounds,
+      Paint()
+        ..color = FogRenderer.fillColor(
+          const CellState(
+            relationship: CellRelationship.unknown,
+            contents: CellContents.empty,
+          ),
+        )
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = FogRenderer.overlayAntiAlias,
+    );
+
     for (final fill in renderModel.fillPaths) {
       final fillState = CellState(
         relationship: fill.relationship,
@@ -74,9 +89,11 @@ class CellOverlayPainter extends CustomPainter {
         Paint()
           ..color = FogRenderer.fillColor(fillState)
           ..style = PaintingStyle.fill
+          ..blendMode = BlendMode.src
           ..isAntiAlias = FogRenderer.overlayAntiAlias,
       );
     }
+    canvas.restore();
 
     for (final edge in renderModel.boundaryEdges) {
       final strokeColor = FogRenderer.strokeColor(edge.state);
