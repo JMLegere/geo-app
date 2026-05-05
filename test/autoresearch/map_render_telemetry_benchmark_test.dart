@@ -68,6 +68,7 @@ void main() {
     final latticeDecode = _latticeDecodeScore();
     final clusterPartition = _clusterPartitionScore();
     final singletonCluster = _singletonClusterScore();
+    final stageDecode = _stageDecodeScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -120,6 +121,7 @@ void main() {
     print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
     print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
     print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
+    print('ASI stage_decode_breakdown=${stageDecode.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -144,6 +146,7 @@ void main() {
     print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
     print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
+    print('METRIC stage_decode_gap_count=${stageDecode.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -959,7 +962,7 @@ _SingletonClusterScore _singletonClusterScore() {
   final functionSql = stageFunction.functionSql;
   final handlesSingletonCluster =
       functionSql.contains('clusters.centroid_count = 1') &&
-      functionSql.contains('ST_Dump(clusters.coverage_geom)');
+          functionSql.contains('ST_Dump(clusters.coverage_geom)');
   return _SingletonClusterScore(
     score: handlesSingletonCluster ? 0 : 1,
     breakdown:
@@ -969,6 +972,44 @@ _SingletonClusterScore _singletonClusterScore() {
 
 class _SingletonClusterScore {
   const _SingletonClusterScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_StageDecodeScore _stageDecodeScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final usesLatFromPart2 = functionSql.contains(
+        "split_part(cell_id, '_', 2)::DOUBLE PRECISION / v_grid_scale AS original_center_lat",
+      ) ||
+      functionSql.contains(
+        "split_part(cp.cell_id, '_', 2)::INTEGER / 500.0 AS original_center_lat",
+      ) ||
+      functionSql.contains(
+        'grid_x / v_grid_scale AS original_center_lat',
+      );
+  final usesLngFromPart3 = functionSql.contains(
+        "split_part(cell_id, '_', 3)::DOUBLE PRECISION / v_grid_scale AS original_center_lng",
+      ) ||
+      functionSql.contains(
+        "split_part(cp.cell_id, '_', 3)::INTEGER / 500.0 AS original_center_lng",
+      ) ||
+      functionSql.contains(
+        'grid_y / v_grid_scale AS original_center_lng',
+      );
+  return _StageDecodeScore(
+    score: usesLatFromPart2 && usesLngFromPart3 ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} lat_from_part2=$usesLatFromPart2 lng_from_part3=$usesLngFromPart3',
+  );
+}
+
+class _StageDecodeScore {
+  const _StageDecodeScore({
     required this.score,
     required this.breakdown,
   });
