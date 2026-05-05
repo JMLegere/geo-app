@@ -350,11 +350,47 @@
                               var mapEl = map && map.getContainer ? map.getContainer() : null;
                               var canvas = map && map.getCanvas ? map.getCanvas() : null;
                               var canvasContainer = canvas && canvas.parentElement ? canvas.parentElement : null;
-                              var platformView = document.querySelector('flt-platform-view');
+                              var platformView = mapEl && mapEl.closest ? mapEl.closest('flt-platform-view') : null;
+                              if (!platformView) platformView = document.querySelector('flt-platform-view');
                               var mapRect = mapEl ? mapEl.getBoundingClientRect() : null;
                               var canvasRect = canvas ? canvas.getBoundingClientRect() : null;
                               var canvasContainerRect = canvasContainer ? canvasContainer.getBoundingClientRect() : null;
                               var platformViewRect = platformView ? platformView.getBoundingClientRect() : null;
+                              var layoutNormalized = false;
+                              var requestedResize = false;
+                              if (mapRect && mapRect.width > 0 && mapRect.height > 0) {
+                                var mapWidthPx = Math.round(mapRect.width);
+                                var mapHeightPx = Math.round(mapRect.height);
+                                var mapLeftPx = Math.round(mapRect.left);
+                                var mapTopPx = Math.round(mapRect.top);
+                                var canvasContainerNeedsLayout = canvasContainerRect && Math.round(canvasContainerRect.height) === 0;
+                                var platformViewNeedsLayout = platformViewRect && Math.round(platformViewRect.height) === 0;
+                                if (canvasContainerNeedsLayout && canvasContainer) {
+                                  canvasContainer.style.position = 'absolute';
+                                  canvasContainer.style.left = '0';
+                                  canvasContainer.style.top = '0';
+                                  canvasContainer.style.width = mapWidthPx + 'px';
+                                  canvasContainer.style.height = mapHeightPx + 'px';
+                                  canvasContainer.style.overflow = 'hidden';
+                                  layoutNormalized = true;
+                                }
+                                if (platformViewNeedsLayout && platformView) {
+                                  platformView.style.display = 'block';
+                                  platformView.style.position = 'absolute';
+                                  platformView.style.left = mapLeftPx + 'px';
+                                  platformView.style.top = mapTopPx + 'px';
+                                  platformView.style.width = mapWidthPx + 'px';
+                                  platformView.style.height = mapHeightPx + 'px';
+                                  platformView.style.overflow = 'hidden';
+                                  layoutNormalized = true;
+                                }
+                                if (layoutNormalized && map && map.resize) {
+                                  requestedResize = true;
+                                  map.resize();
+                                }
+                              }
+                              var canvasContainerRectAfter = canvasContainer ? canvasContainer.getBoundingClientRect() : null;
+                              var platformViewRectAfter = platformView ? platformView.getBoundingClientRect() : null;
                               push('map', 'web_layout_sample', source, {
                                 flow: 'map.web_layout',
                                 phase: 'state_changed',
@@ -365,8 +401,14 @@
                                 canvas_height_px: canvasRect ? Math.round(canvasRect.height) : null,
                                 canvas_container_width_px: canvasContainerRect ? Math.round(canvasContainerRect.width) : null,
                                 canvas_container_height_px: canvasContainerRect ? Math.round(canvasContainerRect.height) : null,
+                                canvas_container_width_after_px: canvasContainerRectAfter ? Math.round(canvasContainerRectAfter.width) : null,
+                                canvas_container_height_after_px: canvasContainerRectAfter ? Math.round(canvasContainerRectAfter.height) : null,
                                 platform_view_width_px: platformViewRect ? Math.round(platformViewRect.width) : null,
-                                platform_view_height_px: platformViewRect ? Math.round(platformViewRect.height) : null
+                                platform_view_height_px: platformViewRect ? Math.round(platformViewRect.height) : null,
+                                platform_view_width_after_px: platformViewRectAfter ? Math.round(platformViewRectAfter.width) : null,
+                                platform_view_height_after_px: platformViewRectAfter ? Math.round(platformViewRectAfter.height) : null,
+                                layout_normalized: layoutNormalized,
+                                layout_normalization_requested_resize: requestedResize
                               });
                             } catch(e) {
                               push('js', 'maplibre_layout_bridge_failed', (e && e.message) || String(e));
@@ -393,6 +435,10 @@
                             map.on('load', function() {
                               push('js', 'maplibre_map_load', 'tiles_ready');
                               emitMapLibreLoad(map);
+                            });
+                            map.on('resize', function() {
+                              push('js', 'maplibre_map_resize', 'container_resized');
+                              emitMapLibreLayout(map, 'maplibre_js_resize');
                             });
                             map.on('idle', function() {
                               push('js', 'maplibre_map_idle', 'render_complete');
