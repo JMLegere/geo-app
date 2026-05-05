@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/051_fix_buffered_geometry_stage_function.sql',
+      '${Directory.current.path}/supabase/migrations/052_fix_buffered_geometry_staging_columns.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -17,6 +17,11 @@ void main() {
     expect(sql, contains('true-voronoi-clipped-to-buffered-lattice-coverage'));
     expect(sql, contains('coverage_buffer_meters'));
     expect(sql, contains('artifact_uri'));
+    expect(sql, contains('raw_geometry'));
+    expect(sql, contains('parsed_bbox'));
+    expect(sql, contains('parsed_area_m2'));
+    expect(sql, contains('validation_errors'));
+    expect(sql, isNot(contains('validation_message')));
     expect(sql, contains('validation_summary'));
     expect(sql, isNot(contains('metadata = EXCLUDED.metadata')));
   });

@@ -563,10 +563,21 @@ _CoverageSourceScore _coverageSourceScore() {
   final writesMissingMetadataColumn =
       functionSql.contains('INSERT INTO cell_geometry_versions (') &&
           functionSql.contains('    metadata');
+  final writesMissingValidationMessageColumn =
+      functionSql.contains('    validation_message');
+  final includesStagingRuntimeColumns = functionSql.contains('raw_geometry') &&
+      functionSql.contains('parsed_bbox') &&
+      functionSql.contains('parsed_area_m2') &&
+      functionSql.contains('validation_errors');
   return _CoverageSourceScore(
-    score: usesBufferedCoverage && !writesMissingMetadataColumn ? 0 : 1,
+    score: usesBufferedCoverage &&
+            !writesMissingMetadataColumn &&
+            !writesMissingValidationMessageColumn &&
+            includesStagingRuntimeColumns
+        ? 0
+        : 1,
     breakdown:
-        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage writes_missing_metadata_column=$writesMissingMetadataColumn',
+        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage writes_missing_metadata_column=$writesMissingMetadataColumn writes_missing_validation_message_column=$writesMissingValidationMessageColumn includes_staging_runtime_columns=$includesStagingRuntimeColumns',
   );
 }
 
