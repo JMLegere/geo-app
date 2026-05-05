@@ -55,7 +55,7 @@ void main() {
 
   test('focused boundary preview migration exposes local drop reason counts', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/058_use_lattice_centers_for_boundary_preview.sql',
+      '${Directory.current.path}/supabase/migrations/059_fix_lattice_decode_in_boundary_preview.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -72,8 +72,14 @@ void main() {
     expect(sql, contains('p_boundary_band_meters DOUBLE PRECISION DEFAULT 300.0'));
     expect(sql, contains('focus_cell_count'));
     expect(sql, contains('FROM cell_properties cp'));
-    expect(sql, contains("split_part(cp.cell_id, '_', 2)::INTEGER"));
-    expect(sql, contains("split_part(cp.cell_id, '_', 3)::INTEGER"));
+    expect(
+      sql,
+      contains("split_part(cp.cell_id, '_', 2)::INTEGER / 500.0 AS original_center_lat"),
+    );
+    expect(
+      sql,
+      contains("split_part(cp.cell_id, '_', 3)::INTEGER / 500.0 AS original_center_lng"),
+    );
     expect(sql, contains('null_geom_count'));
     expect(sql, contains('empty_geom_count'));
     expect(sql, contains('invalid_geom_count'));

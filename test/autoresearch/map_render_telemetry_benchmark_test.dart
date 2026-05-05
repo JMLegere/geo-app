@@ -65,6 +65,7 @@ void main() {
     final previewDiagnostics = _previewDiagnosticsScore();
     final focusedPreview = _focusedPreviewScore();
     final latticePreviewSource = _latticePreviewSourceScore();
+    final latticeDecode = _latticeDecodeScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -114,6 +115,7 @@ void main() {
       'ASI lattice_preview_source_breakdown='
       '${latticePreviewSource.breakdown}',
     );
+    print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -135,6 +137,7 @@ void main() {
       'METRIC lattice_preview_source_gap_count='
       '${latticePreviewSource.score}',
     );
+    print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -849,7 +852,8 @@ _LatticePreviewSourceScore _latticePreviewSourceScore() {
   final siteSql = siteStart >= 0 && jitteredStart > siteStart
       ? sql.substring(siteStart, jitteredStart)
       : '';
-  final focusUsesCellProperties = focusSql.contains('FROM lattice_cells lattice');
+  final focusUsesCellProperties =
+      focusSql.contains('FROM lattice_cells lattice');
   final siteUsesCellProperties = siteSql.contains('FROM lattice_cells lattice');
   return _LatticePreviewSourceScore(
     score: focusUsesCellProperties && siteUsesCellProperties ? 0 : 1,
@@ -860,6 +864,60 @@ _LatticePreviewSourceScore _latticePreviewSourceScore() {
 
 class _LatticePreviewSourceScore {
   const _LatticePreviewSourceScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_LatticeDecodeScore _latticeDecodeScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final matches = candidates.reversed.where(
+    (file) =>
+        file.readAsStringSync().contains(
+              'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+            ) ||
+        file.readAsStringSync().contains(
+              'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+            ),
+  );
+  if (matches.isEmpty) {
+    return const _LatticeDecodeScore(
+      score: 1,
+      breakdown: 'migration=none function_present=false',
+    );
+  }
+  final target = matches.first;
+  final sql = target.readAsStringSync();
+  final usesLatFromPart2 = sql.contains(
+    "split_part(cp.cell_id, '_', 2)::INTEGER / 500.0 AS original_center_lat",
+  );
+  final usesLngFromPart3 = sql.contains(
+    "split_part(cp.cell_id, '_', 3)::INTEGER / 500.0 AS original_center_lng",
+  );
+  final makePointUsesLngThenLat = sql.contains(
+    "ST_MakePoint(\n          split_part(cp.cell_id, '_', 3)::INTEGER / 500.0,\n          split_part(cp.cell_id, '_', 2)::INTEGER / 500.0",
+  );
+  return _LatticeDecodeScore(
+    score:
+        usesLatFromPart2 && usesLngFromPart3 && makePointUsesLngThenLat ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} lat_from_part2=$usesLatFromPart2 lng_from_part3=$usesLngFromPart3 point_lng_lat=$makePointUsesLngThenLat',
+  );
+}
+
+class _LatticeDecodeScore {
+  const _LatticeDecodeScore({
     required this.score,
     required this.breakdown,
   });
