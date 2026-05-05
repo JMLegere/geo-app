@@ -61,6 +61,7 @@ void main() {
     final coverageSource = _coverageSourceScore();
     final assignmentSource = _assignmentSourceScore();
     final coverageBufferParam = _coverageBufferParamScore();
+    final stagingDropDiagnostics = _stagingDropDiagnosticScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -101,6 +102,10 @@ void main() {
     print('ASI coverage_source_breakdown=${coverageSource.breakdown}');
     print('ASI assignment_source_breakdown=${assignmentSource.breakdown}');
     print(
+      'ASI staging_drop_diagnostics_breakdown='
+      '${stagingDropDiagnostics.breakdown}',
+    );
+    print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
@@ -111,6 +116,10 @@ void main() {
     print('METRIC marker_gap_count=$markerGapCount');
     print('METRIC coverage_source_gap_count=${coverageSource.score}');
     print('METRIC assignment_source_gap_count=${assignmentSource.score}');
+    print(
+      'METRIC staging_drop_diagnostic_gap_count='
+      '${stagingDropDiagnostics.score}',
+    );
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -662,4 +671,38 @@ class _CoverageBufferParamScore {
     migrationName: target.uri.pathSegments.last,
     functionSql: functionSql,
   );
+}
+
+_StagingDropDiagnosticScore _stagingDropDiagnosticScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final emitsNullReason = functionSql.contains('geometry_null_after_clip');
+  final emitsEmptyReason = functionSql.contains('geometry_empty_after_clip');
+  final emitsInvalidReason =
+      functionSql.contains('geometry_invalid_after_clip');
+  final emitsAreaReason =
+      functionSql.contains('geometry_nonpositive_area_after_clip');
+  final stillSilentlyFilters = functionSql.contains('WHERE geom IS NOT NULL') &&
+      functionSql.contains('ST_Area(geom::geography) > 0');
+  return _StagingDropDiagnosticScore(
+    score: emitsNullReason &&
+            emitsEmptyReason &&
+            emitsInvalidReason &&
+            emitsAreaReason &&
+            !stillSilentlyFilters
+        ? 0
+        : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} null=$emitsNullReason empty=$emitsEmptyReason invalid=$emitsInvalidReason area=$emitsAreaReason silent_filter=$stillSilentlyFilters',
+  );
+}
+
+class _StagingDropDiagnosticScore {
+  const _StagingDropDiagnosticScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
 }
