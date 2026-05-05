@@ -252,9 +252,15 @@ void main() {
       test('logs MapLibre layout samples with bounded size attributes', () {
         expect(
           html,
-          contains("push('map', 'map.web_layout_sample'"),
+          contains("push('map', 'web_layout_sample'"),
           reason: 'Web MapLibre layout should be queryable from telemetry '
               'without browser DOM inspection.',
+        );
+        expect(
+          html,
+          isNot(contains("push('map', 'map.web_layout_sample'")),
+          reason: 'push() prefixes category into event_name; passing an '
+              'already-prefixed event would create map.map.web_layout_sample.',
         );
         expect(html, contains('canvas_container_height_px'));
         expect(html, contains("flow: 'map.web_layout'"));

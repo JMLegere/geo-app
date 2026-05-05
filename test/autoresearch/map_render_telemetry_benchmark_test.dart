@@ -1374,16 +1374,24 @@ class _PositiveOverlapPreviewScore {
 
 _WebLayoutObservabilityScore _webLayoutObservabilityScore() {
   final html = File('web/index.html').readAsStringSync();
-  final hasEvent = html.contains("push('map', 'map.web_layout_sample'");
+  final hasEvent = html.contains("push('map', 'web_layout_sample'");
+  final avoidsDoublePrefixedEvent =
+      !html.contains("push('map', 'map.web_layout_sample'");
   final hasContainer = html.contains('canvas_container_height_px');
   final hasPlatformView = html.contains('platform_view_height_px');
   final hasLifecycle = html.contains("flow: 'map.web_layout'") &&
       html.contains("phase: 'state_changed'") &&
       html.contains("dependency: 'maplibre_layout'");
   return _WebLayoutObservabilityScore(
-    score: hasEvent && hasContainer && hasPlatformView && hasLifecycle ? 0 : 1,
+    score: hasEvent &&
+            avoidsDoublePrefixedEvent &&
+            hasContainer &&
+            hasPlatformView &&
+            hasLifecycle
+        ? 0
+        : 1,
     breakdown:
-        'has_event=$hasEvent has_canvas_container_height=$hasContainer has_platform_view_height=$hasPlatformView has_lifecycle=$hasLifecycle',
+        'has_event=$hasEvent avoids_double_prefixed_event=$avoidsDoublePrefixedEvent has_canvas_container_height=$hasContainer has_platform_view_height=$hasPlatformView has_lifecycle=$hasLifecycle',
   );
 }
 
