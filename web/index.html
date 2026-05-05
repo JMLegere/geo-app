@@ -337,6 +337,7 @@
                               if (loaded && tilesLoaded) {
                                 window.__earthnovaMapLibreIdle = detail;
                                 window.dispatchEvent(new CustomEvent('earthnova.maplibre.idle', { detail: detail }));
+                                emitMapLibreLayout(map, detail.source);
                               } else {
                                 push('js', 'maplibre_map_idle_pending', JSON.stringify(detail));
                               }
@@ -344,7 +345,34 @@
                               push('js', 'maplibre_map_idle_bridge_failed', (e && e.message) || String(e));
                             }
                           };
-                          var emitMapLibreLoad = function() {
+                          var emitMapLibreLayout = function(map, source) {
+                            try {
+                              var mapEl = map && map.getContainer ? map.getContainer() : null;
+                              var canvas = map && map.getCanvas ? map.getCanvas() : null;
+                              var canvasContainer = canvas && canvas.parentElement ? canvas.parentElement : null;
+                              var platformView = document.querySelector('flt-platform-view');
+                              var mapRect = mapEl ? mapEl.getBoundingClientRect() : null;
+                              var canvasRect = canvas ? canvas.getBoundingClientRect() : null;
+                              var canvasContainerRect = canvasContainer ? canvasContainer.getBoundingClientRect() : null;
+                              var platformViewRect = platformView ? platformView.getBoundingClientRect() : null;
+                              push('map', 'map.web_layout_sample', source, {
+                                flow: 'map.web_layout',
+                                phase: 'state_changed',
+                                dependency: 'maplibre_layout',
+                                map_width_px: mapRect ? Math.round(mapRect.width) : null,
+                                map_height_px: mapRect ? Math.round(mapRect.height) : null,
+                                canvas_width_px: canvasRect ? Math.round(canvasRect.width) : null,
+                                canvas_height_px: canvasRect ? Math.round(canvasRect.height) : null,
+                                canvas_container_width_px: canvasContainerRect ? Math.round(canvasContainerRect.width) : null,
+                                canvas_container_height_px: canvasContainerRect ? Math.round(canvasContainerRect.height) : null,
+                                platform_view_width_px: platformViewRect ? Math.round(platformViewRect.width) : null,
+                                platform_view_height_px: platformViewRect ? Math.round(platformViewRect.height) : null
+                              });
+                            } catch(e) {
+                              push('js', 'maplibre_layout_bridge_failed', (e && e.message) || String(e));
+                            }
+                          };
+                          var emitMapLibreLoad = function(map) {
                             try {
                               var detail = {
                                 source: 'maplibre_js_load',
@@ -352,6 +380,7 @@
                               };
                               window.__earthnovaMapLibreLoad = detail;
                               window.dispatchEvent(new CustomEvent('earthnova.maplibre.load', { detail: detail }));
+                              emitMapLibreLayout(map, detail.source);
                             } catch(e) {
                               push('js', 'maplibre_map_load_bridge_failed', (e && e.message) || String(e));
                             }

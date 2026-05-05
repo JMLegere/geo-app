@@ -126,8 +126,10 @@ void main() async {
       ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
       : MockCellRepository();
 
-  final LocationRepository locationRepository =
-      FallbackLocationRepository(real: GeolocatorLocationRepository());
+  final LocationRepository locationRepository = FallbackLocationRepository(
+    real: GeolocatorLocationRepository(),
+    logEvent: obs.log,
+  );
 
   final WakeLockRepository wakeLockRepository = _buildWakeLockRepository();
 

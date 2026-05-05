@@ -78,6 +78,10 @@ void main() {
     final polygonAssignment = _polygonAssignmentScore();
     final stageDecode = _stageDecodeScore();
     final positiveOverlapPreview = _positiveOverlapPreviewScore();
+    final webLayoutObservability = _webLayoutObservabilityScore();
+    final locationSourceObservability = _locationSourceObservabilityScore();
+    final observabilitySurfaceGapCount =
+        webLayoutObservability.score + locationSourceObservability.score;
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -146,9 +150,16 @@ void main() {
     );
     print('ASI polygon_assignment_breakdown=${polygonAssignment.breakdown}');
     print(
-        'ASI positive_overlap_preview_breakdown=${positiveOverlapPreview.breakdown}');
+      'ASI positive_overlap_preview_breakdown=${positiveOverlapPreview.breakdown}',
+    );
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
+    );
+    print(
+      'ASI web_layout_observability_breakdown=${webLayoutObservability.breakdown}',
+    );
+    print(
+      'ASI location_source_observability_breakdown=${locationSourceObservability.breakdown}',
     );
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
@@ -187,7 +198,16 @@ void main() {
       '${overlapPreviewDeployable.score}',
     );
     print(
-        'METRIC positive_overlap_preview_gap_count=${positiveOverlapPreview.score}');
+      'METRIC positive_overlap_preview_gap_count=${positiveOverlapPreview.score}',
+    );
+    print(
+      'METRIC web_layout_observability_gap_count=${webLayoutObservability.score}',
+    );
+    print(
+      'METRIC location_source_observability_gap_count=${locationSourceObservability.score}',
+    );
+    print(
+        'METRIC observability_surface_gap_count=$observabilitySurfaceGapCount');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -1049,8 +1069,8 @@ class _SafeClusteringScore {
 _BufferedComponentClusterScore _bufferedComponentClusterScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final usesBufferedSquareClustering =
-      functionSql.contains('ST_ClusterIntersecting(buffered_square)') ||
+  final usesBufferedSquareClustering = functionSql
+          .contains('ST_ClusterIntersecting(buffered_square)') ||
       functionSql.contains('unnest(ST_ClusterIntersecting(buffered_square))');
   return _BufferedComponentClusterScore(
     score: usesBufferedSquareClustering ? 0 : 1,
@@ -1074,7 +1094,7 @@ _SuperclusterMergeScore _superclusterMergeScore() {
   final functionSql = stageFunction.functionSql;
   final mergesClusterCoverage =
       functionSql.contains('ST_ClusterIntersecting(coverage_geom)') ||
-      functionSql.contains('tmp_cell_geometry_cluster_supercoverage');
+          functionSql.contains('tmp_cell_geometry_cluster_supercoverage');
   return _SuperclusterMergeScore(
     score: mergesClusterCoverage ? 0 : 1,
     breakdown:
@@ -1344,6 +1364,62 @@ _PositiveOverlapPreviewScore _positiveOverlapPreviewScore() {
 
 class _PositiveOverlapPreviewScore {
   const _PositiveOverlapPreviewScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_WebLayoutObservabilityScore _webLayoutObservabilityScore() {
+  final html = File('web/index.html').readAsStringSync();
+  final hasEvent = html.contains("push('map', 'map.web_layout_sample'");
+  final hasContainer = html.contains('canvas_container_height_px');
+  final hasPlatformView = html.contains('platform_view_height_px');
+  final hasLifecycle = html.contains("flow: 'map.web_layout'") &&
+      html.contains("phase: 'state_changed'") &&
+      html.contains("dependency: 'maplibre_layout'");
+  return _WebLayoutObservabilityScore(
+    score: hasEvent && hasContainer && hasPlatformView && hasLifecycle ? 0 : 1,
+    breakdown:
+        'has_event=$hasEvent has_canvas_container_height=$hasContainer has_platform_view_height=$hasPlatformView has_lifecycle=$hasLifecycle',
+  );
+}
+
+class _WebLayoutObservabilityScore {
+  const _WebLayoutObservabilityScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_LocationSourceObservabilityScore _locationSourceObservabilityScore() {
+  final repoSource = File(
+    'lib/features/map/data/repositories/fallback_location_repository.dart',
+  ).readAsStringSync();
+  final mainSource = File('lib/main.dart').readAsStringSync();
+  final hasSourceEvent = repoSource.contains('map.gps_source_selected');
+  final hasPermissionEvent =
+      repoSource.contains('map.gps_permission_fallback_enabled');
+  final wiredInMain = mainSource.contains('logEvent: obs.log');
+  final hasLifecycle = repoSource.contains("'flow': 'map.bootstrap'") &&
+      repoSource.contains("'phase': 'state_changed'") &&
+      repoSource.contains("'dependency': 'gps'");
+  return _LocationSourceObservabilityScore(
+    score: hasSourceEvent && hasPermissionEvent && wiredInMain && hasLifecycle
+        ? 0
+        : 1,
+    breakdown:
+        'has_source_event=$hasSourceEvent has_permission_event=$hasPermissionEvent wired_in_main=$wiredInMain has_lifecycle=$hasLifecycle',
+  );
+}
+
+class _LocationSourceObservabilityScore {
+  const _LocationSourceObservabilityScore({
     required this.score,
     required this.breakdown,
   });
