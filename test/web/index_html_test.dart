@@ -156,6 +156,19 @@ void main() {
     // -------------------------------------------------------------------------
 
     group('observability events', () {
+      test('attaches lifecycle grammar attributes to JS bootstrap telemetry',
+          () {
+        expect(
+          html,
+          contains('Object.assign({ msg: msg }, attrs || {})'),
+          reason: 'JS bootstrap logs should accept bounded structured attrs.',
+        );
+        expect(html, contains("push('js', 'bootstrap_started'"));
+        expect(html, contains("flow: 'web.bootstrap'"));
+        expect(html, contains("phase: 'dependency_ready'"));
+        expect(html, contains("phase: 'dependency_failed'"));
+      });
+
       test('logs maplibre_lazy_loaded on successful load', () {
         expect(
           html,

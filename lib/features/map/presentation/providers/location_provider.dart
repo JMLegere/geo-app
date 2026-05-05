@@ -78,20 +78,39 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   }
 
   Future<void> _start() async {
-    transition(const LocationProviderLoading(), 'map.gps_started');
+    transition(const LocationProviderLoading(), 'map.gps_started', data: {
+      'flow': 'map.bootstrap',
+      'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+      'dependency': 'gps',
+    });
 
     final granted = await _repository.requestPermission();
     if (!granted) {
-      transition(const LocationProviderPermissionDenied(),
-          'map.gps_permission_denied');
+      transition(
+        const LocationProviderPermissionDenied(),
+        'map.gps_permission_denied',
+        data: {
+          'flow': 'map.bootstrap',
+          'phase': TelemetryFlowPhase.dependencyFailed.wireName,
+          'dependency': 'gps_permission',
+        },
+      );
       return;
     }
 
     try {
       final initial = await _repository.getCurrentPosition();
-      transition(LocationProviderActive(initial), 'map.gps_position_updated');
+      transition(LocationProviderActive(initial), 'map.gps_position_updated',
+          data: {
+            'flow': 'map.bootstrap',
+            'phase': TelemetryFlowPhase.dependencyReady.wireName,
+            'dependency': 'gps',
+          });
     } catch (e) {
       transition(LocationProviderError(e.toString()), 'map.gps_error', data: {
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.dependencyFailed.wireName,
+        'dependency': 'gps',
         'error': e.toString(),
       });
       return;
@@ -113,11 +132,21 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
           transition(
             LocationProviderActive(position),
             'map.gps_resumed',
-            data: {'time_in_paused_ms': timeInPausedMs},
+            data: {
+              'flow': 'map.bootstrap',
+              'phase': TelemetryFlowPhase.dependencyReady.wireName,
+              'dependency': 'gps',
+              'time_in_paused_ms': timeInPausedMs,
+            },
           );
         } else {
           transition(
-              LocationProviderActive(position), 'map.gps_position_updated');
+              LocationProviderActive(position), 'map.gps_position_updated',
+              data: {
+                'flow': 'map.bootstrap',
+                'phase': TelemetryFlowPhase.dependencyReady.wireName,
+                'dependency': 'gps',
+              });
         }
       },
       onError: (Object e, StackTrace st) {
@@ -125,6 +154,9 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
         obs.logError(e, st, event: 'map.gps_stream_error');
         _pausedAt = DateTime.now();
         transition(const LocationProviderPaused(), 'map.gps_paused', data: {
+          'flow': 'map.bootstrap',
+          'phase': TelemetryFlowPhase.dependencyFailed.wireName,
+          'dependency': 'gps',
           'reason': 'stream_error',
           'error': e.toString(),
         });

@@ -80,24 +80,38 @@ void main() async {
   final navigationLogger = NavigationScreenTransitionLogger(logEvent: obs.log);
   obs.startPeriodicFlush();
 
-  obs.log('app.cold_start', 'lifecycle', data: {
-    'version': const String.fromEnvironment('APP_VERSION', defaultValue: 'dev'),
-    'platform': 'web',
-    'trace_id': startupSpan.traceId,
-    'span_id': startupSpan.spanId,
-  });
+  obs.logFlowEvent(
+    'app.startup',
+    TelemetryFlowPhase.started,
+    'lifecycle',
+    eventName: 'app.cold_start',
+    span: startupSpan,
+    data: {
+      'version':
+          const String.fromEnvironment('APP_VERSION', defaultValue: 'dev'),
+      'platform': 'web',
+    },
+  );
 
   if (supabaseClient != null) {
-    obs.log('supabase.init_success', 'infrastructure', data: {
-      'trace_id': startupSpan.traceId,
-      'span_id': startupSpan.spanId,
-    });
+    obs.logFlowEvent(
+      'app.startup',
+      TelemetryFlowPhase.dependencyReady,
+      'infrastructure',
+      eventName: 'supabase.init_success',
+      span: startupSpan,
+      dependency: 'supabase',
+    );
   } else {
-    obs.log('supabase.init_failure', 'infrastructure', data: {
-      'error': 'No SUPABASE_URL provided',
-      'trace_id': startupSpan.traceId,
-      'span_id': startupSpan.spanId,
-    });
+    obs.logFlowEvent(
+      'app.startup',
+      TelemetryFlowPhase.dependencyFailed,
+      'infrastructure',
+      eventName: 'supabase.init_failure',
+      span: startupSpan,
+      dependency: 'supabase',
+      data: {'error': 'No SUPABASE_URL provided'},
+    );
   }
 
   final AuthRepository authRepository = supabaseClient != null
@@ -162,6 +176,14 @@ void main() async {
     (error, stack) {
       obs.logError(error, stack, event: 'app.crash.unhandled');
     },
+  );
+  obs.logFlowEvent(
+    'app.startup',
+    TelemetryFlowPhase.completed,
+    'lifecycle',
+    eventName: 'app.startup.completed',
+    span: startupSpan,
+    reason: 'run_app_invoked',
   );
   obs.endSpan(
     startupSpan,

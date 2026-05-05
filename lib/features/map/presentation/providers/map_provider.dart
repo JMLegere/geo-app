@@ -120,6 +120,9 @@ class MapNotifier extends ObservableNotifier<MapState> {
       'lat': location.lat,
       'lng': location.lng,
       'radius_meters': _kFetchRadiusMeters,
+      'flow': 'map.bootstrap',
+      'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+      'dependency': 'cells',
     });
 
     try {
@@ -163,6 +166,9 @@ class MapNotifier extends ObservableNotifier<MapState> {
         ),
         'map.cells_fetch_complete',
         data: {
+          'flow': 'map.bootstrap',
+          'phase': TelemetryFlowPhase.dependencyReady.wireName,
+          'dependency': 'cells',
           'total_cells': cells.length,
           'cells_with_polygon': withPolygon,
           'cells_without_polygon': cells.length - withPolygon,
@@ -175,6 +181,9 @@ class MapNotifier extends ObservableNotifier<MapState> {
     } catch (e, stack) {
       obs.logError(e, stack, event: 'map.data_fetch_error');
       transition(MapStateError(e.toString()), 'map.cells_fetch_error', data: {
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.dependencyFailed.wireName,
+        'dependency': 'cells',
         'error': e.toString(),
       });
     }

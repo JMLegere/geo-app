@@ -89,3 +89,10 @@
   - SQL views provide terminal-friendly timelines, funnels, readiness inspection, and error queries.
 - Canonical ingestion boundary is one Supabase Edge Function, `telemetry-ingest`, used by both app flushes and JS beacon/sendBeacon diagnostics.
 - App-facing instrumentation keeps a thin `ObservabilityService` facade, but internally follows the OTel model with logger/tracer roles, `startSpan` / `endSpan`, and explicit trace/span IDs threaded through important flows.
+
+## 2026-05-05 — use lifecycle grammar for agent-debuggable telemetry
+- Observability is optimized for terminal agents doing reactive debugging, with secondary batch analysis surfacing suspicious activity from logs.
+- Important flows should emit bounded lifecycle attributes: `flow`, `phase`, `dependency`, `previous_state`, `next_state`, and `reason`.
+- Canonical phases are `started`, `waiting_on`, `dependency_requested`, `dependency_ready`, `dependency_failed`, `state_changed`, `completed`, `failed`, `timed_out`, and `cancelled`.
+- Keep existing domain event names where they are already useful (`map.style_loaded`, `auth.no_session`, etc.), but add lifecycle grammar attributes so SQL can detect missing terminal events and dependency failures without brittle event-name parsing.
+- Add terminal-agent query surfaces over the raw OTel-shaped tables: `telemetry_flow_lifecycle_v`, `telemetry_incomplete_flows_v`, and `telemetry_dependency_failures_v`.

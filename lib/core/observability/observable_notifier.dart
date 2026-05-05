@@ -30,7 +30,15 @@ abstract class ObservableNotifier<T> extends Notifier<T> {
   /// Logs the event and sets state atomically.
   @protected
   void transition(T newState, String event, {Map<String, dynamic>? data}) {
-    obs.log(event, category, data: data);
+    obs.log(event, category, data: {
+      ...?data,
+      'flow': data?['flow'] ?? category,
+      'phase': data?['phase'] ?? TelemetryFlowPhase.stateChanged.wireName,
+      'previous_state': _currentStateLabel(),
+      'next_state': _stateLabel(newState),
+      'reason': data?['reason'] ?? event,
+      'transition_event': event,
+    });
     state = newState;
   }
 
@@ -45,4 +53,21 @@ abstract class ObservableNotifier<T> extends Notifier<T> {
   void silentTransition(T newState) {
     state = newState;
   }
+
+  String _currentStateLabel() {
+    try {
+      return _stateLabel(state);
+    } catch (_) {
+      return 'uninitialized';
+    }
+  }
+}
+
+String _stateLabel(Object? value) {
+  if (value == null) return 'null';
+  if (value is Enum) return '${value.runtimeType}.${value.name}';
+  if (value is String || value is num || value is bool) {
+    return '${value.runtimeType}:$value';
+  }
+  return value.runtimeType.toString();
 }

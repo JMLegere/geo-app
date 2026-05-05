@@ -33,6 +33,34 @@ abstract class TelemetryTracerPort {
 
 enum TelemetrySpanStatus { unset, ok, error }
 
+enum TelemetryFlowPhase {
+  started,
+  waitingOn,
+  dependencyRequested,
+  dependencyReady,
+  dependencyFailed,
+  stateChanged,
+  completed,
+  failed,
+  timedOut,
+  cancelled,
+}
+
+extension TelemetryFlowPhaseWireName on TelemetryFlowPhase {
+  String get wireName => switch (this) {
+        TelemetryFlowPhase.started => 'started',
+        TelemetryFlowPhase.waitingOn => 'waiting_on',
+        TelemetryFlowPhase.dependencyRequested => 'dependency_requested',
+        TelemetryFlowPhase.dependencyReady => 'dependency_ready',
+        TelemetryFlowPhase.dependencyFailed => 'dependency_failed',
+        TelemetryFlowPhase.stateChanged => 'state_changed',
+        TelemetryFlowPhase.completed => 'completed',
+        TelemetryFlowPhase.failed => 'failed',
+        TelemetryFlowPhase.timedOut => 'timed_out',
+        TelemetryFlowPhase.cancelled => 'cancelled',
+      };
+}
+
 extension on TelemetrySpanStatus {
   String get wireName => switch (this) {
         TelemetrySpanStatus.unset => 'unset',
@@ -128,6 +156,35 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     });
   }
 
+  /// Log a lifecycle event using the debugging grammar:
+  /// flow.started / waiting_on / dependency_* / state_changed / terminal.
+  void logFlowEvent(
+    String flow,
+    TelemetryFlowPhase phase,
+    String category, {
+    TelemetrySpan? span,
+    String? eventName,
+    String? dependency,
+    String? previousState,
+    String? nextState,
+    String? reason,
+    Map<String, dynamic>? data,
+  }) {
+    final attributes = <String, dynamic>{
+      ...?data,
+      'flow': flow,
+      'phase': phase.wireName,
+      if (dependency != null) 'dependency': dependency,
+      if (previousState != null) 'previous_state': previousState,
+      if (nextState != null) 'next_state': nextState,
+      if (reason != null) 'reason': reason,
+      if (span != null) 'trace_id': span.traceId,
+      if (span != null) 'span_id': span.spanId,
+    };
+
+    log(eventName ?? '$flow.${phase.wireName}', category, data: attributes);
+  }
+
   /// Log an error with full raw detail for diagnosis.
   @override
   void logError(Object error, StackTrace stack,
@@ -159,11 +216,15 @@ class ObservabilityService implements TelemetryLoggerPort, TelemetryTracerPort {
     String spanKind = 'internal',
   }) {
     final context = parent == null ? TraceContext.start() : parent.child();
+    final normalizedAttributes = <String, dynamic>{
+      ...?attributes,
+      'flow': attributes?['flow'] ?? name,
+    };
     return TelemetrySpan(
       name: name,
       context: context,
       spanKind: _normalizeSpanKind(spanKind),
-      attributes: Map<String, dynamic>.from(attributes ?? const {}),
+      attributes: normalizedAttributes,
     );
   }
 
