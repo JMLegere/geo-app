@@ -19,6 +19,8 @@ void main() {
       markerScreenPosition: const Offset(195, 422),
       currentCellId: 'present',
       visitedCellCount: 4,
+      markerIsRing: false,
+      markerGapDistanceMeters: 0,
     );
 
     final renderableEntries = [
@@ -188,6 +190,9 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
     'marker_screen_y',
     'marker_radius_px',
     'marker_ring_radius_px',
+    'marker_is_ring',
+    'marker_gap_distance_m',
+    'marker_visual_mode',
     'marker_overlaps_present_cell',
   ];
 
@@ -215,7 +220,9 @@ List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
       !telemetry.containsKey('projection_viewport_edge_crossing_count')) {
     hypotheses.add('projection_or_viewport_clipping');
   }
-  if (!telemetry.containsKey('marker_ring_radius_px') ||
+  if (!telemetry.containsKey('marker_is_ring') ||
+      !telemetry.containsKey('marker_visual_mode') ||
+      !telemetry.containsKey('marker_ring_radius_px') ||
       !telemetry.containsKey('marker_overlaps_present_cell')) {
     hypotheses.add('player_marker_circle_artifact');
   }

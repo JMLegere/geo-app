@@ -328,6 +328,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       renderDiagnostics['render_frontier_cell_count'],
       renderDiagnostics['render_rectangular_cell_count'],
       renderDiagnostics['render_axis_aligned_edge_ratio'],
+      renderDiagnostics['state_current_cell_id'],
+      renderDiagnostics['state_visited_cell_count'],
+      renderDiagnostics['marker_is_ring'],
     ].join(':');
     if (_lastGeometryDiagnosticsKey == key) return;
     _lastGeometryDiagnosticsKey = key;
@@ -548,6 +551,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             markerScreenPosition: markerScreenPosition,
             currentCellId: explorationState.currentCellId,
             visitedCellCount: footprint.uniqueCount,
+            markerIsRing: playerMarkerState.isRing,
+            markerGapDistanceMeters: playerMarkerState.gapDistance,
           );
           final readiness = _readinessFor(
             locationReady: true,
