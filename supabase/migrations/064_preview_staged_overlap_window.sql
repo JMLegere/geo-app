@@ -30,7 +30,7 @@ AS $$
       AND staging.parsed_geom IS NOT NULL
       AND staging.parsed_centroid IS NOT NULL
       AND ST_DWithin(staging.parsed_centroid::geography, focus.geom, p_focus_radius_meters)
-  ), overlaps AS (
+  ), overlap_rows AS (
     SELECT
       a.cell_id,
       b.cell_id AS related_cell_id,
@@ -45,7 +45,7 @@ AS $$
     COUNT(*)::INTEGER AS overlap_pair_count,
     COALESCE(SUM(overlap_area_m2), 0) AS total_overlap_area_m2,
     COALESCE(MAX(overlap_area_m2), 0) AS max_overlap_area_m2
-  FROM overlaps;
+  FROM overlap_rows;
 $$;
 
 GRANT EXECUTE ON FUNCTION diagnose_staged_geometry_overlap_window(
