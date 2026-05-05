@@ -19,6 +19,8 @@ class MapRenderDiagnosticsService {
     required Offset markerScreenPosition,
     required String? currentCellId,
     required int visitedCellCount,
+    required bool markerIsRing,
+    required double markerGapDistanceMeters,
     double markerRadiusPx = 10.0,
     double markerRingRadiusPx = 22.0,
     int sampleLimit = 8,
@@ -80,6 +82,9 @@ class MapRenderDiagnosticsService {
       'marker_screen_y': _roundPx(markerScreenPosition.dy),
       'marker_radius_px': markerRadiusPx,
       'marker_ring_radius_px': markerRingRadiusPx,
+      'marker_is_ring': markerIsRing,
+      'marker_gap_distance_m': _roundPx(markerGapDistanceMeters),
+      'marker_visual_mode': markerIsRing ? 'accuracy_ring' : 'solid_marker',
       'marker_overlaps_present_cell': _markerOverlapsRelationship(
         markerScreenPosition,
         renderableEntries,
