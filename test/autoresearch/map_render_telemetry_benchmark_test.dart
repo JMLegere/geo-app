@@ -560,10 +560,13 @@ _CoverageSourceScore _coverageSourceScore() {
   );
   final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
   final usesBufferedCoverage = functionSql.contains('ST_Buffer(');
+  final writesMissingMetadataColumn =
+      functionSql.contains('INSERT INTO cell_geometry_versions (') &&
+          functionSql.contains('    metadata');
   return _CoverageSourceScore(
-    score: usesBufferedCoverage ? 0 : 1,
+    score: usesBufferedCoverage && !writesMissingMetadataColumn ? 0 : 1,
     breakdown:
-        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage',
+        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage writes_missing_metadata_column=$writesMissingMetadataColumn',
   );
 }
 
