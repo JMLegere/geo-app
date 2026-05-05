@@ -25,13 +25,17 @@ void main() {
       expect(screenChangedEvents.length, 2);
       expect(screenChangedEvents[0].data, {
         'source': 'auth_state',
-        'from_screen': 'loading',
-        'to_screen': 'login',
+        'from_screen': 'loading_screen',
+        'to_screen': 'login_screen',
+        'raw_from_screen': 'loading',
+        'raw_to_screen': 'login',
       });
       expect(screenChangedEvents[1].data, {
         'source': 'auth_state',
-        'from_screen': 'login',
-        'to_screen': 'home',
+        'from_screen': 'login_screen',
+        'to_screen': 'tab_shell',
+        'raw_from_screen': 'login',
+        'raw_to_screen': 'home',
       });
     });
   });

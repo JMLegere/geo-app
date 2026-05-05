@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/browser_telemetry_session_bridge.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
@@ -54,7 +55,7 @@ import 'package:earth_nova/shared/widgets/tab_shell.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final sessionId = const Uuid().v4();
+  final sessionId = readBrowserTelemetrySessionId() ?? const Uuid().v4();
 
   final supabaseUrl = const String.fromEnvironment('SUPABASE_URL');
   final supabaseAnonKey = const String.fromEnvironment('SUPABASE_ANON_KEY');
@@ -76,6 +77,7 @@ void main() async {
     sessionId: sessionId,
     client: supabaseClient,
   );
+  publishTelemetrySessionToBrowser(sessionId);
   final startupSpan = obs.startSpan('app.startup');
   final navigationLogger = NavigationScreenTransitionLogger(logEvent: obs.log);
   obs.startPeriodicFlush();

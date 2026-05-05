@@ -340,6 +340,30 @@ void main() {
       expect(mapSource, contains('renderDiagnostics: renderDiagnostics'));
     });
 
+    test('terminates map bootstrap if steady state never completes', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_kMapBootstrapTimeout'));
+      expect(mapSource, contains('Timer? _mapBootstrapTimeoutTimer'));
+      expect(mapSource, contains('_handleMapBootstrapTimeout'));
+      expect(mapSource, contains("eventName: 'map.bootstrap.timed_out'"));
+      expect(mapSource, contains('TelemetryFlowPhase.timedOut'));
+      expect(mapSource, contains("'waiting_for': readiness.waitingFor"));
+    });
+
+    test('keeps a safety fallback for missing base-map settled signal', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_ensureBaseMapSettledFallback'));
+      expect(mapSource, contains("source: 'readiness_safety_fallback'"));
+      expect(mapSource, contains('readiness.styleLoaded'));
+      expect(mapSource, contains('readiness.cellsFetched'));
+    });
+
     test('uses web MapLibre idle bridge before the timer fallback', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

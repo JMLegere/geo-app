@@ -52,6 +52,7 @@ const _kBuildVersion =
 /// Duration the discovery notification is visible before auto-dismissing.
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
 const _kBaseMapSettledFallbackDelay = Duration(seconds: 5);
+const _kMapBootstrapTimeout = Duration(seconds: 12);
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -72,6 +73,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   BaseMapSettledSignal? _baseMapSettledSignal;
   BaseMapStyleLoadedSignal? _baseMapStyleLoadedSignal;
   Timer? _mapSettledFallbackTimer;
+  Timer? _mapBootstrapTimeoutTimer;
   TelemetrySpan? _mapBootstrapSpan;
   String? _lastGeometryDiagnosticsKey;
 
@@ -93,6 +95,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       span: _mapBootstrapSpan,
       data: {'screen': 'map_screen'},
     );
+    _mapBootstrapTimeoutTimer = Timer(
+      _kMapBootstrapTimeout,
+      _handleMapBootstrapTimeout,
+    );
     _baseMapSettledSignal = BaseMapSettledSignal(
       onSettled: (source) {
         if (!mounted) return;
@@ -113,6 +119,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _baseMapSettledSignal?.dispose();
     _baseMapStyleLoadedSignal?.dispose();
     _mapSettledFallbackTimer?.cancel();
+    _mapBootstrapTimeoutTimer?.cancel();
     final span = _mapBootstrapSpan;
     if (span != null && !_steadyStateLogged) {
       ref.read(appObservabilityProvider).logFlowEvent(
@@ -238,17 +245,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _markStyleLoaded();
   }
 
-  void _scheduleBaseMapSettledFallback() {
+  void _scheduleBaseMapSettledFallback({
+    String source = 'style_loaded_fallback',
+  }) {
     if (_baseMapSettled) return;
     _mapSettledFallbackTimer?.cancel();
     _mapSettledFallbackTimer = Timer(_kBaseMapSettledFallbackDelay, () {
-      if (mounted) _markBaseMapSettled(source: 'style_loaded_fallback');
+      _mapSettledFallbackTimer = null;
+      if (mounted) _markBaseMapSettled(source: source);
     });
   }
 
   void _markBaseMapSettled({required String source}) {
     if (_baseMapSettled) return;
     _mapSettledFallbackTimer?.cancel();
+    _mapSettledFallbackTimer = null;
     setState(() => _baseMapSettled = true);
     _logMapFlowEvent(
       TelemetryFlowPhase.dependencyReady,
@@ -256,6 +267,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       dependency: 'base_map',
       data: {'source': source},
     );
+  }
+
+  void _ensureBaseMapSettledFallback(MapReadinessState readiness) {
+    if (_baseMapSettled || _mapSettledFallbackTimer != null) return;
+    if (!readiness.mapCreated ||
+        !readiness.styleLoaded ||
+        !readiness.cellsFetched) {
+      return;
+    }
+    _scheduleBaseMapSettledFallback(source: 'readiness_safety_fallback');
   }
 
   void _resetOverlayReadinessForRefetch() {
@@ -358,9 +379,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       eventName: 'map.steady_state_ready',
       data: readiness.toLogData(),
     );
+    _mapBootstrapTimeoutTimer?.cancel();
+    _mapBootstrapTimeoutTimer = null;
     _endMapBootstrapSpan(
       statusCode: TelemetrySpanStatus.ok,
       attributes: readiness.toLogData(),
+    );
+  }
+
+  void _handleMapBootstrapTimeout() {
+    if (!mounted || _steadyStateLogged) return;
+    final locationState = ref.read(locationProvider);
+    final readiness = _readinessFor(
+      locationReady: locationState is LocationProviderActive ||
+          locationState is LocationProviderPaused,
+      mapState: ref.read(mapProvider),
+    );
+    _logMapFlowEvent(
+      TelemetryFlowPhase.timedOut,
+      eventName: 'map.bootstrap.timed_out',
+      dependency:
+          readiness.waitingFor.isEmpty ? null : readiness.waitingFor.first,
+      reason: 'steady_state_not_reached',
+      data: {
+        ...readiness.toLogData(),
+        'waiting_for': readiness.waitingFor,
+        'timeout_ms': _kMapBootstrapTimeout.inMilliseconds,
+      },
+    );
+    _endMapBootstrapSpan(
+      statusCode: TelemetrySpanStatus.error,
+      statusMessage: 'steady_state_not_reached',
+      attributes: {
+        ...readiness.toLogData(),
+        'timeout_ms': _kMapBootstrapTimeout.inMilliseconds,
+      },
     );
   }
 
@@ -566,6 +619,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             locationReady: true,
             mapState: mapState,
           );
+          _ensureBaseMapSettledFallback(readiness);
           _armOverlayFrameReadiness(
             readiness,
             renderDiagnostics: renderDiagnostics,
@@ -588,7 +642,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: maplibre.MapLibreMap(
                   styleString: _kMapStyleUrl,
                   initialCameraPosition: maplibre.CameraPosition(
-                    target: maplibre.LatLng(cameraPosition.lat, cameraPosition.lng),
+                    target:
+                        maplibre.LatLng(cameraPosition.lat, cameraPosition.lng),
                     zoom: _kGpsZoom,
                   ),
                   compassEnabled: false,

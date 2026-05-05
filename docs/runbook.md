@@ -198,6 +198,9 @@ FROM v3_items;
 
 Use these against `telemetry_logs` after releasing UI observability changes.
 
+Screen lifecycle names are normalized to the `ObservableScreen` contract (`map_screen`, `district_screen`, `tab_shell`, etc.). If a navigation source used a logical name, inspect `raw_screen_name` / `raw_from_screen`.
+
+
 ```sql
 -- Jank events above threshold (>100ms) in last 24h
 WITH parsed_jank AS (
@@ -324,6 +327,10 @@ WHERE event_name = 'error.screen_boundary_caught'
 GROUP BY 1
 ORDER BY errors DESC, screen_name;
 
+
+-- Low-level browser telemetry should share the Dart app session ID. When the
+-- browser bootstrap generated an earlier temporary ID, it is preserved as
+-- attributes->>'bootstrap_session_id' on the rewritten row.
 -- Low-level browser event coverage in last 24h
 SELECT
   event_name,

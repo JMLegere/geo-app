@@ -115,3 +115,9 @@
 - `ObservableScreen` is the screen lifecycle boundary and emits `ui.screen.mounted`, `ui.screen.first_build`, `ui.screen.ready`, `ui.screen.disposed`, `ui.screen.load_timeout`, and `ui.screen.disposed_before_ready`.
 - A screen load has a terminal outcome: ready, boundary error, timeout, or disposed-before-ready. Coverage tests enforce these event names so missing screen/deload bugs stop being invisible.
 - `silentTransition` remains allowed only for high-frequency/non-diagnostic state changes and must carry a nearby `silentTransition:` justification comment.
+
+## 2026-05-05 — observability correlation must use query-stable names and sessions
+- `ui.screen.expected` must use the same stable snake_case names emitted by `ObservableScreen` (`map_screen`, `district_screen`, `tab_shell`, etc.); logical names such as `map.district`, `home`, or `pack` are preserved only as raw fields for debugging.
+- Browser bootstrap / low-level telemetry and Dart app telemetry must share one active app session ID. Web startup may create a temporary bootstrap session, but queued JS events are rewritten to the Dart app session before beacon flush, with the original stored as `bootstrap_session_id` when different.
+- `map.bootstrap` must always reach a terminal lifecycle phase. If steady state is not reached, emit `map.bootstrap.timed_out` with the readiness booleans and `waiting_for` list so `telemetry_incomplete_flows_v` does not become the only diagnosis surface.
+- If style and cells are ready but MapLibre idle never reaches Dart, keep the explicit base-map-settled safety fallback and label it `readiness_safety_fallback` so terminal agents can distinguish it from the normal JS idle/plugin paths.
