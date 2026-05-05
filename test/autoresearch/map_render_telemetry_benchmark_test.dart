@@ -66,6 +66,7 @@ void main() {
     final focusedPreview = _focusedPreviewScore();
     final latticePreviewSource = _latticePreviewSourceScore();
     final latticeDecode = _latticeDecodeScore();
+    final clusterPartition = _clusterPartitionScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -116,6 +117,7 @@ void main() {
       '${latticePreviewSource.breakdown}',
     );
     print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
+    print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -138,6 +140,7 @@ void main() {
       '${latticePreviewSource.score}',
     );
     print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
+    print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -918,6 +921,28 @@ _LatticeDecodeScore _latticeDecodeScore() {
 
 class _LatticeDecodeScore {
   const _LatticeDecodeScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_ClusterPartitionScore _clusterPartitionScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final partitionsCoverage = functionSql.contains('ST_ClusterDBSCAN(') ||
+      functionSql.contains('cluster_id');
+  return _ClusterPartitionScore(
+    score: partitionsCoverage ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} partitions_coverage=$partitionsCoverage',
+  );
+}
+
+class _ClusterPartitionScore {
+  const _ClusterPartitionScore({
     required this.score,
     required this.breakdown,
   });

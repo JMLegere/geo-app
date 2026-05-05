@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/055_stage_invalid_buffered_rows_with_reasons.sql',
+      '${Directory.current.path}/supabase/migrations/060_partition_buffered_voronoi_by_cluster.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -31,6 +31,8 @@ void main() {
     expect(sql, contains('geometry_invalid_after_clip'));
     expect(sql, contains('geometry_nonpositive_area_after_clip'));
     expect(sql, isNot(contains('WHERE geom IS NOT NULL')));
+    expect(sql, contains('ST_ClusterDBSCAN('));
+    expect(sql, contains('cluster_id'));
   });
 
   test('preview diagnostics migration exposes buffered drop reason counts', () {
