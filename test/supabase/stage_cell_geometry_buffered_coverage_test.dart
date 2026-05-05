@@ -95,7 +95,7 @@ void main() {
 
   test('overlap preview migration exposes local overlap aggregates', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/065_fix_overlap_preview_sql_shape.sql',
+      '${Directory.current.path}/supabase/migrations/066_filter_overlap_preview_to_positive_area.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -118,5 +118,7 @@ void main() {
     expect(sql, contains('ST_Intersection(a.parsed_geom, b.parsed_geom)'));
     expect(sql, contains('overlap_rows AS'));
     expect(sql, contains('FROM overlap_rows;'));
+    expect(sql, contains('raw_overlap_rows AS'));
+    expect(sql, contains('WHERE overlap_area_m2 > 0'));
   });
 }
