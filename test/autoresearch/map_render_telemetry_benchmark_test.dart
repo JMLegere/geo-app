@@ -1,0 +1,223 @@
+import 'dart:ui';
+
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
+import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
+import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('benchmark: map render telemetry explains visual artifacts', () {
+    final cellsWithStates = _badScreenshotLikeScene();
+    final telemetry =
+        const CellGeometryDiagnosticsService().summarizeRenderedCells(
+      cellsWithStates,
+    );
+
+    final renderableEntries = [
+      for (final entry in cellsWithStates)
+        if (FogRenderer.shouldRender(entry.state) &&
+            entry.cell.hasRenderableGeometry)
+          entry,
+    ];
+    final renderModel = CellTessellationRenderModel.build(
+      cellsWithStates: renderableEntries,
+      project: _projectToFixtureViewport,
+    );
+
+    final missingKeys = _missingRequiredTelemetryKeys(telemetry);
+    final unresolvedHypotheses = _unresolvedHypotheses(telemetry);
+    final styleGapCount = _missingKeysWithPrefix(missingKeys, 'style_').length;
+    final renderModelGapCount =
+        _missingKeysWithPrefix(missingKeys, 'render_model_').length;
+    final projectionGapCount =
+        _missingKeysWithPrefix(missingKeys, 'projection_').length;
+    final markerGapCount =
+        _missingKeysWithPrefix(missingKeys, 'marker_').length;
+
+    expect(telemetry['render_cell_count'], cellsWithStates.length);
+    expect(renderModel.fillPaths, isNotEmpty);
+    expect(renderModel.boundaryEdges, isNotEmpty);
+
+    print('ASI observed_keys=${telemetry.keys.join(',')}');
+    print('ASI missing_keys=${missingKeys.join(',')}');
+    print('ASI unresolved_hypotheses=${unresolvedHypotheses.join(',')}');
+    print('ASI truth_fill_path_count=${renderModel.fillPaths.length}');
+    print('ASI truth_boundary_edge_count=${renderModel.boundaryEdges.length}');
+    print(
+      'ASI truth_frontier_fill_alpha='
+      '${FogRenderer.fillColor(_frontierState).a.toStringAsFixed(3)}',
+    );
+    print('METRIC telemetry_gap_count=${missingKeys.length}');
+    print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
+    print('METRIC style_gap_count=$styleGapCount');
+    print('METRIC render_model_gap_count=$renderModelGapCount');
+    print('METRIC projection_gap_count=$projectionGapCount');
+    print('METRIC marker_gap_count=$markerGapCount');
+  });
+}
+
+const _presentState = CellState(
+  relationship: CellRelationship.present,
+  contents: CellContents.empty,
+);
+const _exploredState = CellState(
+  relationship: CellRelationship.explored,
+  contents: CellContents.empty,
+);
+const _frontierState = CellState(
+  relationship: CellRelationship.frontier,
+  contents: CellContents.empty,
+);
+
+List<({Cell cell, CellState state})> _badScreenshotLikeScene() => [
+      (cell: _organicCell('present', 0.0000, 0.0000), state: _presentState),
+      (
+        cell: _organicCell('explored-west', 0.0007, -0.0014),
+        state: _exploredState
+      ),
+      (
+        cell: _organicCell('explored-south', -0.0012, -0.0001),
+        state: _exploredState
+      ),
+      (
+        cell: _organicCell('explored-east', 0.0002, 0.0014),
+        state: _exploredState
+      ),
+      for (var i = 0; i < 18; i++)
+        (
+          cell: _organicCell(
+            'frontier-$i',
+            ((i ~/ 6) - 1) * 0.0023,
+            ((i % 6) - 2.5) * 0.0020,
+          ),
+          state: _frontierState,
+        ),
+    ];
+
+Cell _organicCell(String id, double latOffset, double lngOffset) => Cell(
+      id: id,
+      habitats: const [],
+      polygons: [
+        [
+          [
+            (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
+            (lat: 45.96420 + latOffset, lng: -66.64230 + lngOffset),
+            (lat: 45.96395 + latOffset, lng: -66.64125 + lngOffset),
+            (lat: 45.96310 + latOffset, lng: -66.64105 + lngOffset),
+            (lat: 45.96240 + latOffset, lng: -66.64190 + lngOffset),
+            (lat: 45.96265 + latOffset, lng: -66.64300 + lngOffset),
+            (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
+          ],
+        ],
+      ],
+      districtId: 'downtown',
+      cityId: 'fredericton',
+      stateId: 'nb',
+      countryId: 'ca',
+      geometrySourceVersion: 'organic-voronoi-beta-v1',
+      geometryGenerationMode: 'db-deterministic-jittered-centroid-voronoi',
+      centroidDatasetVersion: 'benchmark-fixture-v1',
+      geometryContract: 'true-voronoi-clipped-to-lattice-coverage',
+    );
+
+Offset _projectToFixtureViewport(GeoCoord coord) {
+  const centerLat = 45.9636;
+  const centerLng = -66.6431;
+  const pixelsPerDegree = 90000.0;
+  return Offset(
+    195 + ((coord.lng - centerLng) * pixelsPerDegree),
+    422 - ((coord.lat - centerLat) * pixelsPerDegree),
+  );
+}
+
+List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
+  const requiredKeys = [
+    // Data/geometry discriminates organic cell payloads from square fallback data.
+    'render_cell_count',
+    'render_present_cell_count',
+    'render_explored_cell_count',
+    'render_frontier_cell_count',
+    'render_rectangular_cell_count',
+    'render_axis_aligned_edge_ratio',
+    'render_shape_warnings',
+
+    // Fog-state context explains why only small islands are revealed.
+    'state_current_cell_id',
+    'state_visited_cell_count',
+    'state_present_cell_ids_sample',
+    'state_explored_cell_ids_sample',
+    'state_frontier_cell_ids_sample',
+
+    // Style/compositing explains harsh wedges, darkness, seams, and antialiasing.
+    'style_present_fill_alpha',
+    'style_explored_fill_alpha',
+    'style_frontier_fill_alpha',
+    'style_unknown_fill_alpha',
+    'style_present_stroke_alpha',
+    'style_explored_stroke_alpha',
+    'style_frontier_stroke_alpha',
+    'style_overlay_antialias',
+    'style_fill_grouping_mode',
+
+    // Render-model context explains whether Canvas path grouping/seams caused it.
+    'render_model_fill_path_count',
+    'render_model_fill_relationships',
+    'render_model_boundary_edge_count',
+    'render_model_present_boundary_edge_count',
+    'render_model_explored_boundary_edge_count',
+    'render_model_hidden_same_state_boundary_count',
+
+    // Projection/viewport context explains screen-space slabs and edge clipping.
+    'projection_viewport_width_px',
+    'projection_viewport_height_px',
+    'projection_polygon_count',
+    'projection_largest_bbox_area_ratio',
+    'projection_viewport_edge_crossing_count',
+    'projection_axis_aligned_screen_edge_ratio',
+
+    // Marker context explains whether the visible circle is fog or player chrome.
+    'marker_screen_x',
+    'marker_screen_y',
+    'marker_radius_px',
+    'marker_ring_radius_px',
+    'marker_overlaps_present_cell',
+  ];
+
+  return [
+    for (final key in requiredKeys)
+      if (!telemetry.containsKey(key)) key,
+  ];
+}
+
+List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
+  final hypotheses = <String>[];
+  if (!telemetry.containsKey('render_rectangular_cell_count') ||
+      !telemetry.containsKey('render_axis_aligned_edge_ratio')) {
+    hypotheses.add('geometry_fallback_or_rectangular_payload');
+  }
+  if (!telemetry.containsKey('style_frontier_fill_alpha') ||
+      !telemetry.containsKey('style_overlay_antialias')) {
+    hypotheses.add('fog_style_or_compositing');
+  }
+  if (!telemetry.containsKey('render_model_boundary_edge_count') ||
+      !telemetry.containsKey('render_model_fill_relationships')) {
+    hypotheses.add('canvas_render_model_or_seams');
+  }
+  if (!telemetry.containsKey('projection_largest_bbox_area_ratio') ||
+      !telemetry.containsKey('projection_viewport_edge_crossing_count')) {
+    hypotheses.add('projection_or_viewport_clipping');
+  }
+  if (!telemetry.containsKey('marker_ring_radius_px') ||
+      !telemetry.containsKey('marker_overlaps_present_cell')) {
+    hypotheses.add('player_marker_circle_artifact');
+  }
+  return hypotheses;
+}
+
+List<String> _missingKeysWithPrefix(List<String> missingKeys, String prefix) =>
+    [
+      for (final key in missingKeys)
+        if (key.startsWith(prefix)) key,
+    ];
