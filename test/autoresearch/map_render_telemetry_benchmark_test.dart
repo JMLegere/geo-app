@@ -1128,15 +1128,27 @@ _OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
       breakdown: 'migration=none function_present=false',
     );
   }
-  final target = matches.first;
-  final sql = target.readAsStringSync();
-  final avoidsReservedOverlapCte = !sql.contains('), overlaps AS (');
-  final usesOverlapRows = sql.contains('), overlap_rows AS (') &&
-      sql.contains('FROM overlap_rows;');
+  final inspected = [
+    for (final file in matches)
+      (
+        name: file.uri.pathSegments.last,
+        avoidsReservedOverlapCte:
+            !file.readAsStringSync().contains('), overlaps AS ('),
+        usesOverlapRows: file.readAsStringSync().contains('), overlap_rows AS (') &&
+            file.readAsStringSync().contains('FROM overlap_rows;'),
+      ),
+  ];
+  final allDeployable = inspected.every(
+    (entry) => entry.avoidsReservedOverlapCte && entry.usesOverlapRows,
+  );
   return _OverlapPreviewDeployableScore(
-    score: avoidsReservedOverlapCte && usesOverlapRows ? 0 : 1,
-    breakdown:
-        'migration=${target.uri.pathSegments.last} avoids_reserved_overlap_cte=$avoidsReservedOverlapCte uses_overlap_rows=$usesOverlapRows',
+    score: allDeployable ? 0 : 1,
+    breakdown: inspected
+        .map(
+          (entry) =>
+              '${entry.name}:avoids_reserved_overlap_cte=${entry.avoidsReservedOverlapCte},uses_overlap_rows=${entry.usesOverlapRows}',
+        )
+        .join('; '),
   );
 }
 
