@@ -320,6 +320,8 @@ void main() {
       expect(mapSource, contains('TelemetryFlowPhase.dependencyReady'));
       expect(mapSource, contains('map.overlay_frame_painted'));
       expect(mapSource, contains('map.bootstrap.cancelled'));
+      expect(mapSource, contains('summarizeRenderedCells'));
+      expect(mapSource, contains('renderDiagnostics: renderDiagnostics'));
     });
 
     test('uses web MapLibre idle bridge before the timer fallback', () {

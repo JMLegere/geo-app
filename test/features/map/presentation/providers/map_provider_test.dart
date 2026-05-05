@@ -422,6 +422,11 @@ void main() {
           ['db-deterministic-jittered-centroid-voronoi']);
       expect(completeEvent.data?['geometry_contracts'],
           ['true-voronoi-clipped-to-lattice-coverage']);
+      expect(completeEvent.data?['geometry_rectangular_cell_count'], 0);
+      expect(completeEvent.data?['geometry_four_point_exterior_count'], 0);
+      expect(completeEvent.data?['geometry_axis_aligned_edge_ratio'],
+          lessThan(1.0));
+      expect(completeEvent.data?['geometry_shape_warnings'], isEmpty);
     });
 
     test('logs map.cells_fetch_error on failure', () async {

@@ -8,6 +8,7 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/fetch_nearby_cells.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_visited_cells.dart';
@@ -157,6 +158,8 @@ class MapNotifier extends ObservableNotifier<MapState> {
       final geometryContracts = _nonEmptySortedSet(
         cells.map((cell) => cell.geometryContract),
       );
+      final geometryDiagnostics =
+          const CellGeometryDiagnosticsService().summarizeFetchedCells(cells);
 
       transition(
         MapStateReady(
@@ -176,6 +179,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
           'geometry_source_versions': geometrySourceVersions,
           'geometry_generation_modes': geometryGenerationModes,
           'geometry_contracts': geometryContracts,
+          ...geometryDiagnostics,
         },
       );
     } catch (e, stack) {

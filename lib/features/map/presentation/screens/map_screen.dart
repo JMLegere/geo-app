@@ -15,6 +15,7 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
+import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
@@ -277,7 +278,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void _armOverlayFrameReadiness(MapReadinessState readiness) {
+  void _armOverlayFrameReadiness(
+    MapReadinessState readiness, {
+    required Map<String, dynamic> renderDiagnostics,
+  }) {
     final canPaintSteadyOverlay = readiness.locationReady &&
         readiness.mapCreated &&
         readiness.styleLoaded &&
@@ -293,6 +297,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         TelemetryFlowPhase.dependencyReady,
         eventName: 'map.overlay_frame_painted',
         dependency: 'overlay_frame',
+        data: renderDiagnostics,
       );
       _logSteadyStateReady();
     });
@@ -501,11 +506,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             _kGpsZoom,
             screenCenter,
           );
+          final cellsWithStates = mapState is MapStateReady
+              ? _buildCellStates(
+                  mapState.cells,
+                  footprint.visitedCellIds,
+                  explorationState,
+                )
+              : <({Cell cell, CellState state})>[];
+          final renderDiagnostics =
+              const CellGeometryDiagnosticsService().summarizeRenderedCells(
+            cellsWithStates,
+          );
           final readiness = _readinessFor(
             locationReady: true,
             mapState: mapState,
           );
-          _armOverlayFrameReadiness(readiness);
+          _armOverlayFrameReadiness(
+            readiness,
+            renderDiagnostics: renderDiagnostics,
+          );
           _logReadinessWaiting(readiness);
 
           return Stack(
@@ -581,11 +600,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     child: CustomPaint(
                       size: Size.infinite,
                       painter: CellOverlayPainter(
-                        cellsWithStates: _buildCellStates(
-                          mapState.cells,
-                          footprint.visitedCellIds,
-                          explorationState,
-                        ),
+                        cellsWithStates: cellsWithStates,
                         cameraPosition: (
                           lat: location.lat,
                           lng: location.lng,
