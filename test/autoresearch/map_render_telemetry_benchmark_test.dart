@@ -67,6 +67,7 @@ void main() {
     final latticePreviewSource = _latticePreviewSourceScore();
     final latticeDecode = _latticeDecodeScore();
     final clusterPartition = _clusterPartitionScore();
+    final singletonCluster = _singletonClusterScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -118,6 +119,7 @@ void main() {
     );
     print('ASI lattice_decode_breakdown=${latticeDecode.breakdown}');
     print('ASI cluster_partition_breakdown=${clusterPartition.breakdown}');
+    print('ASI singleton_cluster_breakdown=${singletonCluster.breakdown}');
     print(
       'ASI coverage_buffer_param_breakdown=${coverageBufferParam.breakdown}',
     );
@@ -141,6 +143,7 @@ void main() {
     );
     print('METRIC lattice_decode_gap_count=${latticeDecode.score}');
     print('METRIC cluster_partition_gap_count=${clusterPartition.score}');
+    print('METRIC singleton_cluster_gap_count=${singletonCluster.score}');
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
@@ -943,6 +946,29 @@ _ClusterPartitionScore _clusterPartitionScore() {
 
 class _ClusterPartitionScore {
   const _ClusterPartitionScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_SingletonClusterScore _singletonClusterScore() {
+  final stageFunction = _latestStageFunctionDefinition();
+  final functionSql = stageFunction.functionSql;
+  final handlesSingletonCluster =
+      functionSql.contains('clusters.centroid_count = 1') &&
+      functionSql.contains('ST_Dump(clusters.coverage_geom)');
+  return _SingletonClusterScore(
+    score: handlesSingletonCluster ? 0 : 1,
+    breakdown:
+        'migration=${stageFunction.migrationName} handles_singleton_cluster=$handlesSingletonCluster',
+  );
+}
+
+class _SingletonClusterScore {
+  const _SingletonClusterScore({
     required this.score,
     required this.breakdown,
   });

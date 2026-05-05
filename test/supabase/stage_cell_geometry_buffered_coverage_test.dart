@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('buffered coverage migration expands organic geometry source footprint', () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/060_partition_buffered_voronoi_by_cluster.sql',
+      '${Directory.current.path}/supabase/migrations/061_handle_singleton_buffered_clusters.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -33,6 +33,8 @@ void main() {
     expect(sql, isNot(contains('WHERE geom IS NOT NULL')));
     expect(sql, contains('ST_ClusterDBSCAN('));
     expect(sql, contains('cluster_id'));
+    expect(sql, contains('clusters.centroid_count = 1'));
+    expect(sql, contains('ST_Dump(clusters.coverage_geom)'));
   });
 
   test('preview diagnostics migration exposes buffered drop reason counts', () {
