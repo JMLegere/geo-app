@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:ui';
+import 'dart:io';
 
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
@@ -55,6 +56,7 @@ void main() {
     final unknownCoverageGapCount = _unknownCoverageDiagnosticKeys
         .where((key) => !telemetry.containsKey(key))
         .length;
+    final fetchSelection = _fetchSelectionScore();
 
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
@@ -92,6 +94,7 @@ void main() {
     print(
       'ASI coverage_shortfall_breakdown=${coverageShortfall.breakdown}',
     );
+    print('ASI fetch_selection_breakdown=${fetchSelection.breakdown}');
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
@@ -128,6 +131,7 @@ void main() {
       'METRIC coverage_unknown_left_edge_excess='
       '${coverageShortfall.unknownLeftEdgeExcess}',
     );
+    print('METRIC fetch_selection_gap_count=${fetchSelection.score}');
   });
 }
 
@@ -491,5 +495,43 @@ class _CoverageShortfallScore {
   final int score;
   final int unknownVisibleExcess;
   final int unknownLeftEdgeExcess;
+  final String breakdown;
+}
+
+_FetchSelectionScore _fetchSelectionScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final target = candidates.reversed.firstWhere(
+    (file) =>
+        file.readAsStringSync().contains('CREATE FUNCTION fetch_nearby_cells('),
+  );
+  final sql = target.readAsStringSync();
+  final createIndex = sql.lastIndexOf('CREATE FUNCTION fetch_nearby_cells(');
+  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  final usesCentroidDistance = functionSql.contains(
+    'ST_SetSRID(ST_MakePoint(model.centroid_lon, model.centroid_lat), 4326)::geography',
+  );
+  final usesGeometryDistance = functionSql.contains('geom::geography');
+  return _FetchSelectionScore(
+    score: usesGeometryDistance ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} centroid_distance=$usesCentroidDistance geometry_distance=$usesGeometryDistance',
+  );
+}
+
+class _FetchSelectionScore {
+  const _FetchSelectionScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
   final String breakdown;
 }
