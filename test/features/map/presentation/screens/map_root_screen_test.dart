@@ -34,18 +34,21 @@ void main() {
   });
 
   group('MapLibre platform-view visibility', () {
-    test('source hides the web platform view when hierarchy screens are active',
-        () {
+    test('source unmounts MapScreen when hierarchy screens are active', () {
       final source = File(
         'lib/features/map/presentation/screens/map_root_screen.dart',
       ).readAsStringSync();
 
       expect(source, contains('MapLibrePlatformViewVisibilityBridge'));
       expect(source, contains('setVisible(level == MapLevel.cell)'));
+      expect(source, contains('if (level == MapLevel.cell)'));
+      expect(source, contains('Positioned.fill(child: const MapScreen())'));
       expect(
         source,
-        contains(
-            'MapScreen stays mounted at all times so WebGL context is preserved'),
+        isNot(contains('Offstage(')),
+        reason: 'Keeping the web MapLibre platform view Offstage lets the HTML '
+            'view keep rendering above hierarchy screens and can keep resize '
+            'loops alive while hierarchy RPCs are loading.',
       );
     });
   });

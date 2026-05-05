@@ -113,11 +113,8 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
         ),
         child: Stack(
           children: [
-            // MapScreen stays mounted at all times so WebGL context is preserved.
-            Offstage(
-              offstage: level != MapLevel.cell,
-              child: const MapScreen(),
-            ),
+            if (level == MapLevel.cell)
+              Positioned.fill(child: const MapScreen()),
             // Hierarchy screens are only mounted when active.
             if (level != MapLevel.cell)
               Positioned.fill(
