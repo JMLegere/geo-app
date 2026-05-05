@@ -416,6 +416,19 @@ void main() {
         );
       });
 
+      test('hides MapLibre platform views while hierarchy screens are active',
+          () {
+        expect(html, contains('earthnova.maplibre.visibility'));
+        expect(html, contains('function setMapLibrePlatformViewVisible'));
+        expect(html, contains('earthnova-maplibre-hidden'));
+        expect(
+            html,
+            contains(
+                "platformView.style.pointerEvents = visible ? '' : 'none'"));
+        expect(
+            html, contains("mapEl.style.visibility = visible ? '' : 'hidden'"));
+      });
+
       test('normalizes zero-height platform hosts before logging layout', () {
         expect(
           html,
