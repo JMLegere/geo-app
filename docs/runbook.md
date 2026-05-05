@@ -238,6 +238,55 @@ WHERE event_name = 'interaction.action'
 GROUP BY 1, 2, 3
 ORDER BY events DESC, screen_name, widget_name, action_type;
 
+
+-- Screen lifecycle expected → ready/failed/timeout correlation
+WITH screen_events AS (
+  SELECT
+    session_id,
+    COALESCE(attributes->>'screen_name', attributes->>'to_screen', 'unknown') AS screen_name,
+    event_name,
+    occurred_at,
+    attributes
+  FROM telemetry_logs
+  WHERE event_name LIKE 'ui.screen.%'
+    AND occurred_at > now() - interval '24 hours'
+)
+SELECT
+  session_id,
+  screen_name,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.expected') AS expected_at,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.mounted') AS mounted_at,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.first_build') AS first_build_at,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.ready') AS ready_at,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.load_timeout') AS timeout_at,
+  min(occurred_at) FILTER (WHERE event_name = 'ui.screen.disposed_before_ready') AS disposed_before_ready_at,
+  max(occurred_at) AS last_seen_at
+FROM screen_events
+GROUP BY session_id, screen_name
+ORDER BY last_seen_at DESC;
+
+-- Screens with non-terminal or bad terminal lifecycle in last 24h
+WITH screen_summary AS (
+  SELECT
+    session_id,
+    COALESCE(attributes->>'screen_name', attributes->>'to_screen', 'unknown') AS screen_name,
+    bool_or(event_name = 'ui.screen.expected') AS expected,
+    bool_or(event_name = 'ui.screen.ready') AS ready,
+    bool_or(event_name = 'ui.screen.load_timeout') AS timed_out,
+    bool_or(event_name = 'ui.screen.disposed_before_ready') AS disposed_before_ready,
+    max(occurred_at) AS last_seen_at
+  FROM telemetry_logs
+  WHERE event_name LIKE 'ui.screen.%'
+    AND occurred_at > now() - interval '24 hours'
+  GROUP BY session_id, COALESCE(attributes->>'screen_name', attributes->>'to_screen', 'unknown')
+)
+SELECT *
+FROM screen_summary
+WHERE timed_out
+   OR disposed_before_ready
+   OR (expected AND NOT ready AND last_seen_at < now() - interval '10 seconds')
+ORDER BY last_seen_at DESC;
+
 -- Route/non-route navigation funnel pairs in last 24h
 WITH nav AS (
   SELECT
@@ -274,6 +323,37 @@ WHERE event_name = 'error.screen_boundary_caught'
   AND occurred_at > now() - interval '24 hours'
 GROUP BY 1
 ORDER BY errors DESC, screen_name;
+
+-- Low-level browser event coverage in last 24h
+SELECT
+  event_name,
+  COALESCE(attributes->>'surface', 'unknown') AS surface,
+  COALESCE(attributes->>'flow', 'unknown') AS flow,
+  count(*) AS events,
+  count(DISTINCT session_id) AS sessions,
+  max(occurred_at) AS last_seen_at
+FROM telemetry_logs
+WHERE category = 'low_level'
+  AND occurred_at > now() - interval '24 hours'
+GROUP BY 1, 2, 3
+ORDER BY events DESC, event_name;
+
+-- Pinch/zoom attempts seen below Flutter's gesture recognizer
+SELECT
+  occurred_at,
+  session_id,
+  event_name,
+  attributes->>'source' AS source,
+  attributes->>'gesture_direction' AS gesture_direction,
+  attributes->>'threshold_met' AS threshold_met,
+  attributes->>'within_maplibre' AS within_maplibre,
+  attributes->>'touch_action' AS touch_action
+FROM telemetry_logs
+WHERE category = 'low_level'
+  AND event_name IN ('low_level.gesture_pinch_started', 'low_level.gesture_pinch_ended', 'low_level.wheel_input')
+  AND occurred_at > now() - interval '24 hours'
+ORDER BY occurred_at DESC;
+
 ```
 
 ### Post-deploy UI observability validation playbook
@@ -290,14 +370,17 @@ Run after every production deploy that touches UI observability, navigation, or 
 3. Trigger representative gestures: tap, long-press, drag/pan/zoom where supported.
 4. Validate observability rows in Supabase using the queries above (`telemetry_logs`, last 24h):
    - `interaction.action`
+   - `low_level.%`
    - `navigation.%`
+   - `ui.screen.%`
    - `ui.widget.build_jank`
    - `error.screen_boundary_caught`
 5. Confirm route and non-route transitions both appear in navigation funnel results.
-6. Confirm interaction coverage output includes expected `screen_name` / `widget_name` / `action_type` combinations for exercised flows.
-7. Confirm no unexpected spikes in `error.screen_boundary_caught` for any single screen.
-8. Confirm hierarchy navigation remains usable (no blocked transitions, no stuck level changes, no broken back-navigation).
-9. Record the deploy SHA, validation timestamp, and any anomalies in the incident/deploy notes.
+6. Confirm every expected screen reaches `ui.screen.ready` and no screen emits `ui.screen.load_timeout` or `ui.screen.disposed_before_ready`.
+7. Confirm interaction coverage output includes expected `screen_name` / `widget_name` / `action_type` combinations for exercised flows.
+8. Confirm no unexpected spikes in `error.screen_boundary_caught` for any single screen.
+9. Confirm hierarchy navigation remains usable (no blocked transitions, no stuck level changes, no broken back-navigation).
+10. Record the deploy SHA, validation timestamp, and any anomalies in the incident/deploy notes.
 
 ### Edge Functions
 

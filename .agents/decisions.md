@@ -102,3 +102,16 @@
 - Raw GPS remains the target for map framing, but camera movement now runs through a separate fast smoothed `cameraFollowProvider`.
 - Camera smoothing is intentionally faster than the gameplay marker spline and never affects exploration eligibility, cell visits, or encounter triggering.
 - The first camera fix snaps to GPS to avoid panning from `(0,0)` across the globe; later GPS updates ease toward the new target to suppress jitter.
+
+## 2026-05-05 — low-level observability is app-wide, bounded, and short-retained
+- Do not instrument platform bugs as one-off whack-a-mole probes. The browser bootstrap owns a shared low-level telemetry surface for the whole app.
+- Low-level events use category `low_level` and bounded event names/payloads for pointer, touch, gesture, wheel, keyboard, viewport, network, focus/blur, resource, and clipboard signals.
+- Low-level telemetry must be privacy-safe: no raw key characters and no clipboard contents.
+- Supabase observability retention is 14 days for `telemetry_logs` and `telemetry_spans`; observability is diagnostic, not permanent product history.
+
+## 2026-05-05 — screen lifecycle is the UI loading contract
+- Use **UI lifecycle observability** as the umbrella term; `ui.widget.*` remains lower-level Flutter widget telemetry.
+- `navigation.*` now emits `ui.screen.expected` so terminal agents can correlate "we navigated to X" with whether X mounted and became ready.
+- `ObservableScreen` is the screen lifecycle boundary and emits `ui.screen.mounted`, `ui.screen.first_build`, `ui.screen.ready`, `ui.screen.disposed`, `ui.screen.load_timeout`, and `ui.screen.disposed_before_ready`.
+- A screen load has a terminal outcome: ready, boundary error, timeout, or disposed-before-ready. Coverage tests enforce these event names so missing screen/deload bugs stop being invisible.
+- `silentTransition` remains allowed only for high-frequency/non-diagnostic state changes and must carry a nearby `silentTransition:` justification comment.

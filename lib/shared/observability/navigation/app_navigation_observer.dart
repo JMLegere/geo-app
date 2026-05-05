@@ -40,11 +40,24 @@ class NavigationScreenTransitionLogger {
         'to_screen': toScreen,
       },
     );
+    _safeLog(
+      'ui.screen.expected',
+      category: 'ui',
+      data: {
+        'source': source,
+        'screen_name': toScreen,
+        'from_screen': fromScreen,
+      },
+    );
   }
 
-  void _safeLog(String event, {Map<String, dynamic>? data}) {
+  void _safeLog(
+    String event, {
+    String category = 'navigation',
+    Map<String, dynamic>? data,
+  }) {
     try {
-      _logEvent(event, 'navigation', data: data);
+      _logEvent(event, category, data: data);
     } catch (_) {}
   }
 }
@@ -59,6 +72,7 @@ class AppNavigationObserver extends NavigatorObserver {
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _safeLogRoute(
       'navigation.route.push',
+      routeEventSource: 'route.push',
       fromRoute: previousRoute,
       toRoute: route,
     );
@@ -69,6 +83,7 @@ class AppNavigationObserver extends NavigatorObserver {
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _safeLogRoute(
       'navigation.route.pop',
+      routeEventSource: 'route.pop',
       fromRoute: route,
       toRoute: previousRoute,
     );
@@ -79,6 +94,7 @@ class AppNavigationObserver extends NavigatorObserver {
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     _safeLogRoute(
       'navigation.route.replace',
+      routeEventSource: 'route.replace',
       fromRoute: oldRoute,
       toRoute: newRoute,
     );
@@ -89,6 +105,7 @@ class AppNavigationObserver extends NavigatorObserver {
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     _safeLogRoute(
       'navigation.route.remove',
+      routeEventSource: 'route.remove',
       fromRoute: route,
       toRoute: previousRoute,
     );
@@ -97,16 +114,28 @@ class AppNavigationObserver extends NavigatorObserver {
 
   void _safeLogRoute(
     String event, {
+    required String routeEventSource,
     required Route<dynamic>? fromRoute,
     required Route<dynamic>? toRoute,
   }) {
+    final fromName = _routeName(fromRoute);
+    final toName = _routeName(toRoute);
     try {
       _logEvent(
         event,
         'navigation',
         data: {
-          'from_route': _routeName(fromRoute),
-          'to_route': _routeName(toRoute),
+          'from_route': fromName,
+          'to_route': toName,
+        },
+      );
+      _logEvent(
+        'ui.screen.expected',
+        'ui',
+        data: {
+          'source': routeEventSource,
+          'screen_name': _routeName(toRoute),
+          'from_screen': fromName,
         },
       );
     } catch (_) {}

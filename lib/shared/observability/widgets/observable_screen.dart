@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/shared/observability/widgets/error_boundary_retry.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ class ObservableScreen extends StatefulWidget {
     required this.builder,
     this.onRetry,
     this.buildDurationOverride,
+    this.readyTimeoutOverride,
   });
 
   final String screenName;
@@ -17,6 +19,7 @@ class ObservableScreen extends StatefulWidget {
   final WidgetBuilder builder;
   final VoidCallback? onRetry;
   final Duration Function()? buildDurationOverride;
+  final Duration? readyTimeoutOverride;
 
   @override
   State<ObservableScreen> createState() => _ObservableScreenState();
@@ -24,8 +27,12 @@ class ObservableScreen extends StatefulWidget {
 
 class _ObservableScreenState extends State<ObservableScreen> {
   static const _jankThresholdMs = 100;
+  static const _defaultReadyTimeout = Duration(seconds: 3);
   bool _showFallback = false;
-
+  bool _firstBuildLogged = false;
+  bool _ready = false;
+  bool _loadTimeoutLogged = false;
+  Timer? _readyTimer;
   @override
   void initState() {
     super.initState();
@@ -34,10 +41,35 @@ class _ObservableScreenState extends State<ObservableScreen> {
       'ui',
       data: _payload(),
     );
+    widget.observability.log(
+      'ui.screen.mounted',
+      'ui',
+      data: _payload(),
+    );
+    _readyTimer = Timer(
+      widget.readyTimeoutOverride ?? _defaultReadyTimeout,
+      _handleReadyTimeout,
+    );
   }
 
   @override
   void dispose() {
+    _readyTimer?.cancel();
+    if (!_ready) {
+      widget.observability.log(
+        'ui.screen.disposed_before_ready',
+        'ui',
+        data: _payload(),
+      );
+    }
+    widget.observability.log(
+      'ui.screen.disposed',
+      'ui',
+      data: {
+        ..._payload(),
+        'ready': _ready,
+      },
+    );
     widget.observability.log(
       'ui.widget.dispose',
       'ui',
@@ -51,11 +83,13 @@ class _ObservableScreenState extends State<ObservableScreen> {
     final stopwatch = Stopwatch()..start();
 
     Widget screen;
+    var builderSucceeded = false;
     if (_showFallback) {
       screen = ErrorBoundaryRetry(onRetry: _handleRetry);
     } else {
       try {
         screen = widget.builder(context);
+        builderSucceeded = true;
       } catch (error, stackTrace) {
         _showFallback = true;
         widget.observability.log(
@@ -85,6 +119,31 @@ class _ObservableScreenState extends State<ObservableScreen> {
       },
     );
 
+    if (builderSucceeded && !_firstBuildLogged) {
+      _firstBuildLogged = true;
+      widget.observability.log(
+        'ui.screen.first_build',
+        'ui',
+        data: {
+          ..._payload(),
+          'duration_ms': duration.inMilliseconds,
+        },
+      );
+    }
+
+    if (builderSucceeded && !_ready) {
+      _ready = true;
+      _readyTimer?.cancel();
+      widget.observability.log(
+        'ui.screen.ready',
+        'ui',
+        data: {
+          ..._payload(),
+          'duration_ms': duration.inMilliseconds,
+        },
+      );
+    }
+
     if (duration.inMilliseconds > _jankThresholdMs) {
       widget.observability.log(
         'ui.widget.build_jank',
@@ -107,6 +166,22 @@ class _ObservableScreenState extends State<ObservableScreen> {
       'screen_name': widget.screenName,
     };
   }
+
+  void _handleReadyTimeout() {
+    if (!mounted || _ready || _loadTimeoutLogged) return;
+    _loadTimeoutLogged = true;
+    final timeout = widget.readyTimeoutOverride ?? _defaultReadyTimeout;
+    widget.observability.log(
+      'ui.screen.load_timeout',
+      'ui',
+      data: {
+        ..._payload(),
+        'timeout_ms': timeout.inMilliseconds,
+        'ready': _ready,
+      },
+    );
+  }
+
 
   void _handleRetry() {
     widget.onRetry?.call();

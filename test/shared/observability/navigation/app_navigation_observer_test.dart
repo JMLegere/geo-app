@@ -33,29 +33,79 @@ void main() {
 
       expect(events.map((event) => event.event), <String>[
         'navigation.route.push',
+        'ui.screen.expected',
         'navigation.route.pop',
+        'ui.screen.expected',
         'navigation.route.replace',
+        'ui.screen.expected',
         'navigation.route.remove',
+        'ui.screen.expected',
       ]);
-      for (final event in events) {
-        expect(event.category, 'navigation');
-      }
+      expect(events.where((event) => event.event.startsWith('navigation.')).map((event) => event.category).toSet(), {'navigation'});
+      expect(events.where((event) => event.event == 'ui.screen.expected').map((event) => event.category).toSet(), {'ui'});
 
       expect(events[0].data, {
         'from_route': '/from',
         'to_route': '/to',
       });
       expect(events[1].data, {
-        'from_route': '/to',
-        'to_route': '/from',
+        'source': 'route.push',
+        'screen_name': '/to',
+        'from_screen': '/from',
       });
       expect(events[2].data, {
         'from_route': '/to',
-        'to_route': '/replacement',
+        'to_route': '/from',
       });
       expect(events[3].data, {
+        'source': 'route.pop',
+        'screen_name': '/from',
+        'from_screen': '/to',
+      });
+      expect(events[4].data, {
+        'from_route': '/to',
+        'to_route': '/replacement',
+      });
+      expect(events[5].data, {
+        'source': 'route.replace',
+        'screen_name': '/replacement',
+        'from_screen': '/to',
+      });
+      expect(events[6].data, {
         'from_route': '/replacement',
         'to_route': '/from',
+      });
+      expect(events[7].data, {
+        'source': 'route.remove',
+        'screen_name': '/from',
+        'from_screen': '/replacement',
+      });
+    });
+
+    test('screen transition logger emits expected screen load event', () {
+      final events =
+          <({String event, String category, Map<String, dynamic>? data})>[];
+      final logger = NavigationScreenTransitionLogger(
+        logEvent: (event, category, {data}) {
+          events.add((event: event, category: category, data: data));
+        },
+      );
+
+      logger.logScreenChanged(
+        source: 'tab_shell',
+        fromScreen: 'pack_screen',
+        toScreen: 'map_root_screen',
+      );
+
+      expect(events.map((event) => event.event), [
+        'navigation.screen_changed',
+        'ui.screen.expected',
+      ]);
+      expect(events.last.category, 'ui');
+      expect(events.last.data, {
+        'source': 'tab_shell',
+        'screen_name': 'map_root_screen',
+        'from_screen': 'pack_screen',
       });
     });
 

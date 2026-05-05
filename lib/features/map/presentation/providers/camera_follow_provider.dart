@@ -95,6 +95,8 @@ class CameraFollowNotifier extends ObservableNotifier<CameraFollowState> {
           current.lng == _gpsLng) {
         return;
       }
+      // silentTransition: camera follow settle ticks can run every animation
+      // frame; only the initial camera-follow start is useful telemetry.
       silentTransition(CameraFollowState(
         lat: _gpsLat,
         lng: _gpsLng,

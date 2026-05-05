@@ -237,6 +237,488 @@
         phase: 'started'
       });
 
+      function installLowLevelEventTelemetry() {
+        if (window.__earthnovaLowLevelTelemetryInstalled) return;
+        window.__earthnovaLowLevelTelemetryInstalled = true;
+
+        var listenerOptions = { capture: true, passive: true };
+        var closeThreshold = 0.92;
+        var spreadThreshold = 1.08;
+        var activePointers = {};
+        var activePointerSequences = {};
+        var pointerPinch = null;
+        var touchPinch = null;
+        var safariGesturePinch = null;
+        var viewportTimer = null;
+
+        function round(value) {
+          return typeof value === 'number' && isFinite(value)
+            ? Math.round(value * 1000) / 1000
+            : null;
+        }
+
+        function nowMs() {
+          return Date.now();
+        }
+
+        function pointDistance(a, b) {
+          if (!a || !b) return null;
+          var dx = a.x - b.x;
+          var dy = a.y - b.y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function scaleDirection(scale) {
+          if (typeof scale !== 'number' || !isFinite(scale)) return 'unknown';
+          if (scale <= closeThreshold) return 'close';
+          if (scale >= spreadThreshold) return 'spread';
+          return 'none';
+        }
+
+        function thresholdMet(scale) {
+          return typeof scale === 'number' &&
+            isFinite(scale) &&
+            (scale <= closeThreshold || scale >= spreadThreshold);
+        }
+
+        function coerceElement(target) {
+          if (!target) return null;
+          if (target.nodeType === 1) return target;
+          return target.parentElement || null;
+        }
+
+        function boundedClassName(element) {
+          if (!element) return null;
+          var raw = element.className;
+          if (!raw) return null;
+          if (typeof raw === 'string') return raw.slice(0, 120);
+          if (raw.baseVal) return String(raw.baseVal).slice(0, 120);
+          return String(raw).slice(0, 120);
+        }
+
+        function targetMetadata(target) {
+          var element = coerceElement(target);
+          var mapElement = null;
+          var touchAction = null;
+          if (element && element.closest) {
+            mapElement = element.closest('.maplibregl-map, .maplibregl-canvas, flt-platform-view');
+          }
+          try {
+            var styleTarget = mapElement || element;
+            touchAction = styleTarget ? window.getComputedStyle(styleTarget).touchAction || null : null;
+          } catch (_) {}
+          return {
+            surface: 'web_low_level',
+            target_tag: element && element.tagName ? element.tagName.toLowerCase() : null,
+            target_class: boundedClassName(element),
+            within_maplibre: !!mapElement,
+            touch_action: touchAction
+          };
+        }
+
+        function modifierKeys(event) {
+          return [
+            event.altKey ? 'alt' : null,
+            event.ctrlKey ? 'ctrl' : null,
+            event.metaKey ? 'meta' : null,
+            event.shiftKey ? 'shift' : null
+          ].filter(Boolean).join(',');
+        }
+
+        function keyClass(event) {
+          var value = event.key || '';
+          if (value.length === 1) return 'character';
+          if (value.indexOf('Arrow') === 0) return 'navigation';
+          if (value === 'Enter' || value === 'Escape' || value === 'Tab') return 'control';
+          if (value === 'Backspace' || value === 'Delete') return 'editing';
+          if (value === 'Shift' || value === 'Control' || value === 'Alt' || value === 'Meta') return 'modifier';
+          if (value.indexOf('F') === 0) return 'function';
+          return value ? 'named' : 'unknown';
+        }
+
+        function lowLevelAttrs(flow, phase, target, extra) {
+          return Object.assign(targetMetadata(target), extra || {}, {
+            flow: flow,
+            phase: phase
+          });
+        }
+
+        function pointerValues() {
+          return Object.keys(activePointers).map(function(key) {
+            return activePointers[key];
+          });
+        }
+
+        function logPinchStarted(source, target, startDistance, extra) {
+          push('low_level', 'gesture_pinch_started', source, lowLevelAttrs(
+            'low_level.input',
+            'started',
+            target,
+            Object.assign(extra || {}, {
+              source: source,
+              start_distance_px: round(startDistance)
+            })
+          ));
+          return {
+            source: source,
+            target: target,
+            startDistance: startDistance,
+            lastDistance: startDistance,
+            lastScale: 1,
+            startedAt: nowMs()
+          };
+        }
+
+        function logPinchEnded(gesture, target, endDistance, extra) {
+          if (!gesture) return;
+          var attrsExtra = extra || {};
+          var scale = typeof attrsExtra.scale === 'number'
+            ? attrsExtra.scale
+            : gesture.startDistance && endDistance
+              ? endDistance / gesture.startDistance
+              : gesture.lastScale || null;
+          push('low_level', 'gesture_pinch_ended', gesture.source, lowLevelAttrs(
+            'low_level.input',
+            'completed',
+            target || gesture.target,
+            Object.assign(attrsExtra, {
+              source: gesture.source,
+              start_distance_px: round(gesture.startDistance),
+              end_distance_px: round(endDistance),
+              scale: round(scale),
+              threshold_met: typeof attrsExtra.threshold_met === 'boolean'
+                ? attrsExtra.threshold_met
+                : thresholdMet(scale),
+              gesture_direction: attrsExtra.gesture_direction || scaleDirection(scale),
+              duration_ms: nowMs() - gesture.startedAt
+            })
+          ));
+        }
+
+        document.addEventListener('pointerdown', function(event) {
+          activePointers[event.pointerId] = {
+            x: event.clientX,
+            y: event.clientY,
+            pointer_type: event.pointerType || 'unknown',
+            target: event.target
+          };
+          activePointerSequences[event.pointerId] = {
+            startedAt: nowMs(),
+            moveCount: 0,
+            pointer_type: event.pointerType || 'unknown',
+            target: event.target
+          };
+          var points = pointerValues();
+          push('low_level', 'pointer_sequence_started', 'pointerdown', lowLevelAttrs(
+            'low_level.input',
+            'started',
+            event.target,
+            {
+              pointer_type: event.pointerType || 'unknown',
+              pointer_count: points.length,
+              button: event.button,
+              buttons: event.buttons,
+              is_primary: !!event.isPrimary
+            }
+          ));
+          if (points.length === 2 && !pointerPinch) {
+            pointerPinch = logPinchStarted(
+              'document_pointer_capture',
+              event.target,
+              pointDistance(points[0], points[1]),
+              {
+                pointer_count: points.length,
+                pointer_type: points.map(function(point) { return point.pointer_type; }).join(',')
+              }
+            );
+          }
+        }, listenerOptions);
+
+        document.addEventListener('pointermove', function(event) {
+          if (!activePointers[event.pointerId]) return;
+          activePointers[event.pointerId].x = event.clientX;
+          activePointers[event.pointerId].y = event.clientY;
+          activePointers[event.pointerId].target = event.target;
+          if (activePointerSequences[event.pointerId]) {
+            activePointerSequences[event.pointerId].moveCount += 1;
+          }
+          var points = pointerValues();
+          if (pointerPinch && points.length >= 2) {
+            pointerPinch.lastDistance = pointDistance(points[0], points[1]);
+          }
+        }, listenerOptions);
+
+        function finishPointerSequence(event, phase, eventLabel) {
+          var pointsBefore = pointerValues();
+          if (pointerPinch && pointsBefore.length >= 2) {
+            pointerPinch.lastDistance = pointDistance(pointsBefore[0], pointsBefore[1]);
+          }
+          var sequence = activePointerSequences[event.pointerId];
+          delete activePointers[event.pointerId];
+          delete activePointerSequences[event.pointerId];
+          var pointsAfter = pointerValues();
+          push('low_level', 'pointer_sequence_ended', eventLabel, lowLevelAttrs(
+            'low_level.input',
+            phase,
+            event.target,
+            {
+              pointer_type: (sequence && sequence.pointer_type) || event.pointerType || 'unknown',
+              pointer_count: pointsAfter.length,
+              move_count: sequence ? sequence.moveCount : 0,
+              duration_ms: sequence ? nowMs() - sequence.startedAt : null
+            }
+          ));
+          if (pointerPinch && pointsAfter.length < 2) {
+            logPinchEnded(pointerPinch, event.target, pointerPinch.lastDistance, {
+              pointer_count: pointsAfter.length
+            });
+            pointerPinch = null;
+          }
+        }
+
+        document.addEventListener('pointerup', function(event) {
+          finishPointerSequence(event, 'completed', 'pointerup');
+        }, listenerOptions);
+        document.addEventListener('pointercancel', function(event) {
+          finishPointerSequence(event, 'cancelled', 'pointercancel');
+        }, listenerOptions);
+
+        function touchPoints(touchList) {
+          var points = [];
+          for (var i = 0; i < touchList.length; i++) {
+            points.push({ x: touchList[i].clientX, y: touchList[i].clientY });
+          }
+          return points;
+        }
+
+        document.addEventListener('touchstart', function(event) {
+          var points = touchPoints(event.touches);
+          push('low_level', 'touch_sequence_started', 'touchstart', lowLevelAttrs(
+            'low_level.input',
+            'started',
+            event.target,
+            { touch_count: points.length }
+          ));
+          if (points.length >= 2 && !touchPinch) {
+            touchPinch = logPinchStarted(
+              'document_touch_capture',
+              event.target,
+              pointDistance(points[0], points[1]),
+              { touch_count: points.length }
+            );
+          }
+        }, listenerOptions);
+
+        document.addEventListener('touchmove', function(event) {
+          if (!touchPinch) return;
+          var points = touchPoints(event.touches);
+          if (points.length >= 2) {
+            touchPinch.lastDistance = pointDistance(points[0], points[1]);
+          }
+        }, listenerOptions);
+
+        function finishTouchSequence(event, phase, eventLabel) {
+          var remainingTouches = event.touches ? event.touches.length : 0;
+          push('low_level', 'touch_sequence_ended', eventLabel, lowLevelAttrs(
+            'low_level.input',
+            phase,
+            event.target,
+            { touch_count: remainingTouches }
+          ));
+          if (!touchPinch || remainingTouches >= 2) return;
+          logPinchEnded(touchPinch, event.target, touchPinch.lastDistance, {
+            touch_count: remainingTouches
+          });
+          touchPinch = null;
+        }
+
+        document.addEventListener('touchend', function(event) {
+          finishTouchSequence(event, 'completed', 'touchend');
+        }, listenerOptions);
+        document.addEventListener('touchcancel', function(event) {
+          finishTouchSequence(event, 'cancelled', 'touchcancel');
+        }, listenerOptions);
+
+        document.addEventListener('gesturestart', function(event) {
+          safariGesturePinch = logPinchStarted(
+            'safari_gesture_event',
+            event.target,
+            null,
+            { scale: round(event.scale || 1) }
+          );
+        }, listenerOptions);
+
+        document.addEventListener('gesturechange', function(event) {
+          if (!safariGesturePinch) return;
+          safariGesturePinch.lastScale = event.scale || safariGesturePinch.lastScale || 1;
+        }, listenerOptions);
+
+        document.addEventListener('gestureend', function(event) {
+          if (!safariGesturePinch) return;
+          var scale = event.scale || safariGesturePinch.lastScale || 1;
+          logPinchEnded(safariGesturePinch, event.target, null, {
+            scale: scale,
+            safari_rotation: round(event.rotation || 0)
+          });
+          safariGesturePinch = null;
+        }, listenerOptions);
+
+        document.addEventListener('wheel', function(event) {
+          var isPinchLike = !!(event.ctrlKey || event.metaKey);
+          push('low_level', 'wheel_input', 'wheel', lowLevelAttrs(
+            'low_level.input',
+            'completed',
+            event.target,
+            {
+              wheel_delta_x: round(event.deltaX || 0),
+              wheel_delta_y: round(event.deltaY || 0),
+              wheel_delta_mode: event.deltaMode,
+              threshold_met: isPinchLike,
+              gesture_direction: isPinchLike
+                ? ((event.deltaY || 0) > 0 ? 'close' : 'spread')
+                : 'none',
+              modifier_keys: modifierKeys(event)
+            }
+          ));
+        }, listenerOptions);
+
+        document.addEventListener('keydown', function(event) {
+          push('low_level', 'keyboard_input', 'keydown', lowLevelAttrs(
+            'low_level.input',
+            'started',
+            event.target,
+            {
+              key_class: keyClass(event),
+              modifier_keys: modifierKeys(event),
+              repeat: !!event.repeat
+            }
+          ));
+        }, listenerOptions);
+
+        document.addEventListener('keyup', function(event) {
+          push('low_level', 'keyboard_released', 'keyup', lowLevelAttrs(
+            'low_level.input',
+            'completed',
+            event.target,
+            {
+              key_class: keyClass(event),
+              modifier_keys: modifierKeys(event)
+            }
+          ));
+        }, listenerOptions);
+
+        function viewportPayload(source) {
+          var vv = window.visualViewport || null;
+          return {
+            viewport_source: source,
+            viewport_width_px: Math.round((vv && vv.width) || window.innerWidth || 0),
+            viewport_height_px: Math.round((vv && vv.height) || window.innerHeight || 0),
+            layout_width_px: Math.round(window.innerWidth || 0),
+            layout_height_px: Math.round(window.innerHeight || 0),
+            viewport_scale: round((vv && vv.scale) || 1),
+            orientation_type: screen && screen.orientation ? screen.orientation.type : null
+          };
+        }
+
+        function logViewportChanged(source) {
+          if (viewportTimer) clearTimeout(viewportTimer);
+          viewportTimer = setTimeout(function() {
+            push('low_level', 'viewport_changed', source, lowLevelAttrs(
+              'low_level.viewport',
+              'state_changed',
+              document.documentElement,
+              viewportPayload(source)
+            ));
+          }, 120);
+        }
+
+        window.addEventListener('resize', function() {
+          logViewportChanged('window_resize');
+        }, listenerOptions);
+        window.addEventListener('orientationchange', function() {
+          logViewportChanged('orientationchange');
+        }, listenerOptions);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', function() {
+            logViewportChanged('visual_viewport_resize');
+          }, listenerOptions);
+          window.visualViewport.addEventListener('scroll', function() {
+            logViewportChanged('visual_viewport_scroll');
+          }, listenerOptions);
+        }
+
+        function logNetworkChanged(state) {
+          push('low_level', 'network_changed', state, lowLevelAttrs(
+            'low_level.network',
+            'state_changed',
+            document.documentElement,
+            { network_state: state }
+          ));
+        }
+
+        window.addEventListener('online', function() {
+          logNetworkChanged('online');
+        }, listenerOptions);
+        window.addEventListener('offline', function() {
+          logNetworkChanged('offline');
+        }, listenerOptions);
+
+        function logFocusChanged(state) {
+          push('low_level', 'window_focus_changed', state, lowLevelAttrs(
+            'low_level.lifecycle',
+            'state_changed',
+            document.documentElement,
+            { focus_state: state }
+          ));
+        }
+
+        window.addEventListener('focus', function() {
+          logFocusChanged('focused');
+        }, listenerOptions);
+        window.addEventListener('blur', function() {
+          logFocusChanged('blurred');
+        }, listenerOptions);
+
+        window.addEventListener('error', function(event) {
+          var target = event.target;
+          if (!target || target === window) return;
+          push('low_level', 'resource_error', 'resource_error', lowLevelAttrs(
+            'low_level.resource',
+            'failed',
+            target,
+            {
+              resource_tag: target.tagName ? target.tagName.toLowerCase() : 'unknown',
+              resource_url_host: target.src || target.href
+                ? (function(url) {
+                    try { return new URL(url).host; } catch (_) { return 'unparseable'; }
+                  })(target.src || target.href)
+                : null
+            }
+          ));
+        }, listenerOptions);
+
+        function logClipboard(action, event) {
+          push('low_level', 'clipboard_event', action, lowLevelAttrs(
+            'low_level.clipboard',
+            'completed',
+            event.target,
+            { clipboard_action: action }
+          ));
+        }
+
+        document.addEventListener('copy', function(event) {
+          logClipboard('copy', event);
+        }, listenerOptions);
+        document.addEventListener('cut', function(event) {
+          logClipboard('cut', event);
+        }, listenerOptions);
+        document.addEventListener('paste', function(event) {
+          logClipboard('paste', event);
+        }, listenerOptions);
+      }
+
+      installLowLevelEventTelemetry();
+
       // --- MapLibre lazy-load: inject between initializeEngine and runApp ---
       //
       // PROBLEM SPACE (see docs/ios-safari-maplibre.md for full analysis):

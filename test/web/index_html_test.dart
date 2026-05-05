@@ -277,6 +277,117 @@ void main() {
         expect(html, contains('map_width_px'));
 
       });
+      test('installs one broad low-level event telemetry surface', () {
+        expect(
+          html,
+          contains('installLowLevelEventTelemetry'),
+          reason: 'Low-level observability must be a shared browser surface, '
+              'not a one-off map/pinch probe.',
+        );
+        expect(html, contains("surface: 'web_low_level'"));
+        expect(html, contains('targetMetadata'));
+        expect(html, contains('boundedClassName'));
+        expect(html, contains('touch_action'));
+        expect(html, contains('within_maplibre'));
+        expect(html, contains('window.__earthnovaLowLevelTelemetryInstalled'));
+      });
+
+      test('covers core browser input, viewport, lifecycle, network, and resource events', () {
+        const requiredListeners = {
+          "document.addEventListener('pointerdown'": 'pointer sequence start',
+          "document.addEventListener('pointermove'": 'pointer movement summary',
+          "document.addEventListener('pointerup'": 'pointer sequence end',
+          "document.addEventListener('pointercancel'": 'pointer cancellation',
+          "document.addEventListener('touchstart'": 'touch sequence start',
+          "document.addEventListener('touchmove'": 'touch/pinch movement summary',
+          "document.addEventListener('touchend'": 'touch sequence end',
+          "document.addEventListener('touchcancel'": 'touch cancellation',
+          "document.addEventListener('gesturestart'": 'Safari gesture start',
+          "document.addEventListener('gestureend'": 'Safari gesture end',
+          "document.addEventListener('wheel'": 'wheel/trackpad input',
+          "document.addEventListener('keydown'": 'keyboard input',
+          "document.addEventListener('keyup'": 'keyboard release',
+          "window.addEventListener('resize'": 'viewport resize',
+          "window.addEventListener('orientationchange'": 'orientation change',
+          "window.addEventListener('online'": 'network online',
+          "window.addEventListener('offline'": 'network offline',
+          "window.addEventListener('focus'": 'window focus',
+          "window.addEventListener('blur'": 'window blur',
+          "window.addEventListener('error'": 'resource load errors',
+          "document.addEventListener('copy'": 'clipboard copy',
+          "document.addEventListener('cut'": 'clipboard cut',
+          "document.addEventListener('paste'": 'clipboard paste',
+        };
+
+        for (final entry in requiredListeners.entries) {
+          expect(html, contains(entry.key), reason: 'Missing ${entry.value}');
+        }
+        expect(html, contains('window.visualViewport.addEventListener'));
+        expect(html, contains('capture: true'));
+      });
+
+      test('emits bounded low-level event names and privacy-safe payload fields', () {
+        const requiredEvents = [
+          "push('low_level', 'pointer_sequence_started'",
+          "push('low_level', 'pointer_sequence_ended'",
+          "push('low_level', 'touch_sequence_started'",
+          "push('low_level', 'touch_sequence_ended'",
+          "push('low_level', 'gesture_pinch_started'",
+          "push('low_level', 'gesture_pinch_ended'",
+          "push('low_level', 'wheel_input'",
+          "push('low_level', 'keyboard_input'",
+          "push('low_level', 'keyboard_released'",
+          "push('low_level', 'viewport_changed'",
+          "push('low_level', 'network_changed'",
+          "push('low_level', 'window_focus_changed'",
+          "push('low_level', 'resource_error'",
+          "push('low_level', 'clipboard_event'",
+        ];
+
+        for (final event in requiredEvents) {
+          expect(html, contains(event), reason: 'Missing low-level event $event');
+        }
+
+        const requiredPayloadFields = [
+          "'low_level.input'",
+          "'low_level.viewport'",
+          "'low_level.network'",
+          "'low_level.lifecycle'",
+          "'low_level.resource'",
+          "'low_level.clipboard'",
+          'pointer_type',
+          'pointer_count',
+          'touch_count',
+          'gesture_direction',
+          'threshold_met',
+          'wheel_delta_y',
+          'key_class',
+          'modifier_keys',
+          'viewport_width_px',
+          'viewport_height_px',
+          'network_state',
+          'resource_tag',
+          'clipboard_action',
+          'duration_ms',
+        ];
+
+        for (final field in requiredPayloadFields) {
+          expect(html, contains(field), reason: 'Missing payload field $field');
+        }
+
+        expect(
+          html,
+          isNot(contains('event.key,')),
+          reason: 'Keyboard telemetry must not log raw character keys.',
+        );
+        expect(
+          html,
+          isNot(contains('clipboardData.getData')),
+          reason: 'Clipboard telemetry must never read copied/pasted content.',
+        );
+      });
+ 
+ 
       test('normalizes zero-height platform hosts before logging layout', () {
         expect(
           html,
