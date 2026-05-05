@@ -43,6 +43,9 @@ void main() {
         _missingKeysWithPrefix(missingKeys, 'projection_').length;
     final markerGapCount =
         _missingKeysWithPrefix(missingKeys, 'marker_').length;
+    final edgeClipDiagnosticGapCount = _edgeClipDiagnosticKeys
+        .where((key) => !telemetry.containsKey(key))
+        .length;
     final fogHardness = _fogHardnessScore(telemetry);
 
     expect(telemetry['render_cell_count'], cellsWithStates.length);
@@ -69,6 +72,7 @@ void main() {
     print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
     print('METRIC antialias_penalty=${fogHardness.antialiasPenalty}');
+    print('METRIC edge_clip_diagnostic_gap_count=$edgeClipDiagnosticGapCount');
   });
 }
 
@@ -190,6 +194,7 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
     'projection_largest_bbox_area_ratio',
     'projection_viewport_edge_crossing_count',
     'projection_axis_aligned_screen_edge_ratio',
+    ..._edgeClipDiagnosticKeys,
 
     // Marker context explains whether the visible circle is fog or player chrome.
     'marker_screen_x',
@@ -207,6 +212,18 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
       if (!telemetry.containsKey(key)) key,
   ];
 }
+
+const _edgeClipDiagnosticKeys = [
+  'projection_present_polygon_count',
+  'projection_explored_polygon_count',
+  'projection_frontier_polygon_count',
+  'projection_present_viewport_edge_crossing_count',
+  'projection_explored_viewport_edge_crossing_count',
+  'projection_frontier_viewport_edge_crossing_count',
+  'projection_present_largest_bbox_area_ratio',
+  'projection_explored_largest_bbox_area_ratio',
+  'projection_frontier_largest_bbox_area_ratio',
+];
 
 List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
   final hypotheses = <String>[];

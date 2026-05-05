@@ -190,6 +190,10 @@ class MapRenderDiagnosticsService {
     var totalEdgeCount = 0;
     var axisAlignedScreenEdgeCount = 0;
     var largestAreaRatio = 0.0;
+    final relationshipSummaries = {
+      for (final relationship in CellRelationship.values)
+        relationship: _ProjectionRelationshipSummary(),
+    };
     final viewportArea = viewportSize.width * viewportSize.height;
 
     for (final entry in cellsWithStates) {
@@ -203,11 +207,19 @@ class MapRenderDiagnosticsService {
             ? 0.0
             : (bounds.width * bounds.height) / viewportArea;
         if (areaRatio > largestAreaRatio) largestAreaRatio = areaRatio;
-        if (bounds.left < 0 ||
+        final relationshipSummary =
+            relationshipSummaries[entry.state.relationship]!;
+        relationshipSummary.polygonCount++;
+        if (areaRatio > relationshipSummary.largestAreaRatio) {
+          relationshipSummary.largestAreaRatio = areaRatio;
+        }
+        final crossesViewportEdge = bounds.left < 0 ||
             bounds.top < 0 ||
             bounds.right > viewportSize.width ||
-            bounds.bottom > viewportSize.height) {
+            bounds.bottom > viewportSize.height;
+        if (crossesViewportEdge) {
           viewportEdgeCrossingCount++;
+          relationshipSummary.viewportEdgeCrossingCount++;
         }
         for (var i = 0; i < exterior.length; i++) {
           final start = exterior[i];
@@ -230,6 +242,32 @@ class MapRenderDiagnosticsService {
       'projection_axis_aligned_screen_edge_ratio': _roundRatio(
         totalEdgeCount == 0 ? 0 : axisAlignedScreenEdgeCount / totalEdgeCount,
       ),
+      ..._relationshipProjectionTelemetry(
+        CellRelationship.present,
+        relationshipSummaries[CellRelationship.present]!,
+      ),
+      ..._relationshipProjectionTelemetry(
+        CellRelationship.explored,
+        relationshipSummaries[CellRelationship.explored]!,
+      ),
+      ..._relationshipProjectionTelemetry(
+        CellRelationship.frontier,
+        relationshipSummaries[CellRelationship.frontier]!,
+      ),
+    };
+  }
+
+  Map<String, dynamic> _relationshipProjectionTelemetry(
+    CellRelationship relationship,
+    _ProjectionRelationshipSummary summary,
+  ) {
+    final prefix = 'projection_${relationship.name}';
+    return {
+      '${prefix}_polygon_count': summary.polygonCount,
+      '${prefix}_viewport_edge_crossing_count':
+          summary.viewportEdgeCrossingCount,
+      '${prefix}_largest_bbox_area_ratio':
+          _roundRatio(summary.largestAreaRatio),
     };
   }
 
@@ -357,4 +395,10 @@ class _DiagnosticPoint implements Comparable<_DiagnosticPoint> {
     if (xCompare != 0) return xCompare;
     return y.compareTo(other.y);
   }
+}
+
+class _ProjectionRelationshipSummary {
+  int polygonCount = 0;
+  int viewportEdgeCrossingCount = 0;
+  double largestAreaRatio = 0.0;
 }
