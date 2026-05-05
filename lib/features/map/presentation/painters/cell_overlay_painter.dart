@@ -25,6 +25,31 @@ class CellOverlayPainter extends CustomPainter {
 
   static const double _tileSize = 256.0;
 
+  static Offset projectGeoCoord({
+    required GeoCoord coord,
+    required GeoCoord cameraPosition,
+    required double zoom,
+    required Offset cameraPixelOffset,
+  }) {
+    final scale = pow(2.0, zoom) * _tileSize;
+
+    final x = (coord.lng + 180.0) / 360.0 * scale;
+    final latRad = coord.lat * pi / 180.0;
+    final y = (1.0 - log(tan(latRad) + (1.0 / cos(latRad))) / pi) / 2.0 * scale;
+
+    final cameraX = (cameraPosition.lng + 180.0) / 360.0 * scale;
+    final cameraLatRad = cameraPosition.lat * pi / 180.0;
+    final cameraY =
+        (1.0 - log(tan(cameraLatRad) + (1.0 / cos(cameraLatRad))) / pi) /
+            2.0 *
+            scale;
+
+    return Offset(
+      x - cameraX + cameraPixelOffset.dx,
+      y - cameraY + cameraPixelOffset.dy,
+    );
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final renderableEntries = [
@@ -103,22 +128,11 @@ class CellOverlayPainter extends CustomPainter {
   }
 
   Offset _geoCoordToScreen(GeoCoord coord) {
-    final scale = pow(2.0, zoom) * _tileSize;
-
-    final x = (coord.lng + 180.0) / 360.0 * scale;
-    final latRad = coord.lat * pi / 180.0;
-    final y = (1.0 - log(tan(latRad) + (1.0 / cos(latRad))) / pi) / 2.0 * scale;
-
-    final cameraX = (cameraPosition.lng + 180.0) / 360.0 * scale;
-    final cameraLatRad = cameraPosition.lat * pi / 180.0;
-    final cameraY =
-        (1.0 - log(tan(cameraLatRad) + (1.0 / cos(cameraLatRad))) / pi) /
-            2.0 *
-            scale;
-
-    return Offset(
-      x - cameraX + cameraPixelOffset.dx,
-      y - cameraY + cameraPixelOffset.dy,
+    return projectGeoCoord(
+      coord: coord,
+      cameraPosition: cameraPosition,
+      zoom: zoom,
+      cameraPixelOffset: cameraPixelOffset,
     );
   }
 

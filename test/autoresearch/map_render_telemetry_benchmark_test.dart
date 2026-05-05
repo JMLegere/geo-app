@@ -1,8 +1,10 @@
+// ignore_for_file: avoid_print
+
 import 'dart:ui';
 
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
-import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
+import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,9 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('benchmark: map render telemetry explains visual artifacts', () {
     final cellsWithStates = _badScreenshotLikeScene();
-    final telemetry =
-        const CellGeometryDiagnosticsService().summarizeRenderedCells(
-      cellsWithStates,
+    final telemetry = const MapRenderDiagnosticsService().summarize(
+      cellsWithStates: cellsWithStates,
+      viewportSize: const Size(390, 844),
+      project: _projectToFixtureViewport,
+      markerScreenPosition: const Offset(195, 422),
+      currentCellId: 'present',
+      visitedCellCount: 4,
     );
 
     final renderableEntries = [

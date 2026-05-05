@@ -15,7 +15,7 @@ import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
-import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
+import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
@@ -536,8 +536,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 )
               : <({Cell cell, CellState state})>[];
           final renderDiagnostics =
-              const CellGeometryDiagnosticsService().summarizeRenderedCells(
-            cellsWithStates,
+              const MapRenderDiagnosticsService().summarize(
+            cellsWithStates: cellsWithStates,
+            viewportSize: mapSize,
+            project: (coord) => CellOverlayPainter.projectGeoCoord(
+              coord: coord,
+              cameraPosition: (lat: location.lat, lng: location.lng),
+              zoom: _kGpsZoom,
+              cameraPixelOffset: screenCenter,
+            ),
+            markerScreenPosition: markerScreenPosition,
+            currentCellId: explorationState.currentCellId,
+            visitedCellCount: footprint.uniqueCount,
           );
           final readiness = _readinessFor(
             locationReady: true,
