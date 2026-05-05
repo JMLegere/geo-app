@@ -8,6 +8,9 @@ class FogRenderer {
 
   static const double _kRenderDistanceKm = 2.0;
   static const bool overlayAntiAlias = true;
+  static const bool usesUnknownBackdrop = true;
+  static const String fillCompositingMode =
+      'unknown_backdrop_src_relationship_paths';
 
   static Color fillColor(CellState state) {
     return switch (state.relationship) {

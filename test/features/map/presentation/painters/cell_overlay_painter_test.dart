@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
@@ -120,6 +122,17 @@ void main() {
       );
 
       expect(painter1.shouldRepaint(painter2), isFalse);
+    });
+
+    test('paints an unknown backdrop layer behind fetched cell fills', () {
+      final source = File(
+        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('canvas.saveLayer'));
+      expect(source, contains('CellRelationship.unknown'));
+      expect(source, contains('BlendMode.src'));
+      expect(source, contains('canvas.restore'));
     });
   });
 }

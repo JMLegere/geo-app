@@ -46,6 +46,9 @@ void main() {
     final edgeClipDiagnosticGapCount = _edgeClipDiagnosticKeys
         .where((key) => !telemetry.containsKey(key))
         .length;
+    final unknownBackdropGapCount = _unknownBackdropDiagnosticKeys
+        .where((key) => !telemetry.containsKey(key))
+        .length;
     final fogHardness = _fogHardnessScore(telemetry);
 
     expect(telemetry['render_cell_count'], cellsWithStates.length);
@@ -73,6 +76,7 @@ void main() {
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
     print('METRIC antialias_penalty=${fogHardness.antialiasPenalty}');
     print('METRIC edge_clip_diagnostic_gap_count=$edgeClipDiagnosticGapCount');
+    print('METRIC unknown_backdrop_gap_count=$unknownBackdropGapCount');
   });
 }
 
@@ -178,6 +182,7 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
     'style_frontier_stroke_alpha',
     'style_overlay_antialias',
     'style_fill_grouping_mode',
+    ..._unknownBackdropDiagnosticKeys,
 
     // Render-model context explains whether Canvas path grouping/seams caused it.
     'render_model_fill_path_count',
@@ -223,6 +228,11 @@ const _edgeClipDiagnosticKeys = [
   'projection_present_largest_bbox_area_ratio',
   'projection_explored_largest_bbox_area_ratio',
   'projection_frontier_largest_bbox_area_ratio',
+];
+
+const _unknownBackdropDiagnosticKeys = [
+  'style_uses_unknown_backdrop',
+  'style_fill_compositing_mode',
 ];
 
 List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
