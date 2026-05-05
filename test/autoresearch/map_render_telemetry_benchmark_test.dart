@@ -58,6 +58,7 @@ void main() {
         .length;
     final fetchSelection = _fetchSelectionScore();
 
+    final coverageSource = _coverageSourceScore();
     final coverageTelemetry = const MapRenderDiagnosticsService().summarize(
       cellsWithStates: [
         for (final entry in _coverageFixtureScene())
@@ -95,12 +96,14 @@ void main() {
       'ASI coverage_shortfall_breakdown=${coverageShortfall.breakdown}',
     );
     print('ASI fetch_selection_breakdown=${fetchSelection.breakdown}');
+    print('ASI coverage_source_breakdown=${coverageSource.breakdown}');
     print('METRIC telemetry_gap_count=${missingKeys.length}');
     print('METRIC unresolved_hypothesis_count=${unresolvedHypotheses.length}');
     print('METRIC style_gap_count=$styleGapCount');
     print('METRIC render_model_gap_count=$renderModelGapCount');
     print('METRIC projection_gap_count=$projectionGapCount');
     print('METRIC marker_gap_count=$markerGapCount');
+    print('METRIC coverage_source_gap_count=${coverageSource.score}');
     print('METRIC fog_hardness_score=${fogHardness.score}');
     print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
@@ -528,6 +531,44 @@ _FetchSelectionScore _fetchSelectionScore() {
 
 class _FetchSelectionScore {
   const _FetchSelectionScore({
+    required this.score,
+    required this.breakdown,
+  });
+
+  final int score;
+  final String breakdown;
+}
+
+_CoverageSourceScore _coverageSourceScore() {
+  final migrationsDir = Directory(
+    '${Directory.current.path}/supabase/migrations',
+  );
+  final candidates = migrationsDir
+      .listSync()
+      .whereType<File>()
+      .where((file) => file.path.endsWith('.sql'))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+  final target = candidates.reversed.firstWhere(
+    (file) => file.readAsStringSync().contains(
+          'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+        ),
+  );
+  final sql = target.readAsStringSync();
+  final createIndex = sql.lastIndexOf(
+    'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+  );
+  final functionSql = createIndex >= 0 ? sql.substring(createIndex) : sql;
+  final usesBufferedCoverage = functionSql.contains('ST_Buffer(');
+  return _CoverageSourceScore(
+    score: usesBufferedCoverage ? 0 : 1,
+    breakdown:
+        'migration=${target.uri.pathSegments.last} buffered_coverage=$usesBufferedCoverage',
+  );
+}
+
+class _CoverageSourceScore {
+  const _CoverageSourceScore({
     required this.score,
     required this.breakdown,
   });
