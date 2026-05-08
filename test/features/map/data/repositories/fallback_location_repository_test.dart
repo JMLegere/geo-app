@@ -111,6 +111,21 @@ void main() {
       expect(sourceEvent.data?['dependency'], 'gps');
     });
 
+    test('default fallback position is inside beta Fredericton coverage',
+        () async {
+      final repo = FallbackLocationRepository(
+        real: _ThrowingLocationRepository(),
+        logEvent: logEvent,
+      );
+
+      final position = await repo.getCurrentPosition();
+
+      expect(position.lat, 45.9636);
+      expect(position.lng, -66.6431);
+      expect(position.accuracy, 5.0);
+      expect(position.isConfident, isTrue);
+    });
+
     test('getCurrentPosition returns real position when real succeeds',
         () async {
       final realPos = LocationState(

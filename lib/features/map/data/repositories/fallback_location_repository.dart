@@ -26,8 +26,8 @@ class FallbackLocationRepository implements LocationRepository {
   static MockLocationRepository _defaultMock() {
     final repo = MockLocationRepository();
     repo.emitPosition(LocationState(
-      lat: 37.7749,
-      lng: -122.4194,
+      lat: 45.9636,
+      lng: -66.6431,
       accuracy: 5.0,
       timestamp: DateTime.now(),
       isConfident: true,
