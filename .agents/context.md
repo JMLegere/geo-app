@@ -226,3 +226,14 @@
   - `flutter analyze --no-pub`
   - `flutter test --no-pub --reporter=compact`
   - `git diff --check`
+
+## Completed 2026-05-08 — debug map movement controls
+- Developer/debug overlay now includes player movement controls (`P↑`, `P↓`, `P←`, `P→`) plus a `GPS` resume control.
+- Pressing a debug movement control switches `LocationNotifier` into simulated-location mode, cancels the active GPS stream subscription, and emits `map.debug_location_updated` with `geo_location_enabled=false`.
+- Simulated movement starts from the current active location when available, otherwise from the Fredericton beta fixture coordinate (`45.9636,-66.6431`) so local/web QA fetches real beta map cells.
+- `GPS` exits simulated mode, emits `map.debug_location_disabled`, and restarts the normal GPS permission/current-position/stream flow.
+- Verification passed:
+  - `flutter test --no-pub test/features/map/presentation/providers/location_provider_test.dart test/shared/debug/debug_gesture_overlay_test.dart`
+  - `flutter test --no-pub test/shared/widgets/tab_shell_test.dart`
+  - `flutter analyze --no-pub`
+  - `flutter test --no-pub --reporter=compact`

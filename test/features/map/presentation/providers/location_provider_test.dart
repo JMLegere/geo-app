@@ -402,5 +402,86 @@ void main() {
       // map.gps_error is only for getCurrentPosition failures, not stream errors
       expect(obs.eventNames, isNot(contains('map.gps_error')));
     });
+    test('debug movement uses Fredericton fallback and activates location',
+        () async {
+      container.read(locationProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      container
+          .read(locationProvider.notifier)
+          .moveDebugLocation(DebugLocationMoveDirection.north);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(locationProvider);
+      expect(state, isA<LocationProviderActive>());
+      final location = switch (state) {
+        LocationProviderActive(location: final location) => location,
+        _ => fail('Expected debug location to be active'),
+      };
+      expect(location.lat, greaterThan(45.9636));
+      expect(location.lng, closeTo(-66.6431, 0.000001));
+      expect(location.isConfident, isTrue);
+      expect(obs.eventNames, contains('map.debug_location_updated'));
+    });
+
+    test('debug movement ignores later real GPS stream updates', () async {
+      container.read(locationProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      container
+          .read(locationProvider.notifier)
+          .moveDebugLocation(DebugLocationMoveDirection.east);
+      await Future<void>.delayed(Duration.zero);
+      final debugState = container.read(locationProvider);
+      final debugLocation = switch (debugState) {
+        LocationProviderActive(location: final location) => location,
+        _ => fail('Expected debug location to be active'),
+      };
+
+      repo.emitPosition(LocationState(
+        lat: 1.0,
+        lng: 2.0,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 0, 2),
+        isConfident: true,
+      ));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(locationProvider);
+      final location = switch (state) {
+        LocationProviderActive(location: final location) => location,
+        _ => fail('Expected debug location to remain active'),
+      };
+      expect(location, debugLocation);
+    });
+
+    test('resumeGps leaves debug mode and accepts real GPS again', () async {
+      container.read(locationProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final notifier = container.read(locationProvider.notifier);
+      notifier.moveDebugLocation(DebugLocationMoveDirection.west);
+      await Future<void>.delayed(Duration.zero);
+      notifier.resumeGps();
+      await Future<void>.delayed(Duration.zero);
+
+      final gpsPosition = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 0, 3),
+        isConfident: true,
+      );
+      repo.emitPosition(gpsPosition);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(locationProvider);
+      final location = switch (state) {
+        LocationProviderActive(location: final location) => location,
+        _ => fail('Expected GPS location to be active after resume'),
+      };
+      expect(location, gpsPosition);
+      expect(obs.eventNames, contains('map.debug_location_disabled'));
+    });
   });
 }

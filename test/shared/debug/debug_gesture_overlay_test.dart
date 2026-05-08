@@ -44,13 +44,21 @@ class _FakeInjector implements GestureInjectorInterface {
   }
 }
 
-Widget _wrap(_FakeInjector injector) {
+Widget _wrap(
+  _FakeInjector injector, {
+  void Function(DebugPlayerMoveDirection direction)? onMovePlayer,
+  VoidCallback? onResumeGps,
+}) {
   return ProviderScope(
     child: MaterialApp(
       home: Scaffold(
         body: Stack(
           children: [
-            DebugGestureOverlay(injector: injector),
+            DebugGestureOverlay(
+              injector: injector,
+              onMovePlayer: onMovePlayer,
+              onResumeGps: onResumeGps,
+            ),
           ],
         ),
       ),
@@ -78,6 +86,54 @@ void main() {
       expect(find.byTooltip('Down'), findsOneWidget);
       expect(find.byTooltip('Left'), findsOneWidget);
       expect(find.byTooltip('Right'), findsOneWidget);
+    });
+
+    testWidgets('renders player movement controls when callback is provided',
+        (tester) async {
+      final injector = _FakeInjector();
+      await tester.pumpWidget(_wrap(
+        injector,
+        onMovePlayer: (_) {},
+        onResumeGps: () {},
+      ));
+
+      expect(find.byType(Tooltip), findsNWidgets(11));
+      expect(find.byTooltip('Move player north'), findsOneWidget);
+      expect(find.byTooltip('Move player south'), findsOneWidget);
+      expect(find.byTooltip('Move player west'), findsOneWidget);
+      expect(find.byTooltip('Move player east'), findsOneWidget);
+      expect(find.byTooltip('Resume GPS'), findsOneWidget);
+    });
+
+    testWidgets('tapping player move north calls movement callback',
+        (tester) async {
+      final injector = _FakeInjector();
+      final moves = <DebugPlayerMoveDirection>[];
+      await tester.pumpWidget(_wrap(
+        injector,
+        onMovePlayer: moves.add,
+        onResumeGps: () {},
+      ));
+
+      await tester.tap(find.byTooltip('Move player north'));
+      await tester.pump();
+
+      expect(moves, [DebugPlayerMoveDirection.north]);
+    });
+
+    testWidgets('tapping Resume GPS calls resume callback', (tester) async {
+      final injector = _FakeInjector();
+      var resumeCount = 0;
+      await tester.pumpWidget(_wrap(
+        injector,
+        onMovePlayer: (_) {},
+        onResumeGps: () => resumeCount += 1,
+      ));
+
+      await tester.tap(find.byTooltip('Resume GPS'));
+      await tester.pump();
+
+      expect(resumeCount, 1);
     });
 
     testWidgets('tapping Pinch calls injector.pinch', (tester) async {

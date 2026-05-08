@@ -21,6 +21,13 @@ abstract interface class GestureInjectorInterface {
   Future<void> spread(Offset center, double distance);
 }
 
+enum DebugPlayerMoveDirection {
+  north,
+  south,
+  west,
+  east,
+}
+
 // ─── Default injector ─────────────────────────────────────────────────────────
 // Uses Flutter pointer injection — works on all Flutter widget trees.
 // Swipe events do not reach the MapLibre WebGL canvas on the map screen;
@@ -53,10 +60,13 @@ class DebugGestureOverlay extends StatefulWidget {
   const DebugGestureOverlay({
     super.key,
     GestureInjectorInterface? injector,
+    this.onMovePlayer,
+    this.onResumeGps,
   }) : _injector = injector ?? const _DefaultInjector();
 
   final GestureInjectorInterface _injector;
-
+  final void Function(DebugPlayerMoveDirection direction)? onMovePlayer;
+  final VoidCallback? onResumeGps;
   @override
   State<DebugGestureOverlay> createState() => _DebugGestureOverlayState();
 }
@@ -101,7 +111,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
     final injector = widget._injector;
 
     return Positioned(
-      top: 100,
+      top: 72,
       right: 0,
       child: Container(
         width: _expanded ? _panelWidth : _handleWidth,
@@ -133,6 +143,45 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
               const SizedBox(height: 4),
               _btn('→ R', Icons.arrow_forward, 'Right',
                   () => injector.swipeRight(center, swipeDistance)),
+              if (widget.onMovePlayer != null) ...[
+                const SizedBox(height: 8),
+                _btn(
+                  'P↑',
+                  Icons.keyboard_arrow_up,
+                  'Move player north',
+                  () => widget.onMovePlayer!(DebugPlayerMoveDirection.north),
+                ),
+                const SizedBox(height: 4),
+                _btn(
+                  'P↓',
+                  Icons.keyboard_arrow_down,
+                  'Move player south',
+                  () => widget.onMovePlayer!(DebugPlayerMoveDirection.south),
+                ),
+                const SizedBox(height: 4),
+                _btn(
+                  'P←',
+                  Icons.keyboard_arrow_left,
+                  'Move player west',
+                  () => widget.onMovePlayer!(DebugPlayerMoveDirection.west),
+                ),
+                const SizedBox(height: 4),
+                _btn(
+                  'P→',
+                  Icons.keyboard_arrow_right,
+                  'Move player east',
+                  () => widget.onMovePlayer!(DebugPlayerMoveDirection.east),
+                ),
+              ],
+              if (widget.onResumeGps != null) ...[
+                const SizedBox(height: 4),
+                _btn(
+                  'GPS',
+                  Icons.my_location,
+                  'Resume GPS',
+                  widget.onResumeGps!,
+                ),
+              ],
               const SizedBox(height: 8),
             ],
           ],
