@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
@@ -109,6 +110,20 @@ class _TabShellState extends ConsumerState<TabShell>
     setState(() => _currentIndex = index);
   }
 
+  void _onDebugMovePlayer(DebugPlayerMoveDirection direction) {
+    final mappedDirection = switch (direction) {
+      DebugPlayerMoveDirection.north => DebugLocationMoveDirection.north,
+      DebugPlayerMoveDirection.south => DebugLocationMoveDirection.south,
+      DebugPlayerMoveDirection.west => DebugLocationMoveDirection.west,
+      DebugPlayerMoveDirection.east => DebugLocationMoveDirection.east,
+    };
+    ref.read(locationProvider.notifier).moveDebugLocation(mappedDirection);
+  }
+
+  void _onDebugResumeGps() {
+    ref.read(locationProvider.notifier).resumeGps();
+  }
+
   @override
   Widget build(BuildContext context) {
     final obs = ref.watch(appObservabilityProvider);
@@ -148,7 +163,11 @@ class _TabShellState extends ConsumerState<TabShell>
                 children: _screens,
               ),
             ),
-            if (debugMode && _debugOverlayVisible) const DebugGestureOverlay(),
+            if (debugMode && _debugOverlayVisible)
+              DebugGestureOverlay(
+                onMovePlayer: _onDebugMovePlayer,
+                onResumeGps: _onDebugResumeGps,
+              ),
           ],
         ),
         bottomNavigationBar: Stack(
