@@ -237,3 +237,4 @@
   - `flutter test --no-pub test/shared/widgets/tab_shell_test.dart`
   - `flutter analyze --no-pub`
   - `flutter test --no-pub --reporter=compact`
+- Beta QA immediately after PR #538 found the simulated movement buttons were present and emitted `map.debug_location_updated`, but web fallback GPS had already activated at the old San Francisco mock coordinate (`37.7749,-122.4194`), causing `fetch_nearby_cells` to return `0` renderable cells. Follow-up fix changes the default fallback mock location to the Fredericton beta coverage coordinate.
