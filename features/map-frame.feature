@@ -16,6 +16,12 @@ Feature: Map Frame
     Then the map frame should not expose a fog-free map, empty overlay, or raw debug state
     And readiness should show a branded spinning-world loading state until it resolves into either a playable map or an observable load failure
 
+  Scenario: Base map labels stay hidden behind the game layer
+    Given the MapLibre base map style has loaded
+    When the GPS-level Map becomes playable
+    Then base-map text labels should be hidden from the map
+    And legal attribution should remain available
+
   Scenario: The GPS-level view stays intimate
     Given the player is viewing the GPS-level map
     When they want to change what the map shows at that level

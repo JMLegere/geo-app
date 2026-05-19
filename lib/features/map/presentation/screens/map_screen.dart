@@ -24,6 +24,7 @@ import 'package:earth_nova/features/map/presentation/providers/camera_follow_pro
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
+import 'package:earth_nova/features/map/presentation/platform/map_style_label_layers.dart';
 import 'package:earth_nova/features/map/presentation/presenters/encounter_presenter.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
@@ -68,6 +69,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _mapCreated = false;
   bool _mapStyleLoaded = false;
   bool _baseMapSettled = false;
+  bool _baseMapTextLabelsHidden = false;
   bool _overlayFramePainted = false;
   bool _steadyStateLogged = false;
   bool _readinessWaitingLogged = false;
@@ -266,7 +268,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _handleStyleLoaded({required String source}) {
-    if (_mapStyleLoaded) return;
+    if (_mapStyleLoaded) {
+      unawaited(_hideBaseMapTextLabels(source: source));
+      return;
+    }
     _logMapFlowEvent(
       TelemetryFlowPhase.dependencyReady,
       eventName: 'map.style_loaded',
@@ -275,6 +280,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
     _markStyleLoaded();
+    unawaited(_hideBaseMapTextLabels(source: source));
+  }
+
+  Future<void> _hideBaseMapTextLabels({required String source}) async {
+    if (_baseMapTextLabelsHidden) return;
+    final controller = _mapController;
+    if (controller == null) return;
+
+    try {
+      final styleJson = await controller.getStyle();
+      if (!mounted || styleJson == null) return;
+
+      final labelLayerIds = baseMapTextLabelLayerIdsFromStyle(styleJson);
+      var hiddenLayerCount = 0;
+      for (final layerId in labelLayerIds) {
+        try {
+          await controller.setLayerVisibility(layerId, false);
+          hiddenLayerCount++;
+        } catch (_) {
+          // Styles can change underneath us on web while startup signals race.
+          // Continue hiding the remaining label layers instead of failing the
+          // whole map bootstrap path for one missing layer id.
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _baseMapTextLabelsHidden = true);
+      _logMapEvent(
+        'map.base_map_labels_hidden',
+        data: {
+          'source': source,
+          'label_layer_count': labelLayerIds.length,
+          'hidden_layer_count': hiddenLayerCount,
+        },
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _logMapEvent(
+        'map.base_map_labels_hidden_failed',
+        data: {
+          'source': source,
+          'reason': error.toString(),
+        },
+      );
+    }
   }
 
   void _scheduleBaseMapSettledFallback({

@@ -337,3 +337,8 @@
 - `map.geometry_rendered` showed projection mode alternating between exact MapLibre screen coordinates and the synchronous Mercator fallback while movement/projection batches were pending.
 - The visible cell-size snap came from a scale mismatch: the fallback used a 256px tile world while MapLibre GL's screen projection uses a 512px world scale.
 - Keep MapLibre exact screen coordinates as the preferred overlay projection, but calibrate the fallback to the same 512px world scale so frames do not visibly resize while waiting for exact batch results.
+
+## 2026-05-19 — GPS-level map suppresses base-map text labels
+- The GPS-level Map should prioritize marker, fog relationship, map-cell mosaic, and cue readability over cartographic labels.
+- Hide MapLibre base-map text labels after style load by disabling symbol layers with a `text-field`; preserve legal attribution.
+- Do not hide icon-only symbol layers as part of this decision unless they later prove visually noisy.

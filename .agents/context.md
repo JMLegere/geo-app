@@ -485,3 +485,8 @@
 - Jeremy reported that while scrolling/moving the map, Voronoi map cells visibly snapped larger and then back smaller; telemetry showed `map.geometry_rendered` alternating between `maplibre_exact_screen` and `mercator_fallback`, with the fallback projected cell area roughly one quarter of exact projection.
 - Root cause: the fallback Web Mercator projector used a 256px world tile scale while MapLibre GL screen projection uses a 512px world scale.
 - Updated `CellOverlayPainter` fallback projection to use MapLibre's 512px world scale so fallback and exact projection stay visually consistent while exact batches are pending.
+
+## Completed 2026-05-19 — map visual decluttering pass
+- Jeremy asked for revealed map cell borders to be thinner after the dark neutral seam change; reduced present/explored seam stroke and glow widths while keeping dark explored-cell separation readable.
+- Jeremy asked to remove all text labels from the map; added runtime MapLibre style handling that parses loaded style JSON, hides every symbol layer with a `text-field`, and logs `map.base_map_labels_hidden`.
+- Legal attribution remains visible; icon-only symbol layers may remain because the request targets text labels/cartographic label clutter.

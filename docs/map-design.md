@@ -690,7 +690,7 @@ The GPS-level map should feel organic and legible, not technical.
 
 | Element | Visual intent | Jank to avoid |
 |---------|---------------|---------------|
-| Base map | Quiet real-world grounding | Bright cartographic clutter competing with fog |
+| Base map | Quiet real-world grounding with text labels suppressed at GPS scale | Bright cartographic clutter competing with fog |
 | Present map cell | Bright, alive, immediately readable | Over-saturated debug highlight |
 | Explored footprint | Warm muted permanence with individually countable cells | One continuous pale blob or grey dead-zone |
 | Frontier | Dark translucent tease with minimal seams | Grid wall, spoiler detail, or harsh cutoff |

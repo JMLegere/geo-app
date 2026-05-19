@@ -447,6 +447,17 @@ void main() {
           contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'));
     });
 
+
+    test('hides base-map text labels after style load', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_hideBaseMapTextLabels('));
+      expect(mapSource, contains('baseMapTextLabelLayerIdsFromStyle'));
+      expect(mapSource, contains('setLayerVisibility(layerId, false)'));
+      expect(mapSource, contains('map.base_map_labels_hidden'));
+    });
     test('uses MapLibre exact screen-coordinate batch projection', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
