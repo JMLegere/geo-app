@@ -33,7 +33,7 @@ abstract final class Durations {
   static const Duration quick = Duration(milliseconds: 150);
   static const Duration normal = Duration(milliseconds: 250);
   static const Duration slow = Duration(milliseconds: 350);
-  static const Duration ellipsis = Duration(milliseconds: 400);
+  static const Duration loadingCycle = Duration(milliseconds: 400);
 }
 
 /// Standard animation curves.

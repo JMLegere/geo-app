@@ -105,7 +105,7 @@ This is the implementation-ready player loop for the first slice.
 
 | Moment | Trigger | Player sees | System commits |
 |--------|---------|-------------|----------------|
-| Map enters | Player opens Map tab | Loading/readiness cover, then GPS-level map | Starts/continues location, cell fetch, visit fetch, overlay readiness |
+| Map enters | Player opens Map tab | Spinning-world readiness cover, then GPS-level map | Starts/continues location, cell fetch, visit fetch, overlay readiness |
 | Map steadies | Map, cells, location, and overlay are coherent | Marker/ring, current map cell, fog relationships | Emits steady/ready lifecycle state |
 | Trust resolves | GPS is trusted or not trusted | Marker if trusted; ring/pause affordance if untrusted | Sets exploration eligibility to eligible or browse-only |
 | Player moves | Marker moves within same map cell | Smooth marker movement, no reward spam | Updates marker state only |
@@ -642,7 +642,7 @@ At GPS level, the player experiences one map composed of ordered layers:
 
 | Layer | Purpose | Design rule |
 |-------|---------|-------------|
-| Readiness cover | Prevent raw loading/fog-free flashes | Disappears only when map, cells, location, and overlay are coherent |
+| Readiness cover | Prevent raw loading/fog-free flashes | Uses the shared spinning-world loader and disappears only when map, cells, location, and overlay are coherent |
 | Base map | Real-world orientation | Supports orientation but should not visually overpower fog state |
 | Cell geometry | Playable map cells | Organic Voronoi cells represent crossable map cells, not debug geometry |
 | Fog overlay | Reveal/progress reward | Present/explored/frontier/beyond must be legible at a glance |
@@ -1149,6 +1149,10 @@ Habitat information is color-only (border blend). **Color + label on tap** — t
 any cell shows habitat names in text via bottom sheet.
 
 ### Loading States
+
+**Spinning-world loader** while app, GPS, or map readiness is blocking play. The
+shared loader cycles 🌍 → 🌎 → 🌏 instead of ellipses so loading still feels
+EarthNova-native.
 
 **Shimmer / skeleton cells** while cell data is being fetched. Cell shapes appear
 as grey shimmering placeholders, fill in with real data as it arrives.

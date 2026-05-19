@@ -4,32 +4,34 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
 void main() {
   group('LoadingDots', () {
-    testWidgets('renders initial dot', (tester) async {
+    testWidgets('renders initial earth frame', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
       );
 
-      expect(find.text('.'), findsOneWidget);
+      expect(find.text('🌍'), findsOneWidget);
+      expect(find.text('.'), findsNothing);
     });
 
-    testWidgets('cycles through dot counts', (tester) async {
+    testWidgets('cycles through earth frames', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
       );
 
-      expect(find.text('.'), findsOneWidget);
+      expect(find.text('🌍'), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('..'), findsOneWidget);
+      expect(find.text('🌎'), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('...'), findsOneWidget);
+      expect(find.text('🌏'), findsOneWidget);
 
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('.'), findsOneWidget);
+      expect(find.text('🌍'), findsOneWidget);
+      expect(find.text('...'), findsNothing);
     });
 
     testWidgets('disposes without error', (tester) async {

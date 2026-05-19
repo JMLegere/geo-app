@@ -453,3 +453,7 @@
 - Jeremy clarified that frontier should only include map cells sharing a border with an explored/revealed map cell, not every fetched unvisited cell.
 - Updated `FogStateService` so present and explored cells contribute revealed borders; only fetched unvisited cells sharing one of those borders become frontier, while other fetched unvisited cells become unknown.
 - Updated SuperBDD and map design docs so frontier/unknown semantics are driven by shared map-cell borders, with corner-only contact explicitly excluded.
+
+## Completed 2026-05-19 — spinning-world loading indicator
+- Replaced the shared ellipsis loading animation with a spinning-world emoji cycle (`🌍 → 🌎 → 🌏`) so app, GPS, and map readiness loading states feel EarthNova-native.
+- Updated Map Frame SuperBDD and `docs/map-design.md` to describe the shared spinning-world readiness/loading state.

@@ -301,3 +301,7 @@
 - The revealed footprint includes present and explored map cells; present participates because the current cell is visibly revealed even before it becomes historical explored state.
 - Fetched unvisited cells that do not share a revealed border are `unknown`, not frontier, and should retain fully opaque fog.
 - Corner-only point contact does not count as frontier adjacency.
+
+## 2026-05-19 — Loading animation uses spinning world emoji cycle
+- Use the shared loading animation for app, GPS, and map readiness blocking states instead of raw ellipses.
+- The animation cycles through `🌍 → 🌎 → 🌏` to imply a spinning Earth and keep waiting states in EarthNova's world/exploration language.

@@ -14,7 +14,7 @@ Feature: Map Frame
     Given cells, base map style, location, and overlay paint are still loading
     When the player is waiting for the Map tab to become ready
     Then the map frame should not expose a fog-free map, empty overlay, or raw debug state
-    And readiness should resolve into either a playable map or an observable load failure
+    And readiness should show a branded spinning-world loading state until it resolves into either a playable map or an observable load failure
 
   Scenario: The GPS-level view stays intimate
     Given the player is viewing the GPS-level map
@@ -32,7 +32,7 @@ Feature: Map Frame
     Given the first-slice map requires map style, nearby cells, visit history, location state, and overlay paint
     When any required input is missing or failed
     Then the map frame should keep the player out of fake-ready gameplay
-    And it should expose either a coherent loading state or an observable failure reason
+    And it should expose either a coherent spinning-world loading state or an observable failure reason
 
   Scenario: Steady state waits for map-specific dependencies
     Given map style, nearby cells, visit history, location state, and overlay paint do not become ready at the same time

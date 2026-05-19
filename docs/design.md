@@ -639,7 +639,7 @@ Every loading state has motion. Every state transition is animated.
 
 | State | Animation |
 |-------|-----------|
-| Loading screen | "Loading Pack..." with cycling ellipsis (`·`, `··`, `···`) on a 400ms loop — `AnimationController`. Costs nothing, removes all perception of hanging. |
+| Loading screen | "Loading Pack" plus spinning-world loader (`🌍`, `🌎`, `🌏`) on a 400ms loop — `AnimationController`. Costs nothing, removes all perception of hanging. |
 | Login → LoadingScreen | Fade transition (200ms) |
 | LoadingScreen → TabShell | Fade transition (300ms) |
 | Pack items arriving | Staggered fade-in — cards appear sequentially, not all at once |
@@ -647,7 +647,7 @@ Every loading state has motion. Every state transition is animated.
 | Error state appearing | Fade in (150ms) — abrupt error messages feel harsh |
 | Button press | Ink ripple (Material default) — instant tactile feedback |
 
-The animated ellipsis is the minimum viable animation: `"Loading Pack."` → `"Loading Pack.."` → `"Loading Pack..."`. If the user sees text changing, they know the app is alive.
+The shared loading animation is the minimum viable motion: `🌍` → `🌎` → `🌏`. If the user sees the world changing, they know the app is alive.
 
 ### Budgets
 
@@ -738,7 +738,7 @@ abstract final class Durations {
   static const Duration quick     = Duration(milliseconds: 150);  // chip select
   static const Duration normal    = Duration(milliseconds: 250);  // page change
   static const Duration slow      = Duration(milliseconds: 350);  // slide-in
-  static const Duration ellipsis   = Duration(milliseconds: 400);  // loading dots cycle
+  static const Duration loadingCycle = Duration(milliseconds: 400);  // spinning-world loading cycle
   static const Duration spriteFrame = Duration(milliseconds: 500); // 2-frame idle (2Hz)
   static const Duration prismatic  = Duration(milliseconds: 3500); // rainbow border
   static const Duration spriteIdle = Duration(milliseconds: 1800); // breathing fallback
@@ -770,7 +770,7 @@ Every reusable piece. Nothing gets built that isn't listed here first.
 | `SpriteAnimationScope` | `widgets/sprite_animation_scope.dart` | Shared AnimationController for 2-frame idle at 2Hz — one per grid. Each slot reads `controller.value + phaseOffset` to determine current frame. |
 | `SpeciesArtImage` | `widgets/species_art_image.dart` | Network image with emoji fallback, breathing animation, shimmer loading |
 | `EmptyStateWidget` | `widgets/empty_state_widget.dart` | Consistent empty state — icon + title + subtitle |
-| `LoadingDots` | `widgets/loading_dots.dart` | Animated ellipsis (`·` `··` `···`) on 400ms loop |
+| `LoadingDots` | `widgets/loading_dots.dart` | Shared spinning-world loader (`🌍` `🌎` `🌏`) on 400ms loop |
 | `ErrorStateWidget` | `widgets/error_state_widget.dart` | Error message + retry button |
 | `IdenticonAvatar` | `widgets/identicon_avatar.dart` | Deterministic avatar generated from user ID seed |
 | `_PageDotIndicator` | `screens/pack_screen.dart` (private) | 7-dot page indicator for the Pack screen category PageView — active dot expands to a teal pill |
@@ -791,15 +791,15 @@ The first thing a user sees after every launch. Must feel alive.
 │                                 │
 │          EarthNova              │  ← wordmark, 28px, w700, onSurface
 │                                 │
-│       Loading Pack·             │  ← 15px, onSurfaceVariant
-│                                 │  ← ellipsis cycles: · ·· ··· on 400ms loop
+│       Loading Pack              │  ← 15px, onSurfaceVariant
+│              🌍                 │  ← cycles: 🌍 🌎 🌏 on 400ms loop
 │                                 │
 └─────────────────────────────────┘
 ```
 
 - Background: `#0D1B2A` (surface)
 - "EarthNova" centred, `fontSize: 28`, `fontWeight: w700`, `color: onSurface`
-- "Loading Pack" + animated `LoadingDots`, `fontSize: 15`, `color: onSurfaceVariant`
+- "Loading Pack" + animated `LoadingDots` spinning-world loader, `fontSize: 15`, `color: onSurfaceVariant`
 - Vertical spacing: `EarthNova` at 38% height, `Loading Pack` 12px below
 - Enter: fade in over 200ms from login/splash
 - Exit: fade out over 300ms to TabShell
@@ -1226,7 +1226,7 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 
 ### Loading Screen
 
-- [ ] `LoadingDots` cycles `·` `··` `···` at 400ms — never static
+- [ ] `LoadingDots` cycles `🌍` `🌎` `🌏` at 400ms — never static
 - [ ] Login → `LoadingScreen`: fade transition ~200ms
 - [ ] `LoadingScreen` → `TabShell`: fade transition ~300ms
 - [ ] `LoadingScreen` never visible > 5s — timeout renders error state with retry
