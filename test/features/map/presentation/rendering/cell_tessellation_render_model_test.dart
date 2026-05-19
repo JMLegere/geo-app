@@ -65,6 +65,26 @@ void main() {
       );
     });
 
+    test('emits a visible frontier outline against unknown territory', () {
+      final model = CellTessellationRenderModel.build(
+        cellsWithStates: [
+          (cell: _cell('a', 0, 0, 1, 1), state: _frontier),
+          (cell: _cell('b', 1, 0, 2, 1), state: _unknown),
+        ],
+        project: _project,
+      );
+
+      expect(model.boundaryEdges.where(_isVerticalSharedEdge), hasLength(1));
+      expect(
+        model.boundaryEdges
+            .where(_isVerticalSharedEdge)
+            .single
+            .state
+            .relationship,
+        CellRelationship.frontier,
+      );
+    });
+
     test('snaps nearly identical shared vertices into one boundary edge', () {
       final model = CellTessellationRenderModel.build(
         cellsWithStates: [
@@ -87,6 +107,11 @@ const _explored = CellState(
 
 const _frontier = CellState(
   relationship: CellRelationship.frontier,
+  contents: CellContents.empty,
+);
+
+const _unknown = CellState(
+  relationship: CellRelationship.unknown,
   contents: CellContents.empty,
 );
 

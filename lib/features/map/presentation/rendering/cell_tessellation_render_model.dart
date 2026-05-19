@@ -170,8 +170,10 @@ class CellTessellationRenderModel {
 
   static bool _isVisibleBoundarySide(_EdgeSide side) {
     return switch (side.state.relationship) {
-      CellRelationship.present || CellRelationship.explored => true,
-      CellRelationship.frontier || CellRelationship.unknown => false,
+      CellRelationship.present ||
+      CellRelationship.explored ||
+      CellRelationship.frontier => true,
+      CellRelationship.unknown => false,
     };
   }
 

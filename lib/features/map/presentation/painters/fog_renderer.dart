@@ -34,7 +34,7 @@ class FogRenderer {
     return switch (state.relationship) {
       CellRelationship.present => 1.65,
       CellRelationship.explored => 1.0,
-      CellRelationship.frontier => 0.0,
+      CellRelationship.frontier => 1.0,
       CellRelationship.unknown => 0.0,
     };
   }
@@ -43,7 +43,7 @@ class FogRenderer {
     return switch (state.relationship) {
       CellRelationship.present => 1.0,
       CellRelationship.explored => 0.6,
-      CellRelationship.frontier => 0.0,
+      CellRelationship.frontier => 0.6,
       CellRelationship.unknown => 0.0,
     };
   }
@@ -52,7 +52,7 @@ class FogRenderer {
     return switch (state.relationship) {
       CellRelationship.present => 0.7,
       CellRelationship.explored => 0.4,
-      CellRelationship.frontier => 0.0,
+      CellRelationship.frontier => 0.4,
       CellRelationship.unknown => 0.0,
     };
   }
@@ -101,7 +101,7 @@ class FogRenderer {
   }
 
   static Color _frontierStrokeColor() {
-    return const Color(0x00000000);
+    return const Color(0xCC4A4A4A);
   }
 
   static Color _unknownStrokeColor() {

@@ -693,9 +693,9 @@ The GPS-level map should feel organic and legible, not technical.
 | Base map | Quiet real-world grounding with text labels suppressed at GPS scale | Bright cartographic clutter competing with fog |
 | Present map cell | Bright, alive, immediately readable | Over-saturated debug highlight |
 | Explored footprint | Warm muted permanence with individually countable cells | One continuous pale blob or grey dead-zone |
-| Frontier | Dark translucent tease with minimal seams | Grid wall, spoiler detail, or harsh cutoff |
+| Frontier | Dark translucent tease with a visible inherited mosaic edge | Grid wall, spoiler detail, or harsh cutoff |
 | Unknown / beyond render distance | Fully opaque fog unless explicitly frontier | Base-map details leaking through unreachable or unloaded cells |
-| Cell borders | Thin dark neutral revealed-cell mosaic seams; hidden in frontier/unknown | Universal debug grid, heavy outlines, or invisible explored/explored boundaries |
+| Cell borders | Thin dark neutral revealed-cell mosaic seams, including the frontier edge where reveal meets tease; hidden in unknown | Universal debug grid, heavy outlines, or invisible explored/explored boundaries |
 | Opportunity cue | Small spatial promise | Quest marker/chore icon |
 | World event cue | Unusual but optional disturbance | Alarm state or mandatory diversion |
 | Map cell detail sheet | Cozy field-note card | Modal popup that blocks walking momentum |

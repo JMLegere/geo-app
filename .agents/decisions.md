@@ -342,3 +342,8 @@
 - The GPS-level Map should prioritize marker, fog relationship, map-cell mosaic, and cue readability over cartographic labels.
 - Hide MapLibre base-map text labels after style load by disabling symbol layers with a `text-field`; preserve legal attribution.
 - Do not hide icon-only symbol layers as part of this decision unless they later prove visually noisy.
+
+## 2026-05-19 — Frontier cells inherit the revealed mosaic edge
+- Frontier cells should show the same thin dark neutral edge language as the revealed mosaic wherever tease meets reveal or unknown.
+- Keep frontier/frontier internal seams suppressed so the fog does not become a full debug grid.
+- Unknown territory remains borderless and opaque; the visible frontier outline exists to make teaser cells legible, not to fully expose unexplored structure.

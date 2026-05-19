@@ -13,6 +13,7 @@ Feature: Fog Overlay
     Given there are unvisited map cells sharing a border with present or explored map cells
     When the fog overlay paints frontier territory
     Then frontier map cells should signal that something may be nearby
+    And frontier cells should inherit a visible dark neutral border where the revealed mosaic reaches them
     But the overlay should deemphasize interior details until the player crosses their borders
 
   Scenario: Explored map cells remain visually distinct

@@ -490,3 +490,8 @@
 - Jeremy asked for revealed map cell borders to be thinner after the dark neutral seam change; reduced present/explored seam stroke and glow widths while keeping dark explored-cell separation readable.
 - Jeremy asked to remove all text labels from the map; added runtime MapLibre style handling that parses loaded style JSON, hides every symbol layer with a `text-field`, and logs `map.base_map_labels_hidden`.
 - Legal attribution remains visible; icon-only symbol layers may remain because the request targets text labels/cartographic label clutter.
+
+## Completed 2026-05-19 — frontier border visibility pass
+- Jeremy asked to extend the revealed-cell border treatment onto frontier cells.
+- Updated tessellation boundary visibility so frontier-vs-unknown edges render, while frontier/frontier shared seams remain suppressed to avoid a debug-grid wall.
+- Updated fog seam styling so frontier boundaries use the same thin dark neutral mosaic edge treatment as explored cells, keeping unknown territory borderless.

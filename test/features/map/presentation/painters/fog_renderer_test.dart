@@ -69,14 +69,13 @@ void main() {
         expect((explored.g - explored.b).abs(), lessThanOrEqualTo(0.04));
       });
 
-      test('frontier and unknown seams are hidden so fog does not form a grid',
-          () {
+      test('frontier inherits a visible border while unknown stays hidden', () {
         final frontier =
             FogRenderer.strokeColor(_state(CellRelationship.frontier));
         final unknown =
             FogRenderer.strokeColor(_state(CellRelationship.unknown));
 
-        expect(frontier.a, 0.0);
+        expect(frontier.a, greaterThanOrEqualTo(0.70));
         expect(unknown.a, 0.0);
       });
     });
@@ -86,13 +85,13 @@ void main() {
     });
 
     group('seam styling', () {
-      test('frontier and unknown glow widths are zero', () {
+      test('frontier keeps a readable seam while unknown stays borderless', () {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);
 
-        expect(FogRenderer.seamGlowStrokeWidth(frontier), 0.0);
+        expect(FogRenderer.seamGlowStrokeWidth(frontier), greaterThanOrEqualTo(0.9));
+        expect(FogRenderer.seamStrokeWidth(frontier), greaterThanOrEqualTo(0.55));
         expect(FogRenderer.seamGlowStrokeWidth(unknown), 0.0);
-        expect(FogRenderer.seamStrokeWidth(frontier), 0.0);
         expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });
 
@@ -122,11 +121,11 @@ void main() {
         expect(exploredStroke.a, greaterThanOrEqualTo(0.70));
       });
 
-      test('frontier and unknown glow blur is disabled', () {
+      test('only unknown glow blur is disabled', () {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);
 
-        expect(FogRenderer.seamGlowBlurSigma(frontier), 0.0);
+        expect(FogRenderer.seamGlowBlurSigma(frontier), greaterThan(0.0));
         expect(FogRenderer.seamGlowBlurSigma(unknown), 0.0);
       });
     });
