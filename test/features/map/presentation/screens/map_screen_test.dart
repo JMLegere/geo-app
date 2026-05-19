@@ -423,6 +423,21 @@ void main() {
       expect(mapSource, contains("'location_error_message':"));
     });
 
+    test('pins overlay projection to actual MapLibre camera movement', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('onCameraMove: (cameraPosition)'));
+      expect(mapSource, contains('_updateRenderCamera(cameraPosition)'));
+      expect(mapSource, contains('final renderCameraPosition ='));
+      expect(
+        mapSource,
+        contains('_renderCameraPosition ?? desiredCameraPosition'),
+      );
+      expect(mapSource,
+          contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'));
+    });
     test('keeps a safety fallback for missing base-map settled signal', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

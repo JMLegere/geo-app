@@ -77,6 +77,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Timer? _mapBootstrapTimeoutTimer;
   TelemetrySpan? _mapBootstrapSpan;
   String? _lastGeometryDiagnosticsKey;
+  GeoCoord? _renderCameraPosition;
+  double? _renderCameraZoom;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -225,6 +227,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _markMapCreated() {
     if (_mapCreated) return;
     setState(() => _mapCreated = true);
+  }
+
+  void _updateRenderCamera(maplibre.CameraPosition cameraPosition) {
+    final nextPosition = (
+      lat: cameraPosition.target.latitude,
+      lng: cameraPosition.target.longitude,
+    );
+    final nextZoom = cameraPosition.zoom;
+    final currentPosition = _renderCameraPosition;
+    final currentZoom = _renderCameraZoom;
+    if (currentPosition != null &&
+        currentZoom != null &&
+        _sameGeoCoord(currentPosition, nextPosition) &&
+        (currentZoom - nextZoom).abs() < 0.0001) {
+      return;
+    }
+    setState(() {
+      _renderCameraPosition = nextPosition;
+      _renderCameraZoom = nextZoom;
+    });
   }
 
   void _markStyleLoaded() {
@@ -415,6 +437,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           'location_error_message': message,
         },
     };
+  }
+
+  bool _sameGeoCoord(GeoCoord a, GeoCoord b) {
+    return (a.lat - b.lat).abs() < 0.0000001 &&
+        (a.lng - b.lng).abs() < 0.0000001;
   }
 
   void _handleMapBootstrapTimeout() {
@@ -625,13 +652,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         builder: (context, constraints) {
           final mapSize = constraints.biggest;
           final screenCenter = Offset(mapSize.width / 2, mapSize.height / 2);
-          final cameraPosition = cameraFollowState.hasFix
+          final desiredCameraPosition = cameraFollowState.hasFix
               ? (lat: cameraFollowState.lat, lng: cameraFollowState.lng)
               : (lat: location.lat, lng: location.lng);
+          final renderCameraPosition =
+              _renderCameraPosition ?? desiredCameraPosition;
+          final renderZoom = _renderCameraZoom ?? _kGpsZoom;
           final markerScreenPosition = _projectGeoCoordToScreen(
             (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
-            cameraPosition,
+            renderCameraPosition,
             screenCenter,
+            zoom: renderZoom,
           );
           final cellsWithStates = mapState is MapStateReady
               ? _buildCellStates(
@@ -646,8 +677,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             viewportSize: mapSize,
             project: (coord) => _projectGeoCoordToScreen(
               coord,
-              cameraPosition,
+              renderCameraPosition,
               screenCenter,
+              zoom: renderZoom,
             ),
             markerScreenPosition: markerScreenPosition,
             currentCellId: explorationState.currentCellId,
@@ -682,8 +714,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: maplibre.MapLibreMap(
                   styleString: _kMapStyleUrl,
                   initialCameraPosition: maplibre.CameraPosition(
-                    target:
-                        maplibre.LatLng(cameraPosition.lat, cameraPosition.lng),
+                    target: maplibre.LatLng(
+                      desiredCameraPosition.lat,
+                      desiredCameraPosition.lng,
+                    ),
                     zoom: _kGpsZoom,
                   ),
                   compassEnabled: false,
@@ -693,6 +727,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   tiltGesturesEnabled: false,
                   doubleClickZoomEnabled: false,
                   dragEnabled: false,
+                  trackCameraPosition: true,
                   myLocationEnabled: false,
                   myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
                   attributionButtonPosition:
@@ -700,12 +735,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   attributionButtonMargins: const math.Point(12, 144),
                   onMapCreated: (controller) {
                     _mapController = controller;
+                    _updateRenderCamera(
+                      controller.cameraPosition ??
+                          maplibre.CameraPosition(
+                            target: maplibre.LatLng(
+                              desiredCameraPosition.lat,
+                              desiredCameraPosition.lng,
+                            ),
+                            zoom: _kGpsZoom,
+                          ),
+                    );
                     _markMapCreated();
                     _logMapFlowEvent(
                       TelemetryFlowPhase.dependencyReady,
                       eventName: 'map.map_created',
                       dependency: 'map_widget',
                     );
+                  },
+                  onCameraMove: (cameraPosition) {
+                    _updateRenderCamera(cameraPosition);
                   },
                   onStyleLoadedCallback: () {
                     _handleStyleLoaded(source: 'plugin_style_loaded');
@@ -720,8 +768,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               if (mapState is MapStateLoading)
                 Positioned.fill(
                   child: ShimmerCells(
-                    cameraPosition: cameraPosition,
-                    zoom: _kGpsZoom,
+                    cameraPosition: renderCameraPosition,
+                    zoom: renderZoom,
                   ),
                 ),
 
@@ -739,17 +787,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         context,
                         details,
                         mapState,
-                        cameraPosition,
+                        renderCameraPosition,
                         screenCenter,
                         cellsWithStates,
+                        renderZoom,
                       ),
                     ),
                     child: CustomPaint(
                       size: Size.infinite,
                       painter: CellOverlayPainter(
                         cellsWithStates: cellsWithStates,
-                        cameraPosition: cameraPosition,
-                        zoom: _kGpsZoom,
+                        cameraPosition: renderCameraPosition,
+                        zoom: renderZoom,
                         cameraPixelOffset: screenCenter,
                       ),
                     ),
@@ -930,6 +979,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ({double lat, double lng}) cameraPosition,
     Offset screenCenter,
     List<({Cell cell, CellState state})> cellsWithStates,
+    double zoom,
   ) {
     final tapPosition = details.localPosition;
 
@@ -955,6 +1005,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         (lat: centerLat, lng: centerLng),
         cameraPosition,
         screenCenter,
+        zoom: zoom,
       );
 
       final distance = (tapPosition - screenPos).distance;
@@ -974,12 +1025,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Offset _projectGeoCoordToScreen(
     GeoCoord coord,
     ({double lat, double lng}) cameraPosition,
-    Offset screenCenter,
-  ) {
+    Offset screenCenter, {
+    required double zoom,
+  }) {
     return CellOverlayPainter.projectGeoCoord(
       coord: coord,
       cameraPosition: cameraPosition,
-      zoom: _kGpsZoom,
+      zoom: zoom,
       cameraPixelOffset: screenCenter,
     );
   }

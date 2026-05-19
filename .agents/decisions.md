@@ -310,3 +310,8 @@
 - When the Map screen times out before `map.map_created`, logs must still identify the blocking dependency instead of only saying every readiness flag is false.
 - GPS startup now logs each awaited stage (`permission_request`, `current_position_request`) plus watchdog events so hung browser permission/location promises are diagnosable.
 - `map.bootstrap.timed_out` includes the current `location_state` and optional `location_error_message`.
+
+## 2026-05-19 — Overlay projection follows actual MapLibre camera state
+- The cell/fog overlay must project geometry from the actual MapLibre camera position and zoom currently rendered on screen, not only from the desired smoothed camera-follow target.
+- `MapScreen` now updates render projection state from `onCameraMove` / `controller.cameraPosition`, then uses that same render camera for shimmer placeholders, overlay painting, marker placement, and tap hit-testing.
+- This keeps Voronoi map cells visually pinned to the base map even if MapLibre lags, rounds, or eases differently than the app's desired camera-follow target.

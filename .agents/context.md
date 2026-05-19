@@ -463,3 +463,8 @@
 - Added GPS startup stage observability: permission request, current-position request, waiting watchdog, and timeout watchdog with `startup_stage` and `startup_attempt`.
 - Added location-state diagnostics to `map.bootstrap.timed_out` so future failures say whether the map was blocked on loading, denied, paused, active, or error state.
 - Added runbook SQL for map bootstrap / GPS startup diagnostics.
+
+## Completed 2026-05-19 — overlay pinning to MapLibre camera
+- Jeremy reported that the Voronoi cell overlay was drifting relative to the base map while moving, implying the cells were not visually pinned to geography.
+- Root cause in the current implementation: overlay projection used the desired smoothed camera-follow target, not the actual MapLibre camera position/zoom currently rendered by the map widget.
+- Updated `MapScreen` so shimmer, overlay painting, marker projection, and tap hit-testing all use the latest `onCameraMove` camera position/zoom from MapLibre, with fallback to the desired camera before the first callback arrives.
