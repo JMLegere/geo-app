@@ -140,13 +140,23 @@ void main() {
       expect(mid, lessThan(far));
     });
 
-    test('bounded lerp limits one-frame marker jumps', () {
-      final factor = SplineConfig.boundedLerpFactor(
-        gapMeters: 35.0,
-        tickInterval: const Duration(milliseconds: 16),
+    test('bounded lerp scales speed proportionally to gap size', () {
+      final tickInterval = const Duration(milliseconds: 16);
+      final factorAt100m = SplineConfig.boundedLerpFactor(
+        gapMeters: 100.0,
+        tickInterval: tickInterval,
+      );
+      final factorAt50m = SplineConfig.boundedLerpFactor(
+        gapMeters: 50.0,
+        tickInterval: tickInterval,
       );
 
-      expect(factor * 35.0, lessThanOrEqualTo(0.30));
+      final tickSeconds = tickInterval.inMilliseconds / 1000.0;
+      final speedAt100m = factorAt100m * 100.0 / tickSeconds;
+      final speedAt50m = factorAt50m * 50.0 / tickSeconds;
+
+      expect(speedAt100m, closeTo(100.0, 2.0));
+      expect(speedAt50m, closeTo(50.0, 2.0));
     });
   });
 

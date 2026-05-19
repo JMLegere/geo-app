@@ -14,6 +14,7 @@ Feature: Player Marker + Accuracy Ring
     Given raw GPS moves to a nearby accurate point within the playable trust radius
     When the marker follows the updated location
     Then the marker should travel toward the point over multiple frames
+    And its speed should scale with the current marker-to-geolocation gap, such as 100m/s at 100m away and 50m/s at 50m away
     And it should not cover most of the gap in a single visual jump
 
 

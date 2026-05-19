@@ -15,12 +15,12 @@ class SplineConfig {
   /// At large gaps, the marker wants to catch up faster but is still bounded.
   static const double maxLerpFactor = 0.25;
 
-  /// Upper bound for trusted marker movement.
-  ///
-  /// This keeps a noisy GPS target from visually teleporting the marker while
-  /// still allowing quick catch-up for debug movement, biking, and normal
-  /// mobile GPS update batches.
-  static const double maxTrustedSpeedMetersPerSecond = 16.0;
+  /// Trusted marker movement uses an approximately one-second convergence
+  /// constant:
+  /// - 100m away -> ~100m/s
+  /// - 50m away -> ~50m/s
+  /// - 10m away -> ~10m/s
+  static const double gapSecondsPerSecond = 1.0;
 
   /// Reference distance (meters) at which lerp factor reaches ~maxLerpFactor.
   static const double _referenceDistance = 200.0;
@@ -38,16 +38,17 @@ class SplineConfig {
     return minLerpFactor + (maxLerpFactor - minLerpFactor) * clamped;
   }
 
-  /// Compute a lerp factor capped by the maximum trusted marker speed.
+  /// Compute the per-tick factor for the trusted movement rule.
+  ///
+  /// The marker covers roughly one second worth of the current gap each second,
+  /// which means travel speed scales proportionally with distance.
   static double boundedLerpFactor({
     required double gapMeters,
     required Duration tickInterval,
   }) {
     if (gapMeters <= 0.0) return 0.0;
-    final easedFactor = lerpFactor(gapMeters);
-    final maxStepMeters =
-        maxTrustedSpeedMetersPerSecond * tickInterval.inMilliseconds / 1000.0;
-    final maxStepFactor = (maxStepMeters / gapMeters).clamp(0.0, 1.0);
-    return math.min(easedFactor, maxStepFactor);
+    final tickSeconds = tickInterval.inMilliseconds / 1000.0;
+    final proportionalFactor = tickSeconds * gapSecondsPerSecond;
+    return proportionalFactor.clamp(0.0, 1.0);
   }
 }

@@ -39,6 +39,7 @@ Feature: Fog Overlay
     When the fog overlay projects visible map cell geometry
     Then map cell borders should remain anchored to the same streets, rivers, and landmarks as the base map
     And the overlay should use the map renderer's screen-coordinate projection instead of an independent approximate camera model
+    And any pre-projection fallback should use the same MapLibre world scale so cells do not resize between frames
 
   Scenario: Visual hierarchy keeps the map readable
     Given the marker, current map cell, fog states, cues, and base map are all visible

@@ -49,7 +49,7 @@ void main() {
       expect(delta.dy, closeTo(0.0, 1e-9));
     });
 
-    test('one degree longitude is thousands of pixels at zoom 15', () {
+    test('one degree longitude uses MapLibre 512px world scale', () {
       final delta = latLngToScreenDelta(
         coordLat: 0.0,
         coordLng: 1.0,
@@ -58,9 +58,10 @@ void main() {
         zoom: 15,
       );
 
-      // Web Mercator scale: 256 * 2^15 / 360 ≈ 23,302 px per degree.
-      expect(delta.dx, greaterThan(23000));
-      expect(delta.dx, lessThan(23600));
+      // MapLibre GL uses a 512px world tile scale:
+      // 512 * 2^15 / 360 ≈ 46,603 px per degree.
+      expect(delta.dx, greaterThan(46000));
+      expect(delta.dx, lessThan(47000));
       expect(delta.dy, closeTo(0.0, 1e-9));
     });
 
@@ -88,8 +89,8 @@ void main() {
       );
 
       // North is negative y in Web Mercator screen coordinates.
-      expect(delta.dy, lessThan(-23000));
-      expect(delta.dy, greaterThan(-23600));
+      expect(delta.dy, lessThan(-46000));
+      expect(delta.dy, greaterThan(-47000));
       expect(delta.dx, closeTo(0.0, 1e-9));
     });
   });

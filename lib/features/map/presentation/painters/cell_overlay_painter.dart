@@ -8,8 +8,8 @@ import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation
 
 /// CustomPainter that renders cell polygons with fog-of-war styling.
 ///
-/// Converts cell lat/lng coordinates to screen pixels using mercator projection
-/// based on the current camera position and zoom level.
+/// Converts cell lat/lng coordinates to screen pixels using the same Web
+/// Mercator world scale MapLibre uses for screen projection fallback.
 class CellOverlayPainter extends CustomPainter {
   CellOverlayPainter({
     required this.cellsWithStates,
@@ -30,7 +30,7 @@ class CellOverlayPainter extends CustomPainter {
   final GeoProjector? project;
   final int projectionRevision;
 
-  static const double _tileSize = 256.0;
+  static const double _tileSize = 512.0;
 
   static Offset projectGeoCoord({
     required GeoCoord coord,

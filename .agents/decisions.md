@@ -322,8 +322,18 @@
 - Projection requests are coalesced so fast camera changes keep only one in-flight batch plus the latest pending batch; stale batches are discarded rather than applied.
 - `map.geometry_rendered` includes `projection_mode` so beta logs can show whether a frame used exact MapLibre coordinates or the fallback.
 
-## 2026-05-19 — Player marker movement is speed-bounded with 100m ring threshold
-- The visible gameplay marker should not chase geolocation at the old exponential catch-up rate; that made accurate-but-batched movement look like teleports.
+## 2026-05-19 — Player marker movement uses the marker/geolocation gap
+- The visible gameplay marker should not chase geolocation at the old aggressive exponential catch-up rate; that made accurate-but-batched movement look like teleports.
 - The first geolocation fix anchors the marker because no player-visible marker exists yet.
-- Subsequent movement uses the existing ease curve capped by a max marker speed, so nearby GPS updates resolve over multiple frames.
+- Subsequent movement uses a proportional catch-up rule keyed to the current marker-to-geolocation gap, so nearby GPS updates resolve smoothly while larger gaps still drag visibly toward the fix.
 - Low-confidence GPS still drags the marker. Ring state is triggered only when marker-to-geolocation distance exceeds 100m; exploration remains paused while in ring and resumes as the marker converges.
+
+## 2026-05-19 — Marker speed scales with marker-to-geolocation gap
+- Trusted marker movement should feel smooth but responsive by moving at roughly `gap_meters` per second.
+- This means 100m away moves about 100m/s, 50m away moves about 50m/s, and smaller gaps naturally slow as the marker converges.
+- Keep the 100m marker-to-geolocation ring threshold as the playability boundary; low-confidence GPS still drags the marker, but visits/fog/rewards pause once the marker gap exceeds the threshold.
+
+## 2026-05-19 — Mercator fallback must match MapLibre scale
+- `map.geometry_rendered` showed projection mode alternating between exact MapLibre screen coordinates and the synchronous Mercator fallback while movement/projection batches were pending.
+- The visible cell-size snap came from a scale mismatch: the fallback used a 256px tile world while MapLibre GL's screen projection uses a 512px world scale.
+- Keep MapLibre exact screen coordinates as the preferred overlay projection, but calibrate the fallback to the same 512px world scale so frames do not visibly resize while waiting for exact batch results.

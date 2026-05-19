@@ -478,3 +478,10 @@
 - Jeremy reported that the player marker appeared to jump erratically during movement instead of smoothly splining to geo location.
 - Discovery found that the marker already used a 60fps lerp, but it had two jank sources: first GPS fix could be chased from origin, and trusted updates could cover too much distance per frame.
 - Updated player marker behavior so the first GPS fix anchors the marker, all later geolocation movement is speed-bounded, low-confidence GPS still drags the marker, and ring state is triggered only when marker-to-geolocation distance exceeds 100m.
+
+## Completed 2026-05-19 — marker speed and projection fallback calibration
+- Jeremy clarified the marker catch-up curve: at a 100m marker-to-geolocation gap the marker should move about 100m/s, at 50m it should move about 50m/s, and so on.
+- Updated the trusted marker bounded movement rule so per-frame movement is proportional to the current gap instead of capped at a fixed 16m/s.
+- Jeremy reported that while scrolling/moving the map, Voronoi map cells visibly snapped larger and then back smaller; telemetry showed `map.geometry_rendered` alternating between `maplibre_exact_screen` and `mercator_fallback`, with the fallback projected cell area roughly one quarter of exact projection.
+- Root cause: the fallback Web Mercator projector used a 256px world tile scale while MapLibre GL screen projection uses a 512px world scale.
+- Updated `CellOverlayPainter` fallback projection to use MapLibre's 512px world scale so fallback and exact projection stay visually consistent while exact batches are pending.

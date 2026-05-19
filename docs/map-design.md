@@ -210,7 +210,7 @@ Primitive contracts:
 | `MapDebugControlState` | `last_control` | `move_north`, `move_south`, `move_west`, `move_east`, `gps_resume`, `pinch`, `spread`, `swipe_up`, `swipe_down`, `swipe_left`, `swipe_right` | debug overlay | Used for QA traces only; never drives rewards directly. |
 | `MapDebugControlState` | `source` | `debug_controls` | constant | Required in telemetry for every debug-driven movement. |
 | `MarkerTrust` | `state` | `locating`, `trusted`, `uncertain`, `ring`, `recovered` | marker coordinator | Only `trusted` may make exploration eligible. |
-| `MarkerTrust` | `gps_position`, `marker_position` | `GeoPoint` | GPS source + marker spline | Marker position is gameplay truth; raw GPS is not player-facing gameplay. First geolocation fix anchors the marker; later movement is speed-bounded, including low-confidence fixes. |
+| `MarkerTrust` | `gps_position`, `marker_position` | `GeoPoint` | GPS source + marker spline | Marker position is gameplay truth; raw GPS is not player-facing gameplay. First geolocation fix anchors the marker; later movement is speed-bounded, including low-confidence fixes. The default catch-up curve moves at roughly the current gap in meters per second: 100m gap → 100m/s, 50m gap → 50m/s. |
 | `MarkerTrust` | `accuracy_meters`, `gap_meters` | double | GPS + spline | Marker-to-geolocation gap over 100m moves the player into ring/browse-only state; accuracy remains diagnostic/context, not the ring trigger. |
 | `MarkerTrust` | `reason` | `gps_unavailable`, `accuracy_low`, `gap_too_large`, `trusted`, `recovered` | marker coordinator | Copy should explain playability, not plugin internals. |
 | `ExplorationEligibility` | `state` | `eligible`, `browse_only`, `paused` | readiness + trust | This is the gate for every gameplay-significant mutation. |
@@ -505,6 +505,7 @@ The first map release succeeds when a player can open the Map tab, see where the
 - Render Voronoi polygons with `CellOverlayPainter`.
 - Prefer MapLibre's exact `toScreenLocationBatch` projection for marker, cell vertices, and cell centers so the overlay stays pinned to streets, rivers, and landmarks while the base map moves.
 - Fall back to the synchronous Mercator projector only before exact screen coordinates are available.
+- Keep the fallback calibrated to MapLibre's 512px world scale so cells do not visibly resize while exact projection batches are pending.
 - Fill by fog relationship.
 - Border by revealed-cell relationship.
 - Render no beyond/unavailable cells.
