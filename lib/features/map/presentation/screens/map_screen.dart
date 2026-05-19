@@ -79,6 +79,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   String? _lastGeometryDiagnosticsKey;
   GeoCoord? _renderCameraPosition;
   double? _renderCameraZoom;
+  _ExactScreenProjectionRequest? _pendingExactScreenProjectionRequest;
+  bool _exactScreenProjectionInFlight = false;
+  String? _exactScreenProjectionInFlightKey;
+  String? _exactScreenProjectionKey;
+  Map<String, Offset> _exactScreenProjectionByCoordKey = const {};
+  Map<String, Offset> _exactScreenProjectionCellCentersById = const {};
+  Offset? _exactScreenProjectionMarkerScreenPosition;
+  int _exactScreenProjectionRevision = 0;
+
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -377,6 +386,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       renderDiagnostics['state_current_cell_id'],
       renderDiagnostics['state_visited_cell_count'],
       renderDiagnostics['marker_is_ring'],
+      renderDiagnostics['projection_mode'],
+      renderDiagnostics['screen_projection_revision'],
     ].join(':');
     if (_lastGeometryDiagnosticsKey == key) return;
     _lastGeometryDiagnosticsKey = key;
@@ -442,6 +453,126 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _sameGeoCoord(GeoCoord a, GeoCoord b) {
     return (a.lat - b.lat).abs() < 0.0000001 &&
         (a.lng - b.lng).abs() < 0.0000001;
+  }
+
+  void _scheduleExactScreenProjection(
+    _ExactScreenProjectionRequest request,
+  ) {
+    if (!_mapCreated ||
+        !_mapStyleLoaded ||
+        _mapController == null ||
+        request.coordinates.isEmpty) {
+      return;
+    }
+    if (_exactScreenProjectionKey == request.key ||
+        _exactScreenProjectionInFlightKey == request.key ||
+        _pendingExactScreenProjectionRequest?.key == request.key) {
+      return;
+    }
+
+    _pendingExactScreenProjectionRequest = request;
+    _pumpExactScreenProjectionQueue();
+  }
+
+  void _pumpExactScreenProjectionQueue() {
+    if (_exactScreenProjectionInFlight) return;
+    final controller = _mapController;
+    final request = _pendingExactScreenProjectionRequest;
+    if (controller == null || request == null) return;
+
+    _pendingExactScreenProjectionRequest = null;
+    _exactScreenProjectionInFlight = true;
+    _exactScreenProjectionInFlightKey = request.key;
+    unawaited(_projectExactScreenCoordinates(controller, request));
+  }
+
+  Future<void> _projectExactScreenCoordinates(
+    maplibre.MapLibreMapController controller,
+    _ExactScreenProjectionRequest request,
+  ) async {
+    try {
+      final screenPoints = await controller.toScreenLocationBatch(
+        request.coordinates.map(
+          (coord) => maplibre.LatLng(coord.lat, coord.lng),
+        ),
+      );
+      if (!mounted) return;
+      if (screenPoints.length != request.coordinateKeys.length) {
+        _logMapEvent(
+          'map.screen_projection_failed',
+          data: {
+            'reason': 'coordinate_count_mismatch',
+            'coordinate_count': request.coordinateKeys.length,
+            'screen_point_count': screenPoints.length,
+          },
+        );
+        return;
+      }
+
+      final hasNewerPending = _pendingExactScreenProjectionRequest != null &&
+          _pendingExactScreenProjectionRequest!.key != request.key;
+      if (hasNewerPending) return;
+
+      final projectedByCoordKey = <String, Offset>{};
+      for (var i = 0; i < screenPoints.length; i++) {
+        final point = screenPoints[i];
+        projectedByCoordKey[request.coordinateKeys[i]] = Offset(
+          point.x.toDouble(),
+          point.y.toDouble(),
+        );
+      }
+
+      final projectedCellCenters = <String, Offset>{};
+      for (final entry in request.cellCenterCoordKeyById.entries) {
+        final projected = projectedByCoordKey[entry.value];
+        if (projected != null) projectedCellCenters[entry.key] = projected;
+      }
+
+      setState(() {
+        _exactScreenProjectionKey = request.key;
+        _exactScreenProjectionByCoordKey = projectedByCoordKey;
+        _exactScreenProjectionCellCentersById = projectedCellCenters;
+        _exactScreenProjectionMarkerScreenPosition =
+            projectedByCoordKey[request.markerCoordKey];
+        _exactScreenProjectionRevision++;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      _logMapEvent(
+        'map.screen_projection_failed',
+        data: {
+          'reason': error.toString(),
+          'coordinate_count': request.coordinateKeys.length,
+        },
+      );
+    } finally {
+      if (mounted) {
+        _exactScreenProjectionInFlight = false;
+        _exactScreenProjectionInFlightKey = null;
+        _pumpExactScreenProjectionQueue();
+      }
+    }
+  }
+
+  Offset? Function(GeoCoord coord)? _exactScreenProjectionProjector(
+    String projectionKey,
+  ) {
+    if (_exactScreenProjectionKey != projectionKey) return null;
+    return (coord) =>
+        _exactScreenProjectionByCoordKey[_projectionCoordKey(coord)];
+  }
+
+  Offset? _exactProjectedMarkerPosition(String projectionKey) {
+    if (_exactScreenProjectionKey != projectionKey) return null;
+    return _exactScreenProjectionMarkerScreenPosition;
+  }
+
+  Offset? _exactProjectedCellCenter(
+    String projectionKey,
+    String cellId,
+  ) {
+    if (_exactScreenProjectionKey != projectionKey) return null;
+    return _exactScreenProjectionCellCentersById[cellId];
   }
 
   void _handleMapBootstrapTimeout() {
@@ -658,12 +789,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           final renderCameraPosition =
               _renderCameraPosition ?? desiredCameraPosition;
           final renderZoom = _renderCameraZoom ?? _kGpsZoom;
-          final markerScreenPosition = _projectGeoCoordToScreen(
-            (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
-            renderCameraPosition,
-            screenCenter,
-            zoom: renderZoom,
-          );
           final cellsWithStates = mapState is MapStateReady
               ? _buildCellStates(
                   mapState.cells,
@@ -671,22 +796,52 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   explorationState,
                 )
               : <({Cell cell, CellState state})>[];
-          final renderDiagnostics =
-              const MapRenderDiagnosticsService().summarize(
-            cellsWithStates: cellsWithStates,
-            viewportSize: mapSize,
-            project: (coord) => _projectGeoCoordToScreen(
-              coord,
-              renderCameraPosition,
-              screenCenter,
-              zoom: renderZoom,
-            ),
-            markerScreenPosition: markerScreenPosition,
-            currentCellId: explorationState.currentCellId,
-            visitedCellCount: footprint.uniqueCount,
-            markerIsRing: playerMarkerState.isRing,
-            markerGapDistanceMeters: playerMarkerState.gapDistance,
+          final markerGeoCoord = (
+            lat: playerMarkerState.lat,
+            lng: playerMarkerState.lng,
           );
+          final exactProjectionRequest = _ExactScreenProjectionRequest.from(
+            cellsWithStates: cellsWithStates,
+            markerPosition: markerGeoCoord,
+            cameraPosition: renderCameraPosition,
+            zoom: renderZoom,
+          );
+          _scheduleExactScreenProjection(exactProjectionRequest);
+          final exactProjectionReady =
+              _exactScreenProjectionKey == exactProjectionRequest.key;
+          final projectionMode = exactProjectionReady
+              ? 'maplibre_exact_screen'
+              : 'mercator_fallback';
+          final exactProjector =
+              _exactScreenProjectionProjector(exactProjectionRequest.key);
+          Offset projectGeoCoord(GeoCoord coord) {
+            return _projectGeoCoordToScreen(
+              coord,
+              exactProjector: exactProjector,
+              cameraPosition: renderCameraPosition,
+              screenCenter: screenCenter,
+              zoom: renderZoom,
+            );
+          }
+
+          final markerScreenPosition =
+              _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
+                  projectGeoCoord(markerGeoCoord);
+          final renderDiagnostics = {
+            ...const MapRenderDiagnosticsService().summarize(
+              cellsWithStates: cellsWithStates,
+              viewportSize: mapSize,
+              project: projectGeoCoord,
+              markerScreenPosition: markerScreenPosition,
+              currentCellId: explorationState.currentCellId,
+              visitedCellCount: footprint.uniqueCount,
+              markerIsRing: playerMarkerState.isRing,
+              markerGapDistanceMeters: playerMarkerState.gapDistance,
+            ),
+            'projection_mode': projectionMode,
+            'screen_projection_revision':
+                exactProjectionReady ? _exactScreenProjectionRevision : null,
+          };
           final readiness = _readinessFor(
             locationReady: true,
             mapState: mapState,
@@ -787,10 +942,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         context,
                         details,
                         mapState,
-                        renderCameraPosition,
-                        screenCenter,
+                        exactProjectionRequest.key,
                         cellsWithStates,
-                        renderZoom,
+                        projectGeoCoord,
                       ),
                     ),
                     child: CustomPaint(
@@ -800,6 +954,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         cameraPosition: renderCameraPosition,
                         zoom: renderZoom,
                         cameraPixelOffset: screenCenter,
+                        project: projectGeoCoord,
+                        projectionRevision: exactProjectionReady
+                            ? _exactScreenProjectionRevision
+                            : -1,
                       ),
                     ),
                   ),
@@ -976,10 +1134,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     BuildContext context,
     TapUpDetails details,
     MapStateReady mapState,
-    ({double lat, double lng}) cameraPosition,
-    Offset screenCenter,
+    String exactProjectionKey,
     List<({Cell cell, CellState state})> cellsWithStates,
-    double zoom,
+    Offset Function(GeoCoord coord) project,
   ) {
     final tapPosition = details.localPosition;
 
@@ -989,24 +1146,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     for (final entry in cellsWithStates) {
       final cell = entry.cell;
-      final exteriorPoints = cell.exteriorPoints;
-      if (exteriorPoints.isEmpty) continue;
+      final center = _cellCenter(cell);
+      if (center == null) continue;
 
-      double sumLat = 0;
-      double sumLng = 0;
-      for (final coord in exteriorPoints) {
-        sumLat += coord.lat;
-        sumLng += coord.lng;
-      }
-      final centerLat = sumLat / exteriorPoints.length;
-      final centerLng = sumLng / exteriorPoints.length;
-
-      final screenPos = _projectGeoCoordToScreen(
-        (lat: centerLat, lng: centerLng),
-        cameraPosition,
-        screenCenter,
-        zoom: zoom,
-      );
+      final screenPos =
+          _exactProjectedCellCenter(exactProjectionKey, cell.id) ??
+              project(center);
 
       final distance = (tapPosition - screenPos).distance;
       if (distance < closestDistance && distance < 100) {
@@ -1023,8 +1168,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Offset _projectGeoCoordToScreen(
+    GeoCoord coord, {
+    required Offset? Function(GeoCoord coord)? exactProjector,
+    required GeoCoord cameraPosition,
+    required Offset screenCenter,
+    required double zoom,
+  }) {
+    final exactProjection = exactProjector?.call(coord);
+    if (exactProjection != null) return exactProjection;
+    return _fallbackProjectGeoCoordToScreen(
+      coord,
+      cameraPosition,
+      screenCenter,
+      zoom: zoom,
+    );
+  }
+
+  Offset _fallbackProjectGeoCoordToScreen(
     GeoCoord coord,
-    ({double lat, double lng}) cameraPosition,
+    GeoCoord cameraPosition,
     Offset screenCenter, {
     required double zoom,
   }) {
@@ -1066,6 +1228,100 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 }
+
+class _ExactScreenProjectionRequest {
+  const _ExactScreenProjectionRequest({
+    required this.key,
+    required this.coordinates,
+    required this.coordinateKeys,
+    required this.cellCenterCoordKeyById,
+    required this.markerCoordKey,
+  });
+
+  factory _ExactScreenProjectionRequest.from({
+    required List<({Cell cell, CellState state})> cellsWithStates,
+    required GeoCoord markerPosition,
+    required GeoCoord cameraPosition,
+    required double zoom,
+  }) {
+    final coordinates = <GeoCoord>[];
+    final coordinateKeys = <String>[];
+    final seenKeys = <String>{};
+
+    String addCoordinate(GeoCoord coord) {
+      final key = _projectionCoordKey(coord);
+      if (seenKeys.add(key)) {
+        coordinates.add(coord);
+        coordinateKeys.add(key);
+      }
+      return key;
+    }
+
+    final markerCoordKey = addCoordinate(markerPosition);
+    final cellCenterCoordKeyById = <String, String>{};
+    for (final entry in cellsWithStates) {
+      for (final polygon in entry.cell.polygons) {
+        for (final ring in polygon) {
+          for (final coord in ring) {
+            addCoordinate(coord);
+          }
+        }
+      }
+      final center = _cellCenter(entry.cell);
+      if (center != null) {
+        cellCenterCoordKeyById[entry.cell.id] = addCoordinate(center);
+      }
+    }
+
+    final keyBuffer = StringBuffer()
+      ..write('camera=')
+      ..write(_projectionCoordKey(cameraPosition))
+      ..write(':zoom=')
+      ..write(zoom.toStringAsFixed(4))
+      ..write(':marker=')
+      ..write(markerCoordKey);
+    for (final coordKey in coordinateKeys) {
+      keyBuffer
+        ..write('|')
+        ..write(coordKey);
+    }
+
+    return _ExactScreenProjectionRequest(
+      key: keyBuffer.toString(),
+      coordinates: coordinates,
+      coordinateKeys: coordinateKeys,
+      cellCenterCoordKeyById: cellCenterCoordKeyById,
+      markerCoordKey: markerCoordKey,
+    );
+  }
+
+  final String key;
+  final List<GeoCoord> coordinates;
+  final List<String> coordinateKeys;
+  final Map<String, String> cellCenterCoordKeyById;
+  final String markerCoordKey;
+}
+
+String _projectionCoordKey(GeoCoord coord) {
+  return '${coord.lat.toStringAsFixed(7)},${coord.lng.toStringAsFixed(7)}';
+}
+
+GeoCoord? _cellCenter(Cell cell) {
+  final exteriorPoints = cell.exteriorPoints;
+  if (exteriorPoints.isEmpty) return null;
+
+  var sumLat = 0.0;
+  var sumLng = 0.0;
+  for (final coord in exteriorPoints) {
+    sumLat += coord.lat;
+    sumLng += coord.lng;
+  }
+  return (
+    lat: sumLat / exteriorPoints.length,
+    lng: sumLng / exteriorPoints.length,
+  );
+}
+
 
 class _MapTopFogFeather extends StatelessWidget {
   const _MapTopFogFeather();

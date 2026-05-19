@@ -33,6 +33,13 @@ Feature: Fog Overlay
     When the map fetches geometry for the current position
     Then explored cells inside the visible viewport should have geometry available for rendering
     And unknown fog should not cover explored cells only because the fetch radius was too small
+
+  Scenario: Overlay stays pinned to the base map
+    Given the base map camera moves during GPS follow or debug movement
+    When the fog overlay projects visible map cell geometry
+    Then map cell borders should remain anchored to the same streets, rivers, and landmarks as the base map
+    And the overlay should use the map renderer's screen-coordinate projection instead of an independent approximate camera model
+
   Scenario: Visual hierarchy keeps the map readable
     Given the marker, current map cell, fog states, cues, and base map are all visible
     When the overlay composes the GPS-level map

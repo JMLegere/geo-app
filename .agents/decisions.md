@@ -315,3 +315,9 @@
 - The cell/fog overlay must project geometry from the actual MapLibre camera position and zoom currently rendered on screen, not only from the desired smoothed camera-follow target.
 - `MapScreen` now updates render projection state from `onCameraMove` / `controller.cameraPosition`, then uses that same render camera for shimmer placeholders, overlay painting, marker placement, and tap hit-testing.
 - This keeps Voronoi map cells visually pinned to the base map even if MapLibre lags, rounds, or eases differently than the app's desired camera-follow target.
+
+## 2026-05-19 — Overlay projection uses MapLibre screen coordinates when available
+- The fog/cell overlay should prefer `MapLibreMapController.toScreenLocationBatch` for marker, cell vertex, and cell-center projection instead of relying only on an app-side Mercator camera model.
+- The app-side Mercator projector remains a temporary synchronous fallback before MapLibre has produced exact screen coordinates.
+- Projection requests are coalesced so fast camera changes keep only one in-flight batch plus the latest pending batch; stale batches are discarded rather than applied.
+- `map.geometry_rendered` includes `projection_mode` so beta logs can show whether a frame used exact MapLibre coordinates or the fallback.

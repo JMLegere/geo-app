@@ -332,7 +332,7 @@ void main() {
       );
     });
 
-    test('marker and tap hit testing reuse overlay Web Mercator projection',
+    test('marker, tap hit testing, and cells share one projection source',
         () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
@@ -346,8 +346,15 @@ void main() {
       );
       expect(
         mapSource,
-        contains('CellOverlayPainter.projectGeoCoord'),
-        reason: 'The shared helper should delegate to the overlay projector.',
+        contains('_exactScreenProjectionProjector('),
+        reason:
+            'Map overlays should use MapLibre-provided screen coordinates when available.',
+      );
+      expect(
+        mapSource,
+        contains('_fallbackProjectGeoCoordToScreen('),
+        reason:
+            'A synchronous fallback keeps the map usable before exact projection is ready.',
       );
       expect(
         mapSource,
@@ -437,6 +444,17 @@ void main() {
       );
       expect(mapSource,
           contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'));
+    });
+
+    test('uses MapLibre exact screen-coordinate batch projection', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('toScreenLocationBatch('));
+      expect(mapSource, contains('_scheduleExactScreenProjection('));
+      expect(mapSource, contains("'projection_mode': projectionMode"));
+      expect(mapSource, contains("projectionMode = exactProjectionReady"));
     });
     test('keeps a safety fallback for missing base-map settled signal', () {
       final mapSource =

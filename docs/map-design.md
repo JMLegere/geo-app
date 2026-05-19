@@ -272,7 +272,7 @@ without turning the map into a god screen.
 | Map frame | Readiness, GPS-level framing, top-level composition | Border crossing rules or reward decisions |
 | Map debug controls | Developer-mode marker movement, GPS resume, and gesture injection as test inputs | Player rewards, production UI, or bypassing map gates |
 | Marker/ring layer | Position trust display and pause explanation | Visit recording |
-| Cell/fog overlay | Geometry projection and relationship visuals | Map cell labels or detail text |
+| Cell/fog overlay | Geometry projection through MapLibre screen coordinates plus relationship visuals | Map cell labels or detail text |
 | Border crossing coordinator | One border crossing identity and visit intent | UI animation style |
 | Entry feedback presenter | First-entry/revisit copy, intensity, haptics/sound keys | Species/item reveal |
 | Map cell detail sheet | Map cell context, current cell state, visit facts, handoff affordances | Downstream reward ownership |
@@ -503,11 +503,12 @@ The first map release succeeds when a player can open the Map tab, see where the
 
 **Work:**
 - Render Voronoi polygons with `CellOverlayPainter`.
+- Prefer MapLibre's exact `toScreenLocationBatch` projection for marker, cell vertices, and cell centers so the overlay stays pinned to streets, rivers, and landmarks while the base map moves.
+- Fall back to the synchronous Mercator projector only before exact screen coordinates are available.
 - Fill by fog relationship.
-- Border by blended habitat color.
+- Border by revealed-cell relationship.
 - Render no beyond/unavailable cells.
 - Show loading shimmer while cells fetch.
-
 **JTBD user stories:**
 - When I open the map, I want nearby fog to be visible immediately, so the game map feels alive.
 - When I walk into a cell, I want its visual state to change, so I feel progress.

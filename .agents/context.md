@@ -468,3 +468,8 @@
 - Jeremy reported that the Voronoi cell overlay was drifting relative to the base map while moving, implying the cells were not visually pinned to geography.
 - Root cause in the current implementation: overlay projection used the desired smoothed camera-follow target, not the actual MapLibre camera position/zoom currently rendered by the map widget.
 - Updated `MapScreen` so shimmer, overlay painting, marker projection, and tap hit-testing all use the latest `onCameraMove` camera position/zoom from MapLibre, with fallback to the desired camera before the first callback arrives.
+
+## Completed 2026-05-19 — exact MapLibre overlay projection
+- Jeremy asked why we would not use MapLibre's exact screen-coordinate API anyway; the only real tradeoff was async/batch projection complexity versus better map anchoring.
+- Updated the fog overlay path to batch-project marker, cell vertices, and cell centers through `MapLibreMapController.toScreenLocationBatch`, coalescing camera-change requests and falling back to the synchronous Mercator projector only until exact screen coordinates are ready.
+- Added projection mode diagnostics to `map.geometry_rendered` and SuperBDD coverage requiring fog cell borders to stay pinned to base-map streets, rivers, and landmarks.

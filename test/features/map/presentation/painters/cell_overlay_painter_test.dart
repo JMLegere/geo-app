@@ -21,6 +21,17 @@ void main() {
       expect(painter.zoom, 15.0);
     });
 
+    test('can use a caller-provided exact screen projector', () {
+      final painter = CellOverlayPainter(
+        cellsWithStates: [],
+        project: (_) => const Offset(12, 34),
+        projectionRevision: 7,
+      );
+
+      expect(painter.project, isNotNull);
+      expect(painter.projectionRevision, 7);
+    });
+
     test('shouldRepaint returns true when cells change', () {
       final cell = _createTestCell('cell-1');
       final state = const CellState(

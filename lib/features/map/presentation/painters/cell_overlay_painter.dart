@@ -13,15 +13,22 @@ import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation
 class CellOverlayPainter extends CustomPainter {
   CellOverlayPainter({
     required this.cellsWithStates,
-    required this.cameraPosition,
-    required this.zoom,
-    required this.cameraPixelOffset,
-  });
+    this.cameraPosition,
+    this.zoom = 0.0,
+    this.cameraPixelOffset = Offset.zero,
+    this.project,
+    this.projectionRevision = 0,
+  }) : assert(
+          project != null || cameraPosition != null,
+          'Provide either exact project or cameraPosition fallback.',
+        );
 
   final List<({Cell cell, CellState state})> cellsWithStates;
-  final GeoCoord cameraPosition;
+  final GeoCoord? cameraPosition;
   final double zoom;
   final Offset cameraPixelOffset;
+  final GeoProjector? project;
+  final int projectionRevision;
 
   static const double _tileSize = 256.0;
 
@@ -144,9 +151,11 @@ class CellOverlayPainter extends CustomPainter {
   }
 
   Offset _geoCoordToScreen(GeoCoord coord) {
+    final exactProject = project;
+    if (exactProject != null) return exactProject(coord);
     return projectGeoCoord(
       coord: coord,
-      cameraPosition: cameraPosition,
+      cameraPosition: cameraPosition!,
       zoom: zoom,
       cameraPixelOffset: cameraPixelOffset,
     );
@@ -207,6 +216,7 @@ class CellOverlayPainter extends CustomPainter {
     return oldDelegate.cellsWithStates != cellsWithStates ||
         oldDelegate.cameraPosition != cameraPosition ||
         oldDelegate.zoom != zoom ||
-        oldDelegate.cameraPixelOffset != cameraPixelOffset;
+        oldDelegate.cameraPixelOffset != cameraPixelOffset ||
+        oldDelegate.projectionRevision != projectionRevision;
   }
 }
