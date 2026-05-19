@@ -710,6 +710,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         mapState,
                         cameraPosition,
                         screenCenter,
+                        cellsWithStates,
                       ),
                     ),
                     child: CustomPaint(
@@ -897,14 +898,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     MapStateReady mapState,
     ({double lat, double lng}) cameraPosition,
     Offset screenCenter,
+    List<({Cell cell, CellState state})> cellsWithStates,
   ) {
     final tapPosition = details.localPosition;
 
     // Find the cell that was tapped (simplified - find closest cell center)
-    Cell? closestCell;
+    ({Cell cell, CellState state})? closestEntry;
     double closestDistance = double.infinity;
 
-    for (final cell in mapState.cells) {
+    for (final entry in cellsWithStates) {
+      final cell = entry.cell;
       final exteriorPoints = cell.exteriorPoints;
       if (exteriorPoints.isEmpty) continue;
 
@@ -926,13 +929,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final distance = (tapPosition - screenPos).distance;
       if (distance < closestDistance && distance < 100) {
         closestDistance = distance;
-        closestCell = cell;
+        closestEntry = entry;
       }
     }
 
-    if (closestCell != null) {
-      final isFirstVisit = !mapState.visitedCellIds.contains(closestCell.id);
-      _showCellDetailSheet(context, closestCell, isFirstVisit);
+    if (closestEntry != null) {
+      final cell = closestEntry.cell;
+      final isFirstVisit = !mapState.visitedCellIds.contains(cell.id);
+      _showCellDetailSheet(context, cell, isFirstVisit, closestEntry.state);
     }
   }
 
@@ -953,14 +957,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     BuildContext context,
     Cell cell,
     bool isFirstVisit,
+    CellState cellState,
   ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => CellDetailSheet(
         cell: cell,
-        visitCount: 1,
+        visitCount: isFirstVisit ? 0 : 1,
         isFirstVisit: isFirstVisit,
+        currentRelationship: cellState.relationship,
       ),
     );
   }

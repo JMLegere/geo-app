@@ -96,7 +96,8 @@ void main() {
         expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });
 
-      test('present and explored seams are visible revealed-cell boundaries',
+      test(
+          'present and explored seams are visible but not heavy revealed-cell boundaries',
           () {
         final present = _state(CellRelationship.present);
         final explored = _state(CellRelationship.explored);
@@ -106,10 +107,13 @@ void main() {
         expect(FogRenderer.seamGlowStrokeWidth(present),
             greaterThanOrEqualTo(2.0));
         expect(FogRenderer.seamGlowStrokeWidth(explored),
-            greaterThanOrEqualTo(1.8));
+            greaterThanOrEqualTo(1.2));
+        expect(
+            FogRenderer.seamGlowStrokeWidth(explored), lessThanOrEqualTo(1.6));
         expect(FogRenderer.seamStrokeWidth(present), greaterThanOrEqualTo(1.2));
         expect(
-            FogRenderer.seamStrokeWidth(explored), greaterThanOrEqualTo(1.2));
+            FogRenderer.seamStrokeWidth(explored), greaterThanOrEqualTo(0.8));
+        expect(FogRenderer.seamStrokeWidth(explored), lessThanOrEqualTo(1.0));
         expect(FogRenderer.seamGlowBlurSigma(present), lessThanOrEqualTo(1.0));
         expect(FogRenderer.seamGlowBlurSigma(explored), lessThanOrEqualTo(0.8));
         expect(exploredStroke.a, greaterThanOrEqualTo(0.70));

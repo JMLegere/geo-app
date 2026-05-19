@@ -275,7 +275,7 @@ without turning the map into a god screen.
 | Cell/fog overlay | Geometry projection and relationship visuals | Map cell labels or detail text |
 | Border crossing coordinator | One border crossing identity and visit intent | UI animation style |
 | Entry feedback presenter | First-entry/revisit copy, intensity, haptics/sound keys | Species/item reveal |
-| Map cell detail sheet | Map cell context, visit facts, handoff affordances | Downstream reward ownership |
+| Map cell detail sheet | Map cell context, current cell state, visit facts, handoff affordances | Downstream reward ownership |
 | Observability hooks | Lifecycle and gameplay traceability | Product state source of truth |
 
 ### First-Slice Implementation Boundaries
@@ -692,7 +692,7 @@ The GPS-level map should feel organic and legible, not technical.
 | Explored footprint | Warm muted permanence with individually countable cells | One continuous pale blob or grey dead-zone |
 | Frontier | Dark translucent tease with minimal seams | Grid wall, spoiler detail, or harsh cutoff |
 | Unknown / beyond render distance | Fully opaque fog unless explicitly frontier | Base-map details leaking through unreachable or unloaded cells |
-| Cell borders | Dark neutral revealed-cell mosaic seams; hidden in frontier/unknown | Universal debug grid or invisible explored/explored boundaries |
+| Cell borders | Thin dark neutral revealed-cell mosaic seams; hidden in frontier/unknown | Universal debug grid, heavy outlines, or invisible explored/explored boundaries |
 | Opportunity cue | Small spatial promise | Quest marker/chore icon |
 | World event cue | Unusual but optional disturbance | Alarm state or mandatory diversion |
 | Map cell detail sheet | Cozy field-note card | Modal popup that blocks walking momentum |

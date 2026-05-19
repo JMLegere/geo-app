@@ -2,8 +2,10 @@ import 'dart:math' as math;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
@@ -112,10 +114,43 @@ void main() {
         cell: cell,
         visitCount: 3,
         isFirstVisit: false,
+        currentRelationship: CellRelationship.explored,
       );
 
       expect(sheet, isNotNull);
       expect(cell.habitats.length, 2);
+    });
+
+    testWidgets('CellDetailSheet shows current cell state', (tester) async {
+      final cell = Cell(
+        id: 'test-cell-frontier',
+        habitats: [Habitat.freshwater],
+        polygons: [
+          [
+            [(lat: 45.0, lng: -66.0)]
+          ]
+        ],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CellDetailSheet(
+              cell: cell,
+              visitCount: 0,
+              isFirstVisit: true,
+              currentRelationship: CellRelationship.frontier,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Cell state'), findsOneWidget);
+      expect(find.text('Frontier'), findsOneWidget);
     });
 
     test('ShimmerCells is a StatefulWidget', () {

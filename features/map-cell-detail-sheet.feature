@@ -49,4 +49,4 @@ Feature: Map Cell Detail Sheet
   Scenario: Player inspects a map cell
     Given a map cell is visible or current
     When the player opens the map cell detail sheet
-    Then the sheet should show read-only map cell context, visit facts, territory context, and handoffs
+    Then the sheet should show read-only map cell context, cell state, visit facts, territory context, and handoffs

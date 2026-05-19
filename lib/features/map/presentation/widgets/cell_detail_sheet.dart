@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 
 class CellDetailSheet extends StatelessWidget {
   const CellDetailSheet({
@@ -8,11 +9,13 @@ class CellDetailSheet extends StatelessWidget {
     required this.cell,
     required this.visitCount,
     required this.isFirstVisit,
+    required this.currentRelationship,
   });
 
   final Cell cell;
   final int visitCount;
   final bool isFirstVisit;
+  final CellRelationship currentRelationship;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +97,13 @@ class CellDetailSheet extends StatelessWidget {
                   label: 'Visits',
                   value: '$visitCount ${visitCount == 1 ? 'time' : 'times'}',
                 ),
+                const SizedBox(height: 12),
+                _buildInfoRow(
+                  icon: Icons.layers,
+                  label: 'Cell state',
+                  value: _relationshipLabel(currentRelationship),
+                  valueColor: _relationshipColor(currentRelationship),
+                ),
                 if (isFirstVisit) ...[
                   const SizedBox(height: 12),
                   _buildInfoRow(
@@ -144,6 +154,24 @@ class CellDetailSheet extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _relationshipLabel(CellRelationship relationship) {
+    return switch (relationship) {
+      CellRelationship.present => 'Present',
+      CellRelationship.explored => 'Explored',
+      CellRelationship.frontier => 'Frontier',
+      CellRelationship.unknown => 'Unknown',
+    };
+  }
+
+  Color _relationshipColor(CellRelationship relationship) {
+    return switch (relationship) {
+      CellRelationship.present => const Color(0xFF4CAF50),
+      CellRelationship.explored => const Color(0xFFF1DEC0),
+      CellRelationship.frontier => const Color(0xFFFFC857),
+      CellRelationship.unknown => const Color(0xFFB0B0B0),
+    };
   }
 
   IconData _getHabitatIcon(Habitat? habitat) {

@@ -274,6 +274,7 @@
 - Remove `jitter_suppressed` from `CellBorderCrossingEvent` so the border crossing payload stays limited to accepted crossing identity, first/revisit status, timestamp, and territory context.
 - Explored Voronoi map cells should not visually dissolve into one continuous explored blob.
 - Keep frontier and unknown seams suppressed to avoid a debug-grid fog wall, but keep explored/explored shared edges visible as dark neutral revealed-cell boundaries.
+- Revealed mosaic seams should stay thin enough to avoid heavy technical outlines; if the cell structure is readable, prefer thinner dark grey strokes over thicker borders.
 - Screenshot review showed the prior "subtle" seam styling was perceptually invisible; explored/explored boundaries must be strong enough to read as a revealed mosaic, not merely present in topology tests.
 - Unknown/non-frontier cells should use fully opaque fog so base-map detail does not leak through unexplored territory.
 - The map fetch radius must cover wide GPS-level viewports with padding; otherwise already-explored cells can appear hidden behind unknown fog because their geometry was not loaded.
