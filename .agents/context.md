@@ -440,4 +440,5 @@
 - Screenshot review showed explored/explored seams were topologically emitted but visually too subtle to perceive; the explored footprint still read as one pale blob.
 - Added failing tests requiring fully opaque unknown fog, stronger revealed-cell seams, and a fetch radius large enough for wide GPS-level viewports.
 - Updated fog rendering so unknown/non-frontier fog is fully opaque, revealed-cell seams use stronger high-contrast strokes, and fetched map-cell coverage increases from 2200m to 3200m to reduce explored cells appearing behind unloaded unknown fog.
+- Jeremy refined the visual target: revealed mosaic borders should be darker, preferably dark grey, so explored cell separations read over both land and water.
 - Verification passed: focused fog/render/map screen tests, `mise exec -- flutter analyze --no-pub`, `mise exec -- eac check`, and `git diff --check`.

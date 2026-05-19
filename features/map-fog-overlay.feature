@@ -18,7 +18,7 @@ Feature: Fog Overlay
   Scenario: Explored map cells remain visually distinct
     Given adjacent map cells share the explored fog relationship
     When the overlay paints their geometry
-    Then each explored map cell should retain a subtle visible boundary
+    Then each explored map cell should retain a visible dark neutral boundary
     And explored cells should not merge into one continuous explored blob
 
 

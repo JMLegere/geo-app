@@ -97,7 +97,7 @@ class FogRenderer {
   }
 
   static Color _exploredStrokeColor() {
-    return const Color(0xCCF8E8C8);
+    return const Color(0xCC4A4A4A);
   }
 
   static Color _frontierStrokeColor() {

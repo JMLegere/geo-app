@@ -57,6 +57,18 @@ void main() {
         expect(explored.a, greaterThan(0.0));
       });
 
+      test('explored mosaic seams use dark neutral contrast', () {
+        final explored =
+            FogRenderer.strokeColor(_state(CellRelationship.explored));
+
+        expect(explored.a, greaterThanOrEqualTo(0.70));
+        expect(explored.r, lessThanOrEqualTo(0.35));
+        expect(explored.g, lessThanOrEqualTo(0.35));
+        expect(explored.b, lessThanOrEqualTo(0.35));
+        expect((explored.r - explored.g).abs(), lessThanOrEqualTo(0.04));
+        expect((explored.g - explored.b).abs(), lessThanOrEqualTo(0.04));
+      });
+
       test('frontier and unknown seams are hidden so fog does not form a grid',
           () {
         final frontier =
