@@ -108,12 +108,12 @@ This is the implementation-ready player loop for the first slice.
 | Map enters | Player opens Map tab | Spinning-world readiness cover, then GPS-level map | Starts/continues location, cell fetch, visit fetch, overlay readiness |
 | Map steadies | Map, cells, location, and overlay are coherent | Marker/ring, current map cell, fog relationships | Emits steady/ready lifecycle state |
 | Trust resolves | GPS is trusted or not trusted | Marker if trusted; ring/pause affordance if untrusted | Sets exploration eligibility to eligible or browse-only |
-| Player moves | Marker moves within same map cell | Smooth marker movement, no reward spam | Updates marker state only |
+| Player moves | Marker moves within same map cell | Speed-bounded smooth marker movement, no reward spam | Updates marker state only |
 | Border crossed | Eligible marker crosses a border into a different map cell | One cell entry moment | Records visit, emits one border crossing identity, recomputes fog |
 | First entry | Entered map cell was unvisited | Fog reveal + medium acknowledgement | Marks map cell as visited; makes downstream handoff available if any |
 | Re-entry | Entered map cell was already explored | Low-intensity continuity feedback | Records visit count; does not replay first-entry reward |
 | Detail opened | Player taps current/entered map cell or entry affordance | Map cell detail sheet with context first | No downstream reward mutation unless player chooses handoff later |
-| Trust lost | GPS diverges or accuracy degrades | Marker yields to ring; paused explanation | Stops visits, fog clearing, and discovery handoff |
+| Trust lost | Marker-to-geolocation distance exceeds 100m | Marker yields to ring while still dragging toward the geolocation fix; paused explanation | Stops visits, fog clearing, and discovery handoff |
 | Trust recovered | GPS stabilizes | Ring tightens back into marker | Resumes eligibility without replaying stale border crossings |
 
 ### First-Slice State Contracts
@@ -140,9 +140,9 @@ These rules define when state is allowed to move and which side effects are lega
 |----------|-----------|---------|------------------------|------------------------|
 | `MapReadiness` | not ready → ready | map created, style loaded, location ready, cells ready, visits ready, overlay painted | steady-state lifecycle event; GPS-level map can be shown as playable | visit mutation, fog mutation, or handoff exposure before ready |
 | `MapReadiness` | any → failed | required dependency fails or times out | observable failure reason; non-playable fallback | pretending the map is ready |
-| `MarkerTrust` | locating/uncertain → trusted | accuracy and marker/GPS gap are inside playable tolerance | marker shown as gameplay truth | retroactive visit/fog mutation for time spent untrusted |
-| `MarkerTrust` | trusted → ring | gap or accuracy leaves playable tolerance | ring shown; pause explanation available | continue recording visits or revealing fog |
-| `MarkerTrust` | ring → recovered → trusted | gap converges back inside tolerance | exploration may resume from current trusted state | replaying stale border crossings from while trust was lost |
+| `MarkerTrust` | locating/uncertain → trusted | marker/GPS gap is inside playable tolerance | marker shown as gameplay truth with speed-bounded interpolation | retroactive visit/fog mutation for time spent untrusted |
+| `MarkerTrust` | trusted → ring | marker-to-geolocation gap exceeds 100m | ring shown; pause explanation available; marker continues dragging toward the geolocation fix | continue recording visits or revealing fog |
+| `MarkerTrust` | ring → recovered → trusted | gap converges back inside tolerance | exploration may resume from current trusted state and marker interpolation continues | replaying stale border crossings from while trust was lost |
 | `ExplorationEligibility` | browse-only/paused → eligible | readiness is playable and marker trust is trusted | movement may mutate visits/fog and expose handoffs | hidden paused state |
 | `ExplorationEligibility` | eligible → paused | trust is lost after being eligible | stop visit/fog/handoff mutation immediately | finishing an in-flight border crossing without re-validation |
 | `CellBorderCrossingEvent` | none → emitted | eligible marker crosses from one map cell into another | one `border_crossing_id`; visit intent; fog recompute input | same-cell movement or untrusted movement pretending to be a crossing |
@@ -210,8 +210,8 @@ Primitive contracts:
 | `MapDebugControlState` | `last_control` | `move_north`, `move_south`, `move_west`, `move_east`, `gps_resume`, `pinch`, `spread`, `swipe_up`, `swipe_down`, `swipe_left`, `swipe_right` | debug overlay | Used for QA traces only; never drives rewards directly. |
 | `MapDebugControlState` | `source` | `debug_controls` | constant | Required in telemetry for every debug-driven movement. |
 | `MarkerTrust` | `state` | `locating`, `trusted`, `uncertain`, `ring`, `recovered` | marker coordinator | Only `trusted` may make exploration eligible. |
-| `MarkerTrust` | `gps_position`, `marker_position` | `GeoPoint` | GPS source + marker spline | Marker position is gameplay truth; raw GPS is not player-facing gameplay. |
-| `MarkerTrust` | `accuracy_meters`, `gap_meters` | double | GPS + spline | Crossing thresholds moves the player into ring/browse-only state. |
+| `MarkerTrust` | `gps_position`, `marker_position` | `GeoPoint` | GPS source + marker spline | Marker position is gameplay truth; raw GPS is not player-facing gameplay. First geolocation fix anchors the marker; later movement is speed-bounded, including low-confidence fixes. |
+| `MarkerTrust` | `accuracy_meters`, `gap_meters` | double | GPS + spline | Marker-to-geolocation gap over 100m moves the player into ring/browse-only state; accuracy remains diagnostic/context, not the ring trigger. |
 | `MarkerTrust` | `reason` | `gps_unavailable`, `accuracy_low`, `gap_too_large`, `trusted`, `recovered` | marker coordinator | Copy should explain playability, not plugin internals. |
 | `ExplorationEligibility` | `state` | `eligible`, `browse_only`, `paused` | readiness + trust | This is the gate for every gameplay-significant mutation. |
 | `ExplorationEligibility` | `can_record_visit`, `can_clear_fog`, `can_offer_handoff` | bool | derived flags | All false unless state is `eligible`. |

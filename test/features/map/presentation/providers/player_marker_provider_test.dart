@@ -68,11 +68,49 @@ ProviderContainer makeContainer({
   );
 }
 
+LocationState _trustedPosition(
+  double lat,
+  double lng, {
+  DateTime? timestamp,
+}) {
+  return LocationState(
+    lat: lat,
+    lng: lng,
+    accuracy: 5.0,
+    timestamp: timestamp ?? DateTime(2026),
+    isConfident: true,
+  );
+}
+
+LocationState _untrustedPosition(
+  double lat,
+  double lng, {
+  required double accuracy,
+  DateTime? timestamp,
+}) {
+  return LocationState(
+    lat: lat,
+    lng: lng,
+    accuracy: accuracy,
+    timestamp: timestamp ?? DateTime(2026),
+    isConfident: false,
+  );
+}
+
+Future<void> _anchorMarkerAt(
+  ControllableMockLocationRepository repo,
+  double lat,
+  double lng,
+) async {
+  repo.emitPosition(_trustedPosition(lat, lng));
+  await Future<void>.delayed(Duration.zero);
+}
+
+
 void main() {
   group('SplineConfig', () {
-    test('ringThresholdMeters is between 30 and 50', () {
-      expect(SplineConfig.ringThresholdMeters, greaterThanOrEqualTo(30.0));
-      expect(SplineConfig.ringThresholdMeters, lessThanOrEqualTo(50.0));
+    test('ringThresholdMeters is 100m', () {
+      expect(SplineConfig.ringThresholdMeters, 100.0);
     });
 
     test('minLerpFactor is positive and less than maxLerpFactor', () {
@@ -100,6 +138,15 @@ void main() {
       final far = SplineConfig.lerpFactor(200.0);
       expect(near, lessThan(mid));
       expect(mid, lessThan(far));
+    });
+
+    test('bounded lerp limits one-frame marker jumps', () {
+      final factor = SplineConfig.boundedLerpFactor(
+        gapMeters: 35.0,
+        tickInterval: const Duration(milliseconds: 16),
+      );
+
+      expect(factor * 35.0, lessThanOrEqualTo(0.30));
     });
   });
 
@@ -130,17 +177,46 @@ void main() {
       expect(state.lng, 0.0);
     });
 
-    test('marker position lerps toward GPS position over ticks', () async {
+    test('first GPS fix anchors marker instead of chasing from origin',
+        () async {
       container.read(playerMarkerProvider);
 
-      final gpsPos = LocationState(
-        lat: 10.0,
-        lng: 10.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(gpsPos);
+      repo.emitPosition(_trustedPosition(45.9636, -66.6431));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(playerMarkerProvider);
+      expect(state.lat, closeTo(45.9636, 0.0000001));
+      expect(state.lng, closeTo(-66.6431, 0.0000001));
+      expect(state.isRing, isFalse);
+    });
+
+    test('low-confidence GPS still drags marker below ring distance',
+        () async {
+      container.read(playerMarkerProvider);
+
+      repo.emitPosition(_trustedPosition(45.9636, -66.6431));
+      await Future<void>.delayed(Duration.zero);
+
+      repo.emitPosition(_untrustedPosition(
+        45.9639,
+        -66.6431,
+        accuracy: 80.0,
+        timestamp: DateTime(2026, 1, 1, 0, 0, 1),
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final state = container.read(playerMarkerProvider);
+      expect(state.isRing, isFalse);
+      expect(state.lat, greaterThan(45.9636));
+      expect(state.lat, lessThan(45.9639));
+      expect(state.lng, closeTo(-66.6431, 0.00001));
+    });
+
+    test('marker position lerps toward GPS position over ticks', () async {
+      container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
+
+      repo.emitPosition(_trustedPosition(0.0002, 0.0));
       await Future<void>.delayed(Duration.zero);
 
       // Trigger multiple ticks
@@ -149,23 +225,15 @@ void main() {
       final state = container.read(playerMarkerProvider);
       // Marker should have moved toward GPS (not still at 0,0)
       expect(state.lat, greaterThan(0.0));
-      expect(state.lng, greaterThan(0.0));
       // But not yet at GPS position (spline, not snap)
-      expect(state.lat, lessThan(10.0));
-      expect(state.lng, lessThan(10.0));
+      expect(state.lat, lessThan(0.0002));
     });
 
     test('marker is closer to GPS after more ticks', () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      final gpsPos = LocationState(
-        lat: 1.0,
-        lng: 1.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(gpsPos);
+      repo.emitPosition(_trustedPosition(0.0002, 0.0));
       await Future<void>.delayed(Duration.zero);
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -179,39 +247,29 @@ void main() {
       expect(gapLater, lessThan(gapEarly));
     });
 
-    test('isRing becomes true when gap exceeds ring threshold', () async {
+    test('isRing becomes true when marker-geolocation gap exceeds 100m',
+        () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      // GPS jumps far away (simulating large gap)
-      final farPos = LocationState(
-        lat: 1.0, // ~111km from origin
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(farPos);
+      // GPS jumps beyond the 100m ring threshold.
+      repo.emitPosition(_trustedPosition(0.001, 0.0));
       await Future<void>.delayed(Duration.zero);
 
-      // After GPS update, gap should be huge → isRing = true
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       final state = container.read(playerMarkerProvider);
       expect(state.isRing, isTrue);
+      expect(state.lat, greaterThan(0.0),
+          reason: 'Marker should still drag toward the geo location in ring.');
     });
 
     test('isRing becomes false when gap shrinks below threshold', () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
       // First: large gap → ring
-      final farPos = LocationState(
-        lat: 1.0,
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(farPos);
+      repo.emitPosition(_trustedPosition(0.001, 0.0));
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // Verify ring state
@@ -219,16 +277,11 @@ void main() {
 
       // Now GPS moves to same position as marker (gap shrinks)
       final currentMarker = container.read(playerMarkerProvider);
-
-      // Emit GPS at marker position → gap = 0
-      final nearPos = LocationState(
-        lat: currentMarker.lat,
-        lng: currentMarker.lng,
-        accuracy: 5.0,
+      repo.emitPosition(_trustedPosition(
+        currentMarker.lat,
+        currentMarker.lng,
         timestamp: DateTime(2026, 1, 1, 0, 0, 1),
-        isConfident: true,
-      );
-      repo.emitPosition(nearPos);
+      ));
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       final state = container.read(playerMarkerProvider);
@@ -237,15 +290,9 @@ void main() {
 
     test('gapDistance reflects distance between marker and GPS', () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      final gpsPos = LocationState(
-        lat: 0.001, // ~111m north
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(gpsPos);
+      repo.emitPosition(_trustedPosition(0.0002, 0.0));
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       // After a tick, gap should be reflected in state
@@ -256,15 +303,9 @@ void main() {
     test('logs map.gps_accuracy_degraded when isRing transitions to true',
         () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      final farPos = LocationState(
-        lat: 1.0,
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(farPos);
+      repo.emitPosition(_trustedPosition(0.001, 0.0));
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       expect(obs.eventNames, contains('map.gps_accuracy_degraded'));
@@ -273,28 +314,19 @@ void main() {
     test('logs map.gps_accuracy_restored when isRing transitions to false',
         () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
       // Trigger ring state
-      final farPos = LocationState(
-        lat: 1.0,
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(farPos);
+      repo.emitPosition(_trustedPosition(0.001, 0.0));
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       // Move GPS to marker position to restore
       final currentMarker = container.read(playerMarkerProvider);
-      final nearPos = LocationState(
-        lat: currentMarker.lat,
-        lng: currentMarker.lng,
-        accuracy: 5.0,
+      repo.emitPosition(_trustedPosition(
+        currentMarker.lat,
+        currentMarker.lng,
         timestamp: DateTime(2026, 1, 1, 0, 0, 1),
-        isConfident: true,
-      );
-      repo.emitPosition(nearPos);
+      ));
       await Future<void>.delayed(const Duration(milliseconds: 200));
 
       expect(obs.eventNames, contains('map.gps_accuracy_restored'));
@@ -302,15 +334,9 @@ void main() {
 
     test('uses category map', () async {
       container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      final farPos = LocationState(
-        lat: 1.0,
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      );
-      repo.emitPosition(farPos);
+      repo.emitPosition(_trustedPosition(0.001, 0.0));
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       final markerEvents = obs.events
@@ -323,52 +349,21 @@ void main() {
       }
     });
 
-    test('speed is proportional to distance — larger gap moves faster',
-        () async {
-      // Test with a small gap
-      final obsSmall = TestObservabilityService();
-      final repoSmall = ControllableMockLocationRepository();
-      final containerSmall = makeContainer(obs: obsSmall, repo: repoSmall);
-      addTearDown(() {
-        containerSmall.dispose();
-        repoSmall.dispose();
-      });
+    test('trusted movement is speed bounded below ring threshold', () async {
+      container.read(playerMarkerProvider);
+      await _anchorMarkerAt(repo, 0.0, 0.0);
 
-      containerSmall.read(playerMarkerProvider);
-      repoSmall.emitPosition(LocationState(
-        lat: 0.0001, // ~11m
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      ));
+      repo.emitPosition(_trustedPosition(0.0003, 0.0)); // ~33m north
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      final stateSmall = containerSmall.read(playerMarkerProvider);
-      final progressSmall = stateSmall.lat / 0.0001; // fraction covered
 
-      // Test with a large gap
-      final obsLarge = TestObservabilityService();
-      final repoLarge = ControllableMockLocationRepository();
-      final containerLarge = makeContainer(obs: obsLarge, repo: repoLarge);
-      addTearDown(() {
-        containerLarge.dispose();
-        repoLarge.dispose();
-      });
-
-      containerLarge.read(playerMarkerProvider);
-      repoLarge.emitPosition(LocationState(
-        lat: 0.01, // ~1.1km
-        lng: 0.0,
-        accuracy: 5.0,
-        timestamp: DateTime(2026),
-        isConfident: true,
-      ));
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      final stateLarge = containerLarge.read(playerMarkerProvider);
-      final progressLarge = stateLarge.lat / 0.01; // fraction covered
-
-      // Larger gap should cover a larger fraction in the same time
-      expect(progressLarge, greaterThan(progressSmall));
+      final state = container.read(playerMarkerProvider);
+      expect(state.isRing, isFalse);
+      expect(state.lat, greaterThan(0.0));
+      expect(
+        state.lat,
+        lessThan(0.00005),
+        reason: 'Marker should move smoothly, not cover most of 33m in 50ms.',
+      );
     });
   });
 }

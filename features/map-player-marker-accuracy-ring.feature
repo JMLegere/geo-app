@@ -10,10 +10,18 @@ Feature: Player Marker + Accuracy Ring
     Then the marker should move smoothly instead of teleporting
     And exploration should be eligible to record map cell visits and reveal fog
 
-  Scenario: Unreliable GPS enters ring state
-    Given raw GPS diverges too far from the gameplay marker
-    When the marker can no longer converge meaningfully
+  Scenario: Trusted marker movement is speed bounded
+    Given raw GPS moves to a nearby accurate point within the playable trust radius
+    When the marker follows the updated location
+    Then the marker should travel toward the point over multiple frames
+    And it should not cover most of the gap in a single visual jump
+
+
+  Scenario: Distance gap enters ring state
+    Given the geolocation fix is more than 100 meters away from the gameplay marker
+    When the marker can no longer represent precise play
     Then the solid marker should dissolve or defer into an accuracy ring
+    And the gameplay marker should still drag toward the geolocation fix
     And exploration should be paused so no visits, reveals, or discoveries fire from bad position data
 
   Scenario: Trust recovery resumes play

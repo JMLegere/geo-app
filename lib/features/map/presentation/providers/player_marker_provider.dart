@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
+import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/spline_config.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 
@@ -21,6 +22,8 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
   double _gpsLat = 0.0;
   double _gpsLng = 0.0;
   bool _hasGps = false;
+  double _gpsAccuracyMeters = double.infinity;
+  bool _gpsIsConfident = false;
   DateTime? _ringEnteredAt;
 
   static const _tickInterval = Duration(milliseconds: 16);
@@ -35,15 +38,28 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
   PlayerMarkerState build() {
     ref.listen<LocationProviderState>(locationProvider, (_, next) {
       if (next is LocationProviderActive) {
-        _gpsLat = next.location.lat;
-        _gpsLng = next.location.lng;
-        _hasGps = true;
+        _setGpsTarget(next.location);
       }
     });
 
     ref.onDispose(() => _ticker?.cancel());
 
     _ticker = Timer.periodic(_tickInterval, (_) => _tick());
+
+    final currentLocation = ref.read(locationProvider);
+    if (currentLocation is LocationProviderActive) {
+      _gpsLat = currentLocation.location.lat;
+      _gpsLng = currentLocation.location.lng;
+      _gpsAccuracyMeters = currentLocation.location.accuracy;
+      _gpsIsConfident = currentLocation.location.isConfident;
+      _hasGps = true;
+      return PlayerMarkerState(
+        lat: _gpsLat,
+        lng: _gpsLng,
+        isRing: false,
+        gapDistance: 0.0,
+      );
+    }
 
     return const PlayerMarkerState(
       lat: 0.0,
@@ -53,6 +69,31 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
     );
   }
 
+
+  void _setGpsTarget(LocationState location) {
+    final hadGps = _hasGps;
+    _gpsLat = location.lat;
+    _gpsLng = location.lng;
+    _gpsAccuracyMeters = location.accuracy;
+    _gpsIsConfident = location.isConfident;
+    _hasGps = true;
+
+    if (hadGps) return;
+
+    transition(
+      PlayerMarkerState(
+        lat: _gpsLat,
+        lng: _gpsLng,
+        isRing: false,
+        gapDistance: 0.0,
+      ),
+      'map.player_marker_initialized',
+      data: {
+        'accuracy_meters': _gpsAccuracyMeters,
+        'is_confident': _gpsIsConfident,
+      },
+    );
+  }
   void _tick() {
     if (!_hasGps) return;
 
@@ -64,13 +105,14 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
       _gpsLng,
     );
 
-    final factor = SplineConfig.lerpFactor(gapMeters);
-    final newLat = _lerp(current.lat, _gpsLat, factor);
-    final newLng = _lerp(current.lng, _gpsLng, factor);
-
     final wasRing = current.isRing;
     final isRingNow = gapMeters >= SplineConfig.ringThresholdMeters;
-
+    final factor = SplineConfig.boundedLerpFactor(
+      gapMeters: gapMeters,
+      tickInterval: _tickInterval,
+    );
+    final newLat = _lerp(current.lat, _gpsLat, factor);
+    final newLng = _lerp(current.lng, _gpsLng, factor);
     if (!wasRing && isRingNow) {
       _ringEnteredAt = DateTime.now();
       transition(
@@ -82,9 +124,9 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
         ),
         'map.gps_accuracy_degraded',
         data: {
-          'accuracy_meters': gapMeters,
+          'accuracy_meters': _gpsAccuracyMeters,
           'gap_meters': gapMeters,
-          'is_confident': false,
+          'is_confident': _gpsIsConfident,
         },
       );
     } else if (wasRing && !isRingNow) {

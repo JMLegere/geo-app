@@ -321,3 +321,9 @@
 - The app-side Mercator projector remains a temporary synchronous fallback before MapLibre has produced exact screen coordinates.
 - Projection requests are coalesced so fast camera changes keep only one in-flight batch plus the latest pending batch; stale batches are discarded rather than applied.
 - `map.geometry_rendered` includes `projection_mode` so beta logs can show whether a frame used exact MapLibre coordinates or the fallback.
+
+## 2026-05-19 — Player marker movement is speed-bounded with 100m ring threshold
+- The visible gameplay marker should not chase geolocation at the old exponential catch-up rate; that made accurate-but-batched movement look like teleports.
+- The first geolocation fix anchors the marker because no player-visible marker exists yet.
+- Subsequent movement uses the existing ease curve capped by a max marker speed, so nearby GPS updates resolve over multiple frames.
+- Low-confidence GPS still drags the marker. Ring state is triggered only when marker-to-geolocation distance exceeds 100m; exploration remains paused while in ring and resumes as the marker converges.

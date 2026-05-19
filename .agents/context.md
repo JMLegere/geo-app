@@ -473,3 +473,8 @@
 - Jeremy asked why we would not use MapLibre's exact screen-coordinate API anyway; the only real tradeoff was async/batch projection complexity versus better map anchoring.
 - Updated the fog overlay path to batch-project marker, cell vertices, and cell centers through `MapLibreMapController.toScreenLocationBatch`, coalescing camera-change requests and falling back to the synchronous Mercator projector only until exact screen coordinates are ready.
 - Added projection mode diagnostics to `map.geometry_rendered` and SuperBDD coverage requiring fog cell borders to stay pinned to base-map streets, rivers, and landmarks.
+
+## Completed 2026-05-19 — player marker smoothing hardening
+- Jeremy reported that the player marker appeared to jump erratically during movement instead of smoothly splining to geo location.
+- Discovery found that the marker already used a 60fps lerp, but it had two jank sources: first GPS fix could be chased from origin, and trusted updates could cover too much distance per frame.
+- Updated player marker behavior so the first GPS fix anchors the marker, all later geolocation movement is speed-bounded, low-confidence GPS still drags the marker, and ring state is triggered only when marker-to-geolocation distance exceeds 100m.
