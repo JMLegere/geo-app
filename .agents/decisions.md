@@ -288,3 +288,10 @@
 - Use the hybrid global-state architecture: deterministic on-demand resolution from global seeds is canonical, while persisted rows are limited to period seeds, resolver versions, player claims, audits, special event instances, and intentional caches/snapshots.
 - This architecture must be justified by the SuperBDD scenarios in `features/map-global-map-state-model.feature`, not by implementation preference alone.
 - Resolver payload shape must also be derived from BDD consumer scenarios. `GlobalMapCellState` is reward-clean shared state; player-specific fog/visit/claim status wraps it in a separate `PlayerMapCellStateView`.
+
+## 2026-05-19 — Root repo workflow is SuperBDD-driven
+- Root `AGENTS.md` now explicitly instructs EarthNova work to use SuperBDD as the source of truth for product behavior, gameplay rules, UI flows, payload contracts, and state-model changes.
+- Relevant `features/*.feature` scenarios and `product/*.ts` catalog entries should be read before coding.
+- If player-visible behavior, terminology, ownership boundaries, or product contracts change, SuperBDD should be updated first or in the same change.
+- Architecture should fall out of scenarios rather than being invented first and backfilled into BDD later.
+- `mise exec -- eac check` is part of verification whenever product truth or feature behavior changes.

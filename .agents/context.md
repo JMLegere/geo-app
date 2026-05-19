@@ -444,3 +444,7 @@
 - Follow-up beta review found the dark grey seams were much better but slightly too thick; tune explored seam widths down while keeping the dark neutral color.
 - Added map cell detail sheet cell-state display so tapping cells outside the explored footprint can reveal whether they are present, explored, frontier, or unknown.
 - Verification passed: focused fog/render/map screen tests, `mise exec -- flutter analyze --no-pub`, `mise exec -- eac check`, and `git diff --check`.
+
+## Completed 2026-05-19 — root AGENTS SuperBDD workflow guidance
+- Updated root `AGENTS.md` to make EarthNova workflow explicitly SuperBDD-driven for product behavior, gameplay rules, UI flows, payload contracts, and state-model changes.
+- Added clear guidance to read `features/*.feature` and `product/*.ts` before coding, update SuperBDD with player-visible contract changes, let scenarios drive architecture, and require `mise exec -- eac check` alongside relevant tests when product truth changes.

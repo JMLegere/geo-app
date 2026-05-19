@@ -64,6 +64,26 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 
 Tests live in `test/`, mirror `lib/` structure, use `flutter_test` only. No mockito, no mocktail.
 
+### SuperBDD-Driven Development
+
+For product behavior, gameplay rules, UI flows, payload contracts, and state-model
+changes, use **SuperBDD as the source of truth**.
+
+1. Read the relevant `features/*.feature` scenarios and `product/*.ts` catalog
+   entries before coding.
+2. If the behavior, terminology, ownership boundary, or player-visible contract is
+   changing, update SuperBDD first or in the same change.
+3. Let scenarios drive the architecture. Do not invent payloads, state models, or
+   system boundaries first and retrofit BDD afterward.
+4. Treat the layers intentionally:
+   - **Capabilities** = game-system ownership
+   - **Features** = concrete app surfaces / data models
+   - **Actions** = player interactions
+   - **Workflows** = stateful mutation paths
+5. When product truth or feature behavior changes, `mise exec -- eac check` is
+   required alongside the relevant tests.
+
+
 ### Observability — Every State Transition
 
 Every `Notifier` extends `ObservableNotifier<T>`. Every state change calls `transition(newState, 'event.name')` — not `state = newState`. Skipping the log is a bug.
