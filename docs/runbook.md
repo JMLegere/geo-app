@@ -290,6 +290,36 @@ WHERE timed_out
    OR (expected AND NOT ready AND last_seen_at < now() - interval '10 seconds')
 ORDER BY last_seen_at DESC;
 
+
+-- Map bootstrap and GPS startup diagnostics in last 24h
+SELECT
+  occurred_at,
+  session_id,
+  event_name,
+  attributes->>'phase' AS phase,
+  attributes->>'dependency' AS dependency,
+  attributes->>'startup_stage' AS startup_stage,
+  attributes->>'location_state' AS location_state,
+  attributes->>'reason' AS reason,
+  attributes->'waiting_for' AS waiting_for
+FROM telemetry_logs
+WHERE event_name IN (
+    'map.bootstrap.started',
+    'map.gps_started',
+    'map.gps_permission_requested',
+    'map.gps_current_position_requested',
+    'map.gps_startup_waiting',
+    'map.gps_startup_timed_out',
+    'map.map_created',
+    'map.style_loaded',
+    'map.cells_fetch_complete',
+    'map.overlay_frame_painted',
+    'map.steady_state_ready',
+    'map.bootstrap.timed_out'
+  )
+  AND occurred_at > now() - interval '24 hours'
+ORDER BY occurred_at DESC;
+
 -- Route/non-route navigation funnel pairs in last 24h
 WITH nav AS (
   SELECT

@@ -45,6 +45,8 @@ enum DebugLocationMoveDirection {
 const _kDebugLocationDefaultLat = 45.9636;
 const _kDebugLocationDefaultLng = -66.6431;
 const _kDebugLocationMoveMeters = 35.0;
+const _kGpsStartupWaitingDelay = Duration(seconds: 3);
+const _kGpsStartupTimeout = Duration(seconds: 10);
 const _kMetersPerDegreeLatitude = 111320.0;
 
 final locationObservabilityProvider = Provider<ObservabilityService>((ref) {
@@ -74,6 +76,10 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   DateTime? _pausedAt;
   bool _debugLocationEnabled = false;
   LocationState? _debugLocation;
+  Timer? _gpsStartupWaitingTimer;
+  Timer? _gpsStartupTimeoutTimer;
+  int _gpsStartupAttempt = 0;
+  String? _gpsStartupStage;
 
   @override
   ObservabilityService get obs => ref.watch(locationObservabilityProvider);
@@ -87,6 +93,7 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
     ref.onDispose(() {
       _disposed = true;
       _subscription?.cancel();
+      _cancelGpsStartupWatchdog();
     });
     _start();
     return const LocationProviderLoading();
@@ -139,15 +146,28 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
 
   Future<void> _start() async {
     if (_disposed || _debugLocationEnabled) return;
+    final startupAttempt = ++_gpsStartupAttempt;
+    _gpsStartupStage = 'permission_request';
     transition(const LocationProviderLoading(), 'map.gps_started', data: {
       'flow': 'map.bootstrap',
       'phase': TelemetryFlowPhase.dependencyRequested.wireName,
       'dependency': 'gps',
+      'startup_attempt': startupAttempt,
     });
-
+    _armGpsStartupWatchdog(startupAttempt);
+    obs.log('map.gps_permission_requested', category, data: {
+      'flow': 'map.bootstrap',
+      'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+      'dependency': 'gps_permission',
+      'startup_attempt': startupAttempt,
+    });
     final granted = await _repository.requestPermission();
-    if (_disposed || _debugLocationEnabled) return;
+    if (_disposed || _debugLocationEnabled) {
+      _cancelGpsStartupWatchdog();
+      return;
+    }
     if (!granted) {
+      _cancelGpsStartupWatchdog();
       transition(
         const LocationProviderPermissionDenied(),
         'map.gps_permission_denied',
@@ -155,32 +175,97 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
           'flow': 'map.bootstrap',
           'phase': TelemetryFlowPhase.dependencyFailed.wireName,
           'dependency': 'gps_permission',
+          'startup_attempt': startupAttempt,
         },
       );
       return;
     }
 
+    _gpsStartupStage = 'current_position_request';
+    obs.log('map.gps_current_position_requested', category, data: {
+      'flow': 'map.bootstrap',
+      'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+      'dependency': 'gps_position',
+      'startup_attempt': startupAttempt,
+    });
+
     try {
       final initial = await _repository.getCurrentPosition();
-      if (_disposed || _debugLocationEnabled) return;
+      if (_disposed || _debugLocationEnabled) {
+        _cancelGpsStartupWatchdog();
+        return;
+      }
+      _cancelGpsStartupWatchdog();
       transition(LocationProviderActive(initial), 'map.gps_position_updated',
           data: {
             'flow': 'map.bootstrap',
             'phase': TelemetryFlowPhase.dependencyReady.wireName,
             'dependency': 'gps',
+            'startup_attempt': startupAttempt,
           });
     } catch (e) {
-      if (_disposed || _debugLocationEnabled) return;
+      if (_disposed || _debugLocationEnabled) {
+        _cancelGpsStartupWatchdog();
+        return;
+      }
+      _cancelGpsStartupWatchdog();
       transition(LocationProviderError(e.toString()), 'map.gps_error', data: {
         'flow': 'map.bootstrap',
         'phase': TelemetryFlowPhase.dependencyFailed.wireName,
         'dependency': 'gps',
         'error': e.toString(),
+        'startup_attempt': startupAttempt,
       });
       return;
     }
 
     _subscribe();
+  }
+
+  void _armGpsStartupWatchdog(int startupAttempt) {
+    _gpsStartupWaitingTimer?.cancel();
+    _gpsStartupTimeoutTimer?.cancel();
+    _gpsStartupWaitingTimer = Timer(_kGpsStartupWaitingDelay, () {
+      if (_disposed ||
+          _debugLocationEnabled ||
+          state is! LocationProviderLoading ||
+          startupAttempt != _gpsStartupAttempt) {
+        return;
+      }
+      obs.log('map.gps_startup_waiting', category, data: {
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.waitingOn.wireName,
+        'dependency': 'gps',
+        'startup_stage': _gpsStartupStage ?? 'unknown',
+        'elapsed_ms': _kGpsStartupWaitingDelay.inMilliseconds,
+        'startup_attempt': startupAttempt,
+      });
+    });
+    _gpsStartupTimeoutTimer = Timer(_kGpsStartupTimeout, () {
+      if (_disposed ||
+          _debugLocationEnabled ||
+          state is! LocationProviderLoading ||
+          startupAttempt != _gpsStartupAttempt) {
+        return;
+      }
+      obs.log('map.gps_startup_timed_out', category, data: {
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.timedOut.wireName,
+        'dependency': 'gps',
+        'reason': 'gps_startup_not_resolved',
+        'startup_stage': _gpsStartupStage ?? 'unknown',
+        'elapsed_ms': _kGpsStartupTimeout.inMilliseconds,
+        'startup_attempt': startupAttempt,
+      });
+    });
+  }
+
+  void _cancelGpsStartupWatchdog() {
+    _gpsStartupWaitingTimer?.cancel();
+    _gpsStartupWaitingTimer = null;
+    _gpsStartupTimeoutTimer?.cancel();
+    _gpsStartupTimeoutTimer = null;
+    _gpsStartupStage = null;
   }
 
   void _subscribe() {

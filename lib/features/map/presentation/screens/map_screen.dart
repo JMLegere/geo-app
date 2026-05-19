@@ -388,6 +388,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
+  Map<String, dynamic> _locationStateDiagnostics(
+    LocationProviderState locationState,
+  ) {
+    return switch (locationState) {
+      LocationProviderLoading() => const {
+          'location_state': 'loading',
+          'location_error_message': null,
+        },
+      LocationProviderActive(location: final location) => {
+          'location_state': 'active',
+          'location_error_message': null,
+          'location_accuracy_meters': location.accuracy,
+          'location_confident': location.isConfident,
+        },
+      LocationProviderPermissionDenied() => const {
+          'location_state': 'permission_denied',
+          'location_error_message': null,
+        },
+      LocationProviderPaused() => const {
+          'location_state': 'paused',
+          'location_error_message': null,
+        },
+      LocationProviderError(message: final message) => {
+          'location_state': 'error',
+          'location_error_message': message,
+        },
+    };
+  }
+
   void _handleMapBootstrapTimeout() {
     if (!mounted || _steadyStateLogged) return;
     final locationState = ref.read(locationProvider);
@@ -404,6 +433,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       reason: 'steady_state_not_reached',
       data: {
         ...readiness.toLogData(),
+        ..._locationStateDiagnostics(locationState),
         'waiting_for': readiness.waitingFor,
         'timeout_ms': _kMapBootstrapTimeout.inMilliseconds,
       },
@@ -413,6 +443,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       statusMessage: 'steady_state_not_reached',
       attributes: {
         ...readiness.toLogData(),
+        ..._locationStateDiagnostics(locationState),
         'timeout_ms': _kMapBootstrapTimeout.inMilliseconds,
       },
     );

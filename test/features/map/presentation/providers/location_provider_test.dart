@@ -28,6 +28,7 @@ class ControllableMockLocationRepository implements LocationRepository {
   bool _permissionGranted = true;
   LocationState? _currentPosition;
   bool _throwOnGetCurrent = false;
+  Completer<bool>? _permissionCompleter;
 
   @override
   Stream<LocationState> get positionStream => _controller.stream;
@@ -46,7 +47,11 @@ class ControllableMockLocationRepository implements LocationRepository {
   }
 
   @override
-  Future<bool> requestPermission({String? traceId}) async => _permissionGranted;
+  Future<bool> requestPermission({String? traceId}) async {
+    final completer = _permissionCompleter;
+    if (completer != null) return completer.future;
+    return _permissionGranted;
+  }
 
   void emitPosition(LocationState position) {
     _currentPosition = position;
@@ -57,6 +62,9 @@ class ControllableMockLocationRepository implements LocationRepository {
 
   void setPermissionGranted(bool granted) => _permissionGranted = granted;
   void setThrowOnGetCurrent(bool value) => _throwOnGetCurrent = value;
+  void hangPermissionRequest() {
+    _permissionCompleter = Completer<bool>();
+  }
 
   void dispose() => _controller.close();
 }
@@ -207,6 +215,32 @@ void main() {
       expect(obs.eventNames, contains('map.gps_error'));
     });
 
+    testWidgets('logs GPS startup wait stage when permission request hangs',
+        (tester) async {
+      repo.hangPermissionRequest();
+
+      final c = ProviderContainer(
+        overrides: [
+          locationObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          locationRepositoryProvider.overrideWithValue(repo),
+        ],
+      );
+
+      c.read(locationProvider);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+
+      final event = obs.events.lastWhere(
+        (event) => event.event == 'map.gps_startup_waiting',
+      );
+      expect(event.data?['startup_stage'], 'permission_request');
+      expect(event.data?['dependency'], 'gps');
+      expect(event.data?['phase'], TelemetryFlowPhase.waitingOn.wireName);
+
+      c.dispose();
+      await tester.pump();
+    });
     test('uses category map', () async {
       container.read(locationProvider);
       await Future<void>.delayed(Duration.zero);

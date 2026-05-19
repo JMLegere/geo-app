@@ -305,3 +305,8 @@
 ## 2026-05-19 — Loading animation uses spinning world emoji cycle
 - Use the shared loading animation for app, GPS, and map readiness blocking states instead of raw ellipses.
 - The animation cycles through `🌍 → 🌎 → 🌏` to imply a spinning Earth and keep waiting states in EarthNova's world/exploration language.
+
+## 2026-05-19 — Map bootstrap failures need pre-map dependency diagnostics
+- When the Map screen times out before `map.map_created`, logs must still identify the blocking dependency instead of only saying every readiness flag is false.
+- GPS startup now logs each awaited stage (`permission_request`, `current_position_request`) plus watchdog events so hung browser permission/location promises are diagnosable.
+- `map.bootstrap.timed_out` includes the current `location_state` and optional `location_error_message`.

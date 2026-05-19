@@ -413,6 +413,16 @@ void main() {
       expect(mapSource, contains("'waiting_for': readiness.waitingFor"));
     });
 
+    test('bootstrap timeout includes location diagnostics', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_locationStateDiagnostics'));
+      expect(mapSource, contains("'location_state':"));
+      expect(mapSource, contains("'location_error_message':"));
+    });
+
     test('keeps a safety fallback for missing base-map settled signal', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

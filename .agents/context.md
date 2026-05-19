@@ -457,3 +457,9 @@
 ## Completed 2026-05-19 — spinning-world loading indicator
 - Replaced the shared ellipsis loading animation with a spinning-world emoji cycle (`🌍 → 🌎 → 🌏`) so app, GPS, and map readiness loading states feel EarthNova-native.
 - Updated Map Frame SuperBDD and `docs/map-design.md` to describe the shared spinning-world readiness/loading state.
+
+## Completed 2026-05-19 — map bootstrap observability hardening
+- Recent logs showed `map.bootstrap.timed_out` after `map.gps_started` with no `map.map_created`, no style, no cells, and no location readiness; the screen mounted but the bootstrap pipeline had insufficient pre-map diagnostics.
+- Added GPS startup stage observability: permission request, current-position request, waiting watchdog, and timeout watchdog with `startup_stage` and `startup_attempt`.
+- Added location-state diagnostics to `map.bootstrap.timed_out` so future failures say whether the map was blocked on loading, denied, paused, active, or error state.
+- Added runbook SQL for map bootstrap / GPS startup diagnostics.
