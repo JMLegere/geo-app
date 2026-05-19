@@ -21,8 +21,7 @@ void main() {
       );
     });
 
-    test('suppresses shared edges between cells with the same visible state',
-        () {
+    test('keeps shared edges between explored cells visible and distinct', () {
       final model = CellTessellationRenderModel.build(
         cellsWithStates: [
           (cell: _cell('a', 0, 0, 1, 1), state: _explored),
@@ -33,8 +32,16 @@ void main() {
 
       expect(
         model.boundaryEdges.where(_isVerticalSharedEdge),
-        isEmpty,
-        reason: 'Explored/explored internal borders must not double-paint.',
+        hasLength(1),
+        reason: 'Explored/explored internal borders should remain distinct.',
+      );
+      expect(
+        model.boundaryEdges
+            .where(_isVerticalSharedEdge)
+            .single
+            .state
+            .relationship,
+        CellRelationship.explored,
       );
     });
 

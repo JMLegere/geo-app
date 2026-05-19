@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class HierarchyHeader extends StatelessWidget {
@@ -95,6 +96,7 @@ class _BackNavRow extends StatelessWidget {
             screenName: 'hierarchy_header',
             widgetName: 'back_navigation_row',
             actionType: 'back_tap',
+            playerActionId: PlayerActions.changeTerritoryScale,
             callback: onBackTap!,
           );
 

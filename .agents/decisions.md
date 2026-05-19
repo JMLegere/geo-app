@@ -121,3 +121,169 @@
 - Browser bootstrap / low-level telemetry and Dart app telemetry must share one active app session ID. Web startup may create a temporary bootstrap session, but queued JS events are rewritten to the Dart app session before beacon flush, with the original stored as `bootstrap_session_id` when different.
 - `map.bootstrap` must always reach a terminal lifecycle phase. If steady state is not reached, emit `map.bootstrap.timed_out` with the readiness booleans and `waiting_for` list so `telemetry_incomplete_flows_v` does not become the only diagnosis surface.
 - If style and cells are ready but MapLibre idle never reaches Dart, keep the explicit base-map-settled safety fallback and label it `readiness_safety_fallback` so terminal agents can distinguish it from the normal JS idle/plugin paths.
+
+## 2026-05-18 — use World Events for OSRS-style distractions and diversions
+- Use **World Events** as the title for OSRS-style distractions/diversions inside the map-world layer, not as a current top-level capability after the capability synthesis.
+- Model it after OSRS Distractions and Diversions: sporadic, optional, chance-encountered activities that can redirect a player's current plan without replacing the core loop.
+- Use **World Events** instead of Wonders/Diversions/Field Events because it is clearer, system-level, and fits the existing naming style.
+- Intended player reward: serendipity — "wait, what's that?" moments that make the real world feel alive.
+- First SuperBDD event family is **Wildlife Migration**: temporary movements of fauna/flora through territories that players may notice, inspect, follow, and encounter during normal exploration.
+
+## 2026-05-18 — natural sciences are top-level capabilities
+- Treat major natural science disciplines as first-class EarthNova capabilities rather than only item categories.
+- Science capabilities should express the player fantasy of studying the natural world through the retained discipline set: Zoology, Botany, Mycology, Geology, Paleontology, and Genetics.
+- Keep **Archaeology** as a sibling capability for human traces/artifacts even though it is not strictly a natural science.
+
+## 2026-05-18 — split capability and action product truth
+- Keep the SuperBDD spine capability-only until the capability language is settled.
+- Store capabilities in `product/capabilities.ts`.
+- Store actions separately in `product/actions.ts`; it is intentionally empty until the next cascade layer is designed.
+- Keep `product/manifest.ts` as the EAC-compatible re-export facade.
+
+## 2026-05-18 — first-pass accepted feature candidates
+- Accepted feature candidates under **Fog**: Place Reveal, Persistent Footprint, Frontier Tease, Fog Trust Rules.
+- Accepted feature candidates under **Exploration**: Crossing Places, Trusted Marker, Nearby Opportunity, Bad-GPS Pause.
+- Accepted feature candidates under **Territories**: District Progress, City Atlas, State/Nation Passport, World Atlas.
+- Accepted feature candidates under **World Events**: Wildlife Migration.
+- Accepted feature candidates under **Discovery**: First-Visit Finds, Revisit Finds, Rarity Moment, Place-Shaped Finds.
+- Accepted feature candidates under **Zoology**: Threatened Species Focus.
+- Accepted feature candidates under **Botany**: Growth Stages.
+- Accepted feature candidates under **Paleontology**: Deep-Time Timeline.
+- Accepted feature candidates under **Genetics**: Trait Variation, Inheritance Patterns.
+- Accepted feature candidates under **Field Journal**: Species Pages.
+- Accepted feature candidates under **Conservation**: Threat Status Meaning, Stewardship Goals.
+- Accepted feature candidates under **Pack**: Owned Find Grid, Mystery Cards, Domain Filters, Find History.
+- Accepted feature candidates under **Identification**: Hold-to-Reveal, Reveal Theater, Deterministic Traits.
+- Accepted feature candidates under **Collections**: Collection Unlocks, Bundle Slots, Collection Completion Rewards, Cross-Domain Collections.
+- Accepted feature candidates under **Sanctuary**: Sanctuary Placement, Sanctuary Growth.
+- Accepted feature candidates under **Buddy**: Active Buddy, Buddy Care.
+- Accepted feature candidates under **Lineage**: Family Tree, Breeding Pairing, Inherited Traits, Lineage Rarity.
+- Accepted feature candidates under **Quests**: Science Quests.
+- Accepted feature candidates under **Achievements**: Milestone Achievements, Achievement Diaries.
+- Accepted feature candidates under **Recap**: Return Recap.
+- Accepted feature candidates under **Community**: Community Progress, Community Events.
+- Accepted feature candidates under **Economy**: Duplicate Value, Trading, Market Signals.
+- Explicitly not accepted in this pass: World Events Falling Stars/Treasure Trails/Fossil Exposures/Community Sightings/Anomalies; Identification Readiness Mystery; Buddy Bond; Quests Field Quests/Daily Weekly Prompts; Recap Pending Mysteries; Community Nearby Presence; Economy Orbs as Currency/Care Items.
+- Current capability gaps needing future synthesis: Mycology, Geology, and Archaeology have no accepted feature candidates yet.
+
+## 2026-05-18 — concrete app sections define SuperBDD features
+- Refine the SuperBDD vocabulary: capabilities are broad app/game-system areas; features are concrete sections of a page, app surface, or data model that can be owned independently inside a capability.
+- A feature should be an independently designable/buildable part of the larger capability, not just an emotional beat, rule, loop name, or scenario/action.
+- The 2026-05-18 feature-candidate list above should be treated as selected experience ingredients and design inputs, not final SuperBDD features.
+- Before writing real feature files, synthesize those ingredients into concrete app features such as map overlay sections, territory atlas sections, pack/card sections, journal data models, collection models, buddy state models, and economy/trade surfaces.
+- In the feature catalog, break the territory concept into concrete features: Districts, Cities, States, Countries, and World.
+
+## 2026-05-18 — science disciplines remain capabilities while Field Guide is a feature
+- Keep high-level science disciplines as first-class capabilities: Zoology, Botany, Mycology, Geology, Paleontology, Genetics, and Archaeology.
+- Treat **Field Guide** as a concrete Progression-Permanence feature, not a top-level capability, because it is an app section/knowledge surface that persists learned observations.
+- Science discipline feature files are tagged only with their science capability; they are presented through the Field Guide feature rather than owned by a Field Guide capability.
+- Progression-Permanence now owns Field Guide and Conservation alongside Collections, Sanctuary, Buddy, and Lineage.
+
+## 2026-05-18 — Map decomposes into concrete map features
+- Replace broad map feature buckets such as Fog, Exploration, and World Events with concrete app surfaces/data models.
+- Map surfaces: Map Frame, Player Marker + Accuracy Ring, Fog Overlay, Map Cell Detail Sheet, Nearby Opportunity Layer, World Event Cue Layer, Districts, Cities, States, Countries, World, and Territory Navigation.
+- Map data models: Exploration Eligibility State, Cell Border Crossing Model, Fog State Model, Territory Progress Model, and World Event Instance Model.
+- This decomposition targets the current map jank diagnosis: semantic jank is handled by map cell detail/context features, visual jank by marker/fog/cue layers, and reward jank by explicit border crossing/fog/progress models.
+
+## 2026-05-18 — Map design starts from experience and state
+- Design the mapping capability as a game system before designing individual screens.
+- Map's experience contract is: the player knows where they are, trusts the gameplay marker, reveals the world by moving, understands map cell entries, sees a soft nearby pull, and accumulates local movement into larger territory progress.
+- Use the core loop `open map → orient on self → read fog/frontier → move physically → cross Voronoi map cell border → reveal/update footprint → acknowledge map cell → optionally inspect or follow a cue`.
+- Prioritize state-machine clarity before implementation: marker trust, exploration eligibility, cell border crossing, fog relationship, reward handoff, territory progress, and world event instances.
+- First implementation slice should stay focused on map frame, marker/ring, cell border crossing, fog state/overlay, and map cell detail sheet before nearby opportunities or territory rollups.
+
+## 2026-05-19 — Map design source aligns to Map boundary
+- `docs/map-design.md` now treats map design as Map capability design, not just a screen/rendering spec.
+- Map owns movement truth, fog reveal, map cell acknowledgement, territory context, soft opportunity cues, and map-visible event cues.
+- Map does **not** own high-intensity species/item/identification/pack rewards; those are downstream Discovery, Identification, Pack, Field Guide, or event-specific systems.
+- First-visit map cell entries should be medium-intensity: one cell border crossing event, fog reveal, map cell acknowledgement, and optional downstream handoff. This replaces forced first-visit discovery popup language for the map capability.
+- Feedback should follow the reward intensity ladder so the map stays movement-first rather than noisy or chore-like.
+
+## 2026-05-19 — First playable Map slice
+- The first playable mapping slice is deliberately narrower than the full Map fantasy.
+- Included: Map Frame, Player Marker + Accuracy Ring, Exploration Eligibility State, Cell Border Crossing Model, Fog State Model, Fog Overlay, and Map Cell Detail Sheet.
+- Not yet included: full territory dashboard polish, advanced marker personality, rich POI/social place claims, full habitat art direction, and downstream Discovery/Pack/Field Guide reward reveal.
+- First-slice success means one walk produces a coherent loop: trusted map open, one Voronoi map cell border crossing, visible fog reveal, map cell acknowledgement, no reward spam on repeat, and no downstream systems required to feel playable.
+- GPS-level visual hierarchy should be `marker/ring > current map cell > fog relationship > cell cue > base map detail`.
+
+## 2026-05-19 — First-slice Map contracts
+- The first playable map slice now has an implementation-ready moment choreography: map enters, map steadies, trust resolves, player moves, border crosses, first entry/re-entry feedback, detail opened, trust lost, and trust recovered.
+- First-slice state contracts are named explicitly: `MapReadiness`, `MarkerTrust`, `ExplorationEligibility`, `CellBorderCrossingEvent`, `FogRelationship`, `CellEntryFeedback`, and `MapCellDetailState`.
+- `CellBorderCrossingEvent` is the shared identity for visit recording, fog recompute, map cell acknowledgement, downstream handoff availability, and observability.
+- The first-slice map cell detail sheet uses a field-note anatomy: map cell heading, status pill, territory context, visit facts, fog/progress note, then secondary downstream handoffs.
+
+## 2026-05-19 — First-slice payload and responsibility boundaries
+- First-slice payload shapes are now design contracts, not final Dart APIs: `MapReadiness`, `MarkerTrust`, `ExplorationEligibility`, `CellBorderCrossingEvent`, `FogRelationshipSet`, `CellEntryFeedback`, and `MapCellDetailState`.
+- Payloads must stay reward-clean: border crossing/detail/fog payloads do not carry species, item, pack, field-guide, or identification mutation results.
+- Component responsibilities are split so the map frame composes readiness/framing, marker/ring displays trust, overlay renders relationships, border crossing coordinator emits one identity, entry feedback handles intensity/copy, detail sheet explains context, and observability provides traceability.
+- The first-slice acceptance matrix now covers trusted/bad-GPS cold opens, same-cell movement, first border crossing, jitter suppression, re-entry, detail inspection, trust loss, and trust recovery.
+
+## 2026-05-19 — Map and Voronoi map cell terminology
+- Use **Map** as the capability/surface term, not World Board, for first-slice technical design.
+- Use **Voronoi map cell** for the generated playable polygon, with **map cell** as shorthand.
+- Use **map cell border** for the boundary line between adjacent map cells. The player crosses a border, then enters a map cell; they do not "cross a map cell."
+- Reserve **place** for future semantic geography layered above map cells, such as POIs, parks, landmarks, named areas, or social claims.
+
+## 2026-05-19 — First-slice transition invariants
+- The first playable Map slice must obey six invariants: no ready-before-ready, no same-cell mutation, no border-crossing replay after paused trust loss, no reward payload leakage, no inspection mutation, and no fake progress while paused.
+- `MapReadiness` is the only gate into playable map state; visits, fog, and handoffs must not appear early.
+- `CellBorderCrossingEvent` only exists when a real border is crossed under eligible movement; same-cell movement and jitter produce no semantic event.
+- `MapCellDetailState` may surface paused context, but it must never imply movement is currently counting unless `ExplorationEligibility` is active again.
+
+## 2026-05-19 — Map Debug Controls are test infrastructure
+- `Map Debug Controls` is a Map feature, but it is developer-only infrastructure rather than player-facing gameplay.
+- The feature owns on-screen buttons for P↑/P↓/P←/P→ simulated marker movement, GPS resume, and Pinch/Spread/swipe gesture injection.
+- Debug movement and gestures must use the same readiness, marker trust, exploration eligibility, border crossing, fog, and reward-clean gates as real input.
+- Debug-driven movement must be source-marked (`debug_controls`) and must not grant reward payloads or hidden production privileges directly.
+
+## 2026-05-19 — First-slice Map implementation boundaries
+- First-slice Map implementation should be organized by explicit boundaries, not a god-screen: location source, marker trust, map readiness, cell data source, exploration eligibility, cell border crossing coordinator, visit recorder, fog relationship service, entry feedback presenter, map cell detail state builder, and debug controls.
+- Existing code anchors can evolve toward these names without churn: `LocationNotifier`, `PlayerMarkerNotifier`, `MapNotifier`, `ExplorationEligibility`, `DetectCellEntry`, `RecordCellVisit`, `VisitQueueProvider`, `FogStateService`, and `DebugGestureOverlay`.
+- The build order should preserve TDD and vertical-slice safety: readiness gate → marker trust → eligibility → border crossing identity → visit result → fog recompute → entry feedback/detail → debug harness regression coverage.
+
+## 2026-05-19 — Player actions belong in owning feature files
+- Follow the EAC and main-website pattern: `actionCapabilities` is the central action catalog, `productCapabilities.requiredActions` wires actions to capabilities, and `@action.<id>` scenarios live in the concrete feature files that own the behavior.
+- Do not model `Player Actions` as its own product feature; it is a cross-cutting manifest/catalog concern, not a player-facing app section or game system.
+- A shared generic player-actions feature was removed after review; action scenarios are distributed into Map, science Field Guide, Exploration-Discovery, Progression, Motivation, and Multiplayer feature files.
+
+## 2026-05-19 — Capability action wiring should use typed action ids
+- Follow the main-website pattern beyond feature placement: keep a central action-id export (`playerActions`) derived from `actionCapabilities`, then reference those constants from `productCapabilities.requiredActions`.
+- This makes action ownership easier to refactor and reduces silent typo risk compared with repeating raw action-id strings across capability definitions.
+
+## 2026-05-19 — SuperBDD workflows model stateful player mutations
+- Use `product/workflows.ts` for typed SuperBDD workflow definitions and keep `product/manifest.ts` as the export facade.
+- Keep workflow ids centralized with the action catalog (`playerActionWorkflows`) so actions and capability workflow ownership do not repeat raw workflow-id strings.
+- Attach workflows to stateful gameplay flows rather than creating workflow-only feature files: Map exploration, Discovery ownership, conservation, collection commitment, sanctuary placement, buddy care, lineage, quest rewards, recap acknowledgement, community contribution, and trade exchange.
+- Workflow evidence stays tied to existing owning feature files plus `mise exec -- eac check`; do not invent generic workflow/action feature files just to satisfy the graph.
+
+## 2026-05-19 — Flutter interactibles declare SuperBDD action ids or exemptions
+- Mirror the main-website `data-user-action` pattern in Flutter through `ObservableInteraction`: every instrumented interaction must now declare a known `PlayerActions.*` id or an explicit telemetry-only reason.
+- Keep `lib/shared/product/player_actions.dart` as a hand-maintained Dart mirror of `product/actions.ts`, guarded by a test that compares Dart constants against the SuperBDD action catalog.
+- Use `player_action_id` in interaction telemetry when the UI gesture corresponds to a SuperBDD player action; use `telemetry_only_reason` for auth/account/debug/filter refinements that are real telemetry but not current gameplay actions.
+- Static enforcement lives in `test/shared/observability/player_action_interaction_enforcement_test.dart`; it rejects unclassified `ObservableInteraction` calls and raw-string `playerActionId` usage.
+
+## 2026-05-19 — Map progress begins on real border crossings, not idle occupancy
+- Align the first playable Map slice to the chosen fantasy of **crossing places**: simply opening the map or regaining trust inside the same map cell should track context, but must not immediately grant a visit, fog clear, encounter, or discovery acknowledgement.
+- `ExplorationNotifier` now treats initial occupancy and trusted recovery as `map.cell_tracked` only; visit/fog/discovery mutation requires an eligible transition from one tracked map cell into a different map cell.
+- Border-crossing mutations now carry a shared `CellBorderCrossingEvent` identity (`border_crossing_id`, previous/entered cell ids, first-vs-reentry, timestamp, territory ids) so visit recording, fog clear, encounter/discovery triggers, and later detail/feedback can agree on one technical event.
+- Explicit exploration eligibility can now gate mutation even when the marker itself is not a ring, covering paused GPS/unavailable states without replaying stale crossings on recovery.
+
+
+## 2026-05-19 — Explored map cells remain distinct
+- Do not implement dedicated border jitter suppression in the first playable Map slice; same-cell movement and untrusted movement are already gated, and eligible border crossings should remain simple.
+- Remove `jitter_suppressed` from `CellBorderCrossingEvent` so the border crossing payload stays limited to accepted crossing identity, first/revisit status, timestamp, and territory context.
+- Explored Voronoi map cells should not visually dissolve into one continuous explored blob.
+- Keep frontier and unknown seams suppressed to avoid a debug-grid fog wall, but keep explored/explored shared edges visible as subtle revealed-cell boundaries.
+- Screenshot review showed the prior "subtle" seam styling was perceptually invisible; explored/explored boundaries must be strong enough to read as a revealed mosaic, not merely present in topology tests.
+- Unknown/non-frontier cells should use fully opaque fog so base-map detail does not leak through unexplored territory.
+- The map fetch radius must cover wide GPS-level viewports with padding; otherwise already-explored cells can appear hidden behind unknown fog because their geometry was not loaded.
+
+## 2026-05-19 — Daily map cell revisit loop can use positive FOMO
+- Jeremy clarified that FOMO is acceptable for the daily revisit loop; the design target should not over-optimize for anti-FOMO.
+- Use **positive FOMO** rather than punitive streak pressure: familiar map cells should feel alive on a daily schedule, making the player want to check them before the GMT day turns over.
+- Daily map cell state is global map state: the same Voronoi map cell on the same GMT day resolves to the same active daily state for every player.
+- Daily map cell freshness expires on the daily GMT seed refresh; if the player misses a map cell's daily seed, they miss that specific daily opportunity.
+- Do not bank missed daily loot, leave weaker traces, or add capped catch-up buildup for the daily layer; the revisit motivation is that today's map cell state exists only today.
+- Use the hybrid global-state architecture: deterministic on-demand resolution from global seeds is canonical, while persisted rows are limited to period seeds, resolver versions, player claims, audits, special event instances, and intentional caches/snapshots.
+- This architecture must be justified by the SuperBDD scenarios in `features/map-global-map-state-model.feature`, not by implementation preference alone.
+- Resolver payload shape must also be derived from BDD consumer scenarios. `GlobalMapCellState` is reward-clean shared state; player-specific fog/visit/claim status wraps it in a separate `PlayerMapCellStateView`.

@@ -8,6 +8,7 @@ import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dar
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
@@ -17,7 +18,22 @@ import 'package:earth_nova/shared/widgets/stub_screen.dart';
 const int _mapTabIndex = 0;
 const int _packTabIndex = 1;
 const int _sanctuaryTabIndex = 2;
+const int _settingsTabIndex = 3;
 const _tabScreenNames = ['map', 'pack', 'sanctuary', 'settings'];
+
+PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
+      _mapTabIndex => PlayerActions.openMap,
+      _packTabIndex => PlayerActions.openPack,
+      _sanctuaryTabIndex => PlayerActions.openSanctuary,
+      _settingsTabIndex => null,
+      _ => null,
+    };
+
+String? _telemetryOnlyReasonForTab(int index) => switch (index) {
+      _settingsTabIndex =>
+        'Settings tab is account/debug chrome outside the SuperBDD gameplay action catalog.',
+      _ => null,
+    };
 
 /// 4-tab bottom navigation. Pack is real, others are stubs.
 class TabShell extends ConsumerStatefulWidget {
@@ -154,6 +170,17 @@ class _TabShellState extends ConsumerState<TabShell>
                   ? (details) {
                       if (details.primaryVelocity != null &&
                           details.primaryVelocity! < 0) {
+                        ObservableInteraction.log(
+                          logger: logger,
+                          screenName: 'tab_shell',
+                          widgetName: 'map_edge_swipe',
+                          actionType: 'edge_swipe_to_pack',
+                          playerActionId: PlayerActions.openPack,
+                          payload: const {
+                            'from_tab_index': _mapTabIndex,
+                            'to_tab_index': _packTabIndex,
+                          },
+                        );
                         _onTabSelected(_packTabIndex);
                       }
                     }
@@ -180,6 +207,8 @@ class _TabShellState extends ConsumerState<TabShell>
                 screenName: 'tab_shell',
                 widgetName: 'bottom_navigation_bar',
                 actionType: 'tab_selected',
+                playerActionIdBuilder: _playerActionIdForTab,
+                telemetryOnlyReasonBuilder: _telemetryOnlyReasonForTab,
                 payloadBuilder: (tabIndex) => {
                   'tab_index': tabIndex,
                 },
@@ -209,8 +238,16 @@ class _TabShellState extends ConsumerState<TabShell>
                         ? const Color(0xFF006D77)
                         : const Color(0xFFADB5BD),
                   ),
-                  onPressed: () => setState(
-                      () => _debugOverlayVisible = !_debugOverlayVisible),
+                  onPressed: ObservableInteraction.wrapVoidCallback(
+                    logger: logger,
+                    screenName: 'tab_shell',
+                    widgetName: 'debug_nav_button',
+                    actionType: 'toggle_debug_overlay',
+                    telemetryOnlyReason:
+                        'Debug overlay toggle is developer-only test chrome.',
+                    callback: () => setState(
+                        () => _debugOverlayVisible = !_debugOverlayVisible),
+                  ),
                   tooltip: 'Debug overlay',
                   padding: EdgeInsets.zero,
                   constraints:

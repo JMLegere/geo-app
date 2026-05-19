@@ -36,14 +36,13 @@ void main() {
         expect(color.b, 0.0);
       });
 
-      test('unknown cells are more opaque than frontier cells', () {
+      test('unknown cells fully hide non-frontier map details', () {
         final frontier =
             FogRenderer.fillColor(_state(CellRelationship.frontier));
         final unknown = FogRenderer.fillColor(_state(CellRelationship.unknown));
 
+        expect(unknown.a, 1.0);
         expect(unknown.a, greaterThan(frontier.a));
-        expect(unknown.a, lessThan(0.50));
-        expect(unknown.a - frontier.a, lessThan(0.20));
       });
     });
 
@@ -85,18 +84,23 @@ void main() {
         expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });
 
-      test('present and explored seams are subtle territory accents', () {
+      test('present and explored seams are visible revealed-cell boundaries',
+          () {
         final present = _state(CellRelationship.present);
         final explored = _state(CellRelationship.explored);
+        final exploredStroke =
+            FogRenderer.strokeColor(_state(CellRelationship.explored));
 
+        expect(FogRenderer.seamGlowStrokeWidth(present),
+            greaterThanOrEqualTo(2.0));
+        expect(FogRenderer.seamGlowStrokeWidth(explored),
+            greaterThanOrEqualTo(1.8));
+        expect(FogRenderer.seamStrokeWidth(present), greaterThanOrEqualTo(1.2));
         expect(
-            FogRenderer.seamGlowStrokeWidth(present), lessThanOrEqualTo(1.8));
-        expect(
-            FogRenderer.seamGlowStrokeWidth(explored), lessThanOrEqualTo(1.2));
-        expect(FogRenderer.seamStrokeWidth(present), lessThanOrEqualTo(0.9));
-        expect(FogRenderer.seamStrokeWidth(explored), lessThanOrEqualTo(0.6));
-        expect(FogRenderer.seamGlowBlurSigma(present), lessThanOrEqualTo(1.4));
-        expect(FogRenderer.seamGlowBlurSigma(explored), lessThanOrEqualTo(1.0));
+            FogRenderer.seamStrokeWidth(explored), greaterThanOrEqualTo(1.2));
+        expect(FogRenderer.seamGlowBlurSigma(present), lessThanOrEqualTo(1.0));
+        expect(FogRenderer.seamGlowBlurSigma(explored), lessThanOrEqualTo(0.8));
+        expect(exploredStroke.a, greaterThanOrEqualTo(0.70));
       });
 
       test('frontier and unknown glow blur is disabled', () {

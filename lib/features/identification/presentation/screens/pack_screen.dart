@@ -16,6 +16,7 @@ import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 /// Direction of a cross-tab edge swipe on [PackScreen].
@@ -66,6 +67,8 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   void _logInteraction(
     String actionType,
     String widgetName, {
+    PlayerActionId? playerActionId,
+    String? telemetryOnlyReason,
     Map<String, dynamic>? data,
   }) {
     ObservableInteraction.log(
@@ -76,6 +79,8 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       widgetName: widgetName,
       actionType: actionType,
       payload: data,
+      playerActionId: playerActionId,
+      telemetryOnlyReason: telemetryOnlyReason,
     );
   }
 
@@ -110,10 +115,16 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     if (page == null) return;
     final newIndex = page.round();
     if (newIndex != _categoryIndex) {
-      _logInteraction('category_page_changed', 'pack_page_view', data: {
-        'category': ItemCategory.values[newIndex].name,
-        'category_index': newIndex,
-      });
+      _logInteraction(
+        'category_page_changed',
+        'pack_page_view',
+        telemetryOnlyReason:
+            'Pack category paging refines the open Pack view and is not a separate player action.',
+        data: {
+          'category': ItemCategory.values[newIndex].name,
+          'category_index': newIndex,
+        },
+      );
       HapticFeedback.selectionClick();
       setState(() {
         _categoryIndex = newIndex;
@@ -170,15 +181,26 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   }
 
   void _fetch() {
-    _logInteraction('retry_fetch_items', 'pack_error_retry');
+    _logInteraction(
+      'retry_fetch_items',
+      'pack_error_retry',
+      telemetryOnlyReason:
+          'Pack retry is transport recovery inside the open Pack view.',
+    );
     ref.read(itemsProvider.notifier).fetchItems();
   }
 
   void _onCategoryChanged(int index) {
-    _logInteraction('select_category', 'category_chip', data: {
-      'category': ItemCategory.values[index].name,
-      'category_index': index,
-    });
+    _logInteraction(
+      'select_category',
+      'category_chip',
+      telemetryOnlyReason:
+          'Pack category selection refines the open Pack view and is not a separate player action.',
+      data: {
+        'category': ItemCategory.values[index].name,
+        'category_index': index,
+      },
+    );
     HapticFeedback.selectionClick();
     _pageController.animateToPage(
       index,
@@ -188,71 +210,124 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   }
 
   void _onSortChanged(PackSortMode mode) {
-    _logInteraction('sort_changed', 'sort_chip', data: {'sort': mode.name});
+    _logInteraction(
+      'sort_changed',
+      'sort_chip',
+      telemetryOnlyReason:
+          'Pack sorting refines the open Pack view and is not a separate player action.',
+      data: {'sort': mode.name},
+    );
     setState(() => _sort = mode);
   }
 
   void _onToggleType(TaxonomicGroup group) {
-    _logInteraction('filter_type_toggled', 'type_filter_chip', data: {
-      'type': group.name,
-      'active_after': !_filters.activeTypes.contains(group),
-    });
+    _logInteraction(
+      'filter_type_toggled',
+      'type_filter_chip',
+      telemetryOnlyReason:
+          'Pack filtering refines the open Pack view and is not a separate player action.',
+      data: {
+        'type': group.name,
+        'active_after': !_filters.activeTypes.contains(group),
+      },
+    );
     setState(() => _filters = _filters.toggleType(group));
   }
 
   void _onToggleHabitat(Habitat habitat) {
-    _logInteraction('filter_habitat_toggled', 'habitat_filter_chip', data: {
-      'habitat': habitat.name,
-      'active_after': !_filters.activeHabitats.contains(habitat),
-    });
+    _logInteraction(
+      'filter_habitat_toggled',
+      'habitat_filter_chip',
+      telemetryOnlyReason:
+          'Pack filtering refines the open Pack view and is not a separate player action.',
+      data: {
+        'habitat': habitat.name,
+        'active_after': !_filters.activeHabitats.contains(habitat),
+      },
+    );
     setState(() => _filters = _filters.toggleHabitat(habitat));
   }
 
   void _onToggleRegion(GameRegion region) {
-    _logInteraction('filter_region_toggled', 'region_filter_chip', data: {
-      'region': region.name,
-      'active_after': !_filters.activeRegions.contains(region),
-    });
+    _logInteraction(
+      'filter_region_toggled',
+      'region_filter_chip',
+      telemetryOnlyReason:
+          'Pack filtering refines the open Pack view and is not a separate player action.',
+      data: {
+        'region': region.name,
+        'active_after': !_filters.activeRegions.contains(region),
+      },
+    );
     setState(() => _filters = _filters.toggleRegion(region));
   }
 
   void _onToggleRarity(IucnStatus rarity) {
-    _logInteraction('filter_rarity_toggled', 'rarity_filter_chip', data: {
-      'rarity': rarity.name,
-      'active_after': !_filters.activeRarities.contains(rarity),
-    });
+    _logInteraction(
+      'filter_rarity_toggled',
+      'rarity_filter_chip',
+      telemetryOnlyReason:
+          'Pack filtering refines the open Pack view and is not a separate player action.',
+      data: {
+        'rarity': rarity.name,
+        'active_after': !_filters.activeRarities.contains(rarity),
+      },
+    );
     setState(() => _filters = _filters.toggleRarity(rarity));
   }
 
   void _onClearFilters() {
-    _logInteraction('clear_filters', 'clear_filters_button', data: {
-      'active_filter_count': _filters.activeFilterCount,
-    });
+    _logInteraction(
+      'clear_filters',
+      'clear_filters_button',
+      telemetryOnlyReason:
+          'Pack filtering refines the open Pack view and is not a separate player action.',
+      data: {
+        'active_filter_count': _filters.activeFilterCount,
+      },
+    );
     setState(() => _filters = const PackFilterState());
   }
 
   void _onTogglePanel() {
-    _logInteraction('toggle_filter_panel', 'compact_filter_bar', data: {
-      'expanded_after': !_panelExpanded,
-    });
+    _logInteraction(
+      'toggle_filter_panel',
+      'compact_filter_bar',
+      telemetryOnlyReason:
+          'Pack filter panel toggling refines the open Pack view and is not a separate player action.',
+      data: {
+        'expanded_after': !_panelExpanded,
+      },
+    );
     setState(() => _panelExpanded = !_panelExpanded);
   }
 
   void _onSearchChanged(String query) {
-    _logInteraction('search_changed', 'search_field', data: {
-      'query_length': query.length,
-      'had_previous_query': _searchQuery.isNotEmpty,
-    });
+    _logInteraction(
+      'search_changed',
+      'search_field',
+      telemetryOnlyReason:
+          'Pack search refines the open Pack view and is not a separate player action.',
+      data: {
+        'query_length': query.length,
+        'had_previous_query': _searchQuery.isNotEmpty,
+      },
+    );
     setState(() => _searchQuery = query);
   }
 
   void _onItemTapped(Item item) {
-    _logInteraction('open_species_card', 'species_card', data: {
-      'item_id': item.id,
-      'category': item.category.name,
-      'rarity': item.rarity,
-      'has_frame2': item.iconUrlFrame2 != null,
-    });
+    _logInteraction(
+      'open_species_card',
+      'species_card',
+      playerActionId: PlayerActions.inspectPackFind,
+      data: {
+        'item_id': item.id,
+        'category': item.category.name,
+        'rarity': item.rarity,
+        'has_frame2': item.iconUrlFrame2 != null,
+      },
+    );
   }
 }
 

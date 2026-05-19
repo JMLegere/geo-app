@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
@@ -192,6 +193,47 @@ void main() {
     late ProviderContainer container;
     late TestObservabilityService testObs;
 
+    Cell cell({
+      required String id,
+      required double minLat,
+      required double maxLat,
+      String districtId = 'd1',
+      String cityId = 'c1',
+      String stateId = 's1',
+      String countryId = 'co1',
+    }) {
+      return Cell(
+        id: id,
+        habitats: const [],
+        polygons: [
+          [
+            [
+              (lat: minLat, lng: 0.0),
+              (lat: maxLat, lng: 0.0),
+              (lat: maxLat, lng: 1.0),
+              (lat: minLat, lng: 1.0),
+            ],
+          ],
+        ],
+        districtId: districtId,
+        cityId: cityId,
+        stateId: stateId,
+        countryId: countryId,
+      );
+    }
+
+    List<Cell> adjacentCells() => [
+          cell(id: 'cell-A', minLat: 0.0, maxLat: 1.0),
+          cell(
+            id: 'cell-B',
+            minLat: 1.0,
+            maxLat: 2.0,
+            districtId: 'd2',
+            cityId: 'c2',
+            stateId: 's2',
+          ),
+        ];
+
     setUp(() {
       testObs = TestObservabilityService();
       container = ProviderContainer(
@@ -210,115 +252,106 @@ void main() {
       final state = container.read(explorationProvider);
       expect(state.currentCellId, isNull);
       expect(state.visitedCellIds, isEmpty);
+      expect(state.lastBorderCrossingEvent, isNull);
     });
 
-    test('on cell entry (not ring) records visit', () async {
-      // Create cells
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
-      // Initial marker position - inside cell-1, not ring
+    test(
+        'eligible initial occupancy tracks current cell without visit mutation',
+        () async {
       final notifier = container.read(explorationProvider.notifier);
-
-      // Simulate: entering first cell when not ring
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
           lng: 0.5,
           isRing: false,
-          gapDistance: 10.0, // Well within 40m ring threshold
+          gapDistance: 10.0,
         ),
-        cells: cells,
-        visitedCellIds: <String>{},
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
       );
 
       final state = container.read(explorationProvider);
-      expect(state.currentCellId, equals('cell-1'));
-      expect(state.visitedCellIds, contains('cell-1'));
+      expect(state.currentCellId, 'cell-A');
+      expect(state.visitedCellIds, isEmpty);
+      expect(state.lastEnteredCellId, isNull);
+      expect(state.lastEntrySequence, 0);
+      expect(state.lastBorderCrossingEvent, isNull);
+      expect(testObs.eventNames, contains('map.cell_tracked'));
+      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
     });
 
-    test('does NOT record visit when marker is in ring state', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
+    test('paused eligibility tracks cell without recording a visit', () async {
       final notifier = container.read(explorationProvider.notifier);
-
-      // Simulate: in cell but in ring state (gap > 40m)
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
           lng: 0.5,
-          isRing: true,
-          gapDistance: 50.0, // Above 40m ring threshold
+          isRing: false,
+          gapDistance: 10.0,
         ),
-        cells: cells,
-        visitedCellIds: <String>{},
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+        explorationEligibility: const ExplorationEligibility(
+          canRecordVisits: false,
+          isPaused: true,
+          reason: ExplorationEligibilityPauseReason.gpsUnavailable,
+        ),
       );
 
       final state = container.read(explorationProvider);
-      // Cell is tracked but visit is NOT recorded when ring
-      expect(state.currentCellId, equals('cell-1'));
+      expect(state.currentCellId, 'cell-A');
       expect(state.visitedCellIds, isEmpty);
+      expect(state.lastEnteredCellId, isNull);
+      expect(state.lastBorderCrossingEvent, isNull);
+      expect(testObs.eventNames, contains('map.cell_tracked'));
+      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
+      expect(testObs.eventNames, isNot(contains('map.cell_visited')));
+      final tracked = testObs.events
+          .firstWhere((event) => event.event == 'map.cell_tracked');
+      expect(
+        tracked.data?['paused_reason'],
+        ExplorationEligibilityPauseReason.gpsUnavailable.name,
+      );
+    });
+
+    test('paused tracking same cell does not spam tracking events', () async {
+      final notifier = container.read(explorationProvider.notifier);
+      const pausedEligibility = ExplorationEligibility(
+        canRecordVisits: false,
+        isPaused: true,
+        reason: ExplorationEligibilityPauseReason.gpsUnavailable,
+      );
+
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+        explorationEligibility: pausedEligibility,
+      );
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+        explorationEligibility: pausedEligibility,
+      );
+
+      expect(
+        testObs.eventNames.where((event) => event == 'map.cell_tracked').length,
+        1,
+      );
     });
 
     test('ring tracking does not create a gameplay entry event', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
       await container.read(explorationProvider.notifier).onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
@@ -326,52 +359,40 @@ void main() {
           isRing: true,
           gapDistance: 50.0,
         ),
-        cells: cells,
-        visitedCellIds: <String>{},
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
       );
 
       final state = container.read(explorationProvider);
-      expect(state.currentCellId, 'cell-1');
+      expect(state.currentCellId, 'cell-A');
       expect(state.visitedCellIds, isEmpty);
       expect(state.lastEnteredCellId, isNull);
       expect(state.lastEntrySequence, 0);
+      expect(state.lastBorderCrossingEvent, isNull);
+      expect(testObs.eventNames, contains('map.cell_tracked'));
       expect(testObs.eventNames, isNot(contains('map.cell_entered')));
       expect(testObs.eventNames, isNot(contains('map.cell_visited')));
     });
 
-    test('confident marker records entry after prior ring tracking same cell',
+    test('trusted recovery in the same cell does not replay a border crossing',
         () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
       final notifier = container.read(explorationProvider.notifier);
+      const pausedEligibility = ExplorationEligibility(
+        canRecordVisits: false,
+        isPaused: true,
+        reason: ExplorationEligibilityPauseReason.gpsUnavailable,
+      );
+
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
           lng: 0.5,
-          isRing: true,
-          gapDistance: 50.0,
+          isRing: false,
+          gapDistance: 10.0,
         ),
-        cells: cells,
-        visitedCellIds: <String>{},
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+        explorationEligibility: pausedEligibility,
       );
       testObs.events.clear();
 
@@ -380,65 +401,32 @@ void main() {
           lat: 0.5,
           lng: 0.5,
           isRing: false,
-          gapDistance: 5.0,
+          gapDistance: 10.0,
         ),
-        cells: cells,
-        visitedCellIds: <String>{},
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+        explorationEligibility: const ExplorationEligibility(
+          canRecordVisits: true,
+          isPaused: false,
+          reason: null,
+        ),
       );
 
       final state = container.read(explorationProvider);
-      expect(state.currentCellId, 'cell-1');
-      expect(state.visitedCellIds, contains('cell-1'));
-      expect(state.lastEnteredCellId, 'cell-1');
-      expect(state.lastEntryWasFirstVisit, isTrue);
-      expect(state.lastEntrySequence, 1);
-      expect(testObs.eventNames, contains('map.cell_entered'));
-      expect(testObs.eventNames, contains('map.cell_visited'));
+      expect(state.currentCellId, 'cell-A');
+      expect(state.visitedCellIds, isEmpty);
+      expect(state.lastEnteredCellId, isNull);
+      expect(state.lastBorderCrossingEvent, isNull);
+      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
+      expect(testObs.eventNames, isNot(contains('map.cell_visited')));
     });
 
-    test('records visit on cell transition from A to B', () async {
-      final cells = [
-        Cell(
-          id: 'cell-A',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-        Cell(
-          id: 'cell-B',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 1.0, lng: 0.0),
-                (lat: 2.0, lng: 0.0),
-                (lat: 2.0, lng: 1.0),
-                (lat: 1.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd2',
-          cityId: 'c2',
-          stateId: 's2',
-          countryId: 'co1',
-        ),
-      ];
-
+    test(
+        'records visit on eligible border crossing and emits crossing identity',
+        () async {
       final notifier = container.read(explorationProvider.notifier);
+      final cells = adjacentCells();
 
-      // First: enter cell-A
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
@@ -447,10 +435,10 @@ void main() {
           gapDistance: 10.0,
         ),
         cells: cells,
-        visitedCellIds: <String>{},
+        visitedCellIds: const <String>{},
       );
+      testObs.events.clear();
 
-      // Then: transition to cell-B
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 1.5,
@@ -459,40 +447,54 @@ void main() {
           gapDistance: 10.0,
         ),
         cells: cells,
-        visitedCellIds: {'cell-A'},
+        visitedCellIds: const <String>{},
       );
 
       final state = container.read(explorationProvider);
-      expect(state.currentCellId, equals('cell-B'));
-      expect(state.visitedCellIds, contains('cell-A'));
-      expect(state.visitedCellIds, contains('cell-B'));
+      expect(state.currentCellId, 'cell-B');
+      expect(state.visitedCellIds, {'cell-B'});
+      expect(state.lastEnteredCellId, 'cell-B');
+      expect(state.lastEntryWasFirstVisit, isTrue);
+      expect(state.lastEntrySequence, 1);
+      expect(state.lastBorderCrossingEvent, isNotNull);
+      final borderCrossing = state.lastBorderCrossingEvent!;
+      expect(borderCrossing.previousCellId, 'cell-A');
+      expect(borderCrossing.enteredCellId, 'cell-B');
+      expect(borderCrossing.isFirstVisit, isTrue);
+      expect(
+          borderCrossing.borderCrossingType, CellBorderCrossingType.firstEntry);
+      expect(borderCrossing.borderCrossingId,
+          startsWith('cell-border-crossing-1-'));
+      expect(borderCrossing.districtId, 'd2');
+      expect(borderCrossing.cityId, 'c2');
+      expect(borderCrossing.stateId, 's2');
+      expect(borderCrossing.countryId, 'co1');
+      expect(testObs.eventNames, contains('map.cell_entered'));
+      expect(testObs.eventNames, contains('map.cell_visited'));
+      expect(testObs.eventNames, contains('map.fog_cleared'));
+      final entered = testObs.events
+          .firstWhere((event) => event.event == 'map.cell_entered');
+      expect(entered.data?['previous_cell_id'], 'cell-A');
+      expect(entered.data?['entered_cell_id'], 'cell-B');
+      expect(entered.data?['border_crossing_type'], 'firstEntry');
     });
 
-    test('first visit triggers fog cleared event data', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
+    test('re-entry border crossing is quieter than first entry', () async {
       final notifier = container.read(explorationProvider.notifier);
+      final cells = adjacentCells();
 
-      // First visit - should trigger firstVisit flag
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 1.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const {'cell-A'},
+      );
+      testObs.events.clear();
+
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
@@ -501,38 +503,27 @@ void main() {
           gapDistance: 10.0,
         ),
         cells: cells,
-        visitedCellIds: <String>{}, // No previous visits
+        visitedCellIds: const {'cell-A'},
       );
 
       final state = container.read(explorationProvider);
-      expect(state.visitedCellIds, contains('cell-1'));
+      expect(state.currentCellId, 'cell-A');
+      expect(state.visitedCellIds, {'cell-A'});
+      expect(state.lastBorderCrossingEvent, isNotNull);
+      final borderCrossing = state.lastBorderCrossingEvent!;
+      expect(borderCrossing.previousCellId, 'cell-B');
+      expect(borderCrossing.enteredCellId, 'cell-A');
+      expect(borderCrossing.isFirstVisit, isFalse);
+      expect(borderCrossing.borderCrossingType, CellBorderCrossingType.reEntry);
+      expect(testObs.eventNames, contains('map.cell_entered'));
+      expect(testObs.eventNames, contains('map.cell_visited'));
+      expect(testObs.eventNames, isNot(contains('map.fog_cleared')));
     });
 
-    test('subsequent visit does not trigger firstVisit flag', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
+    test('moving outside every cell clears current tracked cell', () async {
       final notifier = container.read(explorationProvider.notifier);
+      final cells = adjacentCells();
 
-      // First visit
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 0.5,
@@ -541,50 +532,8 @@ void main() {
           gapDistance: 10.0,
         ),
         cells: cells,
-        visitedCellIds: <String>{},
+        visitedCellIds: const <String>{},
       );
-
-      // Same cell again (simulate re-entering)
-      await notifier.onPositionUpdate(
-        markerState: const PlayerMarkerState(
-          lat: 0.5,
-          lng: 0.5,
-          isRing: false,
-          gapDistance: 10.0,
-        ),
-        cells: cells,
-        visitedCellIds: {'cell-1'},
-      );
-
-      final state = container.read(explorationProvider);
-      expect(state.visitedCellIds.length, equals(1)); // Still only one visit
-    });
-
-    test('does not record visit when marker not in any cell', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
-      final notifier = container.read(explorationProvider.notifier);
-
-      // Marker is far outside any cell
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
           lat: 100.0,
@@ -593,138 +542,19 @@ void main() {
           gapDistance: 10.0,
         ),
         cells: cells,
-        visitedCellIds: <String>{},
+        visitedCellIds: const <String>{},
       );
 
       final state = container.read(explorationProvider);
       expect(state.currentCellId, isNull);
-      expect(state.visitedCellIds, isEmpty);
+      expect(testObs.eventNames, contains('map.cell_exited'));
     });
 
-    test('logs map.cell_entered when cell is detected', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
-      final notifier = container.read(explorationProvider.notifier);
-      await notifier.onPositionUpdate(
-        markerState: const PlayerMarkerState(
-          lat: 0.5,
-          lng: 0.5,
-          isRing: false,
-          gapDistance: 10.0,
-        ),
-        cells: cells,
-        visitedCellIds: <String>{},
-      );
-
-      expect(testObs.eventNames, contains('map.cell_entered'));
-      final event =
-          testObs.events.firstWhere((e) => e.event == 'map.cell_entered');
-      expect(event.data?['cellId'], 'cell-1');
-      expect(event.data?['isFirstVisit'], isTrue);
-    });
-
-    test('logs map.cell_entered with isFirstVisit=true on first visit',
+    test('logs map.cell_visited on successful backend persist after crossing',
         () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
-      final notifier = container.read(explorationProvider.notifier);
-      await notifier.onPositionUpdate(
-        markerState: const PlayerMarkerState(
-          lat: 0.5,
-          lng: 0.5,
-          isRing: false,
-          gapDistance: 10.0,
-        ),
-        cells: cells,
-        visitedCellIds: <String>{},
-      );
-
-      expect(testObs.eventNames, contains('map.cell_entered'));
-      final event =
-          testObs.events.firstWhere((e) => e.event == 'map.cell_entered');
-      expect(event.data?['cellId'], 'cell-1');
-      expect(event.data?['isFirstVisit'], isTrue);
-    });
-
-    test('logs map.cell_tracked when marker is in ring state', () async {
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
-      final notifier = container.read(explorationProvider.notifier);
-      await notifier.onPositionUpdate(
-        markerState: const PlayerMarkerState(
-          lat: 0.5,
-          lng: 0.5,
-          isRing: true,
-          gapDistance: 50.0,
-        ),
-        cells: cells,
-        visitedCellIds: <String>{},
-      );
-
-      expect(testObs.eventNames, contains('map.cell_tracked'));
-      // map.cell_tracked is emitted without cell data when in ring state
-    });
-
-    test('logs map.cell_visited on successful backend persist', () async {
       final repo = _MockCellRepository();
       final visitObs = TestObservabilityService();
+      final cells = adjacentCells();
       final c = ProviderContainer(
         overrides: [
           explorationObservabilityProvider.overrideWithValue(testObs),
@@ -735,27 +565,6 @@ void main() {
       );
       addTearDown(c.dispose);
 
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
       await c.read(explorationProvider.notifier).onPositionUpdate(
             markerState: const PlayerMarkerState(
               lat: 0.5,
@@ -764,19 +573,34 @@ void main() {
               gapDistance: 10.0,
             ),
             cells: cells,
-            visitedCellIds: <String>{},
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+      testObs.events.clear();
+
+      await c.read(explorationProvider.notifier).onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 1.5,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: cells,
+            visitedCellIds: const <String>{},
             userId: 'user-123',
           );
 
       expect(testObs.eventNames, contains('map.cell_visited'));
-      final event =
-          testObs.events.firstWhere((e) => e.event == 'map.cell_visited');
-      expect(event.data?['cellId'], 'cell-1');
+      final event = testObs.events
+          .firstWhere((entry) => entry.event == 'map.cell_visited');
+      expect(event.data?['cellId'], 'cell-B');
+      expect(event.data?['entered_cell_id'], 'cell-B');
     });
 
-    test('enqueues visit when backend persist throws', () async {
+    test('enqueues visit when backend persist throws after crossing', () async {
       final repo = _MockCellRepository(shouldThrow: true);
       final visitObs = TestObservabilityService();
+      final cells = adjacentCells();
       final c = ProviderContainer(
         overrides: [
           explorationObservabilityProvider.overrideWithValue(testObs),
@@ -787,27 +611,6 @@ void main() {
       );
       addTearDown(c.dispose);
 
-      final cells = [
-        Cell(
-          id: 'cell-1',
-          habitats: [],
-          polygons: [
-            [
-              [
-                (lat: 0.0, lng: 0.0),
-                (lat: 1.0, lng: 0.0),
-                (lat: 1.0, lng: 1.0),
-                (lat: 0.0, lng: 1.0),
-              ]
-            ]
-          ],
-          districtId: 'd1',
-          cityId: 'c1',
-          stateId: 's1',
-          countryId: 'co1',
-        ),
-      ];
-
       await c.read(explorationProvider.notifier).onPositionUpdate(
             markerState: const PlayerMarkerState(
               lat: 0.5,
@@ -816,14 +619,26 @@ void main() {
               gapDistance: 10.0,
             ),
             cells: cells,
-            visitedCellIds: <String>{},
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+
+      await c.read(explorationProvider.notifier).onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 1.5,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: cells,
+            visitedCellIds: const <String>{},
             userId: 'user-123',
           );
 
       final explorationState = c.read(explorationProvider);
       final queueState = c.read(visitQueueProvider);
 
-      expect(explorationState.visitedCellIds, contains('cell-1'));
+      expect(explorationState.visitedCellIds, {'cell-B'});
       expect(queueState.pendingCount, 1);
       expect(testObs.eventNames, contains('operation.failed'));
     });

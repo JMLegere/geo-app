@@ -15,6 +15,7 @@ import 'package:earth_nova/features/map/presentation/screens/province_screen.dar
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
 class MapRootScreen extends ConsumerStatefulWidget {
@@ -98,6 +99,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
           screenName: 'map_root_screen',
           widgetName: 'map_level_gesture_detector',
           actionType: 'pinch_level_change',
+          playerActionId: PlayerActions.changeTerritoryScale,
           payloadBuilder: (_) => {
             'gesture_direction': _pinchDirectionForScale(_lastScale),
             'source': 'flutter_scale_gesture',
@@ -178,6 +180,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
             actionType: 'pinch_level_change',
             screenName: 'map_root_screen',
             widgetName: 'map_level_gesture_detector',
+            playerActionId: PlayerActions.changeTerritoryScale,
             extra: {
               'gesture_direction': direction,
               'source': source,

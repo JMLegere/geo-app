@@ -155,6 +155,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               widgetName: 'continue_button',
                               actionType: 'submit',
                               payload: const {'flow': 'auth.sign_in'},
+                              telemetryOnlyReason:
+                                  'Auth submit is account access outside the SuperBDD gameplay action catalog.',
                               callback: _onContinue,
                             )
                           : null,

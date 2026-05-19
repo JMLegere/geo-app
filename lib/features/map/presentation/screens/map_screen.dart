@@ -37,6 +37,7 @@ import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart
 import 'package:earth_nova/features/map/presentation/state/map_readiness_state.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
@@ -446,12 +447,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
       final mapState = ref.read(mapProvider);
       if (mapState case MapStateReady(:final cells, :final visitedCellIds)) {
+        final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
           ref.read(explorationProvider.notifier).onPositionUpdate(
                 markerState: markerState,
                 cells: cells,
                 visitedCellIds: visitedCellIds,
                 userId: userId,
+                explorationEligibility: explorationEligibility,
               ),
         );
       }
@@ -462,12 +465,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _resetOverlayReadinessForRefetch();
       }
       if (next case MapStateReady(:final cells, :final visitedCellIds)) {
+        final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
           ref.read(explorationProvider.notifier).onPositionUpdate(
                 markerState: ref.read(playerMarkerProvider),
                 cells: cells,
                 visitedCellIds: visitedCellIds,
                 userId: userId,
+                explorationEligibility: explorationEligibility,
               ),
         );
       }
@@ -477,12 +482,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // notification. Do not key this off currentCellId alone: ring-state marker
     // tracking can update currentCellId before visits are eligible.
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
-      final previousEntrySequence = previous?.lastEntrySequence ?? 0;
-      final isNewGameplayEntry = next.lastEntrySequence > previousEntrySequence;
-      final enteredCellId = next.lastEnteredCellId;
-      if (!isNewGameplayEntry || enteredCellId == null) return;
+      final previousBorderCrossingId =
+          previous?.lastBorderCrossingEvent?.borderCrossingId;
+      final borderCrossingEvent = next.lastBorderCrossingEvent;
+      final isNewGameplayEntry = borderCrossingEvent != null &&
+          borderCrossingEvent.borderCrossingId != previousBorderCrossingId;
+      if (!isNewGameplayEntry) return;
 
-      final isFirstVisit = next.lastEntryWasFirstVisit ?? false;
+      final enteredCellId = borderCrossingEvent.enteredCellId;
+      final isFirstVisit = borderCrossingEvent.isFirstVisit;
       ref.read(encounterProvider.notifier).onCellEntered(
             cellId: enteredCellId,
             isFirstVisit: isFirstVisit,
@@ -492,7 +500,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         _showDiscoveryNotification(enteredCellId);
         _logMapEvent(
           'map.discovery_notification_shown',
-          data: {'cell_id': enteredCellId},
+          data: {
+            'cell_id': enteredCellId,
+            'border_crossing_id': borderCrossingEvent.borderCrossingId,
+          },
         );
       }
     });
@@ -586,10 +597,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           final cameraPosition = cameraFollowState.hasFix
               ? (lat: cameraFollowState.lat, lng: cameraFollowState.lng)
               : (lat: location.lat, lng: location.lng);
-          final markerScreenPosition = _latLngToScreen(
+          final markerScreenPosition = _projectGeoCoordToScreen(
             (lat: playerMarkerState.lat, lng: playerMarkerState.lng),
             cameraPosition,
-            _kGpsZoom,
             screenCenter,
           );
           final cellsWithStates = mapState is MapStateReady
@@ -603,11 +613,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               const MapRenderDiagnosticsService().summarize(
             cellsWithStates: cellsWithStates,
             viewportSize: mapSize,
-            project: (coord) => CellOverlayPainter.projectGeoCoord(
-              coord: coord,
-              cameraPosition: cameraPosition,
-              zoom: _kGpsZoom,
-              cameraPixelOffset: screenCenter,
+            project: (coord) => _projectGeoCoordToScreen(
+              coord,
+              cameraPosition,
+              screenCenter,
             ),
             markerScreenPosition: markerScreenPosition,
             currentCellId: explorationState.currentCellId,
@@ -694,6 +703,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       screenName: 'map_screen',
                       widgetName: 'cell_overlay',
                       actionType: 'cell_overlay_tap',
+                      playerActionId: PlayerActions.inspectMapCell,
                       callback: (details) => _onMapTap(
                         context,
                         details,
@@ -769,6 +779,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       screenName: 'map_screen',
                       widgetName: 'encounter_toast_dismiss',
                       actionType: 'toast_dismiss',
+                      playerActionId: PlayerActions.acknowledgeDiscoveryResult,
                       callback: () {
                         ref.read(encounterProvider.notifier).dismissEncounter();
                       },
@@ -906,10 +917,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final centerLat = sumLat / exteriorPoints.length;
       final centerLng = sumLng / exteriorPoints.length;
 
-      final screenPos = _latLngToScreen(
+      final screenPos = _projectGeoCoordToScreen(
         (lat: centerLat, lng: centerLng),
         cameraPosition,
-        _kGpsZoom,
         screenCenter,
       );
 
@@ -926,23 +936,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Offset _latLngToScreen(
-    ({double lat, double lng}) coord,
+  Offset _projectGeoCoordToScreen(
+    GeoCoord coord,
     ({double lat, double lng}) cameraPosition,
-    double zoom,
     Offset screenCenter,
   ) {
-    const earthCircumference = 156543.03392;
-    final metersPerPixel = earthCircumference *
-        math.cos(cameraPosition.lat * math.pi / 180) /
-        math.pow(2, zoom);
-
-    final dx = (coord.lng - cameraPosition.lng) *
-        metersPerPixel *
-        math.cos(cameraPosition.lat * math.pi / 180);
-    final dy = (coord.lat - cameraPosition.lat) * metersPerPixel;
-
-    return Offset(screenCenter.dx + dx, screenCenter.dy - dy);
+    return CellOverlayPainter.projectGeoCoord(
+      coord: coord,
+      cameraPosition: cameraPosition,
+      zoom: _kGpsZoom,
+      cameraPixelOffset: screenCenter,
+    );
   }
 
   void _showCellDetailSheet(

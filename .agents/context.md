@@ -238,3 +238,206 @@
   - `flutter analyze --no-pub`
   - `flutter test --no-pub --reporter=compact`
 - Beta QA immediately after PR #538 found the simulated movement buttons were present and emitted `map.debug_location_updated`, but web fallback GPS had already activated at the old San Francisco mock coordinate (`37.7749,-122.4194`), causing `fetch_nearby_cells` to return `0` renderable cells. Follow-up fix changes the default fallback mock location to the Fredericton beta coverage coordinate.
+- Final beta QA after PR #539 / commit `99630a6` passed: beta bundle showed `β 2026-05-08-1942-99630a6`; fallback GPS selected Fredericton (`45.9636,-66.6431`); `fetch_nearby_cells` returned `480` cells with polygons; `map.steady_state_ready` emitted; debug east movement emitted `map.debug_location_updated` and then `map.cell_entered` / `map.cell_visited` for `v_22982_-33321`. Screenshot saved at `artifacts/beta-debug-simulated-movement-99630a6.png`.
+
+## In Progress 2026-05-18 — exploration experience discovery
+- Jeremy preferred the old map exploration experience but explicitly does **not** want the old renderer brought back.
+- Use the old pre-nuke map as a reference for desired feel only; current discovery should define the intended movement/reveal/cell-crossing experience before further implementation.
+- User identified the primary current failures as **semantic jank**, **visual jank**, and **reward jank** — not primarily movement jank.
+- Target exploration fantasies selected: **revealing fog** and **crossing places**.
+
+## Completed 2026-05-18 — EAC SuperBDD installation
+- Installed released EAC through `mise.toml` using `github:JMLegere/eac = "1.2.1"`; `mise exec -- eac --version` resolves to `1.2.1`.
+- Ran `eac add product/superbdd`, creating `eac.config.ts` with the `product/superbdd` adapter and default product/cucumber options.
+- Authored real starter SuperBDD truth for EarthNova map exploration instead of generated placeholders:
+  - `product/manifest.ts`
+  - `features/map-exploration.feature`
+- Released EAC `v1.2.1` on GitHub with SuperBDD doctor guidance; forced geo-app mise reinstall downloaded the release asset.
+- Verification passed: `mise exec -- eac doctor` shows the SuperBDD model guide, `mise exec -- eac check`, `mise exec -- flutter analyze --no-pub`, `git diff --check`, and `mise exec -- flutter test --no-pub --reporter=compact`.
+
+## Completed 2026-05-18 — map SuperBDD experience refocus
+- Rewrote `product/manifest.ts` and `features/map-exploration.feature` around the chosen experience: revealing fog by crossing into meaningful places.
+- Product capability shifted from generic map mechanics to **map place discovery**.
+- Required map actions now emphasize the player-facing loop:
+  - open steady board
+  - hint nearby unrevealed places
+  - cross into place
+  - acknowledge place discovery
+  - persist explored footprint
+  - inspect place details
+- Verification passed: `mise exec -- eac doctor` and `mise exec -- eac check`.
+
+## Completed 2026-05-18 — World Events SuperBDD seed
+- Jeremy chose **World Events** as the capability title for OSRS-style distractions/diversions.
+- World Events are sporadic, optional, time-sensitive happenings that can interrupt or redirect exploration without replacing the core loop.
+- Chose **Wildlife Migration** as the first World Events feature.
+- Added SuperBDD coverage for Wildlife Migration in:
+  - `product/manifest.ts`
+  - `features/world-events-wildlife-migration.feature`
+
+## In Progress 2026-05-18 — capability-level science synthesis
+- Jeremy wants a focused natural-science capability pillar, not a broad STEM taxonomy or simple discoverable item categories.
+- Removed Physics, Chemistry, Ecology, Microbiology, Meteorology, Hydrology, Oceanography, and Astronomy from the current capability set.
+- Current science capability set: Zoology, Botany, Mycology, Geology, Paleontology, and Genetics, with Archaeology as a sibling human-history capability.
+
+## Completed 2026-05-18 — capability-only SuperBDD spine
+- Implemented a capability-only SuperBDD spine and deferred actions.
+- Split product truth into separate files:
+  - `product/capabilities.ts` owns the top-level capability catalog.
+  - `product/actions.ts` is intentionally empty for now.
+  - `product/manifest.ts` re-exports both for EAC compatibility.
+- Replaced action-level feature files with `features/capability-spine.feature`.
+- Verification passed: `mise exec -- eac check` and `mise exec -- eac doctor`.
+- Added Field Journal, Conservation, Buddy, and Lineage to the spine; renamed Breeding to Lineage.
+- Added Genetics as a top-level field-science capability for inherited traits, variation, and generation-to-generation life changes.
+
+## Completed 2026-05-18 — first-pass feature candidate selection
+- Used the interactive question tool to select candidate features under each top-level capability.
+- Accepted broad world features: Fog all four; Exploration all four; Territories all four; World Events Wildlife Migration only.
+- Accepted lifecycle/progression highlights: Discovery all four, Pack all four, Collections all four, Lineage all four, Identification without Readiness Mystery.
+- Added feature selections to `.agents/decisions.md`.
+- Open synthesis gaps: Mycology, Geology, and Archaeology still need accepted feature candidates.
+
+## Completed 2026-05-18 — feature semantics correction
+- Jeremy clarified that capabilities are broad app/game-system areas.
+- Features should be concrete app features: large sections of a page, app surface, or data model that can be independently owned inside a capability.
+- Prior selected "feature candidates" are now treated as experience ingredients/design inputs, not final feature definitions.
+- Created `product/features.ts` as a separate feature catalog, while leaving EAC actions empty.
+- Collapsed product truth away from Field Guide as a capability: Field Guide is now a Progression-Permanence feature/knowledge surface.
+- High-level sciences remain top-level capabilities: Zoology, Botany, Mycology, Geology, Paleontology, Genetics, and Archaeology.
+- Science capability files are tagged only with their science capability and are described as discipline sections surfaced through the Field Guide feature.
+- Map has been decomposed from broad Fog/Exploration/World Events buckets into concrete map surfaces and data models: map frame, marker/ring, fog overlay/state, map cell detail/border crossing, nearby opportunity, territory scale/progress, and event cues/instances.
+- Wrote stub `.feature` files for the detailed app features and verified with `mise exec -- eac check` and `mise exec -- eac doctor`.
+
+## Completed 2026-05-18 — Map design cascade
+- Authored SuperBDD scenarios for the mapping capability as a game system rather than a screen-only design.
+- Captured the Map experience contract: orientation, marker trust, movement-driven reveal, technical map cell entry, nearby pull, and territory-scale accumulation.
+- Captured the core loop: open map, orient on self, read fog/frontier, move physically, cross a Voronoi map cell border, reveal/update footprint, acknowledge map cell, optionally inspect/follow cues.
+- Added state-machine scenarios across Map feature files for marker/ring trust, exploration eligibility, cell border crossing, fog state, fog overlay, map cell detail, nearby opportunities, territory navigation/progress, and world event cues/instances.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — map design source alignment
+- Updated `docs/map-design.md` with the Map capability contract, GPS-level interaction stack, state-machine table, and reward intensity ladder.
+- Clarified the Discovery handoff boundary: Map owns cell border crossing, fog reveal, map cell acknowledgement, cues, and territory context; high-intensity species/item/identification/pack rewards are downstream.
+- Replaced the old forced first-visit TCG popup language in the map doc with a medium-intensity first-entry map cell event plus optional downstream handoff.
+- Updated map observability events to include cell border crossing, exploration eligibility, cell entry acknowledgement, and discovery handoff availability.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — first playable map slice design
+- Added the first playable Map slice to `docs/map-design.md`.
+- First slice includes: Map Frame, Player Marker + Accuracy Ring, Exploration Eligibility State, Cell Border Crossing Model, Fog State Model, Fog Overlay, and Map Cell Detail Sheet.
+- Deferred broader/full-fantasy pieces from the first slice: territory dashboard polish, advanced marker personality/skins, rich POI or social place claims, full habitat art direction, and downstream Discovery/Pack/Field Guide reward reveal.
+- Added GPS-level visual grammar and hierarchy: marker/ring first, then current map cell, fog relationship, cell cue, and base map detail.
+- Strengthened SuperBDD scenarios for first-slice focus, one border crossing identity, visual hierarchy, and cell-before-reward detail.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — first-slice map contract design
+- Added first-slice moment choreography to `docs/map-design.md`: map enters, map steadies, trust resolves, movement, border crossing, first entry/re-entry, detail opened, trust lost, trust recovered.
+- Added first-slice state contracts: `MapReadiness`, `MarkerTrust`, `ExplorationEligibility`, `CellBorderCrossingEvent`, `FogRelationship`, `CellEntryFeedback`, and `MapCellDetailState`.
+- Defined the first-slice map cell detail sheet as a dismissible field-note card with heading, status pill, territory context, visit facts, fog/progress note, and secondary handoffs.
+- Extended SuperBDD scenarios for readiness contracts, ring browse-only behavior, eligibility gating, border crossing identity fields, fog consistency, and sheet anatomy.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — first-slice payload and acceptance design
+- Added first-slice payload shapes to `docs/map-design.md`: `MapReadiness`, `MarkerTrust`, `ExplorationEligibility`, `CellBorderCrossingEvent`, `FogRelationshipSet`, `CellEntryFeedback`, and `MapCellDetailState`.
+- Added component responsibility boundaries for map frame, marker/ring layer, cell/fog overlay, border crossing coordinator, entry feedback presenter, map cell detail sheet, and observability hooks.
+- Added a first-slice acceptance matrix for cold open trusted/bad GPS, same-cell movement, first border crossing, jitter, re-entry, detail inspection, trust loss, and trust recovery.
+- Extended SuperBDD scenarios for same-cell quiet movement, reward-clean border crossing payloads, and non-mutating detail inspection.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — map terminology correction
+- Jeremy clarified that this level of design should use technical terms rather than emotionally nice names.
+- Renamed the capability from World Board to Map across product capability tags and feature inventory.
+- Standardized first-slice spatial unit terminology: generated polygon = Voronoi map cell, shorthand = map cell, boundary = map cell border.
+- Corrected the movement language: the player crosses a map cell border and enters a map cell; they do not "cross a map cell."
+- Renamed the crossing model to Cell Border Crossing Model and the shared payload to `CellBorderCrossingEvent`; entry feedback is `CellEntryFeedback`; detail state is `MapCellDetailState`.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — first-slice transition and invariant design
+- Added first-slice transition rules to `docs/map-design.md` for `MapReadiness`, `MarkerTrust`, `ExplorationEligibility`, `CellBorderCrossingEvent`, and `CellEntryFeedback`.
+- Added a mutation matrix clarifying exactly which triggers may mutate marker state, visit rows, fog state, detail state, handoff availability, and observability.
+- Added first-slice invariants: no ready-before-ready, no same-cell mutation, no border-crossing replay, no reward payload leakage, no inspection mutation, and no fake progress while paused.
+- Extended SuperBDD scenarios for dependency-gated steady state, recovery without replay, no border event on same-cell movement, and paused detail inspection.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — map debug controls SuperBDD feature
+- Added `Map Debug Controls` as a Map feature in `product/features.ts` and included `features/map-debug-controls.feature` in the Map capability inventory.
+- Authored SuperBDD scenarios for developer-mode visibility, P↑/P↓/P←/P→ simulated marker movement, GPS resume, gesture buttons, debug source telemetry, and no gameplay gate bypass.
+- Extended `docs/map-design.md` with `MapDebugControlState`, field schemas, debug mutation matrix rows, debug invariants, component ownership, acceptance cases, interaction-stack/state-machine rows, and debug observability events.
+- Verified existing debug implementation coverage with `mise exec -- flutter test --no-pub test/shared/debug/debug_gesture_overlay_test.dart test/features/map/presentation/providers/location_provider_test.dart test/shared/widgets/tab_shell_test.dart`.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — map first-slice implementation boundaries
+- Reviewed current map implementation anchors: `LocationNotifier`, `PlayerMarkerNotifier`, `MapNotifier`, `ExplorationEligibility`, `DetectCellEntry`, `RecordCellVisit`, `VisitQueueProvider`, `FogStateService`, and `DebugGestureOverlay`.
+- Extended `docs/map-design.md` with first-slice implementation boundaries mapping product contracts to clean architecture seams.
+- Added the provider graph for Location source → Marker trust / Cell data / Map readiness → Exploration eligibility → Cell border crossing → Visit recorder / Fog / Entry feedback / Detail state.
+- Added the recommended implementation order: readiness gate, marker trust gate, exploration eligibility, border crossing identity, visit result, fog recompute, entry feedback/detail state, and debug harness coverage.
+- Verification passed with `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — SuperBDD player action catalog
+- Checked the EAC and main-website examples: actions live in `actionCapabilities`, capabilities list `requiredActions`, and `@action.<id>` scenarios belong inside the real feature files that own the behavior rather than a generic player-actions feature.
+- Replaced the intentionally empty `product/actions.ts` with a player action catalog spanning Map, natural science lenses, Exploration-Discovery Lifecycle, Progression-Permanence, Motivation, and Multiplayer.
+- Updated `product/capabilities.ts` so each capability lists its required player actions while keeping only real feature files in `cucumberFeatures`.
+- Distributed every documented player action scenario into its owning feature file and removed the generic `features/player-actions.feature` artifact.
+- Verification passed with `mise exec -- eac check`.
+
+## Completed 2026-05-19 — typed player action references
+- Continued aligning EarthNova's SuperBDD shape to the main-website example by adding `PlayerActionKey`, `PlayerActionId`, `playerActions`, and `mutationPlayerActions` exports to `product/actions.ts`.
+- Rewrote `product/capabilities.ts` to import `playerActions` and reference typed action ids instead of repeating raw action-id strings in `requiredActions`.
+- This keeps the action catalog centralized while reducing typo risk in capability wiring.
+
+## Completed 2026-05-19 — SuperBDD workflow layer
+- Added typed workflow ids through `playerActionWorkflows` in `product/actions.ts`.
+- Added `product/workflows.ts` with typed workflow definitions for Map exploration, Discovery ownership, conservation, collection commitment, sanctuary placement, buddy care, lineage breeding, quest rewards, recap acknowledgement, community contribution, and trade exchange.
+- Wired stateful player actions to their owning workflows and added capability-level workflow ownership in `product/capabilities.ts`.
+- Verification passed: `mise exec -- eac check` and `git diff --check`.
+
+## Completed 2026-05-19 — app interaction action enforcement
+- Added `lib/shared/product/player_actions.dart` as the Dart mirror of SuperBDD player action ids from `product/actions.ts`.
+- Updated `ObservableInteraction` so interaction telemetry must include either `player_action_id` for a known `PlayerActions.*` id or `telemetry_only_reason` for explicit non-product/debug/account/filter interactions.
+- Wired current app interaction surfaces: Map cell taps, map level gestures, map-to-Pack edge swipe, Pack item inspection, encounter acknowledgement, territory back navigation, bottom-tab navigation, auth submit, settings/sign-out, debug overlay toggle, and Pack filtering/search/sort telemetry.
+- Added focused enforcement tests:
+  - `test/shared/product/player_actions_test.dart`
+  - `test/shared/observability/player_action_interaction_enforcement_test.dart`
+  - updated `test/shared/observability/widgets/observable_interaction_test.dart`
+- Verification passed: focused action/observability tests, `mise exec -- flutter analyze --no-pub`, `mise exec -- eac check`, and `git diff --check`.
+
+## Completed 2026-05-19 — map border-crossing identity slice
+- Chose the next real Map gap by comparing the implementation to `docs/map-design.md`: the app still granted progression on initial occupancy/trust recovery instead of on actual border crossing, and it lacked a shared border-crossing identity payload.
+- Added `lib/features/map/domain/entities/cell_border_crossing_event.dart` and extended `ExplorationStateData` with `lastBorderCrossingEvent`.
+- Updated `ExplorationNotifier` so:
+  - initial occupancy and trusted recovery in the same cell emit `map.cell_tracked` only
+  - visit/fog/discovery mutation requires an eligible transition into a different tracked map cell
+  - paused GPS/unavailable states can explicitly block mutation through `ExplorationEligibility`
+  - accepted crossings emit one shared border-crossing payload into `map.cell_entered`, `map.cell_visited`, and `map.fog_cleared`
+- Updated `MapScreen` to consume `lastBorderCrossingEvent` for encounter/discovery triggers instead of a generic entry sequence.
+- Added/updated focused tests:
+  - `test/features/map/domain/entities/cell_border_crossing_event_test.dart`
+  - `test/features/map/presentation/providers/exploration_provider_test.dart`
+  - `test/features/map/presentation/screens/map_screen_test.dart`
+- Verification passed:
+  - `mise exec -- flutter test --no-pub test/features/map/domain/entities/cell_border_crossing_event_test.dart test/features/map/presentation/providers/exploration_provider_test.dart test/features/map/presentation/screens/map_screen_test.dart test/features/map/domain/use_cases/detect_cell_entry_test.dart`
+  - `mise exec -- flutter analyze --no-pub`
+  - `mise exec -- eac check`
+  - `git diff --check`
+
+## Completed 2026-05-19 — map explored-cell distinction correction
+- Jeremy explicitly rejected dedicated border jitter suppression; removed the implementation, focused tests, `observedAt` test hook, `jitter_suppressed` event field, and SuperBDD/design references.
+- Jeremy clarified the current fog overlay should not make explored territory look like one continuous area; explored Voronoi map cells must remain visually distinct.
+- Updated the tessellation render model so shared edges between adjacent explored cells are emitted and painted as subtle revealed-cell seams instead of being suppressed as same-state internals.
+- Updated `features/map-fog-overlay.feature` and `docs/map-design.md` to prefer distinct explored cell boundaries while still suppressing frontier/unknown grid seams.
+- Added focused render-model coverage in `test/features/map/presentation/rendering/cell_tessellation_render_model_test.dart`.
+
+## Completed 2026-05-19 — global daily map state design
+- Jeremy clarified that the daily seed/revisit loop should be global map state, not personalized per-player state.
+- Added `Global Map State Model` as a Map data-model feature and authored `features/map-global-map-state-model.feature`.
+- Updated `docs/map-design.md` to state that daily map-cell state is shared by GMT day, missed daily opportunities expire, no catch-up/residue/banked daily loot is retained, and player-specific fog/visits/claims/rewards remain personal.
+- Chose the hybrid architecture for global map state: deterministic on-demand resolution from global seeds is canonical, while persisted rows are limited to period seed metadata, player claims/audits, special event instances, and intentional caches/snapshots.
+- Strengthened the global map state BDD so the hybrid architecture is selected by scenarios: shared player-visible daily state rules out personalization, GMT rollover scale rules out full per-cell materialization, and claim/audit/event scenarios require persisted facts.
+- Jeremy clarified that BDD should decide the resolver payload shape too. Added BDD scenarios and map-design tables deriving `GlobalMapCellState` and `PlayerMapCellStateView` from map rendering, social consistency, claim audit, and downstream handoff needs.
+
+## Completed 2026-05-19 — fog overlay perceptual correction
+- Screenshot review showed explored/explored seams were topologically emitted but visually too subtle to perceive; the explored footprint still read as one pale blob.
+- Added failing tests requiring fully opaque unknown fog, stronger revealed-cell seams, and a fetch radius large enough for wide GPS-level viewports.
+- Updated fog rendering so unknown/non-frontier fog is fully opaque, revealed-cell seams use stronger high-contrast strokes, and fetched map-cell coverage increases from 2200m to 3200m to reduce explored cells appearing behind unloaded unknown fog.
+- Verification passed: focused fog/render/map screen tests, `mise exec -- flutter analyze --no-pub`, `mise exec -- eac check`, and `git diff --check`.

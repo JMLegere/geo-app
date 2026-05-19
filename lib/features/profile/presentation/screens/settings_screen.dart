@@ -62,6 +62,8 @@ class SettingsScreen extends ConsumerWidget {
                     widgetName: 'debug_mode_toggle',
                     actionType: 'toggle_debug_mode',
                     payloadBuilder: (enabled) => {'enabled': enabled},
+                    telemetryOnlyReason:
+                        'Developer mode toggle is debug chrome outside the SuperBDD gameplay action catalog.',
                     callback: (_) =>
                         ref.read(debugModeProvider.notifier).toggle(),
                   ),
@@ -73,6 +75,8 @@ class SettingsScreen extends ConsumerWidget {
                     screenName: 'settings_screen',
                     widgetName: 'sign_out_button',
                     actionType: 'open_sign_out_dialog',
+                    telemetryOnlyReason:
+                        'Sign-out dialog entry is account chrome outside the SuperBDD gameplay action catalog.',
                     callback: () => _showSignOutDialog(context, ref),
                   ),
                   style: OutlinedButton.styleFrom(
@@ -115,6 +119,8 @@ class SettingsScreen extends ConsumerWidget {
               screenName: 'settings_screen',
               widgetName: 'sign_out_dialog_cancel',
               actionType: 'cancel_sign_out',
+              telemetryOnlyReason:
+                  'Sign-out cancellation is account chrome outside the SuperBDD gameplay action catalog.',
               callback: () => Navigator.of(context).pop(),
             ),
             child: const Text('Cancel'),
@@ -125,6 +131,8 @@ class SettingsScreen extends ConsumerWidget {
               screenName: 'settings_screen',
               widgetName: 'sign_out_dialog_confirm',
               actionType: 'confirm_sign_out',
+              telemetryOnlyReason:
+                  'Sign-out confirmation is account chrome outside the SuperBDD gameplay action catalog.',
               callback: () {
                 Navigator.of(context).pop();
                 ref.read(authProvider.notifier).signOut();

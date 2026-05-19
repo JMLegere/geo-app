@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
+import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
@@ -14,7 +15,8 @@ import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart'
 // These tests confirm the math is correct independent of the widget build.
 // ---------------------------------------------------------------------------
 
-/// Mirrors MapScreen._latLngToScreen (post-fix, using dart:math).
+/// Mirrors MapScreen's marker/tap projection path by delegating to the same
+/// Web Mercator projector used by CellOverlayPainter.
 ({double dx, double dy}) latLngToScreenDelta({
   required double coordLat,
   required double coordLng,
@@ -22,16 +24,13 @@ import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart'
   required double cameraLng,
   required double zoom,
 }) {
-  const earthCircumference = 156543.03392;
-  final metersPerPixel = earthCircumference *
-      math.cos(cameraLat * math.pi / 180) /
-      math.pow(2, zoom);
-
-  final dx = (coordLng - cameraLng) *
-      metersPerPixel *
-      math.cos(cameraLat * math.pi / 180);
-  final dy = (coordLat - cameraLat) * metersPerPixel;
-  return (dx: dx, dy: dy);
+  final projected = CellOverlayPainter.projectGeoCoord(
+    coord: (lat: coordLat, lng: coordLng),
+    cameraPosition: (lat: cameraLat, lng: cameraLng),
+    zoom: zoom,
+    cameraPixelOffset: Offset.zero,
+  );
+  return (dx: projected.dx, dy: projected.dy);
 }
 
 void main() {
@@ -48,47 +47,48 @@ void main() {
       expect(delta.dy, closeTo(0.0, 1e-9));
     });
 
-    test('metersPerPixel is sane at zoom 15 near equator (~5 m/px)', () {
-      const earthCircumference = 156543.03392;
-      final mpp =
-          earthCircumference * math.cos(0.0 * math.pi / 180) / math.pow(2, 15);
-      // At zoom 15 near the equator, each pixel covers ~4–5 metres.
-      expect(mpp, greaterThan(3.0));
-      expect(mpp, lessThan(10.0));
-    });
-
-    test('the old bug (* instead of /) would give absurdly large values', () {
-      // Confirm the buggy formula (multiply by 2^zoom) is definitively wrong.
-      const earthCircumference = 156543.03392;
-      final buggyMpp = earthCircumference *
-          math.cos(37.7749 * math.pi / 180) *
-          math.pow(2, 15);
-      // ~156543 * 0.79 * 32768 ≈ 4 billion — clearly wrong.
-      expect(buggyMpp, greaterThan(1e8));
-    });
-
-    test('point 1 degree north of camera is ~111 km / metersPerPixel pixels up',
-        () {
-      const zoom = 15.0;
-      const cameraLat = 0.0;
-      const cameraLng = 0.0;
-      const earthCircumference = 156543.03392;
-      final mpp = earthCircumference *
-          math.cos(cameraLat * math.pi / 180) /
-          math.pow(2, zoom);
-
+    test('one degree longitude is thousands of pixels at zoom 15', () {
       final delta = latLngToScreenDelta(
-        coordLat: 1.0, // 1 degree north ≈ 111 km
-        coordLng: cameraLng,
-        cameraLat: cameraLat,
-        cameraLng: cameraLng,
-        zoom: zoom,
+        coordLat: 0.0,
+        coordLng: 1.0,
+        cameraLat: 0.0,
+        cameraLng: 0.0,
+        zoom: 15,
       );
 
-      // 1 degree of latitude ≈ 111,320 metres.
-      // dy should be positive (north = up on screen).
-      final expectedDy = 1.0 * mpp;
-      expect(delta.dy, closeTo(expectedDy, 0.01));
+      // Web Mercator scale: 256 * 2^15 / 360 ≈ 23,302 px per degree.
+      expect(delta.dx, greaterThan(23000));
+      expect(delta.dx, lessThan(23600));
+      expect(delta.dy, closeTo(0.0, 1e-9));
+    });
+
+    test('old degrees-times-meters-per-pixel formula would flatten offsets',
+        () {
+      const earthCircumference = 156543.03392;
+      final metersPerPixel = earthCircumference / math.pow(2, 15);
+      final buggyDelta = 1.0 * metersPerPixel;
+
+      expect(
+        buggyDelta,
+        lessThan(10),
+        reason:
+            'A one-degree offset cannot project to single-digit pixels at GPS zoom.',
+      );
+    });
+
+    test('point 1 degree north of camera is projected far above center', () {
+      final delta = latLngToScreenDelta(
+        coordLat: 1.0,
+        coordLng: 0.0,
+        cameraLat: 0.0,
+        cameraLng: 0.0,
+        zoom: 15,
+      );
+
+      // North is negative y in Web Mercator screen coordinates.
+      expect(delta.dy, lessThan(-23000));
+      expect(delta.dy, greaterThan(-23600));
+      expect(delta.dx, closeTo(0.0, 1e-9));
     });
   });
 
@@ -297,6 +297,31 @@ void main() {
       );
     });
 
+    test('marker and tap hit testing reuse overlay Web Mercator projection',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(
+        mapSource,
+        contains('_projectGeoCoordToScreen('),
+        reason:
+            'Marker placement, cell tap hit testing, and rendered polygons must share one projection helper.',
+      );
+      expect(
+        mapSource,
+        contains('CellOverlayPainter.projectGeoCoord'),
+        reason: 'The shared helper should delegate to the overlay projector.',
+      );
+      expect(
+        mapSource,
+        isNot(contains('_latLngToScreen(')),
+        reason:
+            'The old degree delta approximation flattens GPS offsets and drifts from rendered cells.',
+      );
+    });
+
     test('keeps MapLibre attribution away from status and bottom overlays', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
@@ -428,13 +453,13 @@ void main() {
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
-      expect(mapSource, contains('lastEntrySequence'));
-      expect(mapSource, contains('lastEnteredCellId'));
+      expect(mapSource, contains('lastBorderCrossingEvent'));
+      expect(mapSource, contains('borderCrossingEvent.borderCrossingId'));
       expect(
         mapSource,
-        isNot(contains('previous?.currentCellId != next.currentCellId')),
+        isNot(contains('next.lastEntrySequence > previousEntrySequence')),
         reason:
-            'Ring-state tracking can update currentCellId before a visit is eligible.',
+            'Gameplay entry should follow explicit border-crossing identity, not a generic sequence counter.',
       );
     });
 

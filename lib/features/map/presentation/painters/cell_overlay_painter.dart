@@ -97,7 +97,6 @@ class CellOverlayPainter extends CustomPainter {
 
     for (final edge in renderModel.boundaryEdges) {
       final strokeColor = FogRenderer.strokeColor(edge.state);
-      final habitatStrokeColor = FogRenderer.getHabitatStrokeColor(edge.cell);
       final seamAlpha = strokeColor.a;
       final glowStrokeWidth = FogRenderer.seamGlowStrokeWidth(edge.state);
       final seamStrokeWidth = FogRenderer.seamStrokeWidth(edge.state);
@@ -110,7 +109,7 @@ class CellOverlayPainter extends CustomPainter {
         canvas.drawPath(
           edgePath,
           Paint()
-            ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+            ..color = strokeColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = glowStrokeWidth
             ..maskFilter = MaskFilter.blur(
@@ -124,7 +123,7 @@ class CellOverlayPainter extends CustomPainter {
         canvas.drawPath(
           edgePath,
           Paint()
-            ..color = habitatStrokeColor.withValues(alpha: seamAlpha)
+            ..color = strokeColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = seamStrokeWidth,
         );

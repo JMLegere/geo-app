@@ -1,12 +1,14 @@
 import 'dart:ui';
 
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 
 void main() {
   group('ObservableInteraction', () {
-    test('wrapVoidCallback logs action payload and executes callback', () {
+    test('wrapVoidCallback logs telemetry-only payload and executes callback',
+        () {
       final events = <Map<String, dynamic>>[];
       var invoked = false;
 
@@ -21,6 +23,8 @@ void main() {
         screenName: 'login_screen',
         widgetName: 'continue_button',
         actionType: 'tap',
+        telemetryOnlyReason:
+            'auth is outside the current gameplay action catalog',
         payload: const {'entry_point': 'login'},
         callback: () => invoked = true,
       );
@@ -35,11 +39,14 @@ void main() {
         'action_type': 'tap',
         'screen_name': 'login_screen',
         'widget_name': 'continue_button',
+        'telemetry_only_reason':
+            'auth is outside the current gameplay action catalog',
         'entry_point': 'login',
       });
     });
 
-    test('wrapAsyncCallback logs action payload and invokes future callback',
+    test(
+        'wrapAsyncCallback logs telemetry-only payload and invokes future callback',
         () async {
       final events = <Map<String, dynamic>>[];
       var invoked = false;
@@ -55,6 +62,8 @@ void main() {
         screenName: 'login_screen',
         widgetName: 'continue_button',
         actionType: 'submit',
+        telemetryOnlyReason:
+            'auth is outside the current gameplay action catalog',
         payload: const {'entry_point': 'login'},
         callback: () async {
           invoked = true;
@@ -72,11 +81,15 @@ void main() {
         'action_type': 'submit',
         'screen_name': 'login_screen',
         'widget_name': 'continue_button',
+        'telemetry_only_reason':
+            'auth is outside the current gameplay action catalog',
         'entry_point': 'login',
       });
     });
 
-    test('wrapValueChanged logs action payload and forwards input value', () {
+    test(
+        'wrapValueChanged logs action-builder payload and forwards input value',
+        () {
       final events = <Map<String, dynamic>>[];
       String? received;
 
@@ -91,6 +104,8 @@ void main() {
         screenName: 'pack_screen',
         widgetName: 'search_field',
         actionType: 'text_changed',
+        telemetryOnlyReasonBuilder: (_) =>
+            'pack search refines the open Pack view and is not a separate player action',
         payloadBuilder: (value) => {'query_length': value.length},
         callback: (value) => received = value,
       );
@@ -103,11 +118,13 @@ void main() {
         'action_type': 'text_changed',
         'screen_name': 'pack_screen',
         'widget_name': 'search_field',
+        'telemetry_only_reason':
+            'pack search refines the open Pack view and is not a separate player action',
         'query_length': 4,
       });
     });
 
-    test('wrapTapUp logs action payload and forwards details', () {
+    test('wrapTapUp logs player action id and forwards details', () {
       final events = <Map<String, dynamic>>[];
       TapUpDetails? received;
 
@@ -122,6 +139,7 @@ void main() {
         screenName: 'map_screen',
         widgetName: 'cell_overlay',
         actionType: 'tap_up',
+        playerActionId: PlayerActions.inspectMapCell,
         payloadBuilder: (_) => const {'target': 'cell_overlay'},
         callback: (details) => received = details,
       );
@@ -135,11 +153,12 @@ void main() {
         'action_type': 'tap_up',
         'screen_name': 'map_screen',
         'widget_name': 'cell_overlay',
+        'player_action_id': PlayerActions.inspectMapCell,
         'target': 'cell_overlay',
       });
     });
 
-    test('wrapScaleEnd logs action payload and forwards details', () {
+    test('wrapScaleEnd logs player action id and forwards details', () {
       final events = <Map<String, dynamic>>[];
       ScaleEndDetails? received;
 
@@ -154,6 +173,7 @@ void main() {
         screenName: 'map_root_screen',
         widgetName: 'map_level_gesture_detector',
         actionType: 'pinch_level_change',
+        playerActionId: PlayerActions.changeTerritoryScale,
         payloadBuilder: (_) => const {'gesture_direction': 'close'},
         callback: (details) => received = details,
       );
@@ -169,11 +189,13 @@ void main() {
         'action_type': 'pinch_level_change',
         'screen_name': 'map_root_screen',
         'widget_name': 'map_level_gesture_detector',
+        'player_action_id': PlayerActions.changeTerritoryScale,
         'gesture_direction': 'close',
       });
     });
 
-    test('log uses base payload fields when no extra payload is provided', () {
+    test('log uses telemetry-only fields when no extra payload is provided',
+        () {
       final events = <Map<String, dynamic>>[];
 
       ObservableInteraction.log(
@@ -187,6 +209,8 @@ void main() {
         screenName: 'settings_screen',
         widgetName: 'sign_out_button',
         actionType: 'tap',
+        telemetryOnlyReason:
+            'settings chrome is outside the gameplay action catalog',
       );
 
       expect(events, hasLength(1));
@@ -196,7 +220,43 @@ void main() {
         'action_type': 'tap',
         'screen_name': 'settings_screen',
         'widget_name': 'sign_out_button',
+        'telemetry_only_reason':
+            'settings chrome is outside the gameplay action catalog',
       });
+    });
+
+    test('payload rejects missing or ambiguous action classification', () {
+      expect(
+        () => ObservableInteraction.payload(
+          actionType: 'tap',
+          screenName: 'map_screen',
+          widgetName: 'cell_overlay',
+        ),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => ObservableInteraction.payload(
+          actionType: 'tap',
+          screenName: 'map_screen',
+          widgetName: 'cell_overlay',
+          playerActionId: PlayerActions.inspectMapCell,
+          telemetryOnlyReason: 'also telemetry-only',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('payload rejects unknown player action ids', () {
+      expect(
+        () => ObservableInteraction.payload(
+          actionType: 'tap',
+          screenName: 'map_screen',
+          widgetName: 'cell_overlay',
+          playerActionId: 'not-a-real-action',
+        ),
+        throwsArgumentError,
+      );
     });
   });
 }

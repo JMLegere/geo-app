@@ -160,7 +160,8 @@ class CellTessellationRenderModel {
 
     if (sides.length > 1 &&
         sides.every((side) =>
-            side.state.relationship == strongest.state.relationship)) {
+            side.state.relationship == strongest.state.relationship) &&
+        strongest.state.relationship != CellRelationship.explored) {
       return null;
     }
 
