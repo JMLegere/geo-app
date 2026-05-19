@@ -35,7 +35,7 @@ export const productFeatures = {
     label: "Fog Overlay",
     capability: "map",
     kind: "surface",
-    description: "Visual reveal layer for present, explored, frontier, and beyond states, tuned to make movement feel like cozy accumulation.",
+    description: "Visual reveal layer for present, explored, frontier, unknown, and beyond states, tuned to make movement feel like cozy accumulation.",
   }),
   mapCellDetailSheet: feature({
     id: "map-cell-detail-sheet",
@@ -119,7 +119,7 @@ export const productFeatures = {
     label: "Fog State Model",
     capability: "map",
     kind: "data-model",
-    description: "Computed fog relationship model derived from current marker cell plus visit history, without persisted fog snapshots.",
+    description: "Computed fog relationship model derived from current marker cell, visit history, and shared map-cell borders without persisted fog snapshots.",
   }),
   globalMapStateModel: feature({
     id: "global-map-state-model",

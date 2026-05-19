@@ -178,7 +178,7 @@ observable.
 | `MapDebugControlState` | `developer_mode_enabled`, `overlay_visible`, `simulated_location_enabled`, `simulated_position`, `last_control`, `source`, `updated_at` | Production reward privileges or hidden bypass flags |
 | `ExplorationEligibility` | `state`, `reason`, `can_record_visit`, `can_clear_fog`, `can_offer_handoff` | Anti-cheat score |
 | `CellBorderCrossingEvent` | `border_crossing_id`, `previous_cell_id`, `entered_cell_id`, `border_crossing_type`, `is_first_visit`, `occurred_at` | Species/item reward results |
-| `FogRelationshipSet` | `present_cell_id`, `explored_cell_ids`, `frontier_cell_ids`, `beyond_reason`, `computed_from_visit_count` | Persisted fog snapshot id |
+| `FogRelationshipSet` | `present_cell_id`, `explored_cell_ids`, `frontier_cell_ids`, `unknown_cell_ids`, `beyond_reason`, `computed_from_visit_count` | Persisted fog snapshot id |
 | `CellEntryFeedback` | `border_crossing_id`, `kind`, `intensity`, `message`, `haptic_level`, `sound_key`, `suppressed_reason` | Loot/reward payload |
 | `MapCellDetailState` | `cell_id`, `display_name`, `status`, `territory_context`, `visit_count`, `first_visit_at`, `current_relationship`, `available_handoffs` | Owned pack/field-guide mutations |
 
@@ -221,8 +221,8 @@ Primitive contracts:
 | `CellBorderCrossingEvent` | `border_crossing_type` | `first_entry`, `re_entry`, `invalid_untrusted` | crossing resolver | Only accepted `first_entry` / `re_entry` may produce visible entry feedback. |
 | `CellBorderCrossingEvent` | `is_first_visit`, `occurred_at` | bool, timestamp | visit result + crossing clock | Accepted crossings may mutate visits/fog; invalid crossings do not. |
 | `FogRelationshipSet` | `present_cell_id` | `MapCellId?` | current marker cell | Present overrides explored/frontier for rendering. |
-| `FogRelationshipSet` | `explored_cell_ids`, `frontier_cell_ids` | `MapCellId[]` | visits + nearby cells | Computed every time; do not persist fog snapshots. |
-| `FogRelationshipSet` | `beyond_reason` | `outside_render_distance`, `not_fetched`, `unknown` | cell fetch/fog service | Beyond is a rendering/performance boundary, not a reward state. |
+| `FogRelationshipSet` | `explored_cell_ids`, `frontier_cell_ids`, `unknown_cell_ids` | `MapCellId[]` | visits + nearby cell geometry | Frontier requires a shared border with present/explored cells; fetched unvisited cells without a revealed shared border are unknown. Point-touching corners do not count. |
+| `FogRelationshipSet` | `beyond_reason` | `outside_render_distance`, `not_fetched` | cell fetch/fog service | Beyond is a rendering/performance boundary, not a fetched-cell relationship state. |
 | `FogRelationshipSet` | `computed_from_visit_count` | int | visits | Lets tests prove fog followed the same visit inputs. |
 | `CellEntryFeedback` | `border_crossing_id` | `BorderCrossingId` | crossing event | Feedback identity must match the crossing identity. |
 | `CellEntryFeedback` | `kind` | `none`, `first_entry`, `re_entry`, `suppressed` | feedback presenter | Map never emits downstream discovery reward payloads. |
@@ -330,8 +330,8 @@ The implementation order should preserve vertical-slice testability:
 4. **Cell border crossing identity** — emit one event for entering a new map
    cell and no event for same-cell or paused movement.
 5. **Visit result** — append/queue visits only from accepted crossings.
-6. **Fog relationship recompute** — derive present/explored/frontier/beyond from
-   marker + cells + visits.
+6. **Fog relationship recompute** — derive present/explored/frontier/unknown/beyond from
+   marker + cells + visits + shared-border geometry.
 7. **Entry feedback + detail state** — explain the map cell and entry result
    without downstream rewards.
 8. **Debug harness coverage** — use P↑/P↓/P←/P→ and gesture buttons to exercise
@@ -483,14 +483,15 @@ The first map release succeeds when a player can open the Map tab, see where the
 - Add/keep a pure `FogStateService`.
 - Compute `present` for the cell containing the marker.
 - Compute `explored` for visited but non-present cells.
-- Compute `nearby` for fetched but unvisited cells.
-- Do not render unfetched/beyond cells.
+- Compute `frontier` for fetched unvisited cells that share a border with a present or explored cell.
+- Compute `unknown` for fetched unvisited cells that do not share a revealed border.
+- Do not render unfetched/beyond cells as inspectable map cells.
 
 **JTBD user stories:**
 - When I am standing in a cell, I want that cell to look fully present, so I know where I am.
 - When I have already visited a cell, I want it to remain revealed, so I can see my footprint.
-- When a cell is near but unvisited, I want it partially obscured, so I feel pulled to explore.
-- When a cell is too far away, I want it hidden, so the world still feels mysterious.
+- When a cell borders my revealed footprint but is unvisited, I want it partially obscured, so I feel pulled to explore.
+- When a cell is fetched but does not border my revealed footprint, I want it fully hidden, so the world still feels mysterious.
 
 ### Initiative 4 — Fog Rendering Experience
 

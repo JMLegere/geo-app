@@ -295,3 +295,9 @@
 - If player-visible behavior, terminology, ownership boundaries, or product contracts change, SuperBDD should be updated first or in the same change.
 - Architecture should fall out of scenarios rather than being invented first and backfilled into BDD later.
 - `mise exec -- eac check` is part of verification whenever product truth or feature behavior changes.
+
+## 2026-05-19 — Frontier requires shared revealed border adjacency
+- Frontier is a fog relationship for fetched unvisited Voronoi map cells that share a full border with the player's revealed footprint.
+- The revealed footprint includes present and explored map cells; present participates because the current cell is visibly revealed even before it becomes historical explored state.
+- Fetched unvisited cells that do not share a revealed border are `unknown`, not frontier, and should retain fully opaque fog.
+- Corner-only point contact does not count as frontier adjacency.

@@ -448,3 +448,8 @@
 ## Completed 2026-05-19 — root AGENTS SuperBDD workflow guidance
 - Updated root `AGENTS.md` to make EarthNova workflow explicitly SuperBDD-driven for product behavior, gameplay rules, UI flows, payload contracts, and state-model changes.
 - Added clear guidance to read `features/*.feature` and `product/*.ts` before coding, update SuperBDD with player-visible contract changes, let scenarios drive architecture, and require `mise exec -- eac check` alongside relevant tests when product truth changes.
+
+## Completed 2026-05-19 — frontier adjacency correction
+- Jeremy clarified that frontier should only include map cells sharing a border with an explored/revealed map cell, not every fetched unvisited cell.
+- Updated `FogStateService` so present and explored cells contribute revealed borders; only fetched unvisited cells sharing one of those borders become frontier, while other fetched unvisited cells become unknown.
+- Updated SuperBDD and map design docs so frontier/unknown semantics are driven by shared map-cell borders, with corner-only contact explicitly excluded.

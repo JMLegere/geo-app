@@ -10,7 +10,7 @@ Feature: Fog Overlay
     And the surrounding explored footprint should make the player's movement feel accumulated
 
   Scenario: Frontier teases without giving everything away
-    Given there are reachable unvisited neighboring map cells
+    Given there are unvisited map cells sharing a border with present or explored map cells
     When the fog overlay paints frontier territory
     Then frontier map cells should signal that something may be nearby
     But the overlay should deemphasize interior details until the player crosses their borders
@@ -23,7 +23,7 @@ Feature: Fog Overlay
 
 
   Scenario: Unknown cells are opaque while frontier remains a tease
-    Given unvisited map cells are not frontier neighbors
+    Given unvisited map cells do not share a border with present or explored map cells
     When the overlay paints unknown territory
     Then unknown cells should fully hide the base map
     And frontier cells should remain translucent enough to suggest nearby possibility

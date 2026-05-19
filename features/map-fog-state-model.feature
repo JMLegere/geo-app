@@ -9,7 +9,8 @@ Feature: Fog State Model
     When the Map computes fog state
     Then the marker map cell should be present
     And previously visited non-current map cells should be explored
-    And reachable unvisited neighbors should be frontier
+    And unvisited map cells sharing a border with present or explored map cells should be frontier
+    And fetched unvisited map cells without a revealed shared border should be unknown
     And everything outside render distance should be beyond
 
   Scenario: Current presence overrides historical state
