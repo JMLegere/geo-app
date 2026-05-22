@@ -156,7 +156,7 @@ export const productCapabilities = {
     id: "exploration-discovery-lifecycle",
     label: "Exploration-Discovery Lifecycle",
     description:
-      "The player turns walking and map cell entry into discoveries, owned finds, identification reveals, and find stories.",
+      "The player turns walking and map cell entry into unidentified finds, identification reveals, known finds, and find stories.",
     emotionalReward: "Every walk can become a meaningful find and a story I keep.",
     cucumberFeatures: [
       spineFeature,
@@ -169,7 +169,7 @@ export const productCapabilities = {
       playerActions.collectFind,
       playerActions.openPack,
       playerActions.inspectPackFind,
-      playerActions.identifyMystery,
+      playerActions.identifyUnidentifiedFind,
       playerActions.revealIdentification,
     ],
     workflows: [playerActionWorkflows.discoveryOwnership],

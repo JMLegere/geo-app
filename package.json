@@ -1,0 +1,11 @@
+{
+  "name": "earthnova-superbdd",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "superbdd:cucumber": "cucumber-js --config cucumber.mjs"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^12.2.0"
+  }
+}

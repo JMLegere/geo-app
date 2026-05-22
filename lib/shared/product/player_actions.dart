@@ -35,7 +35,8 @@ abstract final class PlayerActions {
   static const PlayerActionId collectFind = 'collect-find';
   static const PlayerActionId openPack = 'open-pack';
   static const PlayerActionId inspectPackFind = 'inspect-pack-find';
-  static const PlayerActionId identifyMystery = 'identify-mystery';
+  static const PlayerActionId identifyUnidentifiedFind =
+      'identify-unidentified-find';
   static const PlayerActionId revealIdentification = 'reveal-identification';
 
   static const PlayerActionId openFieldGuide = 'open-field-guide';
@@ -98,7 +99,7 @@ abstract final class PlayerActions {
     collectFind,
     openPack,
     inspectPackFind,
-    identifyMystery,
+    identifyUnidentifiedFind,
     revealIdentification,
     openFieldGuide,
     inspectFieldGuideEntry,

@@ -268,6 +268,31 @@ void main() {
       );
     });
 
+    testWidgets('search does not leak unidentified hidden species name',
+        (tester) async {
+      final items = [
+        _item(
+          '1',
+          'Unidentified fauna specimen',
+          ItemCategory.fauna,
+          rarity: 'rare',
+          identificationState: ItemIdentificationState.unidentified,
+          identifiedDisplayName: 'Amberwing Warbler',
+        ),
+      ];
+
+      await _pumpPack(tester, items);
+
+      await tester.enterText(find.byType(TextField), 'Amberwing');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<Text>(find.byKey(const Key('compact-bar-count'))).data,
+        '0',
+      );
+      expect(find.text('Amberwing Warbler'), findsNothing);
+    });
+
     testWidgets('tapping item opens species card bottom sheet', (tester) async {
       final items = [
         _item('1', 'Red Fox', ItemCategory.fauna,
@@ -483,6 +508,8 @@ Item _item(
   String? scientificName,
   List<String> habitats = const [],
   List<String> continents = const [],
+  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  String? identifiedDisplayName,
 }) =>
     Item(
       id: id,
@@ -496,6 +523,8 @@ Item _item(
       taxonomicClass: taxonomicClass,
       habitats: habitats,
       continents: continents,
+      identificationState: identificationState,
+      identifiedDisplayName: identifiedDisplayName,
     );
 
 Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {

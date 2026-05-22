@@ -139,13 +139,13 @@ export const userActionWorkflows = {
 
   discoveryOwnership: workflow({
     id: playerActionWorkflows.discoveryOwnership,
-    label: "Discovery result to owned find lifecycle",
+    label: "Discovery result to unidentified find lifecycle",
     initialState: "result-available",
     states: [
       "no-result",
       "result-available",
       "result-acknowledged",
-      "owned-find",
+      "unidentified",
       "identification-started",
       "identified",
     ],
@@ -154,7 +154,7 @@ export const userActionWorkflows = {
       playerActions.collectFind,
       playerActions.openPack,
       playerActions.inspectPackFind,
-      playerActions.identifyMystery,
+      playerActions.identifyUnidentifiedFind,
       playerActions.revealIdentification,
     ],
     transitions: [
@@ -166,17 +166,21 @@ export const userActionWorkflows = {
       {
         from: "result-acknowledged",
         action: playerActions.collectFind,
-        to: "owned-find",
+        to: "unidentified",
       },
-      { from: "owned-find", action: playerActions.openPack, to: "owned-find" },
       {
-        from: "owned-find",
+        from: "unidentified",
+        action: playerActions.openPack,
+        to: "unidentified",
+      },
+      {
+        from: "unidentified",
         action: playerActions.inspectPackFind,
-        to: "owned-find",
+        to: "unidentified",
       },
       {
-        from: "owned-find",
-        action: playerActions.identifyMystery,
+        from: "unidentified",
+        action: playerActions.identifyUnidentifiedFind,
         to: "identification-started",
       },
       {
@@ -200,12 +204,12 @@ export const userActionWorkflows = {
       {
         state: "result-available",
         action: playerActions.revealIdentification,
-        reason: "Identification reveal requires an owned mystery and an explicit identify action first.",
+        reason: "Identification reveal requires an unidentified find and an explicit identify action first.",
       },
       {
-        state: "owned-find",
+        state: "unidentified",
         action: playerActions.revealIdentification,
-        reason: "Reveal cannot bypass the identify-mystery step.",
+        reason: "Reveal cannot bypass the identify-unidentified-find step.",
       },
       {
         state: "identified",

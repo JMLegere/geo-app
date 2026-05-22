@@ -65,9 +65,31 @@ class RecordingItemRepository implements ItemRepository {
       taxonomicClass: draft.taxonomicClass,
       habitats: draft.habitats,
       continents: draft.continents,
+      identificationState: draft.identificationState,
+      identifiedAt: draft.identifiedAt,
+      identifiedDisplayName: draft.identifiedDisplayName,
+      identifiedScientificName: draft.identifiedScientificName,
+      identifiedTaxonomicClass: draft.identifiedTaxonomicClass,
+      identifiedHabitats: draft.identifiedHabitats,
+      identifiedContinents: draft.identifiedContinents,
     );
     ownedItems.add(item);
     return item;
+  }
+
+  @override
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  }) async {
+    final identified = item.identify();
+    final index = ownedItems.indexWhere((candidate) => candidate.id == item.id);
+    if (index == -1) {
+      ownedItems.add(identified);
+    } else {
+      ownedItems[index] = identified;
+    }
+    return identified;
   }
 }
 
@@ -139,7 +161,7 @@ void main() {
       expect(encounterLog.data?['encounterType'], 'species');
     });
 
-    test('first visit with a user commits owned find before showing encounter',
+    test('first visit with a user commits unidentified find before showing encounter',
         () async {
       final notifier = container.read(encounterProvider.notifier);
 
@@ -158,11 +180,20 @@ void main() {
       expect(itemRepo.acquiredDrafts.single.userId, 'user-123');
       expect(itemRepo.acquiredDrafts.single.acquiredInCellId, 'cell_123');
       expect(itemRepo.acquiredDrafts.single.mapCellEntryId, 'entry-1');
+      expect(itemRepo.acquiredDrafts.single.identificationState,
+          ItemIdentificationState.unidentified);
+      expect(itemRepo.acquiredDrafts.single.displayName,
+          'Unidentified fauna specimen');
+      expect(itemRepo.acquiredDrafts.single.identifiedDisplayName, isNotNull);
       expect(state.currentEncounter, isNotNull);
       expect(state.currentEncounter!.acquiredItem, isNotNull);
       expect(state.currentEncounter!.acquiredItem!.id, 'owned-1');
+      expect(state.currentEncounter!.acquiredItem!.identificationState,
+          ItemIdentificationState.unidentified);
       expect(packState.items, hasLength(1));
-      expect(packState.items.single.displayName,
+      expect(packState.items.single.displayName, 'Unidentified fauna specimen');
+      expect(packState.items.single.scientificName, isNull);
+      expect(packState.items.single.identifiedDisplayName,
           state.currentEncounter!.displayName);
       expect(testObs.eventNames, contains('discovery.result_resolved'));
       expect(testObs.eventNames, contains('discovery.acquisition_committed'));

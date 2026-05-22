@@ -7,6 +7,7 @@ import 'package:earth_nova/features/auth/presentation/providers/auth_provider.da
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/fetch_items.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/acquire_discovery_item.dart';
+import 'package:earth_nova/features/identification/domain/use_cases/identify_unidentified_find.dart';
 
 /// Observability provider for ItemsNotifier — overridden with real impl in main.dart.
 final itemsObservabilityProvider = Provider<ObservabilityService>((ref) {
@@ -56,6 +57,14 @@ final itemRepositoryProvider = Provider<ItemRepository>((ref) {
 
 final acquireDiscoveryItemProvider = Provider<AcquireDiscoveryItem>((ref) {
   return AcquireDiscoveryItem(
+    ref.watch(itemRepositoryProvider),
+    ref.watch(itemsObservabilityProvider),
+  );
+});
+
+final identifyUnidentifiedFindProvider =
+    Provider<IdentifyUnidentifiedFind>((ref) {
+  return IdentifyUnidentifiedFind(
     ref.watch(itemRepositoryProvider),
     ref.watch(itemsObservabilityProvider),
   );
@@ -129,5 +138,36 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
         'deduped': existingIndex != -1,
       },
     );
+  }
+
+  Future<Item?> identifyUnidentifiedFind(String itemId) async {
+    final index = state.items.indexWhere((item) => item.id == itemId);
+    if (index == -1) return null;
+    final item = state.items[index];
+    if (!item.isUnidentified) return item;
+
+    try {
+      final identified =
+          await ref.read(identifyUnidentifiedFindProvider).call(item);
+      final nextItems = [...state.items];
+      nextItems[index] = identified;
+      transition(
+        state.copyWith(items: List<Item>.unmodifiable(nextItems), error: null),
+        'items.unidentified_find_identified',
+        data: {
+          'item_id': identified.id,
+          'definition_id': identified.definitionId,
+        },
+      );
+      return identified;
+    } catch (e, stack) {
+      obs.logError(e, stack, event: 'items.identification_error');
+      transition(
+        state.copyWith(error: "Couldn't identify that find. Try again."),
+        'items.identification_error',
+        data: {'item_id': itemId},
+      );
+      return null;
+    }
   }
 }

@@ -6,8 +6,8 @@ class EncounterPresenter {
   static String message(Encounter encounter) {
     return switch (encounter.type) {
       EncounterType.species when encounter.acquiredItem != null =>
-        'You found a ${encounter.displayName}',
-      EncounterType.species => 'You spotted a ${encounter.displayName}',
+        'You found a ${encounter.acquiredItem!.visibleDisplayName}',
+      EncounterType.species => 'You spotted an unidentified fauna specimen',
       EncounterType.critter => 'A critter appeared',
       EncounterType.loot => 'You found supplies',
     };

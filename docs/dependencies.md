@@ -28,6 +28,7 @@
 | `flutter_lints` | `^6.0.0` | Base lint rules. Extended by `analysis_options.yaml`. |
 | `flutter_launcher_icons` | `^0.14.3` | Generates platform app icons from `assets/icon/app_icon.png`. Run once after icon changes. |
 | `flutter_native_splash` | `^2.4.4` | Generates native splash screen (`#0D1B2A` dark navy). Run once after splash changes. |
+| `@cucumber/cucumber` | `^12.2.0` | Executes SuperBDD `.feature` files through `npm run superbdd:cucumber`. Dev-only Node harness; no Flutter runtime dependency and no codegen. |
 
 ---
 

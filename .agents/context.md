@@ -559,3 +559,9 @@
 - Renamed the SuperBDD map data-model feature from `features/map-cell-border-crossing-model.feature` / `@feature.cell-border-crossing-model` to `features/map-cell-entry-model.feature` / `@feature.cell-entry-model`.
 - Updated the product feature catalog key/id to `cellEntryModel` / `cell-entry-model` while preserving the label `Map Cell Entry Model`.
 - Updated `docs/map-design.md` first-slice feature references so "map cell entry" is the domain/product model and "border crossing" remains the geometric trigger/correlation detail.
+
+## In Progress 2026-05-22 — executable SuperBDD for fauna identification
+- Removed the direct-known fauna loophole from Exploration/Discovery SuperBDD: map-cell entry now creates an owned **unidentified** find, and Identification is required before species/traits/known state are revealed.
+- Renamed the player action from `identify-mystery` to `identify-unidentified-find` across SuperBDD, product actions/workflows, and the Dart action mirror.
+- Added `@cucumber/cucumber` as a dev-only Node harness with `npm run superbdd:cucumber` executing the Exploration/Discovery `.feature` files.
+- Added executable Cucumber step definitions for Discovery → Pack → Identification unidentified flow; current Cucumber run passes 19 scenarios / 80 steps.

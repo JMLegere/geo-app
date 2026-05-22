@@ -25,6 +25,7 @@ eval "$(~/.local/bin/mise activate bash)"  # activate toolchain
 flutter test                                # run tests
 flutter analyze                             # lint + type check
 just                                        # list all tasks
+npm run superbdd:cucumber                  # execute SuperBDD Cucumber scenarios
 ```
 
 ---
@@ -116,6 +117,7 @@ These are settled. Do not revisit without explicit instruction from the user.
 | **2-frame sprite animation** | Real art frames from enrichment pipeline, not programmatic | Real frames from enrichment; `icon_url_frame2` null = static until enriched |
 | **All cell visits** | `v3_cell_visits` records every visit, no UNIQUE constraint | Full history enables fog, counts, streaks, achievements from raw rows |
 | **Clean Architecture** | Strict layering (domain ← data ← presentation), one use case per operation, domain entities pure Dart | Long-term extensibility for 10 feature domains (A-I + S), offline readiness, testability |
+| **Executable SuperBDD harness** | `@cucumber/cucumber` runs selected SuperBDD `.feature` files via `npm run superbdd:cucumber` | Makes BDD executable without adding Flutter runtime packages or codegen |
 
 ---
 

@@ -91,8 +91,11 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         'cell_id': cellId,
         'map_cell_entry_id': effectiveMapCellEntryId,
         'result_id': encounter.speciesId,
-        'display_name': encounter.displayName,
-        'encounter_type': encounter.type.name,
+        'result_type': encounter.type == EncounterType.species
+            ? 'unidentified_fauna'
+            : encounter.type.name,
+        'unidentified_category':
+            encounter.type == EncounterType.species ? ItemCategory.fauna.name : null,
       },
     );
 
@@ -105,15 +108,18 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
               DiscoveryItemDraft(
                 userId: userId,
                 definitionId: encounter.speciesId,
-                displayName: encounter.displayName,
-                scientificName: encounter.scientificName,
+                displayName: 'Unidentified fauna specimen',
+                scientificName: null,
                 category: ItemCategory.fauna,
                 rarity: encounter.rarity,
                 acquiredInCellId: encounter.cellId,
                 mapCellEntryId: effectiveMapCellEntryId,
-                taxonomicClass: encounter.taxonomicClass,
-                habitats: encounter.habitats,
-                continents: encounter.continents,
+                identificationState: ItemIdentificationState.unidentified,
+                identifiedDisplayName: encounter.displayName,
+                identifiedScientificName: encounter.scientificName,
+                identifiedTaxonomicClass: encounter.taxonomicClass,
+                identifiedHabitats: encounter.habitats,
+                identifiedContinents: encounter.continents,
               ),
             );
         ref.read(itemsProvider.notifier).registerOwnedDiscovery(ownedItem);
@@ -126,6 +132,7 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
             'map_cell_entry_id': effectiveMapCellEntryId,
             'result_id': encounter.speciesId,
             'owned_item_id': ownedItem.id,
+            'unidentified_category': ItemCategory.fauna.name,
           },
         );
       } catch (error, stack) {
@@ -154,7 +161,8 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         'map_cell_entry_id': effectiveMapCellEntryId,
         'encounterType': resolvedEncounter.type.name,
         'speciesId': resolvedEncounter.speciesId,
-        'display_name': resolvedEncounter.displayName,
+        'display_name': resolvedEncounter.acquiredItem?.visibleDisplayName ??
+            resolvedEncounter.displayName,
         'owned_item_id': resolvedEncounter.acquiredItem?.id,
       },
     );

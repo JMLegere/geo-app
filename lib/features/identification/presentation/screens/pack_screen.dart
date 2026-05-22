@@ -175,6 +175,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                     onSearchChanged: _onSearchChanged,
                     onEdgeSwipe: widget.onEdgeSwipe,
                     onItemTapped: _onItemTapped,
+                    onIdentifyItem: _onIdentifyItem,
                   ),
       ),
     );
@@ -329,6 +330,19 @@ class _PackScreenState extends ConsumerState<PackScreen> {
       },
     );
   }
+
+  Future<Item?> _onIdentifyItem(Item item) {
+    _logInteraction(
+      'identify_unidentified_find',
+      'species_card',
+      playerActionId: PlayerActions.identifyUnidentifiedFind,
+      data: {
+        'item_id': item.id,
+        'category': item.category.name,
+      },
+    );
+    return ref.read(itemsProvider.notifier).identifyUnidentifiedFind(item.id);
+  }
 }
 
 // ─── Shared filter + sort helper ──────────────────────────────────────────────
@@ -346,8 +360,8 @@ List<Item> _applyFilterAndSort(
     final q = searchQuery.toLowerCase();
     result = result
         .where((i) =>
-            i.displayName.toLowerCase().contains(q) ||
-            (i.scientificName?.toLowerCase().contains(q) ?? false))
+            i.visibleDisplayName.toLowerCase().contains(q) ||
+            (i.visibleScientificName?.toLowerCase().contains(q) ?? false))
         .toList();
   }
   switch (sort) {
@@ -367,7 +381,7 @@ List<Item> _applyFilterAndSort(
         return ai.compareTo(bi);
       });
     case PackSortMode.name:
-      result.sort((a, b) => a.displayName.compareTo(b.displayName));
+      result.sort((a, b) => a.visibleDisplayName.compareTo(b.visibleDisplayName));
   }
   return result;
 }
@@ -394,6 +408,7 @@ class _PackBody extends StatelessWidget {
     required this.onSearchChanged,
     this.onEdgeSwipe,
     required this.onItemTapped,
+    required this.onIdentifyItem,
   });
 
   final List<Item> allItems;
@@ -414,6 +429,7 @@ class _PackBody extends StatelessWidget {
   final void Function(String) onSearchChanged;
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
   final void Function(Item) onItemTapped;
+  final Future<Item?> Function(Item) onIdentifyItem;
 
   @override
   Widget build(BuildContext context) {
@@ -483,7 +499,11 @@ class _PackBody extends StatelessWidget {
                         filters.hasActiveFilters || searchQuery.isNotEmpty,
                   );
                 }
-                return _ItemGrid(items: items, onItemTap: onItemTapped);
+                return _ItemGrid(
+                  items: items,
+                  onItemTap: onItemTapped,
+                  onIdentifyItem: onIdentifyItem,
+                );
               },
             ),
           ),
@@ -1271,9 +1291,14 @@ class _SearchBarState extends State<_SearchBar> {
 // ─── Item grid ────────────────────────────────────────────────────────────────
 
 class _ItemGrid extends StatelessWidget {
-  const _ItemGrid({required this.items, required this.onItemTap});
+  const _ItemGrid({
+    required this.items,
+    required this.onItemTap,
+    required this.onIdentifyItem,
+  });
   final List<Item> items;
   final void Function(Item) onItemTap;
+  final Future<Item?> Function(Item) onIdentifyItem;
 
   static int _columns(double width) {
     if (width < 600) return 3;
@@ -1301,8 +1326,11 @@ class _ItemGrid extends StatelessWidget {
             mainAxisSpacing: Spacing.sm,
           ),
           itemCount: items.length,
-          itemBuilder: (_, i) =>
-              _ItemSlot(item: items[i], onItemTap: onItemTap),
+          itemBuilder: (_, i) => _ItemSlot(
+            item: items[i],
+            onItemTap: onItemTap,
+            onIdentifyItem: onIdentifyItem,
+          ),
         );
       },
     );
@@ -1312,9 +1340,14 @@ class _ItemGrid extends StatelessWidget {
 // ─── Item slot ────────────────────────────────────────────────────────────────
 
 class _ItemSlot extends StatelessWidget {
-  const _ItemSlot({required this.item, required this.onItemTap});
+  const _ItemSlot({
+    required this.item,
+    required this.onItemTap,
+    required this.onIdentifyItem,
+  });
   final Item item;
   final void Function(Item) onItemTap;
+  final Future<Item?> Function(Item) onIdentifyItem;
 
   @override
   Widget build(BuildContext context) {
@@ -1324,7 +1357,7 @@ class _ItemSlot extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         onItemTap(item);
-        showSpeciesCard(context, item);
+        showSpeciesCard(context, item, onIdentify: onIdentifyItem);
       },
       child: Container(
         clipBehavior: Clip.antiAlias,
@@ -1405,7 +1438,7 @@ class _ItemSlot extends StatelessWidget {
                 ),
               ),
               child: Text(
-                item.displayName,
+                item.visibleDisplayName,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

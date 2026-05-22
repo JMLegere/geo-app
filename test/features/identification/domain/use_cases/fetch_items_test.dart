@@ -26,6 +26,14 @@ class FakeItemRepository implements ItemRepository {
   }) {
     throw UnimplementedError('FetchItems tests do not acquire discoveries.');
   }
+
+  @override
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  }) {
+    throw UnimplementedError('FetchItems tests do not identify finds.');
+  }
 }
 
 class TestObservabilityService extends ObservabilityService {

@@ -38,6 +38,19 @@ enum ItemStatus {
   }
 }
 
+enum ItemIdentificationState {
+  unidentified,
+  identified;
+
+  static ItemIdentificationState fromString(String? value) {
+    if (value == null) return ItemIdentificationState.identified;
+    for (final state in ItemIdentificationState.values) {
+      if (state.name.toLowerCase() == value.toLowerCase()) return state;
+    }
+    return ItemIdentificationState.identified;
+  }
+}
+
 class Item {
   const Item({
     required this.id,
@@ -55,6 +68,13 @@ class Item {
     this.taxonomicClass,
     this.habitats = const [],
     this.continents = const [],
+    this.identificationState = ItemIdentificationState.identified,
+    this.identifiedAt,
+    this.identifiedDisplayName,
+    this.identifiedScientificName,
+    this.identifiedTaxonomicClass,
+    this.identifiedHabitats = const [],
+    this.identifiedContinents = const [],
   });
 
   final String id;
@@ -72,6 +92,21 @@ class Item {
   final String? taxonomicClass;
   final List<String> habitats;
   final List<String> continents;
+  final ItemIdentificationState identificationState;
+  final DateTime? identifiedAt;
+  final String? identifiedDisplayName;
+  final String? identifiedScientificName;
+  final String? identifiedTaxonomicClass;
+  final List<String> identifiedHabitats;
+  final List<String> identifiedContinents;
+
+  bool get isUnidentified =>
+      identificationState == ItemIdentificationState.unidentified;
+
+  String get visibleDisplayName =>
+      isUnidentified ? 'Unidentified ${category.label.toLowerCase()} specimen' : displayName;
+
+  String? get visibleScientificName => isUnidentified ? null : scientificName;
 
   TaxonomicGroup get taxonomicGroup =>
       TaxonomicGroup.fromTaxonomicClass(taxonomicClass);
@@ -92,6 +127,13 @@ class Item {
     String? taxonomicClass,
     List<String>? habitats,
     List<String>? continents,
+    ItemIdentificationState? identificationState,
+    DateTime? identifiedAt,
+    String? identifiedDisplayName,
+    String? identifiedScientificName,
+    String? identifiedTaxonomicClass,
+    List<String>? identifiedHabitats,
+    List<String>? identifiedContinents,
   }) =>
       Item(
         id: id ?? this.id,
@@ -109,6 +151,27 @@ class Item {
         taxonomicClass: taxonomicClass ?? this.taxonomicClass,
         habitats: habitats ?? this.habitats,
         continents: continents ?? this.continents,
+        identificationState: identificationState ?? this.identificationState,
+        identifiedAt: identifiedAt ?? this.identifiedAt,
+        identifiedDisplayName: identifiedDisplayName ?? this.identifiedDisplayName,
+        identifiedScientificName:
+            identifiedScientificName ?? this.identifiedScientificName,
+        identifiedTaxonomicClass:
+            identifiedTaxonomicClass ?? this.identifiedTaxonomicClass,
+        identifiedHabitats: identifiedHabitats ?? this.identifiedHabitats,
+        identifiedContinents: identifiedContinents ?? this.identifiedContinents,
+      );
+
+  Item identify({DateTime? at}) => copyWith(
+        displayName: identifiedDisplayName ?? displayName,
+        scientificName: identifiedScientificName ?? scientificName,
+        taxonomicClass: identifiedTaxonomicClass ?? taxonomicClass,
+        habitats:
+            identifiedHabitats.isNotEmpty ? identifiedHabitats : habitats,
+        continents:
+            identifiedContinents.isNotEmpty ? identifiedContinents : continents,
+        identificationState: ItemIdentificationState.identified,
+        identifiedAt: at ?? DateTime.now(),
       );
 
   @override
@@ -130,7 +193,14 @@ class Item {
           status == other.status &&
           taxonomicClass == other.taxonomicClass &&
           _listEquals(habitats, other.habitats) &&
-          _listEquals(continents, other.continents);
+          _listEquals(continents, other.continents) &&
+          identificationState == other.identificationState &&
+          identifiedAt == other.identifiedAt &&
+          identifiedDisplayName == other.identifiedDisplayName &&
+          identifiedScientificName == other.identifiedScientificName &&
+          identifiedTaxonomicClass == other.identifiedTaxonomicClass &&
+          _listEquals(identifiedHabitats, other.identifiedHabitats) &&
+          _listEquals(identifiedContinents, other.identifiedContinents);
 
   @override
   int get hashCode => Object.hashAll([
@@ -149,6 +219,13 @@ class Item {
         taxonomicClass,
         habitats.join(','),
         continents.join(','),
+        identificationState,
+        identifiedAt,
+        identifiedDisplayName,
+        identifiedScientificName,
+        identifiedTaxonomicClass,
+        identifiedHabitats.join(','),
+        identifiedContinents.join(','),
       ]);
 }
 

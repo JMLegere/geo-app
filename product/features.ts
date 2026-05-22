@@ -198,21 +198,21 @@ export const productFeatures = {
     label: "Discovery",
     capability: "exploration-discovery-lifecycle",
     kind: "game-system",
-    description: "Resolver and ownership bridge from reward-clean map-cell entry into known finds, quiet revisits, mystery candidates, acquisition commits, and truthful result acknowledgement.",
+    description: "Resolver and ownership bridge from reward-clean map-cell entry into quiet revisits, owned unidentified finds, acquisition commits, and truthful result acknowledgement before Identification reveals known finds.",
   }),
   pack: feature({
     id: "pack",
     label: "Pack",
     capability: "exploration-discovery-lifecycle",
     kind: "app-section",
-    description: "Owned-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, and acquisition provenance.",
+    description: "Owned unidentified and identified-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, identification state, and acquisition provenance.",
   }),
   identification: feature({
     id: "identification",
     label: "Identification",
     capability: "exploration-discovery-lifecycle",
     kind: "surface",
-    description: "Unknown-to-known follow-up system for owned mysteries, while direct known Discovery finds remain immediately searchable in Pack.",
+    description: "Required unknown-to-known follow-up system for unidentified finds acquired from Discovery, revealing species identity, deterministic traits, and known Pack state.",
   }),
 
   fieldGuide: feature({

@@ -19,6 +19,13 @@ class ItemDto {
     this.taxonomicClass,
     this.habitats = const [],
     this.continents = const [],
+    this.identificationState = 'identified',
+    this.identifiedAt,
+    this.identifiedDisplayName,
+    this.identifiedScientificName,
+    this.identifiedTaxonomicClass,
+    this.identifiedHabitats = const [],
+    this.identifiedContinents = const [],
   });
 
   final String id;
@@ -36,6 +43,13 @@ class ItemDto {
   final String? taxonomicClass;
   final List<String> habitats;
   final List<String> continents;
+  final String identificationState;
+  final DateTime? identifiedAt;
+  final String? identifiedDisplayName;
+  final String? identifiedScientificName;
+  final String? identifiedTaxonomicClass;
+  final List<String> identifiedHabitats;
+  final List<String> identifiedContinents;
 
   factory ItemDto.fromJson(Map<String, dynamic> json) => ItemDto(
         id: json['id'] as String,
@@ -54,6 +68,19 @@ class ItemDto {
         taxonomicClass: json['taxonomic_class'] as String?,
         habitats: _parseJsonArray(json['habitats_json'] as String?),
         continents: _parseJsonArray(json['continents_json'] as String?),
+        identificationState:
+            json['identification_state'] as String? ?? 'identified',
+        identifiedAt: json['identified_at'] == null
+            ? null
+            : DateTime.parse(json['identified_at'] as String),
+        identifiedDisplayName: json['identified_display_name'] as String?,
+        identifiedScientificName:
+            json['identified_scientific_name'] as String?,
+        identifiedTaxonomicClass: json['identified_taxonomic_class'] as String?,
+        identifiedHabitats:
+            _parseJsonArray(json['identified_habitats_json'] as String?),
+        identifiedContinents:
+            _parseJsonArray(json['identified_continents_json'] as String?),
       );
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +99,13 @@ class ItemDto {
         'taxonomic_class': taxonomicClass,
         'habitats_json': jsonEncode(habitats),
         'continents_json': jsonEncode(continents),
+        'identification_state': identificationState,
+        'identified_at': identifiedAt?.toIso8601String(),
+        'identified_display_name': identifiedDisplayName,
+        'identified_scientific_name': identifiedScientificName,
+        'identified_taxonomic_class': identifiedTaxonomicClass,
+        'identified_habitats_json': jsonEncode(identifiedHabitats),
+        'identified_continents_json': jsonEncode(identifiedContinents),
       };
 
   Item toDomain() => Item(
@@ -90,6 +124,14 @@ class ItemDto {
         taxonomicClass: taxonomicClass,
         habitats: habitats,
         continents: continents,
+        identificationState:
+            ItemIdentificationState.fromString(identificationState),
+        identifiedAt: identifiedAt,
+        identifiedDisplayName: identifiedDisplayName,
+        identifiedScientificName: identifiedScientificName,
+        identifiedTaxonomicClass: identifiedTaxonomicClass,
+        identifiedHabitats: identifiedHabitats,
+        identifiedContinents: identifiedContinents,
       );
 
   factory ItemDto.fromDomain(Item item) => ItemDto(
@@ -108,6 +150,13 @@ class ItemDto {
         taxonomicClass: item.taxonomicClass,
         habitats: item.habitats,
         continents: item.continents,
+        identificationState: item.identificationState.name,
+        identifiedAt: item.identifiedAt,
+        identifiedDisplayName: item.identifiedDisplayName,
+        identifiedScientificName: item.identifiedScientificName,
+        identifiedTaxonomicClass: item.identifiedTaxonomicClass,
+        identifiedHabitats: item.identifiedHabitats,
+        identifiedContinents: item.identifiedContinents,
       );
 }
 

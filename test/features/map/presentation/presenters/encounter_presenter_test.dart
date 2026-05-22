@@ -40,7 +40,8 @@ void main() {
         seed: 'seed',
       );
 
-      expect(EncounterPresenter.message(encounter), 'You spotted a Red Fox');
+      expect(EncounterPresenter.message(encounter),
+          'You spotted an unidentified fauna specimen');
     });
 
     test('renders non-species encounter copy without raw ids', () {

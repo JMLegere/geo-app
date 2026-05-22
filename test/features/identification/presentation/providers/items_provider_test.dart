@@ -34,6 +34,8 @@ class TestObservabilityService extends ObservabilityService {
 Item _testItem({
   String id = 'item-1',
   String name = 'Test Ocelot',
+  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  String? identifiedDisplayName,
 }) =>
     Item(
       id: id,
@@ -42,6 +44,8 @@ Item _testItem({
       category: ItemCategory.fauna,
       acquiredAt: DateTime(2026, 1, 1),
       status: ItemStatus.active,
+      identificationState: identificationState,
+      identifiedDisplayName: identifiedDisplayName,
     );
 
 void main() {
@@ -328,6 +332,42 @@ void main() {
       container.read(itemsProvider.notifier).registerOwnedDiscovery(item);
 
       expect(container.read(itemsProvider).items, hasLength(1));
+    });
+
+    test('identifyUnidentifiedFind updates Pack item to identified state', () async {
+      final unidentified = _testItem(
+        id: 'discovery-1',
+        name: 'Unidentified fauna specimen',
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+      );
+      itemRepo = MockItemRepository(items: [unidentified]);
+      container = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(itemRepo),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      container.read(authProvider);
+      await container
+          .read(authProvider.notifier)
+          .signInWithPhone('+15551234567');
+      container.read(itemsProvider);
+      container.read(itemsProvider.notifier).registerOwnedDiscovery(unidentified);
+      final identified = await container
+          .read(itemsProvider.notifier)
+          .identifyUnidentifiedFind(unidentified.id);
+
+      expect(identified, isNotNull);
+      expect(identified!.identificationState, ItemIdentificationState.identified);
+      expect(identified.displayName, 'Amberwing Warbler');
+      expect(container.read(itemsProvider).items.single.displayName,
+          'Amberwing Warbler');
     });
   });
 }

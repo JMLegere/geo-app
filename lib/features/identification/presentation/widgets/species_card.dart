@@ -10,7 +10,11 @@ import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
 
 /// Shows a TCG-style species card as a centered modal overlay.
-void showSpeciesCard(BuildContext context, Item item) {
+void showSpeciesCard(
+  BuildContext context,
+  Item item, {
+  Future<Item?> Function(Item item)? onIdentify,
+}) {
   showGeneralDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.78),
@@ -37,17 +41,27 @@ void showSpeciesCard(BuildContext context, Item item) {
         ),
       );
     },
-    pageBuilder: (context, _, __) => SpeciesCard(item: item),
+    pageBuilder: (context, _, __) =>
+        SpeciesCard(item: item, onIdentify: onIdentify),
   );
 }
 
 /// TCG card widget — can be used standalone or via [showSpeciesCard].
-class SpeciesCard extends StatelessWidget {
-  const SpeciesCard({super.key, required this.item});
+class SpeciesCard extends StatefulWidget {
+  const SpeciesCard({super.key, required this.item, this.onIdentify});
   final Item item;
+  final Future<Item?> Function(Item item)? onIdentify;
+
+  @override
+  State<SpeciesCard> createState() => _SpeciesCardState();
+}
+
+class _SpeciesCardState extends State<SpeciesCard> {
+  late Item _item = widget.item;
 
   @override
   Widget build(BuildContext context) {
+    final item = _item;
     final status = IucnStatus.fromString(item.rarity);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = (screenWidth - 48).clamp(0.0, 320.0);
@@ -100,7 +114,19 @@ class SpeciesCard extends StatelessWidget {
                     height: 4,
                     color: status?.color ?? AppTheme.surfaceContainerHighest,
                   ),
-                  _InfoZone(item: item, status: status),
+                  _InfoZone(
+                    item: item,
+                    status: status,
+                    onIdentify: widget.onIdentify == null
+                        ? null
+                        : () async {
+                            final identified =
+                                await widget.onIdentify!.call(_item);
+                            if (mounted && identified != null) {
+                              setState(() => _item = identified);
+                            }
+                          },
+                  ),
                 ],
               ),
             ),
@@ -157,7 +183,7 @@ class _ArtZone extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    SpeciesCard._cardBgColor(status).withValues(alpha: 0.85),
+                    _SpeciesCardState._cardBgColor(status).withValues(alpha: 0.85),
                   ],
                 ),
               ),
@@ -288,9 +314,10 @@ class _ArtZone extends StatelessWidget {
 // ─── Info zone ────────────────────────────────────────────────────────────────
 
 class _InfoZone extends StatelessWidget {
-  const _InfoZone({required this.item, required this.status});
+  const _InfoZone({required this.item, required this.status, this.onIdentify});
   final Item item;
   final IucnStatus? status;
+  final Future<void> Function()? onIdentify;
 
   @override
   Widget build(BuildContext context) {
@@ -310,7 +337,7 @@ class _InfoZone extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            item.displayName,
+            item.visibleDisplayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -320,10 +347,10 @@ class _InfoZone extends StatelessWidget {
               letterSpacing: -0.3,
             ),
           ),
-          if (item.scientificName != null) ...[
+          if (item.visibleScientificName != null) ...[
             const SizedBox(height: 3),
             Text(
-              item.scientificName!,
+              item.visibleScientificName!,
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
@@ -367,6 +394,16 @@ class _InfoZone extends StatelessWidget {
                       style: const TextStyle(fontSize: 18)),
                 ],
               ],
+            ),
+          ],
+          if (item.isUnidentified && onIdentify != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onIdentify,
+                child: const Text('Hold to identify'),
+              ),
             ),
           ],
           const SizedBox(height: 10),

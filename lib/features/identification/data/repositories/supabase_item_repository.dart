@@ -11,6 +11,9 @@ typedef ItemFetchQuery = Future<List<Map<String, dynamic>>> Function(
 typedef ItemAcquireQuery = Future<Map<String, dynamic>> Function(
   DiscoveryItemDraft draft,
 );
+typedef ItemIdentifyQuery = Future<Map<String, dynamic>> Function(
+  Item item,
+);
 typedef RepositoryLogEvent = void Function(
   String event,
   String category, {
@@ -23,14 +26,17 @@ class SupabaseItemRepository implements ItemRepository {
     ItemFetchQuery? fetchItemsQuery,
     RepositoryLogEvent? logEvent,
     ItemAcquireQuery? acquireDiscoveryItemQuery,
+    ItemIdentifyQuery? identifyUnidentifiedFindQuery,
   })  : _client = client,
         _fetchItemsQuery = fetchItemsQuery,
         _acquireDiscoveryItemQuery = acquireDiscoveryItemQuery,
+        _identifyUnidentifiedFindQuery = identifyUnidentifiedFindQuery,
         _logEvent = logEvent;
 
   final SupabaseClient? _client;
   final ItemFetchQuery? _fetchItemsQuery;
   final ItemAcquireQuery? _acquireDiscoveryItemQuery;
+  final ItemIdentifyQuery? _identifyUnidentifiedFindQuery;
   final RepositoryLogEvent? _logEvent;
   static const _category = 'identification.item_repository';
 
@@ -101,6 +107,43 @@ class SupabaseItemRepository implements ItemRepository {
     }
   }
 
+  @override
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': 'identify_unidentified_find',
+      'item_id': item.id,
+      'definition_id': item.definitionId,
+    });
+    try {
+      final response = await _runIdentifyUnidentifiedFindQuery(item);
+      final identified = ItemDto.fromJson(response).toDomain();
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'identify_unidentified_find',
+        'item_id': identified.id,
+        'definition_id': identified.definitionId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return identified;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'identify_unidentified_find',
+        'item_id': item.id,
+        'definition_id': item.definitionId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': error.toString(),
+      });
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> _runFetchItemsQuery(String userId) async {
     if (_fetchItemsQuery != null) {
       return _fetchItemsQuery!(userId);
@@ -156,6 +199,27 @@ class SupabaseItemRepository implements ItemRepository {
     return Map<String, dynamic>.from(response);
   }
 
+  Future<Map<String, dynamic>> _runIdentifyUnidentifiedFindQuery(
+    Item item,
+  ) async {
+    if (_identifyUnidentifiedFindQuery != null) {
+      return _identifyUnidentifiedFindQuery!(item);
+    }
+    final client = _client;
+    if (client == null) {
+      throw StateError(
+          'Supabase client is required when no identifyUnidentifiedFindQuery is provided.');
+    }
+    final identified = item.identify();
+    final response = await client
+        .from('v3_items')
+        .update(_identifiedUpdatePayload(identified))
+        .eq('id', item.id)
+        .select()
+        .single();
+    return Map<String, dynamic>.from(response);
+  }
+
   Map<String, dynamic> _draftInsertPayload(DiscoveryItemDraft draft) => {
         'user_id': draft.userId,
         'definition_id': draft.definitionId,
@@ -168,5 +232,22 @@ class SupabaseItemRepository implements ItemRepository {
         'taxonomic_class': draft.taxonomicClass,
         'habitats_json': jsonEncode(draft.habitats),
         'continents_json': jsonEncode(draft.continents),
+        'identification_state': draft.identificationState.name,
+        'identified_at': draft.identifiedAt?.toIso8601String(),
+        'identified_display_name': draft.identifiedDisplayName,
+        'identified_scientific_name': draft.identifiedScientificName,
+        'identified_taxonomic_class': draft.identifiedTaxonomicClass,
+        'identified_habitats_json': jsonEncode(draft.identifiedHabitats),
+        'identified_continents_json': jsonEncode(draft.identifiedContinents),
+      };
+
+  Map<String, dynamic> _identifiedUpdatePayload(Item item) => {
+        'display_name': item.displayName,
+        'scientific_name': item.scientificName,
+        'taxonomic_class': item.taxonomicClass,
+        'habitats_json': jsonEncode(item.habitats),
+        'continents_json': jsonEncode(item.continents),
+        'identification_state': item.identificationState.name,
+        'identified_at': item.identifiedAt?.toIso8601String(),
       };
 }

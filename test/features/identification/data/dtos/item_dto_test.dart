@@ -44,6 +44,32 @@ void main() {
       expect(domain.continents, ['Africa', 'Asia']);
     });
 
+    test('maps unidentified metadata without exposing species fields', () {
+      final json = {
+        'id': 'i-unidentified',
+        'definition_id': 'species.amberwing_warbler.abc12345',
+        'display_name': 'Unidentified fauna specimen',
+        'scientific_name': null,
+        'category': 'fauna',
+        'rarity': 'rare',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'status': 'active',
+        'identification_state': 'unidentified',
+        'identified_display_name': 'Amberwing Warbler',
+        'identified_scientific_name': 'Setophaga aestiva',
+      };
+
+      final item = ItemDto.fromJson(json).toDomain();
+
+      expect(item.identificationState, ItemIdentificationState.unidentified);
+      expect(item.displayName, 'Unidentified fauna specimen');
+      expect(item.scientificName, isNull);
+      expect(item.identifiedDisplayName, 'Amberwing Warbler');
+      expect(item.identifiedScientificName, 'Setophaga aestiva');
+      expect(item.visibleDisplayName, 'Unidentified fauna specimen');
+      expect(item.visibleScientificName, isNull);
+    });
+
     test('null optional fields', () {
       final json = {
         'id': 'i2',

@@ -112,6 +112,37 @@ void main() {
       expect(find.text('Test Species'), findsOneWidget);
     });
 
+    testWidgets('unidentified card can reveal into identified species',
+        (tester) async {
+      final item = _item(
+        name: 'Unidentified fauna specimen',
+        rarity: 'rare',
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+        identifiedScientificName: 'Setophaga aestiva',
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SpeciesCard(
+            item: item,
+            onIdentify: (item) async => item.identify(),
+          ),
+        ),
+      ));
+
+      expect(find.text('Unidentified fauna specimen'), findsOneWidget);
+      expect(find.text('Amberwing Warbler'), findsNothing);
+      expect(find.text('Hold to identify'), findsOneWidget);
+
+      await tester.tap(find.text('Hold to identify'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Amberwing Warbler'), findsOneWidget);
+      expect(find.text('Setophaga aestiva'), findsOneWidget);
+      expect(find.text('Hold to identify'), findsNothing);
+    });
+
     testWidgets('displays cell ID when available', (tester) async {
       final item = _item(cellId: 'v_45_67');
 
@@ -144,6 +175,9 @@ Item _item({
   List<String> habitats = const [],
   List<String> continents = const [],
   String? cellId,
+  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  String? identifiedDisplayName,
+  String? identifiedScientificName,
 }) =>
     Item(
       id: 'test-1',
@@ -158,4 +192,7 @@ Item _item({
       taxonomicClass: taxonomicClass,
       habitats: habitats,
       continents: continents,
+      identificationState: identificationState,
+      identifiedDisplayName: identifiedDisplayName,
+      identifiedScientificName: identifiedScientificName,
     );

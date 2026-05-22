@@ -7,4 +7,8 @@ abstract class ItemRepository {
     DiscoveryItemDraft draft, {
     String? traceId,
   });
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  });
 }

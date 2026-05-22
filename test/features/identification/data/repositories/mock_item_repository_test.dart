@@ -46,33 +46,39 @@ void main() {
       );
     });
 
-    test('acquireDiscoveryItem creates and returns a new owned item', () async {
+    test('acquireDiscoveryItem creates and returns a new unidentified item', () async {
       final repo = MockItemRepository();
       final draft = DiscoveryItemDraft(
         userId: 'user-123',
         definitionId: 'species.amberwing_warbler',
-        displayName: 'Amberwing Warbler',
-        scientificName: 'Setophaga aestiva',
+        displayName: 'Unidentified fauna specimen',
         category: ItemCategory.fauna,
         rarity: 'rare',
         acquiredInCellId: 'cell-1',
         mapCellEntryId: 'entry-1',
-        taxonomicClass: 'Aves',
-        habitats: const ['forest'],
-        continents: const ['North America'],
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+        identifiedScientificName: 'Setophaga aestiva',
+        identifiedTaxonomicClass: 'Aves',
+        identifiedHabitats: const ['forest'],
+        identifiedContinents: const ['North America'],
       );
 
       final item = await repo.acquireDiscoveryItem(draft);
 
       expect(item.definitionId, draft.definitionId);
-      expect(item.displayName, draft.displayName);
-      expect(item.scientificName, draft.scientificName);
+      expect(item.identificationState, ItemIdentificationState.unidentified);
+      expect(item.displayName, 'Unidentified fauna specimen');
+      expect(item.scientificName, isNull);
+      expect(item.identifiedDisplayName, 'Amberwing Warbler');
+      expect(item.identifiedScientificName, 'Setophaga aestiva');
+      expect(item.identifiedTaxonomicClass, 'Aves');
+      expect(item.identifiedHabitats, ['forest']);
+      expect(item.identifiedContinents, ['North America']);
+      expect(item.visibleDisplayName, 'Unidentified fauna specimen');
       expect(item.category, draft.category);
       expect(item.rarity, draft.rarity);
       expect(item.acquiredInCellId, draft.acquiredInCellId);
-      expect(item.taxonomicClass, draft.taxonomicClass);
-      expect(item.habitats, draft.habitats);
-      expect(item.continents, draft.continents);
       expect((await repo.fetchItems('user-123')).single.id, item.id);
     });
 

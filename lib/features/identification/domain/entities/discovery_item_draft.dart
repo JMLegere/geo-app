@@ -13,6 +13,13 @@ class DiscoveryItemDraft {
     this.taxonomicClass,
     this.habitats = const [],
     this.continents = const [],
+    this.identificationState = ItemIdentificationState.unidentified,
+    this.identifiedAt,
+    this.identifiedDisplayName,
+    this.identifiedScientificName,
+    this.identifiedTaxonomicClass,
+    this.identifiedHabitats = const [],
+    this.identifiedContinents = const [],
   });
 
   final String userId;
@@ -26,4 +33,11 @@ class DiscoveryItemDraft {
   final String? taxonomicClass;
   final List<String> habitats;
   final List<String> continents;
+  final ItemIdentificationState identificationState;
+  final DateTime? identifiedAt;
+  final String? identifiedDisplayName;
+  final String? identifiedScientificName;
+  final String? identifiedTaxonomicClass;
+  final List<String> identifiedHabitats;
+  final List<String> identifiedContinents;
 }

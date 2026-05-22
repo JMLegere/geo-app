@@ -40,8 +40,31 @@ class MockItemRepository implements ItemRepository {
       taxonomicClass: draft.taxonomicClass,
       habitats: draft.habitats,
       continents: draft.continents,
+      identificationState: draft.identificationState,
+      identifiedAt: draft.identifiedAt,
+      identifiedDisplayName: draft.identifiedDisplayName,
+      identifiedScientificName: draft.identifiedScientificName,
+      identifiedTaxonomicClass: draft.identifiedTaxonomicClass,
+      identifiedHabitats: draft.identifiedHabitats,
+      identifiedContinents: draft.identifiedContinents,
     );
     _items.insert(0, item);
     return item;
+  }
+
+  @override
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  }) async {
+    if (shouldThrow) throw Exception('Mock identify error');
+    final identified = item.identify();
+    final index = _items.indexWhere((candidate) => candidate.id == item.id);
+    if (index == -1) {
+      _items.insert(0, identified);
+    } else {
+      _items[index] = identified;
+    }
+    return identified;
   }
 }
