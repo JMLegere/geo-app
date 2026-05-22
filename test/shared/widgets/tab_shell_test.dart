@@ -4,9 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
@@ -22,6 +30,15 @@ class _FakeWakeLockRepository implements WakeLockRepository {
 
 class _TestObservabilityService extends ObservabilityService {
   _TestObservabilityService() : super(sessionId: 'test-session');
+
+  final List<({String event, String category, Map<String, dynamic>? data})>
+      events = [];
+
+  @override
+  void log(String event, String category, {Map<String, dynamic>? data}) {
+    events.add((event: event, category: category, data: data));
+    super.log(event, category, data: data);
+  }
 }
 
 class _TrueDebugMode extends DebugModeNotifier {
@@ -32,6 +49,112 @@ class _TrueDebugMode extends DebugModeNotifier {
 class _FalseDebugMode extends DebugModeNotifier {
   @override
   bool build() => false;
+}
+
+Cell _cell(String id, double centerLat, double centerLng) {
+  const half = 0.0001;
+  return Cell(
+    id: id,
+    habitats: const [Habitat.forest],
+    polygons: [
+      [
+        [
+          (lat: centerLat - half, lng: centerLng - half),
+          (lat: centerLat - half, lng: centerLng + half),
+          (lat: centerLat + half, lng: centerLng + half),
+          (lat: centerLat + half, lng: centerLng - half),
+        ],
+      ],
+    ],
+    districtId: 'district',
+    cityId: 'city',
+    stateId: 'state',
+    countryId: 'country',
+  );
+}
+
+class _ReadyMapNotifier extends MapNotifier {
+  @override
+  MapState build() {
+    return MapStateReady(
+      cells: [
+        _cell('current', 0, 0),
+        _cell('backend-visited', 0, 0.001),
+        _cell('target', 0, 0.002),
+      ],
+      visitedCellIds: const {'backend-visited'},
+      location: LocationState(
+        lat: 0,
+        lng: 0,
+        accuracy: 1,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      ),
+    );
+  }
+}
+
+class _ReadyExplorationNotifier extends ExplorationNotifier {
+  @override
+  ExplorationStateData build() {
+    return const ExplorationStateData(
+      currentCellId: 'current',
+      visitedCellIds: {'session-visited'},
+    );
+  }
+}
+
+class _ReadyPlayerMarkerNotifier extends PlayerMarkerNotifier {
+  @override
+  PlayerMarkerState build() {
+    return const PlayerMarkerState(
+      lat: 0,
+      lng: 0,
+      isRing: false,
+      gapDistance: 0,
+    );
+  }
+}
+
+class _TrackingLocationNotifier extends LocationNotifier {
+  _TrackingLocationNotifier(this.calls);
+
+  final List<({double lat, double lng, String? targetCellId, String reason})>
+      calls;
+
+  @override
+  LocationProviderState build() {
+    return LocationProviderActive(
+      LocationState(
+        lat: 0,
+        lng: 0,
+        accuracy: 1,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      ),
+    );
+  }
+
+  @override
+  void moveDebugLocation(DebugLocationMoveDirection direction) {}
+
+  @override
+  void moveDebugLocationTo({
+    required double lat,
+    required double lng,
+    String? targetCellId,
+    String reason = 'explicit_target',
+  }) {
+    calls.add((
+      lat: lat,
+      lng: lng,
+      targetCellId: targetCellId,
+      reason: reason,
+    ));
+  }
+
+  @override
+  void resumeGps() {}
 }
 
 void main() {
@@ -348,6 +471,64 @@ void main() {
       await tester.tap(find.byKey(const Key('debug_nav_button')));
       await tester.pump();
       expect(find.byType(DebugGestureOverlay), findsNothing);
+    });
+
+    testWidgets('debug unvisited-cell control targets nearest unvisited cell',
+        (tester) async {
+      final locationCalls =
+          <({double lat, double lng, String? targetCellId, String reason})>[];
+      final obs = _TestObservabilityService();
+
+      tester.view.physicalSize = const Size(1000, 1000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider.overrideWithValue(obs),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _TrueDebugMode()),
+            mapProvider.overrideWith(() => _ReadyMapNotifier()),
+            explorationProvider.overrideWith(() => _ReadyExplorationNotifier()),
+            playerMarkerProvider
+                .overrideWith(() => _ReadyPlayerMarkerNotifier()),
+            locationProvider.overrideWith(
+              () => _TrackingLocationNotifier(locationCalls),
+            ),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.expand(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('debug_nav_button')));
+      await tester.pump();
+      await tester.tapAt(const Offset(970, 598));
+      await tester.pump();
+
+      expect(locationCalls, hasLength(1));
+      expect(locationCalls.single.targetCellId, 'target');
+      expect(locationCalls.single.reason, 'nearest_unvisited_cell');
+      expect(
+        obs.events.map((event) => event.event),
+        contains('map.debug_unvisited_move_requested'),
+      );
     });
 
     testWidgets('debug nav button is absent when debug mode is off',

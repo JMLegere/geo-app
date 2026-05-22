@@ -3,8 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
+import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
 import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
@@ -136,6 +140,79 @@ class _TabShellState extends ConsumerState<TabShell>
     ref.read(locationProvider.notifier).moveDebugLocation(mappedDirection);
   }
 
+  void _onDebugMovePlayerToUnvisited() {
+    final readyMapState = _debugReadyMapState();
+    if (readyMapState == null) {
+      _logDebugUnvisitedMoveUnavailable('map_not_ready');
+      return;
+    }
+
+    final markerState = ref.read(playerMarkerProvider);
+    final currentPosition = markerState.lat != 0.0 || markerState.lng != 0.0
+        ? (lat: markerState.lat, lng: markerState.lng)
+        : (lat: readyMapState.location.lat, lng: readyMapState.location.lng);
+    final explorationState = ref.read(explorationProvider);
+    final target = selectDebugUnvisitedCellTarget(
+      cells: readyMapState.cells,
+      backendVisitedCellIds: readyMapState.visitedCellIds,
+      sessionVisitedCellIds: explorationState.visitedCellIds,
+      currentCellId: explorationState.currentCellId,
+      currentPosition: currentPosition,
+    );
+
+    if (target == null) {
+      _logDebugUnvisitedMoveUnavailable(
+        'no_unvisited_target',
+        data: {
+          'backend_visited_count': readyMapState.visitedCellIds.length,
+          'session_visited_count': explorationState.visitedCellIds.length,
+          'loaded_cell_count': readyMapState.cells.length,
+        },
+      );
+      return;
+    }
+
+    ref.read(appObservabilityProvider).log(
+      'map.debug_unvisited_move_requested',
+      'map',
+      data: {
+        'source': 'debug_controls',
+        'target_cell_id': target.cellId,
+        'lat': target.coord.lat,
+        'lng': target.coord.lng,
+      },
+    );
+    ref.read(locationProvider.notifier).moveDebugLocationTo(
+          lat: target.coord.lat,
+          lng: target.coord.lng,
+          targetCellId: target.cellId,
+          reason: 'nearest_unvisited_cell',
+        );
+  }
+
+  MapStateReady? _debugReadyMapState() {
+    return switch (ref.read(mapProvider)) {
+      MapStateReady ready => ready,
+      MapStateRefreshing(previous: final previous) => previous,
+      _ => null,
+    };
+  }
+
+  void _logDebugUnvisitedMoveUnavailable(
+    String reason, {
+    Map<String, dynamic> data = const {},
+  }) {
+    ref.read(appObservabilityProvider).log(
+      'map.debug_unvisited_move_unavailable',
+      'map',
+      data: {
+        'source': 'debug_controls',
+        'reason': reason,
+        ...data,
+      },
+    );
+  }
+
   void _onDebugResumeGps() {
     ref.read(locationProvider.notifier).resumeGps();
   }
@@ -193,6 +270,7 @@ class _TabShellState extends ConsumerState<TabShell>
             if (debugMode && _debugOverlayVisible)
               DebugGestureOverlay(
                 onMovePlayer: _onDebugMovePlayer,
+                onMovePlayerToUnvisited: _onDebugMovePlayerToUnvisited,
                 onResumeGps: _onDebugResumeGps,
               ),
           ],

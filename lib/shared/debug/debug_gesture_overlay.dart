@@ -62,11 +62,13 @@ class DebugGestureOverlay extends StatefulWidget {
     GestureInjectorInterface? injector,
     this.onMovePlayer,
     this.onResumeGps,
+    this.onMovePlayerToUnvisited,
   }) : _injector = injector ?? const _DefaultInjector();
 
   final GestureInjectorInterface _injector;
   final void Function(DebugPlayerMoveDirection direction)? onMovePlayer;
   final VoidCallback? onResumeGps;
+  final VoidCallback? onMovePlayerToUnvisited;
   @override
   State<DebugGestureOverlay> createState() => _DebugGestureOverlayState();
 }
@@ -171,6 +173,15 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
                   Icons.keyboard_arrow_right,
                   'Move player east',
                   () => widget.onMovePlayer!(DebugPlayerMoveDirection.east),
+                ),
+              ],
+              if (widget.onMovePlayerToUnvisited != null) ...[
+                const SizedBox(height: 4),
+                _btn(
+                  'P★',
+                  Icons.explore,
+                  'Move player to nearest unvisited cell',
+                  widget.onMovePlayerToUnvisited!,
                 ),
               ],
               if (widget.onResumeGps != null) ...[

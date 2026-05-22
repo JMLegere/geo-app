@@ -48,6 +48,7 @@ Widget _wrap(
   _FakeInjector injector, {
   void Function(DebugPlayerMoveDirection direction)? onMovePlayer,
   VoidCallback? onResumeGps,
+  VoidCallback? onMovePlayerToUnvisited,
 }) {
   return ProviderScope(
     child: MaterialApp(
@@ -57,6 +58,7 @@ Widget _wrap(
             DebugGestureOverlay(
               injector: injector,
               onMovePlayer: onMovePlayer,
+              onMovePlayerToUnvisited: onMovePlayerToUnvisited,
               onResumeGps: onResumeGps,
             ),
           ],
@@ -94,14 +96,17 @@ void main() {
       await tester.pumpWidget(_wrap(
         injector,
         onMovePlayer: (_) {},
+        onMovePlayerToUnvisited: () {},
         onResumeGps: () {},
       ));
 
-      expect(find.byType(Tooltip), findsNWidgets(11));
+      expect(find.byType(Tooltip), findsNWidgets(12));
       expect(find.byTooltip('Move player north'), findsOneWidget);
       expect(find.byTooltip('Move player south'), findsOneWidget);
       expect(find.byTooltip('Move player west'), findsOneWidget);
       expect(find.byTooltip('Move player east'), findsOneWidget);
+      expect(find.byTooltip('Move player to nearest unvisited cell'),
+          findsOneWidget);
       expect(find.byTooltip('Resume GPS'), findsOneWidget);
     });
 
@@ -119,6 +124,23 @@ void main() {
       await tester.pump();
 
       expect(moves, [DebugPlayerMoveDirection.north]);
+    });
+
+    testWidgets('tapping unvisited-cell move calls unvisited callback',
+        (tester) async {
+      final injector = _FakeInjector();
+      var callCount = 0;
+      await tester.pumpWidget(_wrap(
+        injector,
+        onMovePlayer: (_) {},
+        onMovePlayerToUnvisited: () => callCount += 1,
+        onResumeGps: () {},
+      ));
+
+      await tester.tap(find.byTooltip('Move player to nearest unvisited cell'));
+      await tester.pump();
+
+      expect(callCount, 1);
     });
 
     testWidgets('tapping Resume GPS calls resume callback', (tester) async {

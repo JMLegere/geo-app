@@ -458,6 +458,38 @@ void main() {
       expect(obs.eventNames, contains('map.debug_location_updated'));
     });
 
+    test('debug movement can target an explicit unvisited-cell coordinate',
+        () async {
+      container.read(locationProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      container.read(locationProvider.notifier).moveDebugLocationTo(
+            lat: 45.9642,
+            lng: -66.6424,
+            targetCellId: 'cell-target',
+            reason: 'nearest_unvisited_cell',
+          );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(locationProvider);
+      expect(state, isA<LocationProviderActive>());
+      final location = switch (state) {
+        LocationProviderActive(location: final location) => location,
+        _ => fail('Expected explicit debug target to be active'),
+      };
+      expect(location.lat, 45.9642);
+      expect(location.lng, -66.6424);
+      expect(location.isConfident, isTrue);
+
+      final event = obs.events.lastWhere(
+        (event) => event.event == 'map.debug_location_updated',
+      );
+      expect(event.data?['source'], 'debug_controls');
+      expect(event.data?['target_cell_id'], 'cell-target');
+      expect(event.data?['reason'], 'nearest_unvisited_cell');
+      expect(event.data?['geo_location_enabled'], isFalse);
+    });
+
     test('debug movement ignores later real GPS stream updates', () async {
       container.read(locationProvider);
       await Future<void>.delayed(Duration.zero);

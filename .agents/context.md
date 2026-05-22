@@ -548,3 +548,10 @@
 - Removed tracked `.hive/` artifacts from the repository. `.hive` was an old OMP/Hive subagent orchestration workspace for the clean-architecture migration; its `.worktrees/*` entries were accidentally committed as gitlink/submodule-like objects without a `.gitmodules` mapping.
 - The tracked hive gitlinks caused `git submodule status` and GitHub checkout post-cleanup to emit exit-code-128 warnings even though CI/deploy still completed.
 - Kept `.hive/` ignored for future local agent work and added `artifacts/` to `.gitignore` so smoke screenshots do not show up as untracked repo noise.
+
+## Completed 2026-05-22 — deterministic debug first-entry QA control
+- Beta QA for Exploration/Discovery found one failed scenario: the first cardinal debug movement could land in an already-visited cell, so the normal Discovery path worked later but the QA flow was nondeterministic.
+- Added a SuperBDD scenario to `features/map-debug-controls.feature` for targeting the nearest unvisited map cell without bypassing normal marker, cell detection, fog, visit, and Discovery gates.
+- Added debug overlay control `P★` / "Move player to nearest unvisited cell"; it selects a loaded unvisited renderable cell outside backend and session visits, logs `map.debug_unvisited_move_requested`, and then drives `LocationNotifier.moveDebugLocationTo(...)`.
+- The targeted debug move still uses simulated location and emits `map.debug_location_updated` with `reason=nearest_unvisited_cell` and `target_cell_id`; it does not grant visits, fog, encounters, or Pack ownership directly.
+- Follow-up cleanup approved: rename `features/map-cell-border-crossing-model.feature` to a cell-entry name later, because "cell entry" is the domain term and border crossing is the geometric trigger.

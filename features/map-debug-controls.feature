@@ -17,6 +17,13 @@ Feature: Map Debug Controls
     And the simulated location should start from the current trusted location or the beta fixture location
     And the Map should process the movement through normal marker, cell detection, border crossing, fog, and visit paths
 
+  Scenario: QA can target a first-visit cell without bypassing gameplay
+    Given developer mode is enabled and the map has loaded nearby cell and visit state
+    When the tester asks the debug overlay to move to the nearest unvisited map cell
+    Then the location source should switch into simulated-location mode at that cell target
+    And the Map should still process the movement through normal marker, cell detection, border crossing, fog, visit, and Discovery paths
+    And the debug action should record which target cell was requested for observability
+
   Scenario: Debug player movement is clearly sourced
     Given a debug movement button changes the simulated player location
     When map observability records the movement

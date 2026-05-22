@@ -100,7 +100,39 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   }
 
   void moveDebugLocation(DebugLocationMoveDirection direction) {
-    final nextLocation = _movedDebugLocation(direction);
+    _activateDebugLocation(
+      _movedDebugLocation(direction),
+      reason: 'directional_move',
+      extraData: {'direction': direction.name},
+    );
+  }
+
+  void moveDebugLocationTo({
+    required double lat,
+    required double lng,
+    String? targetCellId,
+    String reason = 'explicit_target',
+  }) {
+    _activateDebugLocation(
+      LocationState(
+        lat: lat.clamp(-85.0, 85.0).toDouble(),
+        lng: lng.clamp(-180.0, 180.0).toDouble(),
+        accuracy: 1.0,
+        timestamp: DateTime.now(),
+        isConfident: true,
+      ),
+      reason: reason,
+      extraData: {
+        if (targetCellId != null) 'target_cell_id': targetCellId,
+      },
+    );
+  }
+
+  void _activateDebugLocation(
+    LocationState nextLocation, {
+    required String reason,
+    Map<String, dynamic> extraData = const {},
+  }) {
     _debugLocationEnabled = true;
     _debugLocation = nextLocation;
     _pausedAt = null;
@@ -115,7 +147,8 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
         'phase': TelemetryFlowPhase.dependencyReady.wireName,
         'dependency': 'debug_location',
         'source': 'debug_controls',
-        'direction': direction.name,
+        'reason': reason,
+        ...extraData,
         'lat': nextLocation.lat,
         'lng': nextLocation.lng,
         'geo_location_enabled': false,
