@@ -53,7 +53,7 @@ export const productCapabilities = {
       "features/map-world.feature",
       "features/map-territory-navigation.feature",
       "features/map-exploration-eligibility-state.feature",
-      "features/map-cell-border-crossing-model.feature",
+      "features/map-cell-entry-model.feature",
       "features/map-fog-state-model.feature",
       "features/map-territory-progress-model.feature",
       "features/map-global-map-state-model.feature",

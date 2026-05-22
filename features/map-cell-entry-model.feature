@@ -1,5 +1,5 @@
-@capability.map @feature.cell-border-crossing-model
-Feature: Cell Border Crossing Model
+@capability.map @feature.cell-entry-model
+Feature: Map Cell Entry Model
   Map-cell entry is the detection and product moment. Voronoi border crossing is
   the geometric implementation detail used when movement enters a different map
   cell. The model emits one reward-clean map-cell entry identity for visits, fog,

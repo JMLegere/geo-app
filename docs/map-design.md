@@ -41,8 +41,8 @@ The player should feel:
 |--------|---------|------------------|
 | **Orientation** | I know where I am. | Map Frame, Player Marker + Accuracy Ring |
 | **Trust** | The game will not turn bad GPS into fake progress. | Player Marker + Accuracy Ring, Exploration Eligibility State |
-| **Reveal** | The world opens because I moved. | Cell Border Crossing Model, Fog State Model, Fog Overlay |
-| **Meaning** | I crossed a border into a Voronoi map cell, not just a polygon. | Cell Border Crossing Model, Map Cell Detail Sheet |
+| **Reveal** | The world opens because I moved. | Map Cell Entry Model, Fog State Model, Fog Overlay |
+| **Meaning** | I crossed a border into a Voronoi map cell, not just a polygon. | Map Cell Entry Model, Map Cell Detail Sheet |
 | **Pull** | I can see something nearby worth walking toward. | Nearby Opportunity Layer, World Event Cue Layer |
 | **Scale** | My little footprint rolls up into a larger world. | Territory Navigation, Territory Progress Model |
 
@@ -79,7 +79,7 @@ systems arrive. It is intentionally not the full map fantasy.
 | Map Debug Controls | Developer-only harness for marker movement and gesture testing | Player-facing debug UI or reward bypass |
 | Player Marker + Accuracy Ring | Show gameplay position and pause bad-GPS exploration | Advanced marker personality/skins |
 | Exploration Eligibility State | Gate mutations behind trusted movement | Anti-cheat scoring beyond basic validation hooks |
-| Cell Border Crossing Model | Turn border crossing into one technical event | Rich POI naming or social place claims |
+| Map Cell Entry Model | Turn eligible movement into one reward-clean map-cell entry event | Rich POI naming or social place claims |
 | Fog State Model + Fog Overlay | Make movement visibly reveal footprint | Full habitat art direction and animated biome treatment |
 | Map Cell Detail Sheet | Explain which map cell changed and what the player can do next | Full Discovery/Pack/Field Guide reward reveal |
 

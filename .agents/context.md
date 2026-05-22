@@ -554,4 +554,8 @@
 - Added a SuperBDD scenario to `features/map-debug-controls.feature` for targeting the nearest unvisited map cell without bypassing normal marker, cell detection, fog, visit, and Discovery gates.
 - Added debug overlay control `P★` / "Move player to nearest unvisited cell"; it selects a loaded unvisited renderable cell outside backend and session visits, logs `map.debug_unvisited_move_requested`, and then drives `LocationNotifier.moveDebugLocationTo(...)`.
 - The targeted debug move still uses simulated location and emits `map.debug_location_updated` with `reason=nearest_unvisited_cell` and `target_cell_id`; it does not grant visits, fog, encounters, or Pack ownership directly.
-- Follow-up cleanup approved: rename `features/map-cell-border-crossing-model.feature` to a cell-entry name later, because "cell entry" is the domain term and border crossing is the geometric trigger.
+
+## Completed 2026-05-22 — map cell entry naming cleanup
+- Renamed the SuperBDD map data-model feature from `features/map-cell-border-crossing-model.feature` / `@feature.cell-border-crossing-model` to `features/map-cell-entry-model.feature` / `@feature.cell-entry-model`.
+- Updated the product feature catalog key/id to `cellEntryModel` / `cell-entry-model` while preserving the label `Map Cell Entry Model`.
+- Updated `docs/map-design.md` first-slice feature references so "map cell entry" is the domain/product model and "border crossing" remains the geometric trigger/correlation detail.

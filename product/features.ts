@@ -107,8 +107,8 @@ export const productFeatures = {
     kind: "data-model",
     description: "State model that decides when movement may record visits, reveal fog, and trigger discovery handoff versus when GPS trust pauses play.",
   }),
-  cellBorderCrossingModel: feature({
-    id: "cell-border-crossing-model",
+  cellEntryModel: feature({
+    id: "cell-entry-model",
     label: "Map Cell Entry Model",
     capability: "map",
     kind: "data-model",
