@@ -100,6 +100,23 @@ void main() {
       expect(state.currentEncounter, isNull);
     });
 
+    test('encounterObservabilityProvider throws when not overridden', () {
+      final c = ProviderContainer();
+      expect(() => c.read(encounterObservabilityProvider), throwsA(anything));
+      c.dispose();
+    });
+
+    test('computeEncounterProvider builds from the observability override', () {
+      final c = ProviderContainer(
+        overrides: [
+          encounterObservabilityProvider.overrideWithValue(testObs),
+        ],
+      );
+      final useCase = c.read(computeEncounterProvider);
+      expect(useCase.obs, same(testObs));
+      c.dispose();
+    });
+
     test('first visit triggers species encounter', () async {
       final notifier = container.read(encounterProvider.notifier);
 
@@ -190,6 +207,25 @@ void main() {
       expect(container.read(itemsProvider).items, isEmpty);
       expect(testObs.eventNames, contains('discovery.acquisition_failed'));
       expect(testObs.eventNames, isNot(contains('map.encounter_triggered')));
+    });
+
+    test(
+        'seedless first visit uses legacy map-cell entry id and no acquisition',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_legacy',
+        isFirstVisit: true,
+      );
+
+      final state = container.read(encounterProvider);
+      final event = testObs.events
+          .firstWhere((entry) => entry.event == 'map.encounter_triggered');
+      expect(state.currentEncounter, isNotNull);
+      expect(state.currentEncounter!.acquiredItem, isNull);
+      expect(event.data?['map_cell_entry_id'],
+          startsWith('legacy-map-cell-entry-cell_legacy-first-seed_'));
     });
 
     test('revisit with loot triggers critter encounter', () async {

@@ -62,5 +62,29 @@ void main() {
       expect(EncounterPresenter.message(critter), 'A critter appeared');
       expect(EncounterPresenter.message(loot), 'You found supplies');
     });
+
+    test('friendlySpeciesName returns fallback for empty ids', () {
+      expect(EncounterPresenter.friendlySpeciesName(''), 'New Species');
+    });
+
+    test('friendlySpeciesName title-cases readable species ids', () {
+      expect(
+        EncounterPresenter.friendlySpeciesName('species_red_fox'),
+        'Red Fox',
+      );
+    });
+
+    test('friendlySpeciesName stabilizes hash-like species ids', () {
+      final first = EncounterPresenter.friendlySpeciesName(
+        'species_4f2a9c0d8b1e7a6f',
+      );
+      final second = EncounterPresenter.friendlySpeciesName(
+        'species_4f2a9c0d8b1e7a6f',
+      );
+
+      expect(first, equals(second));
+      expect(first, isNot(contains('4f2a9c0d8b1e7a6f')));
+      expect(first.split(' '), hasLength(2));
+    });
   });
 }

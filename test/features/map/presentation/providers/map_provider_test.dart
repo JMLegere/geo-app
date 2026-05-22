@@ -134,6 +134,15 @@ class _FakeAuthNotifier extends AuthNotifier {
   AuthState build() => _state;
 }
 
+class _FakeLocationNotifier extends LocationNotifier {
+  _FakeLocationNotifier(this._state);
+
+  final LocationProviderState _state;
+
+  @override
+  LocationProviderState build() => _state;
+}
+
 void main() {
   group('MapNotifier', () {
     late ProviderContainer container;
@@ -168,6 +177,22 @@ void main() {
     test('initial state is loading', () {
       final state = container.read(mapProvider);
       expect(state, isA<MapStateLoading>());
+    });
+
+    test('mapObservabilityProvider throws when not overridden', () {
+      final c = ProviderContainer();
+      expect(() => c.read(mapObservabilityProvider), throwsA(anything));
+      c.dispose();
+    });
+
+    test('cellRepositoryProvider throws when not overridden', () {
+      final c = ProviderContainer(
+        overrides: [
+          mapObservabilityProvider.overrideWithValue(obs),
+        ],
+      );
+      expect(() => c.read(cellRepositoryProvider), throwsA(anything));
+      c.dispose();
     });
 
     test('transitions to ready when location becomes active', () async {
@@ -324,6 +349,24 @@ void main() {
       expect(state.message, contains('Location unavailable'));
     });
 
+    test('transitions to error when location permission is denied', () async {
+      locationRepo.setPermissionGranted(false);
+
+      final c = makeContainer(
+        obs: obs,
+        locationRepo: locationRepo,
+        cellRepo: cellRepo,
+      );
+      addTearDown(c.dispose);
+
+      c.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = c.read(mapProvider) as MapStateError;
+      expect(state.message, 'Location permission denied');
+    });
+
     test('fetches visited cells for the authenticated user', () async {
       container.read(mapProvider);
       await Future<void>.delayed(Duration.zero);
@@ -377,6 +420,44 @@ void main() {
       expect(startedEvent.data?['lat'], 37.7749);
       expect(startedEvent.data?['lng'], -122.4194);
       expect(startedEvent.data?['radius_meters'], isA<double>());
+    });
+
+    test('initial active location triggers a fetch on build microtask',
+        () async {
+      final initial = LocationState(
+        lat: 45.9636,
+        lng: -66.6431,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      final c = ProviderContainer(
+        overrides: [
+          authProvider.overrideWith(() => _FakeAuthNotifier(
+                AuthState.authenticated(
+                  UserProfile(
+                    id: 'user-123',
+                    phone: '5551234567',
+                    createdAt: DateTime(2026),
+                  ),
+                ),
+              )),
+          mapObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          locationProvider.overrideWith(
+            () => _FakeLocationNotifier(LocationProviderActive(initial)),
+          ),
+          cellRepositoryProvider.overrideWithValue(cellRepo),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      c.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cellRepo.fetchCallCount, 1);
+      expect(c.read(mapProvider), isA<MapStateReady>());
     });
 
     test('logs map.cells_fetch_complete with cell stats when ready', () async {
@@ -457,6 +538,54 @@ void main() {
       final errorEvent =
           obs.events.firstWhere((e) => e.event == 'map.cells_fetch_error');
       expect(errorEvent.data?['error'], isNotEmpty);
+    });
+
+    test('retains stale context when a refresh fetch fails', () async {
+      final oldCell = Cell(
+        id: 'old-cell',
+        habitats: [],
+        polygons: const [],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+      cellRepo.cells = [oldCell];
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final pos1 = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(pos1);
+      await Future<void>.delayed(Duration.zero);
+
+      cellRepo.shouldThrow = true;
+      final pos2 = LocationState(
+        lat: 37.8000,
+        lng: -122.4500,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 1),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(pos2);
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(mapProvider) as MapStateReady;
+      expect(state.cells.single.id, 'old-cell');
+      expect(
+          obs.eventNames, contains('map.cells_fetch_stale_context_retained'));
+      final retainedEvent = obs.events.firstWhere(
+        (event) => event.event == 'map.cells_fetch_stale_context_retained',
+      );
+      expect(retainedEvent.data?['retained_cell_count'], 1);
+      expect(retainedEvent.data?['dependency'], 'cells');
+      expect(retainedEvent.data?['error'], contains('Cell fetch error'));
     });
 
     test('logs map.zoom_changed when zoom is updated', () {

@@ -243,6 +243,19 @@ void main() {
       c.dispose();
     });
 
+    test('itemsObservabilityProvider throws when not overridden', () {
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(MockItemRepository()),
+        ],
+      );
+      expect(() => c.read(itemsObservabilityProvider), throwsA(anything));
+      c.dispose();
+    });
+
     test('ItemsState copyWith preserves unset fields', () {
       final state = ItemsState(
         items: [_testItem()],
@@ -263,6 +276,13 @@ void main() {
 
       final c = ItemsState(items: [_testItem()]);
       expect(a, isNot(equals(c)));
+    });
+
+    test('ItemsState equality reaches error field comparison', () {
+      final sharedItems = [_testItem()];
+      final a = ItemsState(items: sharedItems, error: 'a');
+      final b = ItemsState(items: sharedItems, error: 'b');
+      expect(a, isNot(equals(b)));
     });
 
     test('fetchItems with empty result logs count 0', () async {
