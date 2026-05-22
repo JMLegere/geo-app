@@ -46,7 +46,26 @@ void main() {
       expect(target, isNotNull);
       expect(target!.cellId, 'nearest-unvisited');
       expect(target.coord.lat, closeTo(0, 0.0000001));
-      expect(target.coord.lng, closeTo(0.003, 0.0000001));
+      expect(target.coord.lng, closeTo(0.00292, 0.0000001));
+    });
+
+    test('targets just inside the nearest edge instead of the cell centroid',
+        () {
+      final target = selectDebugUnvisitedCellTarget(
+        cells: [
+          _cell('current', 0, 0),
+          _cell('adjacent', 0, 0.0002),
+        ],
+        backendVisitedCellIds: const {},
+        sessionVisitedCellIds: const {},
+        currentCellId: 'current',
+        currentPosition: (lat: 0, lng: 0.00009),
+      );
+
+      expect(target, isNotNull);
+      expect(target!.cellId, 'adjacent');
+      expect(target.coord.lng, greaterThan(0.0001));
+      expect(target.coord.lng, lessThan(0.0002));
     });
 
     test('returns null when no unvisited renderable candidate exists', () {
