@@ -219,6 +219,21 @@ void main() {
       expect(notification, isNotNull);
     });
 
+    testWidgets(
+        'labels first-visit map cell feedback without claiming Discovery',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: DiscoveryNotification(cellName: 'v_22995_-33325'),
+          ),
+        ),
+      );
+
+      expect(find.text('NEW CELL'), findsOneWidget);
+      expect(find.text('NEW DISCOVERY'), findsNothing);
+    });
+
     test('is a StatelessWidget', () {
       const notification = DiscoveryNotification(cellName: 'Test Cell');
       expect(notification, isA<DiscoveryNotification>());
@@ -333,8 +348,7 @@ void main() {
       );
     });
 
-    test('marker, tap hit testing, and cells share one projection source',
-        () {
+    test('marker, tap hit testing, and cells share one projection source', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
@@ -447,7 +461,6 @@ void main() {
           contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'));
     });
 
-
     test('hides base-map text labels after style load', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
@@ -537,19 +550,21 @@ void main() {
       expect(signalSource, contains('maplibre_js_load'));
     });
 
-    test('encounters are keyed to gameplay entry events, not tracking state',
+    test(
+        'encounters are keyed to gameplay map-cell entry events, not tracking state',
         () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
       expect(mapSource, contains('lastBorderCrossingEvent'));
-      expect(mapSource, contains('borderCrossingEvent.borderCrossingId'));
+      expect(mapSource, contains('borderCrossingEvent.mapCellEntryId'));
+      expect(mapSource, contains('mapCellEntryId:'));
       expect(
         mapSource,
         isNot(contains('next.lastEntrySequence > previousEntrySequence')),
         reason:
-            'Gameplay entry should follow explicit border-crossing identity, not a generic sequence counter.',
+            'Gameplay entry should follow explicit map-cell entry identity, not a generic sequence counter.',
       );
     });
 

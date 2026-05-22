@@ -6,6 +6,7 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/fetch_items.dart';
+import 'package:earth_nova/features/identification/domain/use_cases/acquire_discovery_item.dart';
 
 /// Observability provider for ItemsNotifier — overridden with real impl in main.dart.
 final itemsObservabilityProvider = Provider<ObservabilityService>((ref) {
@@ -51,6 +52,13 @@ class ItemsState {
 /// Provider for the item repository — overridden with real impl in main.dart.
 final itemRepositoryProvider = Provider<ItemRepository>((ref) {
   throw UnimplementedError('Must be overridden with real or mock repository');
+});
+
+final acquireDiscoveryItemProvider = Provider<AcquireDiscoveryItem>((ref) {
+  return AcquireDiscoveryItem(
+    ref.watch(itemRepositoryProvider),
+    ref.watch(itemsObservabilityProvider),
+  );
 });
 
 /// Items provider — fetches and caches user's items from Supabase.
@@ -100,5 +108,26 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
         'items.fetch_error',
       );
     }
+  }
+
+  void registerOwnedDiscovery(Item item) {
+    final existingIndex =
+        state.items.indexWhere((existing) => existing.id == item.id);
+    final nextItems = [...state.items];
+    if (existingIndex == -1) {
+      nextItems.insert(0, item);
+    } else {
+      nextItems[existingIndex] = item;
+    }
+    transition(
+      state.copyWith(items: List<Item>.unmodifiable(nextItems), error: null),
+      'items.owned_discovery_registered',
+      data: {
+        'item_id': item.id,
+        'definition_id': item.definitionId,
+        'cell_id': item.acquiredInCellId,
+        'deduped': existingIndex != -1,
+      },
+    );
   }
 }

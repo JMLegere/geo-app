@@ -109,10 +109,10 @@ export const productFeatures = {
   }),
   cellBorderCrossingModel: feature({
     id: "cell-border-crossing-model",
-    label: "Cell Border Crossing Model",
+    label: "Map Cell Entry Model",
     capability: "map",
     kind: "data-model",
-    description: "Voronoi map cell border model that turns physical movement across a shared border into a single cell-entry event.",
+    description: "Map-cell entry model that turns eligible movement into a single reward-clean entry event, with Voronoi border crossing treated as a geometric implementation detail.",
   }),
   fogStateModel: feature({
     id: "fog-state-model",
@@ -198,21 +198,21 @@ export const productFeatures = {
     label: "Discovery",
     capability: "exploration-discovery-lifecycle",
     kind: "game-system",
-    description: "Resolver and reward bridge from eligible map cell entry into first-visit finds, revisit finds, rarity treatment, and map-cell-shaped outcomes.",
+    description: "Resolver and ownership bridge from reward-clean map-cell entry into known finds, quiet revisits, mystery candidates, acquisition commits, and truthful result acknowledgement.",
   }),
   pack: feature({
     id: "pack",
     label: "Pack",
     capability: "exploration-discovery-lifecycle",
     kind: "app-section",
-    description: "Owned-find inventory with grid, mystery cards, domain filters, find cards, details, and acquisition history.",
+    description: "Owned-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, and acquisition provenance.",
   }),
   identification: feature({
     id: "identification",
     label: "Identification",
     capability: "exploration-discovery-lifecycle",
     kind: "surface",
-    description: "Unknown-to-known reveal system with hold-to-reveal interaction, reveal theater, and deterministic trait results.",
+    description: "Unknown-to-known follow-up system for owned mysteries, while direct known Discovery finds remain immediately searchable in Pack.",
   }),
 
   fieldGuide: feature({

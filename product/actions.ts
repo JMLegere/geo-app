@@ -135,9 +135,9 @@ export const actionCapabilities = {
   ),
   crossMapCellBorder: mutationAction(
     "cross-map-cell-border",
-    "Cross a map cell border",
+    "Enter a different map cell",
     "Physical movement plus Map cell overlay",
-    "turns eligible movement across a Voronoi map cell border into one visit/fog event",
+    "turns eligible movement into one reward-clean map-cell entry event; crossing a Voronoi border is the geometric detection detail",
     playerActionWorkflows.mapExploration,
   ),
   inspectMapCell: viewAction(
@@ -261,14 +261,14 @@ export const actionCapabilities = {
     "acknowledge-discovery-result",
     "Acknowledge a discovery result",
     "Discovery result surface",
-    "confirms the resolved discovery moment and makes its result available to downstream ownership systems",
+    "confirms a resolved Discovery result whose eligible Pack ownership has already been committed or withheld truthfully",
     playerActionWorkflows.discoveryOwnership,
   ),
   collectFind: mutationAction(
     "collect-find",
     "Collect a find",
     "Discovery result and Pack handoff",
-    "adds an eligible discovered find to the player's owned Pack state",
+    "commits an eligible discovered find to the player's owned Pack state exactly once",
     playerActionWorkflows.discoveryOwnership,
   ),
   openPack: navigationAction(

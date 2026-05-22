@@ -35,6 +35,16 @@ class MapStateReady extends MapState {
   final LocationState location;
 }
 
+class MapStateRefreshing extends MapState {
+  const MapStateRefreshing({
+    required this.previous,
+    required this.refreshLocation,
+  });
+
+  final MapStateReady previous;
+  final LocationState refreshLocation;
+}
+
 class MapStateError extends MapState {
   const MapStateError(this.message);
   final String message;
@@ -118,14 +128,39 @@ class MapNotifier extends ObservableNotifier<MapState> {
     if (!_shouldRefetch(location)) return;
     _lastFetchPosition = location;
 
-    transition(const MapStateLoading(), 'map.cells_fetch_started', data: {
-      'lat': location.lat,
-      'lng': location.lng,
-      'radius_meters': _kFetchRadiusMeters,
-      'flow': 'map.bootstrap',
-      'phase': TelemetryFlowPhase.dependencyRequested.wireName,
-      'dependency': 'cells',
-    });
+    final previousReady = switch (state) {
+      MapStateReady ready => ready,
+      MapStateRefreshing refreshing => refreshing.previous,
+      _ => null,
+    };
+    if (previousReady == null) {
+      transition(const MapStateLoading(), 'map.cells_fetch_started', data: {
+        'lat': location.lat,
+        'lng': location.lng,
+        'radius_meters': _kFetchRadiusMeters,
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+        'dependency': 'cells',
+      });
+    } else {
+      transition(
+        MapStateRefreshing(
+          previous: previousReady,
+          refreshLocation: location,
+        ),
+        'map.cells_fetch_started',
+        data: {
+          'lat': location.lat,
+          'lng': location.lng,
+          'radius_meters': _kFetchRadiusMeters,
+          'flow': 'map.bootstrap',
+          'phase': TelemetryFlowPhase.dependencyRequested.wireName,
+          'dependency': 'cells',
+          'stale_context_retained': true,
+          'previous_cell_count': previousReady.cells.length,
+        },
+      );
+    }
 
     try {
       final fetchCells = ref.read(fetchNearbyCellsProvider);
@@ -185,6 +220,20 @@ class MapNotifier extends ObservableNotifier<MapState> {
       );
     } catch (e, stack) {
       obs.logError(e, stack, event: 'map.data_fetch_error');
+      if (previousReady != null) {
+        transition(
+          previousReady,
+          'map.cells_fetch_stale_context_retained',
+          data: {
+            'flow': 'map.bootstrap',
+            'phase': TelemetryFlowPhase.dependencyFailed.wireName,
+            'dependency': 'cells',
+            'error': e.toString(),
+            'retained_cell_count': previousReady.cells.length,
+          },
+        );
+        return;
+      }
       transition(MapStateError(e.toString()), 'map.cells_fetch_error', data: {
         'flow': 'map.bootstrap',
         'phase': TelemetryFlowPhase.dependencyFailed.wireName,

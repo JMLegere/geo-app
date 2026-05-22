@@ -495,3 +495,31 @@
 - Jeremy asked to extend the revealed-cell border treatment onto frontier cells.
 - Updated tessellation boundary visibility so frontier-vs-unknown edges render, while frontier/frontier shared seams remain suppressed to avoid a debug-grid wall.
 - Updated fog seam styling so frontier boundaries use the same thin dark neutral mosaic edge treatment as explored cells, keeping unknown territory borderless.
+
+## Completed 2026-05-21 — Railway 502 recovery for beta and production
+ - Incident confirmed: both `https://geo-app-beta.up.railway.app/` and `https://geo-app-production-47b0.up.railway.app/` returned Railway `502 Application failed to respond`.
+ - Railway deployment status showed latest beta and production deployments as `SUCCESS`, and runtime logs showed nginx startup without app-level errors.
+ - Domain target ports were verified through Railway GraphQL: both beta and production service domains target port `8080`, matching `nginx.conf`.
+ - `railway ssh` reported beta was not running / in an unexpected state, and restarting beta did not recover it.
+ - Fresh `railway up --service geo-app --environment beta --detach` restored beta to HTTP `200 text/html`.
+ - Fresh `railway up --service geo-app --environment production --detach` restored production to HTTP `200 text/html`.
+ - Browser smoke on production reached the EarthNova login screen; screenshot saved at `artifacts/prod-post-redeploy-smoke.png`.
+
+## Completed 2026-05-21 — Supabase production restore and schema catch-up
+ - Follow-up Supabase check found beta project `ggkvcpgvxqaqzwxehlns` was `ACTIVE_HEALTHY`, but production project `bfaczcsrpfcbijoaeckb` was `INACTIVE` and `bfaczcsrpfcbijoaeckb.supabase.co` did not resolve.
+ - Triggered Supabase production restore through the Management API; production returned to `ACTIVE_HEALTHY` and DNS resolution recovered.
+ - Production auth health returned HTTP `200`, and test user `+15551234567` signed in successfully against both beta and production.
+ - Production database had only migrations through `038`; applied/recorded migrations `039` through `073` via the Supabase Management API so production schema matches the current app contract.
+ - Production had no active cell geometry after migration catch-up; attempted organic geometry staging hit a PostGIS topology conflict, so published deterministic lattice geometry source `db-lattice-voronoi-production-v1` as a safe recovery geometry substrate.
+ - Verified authenticated `fetch_nearby_cells` RPC:
+   - beta returned `982` renderable cells with source `organic-voronoi-beta-v2`
+   - production returned `985` renderable cells with source `db-lattice-voronoi-production-v1`
+
+## Completed 2026-05-22 — Discovery ownership first slice
+- Expanded SuperBDD for Discovery, Pack, Identification, and map-cell entry so map-cell entry stays reward-clean and Discovery must commit Pack ownership before claiming a find.
+- Implemented deterministic catalog-backed encounter results with readable display names, scientific names, rarity, taxonomic class, habitats, and continents.
+- Added Discovery acquisition path from map-cell entry to `v3_items` through `AcquireDiscoveryItem`, `ItemRepository.acquireDiscoveryItem`, Supabase insert/idempotent lookup, and Pack state registration.
+- Map encounter toast now says "found" only after an owned item is committed; failed acquisition is logged and withheld instead of showing a false discovery.
+- First-visit cell feedback now says `NEW CELL` rather than `NEW DISCOVERY`.
+- Added `MapStateRefreshing` so fast movement keeps the last valid map cells rendered during refetch instead of deloading to shimmer.
+- Verification passed: `mise exec -- eac check`, focused discovery/map tests, `mise exec -- flutter analyze --no-pub`, full `mise exec -- flutter test --no-pub --reporter=compact`, and `git diff --check`.

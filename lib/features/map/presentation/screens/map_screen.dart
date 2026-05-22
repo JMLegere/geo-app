@@ -90,7 +90,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Offset? _exactScreenProjectionMarkerScreenPosition;
   int _exactScreenProjectionRevision = 0;
 
-
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
   Timer? _notificationTimer;
@@ -370,6 +369,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
   }
 
+  MapStateReady? _renderableMapState(MapState mapState) {
+    return switch (mapState) {
+      MapStateReady ready => ready,
+      MapStateRefreshing refreshing => refreshing.previous,
+      _ => null,
+    };
+  }
+
   MapReadinessState _readinessFor({
     required bool locationReady,
     required MapState mapState,
@@ -379,7 +386,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       mapCreated: _mapCreated,
       styleLoaded: _mapStyleLoaded,
       baseMapSettled: _baseMapSettled,
-      cellsFetched: mapState is MapStateReady,
+      cellsFetched: _renderableMapState(mapState) != null,
       overlayFramePainted: _overlayFramePainted,
     );
   }
@@ -721,11 +728,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // notification. Do not key this off currentCellId alone: ring-state marker
     // tracking can update currentCellId before visits are eligible.
     ref.listen<ExplorationStateData>(explorationProvider, (previous, next) {
-      final previousBorderCrossingId =
-          previous?.lastBorderCrossingEvent?.borderCrossingId;
+      final previousMapCellEntryId =
+          previous?.lastBorderCrossingEvent?.mapCellEntryId;
       final borderCrossingEvent = next.lastBorderCrossingEvent;
       final isNewGameplayEntry = borderCrossingEvent != null &&
-          borderCrossingEvent.borderCrossingId != previousBorderCrossingId;
+          borderCrossingEvent.mapCellEntryId != previousMapCellEntryId;
       if (!isNewGameplayEntry) return;
 
       final enteredCellId = borderCrossingEvent.enteredCellId;
@@ -733,6 +740,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ref.read(encounterProvider.notifier).onCellEntered(
             cellId: enteredCellId,
             isFirstVisit: isFirstVisit,
+            userId: userId,
+            mapCellEntryId: borderCrossingEvent.mapCellEntryId,
           );
       // Show discovery notification on first visit.
       if (isFirstVisit) {
@@ -742,6 +751,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           data: {
             'cell_id': enteredCellId,
             'border_crossing_id': borderCrossingEvent.borderCrossingId,
+            'map_cell_entry_id': borderCrossingEvent.mapCellEntryId,
           },
         );
       }
@@ -819,9 +829,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _logMapEvent(event, category: category, data: data);
     }
 
+    final renderableMapState = _renderableMapState(mapState);
+
     final footprint = const ExploredFootprintService().project(
-      persistedVisitedCellIds:
-          mapState is MapStateReady ? mapState.visitedCellIds : const {},
+      persistedVisitedCellIds: renderableMapState?.visitedCellIds ?? const {},
       optimisticVisitedCellIds: explorationState.visitedCellIds,
     );
     final cellsObserved = footprint.uniqueCount;
@@ -839,9 +850,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           final renderCameraPosition =
               _renderCameraPosition ?? desiredCameraPosition;
           final renderZoom = _renderCameraZoom ?? _kGpsZoom;
-          final cellsWithStates = mapState is MapStateReady
+          final cellsWithStates = renderableMapState != null
               ? _buildCellStates(
-                  mapState.cells,
+                  renderableMapState.cells,
                   footprint.visitedCellIds,
                   explorationState,
                 )
@@ -979,7 +990,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
 
               // Cell overlay layer - drawn on top of map using Flutter Canvas
-              if (mapState is MapStateReady)
+              if (renderableMapState != null)
                 Positioned.fill(
                   child: GestureDetector(
                     onTapUp: ObservableInteraction.wrapTapUp(
@@ -991,7 +1002,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       callback: (details) => _onMapTap(
                         context,
                         details,
-                        mapState,
+                        renderableMapState,
                         exactProjectionRequest.key,
                         cellsWithStates,
                         projectGeoCoord,
@@ -1077,7 +1088,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
 
               // Loading indicator
-              if (mapState is MapStateLoading)
+              if (mapState is MapStateLoading || mapState is MapStateRefreshing)
                 const Positioned(
                   top: 24,
                   left: 0,
@@ -1371,7 +1382,6 @@ GeoCoord? _cellCenter(Cell cell) {
     lng: sumLng / exteriorPoints.length,
   );
 }
-
 
 class _MapTopFogFeather extends StatelessWidget {
   const _MapTopFogFeather();

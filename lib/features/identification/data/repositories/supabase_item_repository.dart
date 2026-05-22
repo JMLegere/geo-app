@@ -1,10 +1,16 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/data/dtos/item_dto.dart';
+import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 
 typedef ItemFetchQuery = Future<List<Map<String, dynamic>>> Function(
     String userId);
+typedef ItemAcquireQuery = Future<Map<String, dynamic>> Function(
+  DiscoveryItemDraft draft,
+);
 typedef RepositoryLogEvent = void Function(
   String event,
   String category, {
@@ -16,12 +22,15 @@ class SupabaseItemRepository implements ItemRepository {
     required SupabaseClient? client,
     ItemFetchQuery? fetchItemsQuery,
     RepositoryLogEvent? logEvent,
+    ItemAcquireQuery? acquireDiscoveryItemQuery,
   })  : _client = client,
         _fetchItemsQuery = fetchItemsQuery,
+        _acquireDiscoveryItemQuery = acquireDiscoveryItemQuery,
         _logEvent = logEvent;
 
   final SupabaseClient? _client;
   final ItemFetchQuery? _fetchItemsQuery;
+  final ItemAcquireQuery? _acquireDiscoveryItemQuery;
   final RepositoryLogEvent? _logEvent;
   static const _category = 'identification.item_repository';
 
@@ -55,6 +64,43 @@ class SupabaseItemRepository implements ItemRepository {
     }
   }
 
+  @override
+  Future<Item> acquireDiscoveryItem(
+    DiscoveryItemDraft draft, {
+    String? traceId,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': 'acquire_discovery_item',
+      'definition_id': draft.definitionId,
+      'cell_id': draft.acquiredInCellId,
+      'map_cell_entry_id': draft.mapCellEntryId,
+    });
+    try {
+      final response = await _runAcquireDiscoveryItemQuery(draft);
+      final item = ItemDto.fromJson(response).toDomain();
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'acquire_discovery_item',
+        'item_id': item.id,
+        'definition_id': item.definitionId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return item;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'acquire_discovery_item',
+        'definition_id': draft.definitionId,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': error.toString(),
+      });
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> _runFetchItemsQuery(String userId) async {
     if (_fetchItemsQuery != null) {
       return _fetchItemsQuery!(userId);
@@ -75,4 +121,52 @@ class SupabaseItemRepository implements ItemRepository {
         .map((row) => Map<String, dynamic>.from(row))
         .toList();
   }
+
+  Future<Map<String, dynamic>> _runAcquireDiscoveryItemQuery(
+    DiscoveryItemDraft draft,
+  ) async {
+    if (_acquireDiscoveryItemQuery != null) {
+      return _acquireDiscoveryItemQuery!(draft);
+    }
+    final client = _client;
+    if (client == null) {
+      throw StateError(
+          'Supabase client is required when no acquireDiscoveryItemQuery is provided.');
+    }
+
+    final existingResponse = await client
+        .from('v3_items')
+        .select()
+        .eq('user_id', draft.userId)
+        .eq('definition_id', draft.definitionId)
+        .eq('acquired_in_cell_id', draft.acquiredInCellId)
+        .eq('status', ItemStatus.active.name)
+        .limit(1);
+    final existingRows = (existingResponse as List)
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
+    if (existingRows.isNotEmpty) return existingRows.first;
+
+    final response = await client
+        .from('v3_items')
+        .insert(_draftInsertPayload(draft))
+        .select()
+        .single();
+    return Map<String, dynamic>.from(response);
+  }
+
+  Map<String, dynamic> _draftInsertPayload(DiscoveryItemDraft draft) => {
+        'user_id': draft.userId,
+        'definition_id': draft.definitionId,
+        'display_name': draft.displayName,
+        'scientific_name': draft.scientificName,
+        'category': draft.category.name,
+        'rarity': draft.rarity,
+        'acquired_in_cell_id': draft.acquiredInCellId,
+        'status': ItemStatus.active.name,
+        'taxonomic_class': draft.taxonomicClass,
+        'habitats_json': jsonEncode(draft.habitats),
+        'continents_json': jsonEncode(draft.continents),
+      };
 }

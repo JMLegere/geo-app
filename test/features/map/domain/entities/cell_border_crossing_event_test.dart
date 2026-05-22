@@ -19,6 +19,7 @@ void main() {
 
       expect(event.toTelemetryData(), {
         'border_crossing_id': 'crossing-1',
+        'map_cell_entry_id': 'crossing-1',
         'previous_cell_id': 'cell-A',
         'entered_cell_id': 'cell-B',
         'border_crossing_type': 'firstEntry',

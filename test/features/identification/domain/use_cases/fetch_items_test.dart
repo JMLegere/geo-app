@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
+import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/fetch_items.dart';
 
 class FakeItemRepository implements ItemRepository {
@@ -16,6 +17,14 @@ class FakeItemRepository implements ItemRepository {
     receivedTraceId = traceId;
     if (shouldThrow) throw Exception('Fake fetch error');
     return items;
+  }
+
+  @override
+  Future<Item> acquireDiscoveryItem(
+    DiscoveryItemDraft draft, {
+    String? traceId,
+  }) {
+    throw UnimplementedError('FetchItems tests do not acquire discoveries.');
   }
 }
 

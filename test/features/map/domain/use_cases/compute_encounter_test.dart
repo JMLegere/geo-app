@@ -20,6 +20,7 @@ void main() {
       const encounter = Encounter(
         type: EncounterType.species,
         speciesId: 'species_123',
+        displayName: 'Test Warbler',
         cellId: 'cell_abc',
         seed: 'seed_xyz',
       );
@@ -28,12 +29,14 @@ void main() {
       expect(encounter.speciesId, 'species_123');
       expect(encounter.cellId, 'cell_abc');
       expect(encounter.seed, 'seed_xyz');
+      expect(encounter.displayName, 'Test Warbler');
     });
 
     test('creates critter encounter with correct properties', () {
       const encounter = Encounter(
         type: EncounterType.critter,
         speciesId: 'critter_456',
+        displayName: 'Test Critter',
         cellId: 'cell_def',
         seed: 'seed_abc',
       );
@@ -42,6 +45,7 @@ void main() {
       expect(encounter.speciesId, 'critter_456');
       expect(encounter.cellId, 'cell_def');
       expect(encounter.seed, 'seed_abc');
+      expect(encounter.displayName, 'Test Critter');
     });
   });
 
@@ -75,6 +79,27 @@ void main() {
       expect(encounter1.cellId, encounter2.cellId);
       expect(obs.logs[0]['event'], 'operation.started');
       expect(obs.logs[1]['event'], 'operation.completed');
+    });
+
+    test('first visit produces a Pack-ready known find result', () async {
+      final compute = ComputeEncounter(TestObservabilityService());
+
+      final encounter = await compute.call(
+        (
+          cellId: 'cell_123',
+          seed: 'daily_seed',
+          isFirstVisit: true,
+          hasLoot: false,
+        ),
+      );
+
+      expect(encounter, isNotNull);
+      expect(encounter!.displayName, isNotEmpty);
+      expect(encounter.displayName, isNot(startsWith('species_')));
+      expect(encounter.scientificName, isNotEmpty);
+      expect(encounter.rarity, isNotEmpty);
+      expect(encounter.taxonomicClass, isNotEmpty);
+      expect(encounter.speciesId, startsWith('species.'));
     });
 
     test('different cellId produces different encounter', () async {
@@ -179,11 +204,9 @@ void main() {
       expect(encounter, isNull);
     });
 
-    test('uses SHA-256 hash for deterministic species selection', () async {
+    test('uses deterministic catalog mapping for species selection', () async {
       final compute = ComputeEncounter(TestObservabilityService());
 
-      // The seed + cellId should be hashed to select species
-      // Verify that specific input produces consistent output
       final encounter = await compute.call(
         (
           cellId: 'cell_test_123',
@@ -194,7 +217,9 @@ void main() {
       );
 
       expect(encounter, isNotNull);
-      expect(encounter!.speciesId, isNotEmpty);
+      expect(encounter!.speciesId, startsWith('species.'));
+      expect(encounter.displayName, isNotEmpty);
+      expect(encounter.displayName, isNot(contains(RegExp(r'[0-9a-f]{8}'))));
     });
   });
 }

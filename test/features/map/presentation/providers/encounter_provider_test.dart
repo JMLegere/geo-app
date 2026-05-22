@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
+import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
+import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
+import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
@@ -20,17 +25,68 @@ class TestObservabilityService extends ObservabilityService {
   List<String> get eventNames => events.map((e) => e.event).toList();
 }
 
+class RecordingItemRepository implements ItemRepository {
+  final acquiredDrafts = <DiscoveryItemDraft>[];
+  final ownedItems = <Item>[];
+  bool shouldThrowOnAcquire = false;
+
+  @override
+  Future<List<Item>> fetchItems(String userId, {String? traceId}) async {
+    return ownedItems
+        .where((item) => item.status == ItemStatus.active)
+        .toList();
+  }
+
+  @override
+  Future<Item> acquireDiscoveryItem(
+    DiscoveryItemDraft draft, {
+    String? traceId,
+  }) async {
+    if (shouldThrowOnAcquire) {
+      throw Exception('acquire failed');
+    }
+    acquiredDrafts.add(draft);
+    for (final item in ownedItems) {
+      if (item.definitionId == draft.definitionId &&
+          item.acquiredInCellId == draft.acquiredInCellId) {
+        return item;
+      }
+    }
+    final item = Item(
+      id: 'owned-${acquiredDrafts.length}',
+      definitionId: draft.definitionId,
+      displayName: draft.displayName,
+      scientificName: draft.scientificName,
+      category: draft.category,
+      rarity: draft.rarity,
+      acquiredAt: DateTime(2026, 1, acquiredDrafts.length),
+      acquiredInCellId: draft.acquiredInCellId,
+      status: ItemStatus.active,
+      taxonomicClass: draft.taxonomicClass,
+      habitats: draft.habitats,
+      continents: draft.continents,
+    );
+    ownedItems.add(item);
+    return item;
+  }
+}
+
 void main() {
   group('EncounterProvider', () {
     late ProviderContainer container;
     late TestObservabilityService testObs;
 
+    late RecordingItemRepository itemRepo;
     setUp(() {
       testObs = TestObservabilityService();
+      itemRepo = RecordingItemRepository();
       container = ProviderContainer(
         overrides: [
           encounterObservabilityProvider.overrideWithValue(testObs),
           computeEncounterProvider.overrideWithValue(ComputeEncounter(testObs)),
+          itemsObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          itemRepositoryProvider.overrideWithValue(itemRepo),
         ],
       );
     });
@@ -64,6 +120,76 @@ void main() {
           .firstWhere((l) => l.event == 'map.encounter_triggered');
       expect(encounterLog.data?['cellId'], 'cell_123');
       expect(encounterLog.data?['encounterType'], 'species');
+    });
+
+    test('first visit with a user commits owned find before showing encounter',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+
+      final state = container.read(encounterProvider);
+      final packState = container.read(itemsProvider);
+
+      expect(itemRepo.acquiredDrafts, hasLength(1));
+      expect(itemRepo.acquiredDrafts.single.userId, 'user-123');
+      expect(itemRepo.acquiredDrafts.single.acquiredInCellId, 'cell_123');
+      expect(itemRepo.acquiredDrafts.single.mapCellEntryId, 'entry-1');
+      expect(state.currentEncounter, isNotNull);
+      expect(state.currentEncounter!.acquiredItem, isNotNull);
+      expect(state.currentEncounter!.acquiredItem!.id, 'owned-1');
+      expect(packState.items, hasLength(1));
+      expect(packState.items.single.displayName,
+          state.currentEncounter!.displayName);
+      expect(testObs.eventNames, contains('discovery.result_resolved'));
+      expect(testObs.eventNames, contains('discovery.acquisition_committed'));
+      expect(testObs.eventNames, contains('map.encounter_triggered'));
+    });
+
+    test('same map-cell entry id is acquired exactly once', () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+
+      expect(itemRepo.acquiredDrafts, hasLength(1));
+      expect(container.read(itemsProvider).items, hasLength(1));
+    });
+
+    test('acquisition failure does not show a false found encounter', () async {
+      itemRepo.shouldThrowOnAcquire = true;
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+
+      expect(container.read(encounterProvider).currentEncounter, isNull);
+      expect(container.read(itemsProvider).items, isEmpty);
+      expect(testObs.eventNames, contains('discovery.acquisition_failed'));
+      expect(testObs.eventNames, isNot(contains('map.encounter_triggered')));
     });
 
     test('revisit with loot triggers critter encounter', () async {
@@ -148,6 +274,7 @@ void main() {
       const encounter = Encounter(
         type: EncounterType.species,
         speciesId: 'species_123',
+        displayName: 'Test Warbler',
         cellId: 'cell_abc',
         seed: 'seed_xyz',
       );
@@ -162,6 +289,7 @@ void main() {
       const encounter = Encounter(
         type: EncounterType.species,
         speciesId: 'species_123',
+        displayName: 'Test Warbler',
         cellId: 'cell_abc',
         seed: 'seed_xyz',
       );

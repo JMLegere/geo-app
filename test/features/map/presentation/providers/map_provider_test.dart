@@ -71,6 +71,8 @@ class ControllableMockCellRepository implements CellRepository {
   bool shouldThrow = false;
   int fetchCallCount = 0;
   String? lastVisitedUserId;
+  bool delayNextFetch = false;
+  final pendingFetches = <Completer<List<Cell>>>[];
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
@@ -78,6 +80,12 @@ class ControllableMockCellRepository implements CellRepository {
       {String? traceId}) async {
     fetchCallCount++;
     if (shouldThrow) throw Exception('Cell fetch error');
+    if (delayNextFetch) {
+      delayNextFetch = false;
+      final completer = Completer<List<Cell>>();
+      pendingFetches.add(completer);
+      return completer.future;
+    }
     return cells;
   }
 
@@ -484,6 +492,65 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(cellRepo.fetchCallCount, greaterThan(fetchCountAfterFirst));
+    });
+
+    test('keeps previous cells visible while a significant move refetches',
+        () async {
+      final oldCell = Cell(
+        id: 'old-cell',
+        habitats: [],
+        polygons: const [],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+      final newCell = Cell(
+        id: 'new-cell',
+        habitats: [],
+        polygons: const [],
+        districtId: 'd1',
+        cityId: 'c1',
+        stateId: 's1',
+        countryId: 'co1',
+      );
+      cellRepo.cells = [oldCell];
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final pos1 = LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(pos1);
+      await Future<void>.delayed(Duration.zero);
+      expect((container.read(mapProvider) as MapStateReady).cells.single.id,
+          'old-cell');
+
+      cellRepo.cells = [newCell];
+      cellRepo.delayNextFetch = true;
+      final pos2 = LocationState(
+        lat: 37.8000,
+        lng: -122.4500,
+        accuracy: 5.0,
+        timestamp: DateTime(2026, 1, 1, 0, 1),
+        isConfident: true,
+      );
+      locationRepo.emitPosition(pos2);
+      await Future<void>.delayed(Duration.zero);
+
+      final refreshing = container.read(mapProvider) as MapStateRefreshing;
+      expect(refreshing.previous.cells.single.id, 'old-cell');
+      expect(refreshing.refreshLocation, pos2);
+
+      cellRepo.pendingFetches.single.complete([newCell]);
+      await Future<void>.delayed(Duration.zero);
+      expect((container.read(mapProvider) as MapStateReady).cells.single.id,
+          'new-cell');
     });
 
     test('does not re-fetch when position changes minimally', () async {

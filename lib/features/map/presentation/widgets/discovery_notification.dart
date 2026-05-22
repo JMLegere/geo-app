@@ -40,7 +40,7 @@ class DiscoveryNotification extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'NEW DISCOVERY',
+                    'NEW CELL',
                     style: TextStyle(
                       color: Color(0xFF83C5BE),
                       fontSize: 10,

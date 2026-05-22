@@ -288,5 +288,26 @@ void main() {
       expect(successEvent.data!['count'], 0);
       c.dispose();
     });
+
+    test('registerOwnedDiscovery adds a committed discovery to Pack state', () {
+      container.read(itemsProvider);
+      final item = _testItem(id: 'discovery-1', name: 'Amberwing Warbler');
+
+      container.read(itemsProvider.notifier).registerOwnedDiscovery(item);
+
+      final state = container.read(itemsProvider);
+      expect(state.items, [item]);
+      expect(obs.eventNames, contains('items.owned_discovery_registered'));
+    });
+
+    test('registerOwnedDiscovery dedupes the same owned item id', () {
+      container.read(itemsProvider);
+      final item = _testItem(id: 'discovery-1', name: 'Amberwing Warbler');
+
+      container.read(itemsProvider.notifier).registerOwnedDiscovery(item);
+      container.read(itemsProvider.notifier).registerOwnedDiscovery(item);
+
+      expect(container.read(itemsProvider).items, hasLength(1));
+    });
   });
 }

@@ -35,7 +35,7 @@ export const productCapabilities = {
     id: "map",
     label: "Map",
     description:
-      "The player experiences the real world as a playable map made of framing, trusted position, fog, Voronoi map cell border crossing, territory scale, and event cues.",
+      "The player experiences the real world as a playable map made of framing, trusted position, fog, reward-clean map-cell entry, territory scale, and event cues.",
     emotionalReward: "My real world is becoming a playable map that grows as I move.",
     cucumberFeatures: [
       spineFeature,

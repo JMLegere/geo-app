@@ -18,6 +18,7 @@ class CellBorderCrossingEvent {
   });
 
   final String borderCrossingId;
+  String get mapCellEntryId => borderCrossingId;
   final String? previousCellId;
   final String enteredCellId;
   final CellBorderCrossingType borderCrossingType;
@@ -31,6 +32,7 @@ class CellBorderCrossingEvent {
   Map<String, dynamic> toTelemetryData() {
     return {
       'border_crossing_id': borderCrossingId,
+      'map_cell_entry_id': mapCellEntryId,
       'previous_cell_id': previousCellId,
       'entered_cell_id': enteredCellId,
       'border_crossing_type': borderCrossingType.name,

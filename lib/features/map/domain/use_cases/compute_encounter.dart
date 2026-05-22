@@ -25,7 +25,9 @@ class ComputeEncounter
 
   /// Computes an encounter based on cellId and seed.
   ///
-  /// Uses SHA-256(seed + "_" + cellId) for deterministic species selection.
+  /// Uses SHA-256(seed + "_" + cellId) to pick a deterministic catalog entry.
+  /// The definition id may include a hash shard, but player-visible fields are
+  /// readable and Pack-ready.
   ///
   /// Returns:
   /// - Species encounter on first visit
@@ -34,28 +36,124 @@ class ComputeEncounter
   @override
   Future<Encounter?> execute(
       ComputeEncounterInput input, String traceId) async {
-    // If not first visit and no loot, no encounter
     if (!input.isFirstVisit && !input.hasLoot) {
       return null;
     }
 
-    // Compute deterministic species ID from SHA-256(seed + "_" + cellId)
     final hashInput = '${input.seed}_${input.cellId}';
-    final hash = sha256.convert(utf8.encode(hashInput));
+    final hashText = sha256.convert(utf8.encode(hashInput)).toString();
+    final hashShard = hashText.substring(0, 8);
+    final hashValue = int.parse(hashShard, radix: 16);
+    final entry = _speciesCatalog[hashValue % _speciesCatalog.length];
 
-    // Use first 16 characters of hash as species ID
-    // In a real implementation, this would map to actual species
-    final speciesId = 'species_${hash.toString().substring(0, 16)}';
-
-    // First visit = species encounter, revisit with loot = critter encounter
     final encounterType =
         input.isFirstVisit ? EncounterType.species : EncounterType.critter;
 
     return Encounter(
       type: encounterType,
-      speciesId: speciesId,
+      speciesId: 'species.${entry.slug}.$hashShard',
+      displayName: entry.displayName,
+      scientificName: entry.scientificName,
+      rarity: _rarityFor(hashValue),
+      taxonomicClass: entry.taxonomicClass,
+      habitats: entry.habitats,
+      continents: entry.continents,
       cellId: input.cellId,
       seed: input.seed,
     );
   }
 }
+
+String _rarityFor(int hashValue) {
+  final roll = hashValue % 100;
+  if (roll >= 97) return 'legendary';
+  if (roll >= 90) return 'epic';
+  if (roll >= 75) return 'rare';
+  if (roll >= 45) return 'uncommon';
+  return 'common';
+}
+
+class _SpeciesCatalogEntry {
+  const _SpeciesCatalogEntry({
+    required this.slug,
+    required this.displayName,
+    required this.scientificName,
+    required this.taxonomicClass,
+    required this.habitats,
+    required this.continents,
+  });
+
+  final String slug;
+  final String displayName;
+  final String scientificName;
+  final String taxonomicClass;
+  final List<String> habitats;
+  final List<String> continents;
+}
+
+const _speciesCatalog = [
+  _SpeciesCatalogEntry(
+    slug: 'amberwing_warbler',
+    displayName: 'Amberwing Warbler',
+    scientificName: 'Setophaga aestiva',
+    taxonomicClass: 'Aves',
+    habitats: ['forest', 'wetland'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'red_fox',
+    displayName: 'Red Fox',
+    scientificName: 'Vulpes vulpes',
+    taxonomicClass: 'Mammalia',
+    habitats: ['forest', 'grassland', 'urban'],
+    continents: ['North America', 'Europe', 'Asia'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'monarch_butterfly',
+    displayName: 'Monarch Butterfly',
+    scientificName: 'Danaus plexippus',
+    taxonomicClass: 'Insecta',
+    habitats: ['grassland', 'urban'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'painted_turtle',
+    displayName: 'Painted Turtle',
+    scientificName: 'Chrysemys picta',
+    taxonomicClass: 'Reptilia',
+    habitats: ['freshwater', 'wetland'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'snowshoe_hare',
+    displayName: 'Snowshoe Hare',
+    scientificName: 'Lepus americanus',
+    taxonomicClass: 'Mammalia',
+    habitats: ['forest'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'brook_trout',
+    displayName: 'Brook Trout',
+    scientificName: 'Salvelinus fontinalis',
+    taxonomicClass: 'Actinopterygii',
+    habitats: ['freshwater'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'great_blue_heron',
+    displayName: 'Great Blue Heron',
+    scientificName: 'Ardea herodias',
+    taxonomicClass: 'Aves',
+    habitats: ['freshwater', 'wetland', 'coastal'],
+    continents: ['North America'],
+  ),
+  _SpeciesCatalogEntry(
+    slug: 'eastern_chipmunk',
+    displayName: 'Eastern Chipmunk',
+    scientificName: 'Tamias striatus',
+    taxonomicClass: 'Mammalia',
+    habitats: ['forest', 'urban'],
+    continents: ['North America'],
+  ),
+];
