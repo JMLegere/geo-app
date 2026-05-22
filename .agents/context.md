@@ -523,3 +523,28 @@
 - First-visit cell feedback now says `NEW CELL` rather than `NEW DISCOVERY`.
 - Added `MapStateRefreshing` so fast movement keeps the last valid map cells rendered during refetch instead of deloading to shimmer.
 - Verification passed: `mise exec -- eac check`, focused discovery/map tests, `mise exec -- flutter analyze --no-pub`, full `mise exec -- flutter test --no-pub --reporter=compact`, and `git diff --check`.
+
+## Completed 2026-05-22 — beta validation and production promotion for Discovery slice
+- Fixed the CI regression from the first discovery-slice commit by adding coverage-focused tests for the new owned-discovery path, item repository behaviors, map refreshing, and encounter metadata/presenter helpers.
+- Follow-up commit `11f838ab3e9945c0a513675dd7a74680141c9338` passed GitHub CI run `26268183196` and triggered a successful beta deploy (`Deploy Beta` run `26268284410`).
+- Beta validation passed:
+  - `https://geo-app-beta.up.railway.app/` loaded
+  - test account `+15551234567` authenticated successfully against beta
+  - authenticated `fetch_nearby_cells` returned `982` renderable cells from `organic-voronoi-beta-v2`
+  - authenticated `v3_items` insert/select/delete smoke passed for the new discovery acquisition path
+- The first production workflow attempt failed because the manual input used short SHA `11f838a`, which checkout treated as a ref name; this was not an application, Supabase, or migration failure.
+- Shipped production manually by deploying the validated checkout to Railway production; Railway deployment `a57f8041-d8a0-4e6a-83e2-d32280a29c13` reached `SUCCESS`.
+- Re-ran the official `deploy-production.yml` workflow with the full commit SHA and it succeeded: production app deploy passed and production Supabase function deploy passed. Database migrations were skipped because `SUPABASE_PRODUCTION_DB_PASSWORD` is not configured, which matches the runbook caveat.
+- Production validation passed:
+  - `https://geo-app-production-47b0.up.railway.app/` loaded
+  - test account `+15551234567` authenticated successfully against production
+  - authenticated `fetch_nearby_cells` returned `985` renderable cells from `db-lattice-voronoi-production-v1`
+  - authenticated `v3_items` insert/select/delete smoke passed for the discovery acquisition path
+- Prod observability was initially dark because the production Supabase project still lacked the `telemetry-ingest` Edge Function even though beta had it.
+- Manually deployed `telemetry-ingest` to production, then headless prod smoke generated fresh `app.cold_start` and `supabase.init_success` rows in `telemetry_logs`, satisfying the runbook telemetry check.
+- Remaining operational cleanup is non-blocking: GitHub Actions still emits a noisy post-checkout git cleanup warning from tracked `.hive` worktree artifacts, but CI/deploy are green.
+
+## Completed 2026-05-22 — repository cleanup
+- Removed tracked `.hive/` artifacts from the repository. `.hive` was an old OMP/Hive subagent orchestration workspace for the clean-architecture migration; its `.worktrees/*` entries were accidentally committed as gitlink/submodule-like objects without a `.gitmodules` mapping.
+- The tracked hive gitlinks caused `git submodule status` and GitHub checkout post-cleanup to emit exit-code-128 warnings even though CI/deploy still completed.
+- Kept `.hive/` ignored for future local agent work and added `artifacts/` to `.gitignore` so smoke screenshots do not show up as untracked repo noise.

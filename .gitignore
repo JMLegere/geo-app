@@ -125,6 +125,7 @@ venv/
 # ---------------------------------------------------------------------------
 # Screenshots and logs from agent runs
 /*.png
+artifacts/
 /*.jpeg
 /*.log
 e2e-console-log.txt
