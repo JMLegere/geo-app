@@ -11,6 +11,7 @@ import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
@@ -114,6 +115,11 @@ class _ReadyPlayerMarkerNotifier extends PlayerMarkerNotifier {
       gapDistance: 0,
     );
   }
+}
+
+class _PackImpactEncounterNotifier extends EncounterNotifier {
+  @override
+  EncounterState build() => const EncounterState(packImpactCount: 1);
 }
 
 class _TrackingLocationNotifier extends LocationNotifier {
@@ -302,6 +308,42 @@ void main() {
       expect(find.byKey(screenKeys[0]), findsOneWidget);
       // Verify IndexedStack is present
       expect(find.byType(IndexedStack), findsOneWidget);
+    });
+
+    testWidgets('renders Pack reward impact overlay when a card lands',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+            encounterProvider
+                .overrideWith(() => _PackImpactEncounterNotifier()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('pack-reward-impact')), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 260));
+      expect(find.byKey(const Key('pack-reward-impact')), findsOneWidget);
     });
 
     testWidgets('tab switching works with IndexedStack', (tester) async {
@@ -659,6 +701,14 @@ void main() {
       expect(source, contains('PackScreen('));
       expect(source, contains('pageController:'));
       expect(source, contains('onEdgeSwipe:'));
+    });
+
+    test('source: TabShell shows Pack impact when reward card lands', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+      expect(source, contains('packImpactCount'));
+      expect(source, contains('_PackRewardImpactOverlay'));
+      expect(source, contains("Key('pack-reward-impact')"));
     });
 
     test('source: TabShell handles EdgeSwipeDirection.left → map tab', () {

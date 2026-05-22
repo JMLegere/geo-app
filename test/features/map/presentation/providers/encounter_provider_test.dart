@@ -161,7 +161,8 @@ void main() {
       expect(encounterLog.data?['encounterType'], 'species');
     });
 
-    test('first visit with a user commits unidentified find before showing encounter',
+    test(
+        'first visit with a user commits unidentified find before showing encounter',
         () async {
       final notifier = container.read(encounterProvider.notifier);
 
@@ -197,7 +198,103 @@ void main() {
           state.currentEncounter!.displayName);
       expect(testObs.eventNames, contains('discovery.result_resolved'));
       expect(testObs.eventNames, contains('discovery.acquisition_committed'));
+      expect(testObs.eventNames, contains('discovery.reward_presented'));
       expect(testObs.eventNames, contains('map.encounter_triggered'));
+    });
+
+    test('continuing reward starts card flight and logs Pack impact', () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+
+      notifier.continueDiscoveryReward();
+
+      final state = container.read(encounterProvider);
+      expect(state.currentEncounter, isNull);
+      expect(state.flyingReward, isNotNull);
+      expect(state.packImpactCount, 1);
+      expect(testObs.eventNames, contains('discovery.reward_continued'));
+      expect(testObs.eventNames, contains('pack.reward_impact'));
+    });
+
+    test('queued rewards wait until the active card flight completes',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+      await notifier.onCellEntered(
+        cellId: 'cell_456',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_07',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-2',
+      );
+
+      var state = container.read(encounterProvider);
+      expect(state.currentEncounter?.cellId, 'cell_123');
+      expect(state.queuedRewards, hasLength(1));
+      expect(state.queuedRewards.single.cellId, 'cell_456');
+      expect(testObs.eventNames, contains('discovery.reward_queued'));
+
+      notifier.continueDiscoveryReward();
+      state = container.read(encounterProvider);
+      expect(state.currentEncounter, isNull);
+      expect(state.flyingReward?.cellId, 'cell_123');
+      expect(state.queuedRewards, hasLength(1));
+
+      notifier.completeRewardFlight();
+      state = container.read(encounterProvider);
+      expect(state.flyingReward, isNull);
+      expect(state.currentEncounter?.cellId, 'cell_456');
+      expect(state.queuedRewards, isEmpty);
+    });
+
+    test('reward continuation helpers are no-ops without active rewards', () {
+      final notifier = container.read(encounterProvider.notifier);
+
+      notifier.continueDiscoveryReward();
+      notifier.completeRewardFlight();
+
+      final state = container.read(encounterProvider);
+      expect(state.currentEncounter, isNull);
+      expect(state.flyingReward, isNull);
+      expect(state.queuedRewards, isEmpty);
+      expect(state.packImpactCount, 0);
+      expect(testObs.eventNames, isNot(contains('discovery.reward_continued')));
+      expect(testObs.eventNames, isNot(contains('pack.reward_impact')));
+    });
+
+    test('completed reward flight clears when there is no queued reward',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.onCellEntered(
+        cellId: 'cell_123',
+        isFirstVisit: true,
+        seed: 'daily_seed_2026_04_06',
+        userId: 'user-123',
+        mapCellEntryId: 'entry-1',
+      );
+      notifier.continueDiscoveryReward();
+      notifier.completeRewardFlight();
+
+      final state = container.read(encounterProvider);
+      expect(state.currentEncounter, isNull);
+      expect(state.flyingReward, isNull);
+      expect(state.queuedRewards, isEmpty);
+      expect(testObs.eventNames, contains('discovery.reward_flight_completed'));
     });
 
     test('same map-cell entry id is acquired exactly once', () async {
@@ -350,6 +447,7 @@ void main() {
       final copied = state.copyWith();
 
       expect(copied.currentEncounter, encounter);
+      expect(copied.hasActiveReward, isTrue);
     });
 
     test('copyWith can clear encounter', () {
@@ -362,7 +460,7 @@ void main() {
       );
 
       final state = EncounterState(currentEncounter: encounter);
-      final copied = state.copyWith(clearEncounter: true);
+      final copied = state.copyWith(currentEncounter: null);
 
       expect(copied.currentEncounter, isNull);
     });

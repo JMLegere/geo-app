@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { Given, When, Then, Before } = require('@cucumber/cucumber');
 
 const HIDDEN_SPECIES_NAME = 'Amberwing Warbler';
+const LIVING_SPECIMEN_CATEGORIES = new Set(['fauna', 'flora', 'fungi']);
 
 Before(function () {
   this.entry = undefined;
@@ -14,6 +15,19 @@ Before(function () {
   this.packView = undefined;
   this.packSearchResults = undefined;
   this.packDetail = undefined;
+  this.rewardCategory = 'fauna';
+  this.rewardSurface = {
+    active: false,
+    kind: null,
+    style: null,
+    clickAnywhereAdvances: false,
+    control: null,
+  };
+  this.rewardQueue = [];
+  this.nextCommittedReward = undefined;
+  this.cardFlight = undefined;
+  this.packTarget = { reaction: 'none', forcedOpen: false };
+  this.liveMapControl = 'map';
 });
 
 function createEntry({ firstVisit = true } = {}) {
@@ -27,14 +41,21 @@ function createEntry({ firstVisit = true } = {}) {
   };
 }
 
-function createUnidentifiedResult(world) {
+function createLivingSpecimenResult(world, { category = world.rewardCategory ?? 'fauna' } = {}) {
   assert.ok(world.entry, 'Discovery needs a map-cell entry correlation id.');
+  assert.ok(
+    LIVING_SPECIMEN_CATEGORIES.has(category),
+    `Expected a living specimen reward category, got ${category}.`,
+  );
+  world.rewardCategory = category;
   world.discoveryResult = {
-    resultId: 'fauna-unidentified-1',
-    type: 'unidentified_fauna',
+    resultId: `${category}-unidentified-1`,
+    type: `unidentified_${category}`,
     mapCellEntryId: world.entry.mapCellEntryId,
-    unidentifiedCategory: 'fauna',
+    livingSpecimenCategory: category,
+    unidentifiedCategory: category,
     rarity: 'common',
+    rewardEligible: true,
     acquisitionEligible: true,
     hiddenSpeciesName: HIDDEN_SPECIES_NAME,
   };
@@ -42,23 +63,23 @@ function createUnidentifiedResult(world) {
     event: 'discovery.result_resolved',
     mapCellEntryId: world.entry.mapCellEntryId,
     discoveryResultId: world.discoveryResult.resultId,
-    unidentifiedCategory: world.discoveryResult.unidentifiedCategory,
+    livingSpecimenCategory: world.discoveryResult.livingSpecimenCategory,
   });
   return world.discoveryResult;
 }
 
 function acquireUnidentified(world) {
-  const result = world.discoveryResult ?? createUnidentifiedResult(world);
+  const result = world.discoveryResult ?? createLivingSpecimenResult(world);
   const item = {
-    id: 'owned-item-1',
+    id: `owned-item-${world.pack.length + 1}`,
     itemType: 'unidentified',
-    category: result.unidentifiedCategory,
+    category: result.livingSpecimenCategory,
     rarity: result.rarity,
     acquiredAt: world.entry.occurredAt,
     acquiredInCellId: world.entry.enteredCellId,
     mapCellEntryId: world.entry.mapCellEntryId,
     hiddenSpeciesName: result.hiddenSpeciesName,
-    displayName: 'Unidentified fauna specimen',
+    displayName: `Unidentified ${result.livingSpecimenCategory} specimen`,
     identificationState: 'unidentified',
   };
   world.pack.push(item);
@@ -71,20 +92,78 @@ function acquireUnidentified(world) {
     mapCellEntryId: item.mapCellEntryId,
     discoveryResultId: result.resultId,
     ownedItemId: item.id,
-    unidentifiedCategory: item.category,
+    livingSpecimenCategory: item.category,
   });
   return item;
 }
 
-function acknowledge(world) {
-  assert.ok(world.discoveryResult, 'Cannot acknowledge before Discovery resolves a result.');
-  world.overlayDismissed = true;
+function prepareRewardPresentation(world) {
+  if (!world.discoveryResult?.ownedItemId) {
+    acquireUnidentified(world);
+  }
+
+  world.rewardSurface = {
+    active: true,
+    kind: 'reward_modal',
+    style: 'slay_the_spire_card_reward',
+    clickAnywhereAdvances: true,
+    control: 'continue',
+  };
   world.telemetry.push({
-    event: 'discovery.result_acknowledged',
+    event: 'map.encounter_triggered',
     mapCellEntryId: world.discoveryResult.mapCellEntryId,
     discoveryResultId: world.discoveryResult.resultId,
     ownedItemId: world.discoveryResult.ownedItemId,
   });
+}
+
+function acknowledge(world) {
+  continueReward(world);
+}
+
+function continueReward(world) {
+  assert.ok(world.discoveryResult, 'Cannot continue before Discovery resolves a result.');
+  world.lastAdvanceInput = 'click_anywhere';
+  world.overlayDismissed = true;
+  world.rewardSurface.active = false;
+  world.cardFlight = {
+    active: true,
+    target: 'pack',
+    style: 'slay_the_spire_arc',
+  };
+  world.packTarget = { reaction: 'shake', forcedOpen: false };
+  world.telemetry.push({
+    event: 'discovery.reward_continued',
+    mapCellEntryId: world.discoveryResult.mapCellEntryId,
+    discoveryResultId: world.discoveryResult.resultId,
+    ownedItemId: world.discoveryResult.ownedItemId,
+    livingSpecimenCategory: world.discoveryResult.livingSpecimenCategory,
+    action: 'continue-discovery-reward',
+  });
+  world.telemetry.push({
+    event: 'pack.reward_impact',
+    mapCellEntryId: world.discoveryResult.mapCellEntryId,
+    discoveryResultId: world.discoveryResult.resultId,
+    ownedItemId: world.discoveryResult.ownedItemId,
+    livingSpecimenCategory: world.discoveryResult.livingSpecimenCategory,
+  });
+}
+
+function queueSecondReward(world) {
+  const queuedEntry = createEntry({ firstVisit: true });
+  const queuedResult = {
+    mapCellEntryId: 'entry-2',
+    resultId: 'fauna-unidentified-2',
+    livingSpecimenCategory: 'fauna',
+    hiddenSpeciesName: 'Red Fox',
+    rarity: 'common',
+    ownedItemId: 'owned-item-2',
+  };
+  world.nextCommittedReward = {
+    entry: queuedEntry,
+    result: queuedResult,
+  };
+  world.rewardQueue = [world.nextCommittedReward];
 }
 
 function visiblePackItem(item) {
@@ -95,9 +174,10 @@ function visiblePackItem(item) {
       searchableText: `${item.speciesName} ${item.category} ${item.rarity}`,
     };
   }
+
   return {
     ...item,
-    displayName: 'Unidentified fauna specimen',
+    displayName: `Unidentified ${item.category} specimen`,
     searchableText: `${item.category} ${item.rarity} unidentified specimen`,
     speciesName: undefined,
   };
@@ -107,27 +187,33 @@ Given('Map has emitted one eligible map-cell entry event', function () {
   this.entry = createEntry({ firstVisit: true });
 });
 
-Given('the entry event includes entered cell, first-or-revisit status, timestamp, and territory context', function () {
-  assert.ok(this.entry.enteredCellId);
-  assert.equal(typeof this.entry.isFirstVisit, 'boolean');
-  assert.ok(this.entry.occurredAt);
-  assert.ok(this.entry.territoryContext);
-});
+Given(
+  'the entry event includes entered cell, first-or-revisit status, timestamp, and territory context',
+  function () {
+    assert.ok(this.entry.enteredCellId);
+    assert.equal(typeof this.entry.isFirstVisit, 'boolean');
+    assert.ok(this.entry.occurredAt);
+    assert.ok(this.entry.territoryContext);
+  },
+);
 
 When('Discovery resolves the entry', function () {
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
 });
 
 Then('the resolver should keep the Map entry identity as its correlation id', function () {
   assert.equal(this.discoveryResult.mapCellEntryId, this.entry.mapCellEntryId);
 });
 
-Then('the resolver should add only Discovery outcome fields such as result type, unidentified category, rarity, and acquisition eligibility', function () {
-  assert.equal(this.discoveryResult.type, 'unidentified_fauna');
-  assert.equal(this.discoveryResult.unidentifiedCategory, 'fauna');
-  assert.ok(this.discoveryResult.rarity);
-  assert.equal(this.discoveryResult.acquisitionEligible, true);
-});
+Then(
+  'the resolver should add only Discovery outcome fields such as result type, living specimen category, rarity, and reward eligibility',
+  function () {
+    assert.match(this.discoveryResult.type, /^unidentified_/);
+    assert.ok(LIVING_SPECIMEN_CATEGORIES.has(this.discoveryResult.livingSpecimenCategory));
+    assert.ok(this.discoveryResult.rarity);
+    assert.equal(this.discoveryResult.rewardEligible, true);
+  },
+);
 
 Then('the resolver should not mutate fog, visits, or map-cell entry state', function () {
   assert.equal(this.discoveryResult.fogState, undefined);
@@ -135,13 +221,17 @@ Then('the resolver should not mutate fog, visits, or map-cell entry state', func
   assert.equal(this.discoveryResult.enteredCellId, undefined);
 });
 
-Given('a first-visit map-cell entry resolves to an eligible unidentified fauna find', function () {
+Given('a first-visit map-cell entry resolves to an eligible living specimen reward', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
 });
 
-When('Discovery presents the result as acquired', function () {
-  acquireUnidentified(this);
+Given('the reward category is fauna, flora, or fungi', function () {
+  assert.ok(LIVING_SPECIMEN_CATEGORIES.has(this.discoveryResult.livingSpecimenCategory));
+});
+
+When('Discovery prepares the reward presentation', function () {
+  prepareRewardPresentation(this);
 });
 
 Then('the owned unidentified find should already be committed to Pack state', function () {
@@ -149,39 +239,42 @@ Then('the owned unidentified find should already be committed to Pack state', fu
   assert.equal(this.pack[0].identificationState, 'unidentified');
 });
 
-Then('the result should include the owned item id, unidentified category, and acquisition cell id', function () {
-  assert.ok(this.discoveryResult.ownedItemId);
-  assert.equal(this.discoveryResult.unidentifiedCategory, 'fauna');
-  assert.equal(this.pack[0].acquiredInCellId, this.entry.enteredCellId);
+Then(
+  'the reward should include the owned item id, living specimen category, and acquisition cell id',
+  function () {
+    assert.ok(this.discoveryResult.ownedItemId);
+    assert.ok(LIVING_SPECIMEN_CATEGORIES.has(this.discoveryResult.livingSpecimenCategory));
+    assert.equal(this.pack[0].acquiredInCellId, this.entry.enteredCellId);
+  },
+);
+
+Then('the reward modal should present a Slay the Spire-style unidentified card moment', function () {
+  assert.equal(this.rewardSurface.kind, 'reward_modal');
+  assert.equal(this.rewardSurface.style, 'slay_the_spire_card_reward');
 });
 
-Then('the player-facing message may say an unidentified specimen was found or added to the Pack', function () {
-  const item = visiblePackItem(this.pack[0]);
-  assert.match(item.displayName, /Unidentified fauna specimen/);
-});
-
-Then('it should not reveal the fauna species name before Identification', function () {
+Then('it should not reveal the specimen display name before Identification', function () {
   const item = visiblePackItem(this.pack[0]);
   assert.notEqual(item.displayName, HIDDEN_SPECIES_NAME);
   assert.equal(item.speciesName, undefined);
 });
 
-Given('a first-visit map-cell entry resolves to fauna', function () {
+Given('a first-visit map-cell entry resolves to a living specimen', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
 });
 
 When('Discovery commits acquisition', function () {
   acquireUnidentified(this);
 });
 
-Then('Pack should receive an owned unidentified find rather than a known species card', function () {
+Then('Pack should receive an owned unidentified find rather than a known specimen card', function () {
   assert.equal(this.pack.length, 1);
   assert.equal(this.pack[0].identificationState, 'unidentified');
   assert.notEqual(visiblePackItem(this.pack[0]).displayName, HIDDEN_SPECIES_NAME);
 });
 
-Then('no player-facing Discovery copy should reveal the species display name', function () {
+Then('no player-facing Discovery reward copy should reveal the specimen display name', function () {
   const discoveryCopy = `You found ${visiblePackItem(this.pack[0]).displayName}`;
   assert.doesNotMatch(discoveryCopy, new RegExp(HIDDEN_SPECIES_NAME));
 });
@@ -190,9 +283,9 @@ Then('Identification should be required before Pack treats the specimen as known
   assert.equal(this.pack[0].identificationState, 'unidentified');
 });
 
-Given('a map-cell entry resolves to an eligible unidentified find', function () {
+Given('a map-cell entry resolves to an eligible living specimen reward', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
 });
 
 When('Pack acquisition cannot be committed', function () {
@@ -204,9 +297,12 @@ When('Pack acquisition cannot be committed', function () {
   });
 });
 
-Then('Discovery should not tell the player that ownership is complete', function () {
-  assert.equal(this.pack.length, 0);
-  assert.equal(this.discoveryResult.ownedItemId, undefined);
+Then('Discovery should not open the reward modal', function () {
+  assert.equal(this.rewardSurface.active, false);
+});
+
+Then('Discovery should not animate a card into the Pack', function () {
+  assert.equal(this.cardFlight, undefined);
 });
 
 Then('the failure should be observable with the map-cell entry correlation id', function () {
@@ -223,12 +319,14 @@ Given('a player re-enters a previously visited map cell', function () {
   this.entry = createEntry({ firstVisit: false });
 });
 
-When('the Discovery resolver finds no daily or contextual result', function () {
+When('the Discovery resolver finds no daily or contextual reward', function () {
   this.discoveryResult = undefined;
+  this.rewardSurface.active = false;
 });
 
-Then('no discovery result should be shown', function () {
+Then('no discovery reward should be shown', function () {
   assert.equal(this.discoveryResult, undefined);
+  assert.equal(this.rewardSurface.active, false);
 });
 
 Then('Pack state should remain unchanged', function () {
@@ -240,44 +338,97 @@ Then('Map entry feedback may still acknowledge the revisit as exploration contin
   assert.equal(this.mapFeedback.kind, 'revisit');
 });
 
-Given('a Discovery unidentified result is resolved from a map-cell entry', function () {
+Given('one committed living specimen reward modal is already active', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
-});
-
-When('acquisition succeeds and the player acknowledges the result', function () {
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
-  acknowledge(this);
+  prepareRewardPresentation(this);
 });
 
-Then('telemetry should link map-cell entry id, discovery result id, owned item id, unidentified category, and acknowledgement action', function () {
-  const committed = this.telemetry.find((event) => event.event === 'discovery.acquisition_committed');
-  const acknowledged = this.telemetry.find((event) => event.event === 'discovery.result_acknowledged');
-  assert.ok(committed);
-  assert.ok(acknowledged);
-  assert.equal(committed.mapCellEntryId, this.entry.mapCellEntryId);
-  assert.equal(committed.discoveryResultId, this.discoveryResult.resultId);
-  assert.equal(committed.ownedItemId, this.discoveryResult.ownedItemId);
-  assert.equal(committed.unidentifiedCategory, 'fauna');
-  assert.equal(acknowledged.ownedItemId, this.discoveryResult.ownedItemId);
+Given(
+  'another eligible living specimen reward is committed before the first reward completes',
+  function () {
+    queueSecondReward(this);
+  },
+);
+
+When('Discovery receives the second committed reward', function () {
+  assert.equal(this.rewardQueue.length, 1);
 });
+
+Then('the second reward should be queued behind the active reward', function () {
+  assert.equal(this.rewardQueue.length, 1);
+});
+
+Then('only one reward modal should be visible at a time', function () {
+  assert.equal(this.rewardSurface.kind, 'reward_modal');
+  assert.equal(this.rewardSurface.active, true);
+});
+
+Then('queued rewards should play one at a time without dropping ownership', function () {
+  assert.ok(this.nextCommittedReward);
+  assert.equal(this.rewardQueue[0].result.ownedItemId, this.nextCommittedReward.result.ownedItemId);
+});
+
+Given('a Discovery living specimen reward is resolved from a map-cell entry', function () {
+  this.entry = createEntry({ firstVisit: true });
+  createLivingSpecimenResult(this);
+});
+
+When('acquisition succeeds and the player continues the reward', function () {
+  acquireUnidentified(this);
+  prepareRewardPresentation(this);
+  continueReward(this);
+});
+
+Then(
+  'telemetry should link map-cell entry id, discovery result id, owned item id, living specimen category, continue action, and Pack impact',
+  function () {
+    const committed = this.telemetry.find((event) => event.event === 'discovery.acquisition_committed');
+    const continued = this.telemetry.find((event) => event.event === 'discovery.reward_continued');
+    const impacted = this.telemetry.find((event) => event.event === 'pack.reward_impact');
+    assert.ok(committed);
+    assert.ok(continued);
+    assert.ok(impacted);
+    assert.equal(committed.mapCellEntryId, this.entry.mapCellEntryId);
+    assert.equal(committed.discoveryResultId, this.discoveryResult.resultId);
+    assert.equal(committed.ownedItemId, this.discoveryResult.ownedItemId);
+    assert.equal(committed.livingSpecimenCategory, this.discoveryResult.livingSpecimenCategory);
+    assert.equal(continued.ownedItemId, this.discoveryResult.ownedItemId);
+    assert.equal(impacted.ownedItemId, this.discoveryResult.ownedItemId);
+  },
+);
 
 Then('each step should remain queryable without relying on player-visible copy', function () {
   assert.ok(this.telemetry.every((event) => event.mapCellEntryId));
 });
 
-Given('a discovery result has been resolved and any eligible unidentified acquisition has completed', function () {
+Given('a committed living specimen reward modal is active', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
+  prepareRewardPresentation(this);
 });
 
-When('the player acknowledges the discovery result', function () {
-  acknowledge(this);
+When('the player clicks anywhere to continue the discovery reward', function () {
+  continueReward(this);
 });
 
-Then('the result should leave the active overlay', function () {
+Then('the reward card should fly to the Pack target', function () {
+  assert.deepEqual(this.cardFlight, {
+    active: true,
+    target: 'pack',
+    style: 'slay_the_spire_arc',
+  });
+});
+
+Then('the Pack target should react with a small impact shake when the card lands', function () {
+  assert.equal(this.packTarget.reaction, 'shake');
+});
+
+Then('the reward modal should leave the active overlay', function () {
   assert.equal(this.overlayDismissed, true);
+  assert.equal(this.rewardSurface.active, false);
 });
 
 Then('the already-owned unidentified find should remain visible through Pack', function () {
@@ -299,25 +450,32 @@ Given('Identification belongs to the Exploration-Discovery Lifecycle capability'
 
 When('the player has an unidentified find acquired from map-cell entry', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
 });
 
-Then('it should specify unidentified card state, hold-to-reveal interaction, reveal theater, deterministic trait results, and Pack state updates', function () {
-  assert.equal(this.pack[0].identificationState, 'unidentified');
-  assert.equal('hold-to-reveal', 'hold-to-reveal');
-  assert.equal('deterministic-traits', 'deterministic-traits');
-});
+Then(
+  'it should specify unidentified card state, hold-to-reveal interaction, reveal theater, deterministic trait results, and Pack state updates',
+  function () {
+    assert.equal(this.pack[0].identificationState, 'unidentified');
+    assert.equal('hold-to-reveal', 'hold-to-reveal');
+    assert.equal('deterministic-traits', 'deterministic-traits');
+  },
+);
 
 Given('Discovery has acquired an unidentified fauna find', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this, { category: 'fauna' });
   acquireUnidentified(this);
 });
 
 When('the result is acknowledged', function () {
   acknowledge(this);
 });
+When('the player continues the discovery reward', function () {
+  continueReward(this);
+});
+
 
 Then('the find should be visible in Pack as unidentified', function () {
   assert.equal(this.pack[0].identificationState, 'unidentified');
@@ -325,7 +483,10 @@ Then('the find should be visible in Pack as unidentified', function () {
 
 Then('Pack search should not reveal the species name before Identification', function () {
   const visibleItems = this.pack.map(visiblePackItem);
-  assert.equal(visibleItems.some((item) => item.searchableText.includes(HIDDEN_SPECIES_NAME)), false);
+  assert.equal(
+    visibleItems.some((item) => item.searchableText.includes(HIDDEN_SPECIES_NAME)),
+    false,
+  );
 });
 
 Then('Identification should be required before the specimen becomes a known fauna find', function () {
@@ -334,13 +495,13 @@ Then('Identification should be required before the specimen becomes a known faun
 
 Given('the player has an eligible unidentified find in Pack', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
 });
 
 Given('the player has an eligible unidentified find', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
 });
 
@@ -366,7 +527,7 @@ Then('the reveal should keep the same owned item identity rather than creating a
 
 Given('an identification reveal is ready', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
   this.identification = { itemId: this.pack[0].id, state: 'started' };
 });
@@ -389,15 +550,18 @@ Then('the deterministic identification result, traits, and known-state transitio
 When('the player opens the Pack', function () {
   if (this.pack.length === 0) {
     this.entry = createEntry({ firstVisit: true });
-    createUnidentifiedResult(this);
+    createLivingSpecimenResult(this);
     acquireUnidentified(this);
   }
   this.packView = this.pack.map(visiblePackItem);
 });
 
-Then('it should show owned unidentified finds, identified finds, domain filters, find cards, details, and acquisition history', function () {
-  assert.ok(this.packView.every((item) => item.acquiredAt && item.acquiredInCellId));
-});
+Then(
+  'it should show owned unidentified finds, identified finds, domain filters, find cards, details, and acquisition history',
+  function () {
+    assert.ok(this.packView.every((item) => item.acquiredAt && item.acquiredInCellId));
+  },
+);
 
 Then('opening or reading the Pack should not mutate ownership state', function () {
   const count = this.pack.length;
@@ -407,11 +571,16 @@ Then('opening or reading the Pack should not mutate ownership state', function (
 
 Given('Discovery has committed an owned unidentified find for a map-cell entry', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
 });
 
-When('the player opens the Pack after the result', function () {
+Given('the Discovery reward card has landed on the Pack target', function () {
+  this.packTarget = { reaction: 'none', forcedOpen: false };
+  this.cardFlight = { active: false, target: 'pack', style: 'none' };
+});
+
+When('the player opens the Pack after the reward', function () {
   this.packView = this.pack.map(visiblePackItem);
 });
 
@@ -422,29 +591,25 @@ Then('the owned unidentified find should be visible without a reload-only depend
 
 Then('the unidentified find should carry its category, rarity, acquisition time, and acquisition map cell', function () {
   const item = this.packView[0];
-  assert.equal(item.category, 'fauna');
+  assert.ok(LIVING_SPECIMEN_CATEGORIES.has(item.category));
   assert.ok(item.rarity);
   assert.ok(item.acquiredAt);
   assert.ok(item.acquiredInCellId);
 });
 
-Then('it should not reveal the species display name before Identification', function () {
-  assert.notEqual(this.packView[0].displayName, HIDDEN_SPECIES_NAME);
-});
-
-Given('the player acquired an unidentified fauna find from Discovery', function () {
+Given('the player acquired an unidentified living specimen find from Discovery', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
 });
 
-When('the player searches the Pack for the hidden species name', function () {
+When('the player searches the Pack for the hidden specimen name', function () {
   this.packSearchResults = this.pack
     .map(visiblePackItem)
     .filter((item) => item.searchableText.includes(HIDDEN_SPECIES_NAME));
 });
 
-Then('that species name should not appear before Identification', function () {
+Then('that specimen name should not appear before Identification', function () {
   assert.deepEqual(this.packSearchResults, []);
 });
 
@@ -455,9 +620,34 @@ Then('the unidentified find should remain searchable only by allowed unidentifie
   assert.equal(allowedResults.length, 1);
 });
 
+Given('a Discovery living specimen reward card is flying toward the Pack target', function () {
+  this.cardFlight = {
+    active: true,
+    target: 'pack',
+    style: 'slay_the_spire_arc',
+  };
+});
+
+When('the reward card lands on the Pack target', function () {
+  this.packTarget = { reaction: 'shake', forcedOpen: false };
+  this.cardFlight.active = false;
+});
+Then('the Pack target should perform a small impact shake', function () {
+  assert.equal(this.packTarget.reaction, 'shake');
+});
+
+
+Then('the app should not force-open the Pack tab', function () {
+  assert.equal(this.packTarget.forcedOpen, false);
+});
+
+Then('the player should return to live map control', function () {
+  assert.equal(this.liveMapControl, 'map');
+});
+
 Given('an owned unidentified find or identified find is visible in the Pack', function () {
   this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
+  createLivingSpecimenResult(this);
   acquireUnidentified(this);
   this.packView = this.pack.map(visiblePackItem);
 });
@@ -480,30 +670,17 @@ Then('the detail should identify the map cell or place where the item was acquir
   assert.equal(this.packDetail.acquiredInCellId, this.entry.enteredCellId);
 });
 
-Then('inspection should not duplicate the item or replay the discovery result', function () {
+Then('inspection should not duplicate the item or replay the discovery reward', function () {
   assert.equal(this.pack.length, 1);
-});
-
-Given('a discovery result contains an eligible unidentified find', function () {
-  this.entry = createEntry({ firstVisit: true });
-  createUnidentifiedResult(this);
-});
-
-When('the player collects the find', function () {
-  acquireUnidentified(this);
-});
-
-Then("the unidentified find should be added to the player's owned Pack state exactly once", function () {
-  assert.equal(this.pack.length, 1);
-});
-
-Given('the player has access to the Pack', function () {
-  this.hasPackAccess = true;
 });
 
 Then('owned unidentified finds and identified finds should be visible without changing find state', function () {
   assert.ok(this.hasPackAccess);
   assert.ok(this.packView.length >= 1);
+});
+
+Given('the player has access to the Pack', function () {
+  this.hasPackAccess = true;
 });
 
 Then('the Pack should show details, acquisition history, identification state, and available handoffs', function () {

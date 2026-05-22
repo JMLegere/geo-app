@@ -30,9 +30,8 @@ abstract final class PlayerActions {
   static const PlayerActionId viewArchaeologyGuide = 'view-archaeology-guide';
   static const PlayerActionId inspectArtifactRecord = 'inspect-artifact-record';
 
-  static const PlayerActionId acknowledgeDiscoveryResult =
-      'acknowledge-discovery-result';
-  static const PlayerActionId collectFind = 'collect-find';
+  static const PlayerActionId continueDiscoveryReward =
+      'continue-discovery-reward';
   static const PlayerActionId openPack = 'open-pack';
   static const PlayerActionId inspectPackFind = 'inspect-pack-find';
   static const PlayerActionId identifyUnidentifiedFind =
@@ -95,8 +94,7 @@ abstract final class PlayerActions {
     inspectTraitInheritance,
     viewArchaeologyGuide,
     inspectArtifactRecord,
-    acknowledgeDiscoveryResult,
-    collectFind,
+    continueDiscoveryReward,
     openPack,
     inspectPackFind,
     identifyUnidentifiedFind,

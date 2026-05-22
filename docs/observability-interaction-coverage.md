@@ -19,5 +19,5 @@
 | lib/features/profile/presentation/screens/settings_screen.dart:120 | ObservableInteraction.wrapVoidCallback | confirm_sign_out | action_type,screen_name,widget_name |
 | lib/features/map/presentation/screens/map_root_screen.dart:72 | ObservableInteraction.wrapScaleEnd | pinch_level_change | action_type,screen_name,widget_name,gesture_direction |
 | lib/features/map/presentation/screens/map_screen.dart:628 | ObservableInteraction.wrapTapUp | cell_overlay_tap | action_type,screen_name,widget_name |
-| lib/features/map/presentation/screens/map_screen.dart:706 | ObservableInteraction.wrapVoidCallback | toast_dismiss | action_type,screen_name,widget_name |
+| lib/features/map/presentation/screens/map_screen.dart:706 | ObservableInteraction.wrapVoidCallback | continue_discovery_reward | action_type,screen_name,widget_name |
 | lib/features/map/presentation/widgets/hierarchy_header.dart:93 | ObservableInteraction.wrapVoidCallback | back_tap | action_type,screen_name,widget_name |

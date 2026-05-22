@@ -22,16 +22,38 @@ final encounterProvider = NotifierProvider<EncounterNotifier, EncounterState>(
   EncounterNotifier.new,
 );
 
+const _encounterStateUnset = Object();
+
 class EncounterState {
-  const EncounterState({this.currentEncounter});
+  const EncounterState({
+    this.currentEncounter,
+    this.flyingReward,
+    this.queuedRewards = const [],
+    this.packImpactCount = 0,
+  });
 
   final Encounter? currentEncounter;
+  final Encounter? flyingReward;
+  final List<Encounter> queuedRewards;
+  final int packImpactCount;
 
-  EncounterState copyWith(
-      {Encounter? currentEncounter, bool clearEncounter = false}) {
+  bool get hasActiveReward => currentEncounter != null || flyingReward != null;
+
+  EncounterState copyWith({
+    Object? currentEncounter = _encounterStateUnset,
+    Object? flyingReward = _encounterStateUnset,
+    List<Encounter>? queuedRewards,
+    int? packImpactCount,
+  }) {
     return EncounterState(
-      currentEncounter:
-          clearEncounter ? null : (currentEncounter ?? this.currentEncounter),
+      currentEncounter: identical(currentEncounter, _encounterStateUnset)
+          ? this.currentEncounter
+          : currentEncounter as Encounter?,
+      flyingReward: identical(flyingReward, _encounterStateUnset)
+          ? this.flyingReward
+          : flyingReward as Encounter?,
+      queuedRewards: queuedRewards ?? this.queuedRewards,
+      packImpactCount: packImpactCount ?? this.packImpactCount,
     );
   }
 }
@@ -94,8 +116,9 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         'result_type': encounter.type == EncounterType.species
             ? 'unidentified_fauna'
             : encounter.type.name,
-        'unidentified_category':
-            encounter.type == EncounterType.species ? ItemCategory.fauna.name : null,
+        'unidentified_category': encounter.type == EncounterType.species
+            ? ItemCategory.fauna.name
+            : null,
       },
     );
 
@@ -153,6 +176,36 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
     }
 
     _processedMapCellEntryIds.add(effectiveMapCellEntryId);
+    final isQueued = state.hasActiveReward;
+    if (isQueued) {
+      final queued = [...state.queuedRewards, resolvedEncounter];
+      obs.log(
+        'discovery.reward_queued',
+        category,
+        data: {
+          'cell_id': cellId,
+          'map_cell_entry_id': effectiveMapCellEntryId,
+          'result_id': resolvedEncounter.speciesId,
+          'owned_item_id': resolvedEncounter.acquiredItem?.id,
+          'queue_depth': queued.length,
+        },
+      );
+      transition(
+        state.copyWith(queuedRewards: queued),
+        'discovery.reward_queued',
+        data: {
+          'cellId': cellId,
+          'map_cell_entry_id': effectiveMapCellEntryId,
+          'encounterType': resolvedEncounter.type.name,
+          'speciesId': resolvedEncounter.speciesId,
+          'owned_item_id': resolvedEncounter.acquiredItem?.id,
+          'queue_depth': queued.length,
+        },
+      );
+      return;
+    }
+
+    _logRewardPresented(resolvedEncounter, effectiveMapCellEntryId);
     transition(
       state.copyWith(currentEncounter: resolvedEncounter),
       'map.encounter_triggered',
@@ -168,17 +221,93 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
     );
   }
 
-  /// Dismiss the current encounter (player clears popup/toast)
+  /// Continue the active discovery reward into the Pack animation.
+  void continueDiscoveryReward() {
+    final reward = state.currentEncounter;
+    if (reward == null) return;
+
+    obs.log(
+      'discovery.reward_continued',
+      category,
+      data: _rewardData(reward),
+    );
+    obs.log(
+      'pack.reward_impact',
+      'pack',
+      data: _rewardData(reward),
+    );
+    transition(
+      state.copyWith(
+        currentEncounter: null,
+        flyingReward: reward,
+        packImpactCount: state.packImpactCount + 1,
+      ),
+      'discovery.reward_continued',
+      data: _rewardData(reward),
+    );
+  }
+
+  /// Clear the completed card flight and present the next queued reward, if any.
+  void completeRewardFlight() {
+    if (state.flyingReward == null) return;
+
+    final nextReward =
+        state.queuedRewards.isEmpty ? null : state.queuedRewards.first;
+    final remainingQueue = state.queuedRewards.isEmpty
+        ? const <Encounter>[]
+        : state.queuedRewards.sublist(1);
+    if (nextReward != null) {
+      _logRewardPresented(nextReward, null);
+    }
+    transition(
+      state.copyWith(
+        flyingReward: null,
+        currentEncounter: nextReward,
+        queuedRewards: remainingQueue,
+      ),
+      'discovery.reward_flight_completed',
+      data: {
+        'completed_result_id': state.flyingReward!.speciesId,
+        'next_result_id': nextReward?.speciesId,
+        'queue_depth': remainingQueue.length,
+      },
+    );
+  }
+
+  /// Dismiss the current encounter (legacy/test helper; reward UI should continue).
   void dismissEncounter() {
     if (state.currentEncounter != null) {
       final cellId = state.currentEncounter!.cellId;
       transition(
-        state.copyWith(clearEncounter: true),
+        state.copyWith(currentEncounter: null),
         'map.encounter_dismissed',
         data: {'cellId': cellId},
       );
     }
   }
+
+  void _logRewardPresented(Encounter reward, String? mapCellEntryId) {
+    obs.log(
+      'discovery.reward_presented',
+      category,
+      data: {
+        ..._rewardData(reward),
+        if (mapCellEntryId != null) 'map_cell_entry_id': mapCellEntryId,
+      },
+    );
+  }
+
+  Map<String, dynamic> _rewardData(Encounter reward) => {
+        'cell_id': reward.cellId,
+        'result_id': reward.speciesId,
+        'result_type': reward.type == EncounterType.species
+            ? 'unidentified_fauna'
+            : reward.type.name,
+        'unidentified_category': reward.type == EncounterType.species
+            ? ItemCategory.fauna.name
+            : null,
+        'owned_item_id': reward.acquiredItem?.id,
+      };
 
   /// Get current daily seed (in real impl, this would be server-synced)
   String _getDailySeed() {

@@ -139,19 +139,18 @@ export const userActionWorkflows = {
 
   discoveryOwnership: workflow({
     id: playerActionWorkflows.discoveryOwnership,
-    label: "Discovery result to unidentified find lifecycle",
-    initialState: "result-available",
+    label: "Committed discovery reward to unidentified find lifecycle",
+    initialState: "reward-modal-active",
     states: [
       "no-result",
-      "result-available",
-      "result-acknowledged",
+      "reward-modal-active",
+      "reward-queued",
       "unidentified",
       "identification-started",
       "identified",
     ],
     events: [
-      playerActions.acknowledgeDiscoveryResult,
-      playerActions.collectFind,
+      playerActions.continueDiscoveryReward,
       playerActions.openPack,
       playerActions.inspectPackFind,
       playerActions.identifyUnidentifiedFind,
@@ -159,13 +158,13 @@ export const userActionWorkflows = {
     ],
     transitions: [
       {
-        from: "result-available",
-        action: playerActions.acknowledgeDiscoveryResult,
-        to: "result-acknowledged",
+        from: "reward-modal-active",
+        action: playerActions.continueDiscoveryReward,
+        to: "unidentified",
       },
       {
-        from: "result-acknowledged",
-        action: playerActions.collectFind,
+        from: "reward-queued",
+        action: playerActions.continueDiscoveryReward,
         to: "unidentified",
       },
       {
@@ -193,18 +192,18 @@ export const userActionWorkflows = {
     forbiddenTransitions: [
       {
         state: "no-result",
-        action: playerActions.acknowledgeDiscoveryResult,
-        reason: "There is no discovery result to acknowledge before the resolver creates one.",
+        action: playerActions.continueDiscoveryReward,
+        reason: "There is no committed living-specimen reward modal to continue.",
       },
       {
         state: "no-result",
-        action: playerActions.collectFind,
-        reason: "The Pack cannot gain ownership without an eligible discovery result.",
+        action: playerActions.openPack,
+        reason: "Opening Pack cannot create reward ownership when Discovery resolved no reward.",
       },
       {
-        state: "result-available",
+        state: "reward-modal-active",
         action: playerActions.revealIdentification,
-        reason: "Identification reveal requires an unidentified find and an explicit identify action first.",
+        reason: "Identification reveal requires the reward card to land as an unidentified Pack find first.",
       },
       {
         state: "unidentified",

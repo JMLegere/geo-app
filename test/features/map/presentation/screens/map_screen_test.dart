@@ -568,12 +568,16 @@ void main() {
       );
     });
 
-    test('uses controlled encounter toast instead of Scaffold snackbar', () {
+    test('uses discovery reward modal instead of toast or Scaffold snackbar',
+        () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
-      expect(mapSource, contains('_EncounterToast('));
+      expect(mapSource, contains('_DiscoveryRewardModal('));
+      expect(mapSource, contains('_DiscoveryRewardFlight('));
+      expect(mapSource, contains('continueDiscoveryReward'));
+      expect(mapSource, isNot(contains('_EncounterToast(')));
       expect(mapSource, isNot(contains('showSnackBar')));
       expect(mapSource, isNot(contains('SnackBar(')));
     });

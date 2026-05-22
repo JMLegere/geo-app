@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -5,6 +7,7 @@ import 'package:earth_nova/features/identification/presentation/screens/pack_scr
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
@@ -50,6 +53,59 @@ class TabShell extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<TabShell> createState() => _TabShellState();
+}
+
+class _PackRewardImpactOverlay extends StatelessWidget {
+  const _PackRewardImpactOverlay({required this.impactCount});
+
+  final int impactCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: SizedBox.shrink()),
+        Expanded(
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              key: ValueKey('pack-reward-impact-$impactCount'),
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 520),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, child) {
+                final dx = math.sin(value * math.pi * 6) * (1 - value) * 10;
+                final scale = 1 + ((1 - value) * 0.18);
+                return Transform.translate(
+                  offset: Offset(dx, 0),
+                  child: Transform.scale(scale: scale, child: child),
+                );
+              },
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF006D77).withValues(alpha: 0.18),
+                  border: Border.all(
+                    color: const Color(0xFF83E8E0).withValues(alpha: 0.72),
+                  ),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.all(9),
+                  child: Icon(
+                    Icons.backpack,
+                    key: Key('pack-reward-impact'),
+                    color: Color(0xFF83E8E0),
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const Expanded(child: SizedBox.shrink()),
+        const Expanded(child: SizedBox.shrink()),
+      ],
+    );
+  }
 }
 
 class _TabShellState extends ConsumerState<TabShell>
@@ -230,6 +286,9 @@ class _TabShellState extends ConsumerState<TabShell>
     }
 
     final debugMode = ref.watch(debugModeProvider);
+    final packImpactCount = ref.watch(
+      encounterProvider.select((state) => state.packImpactCount),
+    );
 
     return ObservableScreen(
       screenName: 'tab_shell',
@@ -303,6 +362,12 @@ class _TabShellState extends ConsumerState<TabShell>
                     icon: Icon(Icons.settings), label: 'Settings'),
               ],
             ),
+            if (packImpactCount > 0)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: _PackRewardImpactOverlay(impactCount: packImpactCount),
+                ),
+              ),
             if (debugMode)
               Positioned(
                 right: 8,

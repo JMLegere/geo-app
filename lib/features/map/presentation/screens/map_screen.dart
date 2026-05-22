@@ -25,7 +25,6 @@ import 'package:earth_nova/features/map/presentation/providers/encounter_provide
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_style_label_layers.dart';
-import 'package:earth_nova/features/map/presentation/presenters/encounter_presenter.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -1068,20 +1067,36 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
 
               if (encounterState.currentEncounter != null)
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 96,
-                  child: _EncounterToast(
+                Positioned.fill(
+                  child: _DiscoveryRewardModal(
                     encounter: encounterState.currentEncounter!,
-                    onDismiss: ObservableInteraction.wrapVoidCallback(
+                    onContinue: ObservableInteraction.wrapVoidCallback(
                       logger: logger,
                       screenName: 'map_screen',
-                      widgetName: 'encounter_toast_dismiss',
-                      actionType: 'toast_dismiss',
-                      playerActionId: PlayerActions.acknowledgeDiscoveryResult,
+                      widgetName: 'discovery_reward_modal',
+                      actionType: 'continue_discovery_reward',
+                      playerActionId: PlayerActions.continueDiscoveryReward,
                       callback: () {
-                        ref.read(encounterProvider.notifier).dismissEncounter();
+                        ref
+                            .read(encounterProvider.notifier)
+                            .continueDiscoveryReward();
+                      },
+                    ),
+                  ),
+                ),
+
+              if (encounterState.flyingReward != null)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: _DiscoveryRewardFlight(
+                      key: ValueKey(
+                        'reward-flight-${encounterState.flyingReward!.speciesId}-${encounterState.packImpactCount}',
+                      ),
+                      encounter: encounterState.flyingReward!,
+                      onCompleted: () {
+                        ref
+                            .read(encounterProvider.notifier)
+                            .completeRewardFlight();
                       },
                     ),
                   ),
@@ -1440,62 +1455,242 @@ class _MapSteadyStateLoadingOverlay extends StatelessWidget {
   }
 }
 
-class _EncounterToast extends StatelessWidget {
-  const _EncounterToast({
+class _DiscoveryRewardModal extends StatelessWidget {
+  const _DiscoveryRewardModal({
     required this.encounter,
-    required this.onDismiss,
+    required this.onContinue,
   });
 
   final Encounter encounter;
-  final VoidCallback onDismiss;
+  final VoidCallback onContinue;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.18),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Expanded(
-              child: Text(
-                EncounterPresenter.message(encounter),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
+    return GestureDetector(
+      key: const Key('discovery-reward-modal'),
+      behavior: HitTestBehavior.opaque,
+      onTap: onContinue,
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.56),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DiscoveryRewardCard(encounter: encounter),
+                const SizedBox(height: 18),
+                FilledButton(
+                  onPressed: onContinue,
+                  child: const Text('Continue'),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap anywhere to send it to your Pack',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.74),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            TextButton(
-              onPressed: onDismiss,
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                minimumSize: const Size(64, 34),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: const Text('Dismiss'),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiscoveryRewardFlight extends StatefulWidget {
+  const _DiscoveryRewardFlight({
+    super.key,
+    required this.encounter,
+    required this.onCompleted,
+  });
+
+  final Encounter encounter;
+  final VoidCallback onCompleted;
+
+  @override
+  State<_DiscoveryRewardFlight> createState() => _DiscoveryRewardFlightState();
+}
+
+class _DiscoveryRewardFlightState extends State<_DiscoveryRewardFlight>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    )
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          widget.onCompleted();
+        }
+      })
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final eased = Curves.easeInOutCubic.transform(_controller.value);
+        final arcLift = math.sin(eased * math.pi) * 120;
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final start = Offset(
+              constraints.maxWidth / 2 - 96,
+              constraints.maxHeight / 2 - 140,
+            );
+            final end = Offset(
+              constraints.maxWidth * 0.36,
+              constraints.maxHeight - 64,
+            );
+            final position = Offset.lerp(start, end, eased)!;
+            final scale = 1 - (0.72 * eased);
+            return Stack(
+              children: [
+                Positioned(
+                  left: position.dx,
+                  top: position.dy - arcLift,
+                  child: Opacity(
+                    opacity: 1 - (0.18 * eased),
+                    child: Transform.scale(
+                      scale: scale.clamp(0.24, 1.0),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+      child: SizedBox(
+        width: 192,
+        child: _DiscoveryRewardCard(encounter: widget.encounter, compact: true),
+      ),
+    );
+  }
+}
+
+class _DiscoveryRewardCard extends StatelessWidget {
+  const _DiscoveryRewardCard({required this.encounter, this.compact = false});
+
+  final Encounter encounter;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = encounter.acquiredItem?.visibleDisplayName ??
+        (encounter.type == EncounterType.species
+            ? 'Unidentified fauna specimen'
+            : encounter.displayName);
+    final rarity = encounter.rarity ?? 'common';
+    return Semantics(
+      label: 'Unidentified discovery reward card',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF123647), Color(0xFF071923)],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppTheme.primary, width: 1.4),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primary.withValues(alpha: 0.35),
+              blurRadius: 32,
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.55),
+              blurRadius: 28,
+              offset: const Offset(0, 18),
             ),
           ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(compact ? 14 : 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: compact ? 70 : 104,
+                height: compact ? 70 : 104,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTheme.primary.withValues(alpha: 0.16),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.26),
+                  ),
+                ),
+                child: Icon(
+                  Icons.pets,
+                  color: Colors.white.withValues(alpha: 0.92),
+                  size: compact ? 34 : 52,
+                ),
+              ),
+              SizedBox(height: compact ? 10 : 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 16 : 21,
+                  fontWeight: FontWeight.w800,
+                  height: 1.08,
+                ),
+              ),
+              if (!compact) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'A living specimen joined your Pack. Identify it later to reveal the species.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.74),
+                    fontSize: 13,
+                    height: 1.28,
+                  ),
+                ),
+              ],
+              SizedBox(height: compact ? 10 : 16),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text(
+                    rarity.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

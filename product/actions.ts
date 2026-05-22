@@ -257,18 +257,11 @@ export const actionCapabilities = {
     "shows artifact facts, human-history context, and discovered history without changing ownership",
   ),
 
-  acknowledgeDiscoveryResult: mutationAction(
-    "acknowledge-discovery-result",
-    "Acknowledge a discovery result",
-    "Discovery result surface",
-    "confirms a resolved Discovery result whose eligible Pack ownership has already been committed or withheld truthfully",
-    playerActionWorkflows.discoveryOwnership,
-  ),
-  collectFind: mutationAction(
-    "collect-find",
-    "Collect a find",
-    "Discovery result and Pack handoff",
-    "commits an eligible unidentified find to the player's owned Pack state exactly once",
+  continueDiscoveryReward: mutationAction(
+    "continue-discovery-reward",
+    "Continue discovery reward",
+    "Discovery reward modal",
+    "advances a committed living-specimen reward card into the Pack target without revealing its hidden identity",
     playerActionWorkflows.discoveryOwnership,
   ),
   openPack: navigationAction(

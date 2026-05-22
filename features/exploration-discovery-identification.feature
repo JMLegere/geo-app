@@ -12,7 +12,7 @@ Feature: Identification
 
   Scenario: Fauna discovery requires Identification before species is known
     Given Discovery has acquired an unidentified fauna find
-    When the result is acknowledged
+    When the player continues the discovery reward
     Then the find should be visible in Pack as unidentified
     And Pack search should not reveal the species name before Identification
     And Identification should be required before the specimen becomes a known fauna find

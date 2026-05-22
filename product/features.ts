@@ -198,14 +198,14 @@ export const productFeatures = {
     label: "Discovery",
     capability: "exploration-discovery-lifecycle",
     kind: "game-system",
-    description: "Resolver and ownership bridge from reward-clean map-cell entry into quiet revisits, owned unidentified finds, acquisition commits, and truthful result acknowledgement before Identification reveals known finds.",
+    description: "Resolver and reward bridge from reward-clean map-cell entry into quiet revisits, committed unidentified living-specimen rewards, Slay the Spire-style reward modal presentation, queued reward continuation, and fly-to-Pack impact before Identification reveals known finds.",
   }),
   pack: feature({
     id: "pack",
     label: "Pack",
     capability: "exploration-discovery-lifecycle",
     kind: "app-section",
-    description: "Owned unidentified and identified-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, identification state, and acquisition provenance.",
+    description: "Owned unidentified and identified-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, identification state, acquisition provenance, and reward-card landing impact feedback.",
   }),
   identification: feature({
     id: "identification",
