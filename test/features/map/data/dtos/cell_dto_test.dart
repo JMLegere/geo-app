@@ -34,6 +34,8 @@ void main() {
             'db-deterministic-jittered-centroid-voronoi',
         'centroid_dataset_version': 'earthnova-organic-centroids-beta-v1',
         'geometry_contract': 'true-voronoi-clipped-to-lattice-coverage',
+        'habitat_source_version': 'osm-overpass-fredericton-v1',
+        'habitat_confidence': 'classified',
       };
 
       final dto = CellDto.fromJson(json);
@@ -55,6 +57,8 @@ void main() {
       expect(
           cell.centroidDatasetVersion, 'earthnova-organic-centroids-beta-v1');
       expect(cell.geometryContract, 'true-voronoi-clipped-to-lattice-coverage');
+      expect(cell.habitatSourceVersion, 'osm-overpass-fredericton-v1');
+      expect(cell.habitatConfidence, 'classified');
     });
 
     test('falls back from legacy polygon field to canonical polygons', () {
@@ -79,6 +83,28 @@ void main() {
           ],
         ],
       ]);
+    });
+
+    test('urban habitat and aliases parse into the domain enum', () {
+      final json = {
+        'cell_id': 'cell-urban',
+        'habitats': ['urban', 'grassland', 'wetland'],
+        'polygons': const [],
+        'district_id': '',
+        'city_id': '',
+        'state_id': '',
+        'country_id': '',
+        'habitat_confidence': 'partial',
+      };
+
+      final cell = CellDto.fromJson(json).toDomain();
+
+      expect(cell.habitats, [
+        Habitat.urban,
+        Habitat.plains,
+        Habitat.swamp,
+      ]);
+      expect(cell.habitatConfidence, 'partial');
     });
 
     test('unknown habitat is skipped', () {

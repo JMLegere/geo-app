@@ -14,6 +14,8 @@ class CellDto {
     required this.geometryGenerationMode,
     required this.centroidDatasetVersion,
     required this.geometryContract,
+    required this.habitatSourceVersion,
+    required this.habitatConfidence,
   });
 
   final String cellId;
@@ -27,6 +29,8 @@ class CellDto {
   final String geometryGenerationMode;
   final String centroidDatasetVersion;
   final String geometryContract;
+  final String habitatSourceVersion;
+  final String habitatConfidence;
 
   factory CellDto.fromJson(Map<String, dynamic> json) => CellDto(
         cellId: json['cell_id'] as String,
@@ -44,6 +48,8 @@ class CellDto {
         centroidDatasetVersion:
             json['centroid_dataset_version'] as String? ?? '',
         geometryContract: json['geometry_contract'] as String? ?? '',
+        habitatSourceVersion: json['habitat_source_version'] as String? ?? '',
+        habitatConfidence: json['habitat_confidence'] as String? ?? '',
       );
 
   Cell toDomain() => Cell(
@@ -68,6 +74,8 @@ class CellDto {
         geometryGenerationMode: geometryGenerationMode,
         centroidDatasetVersion: centroidDatasetVersion,
         geometryContract: geometryContract,
+        habitatSourceVersion: habitatSourceVersion,
+        habitatConfidence: habitatConfidence,
       );
 
   static List<List<List<Map<String, double>>>> _parsePolygons(

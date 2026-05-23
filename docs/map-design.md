@@ -374,7 +374,7 @@ The first map release succeeds when a player can open the Map tab, see where the
 **Work:**
 - Use `fetch_nearby_cells(lat, lng, radius)` as the production fetch path.
 - Stop reading raw `cell_properties` for render data when that path loses geometry.
-- Hydrate `cell_id`, `habitats`, `polygon`, `district_id`, `city_id`, `state_id`, and `country_id`.
+- Hydrate `cell_id`, `habitats`, `polygon`, `district_id`, `city_id`, `state_id`, `country_id`, `habitat_source_version`, and `habitat_confidence`.
 
 **JTBD user stories:**
 - When I open the map, I want nearby cells to appear around my real position, so I know the world is divided into explorable map cells.
@@ -751,12 +751,25 @@ Each cell has:
 
 | Property | Type | Source |
 |----------|------|--------|
-| Habitats | Multi-select from 7 types | Pre-computed from real-world geodata (OSM land-use, satellite classification, etc.) |
+| Habitats | Multi-select from 8 types | Pre-computed from real-world geodata (OSM land-use, satellite classification, etc.) |
+| Habitat confidence | Derived state | Do not present fallback or unversioned habitat values as verified terrain facts; show them as unclassified until a real geodata source/provenance is available. |
 | Neighborhood / District | Persistent | Geographic hierarchy lookup |
 | City | Persistent | Geographic hierarchy lookup |
 | State | Persistent | Geographic hierarchy lookup |
 | Country | Persistent | Geographic hierarchy lookup |
 | Active encounters | Temporary | Seed-based computation |
+
+Habitat provenance rules:
+- `legacy_unverified` means the terrain label predates the provenance pipeline and
+  must not be trusted as a verified fact.
+- `classified` means a real habitat source version was aggregated against the
+  canonical map-cell geometry.
+- `partial` means real source data was applied, but the source only covered part
+  of the cell, so the terrain label is best-effort rather than complete.
+- `unclassified` means no defensible terrain class could be assigned from the
+  imported source layers.
+- Map payloads should expose `habitat_source_version` and `habitat_confidence`
+  so the client and operators can distinguish verified terrain from fallback rows.
 
 ### Global Map State
 
@@ -835,8 +848,17 @@ Field meaning:
 | Swamp | Grey | — |
 | Desert | Orange | — |
 | Plains | Yellow | — |
+| Urban | Slate | — |
 | Mountain | Red | — |
 
+
+Normalization notes:
+- OSM / land-cover sources may use richer raw labels than the map taxonomy.
+- `grassland`, `cropland`, and `meadow` normalize to **Plains**.
+- `wetland` normalizes to **Swamp**.
+- explicit built-up tags such as `urban`, `residential`, `commercial`, and
+  `industrial` normalize to **Urban** rather than overloading **Plains**.
+- `coastal` normalizes to **Ocean** for shared habitat vocabulary.
 ---
 
 ## 4. Cell Visual Model

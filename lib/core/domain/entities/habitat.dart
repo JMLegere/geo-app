@@ -7,6 +7,7 @@ enum Habitat {
   swamp('Swamp', Color(0xFF9E9E9E)),
   desert('Desert', Color(0xFFFF9800)),
   plains('Plains', Color(0xFFFFEB3B)),
+  urban('Urban', Color(0xFF607D8B)),
   mountain('Mountain', Color(0xFFF44336));
 
   const Habitat(this.label, this.color);
@@ -16,10 +17,11 @@ enum Habitat {
 
   static Habitat? fromString(String? value) {
     if (value == null || value.isEmpty) return null;
+    final normalized = value.trim().toLowerCase();
     for (final h in Habitat.values) {
-      if (h.label.toLowerCase() == value.toLowerCase()) return h;
+      if (h.label.toLowerCase() == normalized) return h;
     }
-    return null;
+    return _aliases[normalized];
   }
 
   static Color blendHabitats(List<Habitat> habitats) {
@@ -41,3 +43,19 @@ enum Habitat {
     );
   }
 }
+
+const Map<String, Habitat> _aliases = {
+  'grassland': Habitat.plains,
+  'cropland': Habitat.plains,
+  'meadow': Habitat.plains,
+  'wetland': Habitat.swamp,
+  'coastal': Habitat.ocean,
+  'urban': Habitat.urban,
+  'builtup': Habitat.urban,
+  'built_up': Habitat.urban,
+  'built-up': Habitat.urban,
+  'residential': Habitat.urban,
+  'commercial': Habitat.urban,
+  'industrial': Habitat.urban,
+  'woodland': Habitat.forest,
+};

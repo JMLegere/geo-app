@@ -20,6 +20,7 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
 const int _mapTabIndex = 0;
@@ -55,55 +56,193 @@ class TabShell extends ConsumerStatefulWidget {
   ConsumerState<TabShell> createState() => _TabShellState();
 }
 
-class _PackRewardImpactOverlay extends StatelessWidget {
-  const _PackRewardImpactOverlay({required this.impactCount});
+const double _bottomNavHeight = 76;
+const Duration _navMotionDuration = Duration(milliseconds: 280);
 
-  final int impactCount;
+class _BottomNavDestination {
+  const _BottomNavDestination({
+    required this.label,
+    this.icon,
+  });
+
+  final String label;
+  final IconData? icon;
+}
+
+const _bottomNavItems = [
+  _BottomNavDestination(
+    label: 'Map',
+    icon: Icons.map_outlined,
+  ),
+  _BottomNavDestination(
+    label: 'Pack',
+  ),
+  _BottomNavDestination(
+    label: 'Sanctuary',
+    icon: Icons.nature_outlined,
+  ),
+  _BottomNavDestination(
+    label: 'Settings',
+    icon: Icons.settings_outlined,
+  ),
+];
+
+class _EarthNovaBottomNav extends StatelessWidget {
+  const _EarthNovaBottomNav({
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(child: SizedBox.shrink()),
-        Expanded(
-          child: Center(
-            child: TweenAnimationBuilder<double>(
-              key: ValueKey('pack-reward-impact-$impactCount'),
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 520),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, child) {
-                final dx = math.sin(value * math.pi * 6) * (1 - value) * 10;
-                final scale = 1 + ((1 - value) * 0.18);
-                return Transform.translate(
-                  offset: Offset(dx, 0),
-                  child: Transform.scale(scale: scale, child: child),
-                );
-              },
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF006D77).withValues(alpha: 0.18),
-                  border: Border.all(
-                    color: const Color(0xFF83E8E0).withValues(alpha: 0.72),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainer,
+        border: Border(
+          top: BorderSide(color: AppTheme.outline.withValues(alpha: 0.44)),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.30),
+            blurRadius: 22,
+            offset: const Offset(0, -10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: _bottomNavHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final tabWidth = constraints.maxWidth / _bottomNavItems.length;
+              final indicatorWidth = math.min(
+                48.0,
+                math.max(30.0, tabWidth * 0.34),
+              );
+              final indicatorLeft = (tabWidth * selectedIndex) +
+                  ((tabWidth - indicatorWidth) / 2);
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedPositioned(
+                    key: const Key('tab-shell-nav-indicator-position'),
+                    duration: _navMotionDuration,
+                    curve: Curves.easeOutCubic,
+                    left: indicatorLeft,
+                    top: 64,
+                    width: indicatorWidth,
+                    height: 3,
+                    child: DecoratedBox(
+                      key: const Key('tab-shell-nav-indicator'),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        color: AppTheme.tertiary.withValues(alpha: 0.92),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.tertiary.withValues(alpha: 0.32),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(9),
-                  child: Icon(
-                    Icons.backpack,
-                    key: Key('pack-reward-impact'),
-                    color: Color(0xFF83E8E0),
-                    size: 22,
+                  Row(
+                    children: [
+                      for (var index = 0;
+                          index < _bottomNavItems.length;
+                          index++)
+                        Expanded(
+                          child: _EarthNovaNavItem(
+                            item: _bottomNavItems[index],
+                            selected: index == selectedIndex,
+                            onTap: () => onDestinationSelected(index),
+                          ),
+                        ),
+                    ],
                   ),
-                ),
-              ),
-            ),
+                ],
+              );
+            },
           ),
         ),
-        const Expanded(child: SizedBox.shrink()),
-        const Expanded(child: SizedBox.shrink()),
-      ],
+      ),
+    );
+  }
+}
+
+class _EarthNovaNavItem extends StatelessWidget {
+  const _EarthNovaNavItem({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _BottomNavDestination item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = selected ? AppTheme.tertiary : AppTheme.onSurfaceVariant;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.label,
+      child: InkWell(
+        key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          style: TextStyle(
+            color: foreground,
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            height: 1,
+            letterSpacing: selected ? 0.15 : 0,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (item.icon case final icon?) ...[
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutBack,
+                  scale: selected ? 1.08 : 1,
+                  child: Icon(
+                    icon,
+                    color: foreground,
+                    size: selected ? 23 : 22,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                ),
+              ] else
+                Text(
+                  item.label,
+                  key: const Key('tab-shell-pack-text-only-label'),
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                  style: const TextStyle(fontSize: 13),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -118,6 +257,7 @@ class _TabShellState extends ConsumerState<TabShell>
   late final PageController _packPageController;
 
   late final List<Widget> _screens;
+  String? _autoCompletingRewardKey;
 
   @override
   void initState() {
@@ -286,9 +426,27 @@ class _TabShellState extends ConsumerState<TabShell>
     }
 
     final debugMode = ref.watch(debugModeProvider);
-    final packImpactCount = ref.watch(
-      encounterProvider.select((state) => state.packImpactCount),
+    final flyingReward = ref.watch(
+      encounterProvider.select((state) => state.flyingReward),
     );
+    if (flyingReward == null) {
+      _autoCompletingRewardKey = null;
+    } else {
+      final rewardKey = '${flyingReward.speciesId}:${flyingReward.cellId}';
+      if (_autoCompletingRewardKey != rewardKey) {
+        _autoCompletingRewardKey = rewardKey;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final activeReward = ref.read(encounterProvider).flyingReward;
+          final activeRewardKey = activeReward == null
+              ? null
+              : '${activeReward.speciesId}:${activeReward.cellId}';
+          if (activeRewardKey == rewardKey) {
+            ref.read(encounterProvider.notifier).completeRewardFlight();
+          }
+        });
+      }
+    }
 
     return ObservableScreen(
       screenName: 'tab_shell',
@@ -335,8 +493,9 @@ class _TabShellState extends ConsumerState<TabShell>
           ],
         ),
         bottomNavigationBar: Stack(
+          clipBehavior: Clip.none,
           children: [
-            NavigationBar(
+            _EarthNovaBottomNav(
               selectedIndex: _currentIndex,
               onDestinationSelected:
                   ObservableInteraction.wrapValueChanged<int>(
@@ -351,23 +510,7 @@ class _TabShellState extends ConsumerState<TabShell>
                 },
                 callback: _onTabSelected,
               ),
-              destinations: const [
-                NavigationDestination(
-                    icon: Icon(Icons.map_outlined), label: 'Map'),
-                NavigationDestination(
-                    icon: Icon(Icons.backpack), label: 'Pack'),
-                NavigationDestination(
-                    icon: Icon(Icons.nature), label: 'Sanctuary'),
-                NavigationDestination(
-                    icon: Icon(Icons.settings), label: 'Settings'),
-              ],
             ),
-            if (packImpactCount > 0)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: _PackRewardImpactOverlay(impactCount: packImpactCount),
-                ),
-              ),
             if (debugMode)
               Positioned(
                 right: 8,
@@ -378,8 +521,8 @@ class _TabShellState extends ConsumerState<TabShell>
                     Icons.bug_report,
                     size: 20,
                     color: _debugOverlayVisible
-                        ? const Color(0xFF006D77)
-                        : const Color(0xFFADB5BD),
+                        ? AppTheme.primary
+                        : AppTheme.onSurfaceVariant,
                   ),
                   onPressed: ObservableInteraction.wrapVoidCallback(
                     logger: logger,

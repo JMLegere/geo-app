@@ -19,8 +19,8 @@ class CellDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final habitats = cell.habitats;
-    final primaryHabitat = habitats.isNotEmpty ? habitats.first : null;
+    final habitatDisplay = _habitatDisplayFor(cell);
+    final primaryHabitat = habitatDisplay.primaryHabitat;
 
     return Container(
       decoration: BoxDecoration(
@@ -55,13 +55,12 @@ class CellDetailSheet extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: (primaryHabitat?.color ?? Colors.grey)
-                            .withValues(alpha: 0.2),
+                        color: habitatDisplay.color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         _getHabitatIcon(primaryHabitat),
-                        color: primaryHabitat?.color ?? Colors.grey,
+                        color: habitatDisplay.color,
                         size: 24,
                       ),
                     ),
@@ -80,9 +79,9 @@ class CellDetailSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            habitats.map((h) => h.label).join(' / '),
+                            habitatDisplay.label,
                             style: TextStyle(
-                              color: primaryHabitat?.color ?? Colors.grey,
+                              color: habitatDisplay.color,
                               fontSize: 14,
                             ),
                           ),
@@ -174,6 +173,26 @@ class CellDetailSheet extends StatelessWidget {
     };
   }
 
+  _HabitatDisplay _habitatDisplayFor(Cell cell) {
+    final habitats = cell.habitats;
+    final isLegacyPlainsFallback = !cell.hasVerifiedHabitat &&
+        habitats.length == 1 &&
+        habitats.single == Habitat.plains;
+    if (habitats.isEmpty || isLegacyPlainsFallback) {
+      return const _HabitatDisplay(
+        label: 'Terrain unclassified',
+        color: Colors.grey,
+        primaryHabitat: null,
+      );
+    }
+
+    return _HabitatDisplay(
+      label: habitats.map((h) => h.label).join(' / '),
+      color: habitats.first.color,
+      primaryHabitat: habitats.first,
+    );
+  }
+
   IconData _getHabitatIcon(Habitat? habitat) {
     return switch (habitat) {
       Habitat.forest => Icons.forest,
@@ -182,6 +201,7 @@ class CellDetailSheet extends StatelessWidget {
       Habitat.swamp => Icons.grass,
       Habitat.desert => Icons.wb_sunny,
       Habitat.plains => Icons.landscape,
+      Habitat.urban => Icons.location_city,
       Habitat.mountain => Icons.terrain,
       null => Icons.help_outline,
     };
@@ -191,4 +211,16 @@ class CellDetailSheet extends StatelessWidget {
     if (id.length <= 8) return id;
     return '${id.substring(0, 4)}...${id.substring(id.length - 4)}';
   }
+}
+
+class _HabitatDisplay {
+  const _HabitatDisplay({
+    required this.label,
+    required this.color,
+    required this.primaryHabitat,
+  });
+
+  final String label;
+  final Color color;
+  final Habitat? primaryHabitat;
 }

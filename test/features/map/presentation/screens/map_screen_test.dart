@@ -573,10 +573,15 @@ void main() {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final tabShellSource =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
 
       expect(mapSource, contains('_DiscoveryRewardModal('));
-      expect(mapSource, contains('_DiscoveryRewardFlight('));
       expect(mapSource, contains('continueDiscoveryReward'));
+      expect(tabShellSource, contains('addPostFrameCallback'));
+      expect(tabShellSource, contains('completeRewardFlight'));
+      expect(tabShellSource, isNot(contains('_PackRewardFlightOverlay(')));
+      expect(tabShellSource, isNot(contains('_PackRewardImpactOverlay(')));
       expect(mapSource, isNot(contains('_EncounterToast(')));
       expect(mapSource, isNot(contains('showSnackBar')));
       expect(mapSource, isNot(contains('SnackBar(')));

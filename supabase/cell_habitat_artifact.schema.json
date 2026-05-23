@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://earthnova.app/schemas/cell-habitat-artifact.schema.json",
+  "title": "Cell Habitat Artifact",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "source_version",
+    "coverage",
+    "features"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cell-habitat-artifact/v1"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "generator": {
+      "type": "object"
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["geometry"],
+      "properties": {
+        "geometry": {
+          "type": "object",
+          "required": ["type", "coordinates"]
+        },
+        "properties": {
+          "type": "object"
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "feature_id",
+          "habitat",
+          "source_layer",
+          "geometry"
+        ],
+        "properties": {
+          "feature_id": {"type": "string", "minLength": 1},
+          "habitat": {
+            "enum": [
+              "forest",
+              "ocean",
+              "freshwater",
+              "swamp",
+              "desert",
+              "plains",
+              "urban",
+              "mountain"
+            ]
+          },
+          "source_layer": {"type": "string", "minLength": 1},
+          "weight": {"type": "number", "exclusiveMinimum": 0},
+          "geometry": {
+            "type": "object",
+            "required": ["type", "coordinates"]
+          },
+          "properties": {"type": "object"}
+        }
+      }
+    }
+  }
+}
+

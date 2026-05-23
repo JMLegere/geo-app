@@ -1085,23 +1085,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
 
-              if (encounterState.flyingReward != null)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: _DiscoveryRewardFlight(
-                      key: ValueKey(
-                        'reward-flight-${encounterState.flyingReward!.speciesId}-${encounterState.packImpactCount}',
-                      ),
-                      encounter: encounterState.flyingReward!,
-                      onCompleted: () {
-                        ref
-                            .read(encounterProvider.notifier)
-                            .completeRewardFlight();
-                      },
-                    ),
-                  ),
-                ),
-
               // Loading indicator
               if (mapState is MapStateLoading || mapState is MapStateRefreshing)
                 const Positioned(
@@ -1502,95 +1485,10 @@ class _DiscoveryRewardModal extends StatelessWidget {
   }
 }
 
-class _DiscoveryRewardFlight extends StatefulWidget {
-  const _DiscoveryRewardFlight({
-    super.key,
-    required this.encounter,
-    required this.onCompleted,
-  });
-
-  final Encounter encounter;
-  final VoidCallback onCompleted;
-
-  @override
-  State<_DiscoveryRewardFlight> createState() => _DiscoveryRewardFlightState();
-}
-
-class _DiscoveryRewardFlightState extends State<_DiscoveryRewardFlight>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 720),
-    )
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          widget.onCompleted();
-        }
-      })
-      ..forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final eased = Curves.easeInOutCubic.transform(_controller.value);
-        final arcLift = math.sin(eased * math.pi) * 120;
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final start = Offset(
-              constraints.maxWidth / 2 - 96,
-              constraints.maxHeight / 2 - 140,
-            );
-            final end = Offset(
-              constraints.maxWidth * 0.36,
-              constraints.maxHeight - 64,
-            );
-            final position = Offset.lerp(start, end, eased)!;
-            final scale = 1 - (0.72 * eased);
-            return Stack(
-              children: [
-                Positioned(
-                  left: position.dx,
-                  top: position.dy - arcLift,
-                  child: Opacity(
-                    opacity: 1 - (0.18 * eased),
-                    child: Transform.scale(
-                      scale: scale.clamp(0.24, 1.0),
-                      child: child,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-      child: SizedBox(
-        width: 192,
-        child: _DiscoveryRewardCard(encounter: widget.encounter, compact: true),
-      ),
-    );
-  }
-}
-
 class _DiscoveryRewardCard extends StatelessWidget {
-  const _DiscoveryRewardCard({required this.encounter, this.compact = false});
+  const _DiscoveryRewardCard({required this.encounter});
 
   final Encounter encounter;
-  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1624,13 +1522,13 @@ class _DiscoveryRewardCard extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: EdgeInsets.all(compact ? 14 : 20),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: compact ? 70 : 104,
-                height: compact ? 70 : 104,
+                width: 104,
+                height: 104,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppTheme.primary.withValues(alpha: 0.16),
@@ -1641,33 +1539,31 @@ class _DiscoveryRewardCard extends StatelessWidget {
                 child: Icon(
                   Icons.pets,
                   color: Colors.white.withValues(alpha: 0.92),
-                  size: compact ? 34 : 52,
+                  size: 52,
                 ),
               ),
-              SizedBox(height: compact ? 10 : 16),
+              const SizedBox(height: 16),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
-                  fontSize: compact ? 16 : 21,
+                  fontSize: 21,
                   fontWeight: FontWeight.w800,
                   height: 1.08,
                 ),
               ),
-              if (!compact) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'A living specimen joined your Pack. Identify it later to reveal the species.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.74),
-                    fontSize: 13,
-                    height: 1.28,
-                  ),
+              const SizedBox(height: 8),
+              Text(
+                'A living specimen joined your Pack. Identify it later to reveal the species.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.74),
+                  fontSize: 13,
+                  height: 1.28,
                 ),
-              ],
-              SizedBox(height: compact ? 10 : 16),
+              ),
+              const SizedBox(height: 16),
               DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.10),

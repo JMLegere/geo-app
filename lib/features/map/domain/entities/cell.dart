@@ -20,6 +20,8 @@ class Cell {
     this.geometryGenerationMode = '',
     this.centroidDatasetVersion = '',
     this.geometryContract = '',
+    this.habitatSourceVersion = '',
+    this.habitatConfidence = 'legacy_unverified',
   });
 
   final String id;
@@ -33,6 +35,8 @@ class Cell {
   final String geometryGenerationMode;
   final String centroidDatasetVersion;
   final String geometryContract;
+  final String habitatSourceVersion;
+  final String habitatConfidence;
 
   bool get hasRenderableGeometry => polygons.any(
         (polygon) => polygon.isNotEmpty && polygon.first.length >= 3,
@@ -54,6 +58,11 @@ class Cell {
 
   Color get blendedColor => Habitat.blendHabitats(habitats);
 
+  bool get hasVerifiedHabitat =>
+      habitatConfidence == 'classified' ||
+      habitatConfidence == 'partial' ||
+      habitatConfidence == 'manual_override';
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -69,7 +78,9 @@ class Cell {
           geometrySourceVersion == other.geometrySourceVersion &&
           geometryGenerationMode == other.geometryGenerationMode &&
           centroidDatasetVersion == other.centroidDatasetVersion &&
-          geometryContract == other.geometryContract;
+          geometryContract == other.geometryContract &&
+          habitatSourceVersion == other.habitatSourceVersion &&
+          habitatConfidence == other.habitatConfidence;
 
   @override
   int get hashCode => Object.hashAll([
@@ -92,6 +103,8 @@ class Cell {
         geometryGenerationMode,
         centroidDatasetVersion,
         geometryContract,
+        habitatSourceVersion,
+        habitatConfidence,
       ]);
 }
 

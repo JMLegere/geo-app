@@ -8,6 +8,7 @@ import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/wake_lock_repository.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
@@ -120,6 +121,40 @@ class _ReadyPlayerMarkerNotifier extends PlayerMarkerNotifier {
 class _PackImpactEncounterNotifier extends EncounterNotifier {
   @override
   EncounterState build() => const EncounterState(packImpactCount: 1);
+}
+
+const _testFlyingReward = Encounter(
+  type: EncounterType.species,
+  speciesId: 'reward-1',
+  displayName: 'Monarch Butterfly',
+  cellId: 'cell-1',
+  seed: 'seed-1',
+  rarity: 'rare',
+);
+
+class _FlyingRewardEncounterNotifier extends EncounterNotifier {
+  _FlyingRewardEncounterNotifier(this.completions);
+
+  final List<String> completions;
+
+  @override
+  EncounterState build() =>
+      const EncounterState(flyingReward: _testFlyingReward);
+
+  @override
+  void completeRewardFlight() {
+    final completedReward = state.flyingReward;
+    if (completedReward == null) return;
+    completions.add(completedReward.speciesId);
+    transition(
+      state.copyWith(
+        flyingReward: null,
+        packImpactCount: state.packImpactCount + 1,
+      ),
+      'discovery.reward_flight_completed',
+      data: {'completed_result_id': completedReward.speciesId},
+    );
+  }
 }
 
 class _TrackingLocationNotifier extends LocationNotifier {
@@ -310,7 +345,7 @@ void main() {
       expect(find.byType(IndexedStack), findsOneWidget);
     });
 
-    testWidgets('renders Pack reward impact overlay when a card lands',
+    testWidgets('does not overlay Pack icon when a reward lands',
         (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -341,9 +376,102 @@ void main() {
         ),
       );
 
-      expect(find.byKey(const Key('pack-reward-impact')), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 260));
-      expect(find.byKey(const Key('pack-reward-impact')), findsOneWidget);
+      expect(find.byKey(const Key('pack-reward-impact')), findsNothing);
+      expect(find.byKey(const Key('pack-reward-flight-card')), findsNothing);
+    });
+
+    testWidgets('bottom nav selected indicator moves between tabs',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final initialIndicator = tester.widget<AnimatedPositioned>(
+        find.byKey(const Key('tab-shell-nav-indicator-position')),
+      );
+      expect(initialIndicator.duration, const Duration(milliseconds: 280));
+      final initialLeft = initialIndicator.left!;
+
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-pack')));
+      await tester.pump();
+
+      final packIndicator = tester.widget<AnimatedPositioned>(
+        find.byKey(const Key('tab-shell-nav-indicator-position')),
+      );
+      final packLeft = packIndicator.left!;
+
+      expect(packLeft, greaterThan(initialLeft));
+    });
+
+    testWidgets('completes discovery reward without drawing Pack nav overlays',
+        (tester) async {
+      final completions = <String>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            encounterObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+            encounterProvider.overrideWith(
+              () => _FlyingRewardEncounterNotifier(completions),
+            ),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('pack-reward-flight-card')), findsNothing);
+      expect(find.byKey(const Key('pack-reward-impact')), findsNothing);
+
+      await tester.pump();
+
+      expect(completions, ['reward-1']);
+      expect(find.byKey(const Key('pack-reward-flight-card')), findsNothing);
+      expect(find.byKey(const Key('pack-reward-impact')), findsNothing);
     });
 
     testWidgets('tab switching works with IndexedStack', (tester) async {
@@ -703,12 +831,14 @@ void main() {
       expect(source, contains('onEdgeSwipe:'));
     });
 
-    test('source: TabShell shows Pack impact when reward card lands', () {
+    test('source: TabShell completes Pack rewards without nav overlays', () {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
-      expect(source, contains('packImpactCount'));
-      expect(source, contains('_PackRewardImpactOverlay'));
-      expect(source, contains("Key('pack-reward-impact')"));
+      expect(source, contains('addPostFrameCallback'));
+      expect(source, contains('completeRewardFlight'));
+      expect(source, isNot(contains('_PackRewardImpactOverlay')));
+      expect(source, isNot(contains("Key('pack-reward-impact')")));
+      expect(source, isNot(contains('_PackRewardFlightOverlay')));
     });
 
     test('source: TabShell handles EdgeSwipeDirection.left → map tab', () {

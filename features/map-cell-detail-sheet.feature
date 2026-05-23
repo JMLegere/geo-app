@@ -32,6 +32,19 @@ Feature: Map Cell Detail Sheet
     When the sheet renders its first-slice content
     Then it should show map cell heading, status pill, territory context, visit facts, and fog/progress note
     And any downstream handoff should appear as secondary context rather than the main reward
+    And it should avoid presenting fallback or unverified terrain labels as certain habitat facts
+
+  Scenario: Fallback terrain does not overclaim habitat
+    Given a map cell only has the legacy fallback Plains habitat
+    When the map cell detail sheet renders its first-slice content
+    Then the sheet should show the cell terrain as unclassified
+    And it should not present Plains as a verified habitat fact
+
+  Scenario: Classified built-up terrain is explicit
+    Given a map cell has verified built-up terrain from the habitat provenance pipeline
+    When the map cell detail sheet renders its first-slice content
+    Then the sheet should show Urban as the terrain label
+    And it should not relabel built-up terrain as Plains
 
   Scenario: Detail inspection is non-mutating by default
     Given the player opens the first-slice map cell detail sheet

@@ -32,6 +32,15 @@ void main() {
       expect(Habitat.fromString('Ocean'), Habitat.ocean);
       expect(Habitat.fromString('Swamp'), Habitat.swamp);
       expect(Habitat.fromString('Desert'), Habitat.desert);
+      expect(Habitat.fromString('Urban'), Habitat.urban);
+    });
+
+    test('parses normalized habitat aliases', () {
+      expect(Habitat.fromString('grassland'), Habitat.plains);
+      expect(Habitat.fromString('wetland'), Habitat.swamp);
+      expect(Habitat.fromString('coastal'), Habitat.ocean);
+      expect(Habitat.fromString('urban'), Habitat.urban);
+      expect(Habitat.fromString('built-up'), Habitat.urban);
     });
   });
 
@@ -59,8 +68,8 @@ void main() {
       );
     });
 
-    test('has 7 habitat types', () {
-      expect(Habitat.values.length, 7);
+    test('has 8 habitat types', () {
+      expect(Habitat.values.length, 8);
     });
 
     test('each habitat has a color', () {
@@ -114,6 +123,12 @@ void main() {
       expect((c.r - avg).abs(), lessThan(0.1));
       expect((c.g - avg).abs(), lessThan(0.1));
       expect((c.b - avg).abs(), lessThan(0.1));
+    });
+
+    test('urban is slate-toned', () {
+      final c = Habitat.urban.color;
+      expect(c.b, greaterThan(c.r * 0.8));
+      expect(c.g, greaterThan(c.r * 0.8));
     });
   });
 

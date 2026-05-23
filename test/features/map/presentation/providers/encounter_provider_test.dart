@@ -202,7 +202,8 @@ void main() {
       expect(testObs.eventNames, contains('map.encounter_triggered'));
     });
 
-    test('continuing reward starts card flight and logs Pack impact', () async {
+    test('continuing reward starts card flight and impacts Pack after landing',
+        () async {
       final notifier = container.read(encounterProvider.notifier);
 
       await notifier.onCellEntered(
@@ -215,11 +216,18 @@ void main() {
 
       notifier.continueDiscoveryReward();
 
-      final state = container.read(encounterProvider);
+      var state = container.read(encounterProvider);
       expect(state.currentEncounter, isNull);
       expect(state.flyingReward, isNotNull);
-      expect(state.packImpactCount, 1);
+      expect(state.packImpactCount, 0);
       expect(testObs.eventNames, contains('discovery.reward_continued'));
+      expect(testObs.eventNames, isNot(contains('pack.reward_impact')));
+
+      notifier.completeRewardFlight();
+
+      state = container.read(encounterProvider);
+      expect(state.flyingReward, isNull);
+      expect(state.packImpactCount, 1);
       expect(testObs.eventNames, contains('pack.reward_impact'));
     });
 

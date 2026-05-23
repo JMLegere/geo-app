@@ -231,16 +231,10 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
       category,
       data: _rewardData(reward),
     );
-    obs.log(
-      'pack.reward_impact',
-      'pack',
-      data: _rewardData(reward),
-    );
     transition(
       state.copyWith(
         currentEncounter: null,
         flyingReward: reward,
-        packImpactCount: state.packImpactCount + 1,
       ),
       'discovery.reward_continued',
       data: _rewardData(reward),
@@ -249,13 +243,19 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
 
   /// Clear the completed card flight and present the next queued reward, if any.
   void completeRewardFlight() {
-    if (state.flyingReward == null) return;
+    final completedReward = state.flyingReward;
+    if (completedReward == null) return;
 
     final nextReward =
         state.queuedRewards.isEmpty ? null : state.queuedRewards.first;
     final remainingQueue = state.queuedRewards.isEmpty
         ? const <Encounter>[]
         : state.queuedRewards.sublist(1);
+    obs.log(
+      'pack.reward_impact',
+      'pack',
+      data: _rewardData(completedReward),
+    );
     if (nextReward != null) {
       _logRewardPresented(nextReward, null);
     }
@@ -264,10 +264,11 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         flyingReward: null,
         currentEncounter: nextReward,
         queuedRewards: remainingQueue,
+        packImpactCount: state.packImpactCount + 1,
       ),
       'discovery.reward_flight_completed',
       data: {
-        'completed_result_id': state.flyingReward!.speciesId,
+        'completed_result_id': completedReward.speciesId,
         'next_result_id': nextReward?.speciesId,
         'queue_depth': remainingQueue.length,
       },

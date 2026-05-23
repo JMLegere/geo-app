@@ -33,6 +33,10 @@ void main() {
     test('forest icon is tree', () {
       expect(Habitat.forest.icon, '🌲');
     });
+
+    test('urban icon is city skyline', () {
+      expect(Habitat.urban.icon, '🏙️');
+    });
   });
 
   group('GameRegion icon extension', () {
