@@ -13,6 +13,8 @@ import 'package:earth_nova/shared/theme/design_tokens.dart';
 void showSpeciesCard(
   BuildContext context,
   Item item, {
+  void Function(Item item)? onStartIdentification,
+  Future<Item?> Function(Item item)? onRevealIdentification,
   Future<Item?> Function(Item item)? onIdentify,
 }) {
   showGeneralDialog<void>(
@@ -41,15 +43,27 @@ void showSpeciesCard(
         ),
       );
     },
-    pageBuilder: (context, _, __) =>
-        SpeciesCard(item: item, onIdentify: onIdentify),
+    pageBuilder: (context, _, __) => SpeciesCard(
+      item: item,
+      onStartIdentification: onStartIdentification,
+      onRevealIdentification: onRevealIdentification,
+      onIdentify: onIdentify,
+    ),
   );
 }
 
 /// TCG card widget — can be used standalone or via [showSpeciesCard].
 class SpeciesCard extends StatefulWidget {
-  const SpeciesCard({super.key, required this.item, this.onIdentify});
+  const SpeciesCard({
+    super.key,
+    required this.item,
+    this.onStartIdentification,
+    this.onRevealIdentification,
+    this.onIdentify,
+  });
   final Item item;
+  final void Function(Item item)? onStartIdentification;
+  final Future<Item?> Function(Item item)? onRevealIdentification;
   final Future<Item?> Function(Item item)? onIdentify;
 
   @override
@@ -58,6 +72,46 @@ class SpeciesCard extends StatefulWidget {
 
 class _SpeciesCardState extends State<SpeciesCard> {
   late Item _item = widget.item;
+  bool _identificationReady = false;
+  bool _isRevealingIdentification = false;
+
+  Future<Item?> Function(Item item)? get _revealIdentificationCallback =>
+      widget.onRevealIdentification ?? widget.onIdentify;
+
+  bool get _canStartIdentification =>
+      _item.isUnidentified &&
+      (widget.onStartIdentification != null ||
+          _revealIdentificationCallback != null);
+
+  bool get _canRevealIdentification =>
+      _item.isUnidentified && _revealIdentificationCallback != null;
+
+  void _startIdentification() {
+    widget.onStartIdentification?.call(_item);
+    setState(() {
+      _identificationReady = true;
+    });
+  }
+
+  Future<void> _revealIdentification() async {
+    final reveal = _revealIdentificationCallback;
+    if (reveal == null || _isRevealingIdentification) return;
+
+    setState(() {
+      _isRevealingIdentification = true;
+    });
+
+    final identified = await reveal(_item);
+    if (!mounted) return;
+
+    setState(() {
+      if (identified != null) {
+        _item = identified;
+        _identificationReady = false;
+      }
+      _isRevealingIdentification = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,15 +171,15 @@ class _SpeciesCardState extends State<SpeciesCard> {
                   _InfoZone(
                     item: item,
                     status: status,
-                    onIdentify: widget.onIdentify == null
-                        ? null
-                        : () async {
-                            final identified =
-                                await widget.onIdentify!.call(_item);
-                            if (mounted && identified != null) {
-                              setState(() => _item = identified);
-                            }
-                          },
+                    identificationReady: _identificationReady,
+                    isRevealingIdentification: _isRevealingIdentification,
+                    onStartIdentification:
+                        _canStartIdentification ? _startIdentification : null,
+                    onRevealIdentification: _canRevealIdentification
+                        ? () {
+                            _revealIdentification();
+                          }
+                        : null,
                   ),
                 ],
               ),
@@ -183,7 +237,8 @@ class _ArtZone extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    _SpeciesCardState._cardBgColor(status).withValues(alpha: 0.85),
+                    _SpeciesCardState._cardBgColor(status)
+                        .withValues(alpha: 0.85),
                   ],
                 ),
               ),
@@ -314,10 +369,20 @@ class _ArtZone extends StatelessWidget {
 // ─── Info zone ────────────────────────────────────────────────────────────────
 
 class _InfoZone extends StatelessWidget {
-  const _InfoZone({required this.item, required this.status, this.onIdentify});
+  const _InfoZone({
+    required this.item,
+    required this.status,
+    required this.identificationReady,
+    required this.isRevealingIdentification,
+    this.onStartIdentification,
+    this.onRevealIdentification,
+  });
   final Item item;
   final IucnStatus? status;
-  final Future<void> Function()? onIdentify;
+  final bool identificationReady;
+  final bool isRevealingIdentification;
+  final VoidCallback? onStartIdentification;
+  final VoidCallback? onRevealIdentification;
 
   @override
   Widget build(BuildContext context) {
@@ -396,15 +461,23 @@ class _InfoZone extends StatelessWidget {
               ],
             ),
           ],
-          if (item.isUnidentified && onIdentify != null) ...[
+          if (item.isUnidentified &&
+              (onStartIdentification != null ||
+                  onRevealIdentification != null)) ...[
             const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onIdentify,
-                child: const Text('Hold to identify'),
+            if (!identificationReady)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: onStartIdentification,
+                  child: const Text('Start identification'),
+                ),
+              )
+            else
+              _RevealTheater(
+                isBusy: isRevealingIdentification,
+                onReveal: onRevealIdentification,
               ),
-            ),
           ],
           const SizedBox(height: 10),
           Wrap(
@@ -457,6 +530,88 @@ class _InfoZone extends StatelessWidget {
       'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
+  }
+}
+
+class _RevealTheater extends StatelessWidget {
+  const _RevealTheater({required this.isBusy, required this.onReveal});
+
+  final bool isBusy;
+  final VoidCallback? onReveal;
+
+  @override
+  Widget build(BuildContext context) {
+    final canReveal = !isBusy && onReveal != null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Spacing.md),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.86),
+        borderRadius: BorderRadius.circular(Radii.xl),
+        border: Border.all(
+          color: AppTheme.tertiary.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Identification ready',
+            style: TextStyle(
+              color: AppTheme.onSurface,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: Spacing.xs),
+          Text(
+            'Hold to reveal the deterministic result.',
+            style: TextStyle(
+              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.82),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: Spacing.sm),
+          Semantics(
+            button: true,
+            label: 'Hold to reveal identification',
+            child: GestureDetector(
+              onLongPress: canReveal ? onReveal : null,
+              child: AnimatedContainer(
+                duration: Durations.quick,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Spacing.md,
+                  vertical: Spacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: canReveal
+                      ? AppTheme.tertiary.withValues(alpha: 0.22)
+                      : AppTheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(Radii.pill),
+                  border: Border.all(
+                    color: canReveal
+                        ? AppTheme.tertiary.withValues(alpha: 0.65)
+                        : AppTheme.outline.withValues(alpha: 0.45),
+                  ),
+                ),
+                child: Text(
+                  isBusy ? 'Revealing…' : 'Hold to reveal',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: canReveal
+                        ? AppTheme.tertiary
+                        : AppTheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

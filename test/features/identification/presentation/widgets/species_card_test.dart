@@ -112,8 +112,11 @@ void main() {
       expect(find.text('Test Species'), findsOneWidget);
     });
 
-    testWidgets('unidentified card can reveal into identified species',
+    testWidgets(
+        'unidentified card starts reveal path before committing known state',
         (tester) async {
+      var startCount = 0;
+      var revealCount = 0;
       final item = _item(
         name: 'Unidentified fauna specimen',
         rarity: 'rare',
@@ -126,21 +129,37 @@ void main() {
         home: Scaffold(
           body: SpeciesCard(
             item: item,
-            onIdentify: (item) async => item.identify(),
+            onStartIdentification: (_) => startCount++,
+            onRevealIdentification: (item) async {
+              revealCount++;
+              return item.identify();
+            },
           ),
         ),
       ));
 
       expect(find.text('Unidentified fauna specimen'), findsOneWidget);
       expect(find.text('Amberwing Warbler'), findsNothing);
-      expect(find.text('Hold to identify'), findsOneWidget);
+      expect(find.text('Start identification'), findsOneWidget);
+      expect(find.text('Hold to reveal'), findsNothing);
 
-      await tester.tap(find.text('Hold to identify'));
+      await tester.tap(find.text('Start identification'));
       await tester.pumpAndSettle();
 
+      expect(startCount, 1);
+      expect(revealCount, 0);
+      expect(find.text('Unidentified fauna specimen'), findsOneWidget);
+      expect(find.text('Amberwing Warbler'), findsNothing);
+      expect(find.text('Identification ready'), findsOneWidget);
+      expect(find.text('Hold to reveal'), findsOneWidget);
+
+      await tester.longPress(find.text('Hold to reveal'));
+      await tester.pumpAndSettle();
+
+      expect(revealCount, 1);
       expect(find.text('Amberwing Warbler'), findsOneWidget);
       expect(find.text('Setophaga aestiva'), findsOneWidget);
-      expect(find.text('Hold to identify'), findsNothing);
+      expect(find.text('Hold to reveal'), findsNothing);
     });
 
     testWidgets('displays cell ID when available', (tester) async {
@@ -175,7 +194,8 @@ Item _item({
   List<String> habitats = const [],
   List<String> continents = const [],
   String? cellId,
-  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  ItemIdentificationState identificationState =
+      ItemIdentificationState.identified,
   String? identifiedDisplayName,
   String? identifiedScientificName,
 }) =>

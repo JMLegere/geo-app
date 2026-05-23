@@ -175,7 +175,8 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                     onSearchChanged: _onSearchChanged,
                     onEdgeSwipe: widget.onEdgeSwipe,
                     onItemTapped: _onItemTapped,
-                    onIdentifyItem: _onIdentifyItem,
+                    onStartIdentification: _onStartIdentification,
+                    onRevealIdentification: _onRevealIdentification,
                   ),
       ),
     );
@@ -331,11 +332,23 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     );
   }
 
-  Future<Item?> _onIdentifyItem(Item item) {
+  void _onStartIdentification(Item item) {
     _logInteraction(
       'identify_unidentified_find',
       'species_card',
       playerActionId: PlayerActions.identifyUnidentifiedFind,
+      data: {
+        'item_id': item.id,
+        'category': item.category.name,
+      },
+    );
+  }
+
+  Future<Item?> _onRevealIdentification(Item item) {
+    _logInteraction(
+      'reveal_identification',
+      'species_card',
+      playerActionId: PlayerActions.revealIdentification,
       data: {
         'item_id': item.id,
         'category': item.category.name,
@@ -381,7 +394,8 @@ List<Item> _applyFilterAndSort(
         return ai.compareTo(bi);
       });
     case PackSortMode.name:
-      result.sort((a, b) => a.visibleDisplayName.compareTo(b.visibleDisplayName));
+      result
+          .sort((a, b) => a.visibleDisplayName.compareTo(b.visibleDisplayName));
   }
   return result;
 }
@@ -408,7 +422,8 @@ class _PackBody extends StatelessWidget {
     required this.onSearchChanged,
     this.onEdgeSwipe,
     required this.onItemTapped,
-    required this.onIdentifyItem,
+    required this.onStartIdentification,
+    required this.onRevealIdentification,
   });
 
   final List<Item> allItems;
@@ -429,7 +444,8 @@ class _PackBody extends StatelessWidget {
   final void Function(String) onSearchChanged;
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
   final void Function(Item) onItemTapped;
-  final Future<Item?> Function(Item) onIdentifyItem;
+  final void Function(Item) onStartIdentification;
+  final Future<Item?> Function(Item) onRevealIdentification;
 
   @override
   Widget build(BuildContext context) {
@@ -502,7 +518,8 @@ class _PackBody extends StatelessWidget {
                 return _ItemGrid(
                   items: items,
                   onItemTap: onItemTapped,
-                  onIdentifyItem: onIdentifyItem,
+                  onStartIdentification: onStartIdentification,
+                  onRevealIdentification: onRevealIdentification,
                 );
               },
             ),
@@ -1294,11 +1311,13 @@ class _ItemGrid extends StatelessWidget {
   const _ItemGrid({
     required this.items,
     required this.onItemTap,
-    required this.onIdentifyItem,
+    required this.onStartIdentification,
+    required this.onRevealIdentification,
   });
   final List<Item> items;
   final void Function(Item) onItemTap;
-  final Future<Item?> Function(Item) onIdentifyItem;
+  final void Function(Item) onStartIdentification;
+  final Future<Item?> Function(Item) onRevealIdentification;
 
   static int _columns(double width) {
     if (width < 600) return 3;
@@ -1329,7 +1348,8 @@ class _ItemGrid extends StatelessWidget {
           itemBuilder: (_, i) => _ItemSlot(
             item: items[i],
             onItemTap: onItemTap,
-            onIdentifyItem: onIdentifyItem,
+            onStartIdentification: onStartIdentification,
+            onRevealIdentification: onRevealIdentification,
           ),
         );
       },
@@ -1343,11 +1363,13 @@ class _ItemSlot extends StatelessWidget {
   const _ItemSlot({
     required this.item,
     required this.onItemTap,
-    required this.onIdentifyItem,
+    required this.onStartIdentification,
+    required this.onRevealIdentification,
   });
   final Item item;
   final void Function(Item) onItemTap;
-  final Future<Item?> Function(Item) onIdentifyItem;
+  final void Function(Item) onStartIdentification;
+  final Future<Item?> Function(Item) onRevealIdentification;
 
   @override
   Widget build(BuildContext context) {
@@ -1357,7 +1379,12 @@ class _ItemSlot extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         onItemTap(item);
-        showSpeciesCard(context, item, onIdentify: onIdentifyItem);
+        showSpeciesCard(
+          context,
+          item,
+          onStartIdentification: onStartIdentification,
+          onRevealIdentification: onRevealIdentification,
+        );
       },
       child: Container(
         clipBehavior: Clip.antiAlias,

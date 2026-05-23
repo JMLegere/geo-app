@@ -607,3 +607,9 @@
 - Added `docs/frontend-usability-design-system.md` and updated `docs/design.md` so future UI work uses the shared design API and registry instead of ad hoc reusable widgets.
 - Added design enforcement tests in `test/shared/design/` for artifact structure, public API usage, registry parity, no raw style escape hatches in design widgets, catalog render smoke, and action touch-target coverage.
 - Verification passed: `mise exec -- flutter test --no-pub test/shared/design`, `mise exec -- flutter analyze --no-pub`, `mise exec -- flutter test --no-pub --reporter=compact`, `mise exec -- eac check`, and `git diff --check`.
+
+## Completed 2026-05-23 — player-facing Identification reveal path
+- Pack identification now follows the SuperBDD two-step path: `identify-unidentified-find` starts a reveal-ready state without committing known species state, and `reveal-identification` commits the deterministic known-state transition.
+- `SpeciesCard` now shows `Start identification`, an `Identification ready` reveal panel, and a hold-to-reveal affordance before exposing the hidden species name/scientific name.
+- `PackScreen` logs separate player actions for identification start and reveal; the existing repository/provider mutation runs only during reveal, preserving the same owned item identity.
+- Verification passed: `mise exec -- eac check`, focused identification tests, `mise exec -- flutter analyze`, full `mise exec -- flutter test --coverage --no-pub`, and Python CI-equivalent coverage check (`3561/3724 = 95%`, need `3537`).

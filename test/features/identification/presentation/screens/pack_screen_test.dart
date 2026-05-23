@@ -292,6 +292,53 @@ void main() {
       );
       expect(find.text('Amberwing Warbler'), findsNothing);
     });
+    testWidgets('identification starts reveal path before Pack state commit',
+        (tester) async {
+      final notifier = _RevealTrackingItemsNotifier([
+        _item(
+          '1',
+          'Unidentified fauna specimen',
+          ItemCategory.fauna,
+          rarity: 'rare',
+          identificationState: ItemIdentificationState.unidentified,
+          identifiedDisplayName: 'Amberwing Warbler',
+          identifiedScientificName: 'Setophaga aestiva',
+        ),
+      ]);
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => notifier),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PackScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Unidentified fauna specimen').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Start identification'));
+      await tester.pumpAndSettle();
+
+      expect(notifier.identifyCalls, 0);
+      expect(find.text('Amberwing Warbler'), findsNothing);
+      expect(find.text('Hold to reveal'), findsOneWidget);
+
+      await tester.longPress(find.text('Hold to reveal'));
+      await tester.pumpAndSettle();
+
+      expect(notifier.identifyCalls, 1);
+      expect(notifier.lastIdentifiedItemId, '1');
+      expect(find.text('Amberwing Warbler'), findsOneWidget);
+      expect(find.text('Setophaga aestiva'), findsOneWidget);
+    });
 
     testWidgets('tapping item opens species card bottom sheet', (tester) async {
       final items = [
@@ -508,8 +555,10 @@ Item _item(
   String? scientificName,
   List<String> habitats = const [],
   List<String> continents = const [],
-  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  ItemIdentificationState identificationState =
+      ItemIdentificationState.identified,
   String? identifiedDisplayName,
+  String? identifiedScientificName,
 }) =>
     Item(
       id: id,
@@ -525,6 +574,7 @@ Item _item(
       continents: continents,
       identificationState: identificationState,
       identifiedDisplayName: identifiedDisplayName,
+      identifiedScientificName: identifiedScientificName,
     );
 
 Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
@@ -561,6 +611,21 @@ class _MockItemsNotifier extends ItemsNotifier {
 
   @override
   Future<void> fetchItems() async {}
+}
+
+class _RevealTrackingItemsNotifier extends _MockItemsNotifier {
+  _RevealTrackingItemsNotifier(super.items);
+
+  int identifyCalls = 0;
+  String? lastIdentifiedItemId;
+
+  @override
+  Future<Item?> identifyUnidentifiedFind(String itemId) async {
+    identifyCalls++;
+    lastIdentifiedItemId = itemId;
+    final item = state.items.firstWhere((item) => item.id == itemId);
+    return item.identify(at: DateTime(2026, 1, 2));
+  }
 }
 
 class _ErrorItemsNotifier extends ItemsNotifier {

@@ -1137,6 +1137,17 @@ Implementation:
 └──────────────────────────────────────┘
 ```
 
+**Unidentified Identification path:**
+- Unidentified living-specimen cards render only `visibleDisplayName`; hidden
+  `identified_*` species fields must not appear in search, grid, modal title, or
+  detail copy before Identification reveal.
+- `Start identification` enters a reveal-ready SpeciesCard theater and logs
+  `identify-unidentified-find`; it does **not** mutate Pack state or call the
+  repository commit path.
+- `Hold to reveal` logs `reveal-identification`, commits the deterministic
+  known-state transition through the existing item identity, and then exposes the
+  species name, scientific name, traits, and known Pack state.
+
 **All other category tabs (v3):** Empty state (`EmptyStateWidget`) with category icon + "Coming soon". Not "stubs" — proper empty states using the design system.
 
 **Character tab:** Player avatar (identicon, 96px circle gradient), adventure stats (streak, distance, cells), per-category inventory counts.
