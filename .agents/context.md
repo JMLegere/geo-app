@@ -565,3 +565,45 @@
 - Renamed the player action from `identify-mystery` to `identify-unidentified-find` across SuperBDD, product actions/workflows, and the Dart action mirror.
 - Added `@cucumber/cucumber` as a dev-only Node harness with `npm run superbdd:cucumber` executing the Exploration/Discovery `.feature` files.
 - Added executable Cucumber step definitions for Discovery → Pack → Identification unidentified flow; current Cucumber run passes 19 scenarios / 80 steps.
+
+## Completed 2026-05-22 — map cell terrain fallback RCA
+- Investigated screenshot cell `v_22982_-33322` on beta and production; authenticated `fetch_nearby_cells` / `cell_properties` returned `habitats=['plains']`, and direct `cell_properties` showed the row was created 2026-03-12 with no habitat provenance.
+- Historical pre-v3 code mapped missing habitat lookup data and ESA `builtUp` land cover to `Habitat.plains`, so the sheet was accurately rendering stale fallback data rather than mis-selecting the cell.
+- Updated Map Cell Detail behavior so empty or single legacy Plains fallback terrain renders as `Terrain unclassified` instead of overclaiming Plains.
+- Added SuperBDD/docs coverage that fallback or unversioned terrain labels must not be presented as verified habitat facts.
+- Verification passed: focused `CellDetailSheet` widget test, `mise exec -- eac check`, `mise exec -- flutter analyze --no-pub`, and `git diff --check`.
+
+## Completed 2026-05-22 — habitat provenance + urban normalization pipeline
+- Added backend migration `075_cell_habitat_provenance_pipeline.sql`:
+  - provenance columns on `cell_properties`
+  - PostGIS source/version tables for normalized habitat features
+  - audited classification runs/results
+  - `classify_cell_habitats_from_source_version(...)`
+  - `fetch_nearby_cells` now exposes `habitat_source_version` and `habitat_confidence`
+- Expanded map habitat taxonomy with explicit `Urban`; added alias normalization (`grassland` → plains, `wetland` → swamp, `coastal` → ocean, built-up tags → urban).
+- Added source-agnostic pipeline tooling:
+  - `scripts/build_cell_habitat_artifact.py` normalizes OSM / land-cover GeoJSON into `cell-habitat-artifact/v1`
+  - `scripts/import_cell_habitat_artifact.py` imports artifact features into Supabase/PostGIS
+  - `supabase/cell_habitat_artifact.schema.json`
+  - fixture source GeoJSON at `supabase/fixtures/cell_habitat_source_geojson_minimal.json`
+- Updated Map Cell Detail behavior/tests so legacy unverified Plains hides as unclassified, while verified Plains and Urban render normally.
+- Verification passed:
+  - focused Flutter tests for habitat enum/iconography/DTO/detail sheet/migration contract
+  - `mise exec -- eac check`
+  - `python -m py_compile scripts/build_cell_habitat_artifact.py scripts/import_cell_habitat_artifact.py`
+  - builder/importer smoke on fixture artifact
+  - rollback validation on linked beta with a real Overpass sample around the screenshot area:
+    - `v_22981_-33322 -> ['urban']`
+    - `v_22982_-33321 -> ['plains','urban']`
+    - `v_22982_-33322 -> ['urban','plains']`
+    - `v_22983_-33321 -> ['plains']`
+  - `mise exec -- flutter analyze --no-pub`
+  - `git diff --check`
+
+## Completed 2026-05-23 — frontend/usability/design-system enforcement structure
+- Added a canonical Flutter design library under `lib/shared/design/`, modeled after the `main-website` repo's enforced design-library structure.
+- Added taxonomy folders (`foundations`, `primitives`, `composites`, `patterns`), public API `lib/shared/design.dart`, registry `lib/shared/design/registry.dart`, README, component/catalog barrels, and `DesignLibraryExample`.
+- First-pass canonical widgets: `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice`, `EarthPanel`, `EarthFieldRow`, and `EarthStatGrid`.
+- Added `docs/frontend-usability-design-system.md` and updated `docs/design.md` so future UI work uses the shared design API and registry instead of ad hoc reusable widgets.
+- Added design enforcement tests in `test/shared/design/` for artifact structure, public API usage, registry parity, no raw style escape hatches in design widgets, catalog render smoke, and action touch-target coverage.
+- Verification passed: `mise exec -- flutter test --no-pub test/shared/design`, `mise exec -- flutter analyze --no-pub`, `mise exec -- flutter test --no-pub --reporter=compact`, `mise exec -- eac check`, and `git diff --check`.

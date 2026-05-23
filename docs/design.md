@@ -672,7 +672,9 @@ Timing is measured via observability — timed operations write spans to `teleme
 
 Nothing is designed ad hoc. Every colour, spacing value, radius, shadow, and animation timing comes from the token system below. If a value isn't here, it doesn't exist yet — add it here first, then use it.
 
-The v3 design system is ported directly from v1 (`lib/shared/` before commit `3569cc8`). It is proven, cohesive, and already covers the full game. Port it verbatim.
+Canonical reusable UI now lives in `lib/shared/design/`, with the same enforced shape as the `main-website` repo: taxonomy folders, public API, registry, contract tests, and a catalog example. See `docs/frontend-usability-design-system.md` and `lib/shared/design/README.md`.
+
+The v3 palette and core token values remain based on the proven v1 `lib/shared/` design language; new reusable widgets must enter through the shared design library before feature screens consume them.
 
 ### Palette
 
@@ -752,28 +754,27 @@ abstract final class AppCurves {
 }
 ```
 
-### Component Inventory
+### Design Library Contract
 
-Every reusable piece. Nothing gets built that isn't listed here first.
+Reusable UI is organized and enforced before it is consumed by screens.
 
-| Component | File | What it is |
+| Layer | File / path | What it owns |
 |-----------|------|------------|
-| `AppTheme` | `shared/app_theme.dart` | Material theme factories (dark/light) |
-| `EarthNovaTheme` | `shared/earth_nova_theme.dart` | ThemeExtension — rarity colors, frosted glass, shadows |
-| `DesignTokens` | `shared/design_tokens.dart` | Spacing, Radii, Shadows, Durations, AppCurves, Blurs, Opacities, ComponentSizes |
-| `ItemSlotWidget` | `widgets/item_slot_widget.dart` | PC-box grid cell — habitat gradient bg, icon, rarity badge, name |
-| `RarityBadge` | `widgets/rarity_badge.dart` | Coloured IUCN code badge (LC/NT/VU/EN/CR/EX). Two sizes: small (grid), medium (card) |
-| `SpeciesCard` | `widgets/species_card.dart` | TCG-style detail card — title bar → art → type bar → info → footer |
-| `HabitatGradient` | `widgets/habitat_gradient.dart` | Habitat-tinted gradient BoxDecoration for slot/card backgrounds |
-| `PrismaticBorder` | `widgets/prismatic_border.dart` | Animated rainbow border for first-discovery items |
-| `PrismaticAnimationScope` | `widgets/prismatic_border.dart` | Shared AnimationController for prismatic border — one per grid |
-| `SpriteAnimationScope` | `widgets/sprite_animation_scope.dart` | Shared AnimationController for 2-frame idle at 2Hz — one per grid. Each slot reads `controller.value + phaseOffset` to determine current frame. |
-| `SpeciesArtImage` | `widgets/species_art_image.dart` | Network image with emoji fallback, breathing animation, shimmer loading |
-| `EmptyStateWidget` | `widgets/empty_state_widget.dart` | Consistent empty state — icon + title + subtitle |
-| `LoadingDots` | `widgets/loading_dots.dart` | Shared spinning-world loader (`🌍` `🌎` `🌏`) on 400ms loop |
-| `ErrorStateWidget` | `widgets/error_state_widget.dart` | Error message + retry button |
-| `IdenticonAvatar` | `widgets/identicon_avatar.dart` | Deterministic avatar generated from user ID seed |
-| `_PageDotIndicator` | `screens/pack_screen.dart` (private) | 7-dot page indicator for the Pack screen category PageView — active dot expands to a teal pill |
+| Public API | `lib/shared/design.dart` | The only import path feature screens should use for shared design components |
+| Registry | `lib/shared/design/registry.dart` | Component taxonomy, status, purpose, and screen-usage policy |
+| Foundations | `lib/shared/design/foundations/` | Internal helpers and conventions |
+| Primitives | `lib/shared/design/primitives/` | `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice` |
+| Composites | `lib/shared/design/composites/` | `EarthPanel`, `EarthFieldRow`, `EarthStatGrid` |
+| Patterns | `lib/shared/design/patterns/` | `DesignLibraryExample` catalog/review artifact; not for direct app-screen use |
+| Theme | `lib/shared/theme/app_theme.dart` | Material theme factories and brand/surface colors |
+| Tokens | `lib/shared/theme/design_tokens.dart` | Spacing, radii, durations, curves, and component sizes |
+| Shared widgets | `lib/shared/widgets/` | Existing app shell/loading/stub widgets that can be migrated into the taxonomy when reused broadly |
+| Feature widgets | `lib/features/*/presentation/widgets/` | Feature-owned UI such as map-cell details or discovery notifications until a pattern becomes reusable |
+
+Enforcement lives in `test/shared/design/`:
+- `design_contract_test.dart` checks required artifacts, public import path, taxonomy-first exports, and no raw style escape hatches in design widgets.
+- `design_component_registry_test.dart` keeps exported design widgets and `designComponentRegistry` in sync.
+- `design_library_widget_test.dart` smoke-renders the catalog example and checks action touch-target usability.
 
 ---
 

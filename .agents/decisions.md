@@ -347,3 +347,28 @@
 - Frontier cells should show the same thin dark neutral edge language as the revealed mosaic wherever tease meets reveal or unknown.
 - Keep frontier/frontier internal seams suppressed so the fog does not become a full debug grid.
 - Unknown territory remains borderless and opaque; the visible frontier outline exists to make teaser cells legible, not to fully expose unexplored structure.
+
+## 2026-05-22 — cell habitats require provenance and explicit urban normalization
+- Do not treat legacy `cell_properties.habitats` rows as self-authenticating terrain facts.
+- Add backend habitat provenance on `cell_properties` (`habitat_source`, `habitat_source_version`, `habitat_confidence`, `habitat_provenance`, `habitat_updated_at`) so the app and operators can distinguish legacy fallback labels from real classified terrain.
+- Keep the player-facing map taxonomy compact, but expand it to include **Urban** as an explicit built-up terrain class instead of overloading **Plains**.
+- Normalize richer source labels into the map taxonomy:
+  - `grassland` / `cropland` / `meadow` → `plains`
+  - `wetland` → `swamp`
+  - `coastal` → `ocean`
+  - built-up tags such as `urban` / `residential` / `commercial` / `industrial` → `urban`
+- Implement a source-agnostic artifact pipeline:
+  - normalize OSM / land-cover GeoJSON into `cell-habitat-artifact/v1`
+  - import source features into PostGIS with immutable `source_version`
+  - aggregate feature coverage against canonical `cell_geometry_cells`
+  - audit each classification run in `cell_habitat_classification_runs` / `cell_habitat_classification_results`
+- The client may hide unverified single-`Plains` legacy rows as `Terrain unclassified`, but once `habitat_confidence` is `classified` or `partial`, real `Plains` and `Urban` labels should render normally.
+
+## 2026-05-23 — Frontend design library uses main-website enforcement shape
+
+- EarthNova now has a canonical Flutter design library at `lib/shared/design/`, modeled after the `main-website` repo's enforced `src/design/` structure.
+- Use taxonomy folders: `foundations`, `primitives`, `composites`, and `patterns`; screens consume the public `package:earth_nova/shared/design.dart` API, not internal taxonomy paths.
+- `lib/shared/design/registry.dart` is the component inventory and must record each exported design widget's category, status, purpose, and direct screen-usage policy.
+- Current first-pass canonical widgets are `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice`, `EarthPanel`, `EarthFieldRow`, `EarthStatGrid`, and the catalog-only `DesignLibraryExample`.
+- Enforcement lives in `test/shared/design/`: contract structure/import checks, registry parity, catalog render smoke, and action touch-target coverage.
+- Existing older feature widgets can migrate opportunistically; do not churn stable screens solely for architecture, but new reusable frontend UI should enter through the design library first.

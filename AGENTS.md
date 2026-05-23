@@ -45,6 +45,7 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 | File | What it codifies |
 |------|-----------------|
 | `docs/design.md` | Product spec, architecture, screens, acceptance criteria |
+| `docs/frontend-usability-design-system.md` | Enforced frontend/design-system taxonomy, usability rules, registry checks |
 | `docs/dependencies.md` | Every package + why removed packages are gone |
 | `docs/runbook.md` | Deploy, Supabase ops, incident response |
 | `AGENTS.md` | How to work, key decisions |
@@ -83,6 +84,17 @@ changes, use **SuperBDD as the source of truth**.
    - **Workflows** = stateful mutation paths
 5. When product truth or feature behavior changes, `mise exec -- eac check` is
    required alongside the relevant tests.
+
+### Frontend / Design System
+
+Reusable UI belongs in `lib/shared/design/`, following the enforced taxonomy:
+`foundations → primitives → composites → patterns → feature screens`.
+
+1. Feature screens import shared design components from `package:earth_nova/shared/design.dart` only.
+2. Do not import internal design taxonomy paths (`shared/design/primitives`, `shared/design/composites`, etc.) from app code.
+3. New reusable UI must be added to the correct taxonomy folder and `designComponentRegistry`.
+4. Design widgets expose semantic variants/tone props, not raw color/style/padding escape hatches.
+5. For design-library changes, run `mise exec -- flutter test --no-pub test/shared/design` plus the affected widget/feature tests.
 
 
 ### Observability — Every State Transition
