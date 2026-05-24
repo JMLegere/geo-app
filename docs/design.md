@@ -1169,13 +1169,13 @@ Uses `EmptyStateWidget`. Icon 52px, title `onSurface`, subtitle `onSurfaceVarian
 
 Home is the player-facing successor to Sanctuary for the personal base/place. It is currently a shared stub screen. Long-term it owns the player's persistent place, placed finds, caretaking, and low-risk account affordances such as sign-out.
 
-### Town Screen — Living World / NPC-led Services
+### Town Screen — Living World / NPC-led World Surface
 
-Town is the top-level surface for unlocked NPC-led features. It is deliberately clear and boring as navigation language; the warmth comes from local experts, venue flavor, and conservation/science context.
+Town is the top-level surface for unlocked NPC-led local features. It is deliberately clear and boring as navigation language; the warmth comes from local people, venue flavor, and conservation/science context, not from treating NPCs as service vendors.
 
 **Core model:**
 - NPC venues are discovered on the Map as persistent real-place venues tied to a concrete cell + POI/building.
-- NPC function is authored first: e.g. `field-naturalist`, `botanist`, `curator`, `ranger`, or `trader`.
+- NPC function is authored first: e.g. curator, ranger, trader, guide, caretaker, specialist, or another named game role. The first concrete NPC type is not selected yet.
 - Generated NPC details are flavor-only: name, portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
 - Placement rules: one NPC type per city, one NPC venue maximum per cell, venue anchored to the most popular eligible POI in the chosen cell.
 - Opening a Town feature binds that feature UI to the nearest eligible NPC of the authored type relative to the player's current location.
@@ -1187,19 +1187,18 @@ No NPC-led features unlocked
 Town
 Meet local experts by exploring new map cells.
 
-Unlocked feature
+Unlocked local feature
 ────────────────────────────
 Town
-Naturalist Field Station
-Field Naturalist near [place/city]
-Identify finds and learn what lives nearby.
+[Venue / feature name]
+[Authored NPC role] near [place/city]
+[Local context and available interaction]
 ```
 
-**First NPC-led feature: Naturalist Field Station**
-- First NPC type: `field-naturalist`.
-- First Town entry: `Naturalist Field Station`.
-- Rationale: the live loop already creates unidentified living-specimen finds, so the first NPC should introduce field identification and local nature-study context before narrower specialists like botanists, curators, rangers, or traders.
-- The Naturalist should not become open-ended chat in the first slice; it explains/unlocks the feature, anchors it to a local venue, and adds authored/science-safe flavor.
+**First concrete NPC / loop: unresolved**
+- Do not treat `Naturalist Field Station` as the locked first slice.
+- Do not default the first loop to a `Field Survey`, task board, service-vendor, or MMO daily-request shape.
+- The first concrete NPC and loop should be selected through design work, then captured in SuperBDD before implementation.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)
 

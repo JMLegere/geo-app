@@ -632,6 +632,6 @@
   - map-cell-entry venue discovery
   - Town empty/unlocked states
   - nearest eligible NPC binding when a Town feature opens
-- Selected the first NPC-led feature: `field-naturalist` / `Naturalist Field Station`, because the live loop already creates unidentified living-specimen finds.
+- First concrete NPC-led feature remains intentionally unresolved after Jeremy rejected Naturalist Field Station and Field Survey/task-board framing as the wrong vision.
 - Added SuperBDD product actions/workflow for `discover-npc-venue`, `open-town`, `open-npc-led-feature`, and `npc-feature-unlock`.
 - Updated the TabShell Town tab to log the typed `open-town` player action instead of a telemetry-only exception while the visual screen remains a stub.

@@ -220,7 +220,7 @@ export const productFeatures = {
     label: "Town",
     capability: "living-world",
     kind: "app-section",
-    description: "Top-level NPC-led service directory that lists unlocked feature venues and opens each one bound to the nearest eligible local NPC.",
+    description: "Top-level NPC-led world surface that lists unlocked local feature venues and opens each one bound to the nearest eligible local NPC.",
   }),
   npcVenues: feature({
     id: "npc-venues",
@@ -228,13 +228,6 @@ export const productFeatures = {
     capability: "living-world",
     kind: "data-model",
     description: "City-scoped, POI-anchored venue placement model for authored NPC functions: one NPC type per city, one NPC venue per cell, placed at the most popular eligible POI.",
-  }),
-  naturalistFieldStation: feature({
-    id: "naturalist-field-station",
-    label: "Naturalist Field Station",
-    capability: "living-world",
-    kind: "surface",
-    description: "First NPC-led feature surface where a Field Naturalist introduces field identification and local nature-study context for unidentified living-specimen finds.",
   }),
 
   fieldGuide: feature({

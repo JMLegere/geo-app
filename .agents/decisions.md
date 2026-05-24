@@ -428,11 +428,10 @@
 - Use `Player` as the top-level label: broad, boring, game-native, and clearer than `Profile` for mixed personal/inventory/progression state.
 - Avoid cute labels like `Me`, overly romantic labels like `Explorer`, narrow labels like `Pack`, and account-shaped labels like `Profile` for the top-level personal surface.
 
-## 2026-05-24 — First Town/NPC slice is the Naturalist Field Station
+## 2026-05-24 — First Town/NPC slice remains unresolved; Naturalist/Field Survey rejected
 
-- Add `Living World` as the capability that owns NPC venue discovery, Town entries, local feature binding, and authored NPC functions.
-- First NPC type: `field-naturalist`.
-- First Town entry / feature surface: `Naturalist Field Station`.
-- Rationale: the current live loop already produces unidentified living-specimen finds, so the first NPC should introduce field identification and local nature-study context before narrower specialists like botanists, museum curators, rangers, or traders.
-- The Naturalist is not an open-ended chat/simulation slice. The first implementation should unlock/explain an NPC-led feature, bind it to a local venue, and add authored/science-safe flavor.
-- Town is now part of the SuperBDD action catalog via `open-town`; map-cell venue discovery and Town feature binding are captured as `discover-npc-venue` and `open-npc-led-feature`.
+- Keep `Living World` as the capability that owns NPC venue discovery, Town entries, local feature binding, and authored NPC functions.
+- Do not lock `field-naturalist` / Naturalist Field Station as the first concrete NPC slice.
+- Do not default the first NPC loop to Field Survey, service-vendor, task-board, or MMO daily-request framing.
+- The first concrete NPC and interaction loop must be selected through additional design work, then captured in SuperBDD before implementation.
+- Town remains part of the SuperBDD action catalog via `open-town`; map-cell venue discovery and Town feature binding remain captured as `discover-npc-venue` and `open-npc-led-feature`.

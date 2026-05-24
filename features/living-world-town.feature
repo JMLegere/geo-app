@@ -1,4 +1,4 @@
-@capability.living-world @feature.town @feature.npc-venues @feature.naturalist-field-station
+@capability.living-world @feature.town @feature.npc-venues
 Feature: Town and NPC-led services
   Living World makes major EarthNova systems feel grounded in places and people.
   NPC venues are discovered on the Map, unlock Town entries, and bind feature
@@ -7,7 +7,7 @@ Feature: Town and NPC-led services
   Scenario: Living World defines its app surfaces
     Given major game systems should be introduced through NPCs
     When the Living World capability is expanded beyond navigation stubs
-    Then it should specify NPC venue placement, venue discovery, Town entries, NPC-led feature binding, and first Naturalist Field Station behavior
+    Then it should specify NPC venue placement, venue discovery, Town entries, and NPC-led feature binding
 
   Scenario: NPC venues are sparse and city-scoped
     Given a city-level location node has eligible POIs and authored NPC functions
@@ -17,7 +17,7 @@ Feature: Town and NPC-led services
     And each venue should anchor to the most popular eligible POI in its chosen cell
 
   Scenario: NPC function is authored before generated flavor
-    Given the game needs a specific NPC-led feature such as Field Naturalist
+    Given the game needs a specific authored NPC-led feature
     When an NPC venue is generated
     Then the NPC type, feature function, unlock rules, and feature binding should be authored by the game
     And generated identity details should be limited to name, portrait seed, affiliation, voice, intro copy, and cosmetic local flavor
@@ -43,8 +43,8 @@ Feature: Town and NPC-led services
     Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
     And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
 
-  Scenario: First NPC-led feature is the Naturalist Field Station
-    Given the first live discovery loop creates unidentified living-specimen finds
-    When the first NPC-led feature is selected for implementation
-    Then Field Naturalist should be the first NPC type
-    And Naturalist Field Station should introduce field identification and local nature-study context before broader specialist NPCs such as botanists, curators, rangers, or traders
+  Scenario: First concrete NPC loop remains intentionally unchosen
+    Given Living World has venue, Town, and binding rules
+    When the first concrete NPC-led loop is selected later
+    Then the selected NPC and loop should be captured in SuperBDD before implementation
+    And the selection should not default to a service-vendor, task-board, or MMO daily-request shape
