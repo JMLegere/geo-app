@@ -361,7 +361,7 @@ export const actionCapabilities = {
     "release-animal-to-wild",
     "Release an animal to the wild",
     "Release to Wild commit flow",
-    "commits an eligible owned animal into the base release slot or an optional local program, removes it from active Pack, preserves release history, and grants immediate rewards exactly once",
+    "commits an eligible owned animal into the base release slot or an optional local program, removes it from active Pack, preserves release history, and grants Orb rewards exactly once",
     playerActionWorkflows.releaseToWild,
   ),
   openCollections: navigationAction(
