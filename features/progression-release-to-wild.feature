@@ -3,7 +3,7 @@ Feature: Release to Wild
   Release to Wild is the first concrete NPC-led conservation loop. A Wildlife
   Rehabilitation Center run by a Wildlife Rehabilitator accepts real owned animal
   instances from the player. Base one-off release is always available, while
-  optional local programs offer extra rewards for targeted contributions.
+  optional local programs offer extra rewards for authored trait requests.
 
   Scenario: Release to Wild defines its game system
     Given Release to Wild belongs to the Progression-Permanence capability
@@ -33,8 +33,8 @@ Feature: Release to Wild
     And the player should gain the flat base Orb item-stack reward for releasing any eligible fauna
 
   @action.release-animal-to-wild
-  Scenario: Player contributes to a local vulnerable-fauna program
-    Given the player owns an active identified vulnerable fauna find that matches an open local program slot
+  Scenario: Player contributes to a local trait-request program
+    Given the player owns an active identified fauna find with the requested trait for an open local program slot
     When the player releases that animal through the program
     Then the release should count toward the visible local program slots
     And the released animal should still be recorded in release history
@@ -56,7 +56,7 @@ Feature: Release to Wild
 
   Scenario: Local release programs are durable and center-owned
     Given a city has one Wildlife Rehabilitation Center venue
-    When that center offers a local vulnerable-fauna program
+    When that center offers a local "look for this trait" program
     Then the program should belong to that specific NPC and POI
     And incomplete program slots should preserve their committed releases over time
     And completed one-time programs should not reset as daily chores
