@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:earth_nova/shared/design.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,6 +12,7 @@ void main() {
         'lib/shared/design/README.md',
         'lib/shared/design/index.dart',
         'lib/shared/design/registry.dart',
+        'lib/shared/design/surface_inventory.dart',
         'lib/shared/design/components.dart',
         'lib/shared/design/examples.dart',
         'lib/shared/design/foundations/index.dart',
@@ -55,6 +58,39 @@ void main() {
       expect(source, contains("export 'patterns/index.dart';"));
       expect(source, isNot(contains("export 'components.dart';")));
       expect(source, isNot(contains("export 'examples.dart';")));
+    });
+    test('documents every app UI surface outside the design taxonomy', () {
+      final discoveredUiFiles = <String>{};
+
+      final uiClass = RegExp(
+        r'extends\s+(?:StatelessWidget|StatefulWidget|ConsumerWidget|ConsumerStatefulWidget|CustomPainter)',
+      );
+
+      for (final file in _dartFilesUnder('lib')) {
+        if (_isWithin(file, 'lib/shared/design')) continue;
+
+        final source = file.readAsStringSync();
+        if (uiClass.hasMatch(source)) {
+          discoveredUiFiles.add(_normalizedPath(file));
+        }
+      }
+
+      expect(
+        publicDesignSurfacePaths,
+        discoveredUiFiles,
+        reason:
+            'Every app UI file outside lib/shared/design must be documented in designSurfaceInventory. '
+            'Add new player-facing, debug, observability, painter, and route UI there before shipping.',
+      );
+
+      for (final surface in designSurfaceInventory) {
+        expect(File(surface.path).existsSync(), isTrue,
+            reason: '${surface.path} is documented but does not exist.');
+        expect(surface.purpose, isNotEmpty,
+            reason: '${surface.path} needs a purpose.');
+        expect(surface.designSystemNotes, isNotEmpty,
+            reason: '${surface.path} needs design-system notes.');
+      }
     });
 
     test('prevents style escape hatches in design widgets', () {
@@ -130,4 +166,16 @@ bool _isWithin(File file, String relativeDirectory) {
   final dir = Directory(relativeDirectory).absolute.path;
   final path = file.absolute.path;
   return path == dir || path.startsWith('$dir${Platform.pathSeparator}');
+}
+
+String _normalizedPath(File file) {
+  final current = Directory.current.absolute.path;
+  final absolute = file.absolute.path;
+  if (absolute == current) return '.';
+  if (absolute.startsWith('$current${Platform.pathSeparator}')) {
+    return absolute
+        .substring(current.length + 1)
+        .replaceAll(Platform.pathSeparator, '/');
+  }
+  return file.path.replaceAll(Platform.pathSeparator, '/');
 }

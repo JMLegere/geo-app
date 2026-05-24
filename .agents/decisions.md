@@ -457,3 +457,10 @@
 - Map markers should identify the place and character, not advertise unbuilt feature status.
 - Unavailable services should use diegetic copy such as `Opening soon` / `Not yet accepting releases`, not implementation copy such as `Feature not built yet`.
 - The first concrete place shape is `[Character]'s Wildlife Rehab Center`, currently represented in the thin slice as `Rowan's Wildlife Rehab Center`.
+
+## 2026-05-24 — Design validation requires app UI surface inventory
+
+- The design system is no longer limited to reusable component registry checks.
+- Every Flutter UI implementation outside `lib/shared/design/` must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes.
+- This intentionally closes the old migration gap where feature-local screens/widgets could carry undocumented local styling.
+- Existing legacy local compositions remain allowed only because they are inventoried with migration notes; any new UI file fails shared design validation until documented.

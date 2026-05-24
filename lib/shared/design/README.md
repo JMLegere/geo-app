@@ -43,7 +43,8 @@ foundations -> primitives -> composites -> patterns -> feature screens
 5. Design widgets expose semantic variant/tone props instead of raw `Color`, `TextStyle`, `EdgeInsets`, or decoration escape hatches.
 6. New reusable UI must be added in the right taxonomy folder first, then consumed by features.
 7. Every exported design widget must be listed in `designComponentRegistry` with category, status, purpose, and screen-usage policy.
-8. Any change to design components must pass the shared design tests.
+8. Every app UI file outside the design taxonomy must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes.
+9. Any change to design components or app UI inventory must pass the shared design tests.
 
 ## Public API
 
@@ -63,7 +64,7 @@ import 'package:earth_nova/shared/design/primitives/index.dart';
 
 The repository enforces the design library through:
 
-- `test/shared/design/design_contract_test.dart` — structure, public import path, no raw style escape hatches.
+- `test/shared/design/design_contract_test.dart` — structure, public import path, app UI surface inventory, no raw style escape hatches.
 - `test/shared/design/design_component_registry_test.dart` — registry/API/taxonomy parity.
 - `test/shared/design/design_library_widget_test.dart` — render smoke and touch-target coverage.
 - `flutter test` / CI — runs these checks with the rest of the suite.
@@ -78,3 +79,11 @@ The first pass establishes the structure. Existing older feature widgets may sti
 4. Add it to `lib/shared/design/registry.dart` with `category`, `status`, `purpose`, and `allowedInScreens`.
 5. Add representative usage in `DesignLibraryExample` when helpful.
 6. Run `mise exec -- flutter test --no-pub test/shared/design` and the focused consumer tests.
+
+## Adding app UI outside the design taxonomy
+
+Any new screen, feature widget, shared widget, debug overlay, observability
+fallback, or painter outside `lib/shared/design/` must be added to
+`designSurfaceInventory`. The inventory is intentionally strict: validation fails
+if a Flutter UI class exists without a design-system entry explaining why it
+exists and how it relates to the canonical design language.

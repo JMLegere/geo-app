@@ -38,7 +38,7 @@ They must not import internal taxonomy paths such as `shared/design/primitives/.
 - Map and gameplay screens prioritize state legibility before ornament: marker/ring, current map cell, fog relationship, then secondary cues.
 - Touch targets must stay at or above 44px; canonical actions use `ComponentSizes.buttonHeight`.
 - Visual variants are semantic (`tone`, `status`, `relationship`) instead of raw color/style props.
-- New route-specific UI starts as local feature code; reusable UI graduates into the design taxonomy and registry.
+- Every app UI implementation outside `lib/shared/design/` must be documented in `designSurfaceInventory` with its purpose, category, status, and design-system notes before it ships.
 - Patterns such as `DesignLibraryExample` are catalog/review artifacts and are not allowed directly in app screens.
 - High-level app chrome should use canonical design icons (`EarthIcon` / `EarthGlyph`) instead of raw `Icons.*`, emoji glyphs, or legacy `AppIcons` strings.
 
@@ -48,7 +48,7 @@ The first-pass enforcement lives in tests so it runs in normal Flutter CI:
 
 | Check | File | What fails |
 | --- | --- | --- |
-| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
+| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, undocumented app UI surfaces, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
 | Registry parity | `test/shared/design/design_component_registry_test.dart` | Exported taxonomy widgets missing registry entries, duplicate/stale entries, empty categories |
 | Widget smoke/usability | `test/shared/design/design_library_widget_test.dart` | Catalog render breakage and action touch-target regressions |
 
@@ -67,10 +67,17 @@ mise exec -- flutter test --no-pub --reporter=compact
 
 ## Migration rule
 
-Existing pre-library feature widgets may still carry local styling. Do not churn them only to satisfy architecture. When a screen or widget is touched for real product work:
+Existing pre-library feature widgets may carry local styling only when they are
+explicitly documented in `designSurfaceInventory` with design-system notes. This
+is not a free pass: the inventory is the review gate, and any new screen, widget,
+painter, debug overlay, or observability fallback fails validation until it is
+documented there.
+
+When a screen or widget is touched for real product work:
 
 1. Reuse an existing design component if it fits.
 2. If the UI shape is reusable, add/extend the correct design taxonomy component first.
 3. Add the component to `designComponentRegistry`.
-4. Add or update focused widget/contract coverage.
-5. Consume it through `package:earth_nova/shared/design.dart`.
+4. Document the consuming screen/widget in `designSurfaceInventory` if it is not itself a design component.
+5. Add or update focused widget/contract coverage.
+6. Consume design components through `package:earth_nova/shared/design.dart`.
