@@ -65,6 +65,6 @@ void main() {
       ),
     );
 
-    expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.collections_bookmark_outlined), findsOneWidget);
   });
 }

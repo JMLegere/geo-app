@@ -1,6 +1,7 @@
 {
   "version": 8,
   "name": "EarthNova raster basemap",
+  "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   "sources": {
     "carto-light": {
       "type": "raster",

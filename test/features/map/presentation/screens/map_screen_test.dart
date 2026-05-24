@@ -266,6 +266,7 @@ void main() {
       expect(styleFile.existsSync(), isTrue);
       final styleJson = styleFile.readAsStringSync();
       expect(styleJson, contains('"type": "raster"'));
+      expect(styleJson, contains('"glyphs"'));
       expect(styleJson, contains('light_nolabels'));
       expect(styleJson,
           isNot(contains('"url": "https://tiles.openfreemap.org/planet"')));
