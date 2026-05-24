@@ -1208,7 +1208,7 @@ Release an animal or contribute to a local conservation program.
 - In fiction, a real owned animal instance leaves the player's care and is rehabilitated/reintroduced.
 - Base one-off release is always available through a simple generic release slot for any eligible fauna.
 - Optional local programs add extra visible slots with tighter requirements and larger rewards. First/default program style: vulnerable-fauna drives.
-- Primary reward: Rehab Trust. Secondary reward: small Orb payout.
+- Rewards are immediate plus ledger/history only; there is no durable Rehab Trust/reputation track. Small Orb payout remains the current default reward direction unless replaced.
 - Release is irreversible for the animal instance: it leaves active Pack, appears in the center's release ledger/history, and Field Guide knowledge remains.
 - First eligibility floor: active, identified, fauna, owned by the player, not already released, and not currently serving as a buddy, placed at Home, or committed elsewhere unless those states are cleared first.
 - Local programs belong to the specific NPC and POI. There is one center per city.

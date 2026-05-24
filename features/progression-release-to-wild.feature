@@ -30,7 +30,7 @@ Feature: Release to Wild
     Then the owned animal should leave the active Pack exactly once
     And the released animal should appear in the center's release ledger/history
     And Field Guide knowledge should remain available after release
-    And the player should gain Rehab Trust plus a small Orb reward
+    And the player should gain the immediate base release reward
 
   @action.release-animal-to-wild
   Scenario: Player contributes to a local vulnerable-fauna program
