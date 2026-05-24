@@ -21,7 +21,7 @@ Feature: Release to Wild
   Scenario: Player inspects a local release program
     Given a local release program is available
     When the player inspects the local release program
-    Then the visible contribution slots, requested habitat/type/trait predicates, release consequences, and extra rewards should be visible before any animal is committed
+    Then the visible contribution slots, requested habitat/type/trait predicates, strict matching rules, release consequences, and extra rewards should be visible before any animal is committed
 
   @action.release-animal-to-wild
   Scenario: Player performs a base one-off release
@@ -37,6 +37,7 @@ Feature: Release to Wild
     Given the player owns an active identified fauna find matching a requested habitat, animal type, or other current authored trait/tag for an open local program slot
     When the player releases that animal through the program
     Then the release should count toward the visible local program slots
+    And only exact predicate matches should be accepted for committed program progress
     And the released animal should still be recorded in release history
     And any completed local program should grant its fixed bonus Orb item-stack reward exactly once
 

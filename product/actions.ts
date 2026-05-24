@@ -355,7 +355,7 @@ export const actionCapabilities = {
     "inspect-release-bundle",
     "Inspect a local release program",
     "Release to Wild local program detail",
-    "shows visible program slots, accepted animal requirements, release consequences, and extra rewards before any animal is released",
+    "shows visible program slots, requested habitat/type/trait predicates, strict matching rules, nearby/missing match suggestions, release consequences, and extra rewards before any animal is released",
     playerActionWorkflows.releaseToWild,
   ),
   releaseAnimalToWild: mutationAction(
