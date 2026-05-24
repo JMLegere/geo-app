@@ -47,6 +47,9 @@ abstract final class PlayerActions {
   static const PlayerActionId viewConservationGoal = 'view-conservation-goal';
   static const PlayerActionId contributeToConservation =
       'contribute-to-conservation';
+  static const PlayerActionId openReleaseToWild = 'open-release-to-wild';
+  static const PlayerActionId inspectReleaseBundle = 'inspect-release-bundle';
+  static const PlayerActionId releaseAnimalToWild = 'release-animal-to-wild';
   static const PlayerActionId openCollections = 'open-collections';
   static const PlayerActionId addFindToCollection = 'add-find-to-collection';
   static const PlayerActionId openSanctuary = 'open-sanctuary';
@@ -109,6 +112,9 @@ abstract final class PlayerActions {
     inspectFieldGuideEntry,
     viewConservationGoal,
     contributeToConservation,
+    openReleaseToWild,
+    inspectReleaseBundle,
+    releaseAnimalToWild,
     openCollections,
     addFindToCollection,
     openSanctuary,

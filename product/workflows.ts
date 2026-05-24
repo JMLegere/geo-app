@@ -285,6 +285,71 @@ export const userActionWorkflows = {
     evidence: workflowEvidence,
   }),
 
+  releaseToWild: workflow({
+    id: playerActionWorkflows.releaseToWild,
+    label: "Zoo owner Release to Wild bundle lifecycle",
+    initialState: "zoo-owner-discovered",
+    states: [
+      "zoo-owner-discovered",
+      "release-bundles-visible",
+      "release-bundle-inspected",
+      "animal-released",
+      "bundle-complete",
+    ],
+    events: [
+      playerActions.openReleaseToWild,
+      playerActions.inspectReleaseBundle,
+      playerActions.releaseAnimalToWild,
+    ],
+    transitions: [
+      {
+        from: "zoo-owner-discovered",
+        action: playerActions.openReleaseToWild,
+        to: "release-bundles-visible",
+      },
+      {
+        from: "release-bundles-visible",
+        action: playerActions.inspectReleaseBundle,
+        to: "release-bundle-inspected",
+      },
+      {
+        from: "release-bundle-inspected",
+        action: playerActions.releaseAnimalToWild,
+        to: "animal-released",
+      },
+      {
+        from: "animal-released",
+        action: playerActions.releaseAnimalToWild,
+        to: "bundle-complete",
+      },
+      {
+        from: "bundle-complete",
+        action: playerActions.openReleaseToWild,
+        to: "bundle-complete",
+      },
+    ],
+    forbiddenTransitions: [
+      {
+        state: "zoo-owner-discovered",
+        action: playerActions.releaseAnimalToWild,
+        reason: "The player must inspect a release bundle and understand eligibility, consequences, and rewards before releasing an animal.",
+      },
+      {
+        state: "release-bundles-visible",
+        action: playerActions.releaseAnimalToWild,
+        reason: "Release requires a selected bundle slot and eligible active identified fauna find.",
+      },
+      {
+        state: "bundle-complete",
+        action: playerActions.releaseAnimalToWild,
+        reason: "A completed one-time release bundle cannot accept duplicate releases as new reward progress.",
+      },
+    ],
+    requiredCoverage: fullStateCoverage,
+
+    evidence: workflowEvidence,
+  }),
+
   conservationContribution: workflow({
     id: playerActionWorkflows.conservationContribution,
     label: "Conservation contribution lifecycle",

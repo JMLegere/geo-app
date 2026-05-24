@@ -179,13 +179,21 @@ export const productCapabilities = {
     description:
       "The player discovers NPC venues in real places, unlocks NPC-led feature entries in Town, and opens those features through local authored roles.",
     emotionalReward: "The world feels inhabited by helpful local experts rather than abstract menus.",
-    cucumberFeatures: [spineFeature, "features/living-world-town.feature"],
+    cucumberFeatures: [
+      spineFeature,
+      "features/living-world-town.feature",
+      "features/progression-release-to-wild.feature",
+    ],
     requiredActions: [
       playerActions.discoverNpcVenue,
       playerActions.openTown,
       playerActions.openNpcLedFeature,
+      playerActions.openReleaseToWild,
     ],
-    workflows: [playerActionWorkflows.npcFeatureUnlock],
+    workflows: [
+      playerActionWorkflows.npcFeatureUnlock,
+      playerActionWorkflows.releaseToWild,
+    ],
   }),
   progressionPermanence: capability({
     id: "progression-permanence",
@@ -197,6 +205,7 @@ export const productCapabilities = {
       spineFeature,
       "features/progression-field-guide.feature",
       "features/progression-conservation.feature",
+      "features/progression-release-to-wild.feature",
       "features/progression-collections.feature",
       "features/progression-sanctuary.feature",
       "features/progression-buddy.feature",
@@ -207,6 +216,9 @@ export const productCapabilities = {
       playerActions.inspectFieldGuideEntry,
       playerActions.viewConservationGoal,
       playerActions.contributeToConservation,
+      playerActions.openReleaseToWild,
+      playerActions.inspectReleaseBundle,
+      playerActions.releaseAnimalToWild,
       playerActions.openCollections,
       playerActions.addFindToCollection,
       playerActions.openSanctuary,
@@ -218,6 +230,7 @@ export const productCapabilities = {
     ],
     workflows: [
       playerActionWorkflows.conservationContribution,
+      playerActionWorkflows.releaseToWild,
       playerActionWorkflows.collectionCommitment,
       playerActionWorkflows.sanctuaryPlacement,
       playerActionWorkflows.buddyCare,

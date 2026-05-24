@@ -1175,7 +1175,7 @@ Town is the top-level surface for unlocked NPC-led local features. It is deliber
 
 **Core model:**
 - NPC venues are discovered on the Map as persistent real-place venues tied to a concrete cell + POI/building.
-- NPC function is authored first: e.g. curator, ranger, trader, guide, caretaker, specialist, or another named game role. The first concrete NPC type is not selected yet.
+- NPC function is authored first: e.g. zoo owner, curator, ranger, trader, guide, caretaker, specialist, or another named game role.
 - Generated NPC details are flavor-only: name, portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
 - Placement rules: one NPC type per city, one NPC venue maximum per cell, venue anchored to the most popular eligible POI in the chosen cell.
 - Opening a Town feature binds that feature UI to the nearest eligible NPC of the authored type relative to the player's current location.
@@ -1190,15 +1190,24 @@ Meet local experts by exploring new map cells.
 Unlocked local feature
 ────────────────────────────
 Town
-[Venue / feature name]
-[Authored NPC role] near [place/city]
-[Local context and available interaction]
+Release to Wild
+Zoo Owner near [place/city]
+Release animals into conservation bundles for rewards.
 ```
 
-**First concrete NPC / loop: unresolved**
-- Do not treat `Naturalist Field Station` as the locked first slice.
-- Do not default the first loop to a `Field Survey`, task board, service-vendor, or MMO daily-request shape.
-- The first concrete NPC and loop should be selected through design work, then captured in SuperBDD before implementation.
+**First concrete NPC / loop: Zoo Owner → Release to Wild**
+- First NPC type: `zoo-owner`.
+- First Town feature: `Release to Wild`.
+- The zoo owner offers durable release bundles where the player releases owned animals to the wild in exchange for rewards.
+- This should feel like conservation programs / bundle completion, not a task-board, service-vendor, or MMO daily-request loop.
+- Release is irreversible for the animal instance: it leaves active Pack, but release history and Field Guide knowledge remain.
+
+**Release to Wild model:**
+- Bundle slots accept eligible owned animals by authored criteria: species, taxonomic class, habitat, rarity, region, conservation status, or other later criteria.
+- First eligibility floor: active, identified, fauna, owned by the player, not locked, not active buddy, not Home-placed, and not already released or otherwise committed.
+- Releasing writes an append-only release event and updates the source item out of active inventory; do not delete the item row as the only record.
+- Bundle completion grants rewards exactly once. Candidate rewards can include conservation reputation, orbs/credits, unlocks, cosmetics, or future zoo-owner trust, but exact reward currency remains open.
+- One-time bundles persist completion; repeatable bundles, if added later, need explicit season/program rules rather than implicit daily reset.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)
 

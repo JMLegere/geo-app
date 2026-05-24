@@ -435,3 +435,12 @@
 - Do not default the first NPC loop to Field Survey, service-vendor, task-board, or MMO daily-request framing.
 - The first concrete NPC and interaction loop must be selected through additional design work, then captured in SuperBDD before implementation.
 - Town remains part of the SuperBDD action catalog via `open-town`; map-cell venue discovery and Town feature binding remain captured as `discover-npc-venue` and `open-npc-led-feature`.
+
+## 2026-05-24 — First Town/NPC slice is Zoo Owner → Release to Wild
+
+- First concrete NPC type: `zoo-owner`.
+- First NPC-led Town feature: `Release to Wild`.
+- The zoo owner offers release bundles where players release owned animals to the wild in exchange for rewards.
+- Release bundles should feel like durable conservation programs / bundle completion, not Field Survey, service-vendor, task-board, or MMO daily-request loops.
+- Release is an irreversible item-instance commitment: the animal leaves active Pack, release history is preserved, Field Guide knowledge remains, and bundle rewards are granted exactly once on completion.
+- Release eligibility floor: active identified fauna owned by the player, not locked, not active buddy, not Home-placed, not already released, and not otherwise committed.

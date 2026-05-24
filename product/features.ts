@@ -229,6 +229,13 @@ export const productFeatures = {
     kind: "data-model",
     description: "City-scoped, POI-anchored venue placement model for authored NPC functions: one NPC type per city, one NPC venue per cell, placed at the most popular eligible POI.",
   }),
+  zooOwner: feature({
+    id: "zoo-owner",
+    label: "Zoo Owner",
+    capability: "living-world",
+    kind: "surface",
+    description: "First concrete NPC role: a local zoo owner discovered through an NPC venue who introduces Release to Wild bundles.",
+  }),
 
   fieldGuide: feature({
     id: "field-guide",
@@ -243,6 +250,13 @@ export const productFeatures = {
     capability: "progression-permanence",
     kind: "game-system",
     description: "Stewardship layer for threat status meaning, conservation goals, and species/place care context.",
+  }),
+  releaseToWild: feature({
+    id: "release-to-wild",
+    label: "Release to Wild",
+    capability: "progression-permanence",
+    kind: "game-system",
+    description: "Zoo-owner conservation loop where players commit eligible owned animals into durable release bundles, remove them from active Pack, preserve release history, and receive rewards.",
   }),
   collections: feature({
     id: "collections",

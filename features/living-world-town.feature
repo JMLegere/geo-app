@@ -43,8 +43,10 @@ Feature: Town and NPC-led services
     Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
     And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
 
-  Scenario: First concrete NPC loop remains intentionally unchosen
-    Given Living World has venue, Town, and binding rules
-    When the first concrete NPC-led loop is selected later
-    Then the selected NPC and loop should be captured in SuperBDD before implementation
-    And the selection should not default to a service-vendor, task-board, or MMO daily-request shape
+  Scenario: First NPC-led feature is owned by a zoo owner
+    Given the first concrete NPC-led loop is selected
+    When Living World places the first NPC venue
+    Then the NPC should be a zoo owner
+    And the Town feature should be Release to Wild
+    And the zoo owner should offer release bundles where the player releases animals to the wild in exchange for rewards
+    And the loop should feel like durable conservation programs, not a task-board or MMO daily request

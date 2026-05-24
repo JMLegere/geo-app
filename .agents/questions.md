@@ -43,7 +43,7 @@ Unresolved questions and blockers.
   How is this tracked server-side? What is the Supabase schema for art voting?
 - **Orb spending**: Orbs are produced via sanctuary feeding but spend targets are TBD.
   Breeding? Lures? Cosmetics?
-- **First NPC loop**: First concrete NPC type and interaction loop are unresolved. Jeremy rejected Naturalist Field Station and Field Survey/task-board framing as the wrong vision.
+- **Release to Wild rewards**: First NPC loop is resolved as Zoo Owner → Release to Wild bundles. Exact reward currency/reward types remain open: conservation reputation, orbs/credits, unlocks, cosmetics, zoo-owner trust, or a combination.
 
 ### Operations
 
