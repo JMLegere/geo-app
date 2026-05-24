@@ -256,7 +256,7 @@ export const productFeatures = {
     label: "Release to Wild",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "Wildlife rehabilitation loop where players perform base one-off releases for Orbs, optionally contribute eligible fauna to local conservation programs for extra Orb rewards, remove released animals from active Pack, and preserve release history.",
+    description: "Wildlife rehabilitation loop where players perform base one-off releases for a flat Orb reward, optionally contribute eligible fauna to local conservation programs for fixed bonus Orb rewards, remove released animals from active Pack, and preserve release history.",
   }),
   collections: feature({
     id: "collections",
