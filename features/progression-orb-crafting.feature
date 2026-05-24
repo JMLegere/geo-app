@@ -14,7 +14,8 @@ Feature: Orb Crafting
     Given the player owns an Orb item stack and an eligible owned animal
     When the player uses the Orb on that animal
     Then one Orb stack quantity should be consumed exactly once
-    And the animal should reroll a trait, personality, or variant within authored safe bounds
+    And the animal should reroll personality, cosmetic variant, or authored non-science traits within safe bounds
+    But species identity, provenance, rarity, and conservation status should never change
     And the original animal instance should remain owned by the player
     And the crafting result should be recorded for audit/history
 

@@ -369,7 +369,7 @@ export const actionCapabilities = {
     "use-orb-on-animal",
     "Use an Orb on an animal",
     "Orb Crafting commit flow",
-    "consumes an owned Orb item stack to reroll an owned animal's trait, personality, or variant within authored safe bounds while preserving the animal instance",
+    "consumes an owned Orb item stack to reroll an owned animal's personality, cosmetic variant, or authored non-science traits while preserving species, provenance, rarity, conservation status, and the animal instance",
     playerActionWorkflows.orbCrafting,
   ),
   openCollections: navigationAction(

@@ -263,7 +263,7 @@ export const productFeatures = {
     label: "Orb Crafting",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "PoE-style crafting system where Orb item stacks are consumed to reroll an owned animal's trait, personality, or variant within authored safe bounds.",
+    description: "PoE-style crafting system where Orb item stacks are consumed to reroll an owned animal's personality, cosmetic variant, or authored non-science traits without changing species, provenance, rarity, or conservation status.",
   }),
   collections: feature({
     id: "collections",
