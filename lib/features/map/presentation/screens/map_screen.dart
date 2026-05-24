@@ -1112,7 +1112,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         vertical: 2,
                       ),
                       child: Text(
-                        'β $_kBuildVersion',
+                        'beta $_kBuildVersion',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
