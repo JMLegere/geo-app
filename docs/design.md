@@ -1207,7 +1207,7 @@ Release an animal or contribute to a local conservation program.
 **Release to Wild model:**
 - In fiction, a real owned animal instance leaves the player's care and is rehabilitated/reintroduced.
 - Base one-off release is always available through a simple generic release slot for any eligible fauna.
-- Optional local programs add extra visible slots with tighter requirements and larger rewards. First/default program style: authored "look for this trait" requests, not conservation-status buckets.
+- Optional local programs add extra visible slots with tighter requirements and larger rewards. First/default program style: authored "look for this trait" requests over current animal metadata such as habitat tags, animal type/group, ecological tags, or other existing authored traits — not conservation-status buckets.
 - Rewards are immediate plus ledger/history only; there is no durable Rehab Trust/reputation track. Default one-off release reward is a flat Orb item-stack amount for any eligible fauna; local programs add fixed Orb item-stack bonuses. Orbs are PoE-style consumable crafting resources represented as Pack/inventory item stacks, not a wallet balance.
 - First Orb crafting sink: from Pack animal detail, consume an Orb item stack to reroll an owned animal's personality, cosmetic variant, or authored non-science traits within safe bounds. Species identity, provenance, rarity, and conservation status never change. The animal instance stays owned; the Orb quantity is consumed; the result is recorded for audit/history.
 - Release is irreversible for the animal instance: it leaves active Pack, appears in the center's release ledger/history, and Field Guide knowledge remains.
