@@ -76,3 +76,9 @@ Feature: Release to Wild
     Then an append-only release event should preserve the canonical release history
     And a current slot occupancy projection should point each filled program slot to exactly one released item instance
     And the active item state should reflect that the animal has been released
+
+  Scenario: First implementation slice is backend/domain-first
+    Given Release to Wild is ready for implementation
+    When the first vertical slice is scoped
+    Then schema, RPC, and tests should prove generated programs, release events, slot occupancy, released item state, and Orb item-stack rewards first
+    And UI should stay minimal until the backend/domain commit path is trustworthy

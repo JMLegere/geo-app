@@ -645,12 +645,15 @@
 - Locked the core structure:
   - base one-off release is always available
   - optional local programs layer on top for extra rewards
-  - first/default program style is vulnerable-fauna drives
+  - first/default program style is generated "look for this trait" requests over local map/cell/species metadata, not vulnerable-fauna or conservation-status buckets
+  - slots are one-to-one item-instance commitments; filled slots show the released animal icon and open that animal card
+  - slot commits use append-only release events plus current slot occupancy projection
+  - first implementation slice is backend/domain-first: schema/RPC/tests with minimal UI
 - Locked player-facing semantics:
   - release unlocks immediately on discovering the center
   - centers can appear as planning cues in frontier/explored/present cells
   - all players in a city discover the same center/NPC
   - released animals leave active Pack, appear in the center ledger/history, and remain known in Field Guide
-- Locked first reward direction: Rehab Trust primary, small Orb payout secondary.
-- Added `features/progression-release-to-wild.feature` covering rehab-center context, base release slot, optional local program inspection, irreversible animal release, eligibility gates, preserved release history, Trust/Orb rewards, and durable/non-daily program behavior.
+- Locked reward/economy direction: no durable Rehab Trust; base release grants flat Orb item-stack rewards, local programs grant fixed Orb item-stack bonuses, and Orbs are PoE-style consumable crafting items whose first sink is safe animal reroll crafting from Pack animal detail.
+- Added `features/progression-release-to-wild.feature` and `features/progression-orb-crafting.feature` covering rehab-center context, base release slot, generated trait-request programs, irreversible animal release, eligibility gates, preserved release history, Orb item-stack rewards, strict one-to-one slot occupancy, storage/audit model, and Orb crafting bounds.
 - Added/updated product actions/workflow for `open-release-to-wild`, `inspect-release-bundle`, `release-animal-to-wild`, and `release-to-wild`.

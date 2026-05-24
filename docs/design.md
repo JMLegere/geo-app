@@ -1220,6 +1220,7 @@ Release an animal or contribute to a local conservation program.
 - Local programs belong to the specific NPC and POI. There is one center per city.
 - V1 local programs are generated dynamically from local map/cell/species metadata for the center's city, not manually authored or selected from static templates.
 - Generated programs can rotate weekly/monthly, but rotation must never reset incomplete progress; in-progress programs remain durable until completed or explicitly retired by a safe migration.
+- First implementation slice is backend/domain-first: schema/RPC/tests for generated programs, release events, slot occupancy, item state, and Orb item-stack rewards, with only minimal UI until the commit path is trustworthy.
 - One-time programs persist completion; completed one-time programs do not reset as dailies.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)

@@ -441,7 +441,12 @@
 - First venue type: `wildlife-rehabilitation-center`.
 - First NPC role: `Wildlife Rehabilitator`.
 - First NPC-led Town feature: `Release to Wild`.
-- Base one-off release is always available; optional local programs add bonus slot-filling asks, with vulnerable-fauna drives as the first default program style.
+- Base one-off release is always available; optional local programs add bonus slot-filling asks.
+- First/default program style is generated "look for this trait" requests over local map/cell/species metadata — habitats, animal type/group, ecological tags, and existing authored traits — not vulnerable-fauna or conservation-status buckets.
 - The loop should feel like durable conservation programs / community-center-style contribution, not Field Survey, service-vendor, task-board, or MMO daily-request loops.
-- Release is an irreversible item-instance commitment: the animal leaves active Pack, appears in the center's release ledger/history, Field Guide knowledge remains, and the default reward is Rehab Trust plus a small Orb payout.
+- Release is an irreversible item-instance commitment: the animal leaves active Pack, appears in the center's release ledger/history, Field Guide knowledge remains, and the default reward is a flat Orb item-stack amount.
+- No durable Rehab Trust/reputation track exists in v1; Orbs are PoE-style consumable crafting item stacks, not wallet currency.
+- Program slot matching is strict; UI may suggest nearby/missing matches, but one animal fills exactly one chosen slot.
+- Release storage uses append-only release events as canonical history plus current slot occupancy projections for fast UI and one-to-one enforcement.
+- First implementation slice is backend/domain-first: schema/RPC/tests with minimal UI.
 - Release eligibility floor: active identified fauna owned by the player, not already released, and not currently serving as a buddy, placed at Home, or committed elsewhere unless those states are cleared first.

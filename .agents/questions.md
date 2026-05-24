@@ -41,9 +41,8 @@ Unresolved questions and blockers.
   no feeding loop. What is the minimum viable feeding interaction?
 - **Art lock mechanism**: 51% of instances must select the same art at daily reset.
   How is this tracked server-side? What is the Supabase schema for art voting?
-- **Orb spending**: Orbs are produced via sanctuary feeding but spend targets are TBD.
-  Breeding? Lures? Cosmetics?
-- **Release to Wild economy details**: Reward types are now directionally resolved as Rehab Trust primary + small Orb payout secondary. Remaining open questions are the exact reward amounts, Trust usage/unlock model, and whether local programs add distinct premium rewards beyond the base release.
+- **Orb crafting depth**: First Orb sink is safe animal reroll crafting from Pack animal detail. Remaining open questions: exact Orb item taxonomy, reroll result tables, odds/preview rules, and whether different Orb types target personality vs cosmetic variant vs authored non-science traits.
+- **Release to Wild backend slice**: First implementation should be schema/RPC/tests with minimal UI. Remaining open questions: exact table/RPC names, generated-program refresh cadence implementation, Orb reward amounts, and migration order.
 
 ### Operations
 
