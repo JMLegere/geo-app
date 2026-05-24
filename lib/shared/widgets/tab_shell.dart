@@ -250,6 +250,7 @@ class _TabShellState extends ConsumerState<TabShell>
   /// cross-tab edge swipes can be detected and handled here.
   late final PageController _packPageController;
 
+  late final List<Widget Function()> _screenFactories;
   late final List<Widget> _screens;
   String? _autoCompletingRewardKey;
 
@@ -258,16 +259,23 @@ class _TabShellState extends ConsumerState<TabShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _packPageController = PageController();
-    _screens = widget.screens ??
-        [
-          const MapRootScreen(),
-          PackScreen(
-            pageController: _packPageController,
-            onEdgeSwipe: _onPackEdgeSwipe,
-          ),
-          const StubScreen(label: 'Sanctuary'),
-          const SettingsScreen(),
-        ];
+    _screenFactories = widget.screens != null
+        ? widget.screens!.map((screen) => () => screen).toList(growable: false)
+        : [
+            () => const MapRootScreen(),
+            () => PackScreen(
+                  pageController: _packPageController,
+                  onEdgeSwipe: _onPackEdgeSwipe,
+                ),
+            () => const StubScreen(label: 'Sanctuary'),
+            () => const SettingsScreen(),
+          ];
+    _screens = List<Widget>.filled(
+      _screenFactories.length,
+      const SizedBox.shrink(),
+      growable: false,
+    );
+    _materializeScreen(_mapTabIndex);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(wakeLockProvider.notifier).acquire();
     });
@@ -303,6 +311,12 @@ class _TabShellState extends ConsumerState<TabShell>
     }
   }
 
+  void _materializeScreen(int index) {
+    if (index < 0 || index >= _screens.length) return;
+    if (_screens[index] is! SizedBox) return;
+    _screens[index] = _screenFactories[index]();
+  }
+
   void _onTabSelected(int index) {
     if (index == _currentIndex) return;
 
@@ -312,6 +326,7 @@ class _TabShellState extends ConsumerState<TabShell>
     } else if (_currentIndex == _mapTabIndex) {
       ref.read(wakeLockProvider.notifier).release();
     }
+    _materializeScreen(index);
     ref.read(navigationScreenTransitionLoggerProvider).logScreenChanged(
           source: 'tab_shell',
           fromScreen: _tabScreenNames[previousIndex],
