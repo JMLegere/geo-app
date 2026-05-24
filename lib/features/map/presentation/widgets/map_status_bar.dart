@@ -49,23 +49,19 @@ class MapStatusBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _StatPill(
-              glyph: EarthGlyph.cells,
               value: _formatCount(cellsObserved),
               label: 'cells',
             ),
             _StatPill(
-              glyph: EarthGlyph.steps,
               value: _formatSteps(totalSteps),
               label: 'steps',
             ),
             _StatPill(
-              glyph: EarthGlyph.streak,
               value: '$streakDays',
               label: 'days',
             ),
             if (pendingVisits > 0)
               _StatPill(
-                glyph: EarthGlyph.sync,
                 value: _formatCount(pendingVisits),
                 label: 'syncing',
               ),
@@ -94,12 +90,10 @@ class MapStatusBar extends StatelessWidget {
 
 class _StatPill extends StatelessWidget {
   const _StatPill({
-    required this.glyph,
     required this.value,
     required this.label,
   });
 
-  final EarthGlyph glyph;
   final String value;
   final String label;
 
@@ -119,14 +113,6 @@ class _StatPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            EarthIcon(
-              glyph: glyph,
-              tone: glyph == EarthGlyph.streak
-                  ? EarthIconTone.warning
-                  : EarthIconTone.tertiary,
-              size: 14,
-            ),
-            const SizedBox(width: 6),
             Text(
               value,
               style: const TextStyle(

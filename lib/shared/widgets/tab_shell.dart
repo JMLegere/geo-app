@@ -62,11 +62,11 @@ const Duration _navMotionDuration = Duration(milliseconds: 280);
 class _BottomNavDestination {
   const _BottomNavDestination({
     required this.label,
-    required this.icon,
+    this.icon,
   });
 
   final String label;
-  final EarthGlyph icon;
+  final EarthGlyph? icon;
 }
 
 const _bottomNavItems = [
@@ -76,7 +76,6 @@ const _bottomNavItems = [
   ),
   _BottomNavDestination(
     label: 'Pack',
-    icon: EarthGlyph.pack,
   ),
   _BottomNavDestination(
     label: 'Sanctuary',
@@ -213,18 +212,21 @@ class _EarthNovaNavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              AnimatedScale(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutBack,
-                scale: selected ? 1.08 : 1,
-                child: EarthIcon(
-                  glyph: item.icon,
-                  tone:
-                      selected ? EarthIconTone.tertiary : EarthIconTone.neutral,
-                  size: selected ? 23 : 22,
+              if (item.icon case final icon?) ...[
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutBack,
+                  scale: selected ? 1.08 : 1,
+                  child: EarthIcon(
+                    glyph: icon,
+                    tone: selected
+                        ? EarthIconTone.tertiary
+                        : EarthIconTone.neutral,
+                    size: selected ? 23 : 22,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
+                const SizedBox(height: 5),
+              ],
               Text(
                 item.label,
                 maxLines: 1,
