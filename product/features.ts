@@ -258,6 +258,13 @@ export const productFeatures = {
     kind: "game-system",
     description: "Wildlife rehabilitation loop where players perform base one-off releases for a flat Orb item-stack reward, optionally contribute eligible fauna to local conservation programs for fixed bonus Orb item-stack rewards, remove released animals from active Pack, and preserve release history.",
   }),
+  orbCrafting: feature({
+    id: "orb-crafting",
+    label: "Orb Crafting",
+    capability: "progression-permanence",
+    kind: "game-system",
+    description: "PoE-style crafting system where Orb item stacks are consumed to reroll an owned animal's trait, personality, or variant within authored safe bounds.",
+  }),
   collections: feature({
     id: "collections",
     label: "Collections",

@@ -349,6 +349,30 @@ export const userActionWorkflows = {
 
     evidence: workflowEvidence,
   }),
+  orbCrafting: workflow({
+    id: playerActionWorkflows.orbCrafting,
+    label: "Orb Crafting animal reroll lifecycle",
+    initialState: "crafting-ready",
+    states: ["crafting-ready", "orb-missing", "reroll-committed"],
+    events: [playerActions.useOrbOnAnimal],
+    transitions: [
+      {
+        from: "crafting-ready",
+        action: playerActions.useOrbOnAnimal,
+        to: "reroll-committed",
+      },
+    ],
+    forbiddenTransitions: [
+      {
+        state: "orb-missing",
+        action: playerActions.useOrbOnAnimal,
+        reason: "Reroll crafting requires an owned Orb item stack to consume.",
+      },
+    ],
+    requiredCoverage: fullStateCoverage,
+
+    evidence: workflowEvidence,
+  }),
 
   conservationContribution: workflow({
     id: playerActionWorkflows.conservationContribution,

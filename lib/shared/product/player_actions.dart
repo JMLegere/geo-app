@@ -50,6 +50,7 @@ abstract final class PlayerActions {
   static const PlayerActionId openReleaseToWild = 'open-release-to-wild';
   static const PlayerActionId inspectReleaseBundle = 'inspect-release-bundle';
   static const PlayerActionId releaseAnimalToWild = 'release-animal-to-wild';
+  static const PlayerActionId useOrbOnAnimal = 'use-orb-on-animal';
   static const PlayerActionId openCollections = 'open-collections';
   static const PlayerActionId addFindToCollection = 'add-find-to-collection';
   static const PlayerActionId openSanctuary = 'open-sanctuary';
@@ -115,6 +116,7 @@ abstract final class PlayerActions {
     openReleaseToWild,
     inspectReleaseBundle,
     releaseAnimalToWild,
+    useOrbOnAnimal,
     openCollections,
     addFindToCollection,
     openSanctuary,

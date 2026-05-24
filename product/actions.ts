@@ -3,6 +3,7 @@ export const playerActionWorkflows = {
   discoveryOwnership: "discovery-ownership",
   conservationContribution: "conservation-contribution",
   releaseToWild: "release-to-wild",
+  orbCrafting: "orb-crafting",
   npcFeatureUnlock: "npc-feature-unlock",
   collectionCommitment: "collection-commitment",
   sanctuaryPlacement: "sanctuary-placement",
@@ -363,6 +364,13 @@ export const actionCapabilities = {
     "Release to Wild commit flow",
     "commits an eligible owned animal into the base release slot or an optional local program, removes it from active Pack, preserves release history, and grants Orb item-stack rewards exactly once",
     playerActionWorkflows.releaseToWild,
+  ),
+  useOrbOnAnimal: mutationAction(
+    "use-orb-on-animal",
+    "Use an Orb on an animal",
+    "Orb Crafting commit flow",
+    "consumes an owned Orb item stack to reroll an owned animal's trait, personality, or variant within authored safe bounds while preserving the animal instance",
+    playerActionWorkflows.orbCrafting,
   ),
   openCollections: navigationAction(
     "open-collections",

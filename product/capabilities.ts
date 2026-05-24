@@ -206,6 +206,7 @@ export const productCapabilities = {
       "features/progression-field-guide.feature",
       "features/progression-conservation.feature",
       "features/progression-release-to-wild.feature",
+      "features/progression-orb-crafting.feature",
       "features/progression-collections.feature",
       "features/progression-sanctuary.feature",
       "features/progression-buddy.feature",
@@ -219,6 +220,7 @@ export const productCapabilities = {
       playerActions.openReleaseToWild,
       playerActions.inspectReleaseBundle,
       playerActions.releaseAnimalToWild,
+      playerActions.useOrbOnAnimal,
       playerActions.openCollections,
       playerActions.addFindToCollection,
       playerActions.openSanctuary,
@@ -231,6 +233,7 @@ export const productCapabilities = {
     workflows: [
       playerActionWorkflows.conservationContribution,
       playerActionWorkflows.releaseToWild,
+      playerActionWorkflows.orbCrafting,
       playerActionWorkflows.collectionCommitment,
       playerActionWorkflows.sanctuaryPlacement,
       playerActionWorkflows.buddyCare,
