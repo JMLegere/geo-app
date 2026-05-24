@@ -20,6 +20,7 @@ import 'package:earth_nova/features/map/presentation/providers/player_marker_pro
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
 class _FakeWakeLockRepository implements WakeLockRepository {
@@ -252,6 +253,57 @@ void main() {
         'from_screen': 'map_root_screen',
         'to_screen': 'player',
         'raw_from_screen': 'map',
+      });
+    });
+
+    testWidgets('logs Town tab selection as an open-town player action',
+        (tester) async {
+      final interactions = _TestObservabilityService();
+      final navigation = NavigationScreenTransitionLogger(
+        logEvent: (event, category, {data}) {},
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider.overrideWithValue(interactions),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider
+                .overrideWithValue(navigation),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Town'));
+      await tester.pump();
+
+      final tabSelectionEvents = interactions.events
+          .where((event) =>
+              event.event == 'interaction.action' &&
+              event.data?['widget_name'] == 'bottom_navigation_bar')
+          .toList();
+
+      expect(tabSelectionEvents, hasLength(1));
+      expect(tabSelectionEvents.single.data, {
+        'action_type': 'tab_selected',
+        'screen_name': 'tab_shell',
+        'widget_name': 'bottom_navigation_bar',
+        'player_action_id': PlayerActions.openTown,
+        'tab_index': 2,
       });
     });
   });

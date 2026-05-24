@@ -621,3 +621,17 @@
 - Replaced the web basemap source with a repo-owned `web/base-map-style.json` raster style while preserving the native OpenFreeMap vector style.
 - Hardened the web MapLibre bootstrap bridge so style readiness can advance from a JS poll (`map.isStyleLoaded()` / `map.getStyle()`) even if the MapLibre `load` event never fires after remote source failures.
 - Verification passed locally: focused shared design/widget/map/web tests, `mise exec -- eac check`, `mise exec -- flutter analyze`, `git diff --check`, and CI-equivalent coverage check (`3598/3765 = 95%`, need `3576`).
+
+## Completed 2026-05-24 — Living World / Town design spine
+
+- Added `Living World` as the SuperBDD/product capability for NPC venue discovery, Town entries, local feature binding, and authored NPC functions.
+- Added `features/living-world-town.feature` covering:
+  - sparse city-scoped NPC venue placement
+  - one NPC type per city and one NPC venue max per cell
+  - most-popular-eligible-POI venue anchoring
+  - map-cell-entry venue discovery
+  - Town empty/unlocked states
+  - nearest eligible NPC binding when a Town feature opens
+- Selected the first NPC-led feature: `field-naturalist` / `Naturalist Field Station`, because the live loop already creates unidentified living-specimen finds.
+- Added SuperBDD product actions/workflow for `discover-npc-venue`, `open-town`, `open-npc-led-feature`, and `npc-feature-unlock`.
+- Updated the TabShell Town tab to log the typed `open-town` player action instead of a telemetry-only exception while the visual screen remains a stub.

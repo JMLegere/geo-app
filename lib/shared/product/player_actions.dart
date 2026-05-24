@@ -37,6 +37,9 @@ abstract final class PlayerActions {
   static const PlayerActionId identifyUnidentifiedFind =
       'identify-unidentified-find';
   static const PlayerActionId revealIdentification = 'reveal-identification';
+  static const PlayerActionId discoverNpcVenue = 'discover-npc-venue';
+  static const PlayerActionId openTown = 'open-town';
+  static const PlayerActionId openNpcLedFeature = 'open-npc-led-feature';
 
   static const PlayerActionId openFieldGuide = 'open-field-guide';
   static const PlayerActionId inspectFieldGuideEntry =
@@ -99,6 +102,9 @@ abstract final class PlayerActions {
     inspectPackFind,
     identifyUnidentifiedFind,
     revealIdentification,
+    discoverNpcVenue,
+    openTown,
+    openNpcLedFeature,
     openFieldGuide,
     inspectFieldGuideEntry,
     viewConservationGoal,

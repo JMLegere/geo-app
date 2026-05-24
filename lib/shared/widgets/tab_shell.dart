@@ -32,13 +32,8 @@ const _tabScreenNames = ['map', 'player', 'town', 'home'];
 PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
       _mapTabIndex => PlayerActions.openMap,
       _playerTabIndex => PlayerActions.openPack,
+      _townTabIndex => PlayerActions.openTown,
       _homeTabIndex => PlayerActions.openSanctuary,
-      _ => null,
-    };
-
-String? _telemetryOnlyReasonForTab(int index) => switch (index) {
-      _townTabIndex =>
-        'Town tab is an NPC-led services surface that is not yet in the SuperBDD gameplay action catalog.',
       _ => null,
     };
 
@@ -492,7 +487,6 @@ class _TabShellState extends ConsumerState<TabShell>
                 widgetName: 'bottom_navigation_bar',
                 actionType: 'tab_selected',
                 playerActionIdBuilder: _playerActionIdForTab,
-                telemetryOnlyReasonBuilder: _telemetryOnlyReasonForTab,
                 payloadBuilder: (tabIndex) => {
                   'tab_index': tabIndex,
                 },

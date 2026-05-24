@@ -220,6 +220,71 @@ export const userActionWorkflows = {
     evidence: workflowEvidence,
   }),
 
+  npcFeatureUnlock: workflow({
+    id: playerActionWorkflows.npcFeatureUnlock,
+    label: "NPC venue discovery to Town feature binding",
+    initialState: "town-empty",
+    states: [
+      "town-empty",
+      "npc-venue-unlocked",
+      "town-open",
+      "npc-led-feature-open",
+    ],
+    events: [
+      playerActions.discoverNpcVenue,
+      playerActions.openTown,
+      playerActions.openNpcLedFeature,
+    ],
+    transitions: [
+      { from: "town-empty", action: playerActions.openTown, to: "town-empty" },
+      {
+        from: "town-empty",
+        action: playerActions.discoverNpcVenue,
+        to: "npc-venue-unlocked",
+      },
+      {
+        from: "npc-venue-unlocked",
+        action: playerActions.openTown,
+        to: "town-open",
+      },
+      {
+        from: "town-open",
+        action: playerActions.openNpcLedFeature,
+        to: "npc-led-feature-open",
+      },
+      {
+        from: "npc-led-feature-open",
+        action: playerActions.openTown,
+        to: "town-open",
+      },
+      {
+        from: "npc-led-feature-open",
+        action: playerActions.openNpcLedFeature,
+        to: "npc-led-feature-open",
+      },
+    ],
+    forbiddenTransitions: [
+      {
+        state: "town-empty",
+        action: playerActions.openNpcLedFeature,
+        reason: "NPC-led features must be unlocked through discovered venues before they can open.",
+      },
+      {
+        state: "town-open",
+        action: playerActions.discoverNpcVenue,
+        reason: "Venue discovery is driven by eligible map-cell entry, not by opening the Town menu.",
+      },
+      {
+        state: "npc-led-feature-open",
+        action: playerActions.discoverNpcVenue,
+        reason: "Feature UI binding cannot discover a new map venue without a fresh eligible map-cell entry.",
+      },
+    ],
+    requiredCoverage: fullStateCoverage,
+
+    evidence: workflowEvidence,
+  }),
+
   conservationContribution: workflow({
     id: playerActionWorkflows.conservationContribution,
     label: "Conservation contribution lifecycle",

@@ -1,4 +1,4 @@
-@capability.map @capability.zoology @capability.botany @capability.mycology @capability.geology @capability.paleontology @capability.genetics @capability.archaeology @capability.exploration-discovery-lifecycle @capability.progression-permanence @capability.motivation @capability.multiplayer
+@capability.map @capability.zoology @capability.botany @capability.mycology @capability.geology @capability.paleontology @capability.genetics @capability.archaeology @capability.exploration-discovery-lifecycle @capability.living-world @capability.progression-permanence @capability.motivation @capability.multiplayer
 Feature: EarthNova capability spine
   EarthNova's top-level capabilities describe the major player-facing areas of
   the app before concrete feature sections, scenarios, actions, and checks are authored.
@@ -17,6 +17,11 @@ Feature: EarthNova capability spine
     Given movement should produce finds that players can keep and understand
     When the capability spine is read at the top level
     Then Exploration-Discovery Lifecycle owns discovery, pack ownership, identification, and find stories
+
+  Scenario: The world has local NPC-led services
+    Given major features should feel grounded in discovered places
+    When the capability spine is read at the top level
+    Then Living World owns NPC venue discovery, Town entries, local feature binding, and authored NPC functions
 
   Scenario: Discoveries become permanent progress
     Given found things need personal meaning over time

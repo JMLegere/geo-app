@@ -173,6 +173,20 @@ export const productCapabilities = {
     ],
     workflows: [playerActionWorkflows.discoveryOwnership],
   }),
+  livingWorld: capability({
+    id: "living-world",
+    label: "Living World",
+    description:
+      "The player discovers NPC venues in real places, unlocks NPC-led feature entries in Town, and opens those features through local authored roles.",
+    emotionalReward: "The world feels inhabited by helpful local experts rather than abstract menus.",
+    cucumberFeatures: [spineFeature, "features/living-world-town.feature"],
+    requiredActions: [
+      playerActions.discoverNpcVenue,
+      playerActions.openTown,
+      playerActions.openNpcLedFeature,
+    ],
+    workflows: [playerActionWorkflows.npcFeatureUnlock],
+  }),
   progressionPermanence: capability({
     id: "progression-permanence",
     label: "Progression-Permanence",

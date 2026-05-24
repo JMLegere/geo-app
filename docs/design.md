@@ -1165,24 +1165,41 @@ Implementation:
 ```
 Uses `EmptyStateWidget`. Icon 52px, title `onSurface`, subtitle `onSurfaceVariant`.
 
-### Settings Screen
+### Home Screen
 
-Minimal. Only sign-out in v3.
+Home is the player-facing successor to Sanctuary for the personal base/place. It is currently a shared stub screen. Long-term it owns the player's persistent place, placed finds, caretaking, and low-risk account affordances such as sign-out.
 
+### Town Screen — Living World / NPC-led Services
+
+Town is the top-level surface for unlocked NPC-led features. It is deliberately clear and boring as navigation language; the warmth comes from local experts, venue flavor, and conservation/science context.
+
+**Core model:**
+- NPC venues are discovered on the Map as persistent real-place venues tied to a concrete cell + POI/building.
+- NPC function is authored first: e.g. `field-naturalist`, `botanist`, `curator`, `ranger`, or `trader`.
+- Generated NPC details are flavor-only: name, portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
+- Placement rules: one NPC type per city, one NPC venue maximum per cell, venue anchored to the most popular eligible POI in the chosen cell.
+- Opening a Town feature binds that feature UI to the nearest eligible NPC of the authored type relative to the player's current location.
+
+**Town states:**
 ```
-AppBar: "Settings"
-────────────────────────────────
-[identicon avatar, 96px, centred]
-  display_name or phone number
-  "Explorer"  (role label)
+No NPC-led features unlocked
+────────────────────────────
+Town
+Meet local experts by exploring new map cells.
 
-────────────────────────────────
-
-[ Sign Out ]  ← OutlinedButton, error color, full width
+Unlocked feature
+────────────────────────────
+Town
+Naturalist Field Station
+Field Naturalist near [place/city]
+Identify finds and learn what lives nearby.
 ```
 
-- Tap Sign Out: confirmation dialog (`AlertDialog`) — "Sign out?" + Cancel/Sign Out
-- Sign Out button: `error` colour, outlined (not filled — destructive action, lower visual weight)
+**First NPC-led feature: Naturalist Field Station**
+- First NPC type: `field-naturalist`.
+- First Town entry: `Naturalist Field Station`.
+- Rationale: the live loop already creates unidentified living-specimen finds, so the first NPC should introduce field identification and local nature-study context before narrower specialists like botanists, curators, rangers, or traders.
+- The Naturalist should not become open-ended chat in the first slice; it explains/unlocks the feature, anchors it to a local venue, and adds authored/science-safe flavor.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)
 
@@ -1296,11 +1313,12 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 - [ ] `items.fetch_success` logged with correct `count`
 - [ ] `items.fetch_error` logged with full error detail — no crash, retry shown
 
-### Stub Screens (Town, Home)
+### Town / Home Visual Stubs
 
-- [ ] Town tab: `StubScreen` with label "Town"
-- [ ] Home tab: `StubScreen` with label "Home"
-- [ ] Both use the shared stub screen treatment — not blank
+- [ ] Town tab currently renders `StubScreen` with label "Town" while the Living World product contract is defined in SuperBDD.
+- [ ] Home tab currently renders `StubScreen` with label "Home".
+- [ ] Both use the shared stub screen treatment — not blank.
+- [ ] Town tab selection logs typed player action `open-town`.
 
 ### Observability
 

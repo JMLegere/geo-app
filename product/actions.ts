@@ -2,6 +2,7 @@ export const playerActionWorkflows = {
   mapExploration: "map-exploration",
   discoveryOwnership: "discovery-ownership",
   conservationContribution: "conservation-contribution",
+  npcFeatureUnlock: "npc-feature-unlock",
   collectionCommitment: "collection-commitment",
   sanctuaryPlacement: "sanctuary-placement",
   buddyCare: "buddy-care",
@@ -291,6 +292,28 @@ export const actionCapabilities = {
     "Identification reveal theater",
     "commits deterministic identification result, traits, and known-state transition for an unidentified find",
     playerActionWorkflows.discoveryOwnership,
+  ),
+
+  discoverNpcVenue: mutationAction(
+    "discover-npc-venue",
+    "Discover an NPC venue",
+    "Map cell entry and NPC venue layer",
+    "unlocks an authored NPC venue and its Town feature entry from eligible map-cell entry without mutating items or identification",
+    playerActionWorkflows.npcFeatureUnlock,
+  ),
+  openTown: navigationAction(
+    "open-town",
+    "Open Town",
+    "Town tab",
+    "opens the unlocked NPC-led feature directory without creating NPCs, items, or progress",
+    playerActionWorkflows.npcFeatureUnlock,
+  ),
+  openNpcLedFeature: navigationAction(
+    "open-npc-led-feature",
+    "Open an NPC-led feature",
+    "Town NPC-led feature entry",
+    "binds an unlocked feature UI to the nearest eligible NPC of that authored type",
+    playerActionWorkflows.npcFeatureUnlock,
   ),
 
   openFieldGuide: navigationAction(
