@@ -11,8 +11,9 @@ Feature: Orb Crafting
 
   @action.use-orb-on-animal
   Scenario: Player uses an Orb on an animal
-    Given the player owns an Orb item stack and an eligible owned animal
-    When the player uses the Orb on that animal
+    Given the player is viewing an eligible owned animal on the Pack animal detail surface
+    And the player owns an Orb item stack
+    When the player applies the Orb item stack to that animal
     Then one Orb stack quantity should be consumed exactly once
     And the animal should reroll personality, cosmetic variant, or authored non-science traits within safe bounds
     But species identity, provenance, rarity, and conservation status should never change

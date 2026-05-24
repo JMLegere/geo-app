@@ -368,7 +368,7 @@ export const actionCapabilities = {
   useOrbOnAnimal: mutationAction(
     "use-orb-on-animal",
     "Use an Orb on an animal",
-    "Orb Crafting commit flow",
+    "Pack animal detail Orb Crafting commit flow",
     "consumes an owned Orb item stack to reroll an owned animal's personality, cosmetic variant, or authored non-science traits while preserving species, provenance, rarity, conservation status, and the animal instance",
     playerActionWorkflows.orbCrafting,
   ),
