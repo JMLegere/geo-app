@@ -657,3 +657,13 @@
 - Locked reward/economy direction: no durable Rehab Trust; base release grants flat Orb item-stack rewards, local programs grant fixed Orb item-stack bonuses, and Orbs are PoE-style consumable crafting items whose first sink is safe animal reroll crafting from Pack animal detail.
 - Added `features/progression-release-to-wild.feature` and `features/progression-orb-crafting.feature` covering rehab-center context, base release slot, generated trait-request programs, irreversible animal release, eligibility gates, preserved release history, Orb item-stack rewards, strict one-to-one slot occupancy, storage/audit model, and Orb crafting bounds.
 - Added/updated product actions/workflow for `open-release-to-wild`, `inspect-release-bundle`, `release-animal-to-wild`, and `release-to-wild`.
+
+## Completed 2026-05-24 — Simple NPC map marker + Town coming-soon entry
+
+- Implemented the intentionally small first slice after feature-design overwhelm:
+  - entering/tracking the current map cell discovers one Wildlife Rehabilitation Center NPC venue in session state
+  - Map renders a non-interactive `Wildlife Rehabilitation Center` marker with `Release to Wild — Coming soon`
+  - Town tab is now a real `TownScreen`, not a generic stub
+  - before discovery, Town points back to Map exploration
+  - after discovery, Town shows `Release to Wild` as a Coming Soon option bound to the Wildlife Rehabilitation Center / Wildlife Rehabilitator
+- This slice does not implement Release to Wild mechanics, backend schema, persistent NPC storage, or Orb rewards.

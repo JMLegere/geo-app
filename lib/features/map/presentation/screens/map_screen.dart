@@ -10,6 +10,8 @@ import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
+import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_marker.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -838,6 +840,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
     final cellsObserved = footprint.uniqueCount;
     final visitQueueState = ref.watch(visitQueueProvider);
+    final npcVenueState = ref.watch(npcVenueProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -889,6 +892,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           final markerScreenPosition =
               _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
                   projectGeoCoord(markerGeoCoord);
+          final npcVenue = npcVenueState.discoveredVenue;
+          final npcVenueScreenPosition =
+              npcVenue == null ? null : projectGeoCoord(npcVenue.position);
           final renderDiagnostics = {
             ...const MapRenderDiagnosticsService().summarize(
               cellsWithStates: cellsWithStates,
@@ -1032,6 +1038,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   top: markerScreenPosition.dy - 24,
                   child: const IgnorePointer(
                     child: PlayerMarker(),
+                  ),
+                ),
+
+              if (npcVenue != null && npcVenueScreenPosition != null)
+                Positioned(
+                  left: npcVenueScreenPosition.dx - 96,
+                  top: npcVenueScreenPosition.dy - 54,
+                  child: IgnorePointer(
+                    child: NpcVenueMarker(venue: npcVenue),
                   ),
                 ),
 

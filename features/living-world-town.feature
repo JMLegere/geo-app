@@ -41,6 +41,7 @@ Feature: Town and NPC-led services
     When the player opens Town
     Then Town should show unlocked NPC-led feature entries
     And if no NPC-led features are unlocked, Town should show an empty state that points back to Map exploration
+    And discovered features whose implementation is not ready should appear as Coming Soon entries rather than fully interactive feature screens
 
   @action.open-npc-led-feature
   Scenario: Player opens an unlocked NPC-led feature

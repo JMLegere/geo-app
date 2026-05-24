@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -37,7 +38,7 @@ PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
       _ => null,
     };
 
-/// 4-tab bottom navigation. Player is backed by Pack; Town and Home are stubs.
+/// 4-tab bottom navigation. Player is backed by Pack; Town lists discovered NPC venues; Home is a stub.
 class TabShell extends ConsumerStatefulWidget {
   const TabShell({
     super.key,
@@ -241,7 +242,7 @@ class _TabShellState extends ConsumerState<TabShell>
                   pageController: _packPageController,
                   onEdgeSwipe: _onPackEdgeSwipe,
                 ),
-            () => const StubScreen(label: 'Town'),
+            () => const TownScreen(),
             () => const StubScreen(label: 'Home'),
           ];
     _screens = List<Widget>.filled(

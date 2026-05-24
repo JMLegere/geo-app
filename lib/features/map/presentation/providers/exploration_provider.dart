@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
@@ -172,6 +173,9 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
           'tracking_reason': 'initial_occupancy',
         },
       );
+      ref
+          .read(npcVenueProvider.notifier)
+          .discoverWildlifeRehabilitationCenter(currentCell);
       return;
     }
 
@@ -218,6 +222,9 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
         ...borderCrossingEvent.toTelemetryData(),
       },
     );
+    ref
+        .read(npcVenueProvider.notifier)
+        .discoverWildlifeRehabilitationCenter(currentCell);
 
     // Log cell_visited event.
     obs.log(

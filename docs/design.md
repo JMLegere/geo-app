@@ -22,7 +22,7 @@ v3 restores a working foundation: login and your collection. Everything else is 
 
 - **Login screen** — Phone number input (+1 prefix), derived email+password auth via Supabase. No OTP.
 - **Player screen** — Personal surface currently backed by Pack: user's existing items from `v3_items`, category filter chips, sort by recent/rarity/name, art display with fallback, and empty state. Long-term also owns buddy, profile details, stats, progress, and settings.
-- **Tab shell** — 4-tab bottom navigation: Map, Player, Town, Home. Player is backed by the existing Pack implementation; Town and Home are stubs.
+- **Tab shell** — 4-tab bottom navigation: Map, Player, Town, Home. Player is backed by the existing Pack implementation; Town lists discovered NPC venues with Coming Soon entries for unbuilt features; Home is a stub.
 - **Observability** — Every auth and data state transition logged to Supabase `telemetry_logs` / `telemetry_spans` from day 1.
 - **Session persistence** — Close browser, reopen, still signed in.
 

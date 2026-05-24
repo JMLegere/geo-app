@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
+import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -238,6 +240,7 @@ void main() {
       testObs = TestObservabilityService();
       container = ProviderContainer(
         overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
           explorationObservabilityProvider.overrideWithValue(testObs),
           observableUseCaseProvider.overrideWithValue(testObs),
         ],
@@ -278,6 +281,28 @@ void main() {
       expect(state.lastBorderCrossingEvent, isNull);
       expect(testObs.eventNames, contains('map.cell_tracked'));
       expect(testObs.eventNames, isNot(contains('map.cell_entered')));
+    });
+
+    test(
+        'eligible initial occupancy discovers the Wildlife Rehabilitation Center venue',
+        () async {
+      final notifier = container.read(explorationProvider.notifier);
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: adjacentCells(),
+        visitedCellIds: const <String>{},
+      );
+
+      final venue = container.read(npcVenueProvider).discoveredVenue;
+      expect(venue, isNotNull);
+      expect(venue!.venueName, 'Wildlife Rehabilitation Center');
+      expect(venue.featureName, 'Release to Wild');
+      expect(venue.cellId, 'cell-A');
     });
 
     test('paused eligibility tracks cell without recording a visit', () async {
@@ -557,6 +582,7 @@ void main() {
       final cells = adjacentCells();
       final c = ProviderContainer(
         overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
           explorationObservabilityProvider.overrideWithValue(testObs),
           observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
@@ -603,6 +629,7 @@ void main() {
       final cells = adjacentCells();
       final c = ProviderContainer(
         overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
           explorationObservabilityProvider.overrideWithValue(testObs),
           observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
