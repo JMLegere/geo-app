@@ -66,6 +66,8 @@ Feature: Release to Wild
     Then the program should belong to that specific NPC and POI
     And the program should be generated from local map, cell, and species metadata for that center's city
     And incomplete program slots should preserve their committed releases over time
+    And weekly/monthly rotation may add or replace available unstarted programs
+    But rotation should never reset incomplete program progress
     And completed one-time programs should not reset as daily chores
 
   Scenario: Release commits preserve audit history and slot projection
