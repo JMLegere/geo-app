@@ -66,3 +66,10 @@ Feature: Release to Wild
     Then the program should belong to that specific NPC and POI
     And incomplete program slots should preserve their committed releases over time
     And completed one-time programs should not reset as daily chores
+
+  Scenario: Release commits preserve audit history and slot projection
+    Given a player releases an animal through a base slot or local program slot
+    When Release to Wild records the commit
+    Then an append-only release event should preserve the canonical release history
+    And a current slot occupancy projection should point each filled program slot to exactly one released item instance
+    And the active item state should reflect that the animal has been released
