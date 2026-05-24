@@ -43,7 +43,7 @@ Unresolved questions and blockers.
   How is this tracked server-side? What is the Supabase schema for art voting?
 - **Orb spending**: Orbs are produced via sanctuary feeding but spend targets are TBD.
   Breeding? Lures? Cosmetics?
-- **Release to Wild rewards**: First NPC loop is resolved as Zoo Owner → Release to Wild bundles. Exact reward currency/reward types remain open: conservation reputation, orbs/credits, unlocks, cosmetics, zoo-owner trust, or a combination.
+- **Release to Wild economy details**: Reward types are now directionally resolved as Rehab Trust primary + small Orb payout secondary. Remaining open questions are the exact reward amounts, Trust usage/unlock model, and whether local programs add distinct premium rewards beyond the base release.
 
 ### Operations
 

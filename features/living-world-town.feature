@@ -29,6 +29,12 @@ Feature: Town and NPC-led services
     Then the NPC venue should become visible on the Map and unlocked in Town
     And the discovery should not grant items, identify species, or bypass normal Discovery and Identification gates
 
+  Scenario: Frontier cells can help the player plan toward the NPC venue
+    Given an NPC venue has been placed in a city
+    When the player explores nearby frontier, present, or explored cells
+    Then the venue should be allowed to appear as a planning cue before direct arrival
+    And the cue should remain tied to the same city-owned NPC venue rather than generating per-player variants
+
   @action.open-town
   Scenario: Player opens Town
     Given the player is authenticated
@@ -43,10 +49,10 @@ Feature: Town and NPC-led services
     Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
     And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
 
-  Scenario: First NPC-led feature is owned by a zoo owner
+  Scenario: First NPC-led feature belongs to a Wildlife Rehabilitation Center
     Given the first concrete NPC-led loop is selected
     When Living World places the first NPC venue
-    Then the NPC should be a zoo owner
+    Then the venue should be a Wildlife Rehabilitation Center
+    And the NPC role should be Wildlife Rehabilitator
     And the Town feature should be Release to Wild
-    And the zoo owner should offer release bundles where the player releases animals to the wild in exchange for rewards
-    And the loop should feel like durable conservation programs, not a task-board or MMO daily request
+    And the center should support base one-off releases plus optional local conservation programs

@@ -1,47 +1,62 @@
 @capability.living-world @capability.progression-permanence @feature.release-to-wild
 Feature: Release to Wild
-  Release to Wild is the first concrete NPC-led conservation loop. A zoo owner
-  offers durable release bundles where players release owned animals to the wild
-  in exchange for rewards. Releasing is an intentional irreversible commitment,
-  not a daily task-board chore.
+  Release to Wild is the first concrete NPC-led conservation loop. A Wildlife
+  Rehabilitation Center run by a Wildlife Rehabilitator accepts real owned animal
+  instances from the player. Base one-off release is always available, while
+  optional local programs offer extra rewards for targeted contributions.
 
   Scenario: Release to Wild defines its game system
     Given Release to Wild belongs to the Progression-Permanence capability
     When the feature is expanded beyond its first design pass
-    Then it should specify zoo-owner context, release bundles, slot eligibility, irreversible release commits, reward grants, and preserved release history
+    Then it should specify rehabilitation-center context, base one-off release, optional local programs, slot eligibility, irreversible release commits, reward grants, and preserved release history
 
   @action.open-release-to-wild
   Scenario: Player opens Release to Wild
-    Given the player has discovered a zoo owner NPC venue
+    Given the player has discovered a Wildlife Rehabilitation Center NPC venue
     When the player opens Release to Wild
-    Then the zoo owner's available release bundles should be visible without changing animal ownership
-    And the feature should be bound to the nearest eligible zoo owner NPC
+    Then the center's available release slots and local programs should be visible without changing animal ownership
+    And the feature should be bound to the nearest eligible Wildlife Rehabilitator
 
   @action.inspect-release-bundle
-  Scenario: Player inspects a release bundle
-    Given a release bundle is available
-    When the player inspects the release bundle
-    Then the bundle slots, accepted animal requirements, release consequences, and rewards should be visible before any animal is committed
+  Scenario: Player inspects a local release program
+    Given a local release program is available
+    When the player inspects the local release program
+    Then the visible contribution slots, accepted animal requirements, release consequences, and extra rewards should be visible before any animal is committed
 
   @action.release-animal-to-wild
-  Scenario: Player releases an animal to the wild
-    Given the player owns an active identified fauna find that matches an open release bundle slot
+  Scenario: Player performs a base one-off release
+    Given the player owns an active identified fauna find that is eligible for release
     When the player releases that animal to the wild
     Then the owned animal should leave the active Pack exactly once
-    And release history should preserve the animal, source item identity, bundle, zoo owner, place, and timestamp
+    And the released animal should appear in the center's release ledger/history
     And Field Guide knowledge should remain available after release
-    And any completed bundle reward should be granted exactly once
+    And the player should gain Rehab Trust plus a small Orb reward
+
+  @action.release-animal-to-wild
+  Scenario: Player contributes to a local vulnerable-fauna program
+    Given the player owns an active identified vulnerable fauna find that matches an open local program slot
+    When the player releases that animal through the program
+    Then the release should count toward the visible local program slots
+    And the released animal should still be recorded in release history
+    And any completed local program reward should be granted exactly once
 
   Scenario: Release eligibility protects player state
     Given the player owns a fauna find
-    When Release to Wild evaluates the find for a bundle slot
+    When Release to Wild evaluates the find for release
     Then unidentified animals should be ineligible
-    And locked, active buddy, Home-placed, already released, or otherwise committed animals should be ineligible
-    And eligible animals should match the slot's authored species, taxonomic class, habitat, rarity, region, or conservation criteria
+    And animals serving as an active buddy, placed at Home, or already committed elsewhere should require those states to be cleared first
+    And already released animals should be ineligible
+    And otherwise any owned fauna may use the base one-off release slot
 
-  Scenario: Release bundles are durable programs, not daily tasks
-    Given the zoo owner offers release bundles
-    When the player returns on another day
-    Then incomplete bundles should preserve their committed releases and remaining slots
-    And completed one-time bundles should not reset as daily chores
-    And repeatable bundles, if added later, should use explicit season or program rules rather than implicit daily refresh
+  Scenario: Base release and programs use different structure
+    Given the center uses visible slot-filling as its core visual language
+    When the player opens Release to Wild
+    Then a simple always-open generic release slot should exist for any eligible fauna
+    And optional local programs should add extra visible slots with tighter requirements for bonus rewards
+
+  Scenario: Local release programs are durable and center-owned
+    Given a city has one Wildlife Rehabilitation Center venue
+    When that center offers a local vulnerable-fauna program
+    Then the program should belong to that specific NPC and POI
+    And incomplete program slots should preserve their committed releases over time
+    And completed one-time programs should not reset as daily chores

@@ -346,22 +346,22 @@ export const actionCapabilities = {
   openReleaseToWild: navigationAction(
     "open-release-to-wild",
     "Open Release to Wild",
-    "Zoo owner Release to Wild surface",
-    "opens zoo-owner release bundles without changing animal ownership",
+    "Wildlife Rehabilitation Center Release to Wild surface",
+    "opens the rehabilitation center's base release slot and local programs without changing animal ownership",
     playerActionWorkflows.releaseToWild,
   ),
   inspectReleaseBundle: viewAction(
     "inspect-release-bundle",
-    "Inspect a release bundle",
-    "Release to Wild bundle detail",
-    "shows accepted animal requirements, release consequences, committed slots, and rewards before any animal is released",
+    "Inspect a local release program",
+    "Release to Wild local program detail",
+    "shows visible program slots, accepted animal requirements, release consequences, and extra rewards before any animal is released",
     playerActionWorkflows.releaseToWild,
   ),
   releaseAnimalToWild: mutationAction(
     "release-animal-to-wild",
     "Release an animal to the wild",
     "Release to Wild commit flow",
-    "commits an eligible owned animal into a release bundle, removes it from active Pack, preserves release history, and grants completed bundle rewards exactly once",
+    "commits an eligible owned animal into the base release slot or an optional local program, removes it from active Pack, preserves release history, and grants Trust/Orb rewards exactly once",
     playerActionWorkflows.releaseToWild,
   ),
   openCollections: navigationAction(

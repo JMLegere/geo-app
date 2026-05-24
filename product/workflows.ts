@@ -287,14 +287,14 @@ export const userActionWorkflows = {
 
   releaseToWild: workflow({
     id: playerActionWorkflows.releaseToWild,
-    label: "Zoo owner Release to Wild bundle lifecycle",
-    initialState: "zoo-owner-discovered",
+    label: "Wildlife Rehabilitation Center Release to Wild lifecycle",
+    initialState: "rehab-center-discovered",
     states: [
-      "zoo-owner-discovered",
-      "release-bundles-visible",
-      "release-bundle-inspected",
+      "rehab-center-discovered",
+      "release-open",
+      "local-program-inspected",
       "animal-released",
-      "bundle-complete",
+      "local-program-complete",
     ],
     events: [
       playerActions.openReleaseToWild,
@@ -303,46 +303,46 @@ export const userActionWorkflows = {
     ],
     transitions: [
       {
-        from: "zoo-owner-discovered",
+        from: "rehab-center-discovered",
         action: playerActions.openReleaseToWild,
-        to: "release-bundles-visible",
+        to: "release-open",
       },
       {
-        from: "release-bundles-visible",
+        from: "release-open",
         action: playerActions.inspectReleaseBundle,
-        to: "release-bundle-inspected",
+        to: "local-program-inspected",
       },
       {
-        from: "release-bundle-inspected",
+        from: "release-open",
         action: playerActions.releaseAnimalToWild,
         to: "animal-released",
       },
       {
-        from: "animal-released",
+        from: "local-program-inspected",
         action: playerActions.releaseAnimalToWild,
-        to: "bundle-complete",
+        to: "local-program-complete",
       },
       {
-        from: "bundle-complete",
+        from: "local-program-complete",
         action: playerActions.openReleaseToWild,
-        to: "bundle-complete",
+        to: "local-program-complete",
       },
     ],
     forbiddenTransitions: [
       {
-        state: "zoo-owner-discovered",
+        state: "rehab-center-discovered",
         action: playerActions.releaseAnimalToWild,
-        reason: "The player must inspect a release bundle and understand eligibility, consequences, and rewards before releasing an animal.",
+        reason: "The player must open Release to Wild before committing an animal.",
       },
       {
-        state: "release-bundles-visible",
-        action: playerActions.releaseAnimalToWild,
-        reason: "Release requires a selected bundle slot and eligible active identified fauna find.",
+        state: "rehab-center-discovered",
+        action: playerActions.inspectReleaseBundle,
+        reason: "Program detail requires the rehabilitation center feature to be open first.",
       },
       {
-        state: "bundle-complete",
+        state: "local-program-complete",
         action: playerActions.releaseAnimalToWild,
-        reason: "A completed one-time release bundle cannot accept duplicate releases as new reward progress.",
+        reason: "A completed one-time local program cannot accept duplicate releases as new reward progress.",
       },
     ],
     requiredCoverage: fullStateCoverage,

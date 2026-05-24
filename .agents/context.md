@@ -636,12 +636,21 @@
 - Added SuperBDD product actions/workflow for `discover-npc-venue`, `open-town`, `open-npc-led-feature`, and `npc-feature-unlock`.
 - Updated the TabShell Town tab to log the typed `open-town` player action instead of a telemetry-only exception while the visual screen remains a stub.
 
-## Completed 2026-05-24 — Zoo Owner / Release to Wild system design
+## Completed 2026-05-24 — Wildlife Rehabilitation Center / Release to Wild system design
 
-- Resolved first concrete NPC-led feature after further design direction:
-  - NPC type: `zoo-owner`
+- Resolved first concrete NPC-led feature after deeper domain-model discovery:
+  - venue type: `wildlife-rehabilitation-center`
+  - NPC role: `Wildlife Rehabilitator`
   - Town feature: `Release to Wild`
-  - loop: release owned animals into durable bundles in exchange for rewards
-- Added `features/progression-release-to-wild.feature` covering zoo-owner context, release bundle inspection, irreversible animal release, eligibility gates, preserved release history, Field Guide persistence, and durable/non-daily bundle behavior.
-- Added product actions/workflow for `open-release-to-wild`, `inspect-release-bundle`, `release-animal-to-wild`, and `release-to-wild`.
-- Updated `docs/design.md` to define release eligibility, item-state implications, release history, bundle reward grant behavior, and open reward-currency choices.
+- Locked the core structure:
+  - base one-off release is always available
+  - optional local programs layer on top for extra rewards
+  - first/default program style is vulnerable-fauna drives
+- Locked player-facing semantics:
+  - release unlocks immediately on discovering the center
+  - centers can appear as planning cues in frontier/explored/present cells
+  - all players in a city discover the same center/NPC
+  - released animals leave active Pack, appear in the center ledger/history, and remain known in Field Guide
+- Locked first reward direction: Rehab Trust primary, small Orb payout secondary.
+- Added `features/progression-release-to-wild.feature` covering rehab-center context, base release slot, optional local program inspection, irreversible animal release, eligibility gates, preserved release history, Trust/Orb rewards, and durable/non-daily program behavior.
+- Added/updated product actions/workflow for `open-release-to-wild`, `inspect-release-bundle`, `release-animal-to-wild`, and `release-to-wild`.

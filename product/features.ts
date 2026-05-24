@@ -229,12 +229,12 @@ export const productFeatures = {
     kind: "data-model",
     description: "City-scoped, POI-anchored venue placement model for authored NPC functions: one NPC type per city, one NPC venue per cell, placed at the most popular eligible POI.",
   }),
-  zooOwner: feature({
-    id: "zoo-owner",
-    label: "Zoo Owner",
+  wildlifeRehabilitationCenter: feature({
+    id: "wildlife-rehabilitation-center",
+    label: "Wildlife Rehabilitation Center",
     capability: "living-world",
     kind: "surface",
-    description: "First concrete NPC role: a local zoo owner discovered through an NPC venue who introduces Release to Wild bundles.",
+    description: "First concrete NPC venue/role: a city-owned Wildlife Rehabilitation Center run by a Wildlife Rehabilitator that introduces Release to Wild.",
   }),
 
   fieldGuide: feature({
@@ -256,7 +256,7 @@ export const productFeatures = {
     label: "Release to Wild",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "Zoo-owner conservation loop where players commit eligible owned animals into durable release bundles, remove them from active Pack, preserve release history, and receive rewards.",
+    description: "Wildlife rehabilitation loop where players perform base one-off releases for Trust + Orbs, optionally contribute eligible fauna to local conservation programs for extra rewards, remove released animals from active Pack, and preserve release history.",
   }),
   collections: feature({
     id: "collections",

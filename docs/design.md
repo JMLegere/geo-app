@@ -1175,10 +1175,12 @@ Town is the top-level surface for unlocked NPC-led local features. It is deliber
 
 **Core model:**
 - NPC venues are discovered on the Map as persistent real-place venues tied to a concrete cell + POI/building.
-- NPC function is authored first: e.g. zoo owner, curator, ranger, trader, guide, caretaker, specialist, or another named game role.
+- NPC function is authored first: e.g. Wildlife Rehabilitator, curator, ranger, trader, guide, caretaker, specialist, or another named game role.
 - Generated NPC details are flavor-only: name, portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
 - Placement rules: one NPC type per city, one NPC venue maximum per cell, venue anchored to the most popular eligible POI in the chosen cell.
 - Opening a Town feature binds that feature UI to the nearest eligible NPC of the authored type relative to the player's current location.
+- Town/NPC planning cues may appear in frontier, explored, and present cells so the player can route toward the venue before direct arrival.
+- NPC venues are city-owned world fixtures: all players in the same city discover the same venue/NPC rather than per-player variants.
 
 **Town states:**
 ```
@@ -1191,23 +1193,26 @@ Unlocked local feature
 ────────────────────────────
 Town
 Release to Wild
-Zoo Owner near [place/city]
-Release animals into conservation bundles for rewards.
+Wildlife Rehabilitation Center near [place/city]
+Release an animal or contribute to a local conservation program.
 ```
 
-**First concrete NPC / loop: Zoo Owner → Release to Wild**
-- First NPC type: `zoo-owner`.
+**First concrete NPC / loop: Wildlife Rehabilitation Center → Release to Wild**
+- First venue type: `wildlife-rehabilitation-center`.
+- First NPC role: `Wildlife Rehabilitator`.
 - First Town feature: `Release to Wild`.
-- The zoo owner offers durable release bundles where the player releases owned animals to the wild in exchange for rewards.
-- This should feel like conservation programs / bundle completion, not a task-board, service-vendor, or MMO daily-request loop.
-- Release is irreversible for the animal instance: it leaves active Pack, but release history and Field Guide knowledge remain.
+- The feature unlocks immediately when the player discovers the center.
+- This should feel like community-center-style contribution satisfaction and durable conservation programs, not a task-board, service-vendor, or MMO daily-request loop.
 
 **Release to Wild model:**
-- Bundle slots accept eligible owned animals by authored criteria: species, taxonomic class, habitat, rarity, region, conservation status, or other later criteria.
-- First eligibility floor: active, identified, fauna, owned by the player, not locked, not active buddy, not Home-placed, and not already released or otherwise committed.
-- Releasing writes an append-only release event and updates the source item out of active inventory; do not delete the item row as the only record.
-- Bundle completion grants rewards exactly once. Candidate rewards can include conservation reputation, orbs/credits, unlocks, cosmetics, or future zoo-owner trust, but exact reward currency remains open.
-- One-time bundles persist completion; repeatable bundles, if added later, need explicit season/program rules rather than implicit daily reset.
+- In fiction, a real owned animal instance leaves the player's care and is rehabilitated/reintroduced.
+- Base one-off release is always available through a simple generic release slot for any eligible fauna.
+- Optional local programs add extra visible slots with tighter requirements and larger rewards. First/default program style: vulnerable-fauna drives.
+- Primary reward: Rehab Trust. Secondary reward: small Orb payout.
+- Release is irreversible for the animal instance: it leaves active Pack, appears in the center's release ledger/history, and Field Guide knowledge remains.
+- First eligibility floor: active, identified, fauna, owned by the player, not already released, and not currently serving as a buddy, placed at Home, or committed elsewhere unless those states are cleared first.
+- Local programs belong to the specific NPC and POI. There is one center per city.
+- One-time programs persist completion; completed one-time programs do not reset as dailies.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)
 
