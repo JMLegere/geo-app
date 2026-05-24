@@ -7,7 +7,8 @@ import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_
 const _venue = NpcVenue(
   id: 'wildlife-rehabilitation-center:city-a',
   kind: NpcVenueKind.wildlifeRehabilitationCenter,
-  venueName: 'Wildlife Rehabilitation Center',
+  venueName: "Rowan's Wildlife Rehab Center",
+  npcName: 'Rowan',
   npcRole: 'Wildlife Rehabilitator',
   featureName: 'Release to Wild',
   cellId: 'cell-a',
@@ -25,7 +26,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Wildlife Rehabilitation Center'), findsOneWidget);
-    expect(find.text('Release to Wild — Coming soon'), findsOneWidget);
+    expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
+    expect(find.text('Rowan • Wildlife Rehabilitator'), findsOneWidget);
+    expect(find.text('Release to Wild — Coming soon'), findsNothing);
   });
 }

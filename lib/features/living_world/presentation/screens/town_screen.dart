@@ -5,6 +5,7 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class TownScreen extends ConsumerWidget {
@@ -37,7 +38,7 @@ class TownScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Local people and places you have found while exploring.',
+                  'People and places you have found while exploring.',
                   style: TextStyle(
                     color: AppTheme.onSurfaceVariant.withValues(alpha: 0.86),
                     fontSize: 14,
@@ -77,7 +78,7 @@ class _TownEmptyState extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'No local experts discovered yet',
+              'No local places discovered yet',
               style: TextStyle(
                 color: AppTheme.onSurface,
                 fontSize: 18,
@@ -86,7 +87,7 @@ class _TownEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Explore the map to discover NPC venues and unlock Town entries.',
+              'Explore the map to meet local characters and uncover their places.',
               style: TextStyle(
                 color: AppTheme.onSurfaceVariant.withValues(alpha: 0.84),
                 fontSize: 14,
@@ -107,119 +108,37 @@ class _DiscoveredVenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.tertiary.withValues(alpha: 0.72)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _StatusPill(text: 'Discovered'),
-            const SizedBox(height: 12),
-            Text(
-              venue.featureName,
-              style: const TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              venue.venueName,
-              style: const TextStyle(
-                color: AppTheme.tertiary,
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              venue.npcRole,
-              style: TextStyle(
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.86),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const _ComingSoonBar(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.tertiary.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.tertiary.withValues(alpha: 0.42)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: AppTheme.tertiary,
-            fontSize: 11,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.2,
+    return EarthPanel(
+      eyebrow: 'Discovered place',
+      title: venue.venueName,
+      tone: EarthPanelTone.success,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          EarthFieldRow(
+            label: 'Caretaker',
+            value: venue.npcName,
+            helper: venue.npcRole,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonBar extends StatelessWidget {
-  const _ComingSoonBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.outline),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Coming soon',
-                style: TextStyle(
-                  color: AppTheme.onSurface,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
+          EarthFieldRow(
+            label: 'Service',
+            value: venue.featureName,
+            helper: 'Not yet accepting releases.',
+            trailing: const EarthTag(
+              label: 'Opening soon',
+              tone: EarthTagTone.warning,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${venue.npcName} is preparing local release programs for animals '
+            'that are ready to return to the wild.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.86),
+                  height: 1.35,
                 ),
-              ),
-            ),
-            Text(
-              'Feature not built yet',
-              style: TextStyle(
-                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.78),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

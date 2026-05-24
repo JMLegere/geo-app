@@ -11,7 +11,7 @@ class NpcVenueMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '${venue.venueName}, ${venue.featureName} coming soon',
+      label: '${venue.venueName}, ${venue.npcName}, ${venue.npcRole}',
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.94),
@@ -49,7 +49,7 @@ class NpcVenueMarker extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${venue.featureName} — Coming soon',
+                '${venue.npcName} • ${venue.npcRole}',
                 style: const TextStyle(
                   color: AppTheme.onSurfaceVariant,
                   fontSize: 10.5,

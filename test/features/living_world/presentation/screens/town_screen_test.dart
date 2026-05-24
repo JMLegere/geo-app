@@ -15,7 +15,8 @@ class _DiscoveredNpcVenueNotifier extends NpcVenueNotifier {
       discoveredVenue: NpcVenue(
         id: 'wildlife-rehabilitation-center:city-a',
         kind: NpcVenueKind.wildlifeRehabilitationCenter,
-        venueName: 'Wildlife Rehabilitation Center',
+        venueName: "Rowan's Wildlife Rehab Center",
+        npcName: 'Rowan',
         npcRole: 'Wildlife Rehabilitator',
         featureName: 'Release to Wild',
         cellId: 'cell-a',
@@ -41,16 +42,17 @@ void main() {
     );
 
     expect(find.text('Town'), findsOneWidget);
-    expect(find.text('No local experts discovered yet'), findsOneWidget);
+    expect(find.text('No local places discovered yet'), findsOneWidget);
     expect(
       find.text(
-          'Explore the map to discover NPC venues and unlock Town entries.'),
+        'Explore the map to meet local characters and uncover their places.',
+      ),
       findsOneWidget,
     );
   });
 
   testWidgets(
-      'shows Release to Wild as a Coming Soon entry after NPC discovery',
+      'shows a character-owned Wildlife Rehab Center after NPC discovery',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -64,9 +66,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Release to Wild'), findsOneWidget);
-    expect(find.text('Wildlife Rehabilitation Center'), findsOneWidget);
+    expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
+    expect(find.text('Rowan'), findsOneWidget);
     expect(find.text('Wildlife Rehabilitator'), findsOneWidget);
-    expect(find.text('Coming soon'), findsOneWidget);
+    expect(find.text('Release to Wild'), findsOneWidget);
+    expect(find.text('OPENING SOON'), findsOneWidget);
+    expect(find.text('Not yet accepting releases.'), findsOneWidget);
   });
 }

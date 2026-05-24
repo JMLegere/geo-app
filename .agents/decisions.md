@@ -408,10 +408,10 @@
 
 ## 2026-05-24 — Town menu exposes unlocked NPC-led features
 
-- Add a top-level `Town` menu/surface that shows all NPC-led features the player has unlocked.
-- Town entries are feature venues, not generic menus: e.g. `Botanical Field Station` opens the Botany UI.
-- Opening an unlocked Town feature should bind the UI to the nearest eligible NPC of that feature/type relative to the player's current location.
-- This allows one feature surface to feel local and character-led without requiring a separate menu entry for every city NPC.
+- Add a top-level `Town` menu/surface that shows discovered character-owned local places.
+- Town entries are place-first, not feature-first: e.g. `[Character]'s Wildlife Rehab Center` contains the `Release to Wild` service.
+- Opening an unlocked Town service should bind the UI to the nearest eligible NPC/place of that feature/type relative to the player's current location.
+- This makes features feel local and character-led without turning Town into a generic feature registry or task board.
 - Eligibility should respect the placement rules: one NPC type per city, one NPC max per cell, and venue anchored to the chosen cell's most popular POI.
 
 ## 2026-05-24 — Sanctuary becomes Home
@@ -450,3 +450,10 @@
 - Release storage uses append-only release events as canonical history plus current slot occupancy projections for fast UI and one-to-one enforcement.
 - First implementation slice is backend/domain-first: schema/RPC/tests with minimal UI.
 - Release eligibility floor: active identified fauna owned by the player, not already released, and not currently serving as a buddy, placed at Home, or committed elsewhere unless those states are cleared first.
+
+## 2026-05-24 — Town visual model is character-owned places
+
+- Town should feel like a directory of discovered character-owned places, not a service catalog or feature backlog.
+- Map markers should identify the place and character, not advertise unbuilt feature status.
+- Unavailable services should use diegetic copy such as `Opening soon` / `Not yet accepting releases`, not implementation copy such as `Feature not built yet`.
+- The first concrete place shape is `[Character]'s Wildlife Rehab Center`, currently represented in the thin slice as `Rowan's Wildlife Rehab Center`.

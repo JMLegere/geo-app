@@ -22,7 +22,7 @@ v3 restores a working foundation: login and your collection. Everything else is 
 
 - **Login screen** — Phone number input (+1 prefix), derived email+password auth via Supabase. No OTP.
 - **Player screen** — Personal surface currently backed by Pack: user's existing items from `v3_items`, category filter chips, sort by recent/rarity/name, art display with fallback, and empty state. Long-term also owns buddy, profile details, stats, progress, and settings.
-- **Tab shell** — 4-tab bottom navigation: Map, Player, Town, Home. Player is backed by the existing Pack implementation; Town lists discovered NPC venues with Coming Soon entries for unbuilt features; Home is a stub.
+- **Tab shell** — 4-tab bottom navigation: Map, Player, Town, Home. Player is backed by the existing Pack implementation; Town lists discovered character-owned places with Opening Soon service entries for unbuilt features; Home is a stub.
 - **Observability** — Every auth and data state transition logged to Supabase `telemetry_logs` / `telemetry_spans` from day 1.
 - **Session persistence** — Close browser, reopen, still signed in.
 
@@ -1171,12 +1171,12 @@ Home is the player-facing successor to Sanctuary for the personal base/place. It
 
 ### Town Screen — Living World / NPC-led World Surface
 
-Town is the top-level surface for unlocked NPC-led local features. It is deliberately clear and boring as navigation language; the warmth comes from local people, venue flavor, and conservation/science context, not from treating NPCs as service vendors.
+Town is the top-level surface for unlocked character-owned local places. It is deliberately clear and boring as navigation language; the warmth comes from local people, named venues, and conservation/science context, not from treating NPCs as service vendors.
 
 **Core model:**
 - NPC venues are discovered on the Map as persistent real-place venues tied to a concrete cell + POI/building.
 - NPC function is authored first: e.g. Wildlife Rehabilitator, curator, ranger, trader, guide, caretaker, specialist, or another named game role.
-- Generated NPC details are flavor-only: name, portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
+- Generated NPC details are flavor-only: character name, place display name (for example, `Rowan's Wildlife Rehab Center`), portrait seed, affiliation, voice/tone, intro copy, and local cosmetic details.
 - Placement rules: one NPC type per city, one NPC venue maximum per cell, venue anchored to the most popular eligible POI in the chosen cell.
 - Opening a Town feature binds that feature UI to the nearest eligible NPC of the authored type relative to the player's current location.
 - Town/NPC planning cues may appear in frontier, explored, and present cells so the player can route toward the venue before direct arrival.
@@ -1187,21 +1187,22 @@ Town is the top-level surface for unlocked NPC-led local features. It is deliber
 No NPC-led features unlocked
 ────────────────────────────
 Town
-Meet local experts by exploring new map cells.
+Meet local characters by exploring new map cells.
 
-Unlocked local feature
-────────────────────────────
+Unlocked local place
+────────────────────
 Town
-Release to Wild
-Wildlife Rehabilitation Center near [place/city]
-Release an animal or contribute to a local conservation program.
+Rowan's Wildlife Rehab Center
+Caretaker: Rowan — Wildlife Rehabilitator
+Service: Release to Wild — Opening soon
 ```
 
-**First concrete NPC / loop: Wildlife Rehabilitation Center → Release to Wild**
+**First concrete NPC / loop: character-owned Wildlife Rehab Center → Release to Wild**
 - First venue type: `wildlife-rehabilitation-center`.
 - First NPC role: `Wildlife Rehabilitator`.
-- First Town feature: `Release to Wild`.
-- The feature unlocks immediately when the player discovers the center.
+- First Town place shape: `[Character]'s Wildlife Rehab Center`.
+- First Town service: `Release to Wild`.
+- The service unlocks immediately when the player discovers the center, but may appear as `Opening soon` until the release flow is implemented.
 - This should feel like community-center-style contribution satisfaction and durable conservation programs, not a task-board, service-vendor, or MMO daily-request loop.
 
 **Release to Wild model:**

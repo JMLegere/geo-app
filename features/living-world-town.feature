@@ -1,8 +1,9 @@
 @capability.living-world @feature.town @feature.npc-venues
 Feature: Town and NPC-led services
   Living World makes major EarthNova systems feel grounded in places and people.
-  NPC venues are discovered on the Map, unlock Town entries, and bind feature
-  surfaces to the nearest eligible local NPC instead of exposing unexplained menus.
+  NPC venues are discovered on the Map, unlock character-owned place entries in
+  Town, and bind feature surfaces to the nearest eligible local NPC instead of
+  exposing unexplained menus.
 
   Scenario: Living World defines its app surfaces
     Given major game systems should be introduced through NPCs
@@ -20,7 +21,7 @@ Feature: Town and NPC-led services
     Given the game needs a specific authored NPC-led feature
     When an NPC venue is generated
     Then the NPC type, feature function, unlock rules, and feature binding should be authored by the game
-    And generated identity details should be limited to name, portrait seed, affiliation, voice, intro copy, and cosmetic local flavor
+    And generated identity details should be limited to character name, place display name, portrait seed, affiliation, voice, intro copy, and cosmetic local flavor
 
   @action.discover-npc-venue
   Scenario: Player discovers an NPC venue by entering its map cell
@@ -39,21 +40,21 @@ Feature: Town and NPC-led services
   Scenario: Player opens Town
     Given the player is authenticated
     When the player opens Town
-    Then Town should show unlocked NPC-led feature entries
-    And if no NPC-led features are unlocked, Town should show an empty state that points back to Map exploration
-    And discovered features whose implementation is not ready should appear as Coming Soon entries rather than fully interactive feature screens
+    Then Town should show unlocked character-owned place entries
+    And if no places are unlocked, Town should show an empty state that points back to Map exploration
+    And discovered places whose services are not ready should appear as Opening Soon entries rather than fully interactive feature screens
 
   @action.open-npc-led-feature
   Scenario: Player opens an unlocked NPC-led feature
-    Given Town lists an unlocked NPC-led feature type
+    Given Town lists an unlocked character-owned place
     When the player opens that feature from Town
     Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
     And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
 
-  Scenario: First NPC-led feature belongs to a Wildlife Rehabilitation Center
+  Scenario: First NPC-led feature belongs to a character-owned Wildlife Rehab Center
     Given the first concrete NPC-led loop is selected
     When Living World places the first NPC venue
-    Then the venue should be a Wildlife Rehabilitation Center
+    Then the Town entry should be a character-owned Wildlife Rehab Center
     And the NPC role should be Wildlife Rehabilitator
-    And the Town feature should be Release to Wild
+    And the available service should be Release to Wild
     And the center should support base one-off releases plus optional local conservation programs

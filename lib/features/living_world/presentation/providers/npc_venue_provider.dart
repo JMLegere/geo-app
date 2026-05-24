@@ -34,7 +34,8 @@ class NpcVenueNotifier extends ObservableNotifier<NpcVenueState> {
     final venue = NpcVenue(
       id: 'wildlife-rehabilitation-center:${currentCell.cityId}',
       kind: NpcVenueKind.wildlifeRehabilitationCenter,
-      venueName: 'Wildlife Rehabilitation Center',
+      venueName: "Rowan's Wildlife Rehab Center",
+      npcName: 'Rowan',
       npcRole: 'Wildlife Rehabilitator',
       featureName: 'Release to Wild',
       cellId: currentCell.id,
@@ -51,6 +52,7 @@ class NpcVenueNotifier extends ObservableNotifier<NpcVenueState> {
         'cell_id': venue.cellId,
         'city_id': venue.cityId,
         'feature_name': venue.featureName,
+        'npc_name': venue.npcName,
       },
     );
   }

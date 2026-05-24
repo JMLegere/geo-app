@@ -59,7 +59,8 @@ void main() {
 
     final venue = container.read(npcVenueProvider).discoveredVenue;
     expect(venue, isNotNull);
-    expect(venue!.venueName, 'Wildlife Rehabilitation Center');
+    expect(venue!.venueName, "Rowan's Wildlife Rehab Center");
+    expect(venue.npcName, 'Rowan');
     expect(venue.npcRole, 'Wildlife Rehabilitator');
     expect(venue.featureName, 'Release to Wild');
     expect(venue.cellId, 'cell-a');

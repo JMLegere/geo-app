@@ -220,7 +220,7 @@ export const productFeatures = {
     label: "Town",
     capability: "living-world",
     kind: "app-section",
-    description: "Top-level NPC-led world surface that lists unlocked local feature venues and opens each one bound to the nearest eligible local NPC.",
+    description: "Top-level NPC-led world surface that lists unlocked character-owned local places and opens each place's authored service bound to the nearest eligible local NPC.",
   }),
   npcVenues: feature({
     id: "npc-venues",
@@ -234,7 +234,7 @@ export const productFeatures = {
     label: "Wildlife Rehabilitation Center",
     capability: "living-world",
     kind: "surface",
-    description: "First concrete NPC venue/role: a city-owned Wildlife Rehabilitation Center run by a Wildlife Rehabilitator that introduces Release to Wild.",
+    description: "First concrete NPC venue/role: a city-owned, character-owned Wildlife Rehab Center run by a Wildlife Rehabilitator that introduces Release to Wild.",
   }),
 
   fieldGuide: feature({
