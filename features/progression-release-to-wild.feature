@@ -38,6 +38,7 @@ Feature: Release to Wild
     When the player releases that animal through the program
     Then the release should count toward the visible local program slots
     And only exact predicate matches should be accepted for committed program progress
+    And the committed animal instance should fill exactly one chosen slot
     And the released animal should still be recorded in release history
     And any completed local program should grant its fixed bonus Orb item-stack reward exactly once
 
@@ -55,6 +56,7 @@ Feature: Release to Wild
     Then a simple always-open generic release slot should exist for any eligible fauna
     And optional local programs should add extra visible slots with tighter requirements for bonus rewards
     And an authored program may repeat the same request across multiple slots or mix different slot predicates in one checklist
+    And every program slot should fit one item instance one-to-one at all times
 
   Scenario: Local release programs are durable and center-owned
     Given a city has one Wildlife Rehabilitation Center venue
