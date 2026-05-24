@@ -43,7 +43,7 @@ foundations -> primitives -> composites -> patterns -> feature screens
 5. Design widgets expose semantic variant/tone props instead of raw `Color`, `TextStyle`, `EdgeInsets`, or decoration escape hatches.
 6. New reusable UI must be added in the right taxonomy folder first, then consumed by features.
 7. Every exported design widget must be listed in `designComponentRegistry` with category, status, purpose, and screen-usage policy.
-8. Every app UI file outside the design taxonomy must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes.
+8. Every app UI file outside the design taxonomy must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes; legacy-local status additionally requires a matching `legacyDesignSurfaceExceptions` entry.
 9. Any change to design components or app UI inventory must pass the shared design tests.
 
 ## Public API
@@ -64,12 +64,12 @@ import 'package:earth_nova/shared/design/primitives/index.dart';
 
 The repository enforces the design library through:
 
-- `test/shared/design/design_contract_test.dart` — structure, public import path, app UI surface inventory, no raw style escape hatches.
+- `test/shared/design/design_contract_test.dart` — structure, public import path, app UI surface inventory, legacy-local exception approval, no raw style escape hatches.
 - `test/shared/design/design_component_registry_test.dart` — registry/API/taxonomy parity.
 - `test/shared/design/design_library_widget_test.dart` — render smoke and touch-target coverage.
 - `flutter test` / CI — runs these checks with the rest of the suite.
 
-The first pass establishes the structure. Existing older feature widgets may still carry local styling until migrated, but new reusable UI should enter through this design library.
+The first pass establishes the structure. Existing older feature widgets may still carry local styling only through the explicit `legacyDesignSurfaceExceptions` baseline; new reusable UI should enter through this design library.
 
 ## Adding a component
 
@@ -84,6 +84,7 @@ The first pass establishes the structure. Existing older feature widgets may sti
 
 Any new screen, feature widget, shared widget, debug overlay, observability
 fallback, or painter outside `lib/shared/design/` must be added to
-`designSurfaceInventory`. The inventory is intentionally strict: validation fails
-if a Flutter UI class exists without a design-system entry explaining why it
-exists and how it relates to the canonical design language.
+`designSurfaceInventory`. If it uses `DesignSurfaceStatus.legacyLocalComposition`,
+it must also be added to `legacyDesignSurfaceExceptions` with a reason and
+migration trigger. This makes the exception visible in review instead of silently
+passing as undocumented local styling.

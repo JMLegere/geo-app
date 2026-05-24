@@ -91,6 +91,29 @@ void main() {
         expect(surface.designSystemNotes, isNotEmpty,
             reason: '${surface.path} needs design-system notes.');
       }
+
+      final legacySurfacePaths = designSurfaceInventory
+          .where((surface) =>
+              surface.status == DesignSurfaceStatus.legacyLocalComposition)
+          .map((surface) => surface.path)
+          .toSet();
+
+      expect(
+        legacyDesignSurfaceExceptionPaths,
+        legacySurfacePaths,
+        reason:
+            'Legacy local UI is allowed only through legacyDesignSurfaceExceptions. '
+            'New UI must use canonical design composition, infrastructure, debug-only, or add a visible exception with a migration trigger.',
+      );
+
+      for (final exception in legacyDesignSurfaceExceptions) {
+        expect(publicDesignSurfacePaths, contains(exception.path),
+            reason: '${exception.path} has a legacy exception but no surface.');
+        expect(exception.reason, isNotEmpty,
+            reason: '${exception.path} needs a legacy exception reason.');
+        expect(exception.migrationTrigger, isNotEmpty,
+            reason: '${exception.path} needs a migration trigger.');
+      }
     });
 
     test('prevents style escape hatches in design widgets', () {

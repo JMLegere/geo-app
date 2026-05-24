@@ -31,6 +31,18 @@ class DesignSurfaceDefinition {
   final String designSystemNotes;
 }
 
+class LegacyDesignSurfaceException {
+  const LegacyDesignSurfaceException({
+    required this.path,
+    required this.reason,
+    required this.migrationTrigger,
+  });
+
+  final String path;
+  final String reason;
+  final String migrationTrigger;
+}
+
 const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/main.dart',
@@ -276,6 +288,162 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'App chrome must stay text-first or use canonical EarthIcon/EarthGlyph only.',
   ),
 ];
+
+const legacyDesignSurfaceExceptions = <LegacyDesignSurfaceException>[
+  LegacyDesignSurfaceException(
+    path: 'lib/features/auth/presentation/screens/loading_screen.dart',
+    reason: 'Predates the design taxonomy and owns auth startup loading UI.',
+    migrationTrigger:
+        'Replace when a canonical loading/empty-state primitive exists.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/auth/presentation/screens/login_screen.dart',
+    reason:
+        'Predates the design taxonomy and owns the current phone sign-in form.',
+    migrationTrigger:
+        'Replace when canonical form-field and auth action components exist.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/identification/presentation/screens/pack_screen.dart',
+    reason:
+        'Predates the design taxonomy and owns the current Pack inventory surface.',
+    migrationTrigger:
+        'Migrate when Pack filters, cards, and empty states are touched.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/identification/presentation/widgets/species_card.dart',
+    reason: 'Predates the design taxonomy and owns the current Pack item card.',
+    migrationTrigger:
+        'Promote to a registered card composite before reuse outside Pack.',
+  ),
+  LegacyDesignSurfaceException(
+    path:
+        'lib/features/living_world/presentation/widgets/npc_venue_marker.dart',
+    reason:
+        'Map marker primitives do not exist yet; marker styling is local and map-specific.',
+    migrationTrigger:
+        'Replace when map marker primitives enter the design taxonomy.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/city_screen.dart',
+    reason:
+        'Predates the design taxonomy and shares local territory detail styling.',
+    migrationTrigger:
+        'Migrate when territory detail composites are introduced.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/country_screen.dart',
+    reason:
+        'Predates the design taxonomy and shares local territory detail styling.',
+    migrationTrigger:
+        'Migrate when territory detail composites are introduced.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/district_screen.dart',
+    reason:
+        'Predates the design taxonomy and shares local territory detail styling.',
+    migrationTrigger:
+        'Migrate when territory detail composites are introduced.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/map_screen.dart',
+    reason:
+        'Predates the design taxonomy and owns the current map gameplay surface.',
+    migrationTrigger:
+        'Migrate local UI when map-specific primitives/composites exist.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/province_screen.dart',
+    reason:
+        'Predates the design taxonomy and shares local territory detail styling.',
+    migrationTrigger:
+        'Migrate when territory detail composites are introduced.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/screens/world_screen.dart',
+    reason:
+        'Predates the design taxonomy and shares local territory detail styling.',
+    migrationTrigger:
+        'Migrate when territory detail composites are introduced.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
+    reason:
+        'Predates the design taxonomy and owns the current map-cell detail sheet.',
+    migrationTrigger:
+        'Migrate toward EarthPanel/EarthFieldRow composition when touched.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/discovery_notification.dart',
+    reason:
+        'Predates the design taxonomy and owns the current map discovery notification.',
+    migrationTrigger:
+        'Replace with a registered notice/toast pattern before reuse.',
+  ),
+  LegacyDesignSurfaceException(
+    path:
+        'lib/features/map/presentation/widgets/hierarchy_exploration_map.dart',
+    reason:
+        'Predates the design taxonomy and owns a map-specific mini-map composition.',
+    migrationTrigger: 'Migrate when a map/territory composite exists.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
+    reason:
+        'Predates the design taxonomy and owns territory hierarchy heading styling.',
+    migrationTrigger:
+        'Migrate when a registered territory header composite exists.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/map_status_bar.dart',
+    reason:
+        'Predates the design taxonomy and owns current map stat/status styling.',
+    migrationTrigger:
+        'Migrate to EarthStatGrid/EarthTag composition when touched.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/pinch_hint.dart',
+    reason:
+        'Predates the design taxonomy and owns current gesture hint styling.',
+    migrationTrigger: 'Replace when a canonical hint/notice pattern exists.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/map/presentation/widgets/shimmer_cells.dart',
+    reason:
+        'Predates the design taxonomy and owns current map loading shimmer styling.',
+    migrationTrigger:
+        'Replace when a registered loading primitive/pattern exists.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/features/profile/presentation/screens/settings_screen.dart',
+    reason:
+        'Predates the design taxonomy and owns current settings layout styling.',
+    migrationTrigger:
+        'Migrate to canonical panel/action primitives when touched.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/shared/observability/widgets/error_boundary_retry.dart',
+    reason: 'Predates the design taxonomy and owns infrastructure fallback UI.',
+    migrationTrigger:
+        'Migrate to EarthNotice/EarthActionButton composition when touched.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/shared/widgets/loading_dots.dart',
+    reason:
+        'Predates the design taxonomy and owns current shared loading indicator.',
+    migrationTrigger:
+        'Promote to a registered loading primitive if reused broadly.',
+  ),
+  LegacyDesignSurfaceException(
+    path: 'lib/shared/widgets/stub_screen.dart',
+    reason: 'Predates the design taxonomy and owns temporary coming-soon UI.',
+    migrationTrigger: 'Replace when a canonical empty-state pattern is added.',
+  ),
+];
+
+final legacyDesignSurfaceExceptionPaths = <String>{
+  for (final exception in legacyDesignSurfaceExceptions) exception.path,
+};
 
 final publicDesignSurfacePaths = <String>{
   for (final surface in designSurfaceInventory) surface.path,

@@ -48,7 +48,7 @@ The first-pass enforcement lives in tests so it runs in normal Flutter CI:
 
 | Check | File | What fails |
 | --- | --- | --- |
-| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, undocumented app UI surfaces, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
+| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, undocumented app UI surfaces, unapproved legacy-local UI exceptions, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
 | Registry parity | `test/shared/design/design_component_registry_test.dart` | Exported taxonomy widgets missing registry entries, duplicate/stale entries, empty categories |
 | Widget smoke/usability | `test/shared/design/design_library_widget_test.dart` | Catalog render breakage and action touch-target regressions |
 
@@ -68,10 +68,13 @@ mise exec -- flutter test --no-pub --reporter=compact
 ## Migration rule
 
 Existing pre-library feature widgets may carry local styling only when they are
-explicitly documented in `designSurfaceInventory` with design-system notes. This
-is not a free pass: the inventory is the review gate, and any new screen, widget,
-painter, debug overlay, or observability fallback fails validation until it is
-documented there.
+listed in `designSurfaceInventory` with `status:
+DesignSurfaceStatus.legacyLocalComposition` **and** have a matching
+`legacyDesignSurfaceExceptions` entry with a reason and migration trigger. That
+exception list is the legacy baseline. A new screen, widget, painter, debug
+overlay, or observability fallback fails validation unless it is documented; a
+new undocumented legacy-local composition also fails validation unless it adds an
+explicit exception entry.
 
 When a screen or widget is touched for real product work:
 
