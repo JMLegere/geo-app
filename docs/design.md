@@ -1218,6 +1218,7 @@ Release an animal or contribute to a local conservation program.
 - Release is irreversible for the animal instance: it leaves active Pack, appears in the center's release ledger/history, and Field Guide knowledge remains.
 - First eligibility floor: active, identified, fauna, owned by the player, not already released, and not currently serving as a buddy, placed at Home, or committed elsewhere unless those states are cleared first.
 - Local programs belong to the specific NPC and POI. There is one center per city.
+- V1 local programs are generated dynamically from local map/cell/species metadata for the center's city, not manually authored or selected from static templates.
 - One-time programs persist completion; completed one-time programs do not reset as dailies.
 
 ### Stub Screens (Flora, Mineral, Fossil, Artifact, Food, Orb)

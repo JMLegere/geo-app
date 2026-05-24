@@ -64,6 +64,7 @@ Feature: Release to Wild
     Given a city has one Wildlife Rehabilitation Center venue
     When that center offers a local "look for this trait" program
     Then the program should belong to that specific NPC and POI
+    And the program should be generated from local map, cell, and species metadata for that center's city
     And incomplete program slots should preserve their committed releases over time
     And completed one-time programs should not reset as daily chores
 
