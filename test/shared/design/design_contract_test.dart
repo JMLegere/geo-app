@@ -98,10 +98,7 @@ void main() {
 
       for (final path in appChromeFiles) {
         final source = File(path).readAsStringSync();
-        final importsDesignApi =
-            source.contains("import 'package:earth_nova/shared/design.dart';");
-        if (!importsDesignApi ||
-            rawEmoji.hasMatch(source) ||
+        if (rawEmoji.hasMatch(source) ||
             rawIcons.hasMatch(source) ||
             legacyIconography.hasMatch(source)) {
           offenders.add(path);
@@ -112,7 +109,7 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'High-level app chrome should consume canonical design icons through package:earth_nova/shared/design.dart, not raw Icons, AppIcons, or emoji glyphs.',
+            'High-level app chrome should be text-first or use canonical design icons; raw Icons, AppIcons, and emoji glyphs are not allowed there.',
       );
     });
   });
