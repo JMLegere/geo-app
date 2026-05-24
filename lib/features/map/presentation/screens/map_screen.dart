@@ -1413,8 +1413,8 @@ class _MapSteadyStateLoadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final waitingText = waitingFor.isEmpty
-        ? 'Revealing map…'
-        : 'Revealing map… ${waitingFor.first.replaceAll('_', ' ')}';
+        ? 'Revealing map...'
+        : 'Revealing map... ${waitingFor.first.replaceAll('_', ' ')}';
 
     return DecoratedBox(
       decoration: const BoxDecoration(color: AppTheme.surface),

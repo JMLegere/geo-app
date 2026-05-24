@@ -90,6 +90,7 @@ void main() {
         'lib/shared/widgets/loading_dots.dart',
         'lib/shared/widgets/tab_shell.dart',
         'lib/features/map/presentation/widgets/map_status_bar.dart',
+        'lib/features/map/presentation/widgets/discovery_notification.dart',
       ];
       final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
       final rawIcons = RegExp(r'\bIcons\.');

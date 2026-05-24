@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
+
 /// Brief notification shown just below the status bar when the player
 /// enters a new cell for the first time.
 ///
@@ -17,9 +20,9 @@ class DiscoveryNotification extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xEB0D1B2A),
+        color: AppTheme.surface.withValues(alpha: 0.92),
         border: Border.all(
-          color: const Color(0x4D83C5BE),
+          color: AppTheme.tertiary.withValues(alpha: 0.35),
           width: 1,
         ),
         borderRadius: BorderRadius.circular(12),
@@ -29,9 +32,10 @@ class DiscoveryNotification extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              '🌿',
-              style: TextStyle(fontSize: 28),
+            const EarthIcon(
+              glyph: EarthGlyph.map,
+              tone: EarthIconTone.tertiary,
+              size: 20,
             ),
             const SizedBox(width: 10),
             Flexible(
@@ -39,21 +43,12 @@ class DiscoveryNotification extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'NEW CELL',
-                    style: TextStyle(
-                      color: Color(0xFF83C5BE),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                      height: 1.2,
-                    ),
-                  ),
+                  const EarthMetaText('New cell', tone: EarthMetaTone.accent),
                   const SizedBox(height: 2),
                   Text(
                     cellName.isEmpty ? 'Unknown Cell' : cellName,
                     style: const TextStyle(
-                      color: Color(0xFFE0E1DD),
+                      color: AppTheme.onSurface,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       height: 1.2,
