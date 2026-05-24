@@ -39,6 +39,8 @@ Feature: Release to Wild
     Then the release should count toward the visible local program slots
     And only exact predicate matches should be accepted for committed program progress
     And the committed animal instance should fill exactly one chosen slot
+    And the filled slot should show the released animal's icon
+    And tapping the filled icon should open that released animal's card
     And the released animal should still be recorded in release history
     And any completed local program should grant its fixed bonus Orb item-stack reward exactly once
 
