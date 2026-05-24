@@ -241,18 +241,34 @@ void main() {
   });
 
   group('Tileset URL verification', () {
-    test('_kMapStyleUrl uses OpenFreeMap liberty style', () {
+    test(
+        'uses a repo-owned raster basemap style on web and keeps native OpenFreeMap style elsewhere',
+        () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final styleFile = File('web/base-map-style.json');
 
-      // Verify the tileset URL is set to OpenFreeMap liberty style
+      expect(mapSource,
+          contains("const _kWebMapStyleUrl = 'base-map-style.json'"));
       expect(
         mapSource,
         contains(
-            "const _kMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty'"),
-        reason: '_kMapStyleUrl must be set to OpenFreeMap liberty style URL',
+            "const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty'"),
       );
+      expect(
+        mapSource,
+        contains(
+            'styleString: kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl'),
+        reason:
+            'Web should use the repo-owned browser-safe raster style while native builds keep the existing vector style.',
+      );
+      expect(styleFile.existsSync(), isTrue);
+      final styleJson = styleFile.readAsStringSync();
+      expect(styleJson, contains('"type": "raster"'));
+      expect(styleJson, contains('light_nolabels'));
+      expect(styleJson,
+          isNot(contains('"url": "https://tiles.openfreemap.org/planet"')));
     });
   });
 

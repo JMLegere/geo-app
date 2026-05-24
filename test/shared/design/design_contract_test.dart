@@ -14,6 +14,7 @@ void main() {
         'lib/shared/design/examples.dart',
         'lib/shared/design/foundations/index.dart',
         'lib/shared/design/primitives/index.dart',
+        'lib/shared/design/primitives/icon.dart',
         'lib/shared/design/composites/index.dart',
         'lib/shared/design/patterns/index.dart',
       ];
@@ -79,6 +80,38 @@ void main() {
         isEmpty,
         reason:
             'Design widgets should expose semantic variants/tone props, not raw color/style/padding escape hatches.',
+      );
+    });
+    test(
+        'keeps app chrome on canonical design icons instead of raw icons or emoji',
+        () {
+      final offenders = <String>[];
+      const appChromeFiles = [
+        'lib/shared/widgets/loading_dots.dart',
+        'lib/shared/widgets/tab_shell.dart',
+        'lib/features/map/presentation/widgets/map_status_bar.dart',
+      ];
+      final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
+      final rawIcons = RegExp(r'\bIcons\.');
+      final legacyIconography = RegExp(r'AppIcons\.');
+
+      for (final path in appChromeFiles) {
+        final source = File(path).readAsStringSync();
+        final importsDesignApi =
+            source.contains("import 'package:earth_nova/shared/design.dart';");
+        if (!importsDesignApi ||
+            rawEmoji.hasMatch(source) ||
+            rawIcons.hasMatch(source) ||
+            legacyIconography.hasMatch(source)) {
+          offenders.add(path);
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'High-level app chrome should consume canonical design icons through package:earth_nova/shared/design.dart, not raw Icons, AppIcons, or emoji glyphs.',
       );
     });
   });

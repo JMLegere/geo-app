@@ -613,3 +613,11 @@
 - `SpeciesCard` now shows `Start identification`, an `Identification ready` reveal panel, and a hold-to-reveal affordance before exposing the hidden species name/scientific name.
 - `PackScreen` logs separate player actions for identification start and reveal; the existing repository/provider mutation runs only during reveal, preserving the same owned item identity.
 - Verification passed: `mise exec -- eac check`, focused identification tests, `mise exec -- flutter analyze`, full `mise exec -- flutter test --coverage --no-pub`, and Python CI-equivalent coverage check (`3561/3724 = 95%`, need `3537`).
+
+## Completed 2026-05-24 — app chrome icon enforcement + web basemap recovery
+- Added canonical design primitive `EarthIcon` / `EarthGlyph` and registered it in the shared design library so high-level app chrome can stop using raw `Icons.*` and emoji spinners.
+- Migrated `LoadingDots`, bottom navigation, and `MapStatusBar` onto the public design API; sanctuary stub is now text-labeled instead of a giant emoji placeholder.
+- Tightened design enforcement to match the `main-website` shape more closely: `test/shared/design/design_contract_test.dart` now fails when app chrome bypasses `package:earth_nova/shared/design.dart` with raw icons/emoji.
+- Replaced the web basemap source with a repo-owned `web/base-map-style.json` raster style while preserving the native OpenFreeMap vector style.
+- Hardened the web MapLibre bootstrap bridge so style readiness can advance from a JS poll (`map.isStyleLoaded()` / `map.getStyle()`) even if the MapLibre `load` event never fires after remote source failures.
+- Verification passed locally: focused shared design/widget/map/web tests, `mise exec -- eac check`, `mise exec -- flutter analyze`, `git diff --check`, and CI-equivalent coverage check (`3598/3765 = 95%`, need `3576`).

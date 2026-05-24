@@ -28,6 +28,14 @@ const designComponentRegistry = <DesignComponentDefinition>[
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
+    name: 'EarthIcon',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose:
+        'Canonical app-chrome and status icon wrapper so screens stop reaching for raw Icons or emoji glyphs.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
     name: 'EarthMetaText',
     category: DesignComponentCategory.primitive,
     status: DesignComponentStatus.canonical,

@@ -20,7 +20,7 @@ The design system is not a style suggestion. It is the place where reusable UI e
 | Layer | Path | Purpose |
 | --- | --- | --- |
 | Foundations | `lib/shared/design/foundations/` | Internal helpers and conventions, not a screen API |
-| Primitives | `lib/shared/design/primitives/` | Small reusable atoms like action buttons, tags, metadata, notices |
+| Primitives | `lib/shared/design/primitives/` | Small reusable atoms like action buttons, icons, tags, metadata, notices |
 | Composites | `lib/shared/design/composites/` | Assembled field-note units like panels, field rows, stat grids |
 | Patterns | `lib/shared/design/patterns/` | Larger examples/catalog shapes, not direct app-screen dependencies |
 | Registry | `lib/shared/design/registry.dart` | Formal component inventory with category/status/screen policy |
@@ -40,6 +40,7 @@ They must not import internal taxonomy paths such as `shared/design/primitives/.
 - Visual variants are semantic (`tone`, `status`, `relationship`) instead of raw color/style props.
 - New route-specific UI starts as local feature code; reusable UI graduates into the design taxonomy and registry.
 - Patterns such as `DesignLibraryExample` are catalog/review artifacts and are not allowed directly in app screens.
+- High-level app chrome should use canonical design icons (`EarthIcon` / `EarthGlyph`) instead of raw `Icons.*`, emoji glyphs, or legacy `AppIcons` strings.
 
 ## Enforcement
 
@@ -47,7 +48,7 @@ The first-pass enforcement lives in tests so it runs in normal Flutter CI:
 
 | Check | File | What fails |
 | --- | --- | --- |
-| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, raw style escape hatches in design widgets |
+| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
 | Registry parity | `test/shared/design/design_component_registry_test.dart` | Exported taxonomy widgets missing registry entries, duplicate/stale entries, empty categories |
 | Widget smoke/usability | `test/shared/design/design_library_widget_test.dart` | Catalog render breakage and action touch-target regressions |
 

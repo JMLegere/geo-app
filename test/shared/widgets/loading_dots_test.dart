@@ -4,33 +4,32 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
 void main() {
   group('LoadingDots', () {
-    testWidgets('renders initial earth frame', (tester) async {
+    testWidgets('renders canonical world icon', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
       );
 
-      expect(find.text('🌍'), findsOneWidget);
-      expect(find.text('.'), findsNothing);
+      expect(find.byIcon(Icons.public), findsOneWidget);
+      expect(find.text('🌍'), findsNothing);
     });
 
-    testWidgets('cycles through earth frames', (tester) async {
+    testWidgets('wraps the world icon in a rotation transition',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
       );
 
-      expect(find.text('🌍'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(LoadingDots),
+          matching: find.byType(RotationTransition),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.public), findsOneWidget);
 
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('🌎'), findsOneWidget);
-
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('🌏'), findsOneWidget);
-
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump(const Duration(milliseconds: 50));
-      expect(find.text('🌍'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1200));
+      expect(find.byIcon(Icons.public), findsOneWidget);
       expect(find.text('...'), findsNothing);
     });
 

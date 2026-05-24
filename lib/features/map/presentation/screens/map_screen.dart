@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
@@ -42,7 +43,8 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
-const _kMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
+const _kWebMapStyleUrl = 'base-map-style.json';
+const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 const _kGpsZoom = 15.0;
 
 /// Build version injected at compile time via --dart-define=BUILD_TIMESTAMP.
@@ -927,7 +929,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               // GPS remains the target without hard-snapping the camera.
               Positioned.fill(
                 child: maplibre.MapLibreMap(
-                  styleString: _kMapStyleUrl,
+                  styleString: kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl,
                   initialCameraPosition: maplibre.CameraPosition(
                     target: maplibre.LatLng(
                       desiredCameraPosition.lat,

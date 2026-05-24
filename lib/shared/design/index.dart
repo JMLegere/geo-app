@@ -7,6 +7,7 @@ export 'registry.dart';
 const publicDesignComponentNames = <String>{
   'DesignLibraryExample',
   'EarthActionButton',
+  'EarthIcon',
   'EarthFieldRow',
   'EarthMetaText',
   'EarthNotice',

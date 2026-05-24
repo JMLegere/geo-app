@@ -18,6 +18,7 @@ class DesignLibraryExample extends StatelessWidget {
         actions: const [
           EarthTag(label: 'canonical', tone: EarthTagTone.success),
           EarthTag(label: 'mobile-first', tone: EarthTagTone.accent),
+          EarthIcon(glyph: EarthGlyph.world, tone: EarthIconTone.tertiary),
         ],
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

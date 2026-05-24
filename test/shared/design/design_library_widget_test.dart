@@ -20,6 +20,7 @@ void main() {
     expect(find.text('Design system'), findsOneWidget);
     expect(find.text('CANONICAL'), findsWidgets);
     expect(find.text('MAP CELL DETAIL'), findsOneWidget);
+    expect(find.byType(EarthIcon), findsOneWidget);
   });
 
   testWidgets('primary design action preserves a usable touch target',
@@ -45,5 +46,25 @@ void main() {
 
     await tester.tap(find.text('Continue'));
     expect(taps, 1);
+  });
+
+  testWidgets('canonical design icon renders semantic app chrome glyph',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const Scaffold(
+          body: Center(
+            child: EarthIcon(
+              glyph: EarthGlyph.pack,
+              tone: EarthIconTone.tertiary,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
   });
 }

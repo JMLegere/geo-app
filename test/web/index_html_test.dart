@@ -247,6 +247,21 @@ void main() {
           reason:
               'The bridge should listen to the real MapLibre JS load event.',
         );
+        expect(
+          html,
+          contains('map.isStyleLoaded'),
+          reason:
+              'Style readiness should also be polled from the underlying JS map '
+              'because remote source fetch failures can prevent the MapLibre load '
+              'event from firing even when the style object is already usable.',
+        );
+        expect(
+          html,
+          contains("push('js', 'maplibre_style_ready_polled'"),
+          reason:
+              'When the JS style object becomes available before load/idle, the '
+              'bootstrap path should still emit a terminal style-ready signal.',
+        );
       });
 
       test('logs MapLibre layout samples with bounded size attributes', () {

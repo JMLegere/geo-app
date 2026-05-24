@@ -1,0 +1,39 @@
+{
+  "version": 8,
+  "name": "EarthNova raster basemap",
+  "sources": {
+    "carto-light": {
+      "type": "raster",
+      "tiles": [
+        "https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png"
+      ],
+      "tileSize": 256,
+      "attribution": "© OpenStreetMap contributors © CARTO",
+      "maxzoom": 20
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#0d1b2a"
+      }
+    },
+    {
+      "id": "carto-light",
+      "type": "raster",
+      "source": "carto-light",
+      "paint": {
+        "raster-opacity": 0.92,
+        "raster-saturation": -0.35,
+        "raster-contrast": 0.1,
+        "raster-brightness-min": 0.08,
+        "raster-brightness-max": 0.88
+      }
+    }
+  ]
+}

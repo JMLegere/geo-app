@@ -372,3 +372,15 @@
 - Current first-pass canonical widgets are `EarthActionButton`, `EarthMetaText`, `EarthTag`, `EarthNotice`, `EarthPanel`, `EarthFieldRow`, `EarthStatGrid`, and the catalog-only `DesignLibraryExample`.
 - Enforcement lives in `test/shared/design/`: contract structure/import checks, registry parity, catalog render smoke, and action touch-target coverage.
 - Existing older feature widgets can migrate opportunistically; do not churn stable screens solely for architecture, but new reusable frontend UI should enter through the design library first.
+
+## 2026-05-24 — High-level app chrome must use design-library icons
+
+- `LoadingDots`, bottom navigation, and map status chrome should consume a canonical `EarthIcon` / `EarthGlyph` primitive from `package:earth_nova/shared/design.dart`, not raw `Icons.*`, emoji spinners, or legacy `AppIcons` strings.
+- Keep this enforcement narrow but real: app chrome is the first place users notice inconsistency, so `test/shared/design/design_contract_test.dart` now fails if those shared surfaces bypass the design icon primitive.
+- Feature/domain icon migrations can continue opportunistically, but any new reusable icon-bearing chrome should enter through the design library first.
+
+## 2026-05-24 — Web basemap must not depend on OpenFreeMap planet TileJSON
+
+- Railway web runs proved `https://tiles.openfreemap.org/planet` can fail from real browser context even when the style JSON, sprites, and glyphs load, leaving the readiness gate stuck on `style_loaded`.
+- Keep native/mobile on the existing OpenFreeMap Liberty vector style for now, but serve web from a repo-owned `web/base-map-style.json` raster style that uses direct browser-safe tiles and no label-heavy vector source bootstrap.
+- Preserve the existing JS/Dart style-load bridge, but add a MapLibre JS style-ready poll (`map.isStyleLoaded()` / `map.getStyle()`) so style readiness can advance even if the JS `load` event never arrives because remote source fetches fail later in startup.

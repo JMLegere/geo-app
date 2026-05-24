@@ -1018,10 +1018,16 @@
                               push('js', 'maplibre_layout_bridge_failed', (e && e.message) || String(e));
                             }
                           };
-                          var emitMapLibreLoad = function(map) {
+                          var emitMapLibreLoad = function(map, source) {
                             try {
+                              if (map && map.__earthnovaStyleReadyEmitted) {
+                                return;
+                              }
+                              if (map) {
+                                map.__earthnovaStyleReadyEmitted = true;
+                              }
                               var detail = {
-                                source: 'maplibre_js_load',
+                                source: source || 'maplibre_js_load',
                                 at: Date.now()
                               };
                               window.__earthnovaMapLibreLoad = detail;
@@ -1031,14 +1037,45 @@
                               push('js', 'maplibre_map_load_bridge_failed', (e && e.message) || String(e));
                             }
                           };
+                          var ensureMapLibreStyleReady = function(map) {
+                            var startedAt = Date.now();
+                            var poll = setInterval(function() {
+                              try {
+                                var hasStyleObject = !!(map && map.getStyle && map.getStyle());
+                                var styleLoaded = !!(map && map.isStyleLoaded && map.isStyleLoaded());
+                                if (styleLoaded || hasStyleObject) {
+                                  clearInterval(poll);
+                                  push('js', 'maplibre_style_ready_polled', styleLoaded ? 'style_loaded' : 'style_object_available', {
+                                    flow: 'map.bootstrap',
+                                    phase: 'dependency_ready',
+                                    dependency: 'map_style'
+                                  });
+                                  emitMapLibreLoad(map, 'maplibre_style_ready_poll');
+                                  return;
+                                }
+                                if (Date.now() - startedAt > 4000) {
+                                  clearInterval(poll);
+                                  push('js', 'maplibre_style_ready_timeout', 'style_not_ready_after_poll', {
+                                    flow: 'map.bootstrap',
+                                    phase: 'dependency_failed',
+                                    dependency: 'map_style'
+                                  });
+                                }
+                              } catch(e) {
+                                clearInterval(poll);
+                                push('js', 'maplibre_style_ready_poll_failed', (e && e.message) || String(e));
+                              }
+                            }, 120);
+                          };
                           maplibregl.Map = function(opts) {
                             var map = new origMap(opts);
+                            ensureMapLibreStyleReady(map);
                             map.on('error', function(e) {
                               push('js', 'maplibre_map_error', (e && e.error && e.error.message) || 'unknown');
                             });
                             map.on('load', function() {
                               push('js', 'maplibre_map_load', 'tiles_ready');
-                              emitMapLibreLoad(map);
+                              emitMapLibreLoad(map, 'maplibre_js_load');
                             });
                             map.on('resize', function() {
                               push('js', 'maplibre_map_resize', 'container_resized');

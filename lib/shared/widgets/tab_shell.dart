@@ -19,7 +19,7 @@ import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
-import 'package:earth_nova/shared/extensions/iconography.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
@@ -62,28 +62,29 @@ const Duration _navMotionDuration = Duration(milliseconds: 280);
 class _BottomNavDestination {
   const _BottomNavDestination({
     required this.label,
-    this.icon,
+    required this.icon,
   });
 
   final String label;
-  final IconData? icon;
+  final EarthGlyph icon;
 }
 
 const _bottomNavItems = [
   _BottomNavDestination(
     label: 'Map',
-    icon: Icons.map_outlined,
+    icon: EarthGlyph.map,
   ),
   _BottomNavDestination(
     label: 'Pack',
+    icon: EarthGlyph.pack,
   ),
   _BottomNavDestination(
     label: 'Sanctuary',
-    icon: Icons.nature_outlined,
+    icon: EarthGlyph.sanctuary,
   ),
   _BottomNavDestination(
     label: 'Settings',
-    icon: Icons.settings_outlined,
+    icon: EarthGlyph.settings,
   ),
 ];
 
@@ -212,33 +213,24 @@ class _EarthNovaNavItem extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (item.icon case final icon?) ...[
-                AnimatedScale(
-                  duration: const Duration(milliseconds: 180),
-                  curve: Curves.easeOutBack,
-                  scale: selected ? 1.08 : 1,
-                  child: Icon(
-                    icon,
-                    color: foreground,
-                    size: selected ? 23 : 22,
-                  ),
+              AnimatedScale(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutBack,
+                scale: selected ? 1.08 : 1,
+                child: EarthIcon(
+                  glyph: item.icon,
+                  tone:
+                      selected ? EarthIconTone.tertiary : EarthIconTone.neutral,
+                  size: selected ? 23 : 22,
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                ),
-              ] else
-                Text(
-                  item.label,
-                  key: const Key('tab-shell-pack-text-only-label'),
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                  style: const TextStyle(fontSize: 13),
-                ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+              ),
             ],
           ),
         ),
@@ -271,7 +263,7 @@ class _TabShellState extends ConsumerState<TabShell>
             pageController: _packPageController,
             onEdgeSwipe: _onPackEdgeSwipe,
           ),
-          const StubScreen(label: AppIcons.sanctuary),
+          const StubScreen(label: 'Sanctuary'),
           const SettingsScreen(),
         ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -517,12 +509,12 @@ class _TabShellState extends ConsumerState<TabShell>
                 bottom: 8,
                 child: IconButton(
                   key: const Key('debug_nav_button'),
-                  icon: Icon(
-                    Icons.bug_report,
+                  icon: EarthIcon(
+                    glyph: EarthGlyph.debug,
                     size: 20,
-                    color: _debugOverlayVisible
-                        ? AppTheme.primary
-                        : AppTheme.onSurfaceVariant,
+                    tone: _debugOverlayVisible
+                        ? EarthIconTone.primary
+                        : EarthIconTone.neutral,
                   ),
                   onPressed: ObservableInteraction.wrapVoidCallback(
                     logger: logger,

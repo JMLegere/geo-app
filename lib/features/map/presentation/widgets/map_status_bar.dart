@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
+
 /// Frosted glass status bar overlaid at the top of the map.
 ///
 /// Shows three stat pills: cells observed, total steps, streak days.
@@ -27,10 +30,10 @@ class MapStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xB80D1B2A),
+        color: AppTheme.surface.withValues(alpha: 0.72),
         border: Border(
           bottom: BorderSide(
-            color: const Color(0x803D5060),
+            color: AppTheme.outline.withValues(alpha: 0.52),
             width: 0.5,
           ),
         ),
@@ -46,23 +49,23 @@ class MapStatusBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _StatPill(
-              emoji: '🗺',
+              glyph: EarthGlyph.cells,
               value: _formatCount(cellsObserved),
               label: 'cells',
             ),
             _StatPill(
-              emoji: '👟',
+              glyph: EarthGlyph.steps,
               value: _formatSteps(totalSteps),
               label: 'steps',
             ),
             _StatPill(
-              emoji: '🔥',
+              glyph: EarthGlyph.streak,
               value: '$streakDays',
               label: 'days',
             ),
             if (pendingVisits > 0)
               _StatPill(
-                emoji: '⟳',
+                glyph: EarthGlyph.sync,
                 value: _formatCount(pendingVisits),
                 label: 'syncing',
               ),
@@ -91,12 +94,12 @@ class MapStatusBar extends StatelessWidget {
 
 class _StatPill extends StatelessWidget {
   const _StatPill({
-    required this.emoji,
+    required this.glyph,
     required this.value,
     required this.label,
   });
 
-  final String emoji;
+  final EarthGlyph glyph;
   final String value;
   final String label;
 
@@ -104,23 +107,38 @@ class _StatPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xBF1A2D40),
+        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.86),
         border: Border.all(
-          color: const Color(0x993D5060),
+          color: AppTheme.outline.withValues(alpha: 0.60),
           width: 0.5,
         ),
         borderRadius: BorderRadius.circular(100),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Text(
-          '$emoji $value $label',
-          style: const TextStyle(
-            color: Color(0xFFE0E1DD),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            height: 1.2,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            EarthIcon(
+              glyph: glyph,
+              tone: glyph == EarthGlyph.streak
+                  ? EarthIconTone.warning
+                  : EarthIconTone.tertiary,
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppTheme.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(width: 4),
+            EarthMetaText(label),
+          ],
         ),
       ),
     );
