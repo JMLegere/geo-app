@@ -53,6 +53,7 @@ Feature: Release to Wild
     When the player opens Release to Wild
     Then a simple always-open generic release slot should exist for any eligible fauna
     And optional local programs should add extra visible slots with tighter requirements for bonus rewards
+    And an authored program may repeat the same request across multiple slots or mix different slot predicates in one checklist
 
   Scenario: Local release programs are durable and center-owned
     Given a city has one Wildlife Rehabilitation Center venue
