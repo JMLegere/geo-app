@@ -30,7 +30,7 @@ Feature: Release to Wild
     Then the owned animal should leave the active Pack exactly once
     And the released animal should appear in the center's release ledger/history
     And Field Guide knowledge should remain available after release
-    And the player should gain the flat base Orb amount for releasing any eligible fauna
+    And the player should gain the flat base Orb item-stack reward for releasing any eligible fauna
 
   @action.release-animal-to-wild
   Scenario: Player contributes to a local vulnerable-fauna program
@@ -38,7 +38,7 @@ Feature: Release to Wild
     When the player releases that animal through the program
     Then the release should count toward the visible local program slots
     And the released animal should still be recorded in release history
-    And any completed local program should grant its fixed bonus Orb reward exactly once
+    And any completed local program should grant its fixed bonus Orb item-stack reward exactly once
 
   Scenario: Release eligibility protects player state
     Given the player owns a fauna find
