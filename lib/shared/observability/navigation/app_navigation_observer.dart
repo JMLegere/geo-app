@@ -15,7 +15,7 @@ String normalizeScreenNameForTelemetry(String screenName) {
   const aliases = {
     'loading': 'loading_screen',
     'login': 'login_screen',
-    'home': 'tab_shell',
+    'tab_shell': 'tab_shell',
     'map': 'map_root_screen',
     'pack': 'pack_screen',
     'sanctuary': 'stub_screen',

@@ -236,10 +236,10 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.text('Player'));
       await tester.pump();
 
-      await tester.tap(find.text('Pack'));
+      await tester.tap(find.text('Player'));
       await tester.pump();
 
       final screenChangedEvents = transitions
@@ -250,9 +250,8 @@ void main() {
       expect(screenChangedEvents.single.data, {
         'source': 'tab_shell',
         'from_screen': 'map_root_screen',
-        'to_screen': 'pack_screen',
+        'to_screen': 'player',
         'raw_from_screen': 'map',
-        'raw_to_screen': 'pack',
       });
     });
   });
@@ -417,15 +416,15 @@ void main() {
       expect(initialIndicator.duration, const Duration(milliseconds: 280));
       final initialLeft = initialIndicator.left!;
 
-      await tester.tap(find.byKey(const Key('tab-shell-nav-item-pack')));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-player')));
       await tester.pump();
 
-      final packIndicator = tester.widget<AnimatedPositioned>(
+      final playerIndicator = tester.widget<AnimatedPositioned>(
         find.byKey(const Key('tab-shell-nav-indicator-position')),
       );
-      final packLeft = packIndicator.left!;
+      final playerLeft = playerIndicator.left!;
 
-      expect(packLeft, greaterThan(initialLeft));
+      expect(playerLeft, greaterThan(initialLeft));
     });
 
     testWidgets('completes discovery reward without drawing Pack nav overlays',
@@ -515,29 +514,29 @@ void main() {
       // Verify IndexedStack is present
       expect(find.byType(IndexedStack), findsOneWidget);
 
-      // Tap on Pack tab (index 1)
-      await tester.tap(find.text('Pack'));
+      // Tap on Player tab (index 1)
+      await tester.tap(find.text('Player'));
       await tester.pumpAndSettle();
 
       // Should have logged the transition
       expect(transitions.length, 1);
       expect(transitions.last['from_screen'], 'map_root_screen');
-      expect(transitions.last['to_screen'], 'pack_screen');
+      expect(transitions.last['to_screen'], 'player');
 
-      // Tap on Sanctuary tab (index 2)
-      await tester.tap(find.text('Sanctuary'));
+      // Tap on Town tab (index 2)
+      await tester.tap(find.text('Town'));
       await tester.pumpAndSettle();
 
       expect(transitions.length, 2);
-      expect(transitions.last['from_screen'], 'pack_screen');
-      expect(transitions.last['to_screen'], 'stub_screen');
+      expect(transitions.last['from_screen'], 'player');
+      expect(transitions.last['to_screen'], 'town');
 
       // Tap back to Map tab (index 0)
       await tester.tap(find.text('Map'));
       await tester.pumpAndSettle();
 
       expect(transitions.length, 3);
-      expect(transitions.last['from_screen'], 'stub_screen');
+      expect(transitions.last['from_screen'], 'town');
       expect(transitions.last['to_screen'], 'map_root_screen');
     });
 
@@ -848,12 +847,11 @@ void main() {
       expect(source, contains('_mapTabIndex'));
     });
 
-    test('source: TabShell handles EdgeSwipeDirection.right → sanctuary tab',
-        () {
+    test('source: TabShell handles EdgeSwipeDirection.right → town tab', () {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
       expect(source, contains('EdgeSwipeDirection.right'));
-      expect(source, contains('_sanctuaryTabIndex'));
+      expect(source, contains('_townTabIndex'));
     });
 
     test('source: TabShell wraps IndexedStack in GestureDetector for map swipe',
@@ -861,9 +859,9 @@ void main() {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
       // A GestureDetector with onHorizontalDragEnd (or onPanEnd) must wrap the
-      // IndexedStack so a leftward swipe on the map tab navigates to Pack.
+      // IndexedStack so a leftward swipe on the map tab navigates to Player.
       expect(source, contains('onHorizontalDragEnd'));
-      expect(source, contains('_packTabIndex'));
+      expect(source, contains('_playerTabIndex'));
     });
   }); // end cross-tab swipe group
 
@@ -902,9 +900,9 @@ void main() {
               screens: const [
                 // Use SizedBox.expand so the GestureDetector has a hit area.
                 SizedBox.expand(), // map
-                SizedBox.expand(), // pack
-                SizedBox.expand(), // sanctuary
-                SizedBox.expand(), // settings
+                SizedBox.expand(), // player
+                SizedBox.expand(), // town
+                SizedBox.expand(), // home
               ],
             ),
           ),
@@ -913,13 +911,13 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('leftward fling on map tab navigates to Pack tab',
+    testWidgets('leftward fling on map tab navigates to Player tab',
         (tester) async {
       final transitions = <String>[];
       await pumpShellWithFakeScreens(tester, transitions: transitions);
 
       // We are on Map (index 0). Fling leftward (negative x velocity) to
-      // trigger onHorizontalDragEnd with primaryVelocity < 0 → Pack tab.
+      // trigger onHorizontalDragEnd with primaryVelocity < 0 → Player tab.
       // Matches the natural "next page" swipe convention (right→left).
       // Use the GestureDetector directly — IndexedStack children are SizedBox.expand()
       // and have a hit area.
@@ -930,7 +928,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(transitions, contains('map_root_screen→pack_screen'));
+      expect(transitions, contains('map_root_screen→player'));
     });
   }); // end swipe-from-map group
 } // end main()

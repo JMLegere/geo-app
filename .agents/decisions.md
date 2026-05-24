@@ -384,3 +384,46 @@
 - Railway web runs proved `https://tiles.openfreemap.org/planet` can fail from real browser context even when the style JSON, sprites, and glyphs load, leaving the readiness gate stuck on `style_loaded`.
 - Keep native/mobile on the existing OpenFreeMap Liberty vector style for now, but serve web from a repo-owned `web/base-map-style.json` raster style that uses direct browser-safe tiles and no label-heavy vector source bootstrap.
 - Preserve the existing JS/Dart style-load bridge, but add a MapLibre JS style-ready poll (`map.isStyleLoaded()` / `map.getStyle()`) so style readiness can advance even if the JS `load` event never arrives because remote source fetches fail later in startup.
+
+## 2026-05-24 — NPCs introduce major game features
+
+- Major game features should be introduced through NPCs rather than appearing as unexplained menu systems.
+- NPCs act as diegetic unlock/guide surfaces: e.g. a botanist introduces plant features, a museum or curator NPC introduces geology collections.
+- NPC identity/details should be dynamically generated within product constraints, not hand-authored as a fully fixed cast from the start.
+- Keep the first implementation simple: NPCs should unlock/explain feature capabilities and attach flavor/context, not become open-ended chat, simulation, factions, or heavy relationship systems by default.
+## 2026-05-24 — NPC generation is location-first and function-authored
+
+- NPCs should not be generated as free-floating characters first; the player should discover them on the Map as persistent world presences tied to a concrete cell + POI/building.
+- Each relevant cell can host a permanent NPC building or venue anchored to a POI, so meeting an NPC feels like discovering a place in the world rather than opening a menu.
+- NPC function is authored, not AI-generated: the game decides "this is a botanist", "this is a museum curator", or "this is a trader/questgiver for collections" first.
+- Generation should apply only to flavor and identity details within that authored function: name, portrait seed, presentation, affiliation, voice/tone, intro copy, personal quirks, and other cosmetic/worldbuilding details.
+- This keeps NPCs legible and roadmap-driven while still allowing world variety and replayable flavor.
+## 2026-05-24 — NPC venue placement rules
+
+- One NPC type per city: e.g. one botanist, one museum curator, one ranger per city.
+- One NPC venue maximum per cell: a cell can have zero or one NPC, never more.
+- NPC venue is placed at the most popular POI within the chosen cell — popularity is determined from POI data (e.g. OSM popularity/foot traffic signals).
+- "City" means the city-level location node in the existing location hierarchy, not arbitrary geographic grouping.
+- This means NPC venues are sparse, legible, and tied to real-world prominence signals rather than random placement or dense per-cell NPC spam.
+
+## 2026-05-24 — Town menu exposes unlocked NPC-led features
+
+- Add a top-level `Town` menu/surface that shows all NPC-led features the player has unlocked.
+- Town entries are feature venues, not generic menus: e.g. `Botanical Field Station` opens the Botany UI.
+- Opening an unlocked Town feature should bind the UI to the nearest eligible NPC of that feature/type relative to the player's current location.
+- This allows one feature surface to feel local and character-led without requiring a separate menu entry for every city NPC.
+- Eligibility should respect the placement rules: one NPC type per city, one NPC max per cell, and venue anchored to the chosen cell's most popular POI.
+
+## 2026-05-24 — Sanctuary becomes Home
+
+- Rename the player-facing `Sanctuary` concept to `Home`.
+- Home should be the player's personal place/base in the Town-style model, while NPC-led services live under `Town`.
+- Existing implementation identifiers can migrate deliberately later; the product language should move toward `Home` for player-facing capability/feature naming.
+
+## 2026-05-24 — Navigation language should be clear and boring
+
+- Prefer clear, literal, non-sensational player-facing navigation labels.
+- The excitement should come from accurate conservation/science roleplay and earned systems, not fantasy branding or poetic shell labels.
+- Rename `Pack` directionally toward a broader `Player` surface, because it should contain inventory/pack, buddy selection, player profile, stats, and personal settings.
+- Use `Player` as the top-level label: broad, boring, game-native, and clearer than `Profile` for mixed personal/inventory/progression state.
+- Avoid cute labels like `Me`, overly romantic labels like `Explorer`, narrow labels like `Pack`, and account-shaped labels like `Profile` for the top-level personal surface.

@@ -305,7 +305,7 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
     final screenName = authState.when(
       loading: () => 'loading',
       unauthenticated: () => 'login',
-      authenticated: (_) => 'home',
+      authenticated: (_) => 'tab_shell',
       error: (_) => 'login',
     );
     _authHomeTracker.onScreenVisible(screenName);

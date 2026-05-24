@@ -12,7 +12,7 @@ import 'package:earth_nova/features/map/presentation/providers/exploration_provi
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
-import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
+
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
@@ -24,26 +24,25 @@ import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
 const int _mapTabIndex = 0;
-const int _packTabIndex = 1;
-const int _sanctuaryTabIndex = 2;
-const int _settingsTabIndex = 3;
-const _tabScreenNames = ['map', 'pack', 'sanctuary', 'settings'];
+const int _playerTabIndex = 1;
+const int _townTabIndex = 2;
+const int _homeTabIndex = 3;
+const _tabScreenNames = ['map', 'player', 'town', 'home'];
 
 PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
       _mapTabIndex => PlayerActions.openMap,
-      _packTabIndex => PlayerActions.openPack,
-      _sanctuaryTabIndex => PlayerActions.openSanctuary,
-      _settingsTabIndex => null,
+      _playerTabIndex => PlayerActions.openPack,
+      _homeTabIndex => PlayerActions.openSanctuary,
       _ => null,
     };
 
 String? _telemetryOnlyReasonForTab(int index) => switch (index) {
-      _settingsTabIndex =>
-        'Settings tab is account/debug chrome outside the SuperBDD gameplay action catalog.',
+      _townTabIndex =>
+        'Town tab is an NPC-led services surface that is not yet in the SuperBDD gameplay action catalog.',
       _ => null,
     };
 
-/// 4-tab bottom navigation. Pack is real, others are stubs.
+/// 4-tab bottom navigation. Player is backed by Pack; Town and Home are stubs.
 class TabShell extends ConsumerStatefulWidget {
   const TabShell({
     super.key,
@@ -72,13 +71,13 @@ const _bottomNavItems = [
     label: 'Map',
   ),
   _BottomNavDestination(
-    label: 'Pack',
+    label: 'Player',
   ),
   _BottomNavDestination(
-    label: 'Sanctuary',
+    label: 'Town',
   ),
   _BottomNavDestination(
-    label: 'Settings',
+    label: 'Home',
   ),
 ];
 
@@ -247,8 +246,8 @@ class _TabShellState extends ConsumerState<TabShell>
                   pageController: _packPageController,
                   onEdgeSwipe: _onPackEdgeSwipe,
                 ),
-            () => const StubScreen(label: 'Sanctuary'),
-            () => const SettingsScreen(),
+            () => const StubScreen(label: 'Town'),
+            () => const StubScreen(label: 'Home'),
           ];
     _screens = List<Widget>.filled(
       _screenFactories.length,
@@ -272,11 +271,11 @@ class _TabShellState extends ConsumerState<TabShell>
   void _onPackEdgeSwipe(EdgeSwipeDirection direction) {
     switch (direction) {
       case EdgeSwipeDirection.left:
-        // Swiped right past page 0 → go to Map (tab to the left of Pack).
+        // Swiped right past page 0 → go to Map (tab to the left of Player).
         _onTabSelected(_mapTabIndex);
       case EdgeSwipeDirection.right:
-        // Swiped left past last page → go to Sanctuary (tab to the right).
-        _onTabSelected(_sanctuaryTabIndex);
+        // Swiped left past last page → go to Town (tab to the right).
+        _onTabSelected(_townTabIndex);
     }
   }
 
@@ -445,8 +444,8 @@ class _TabShellState extends ConsumerState<TabShell>
           children: [
             // Wrap in GestureDetector to catch horizontal swipes on the map
             // tab. Only the map tab triggers a cross-tab swipe (rightward →
-            // Pack). Pack's own PageView handles its own edge overscroll via
-            // onEdgeSwipe; other tabs have no swipe gesture.
+            // Player). Player's own PageView handles its own edge overscroll
+            // via onEdgeSwipe; other tabs have no swipe gesture.
             GestureDetector(
               behavior: HitTestBehavior.translucent,
               onHorizontalDragEnd: _currentIndex == _mapTabIndex
@@ -457,14 +456,14 @@ class _TabShellState extends ConsumerState<TabShell>
                           logger: logger,
                           screenName: 'tab_shell',
                           widgetName: 'map_edge_swipe',
-                          actionType: 'edge_swipe_to_pack',
+                          actionType: 'edge_swipe_to_player',
                           playerActionId: PlayerActions.openPack,
                           payload: const {
                             'from_tab_index': _mapTabIndex,
-                            'to_tab_index': _packTabIndex,
+                            'to_tab_index': _playerTabIndex,
                           },
                         );
-                        _onTabSelected(_packTabIndex);
+                        _onTabSelected(_playerTabIndex);
                       }
                     }
                   : null,

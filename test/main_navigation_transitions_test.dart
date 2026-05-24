@@ -4,7 +4,8 @@ import 'package:earth_nova/shared/observability/navigation/app_navigation_observ
 
 void main() {
   group('AuthHomeNavigationTransitionTracker', () {
-    test('logs auth->home screen transitions and dedups repeated targets', () {
+    test('logs auth->tab shell screen transitions and dedups repeated targets',
+        () {
       final events =
           <({String event, String category, Map<String, dynamic>? data})>[];
       final logger = NavigationScreenTransitionLogger(
@@ -17,7 +18,7 @@ void main() {
       tracker.onScreenVisible('loading');
       tracker.onScreenVisible('login');
       tracker.onScreenVisible('login');
-      tracker.onScreenVisible('home');
+      tracker.onScreenVisible('tab_shell');
 
       final screenChangedEvents = events
           .where((event) => event.event == 'navigation.screen_changed')
@@ -35,7 +36,6 @@ void main() {
         'from_screen': 'login_screen',
         'to_screen': 'tab_shell',
         'raw_from_screen': 'login',
-        'raw_to_screen': 'home',
       });
     });
   });

@@ -21,9 +21,8 @@ v3 restores a working foundation: login and your collection. Everything else is 
 ### What Ships
 
 - **Login screen** — Phone number input (+1 prefix), derived email+password auth via Supabase. No OTP.
-- **Pack screen** — Grid of user's existing items fetched from `v3_items`. Category filter chips. Sort by recent/rarity/name. Art display with fallback. Empty state.
-- **Tab shell** — 4-tab bottom navigation. Pack is real. Map, Sanctuary, Settings are stubs.
-- **Settings stub** — Sign out button only.
+- **Player screen** — Personal surface currently backed by Pack: user's existing items from `v3_items`, category filter chips, sort by recent/rarity/name, art display with fallback, and empty state. Long-term also owns buddy, profile details, stats, progress, and settings.
+- **Tab shell** — 4-tab bottom navigation: Map, Player, Town, Home. Player is backed by the existing Pack implementation; Town and Home are stubs.
 - **Observability** — Every auth and data state transition logged to Supabase `telemetry_logs` / `telemetry_spans` from day 1.
 - **Session persistence** — Close browser, reopen, still signed in.
 
@@ -1199,16 +1198,16 @@ Uses `EmptyStateWidget`. Background `surface`. Centred vertically.
 
 ### Navigation (Tab Shell)
 
-Bottom navigation bar, 4 tabs. `NavigationBar` (Material 3).
+Bottom navigation bar, 4 tabs.
 
-| Index | Icon | Label | Screen |
-|-------|------|-------|--------|
-| 0 | 🗺️ | Map | `MapStubScreen` |
-| 1 | 🎒 | Pack | `PackScreen` |
-| 2 | 🌿 | Sanctuary | `SanctuaryStubScreen` |
-| 3 | ⚙️ | Settings | `SettingsScreen` |
+| Index | Label | Screen |
+|-------|-------|--------|
+| 0 | Map | `MapRootScreen` |
+| 1 | Player | `PackScreen` |
+| 2 | Town | `StubScreen` |
+| 3 | Home | `StubScreen` |
 
-- Default tab on login: Pack (index 1)
+- Default tab on login: Map (index 0)
 - `IndexedStack` preserves tab state — acceptable for MVP (stub screens are trivial)
 
 ---
@@ -1219,10 +1218,10 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 
 ### Auth
 
-- [ ] New user: enter 10-digit phone → account created → `LoadingScreen` → Pack tab
-- [ ] Returning beta user: enter phone → signed in → `LoadingScreen` → pack shows existing items
-- [ ] Session persist: close browser → reopen → skip login → `LoadingScreen` → Pack
-- [ ] Expired session: reopen after token expiry → refresh succeeds → Pack
+- [ ] New user: enter 10-digit phone → account created → `LoadingScreen` → Map tab
+- [ ] Returning beta user: enter phone → signed in → `LoadingScreen` → map shows current location and nearby cells
+- [ ] Session persist: close browser → reopen → skip login → `LoadingScreen` → Map
+- [ ] Expired session: reopen after token expiry → refresh succeeds → Map
 - [ ] Expired session, refresh fails: → `LoginScreen`
 - [ ] Anonymous session on restore: detected → signed out → `LoginScreen`
 - [ ] External sign-out (token invalidated server-side): → `LoginScreen`
@@ -1297,22 +1296,11 @@ These criteria map 1:1 to test cases. A feature is not done until every criterio
 - [ ] `items.fetch_success` logged with correct `count`
 - [ ] `items.fetch_error` logged with full error detail — no crash, retry shown
 
-### Settings Screen
+### Stub Screens (Town, Home)
 
-- [ ] AppBar title: "Settings"
-- [ ] Identicon avatar (96px, circle) centred
-- [ ] Display name or phone shown below avatar
-- [ ] Sign Out button: outlined, error colour, full width
-- [ ] Tap Sign Out → `AlertDialog` with "Cancel" and "Sign Out"
-- [ ] Confirm Sign Out → `authProvider.signOut()` → `LoginScreen`
-- [ ] Cancel → dialog dismisses, stays on Settings
-- [ ] `auth.sign_out` logged
-
-### Stub Screens (Map, Sanctuary)
-
-- [ ] Map tab: `EmptyStateWidget` — icon, "Coming soon", subtitle
-- [ ] Sanctuary tab: `EmptyStateWidget` — icon, "Coming soon", subtitle
-- [ ] Both use design system (`EmptyStateWidget`, `surface` background) — not blank
+- [ ] Town tab: `StubScreen` with label "Town"
+- [ ] Home tab: `StubScreen` with label "Home"
+- [ ] Both use the shared stub screen treatment — not blank
 
 ### Observability
 
