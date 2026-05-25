@@ -10,7 +10,6 @@ enum DesignSurfaceCategory {
 
 enum DesignSurfaceStatus {
   canonicalComposition,
-  legacyLocalComposition,
   infrastructure,
   debugOnly,
 }
@@ -31,18 +30,6 @@ class DesignSurfaceDefinition {
   final String designSystemNotes;
 }
 
-class LegacyDesignSurfaceException {
-  const LegacyDesignSurfaceException({
-    required this.path,
-    required this.reason,
-    required this.migrationTrigger,
-  });
-
-  final String path;
-  final String reason;
-  final String migrationTrigger;
-}
-
 const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/main.dart',
@@ -55,34 +42,34 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/loading_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Authentication startup/loading route.',
     designSystemNotes:
-        'Legacy local composition; should graduate to canonical loading/empty-state primitives when touched.',
+        'Documented local composition; should graduate to canonical loading/empty-state primitives when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/login_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Phone sign-in screen.',
     designSystemNotes:
-        'Legacy local composition; keep aligned with AppTheme until login form components exist in the design library.',
+        'Documented local composition; keep aligned with AppTheme until login form components exist in the design library.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/identification/presentation/screens/pack_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Player inventory/Pack surface.',
     designSystemNotes:
-        'Legacy local composition; migrate filters, cards, and empty states into documented design components incrementally.',
+        'Documented local composition; migrate filters, cards, and empty states into documented design components incrementally.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/identification/presentation/widgets/species_card.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Owned species/item card used by Pack.',
     designSystemNotes:
-        'Legacy local card pattern; should become a registered composite before reuse outside Pack.',
+        'Documented Pack card pattern; should become a registered composite before reuse outside Pack.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/living_world/presentation/screens/town_screen.dart',
@@ -97,7 +84,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path:
         'lib/features/living_world/presentation/widgets/npc_venue_marker.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map callout for discovered NPC venues.',
     designSystemNotes:
         'Map marker styling is documented here until map marker primitives are added to the design taxonomy.',
@@ -121,26 +108,26 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/city_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'City territory detail route.',
     designSystemNotes:
-        'Legacy local composition shared with territory routes; migrate to territory detail composites when touched.',
+        'Documented territory-route composition; migrate to territory detail composites when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/country_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Country territory detail route.',
     designSystemNotes:
-        'Legacy local composition shared with territory routes; migrate to territory detail composites when touched.',
+        'Documented territory-route composition; migrate to territory detail composites when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/district_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'District territory detail route.',
     designSystemNotes:
-        'Legacy local composition shared with territory routes; migrate to territory detail composites when touched.',
+        'Documented territory-route composition; migrate to territory detail composites when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/map_root_screen.dart',
@@ -153,31 +140,31 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/map_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Primary map gameplay screen.',
     designSystemNotes:
-        'Legacy local composition; map hierarchy is governed by docs/map-design.md until map-specific design primitives exist.',
+        'Documented local composition; map hierarchy is governed by docs/map-design.md until map-specific design primitives exist.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/province_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Province/state territory detail route.',
     designSystemNotes:
-        'Legacy local composition shared with territory routes; migrate to territory detail composites when touched.',
+        'Documented territory-route composition; migrate to territory detail composites when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/world_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'World territory detail route.',
     designSystemNotes:
-        'Legacy local composition shared with territory routes; migrate to territory detail composites when touched.',
+        'Documented territory-route composition; migrate to territory detail composites when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map-cell field-note/detail sheet.',
     designSystemNotes:
         'Known field-note pattern; migrate toward EarthPanel/EarthFieldRow composites when touched.',
@@ -185,16 +172,16 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/discovery_notification.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map discovery acknowledgement notification.',
     designSystemNotes:
-        'Legacy notification styling; should become a registered notice/toast pattern before reuse.',
+        'Documented notification styling; should become a registered notice/toast pattern before reuse.',
   ),
   DesignSurfaceDefinition(
     path:
         'lib/features/map/presentation/widgets/hierarchy_exploration_map.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Territory hierarchy exploration mini-map.',
     designSystemNotes:
         'Map-specific local composition; governed by map visual hierarchy until a map composite exists.',
@@ -202,42 +189,42 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Territory hierarchy header.',
     designSystemNotes:
-        'Legacy local composition; candidate for a territory header composite.',
+        'Documented local composition; candidate for a territory header composite.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/map_status_bar.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map stats/status bar.',
     designSystemNotes:
-        'Legacy local composition; candidate for EarthStatGrid/EarthTag composition.',
+        'Documented local composition; candidate for EarthStatGrid/EarthTag composition.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/pinch_hint.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map gesture hint overlay.',
     designSystemNotes:
-        'Legacy local composition; should use canonical notice/hint component when available.',
+        'Documented local composition; should use canonical notice/hint component when available.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/shimmer_cells.dart',
     category: DesignSurfaceCategory.featureWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map-cell loading shimmer.',
     designSystemNotes:
-        'Legacy loading treatment; candidate for a registered loading primitive/pattern.',
+        'Documented loading treatment; candidate for a registered loading primitive/pattern.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/profile/presentation/screens/settings_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Settings/profile route.',
     designSystemNotes:
-        'Legacy local composition; should use canonical panel/action primitives when touched.',
+        'Documented local composition; should use canonical panel/action primitives when touched.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/debug/debug_gesture_overlay.dart',
@@ -250,7 +237,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/shared/observability/widgets/error_boundary_retry.dart',
     category: DesignSurfaceCategory.observabilityBoundary,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Error fallback with retry affordance.',
     designSystemNotes:
         'Infrastructure UI; should move to EarthNotice/EarthActionButton composition when touched.',
@@ -266,18 +253,18 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   DesignSurfaceDefinition(
     path: 'lib/shared/widgets/loading_dots.dart',
     category: DesignSurfaceCategory.sharedWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Shared loading indicator.',
     designSystemNotes:
-        'Legacy local widget; should be promoted to a registered loading primitive if reused broadly.',
+        'Documented local widget; should be promoted to a registered loading primitive if reused broadly.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/widgets/stub_screen.dart',
     category: DesignSurfaceCategory.sharedWidget,
-    status: DesignSurfaceStatus.legacyLocalComposition,
+    status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Temporary coming-soon screen for unimplemented tabs/routes.',
     designSystemNotes:
-        'Legacy local composition; replace with canonical empty-state pattern when added.',
+        'Documented local composition; replace with canonical empty-state pattern when added.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/widgets/tab_shell.dart',
@@ -288,162 +275,6 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'App chrome must stay text-first or use canonical EarthIcon/EarthGlyph only.',
   ),
 ];
-
-const legacyDesignSurfaceExceptions = <LegacyDesignSurfaceException>[
-  LegacyDesignSurfaceException(
-    path: 'lib/features/auth/presentation/screens/loading_screen.dart',
-    reason: 'Predates the design taxonomy and owns auth startup loading UI.',
-    migrationTrigger:
-        'Replace when a canonical loading/empty-state primitive exists.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/auth/presentation/screens/login_screen.dart',
-    reason:
-        'Predates the design taxonomy and owns the current phone sign-in form.',
-    migrationTrigger:
-        'Replace when canonical form-field and auth action components exist.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/identification/presentation/screens/pack_screen.dart',
-    reason:
-        'Predates the design taxonomy and owns the current Pack inventory surface.',
-    migrationTrigger:
-        'Migrate when Pack filters, cards, and empty states are touched.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/identification/presentation/widgets/species_card.dart',
-    reason: 'Predates the design taxonomy and owns the current Pack item card.',
-    migrationTrigger:
-        'Promote to a registered card composite before reuse outside Pack.',
-  ),
-  LegacyDesignSurfaceException(
-    path:
-        'lib/features/living_world/presentation/widgets/npc_venue_marker.dart',
-    reason:
-        'Map marker primitives do not exist yet; marker styling is local and map-specific.',
-    migrationTrigger:
-        'Replace when map marker primitives enter the design taxonomy.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/city_screen.dart',
-    reason:
-        'Predates the design taxonomy and shares local territory detail styling.',
-    migrationTrigger:
-        'Migrate when territory detail composites are introduced.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/country_screen.dart',
-    reason:
-        'Predates the design taxonomy and shares local territory detail styling.',
-    migrationTrigger:
-        'Migrate when territory detail composites are introduced.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/district_screen.dart',
-    reason:
-        'Predates the design taxonomy and shares local territory detail styling.',
-    migrationTrigger:
-        'Migrate when territory detail composites are introduced.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/map_screen.dart',
-    reason:
-        'Predates the design taxonomy and owns the current map gameplay surface.',
-    migrationTrigger:
-        'Migrate local UI when map-specific primitives/composites exist.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/province_screen.dart',
-    reason:
-        'Predates the design taxonomy and shares local territory detail styling.',
-    migrationTrigger:
-        'Migrate when territory detail composites are introduced.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/screens/world_screen.dart',
-    reason:
-        'Predates the design taxonomy and shares local territory detail styling.',
-    migrationTrigger:
-        'Migrate when territory detail composites are introduced.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
-    reason:
-        'Predates the design taxonomy and owns the current map-cell detail sheet.',
-    migrationTrigger:
-        'Migrate toward EarthPanel/EarthFieldRow composition when touched.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/discovery_notification.dart',
-    reason:
-        'Predates the design taxonomy and owns the current map discovery notification.',
-    migrationTrigger:
-        'Replace with a registered notice/toast pattern before reuse.',
-  ),
-  LegacyDesignSurfaceException(
-    path:
-        'lib/features/map/presentation/widgets/hierarchy_exploration_map.dart',
-    reason:
-        'Predates the design taxonomy and owns a map-specific mini-map composition.',
-    migrationTrigger: 'Migrate when a map/territory composite exists.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
-    reason:
-        'Predates the design taxonomy and owns territory hierarchy heading styling.',
-    migrationTrigger:
-        'Migrate when a registered territory header composite exists.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/map_status_bar.dart',
-    reason:
-        'Predates the design taxonomy and owns current map stat/status styling.',
-    migrationTrigger:
-        'Migrate to EarthStatGrid/EarthTag composition when touched.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/pinch_hint.dart',
-    reason:
-        'Predates the design taxonomy and owns current gesture hint styling.',
-    migrationTrigger: 'Replace when a canonical hint/notice pattern exists.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/map/presentation/widgets/shimmer_cells.dart',
-    reason:
-        'Predates the design taxonomy and owns current map loading shimmer styling.',
-    migrationTrigger:
-        'Replace when a registered loading primitive/pattern exists.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/features/profile/presentation/screens/settings_screen.dart',
-    reason:
-        'Predates the design taxonomy and owns current settings layout styling.',
-    migrationTrigger:
-        'Migrate to canonical panel/action primitives when touched.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/shared/observability/widgets/error_boundary_retry.dart',
-    reason: 'Predates the design taxonomy and owns infrastructure fallback UI.',
-    migrationTrigger:
-        'Migrate to EarthNotice/EarthActionButton composition when touched.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/shared/widgets/loading_dots.dart',
-    reason:
-        'Predates the design taxonomy and owns current shared loading indicator.',
-    migrationTrigger:
-        'Promote to a registered loading primitive if reused broadly.',
-  ),
-  LegacyDesignSurfaceException(
-    path: 'lib/shared/widgets/stub_screen.dart',
-    reason: 'Predates the design taxonomy and owns temporary coming-soon UI.',
-    migrationTrigger: 'Replace when a canonical empty-state pattern is added.',
-  ),
-];
-
-final legacyDesignSurfaceExceptionPaths = <String>{
-  for (final exception in legacyDesignSurfaceExceptions) exception.path,
-};
 
 final publicDesignSurfacePaths = <String>{
   for (final surface in designSurfaceInventory) surface.path,

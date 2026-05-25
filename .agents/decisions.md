@@ -462,5 +462,5 @@
 
 - The design system is no longer limited to reusable component registry checks.
 - Every Flutter UI implementation outside `lib/shared/design/` must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes.
-- Legacy-local UI is allowed only when the surface also has a matching `legacyDesignSurfaceExceptions` entry with a reason and migration trigger.
-- This intentionally closes the old migration gap where feature-local screens/widgets could carry undocumented local styling; any new UI file or new legacy-local exception now shows up as a validation/code-review event.
+- There is no separate legacy exception path: app-specific UI is either part of the documented surface inventory or it fails validation.
+- This intentionally closes the old migration gap where feature-local screens/widgets could carry undocumented local styling; any new UI file now shows up as a design-system validation event.
