@@ -51,6 +51,13 @@ Feature: Town and NPC-led services
     Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
     And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
 
+  @action.open-npc-venue-detail
+  Scenario: Player opens NPC venue detail
+    Given Town or a map cell lists an unlocked character-owned place
+    When the player opens the venue detail
+    Then the app should show a dedicated NPC-first venue page
+    And the page should show the venue name, NPC role, and available services with Coming soon states
+
   Scenario: First NPC-led feature belongs to a character-owned Wildlife Rehab Center
     Given the first concrete NPC-led loop is selected
     When Living World places the first NPC venue

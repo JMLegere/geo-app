@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_level_gesture_bridge.dart';
 import 'package:earth_nova/features/map/presentation/platform/maplibre_platform_view_visibility_bridge.dart';
@@ -121,8 +122,13 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
             if (level != MapLevel.cell)
               Positioned.fill(
                 child: switch (level) {
-                  MapLevel.district =>
-                    DistrictScreen(scopeId: hierarchyScopeId),
+                  MapLevel.district => DistrictScreen(
+                      scopeId: hierarchyScopeId,
+                      cells: _mapCellsForHierarchy(mapState),
+                      visitedCellIds: _visitedCellIdsForHierarchy(mapState),
+                      currentCellId: explorationState.currentCellId ??
+                          explorationState.lastEnteredCellId,
+                    ),
                   MapLevel.city => CityScreen(scopeId: hierarchyScopeId),
                   MapLevel.state => ProvinceScreen(scopeId: hierarchyScopeId),
                   MapLevel.country => CountryScreen(scopeId: hierarchyScopeId),
@@ -216,4 +222,20 @@ String? hierarchyScopeIdForLevel({
   }
 
   return null;
+}
+
+List<Cell> _mapCellsForHierarchy(MapState mapState) {
+  return switch (mapState) {
+    MapStateReady(:final cells) => cells,
+    MapStateRefreshing(:final previous) => previous.cells,
+    _ => const <Cell>[],
+  };
+}
+
+Set<String> _visitedCellIdsForHierarchy(MapState mapState) {
+  return switch (mapState) {
+    MapStateReady(:final visitedCellIds) => visitedCellIds,
+    MapStateRefreshing(:final previous) => previous.visitedCellIds,
+    _ => const <String>{},
+  };
 }

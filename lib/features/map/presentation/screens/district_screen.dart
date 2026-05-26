@@ -4,7 +4,9 @@ import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
+import 'package:earth_nova/features/map/presentation/widgets/district_footprint_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
 import 'package:earth_nova/features/map/presentation/widgets/pinch_hint.dart';
@@ -12,9 +14,18 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class DistrictScreen extends ConsumerWidget {
-  const DistrictScreen({super.key, this.scopeId});
+  const DistrictScreen({
+    super.key,
+    this.scopeId,
+    this.cells = const [],
+    this.visitedCellIds = const {},
+    this.currentCellId,
+  });
 
   final String? scopeId;
+  final List<Cell> cells;
+  final Set<String> visitedCellIds;
+  final String? currentCellId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -69,20 +80,11 @@ class DistrictScreen extends ConsumerWidget {
 
   Widget _buildMap(HierarchyState state) {
     return switch (state) {
-      HierarchyStateData(:final children) => HierarchyExplorationMap(
-          children: children
-              .map(
-                (c) => ChildAreaData(
-                  id: c.id,
-                  name: c.name,
-                  cellsVisited: c.cellsVisited,
-                  cellsTotal: c.cellsTotal,
-                  progressPercent: c.progressPercent,
-                ),
-              )
-              .toList(),
-          playerLat: null,
-          playerLng: null,
+      HierarchyStateData() when scopeId != null => DistrictFootprintMap(
+          cells: cells,
+          currentDistrictId: scopeId!,
+          visitedCellIds: visitedCellIds,
+          currentCellId: currentCellId,
         ),
       _ => const HierarchyExplorationMap(
           children: [],

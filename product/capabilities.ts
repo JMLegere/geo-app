@@ -188,6 +188,7 @@ export const productCapabilities = {
       playerActions.discoverNpcVenue,
       playerActions.openTown,
       playerActions.openNpcLedFeature,
+      playerActions.openNpcVenueDetail,
       playerActions.openReleaseToWild,
     ],
     workflows: [

@@ -197,6 +197,14 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Map-specific local composition; governed by map visual hierarchy until a map composite exists.',
   ),
   DesignSurfaceDefinition(
+    path: 'lib/features/map/presentation/widgets/district_footprint_map.dart',
+    category: DesignSurfaceCategory.featureWidget,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'District-scope footprint map that draws real map-cell geometry.',
+    designSystemNotes:
+        'Map-specific painter composition; keeps district scope visually connected to GPS-level cells while adjacent districts remain faded context.',
+  ),
+  DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,

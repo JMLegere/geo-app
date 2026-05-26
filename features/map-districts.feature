@@ -9,6 +9,13 @@ Feature: Districts
     Then the district should show explored footprint, unvisited frontier, and local progress
     And it should preserve the sense that the district is made from real entered map cells
 
+  Scenario: District view is a stylized zoom-out of map cells
+    Given the player opens a district scope from the GPS-level map
+    When the district map renders
+    Then the district should draw the actual map-cell footprint for that district
+    And adjacent districts may appear as faded surrounding context
+    And raw per-cell numeric summary labels should not appear in the map body
+
   Scenario: Districts connect map movement to local pride
     Given the player crosses a border into a first-visit map cell inside a district
     When district progress changes

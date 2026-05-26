@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
+import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/hierarchy_provider.dart';
@@ -15,6 +17,7 @@ import 'package:earth_nova/features/map/presentation/screens/province_screen.dar
 import 'package:earth_nova/features/map/presentation/screens/country_screen.dart';
 import 'package:earth_nova/features/map/presentation/screens/world_screen.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
+import 'package:earth_nova/features/map/presentation/widgets/district_footprint_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_exploration_map.dart';
 import 'package:earth_nova/features/map/presentation/widgets/pinch_hint.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -131,6 +134,35 @@ Widget _wrap(Widget child, {HierarchyRepository? repo}) {
       ),
     ],
     child: MaterialApp(home: child),
+  );
+}
+
+Cell _testCell({
+  required String id,
+  required String districtId,
+  required double lat,
+  required double lng,
+}) {
+  const size = 0.001;
+  return Cell(
+    id: id,
+    habitats: const [Habitat.urban],
+    polygons: [
+      [
+        [
+          (lat: lat - size, lng: lng - size),
+          (lat: lat - size, lng: lng + size),
+          (lat: lat + size, lng: lng + size),
+          (lat: lat + size, lng: lng - size),
+          (lat: lat - size, lng: lng - size),
+        ],
+      ],
+    ],
+    districtId: districtId,
+    cityId: 'city-1',
+    stateId: 'state-1',
+    countryId: 'country-1',
+    habitatConfidence: 'classified',
   );
 }
 
@@ -398,6 +430,43 @@ void main() {
     });
   });
 
+  group('DistrictFootprintMap', () {
+    testWidgets('renders actual district cells without numeric summary labels',
+        (tester) async {
+      final cells = [
+        _testCell(
+          id: 'current-1',
+          districtId: 'district-1',
+          lat: 45.0,
+          lng: -66.0,
+        ),
+        _testCell(
+          id: 'adjacent-1',
+          districtId: 'district-2',
+          lat: 45.002,
+          lng: -65.998,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DistrictFootprintMap(
+              cells: cells,
+              currentDistrictId: 'district-1',
+              visitedCellIds: const {'current-1'},
+              currentCellId: 'current-1',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(DistrictFootprintMap), findsOneWidget);
+      expect(find.text('0'), findsNothing);
+      expect(find.text('1'), findsNothing);
+    });
+  });
+
   // -------------------------------------------------------------------------
   // DistrictScreen
   // -------------------------------------------------------------------------
@@ -443,6 +512,41 @@ void main() {
       final wrapper =
           tester.widget<ObservableScreen>(find.byType(ObservableScreen));
       expect(wrapper.screenName, 'district_screen');
+    });
+
+    testWidgets(
+        'uses footprint map instead of child summary grid when cells are available',
+        (tester) async {
+      final cells = [
+        _testCell(
+          id: 'current-1',
+          districtId: 'district-1',
+          lat: 45.0,
+          lng: -66.0,
+        ),
+        _testCell(
+          id: 'adjacent-1',
+          districtId: 'district-2',
+          lat: 45.002,
+          lng: -65.998,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        _wrap(
+          DistrictScreen(
+            scopeId: 'district-1',
+            cells: cells,
+            visitedCellIds: const {'current-1'},
+            currentCellId: 'current-1',
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(DistrictFootprintMap), findsOneWidget);
+      expect(find.byType(HierarchyExplorationMap), findsNothing);
+      expect(find.text('Child Area'), findsNothing);
     });
   });
 

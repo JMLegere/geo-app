@@ -63,7 +63,7 @@ export const productFeatures = {
     label: "Districts",
     capability: "map",
     kind: "app-section",
-    description: "Local territory view where explored map cells roll up into neighborhood/district progress, labels, and nearby completion.",
+    description: "Local territory view where explored map cells roll up into a neighborhood-sized footprint map, with the current district highlighted and adjacent districts faded for context.",
   }),
   cities: feature({
     id: "cities",
