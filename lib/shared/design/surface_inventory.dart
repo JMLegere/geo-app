@@ -277,6 +277,14 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Documented local widget; should be promoted to a registered loading primitive if reused broadly.',
   ),
   DesignSurfaceDefinition(
+    path: 'lib/shared/product/product_action_surface.dart',
+    category: DesignSurfaceCategory.sharedWidget,
+    status: DesignSurfaceStatus.infrastructure,
+    purpose: 'Invisible EAC product-action evidence wrapper.',
+    designSystemNotes:
+        'Owns no visual styling; exists to make clickable UI action mapping explicit for EAC native design contracts.',
+  ),
+  DesignSurfaceDefinition(
     path: 'lib/shared/widgets/stub_screen.dart',
     category: DesignSurfaceCategory.sharedWidget,
     status: DesignSurfaceStatus.canonicalComposition,

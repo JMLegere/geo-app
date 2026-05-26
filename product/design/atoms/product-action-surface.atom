@@ -1,0 +1,9 @@
+Atom: ProductActionSurface
+Status: canonical
+Role: semantic-wrapper
+Interaction policy: action-required
+Exports: lib/shared/product/product_action_surface.dart
+Public API: lib/shared/product/product_action_surface.dart
+
+Purpose:
+  Invisible semantic wrapper that maps non-button clickable UI surfaces to explicit product actions or explicit null non-product decisions.

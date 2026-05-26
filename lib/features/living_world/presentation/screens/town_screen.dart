@@ -7,6 +7,7 @@ import 'package:earth_nova/features/living_world/presentation/providers/npc_venu
 import 'package:earth_nova/features/living_world/presentation/screens/npc_venue_detail_screen.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
+import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
@@ -123,83 +124,87 @@ class _TownVenueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: ObservableInteraction.wrapVoidCallback(
-        logger: logger,
-        screenName: 'town_screen',
-        widgetName: 'town_venue_row',
-        actionType: 'open_npc_venue_detail',
-        playerActionId: PlayerActions.openNpcVenueDetail,
-        payload: {
-          'venue_id': venue.id,
-          'venue_kind': venue.kind.name,
-          'feature_name': venue.featureName,
-        },
-        callback: () {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => NpcVenueDetailScreen(venue: venue),
-            ),
-          );
-        },
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.outline),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppTheme.tertiary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+    return ProductActionSurface(
+      actionId: PlayerActions.openNpcVenueDetail,
+      child: GestureDetector(
+        onTap: ObservableInteraction.wrapVoidCallback(
+          logger: logger,
+          screenName: 'town_screen',
+          widgetName: 'town_venue_row',
+          actionType: 'open_npc_venue_detail',
+          playerActionId: PlayerActions.openNpcVenueDetail,
+          payload: {
+            'venue_id': venue.id,
+            'venue_kind': venue.kind.name,
+            'feature_name': venue.featureName,
+          },
+          callback: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => NpcVenueDetailScreen(venue: venue),
               ),
-              child: const Center(
-                child: Text(
-                  'WR',
-                  style: TextStyle(
-                    color: AppTheme.tertiary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+            );
+          },
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.outline),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.tertiary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    'WR',
+                    style: TextStyle(
+                      color: AppTheme.tertiary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    venue.venueName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      venue.venueName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${venue.npcName}  •  ${venue.featureName}  •  Coming soon',
-                    style: TextStyle(
-                      color: AppTheme.onSurfaceVariant.withValues(alpha: 0.72),
-                      fontSize: 12,
+                    const SizedBox(height: 2),
+                    Text(
+                      '${venue.npcName}  •  ${venue.featureName}  •  Coming soon',
+                      style: TextStyle(
+                        color:
+                            AppTheme.onSurfaceVariant.withValues(alpha: 0.72),
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
-              size: 22,
-            ),
-          ],
+              Icon(
+                Icons.chevron_right,
+                color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+                size: 22,
+              ),
+            ],
+          ),
         ),
       ),
     );
