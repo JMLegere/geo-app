@@ -100,6 +100,7 @@ class _BackNavRow extends StatelessWidget {
             callback: onBackTap!,
           );
 
+    // eac-clickable-owner-logs: HierarchyHeader wraps navigation callbacks with ObservableInteraction before this control runs.
     return GestureDetector(
       onTap: wrappedOnTap,
       child: Row(

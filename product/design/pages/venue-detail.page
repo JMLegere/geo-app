@@ -1,4 +1,4 @@
-Page: NpcVenueDetailScreen
+Page: VenueDetail
 Status: canonical
 Role: place-detail-page
 Interaction policy: action-required

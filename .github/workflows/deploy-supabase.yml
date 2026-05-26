@@ -27,7 +27,7 @@ jobs:
       HAS_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD != '' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
 

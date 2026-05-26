@@ -27,7 +27,7 @@ jobs:
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha != '' && inputs.commit_sha || github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_REF }}
 

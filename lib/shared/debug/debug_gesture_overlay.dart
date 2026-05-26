@@ -211,6 +211,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
       message: tooltip,
       child: Material(
         color: Colors.transparent,
+        // eac-clickable-ignore: debug gesture controls are developer-only test chrome outside the product action catalog.
         child: InkWell(
           onTap: onPressed,
           splashColor: _kSplash,
@@ -259,6 +260,7 @@ class _ToggleHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
+      // eac-clickable-ignore: debug overlay collapse is developer-only test chrome outside the product action catalog.
       child: InkWell(
         key: const Key('debug_overlay_toggle'),
         onTap: onTap,

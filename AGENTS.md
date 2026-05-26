@@ -55,6 +55,7 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 | `.lefthook.yml` | Pre-commit hooks (analyze + test) |
 | `.env.example` | All required environment variables |
 | `2026-04-03-backlog.md` | Post-MVP features — do not build these yet |
+| `product/design/**/*.atom|molecule|organism|template|page` | Native EAC design/product-surface contracts — authoritative over Dart registry prose |
 
 ### TDD — No Exceptions
 
@@ -84,6 +85,7 @@ changes, use **SuperBDD as the source of truth**.
    - **Workflows** = stateful mutation paths
 5. When product truth or feature behavior changes, `mise exec -- eac check` is
    required alongside the relevant tests.
+6. Native EAC design contracts are the source of truth for design/product-surface entities; Dart registries are Flutter runtime projections and must stay parity-tested.
 
 ### Frontend / Design System
 
@@ -92,9 +94,11 @@ Reusable UI belongs in `lib/shared/design/`, following the enforced taxonomy:
 
 1. Feature screens import shared design components from `package:earth_nova/shared/design.dart` only.
 2. Do not import internal design taxonomy paths (`shared/design/primitives`, `shared/design/composites`, etc.) from app code.
-3. New reusable UI must be added to the correct taxonomy folder and `designComponentRegistry`.
-4. Design widgets expose semantic variants/tone props, not raw color/style/padding escape hatches.
-5. For design-library changes, run `mise exec -- flutter test --no-pub test/shared/design` plus the affected widget/feature tests.
+3. New reusable UI must be added to the correct taxonomy folder, `designComponentRegistry`, and a native `product/design` atom/molecule/organism contract.
+4. App-level screens and repeated feature widgets should use product-language native page/template/molecule contracts (`ExplorationMap`, `PlayerPack`, `TownDirectory`, etc.), not implementation-only names.
+5. Raw clickables (`GestureDetector`, `InkWell`, Material buttons) must expose action evidence via `ProductActionSurface` or `ObservableInteraction`, or carry an explicit `eac-clickable-owner-logs` / `eac-clickable-ignore` reason.
+6. Design widgets expose semantic variants/tone props, not raw color/style/padding escape hatches.
+7. For design-library changes, run `mise exec -- flutter test --no-pub test/shared/design` plus the affected widget/feature tests.
 
 
 ### Observability — Every State Transition

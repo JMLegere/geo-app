@@ -1,4 +1,4 @@
-Page: SettingsScreen
+Page: PlayerSettings
 Status: canonical
 Role: settings-page
 Interaction policy: action-required
@@ -6,4 +6,4 @@ Exports: lib/features/profile/presentation/screens/settings_screen.dart
 Public API: lib/features/profile/presentation/screens/settings_screen.dart
 
 Purpose:
-  Settings/profile page for account actions such as sign out and app-level player controls.
+  Player settings and account page for profile, debug, and sign-out controls outside the gameplay action catalog.

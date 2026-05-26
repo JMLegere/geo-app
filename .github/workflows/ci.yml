@@ -12,7 +12,7 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -25,11 +25,36 @@ jobs:
       - name: Run analyzer
         run: flutter analyze --no-fatal-infos
 
+  eac:
+    name: EAC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.3'
+          channel: stable
+          cache: true
+
+      - uses: jdx/mise-action@v2
+        with:
+          install: false
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Install EAC
+        run: mise install github:JMLegere/eac
+
+      - name: Run EAC check
+        run: mise exec -- npm run eac:check
+
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:

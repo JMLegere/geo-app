@@ -249,3 +249,24 @@ Remaining migration direction:
 2. Move additional reusable UI into native `.atom/.molecule/.organism` contracts only when it enters `lib/shared/design/` or becomes a repeated pattern.
 3. Add stricter raw-clickable coverage later if the team decides every `GestureDetector` / `InkWell` / Material button must either map to a product action or declare an explicit non-product reason.
 4. Defer moving product action/capability truth out of TypeScript until the native design/action evidence path is stable in day-to-day work.
+
+## Hardening slice — 2026-05-26
+
+Follow-up cleanup after the initial production migration:
+
+- CI now has an explicit `EAC` job that runs `mise exec -- npm run eac:check`, so native contracts and UI-action evidence cannot silently drift after local-only verification.
+- GitHub workflows use `actions/checkout@v5`, removing the Node 20 deprecation warning seen on the previous runs.
+- Source-of-truth policy is now explicit in `AGENTS.md`: native `product/design` contracts are authoritative for design/product-surface entities; Dart registries are Flutter runtime projections protected by parity tests.
+- App surface contracts now use product-facing names instead of implementation-only class names:
+  - `PrimaryNavigationShell` for `TabShell`
+  - `ExplorationMapRoot` for `MapRootScreen`
+  - `ExplorationMap` for `MapScreen`
+  - `PlayerPack` for `PackScreen`
+  - `TownDirectory` for `TownScreen`
+  - `VenueDetail` for `NpcVenueDetailScreen`
+  - `PlayerSettings` for `SettingsScreen`
+  - `TerritoryHierarchyHeader` and `MapCellDetailSheet` for feature-level map molecules
+- The collector no longer reports observable player-action evidence as the generic `ProductActionSurface` component. It now reports the product surface entity in `component` and the actual capture mechanism in `controlComponent` (`ObservableInteraction`, `ProductActionSurface`, or `EarthActionButton`).
+- Raw-clickable coverage is enforced by `test/shared/design/interactive_control_contract_test.dart`: `GestureDetector`, `InkWell`, and Material button controls must expose action evidence directly, be wrapped in `ProductActionSurface`, or carry an explicit `eac-clickable-owner-logs` / `eac-clickable-ignore` reason.
+- `CellDetailSheet` venue navigation now uses `ProductActionSurface(actionId: PlayerActions.openNpcVenueDetail)` and has a native `MapCellDetailSheet` molecule contract.
+- Bottom navigation destinations now carry static `PlayerActionId`s and the collector emits `static-navigation-destination` evidence for `open-map`, `open-pack`, `open-town`, and `open-sanctuary`.

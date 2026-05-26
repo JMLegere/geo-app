@@ -18,6 +18,9 @@ class DesignComponentDefinition {
   final bool allowedInScreens;
 }
 
+// Runtime projection of native `product/design` contracts for Flutter widgets.
+// Keep this list in parity with EAC atom/molecule/organism contracts; do not
+// treat it as the standalone source of truth.
 const designComponentRegistry = <DesignComponentDefinition>[
   DesignComponentDefinition(
     name: 'EarthActionButton',

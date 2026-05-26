@@ -590,6 +590,7 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: PackScreen logs category/filter/sort callbacks before passing them into this leaf control.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.md),
@@ -665,6 +666,7 @@ class _CompactBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: PackScreen logs filter-panel toggles before passing the callback into this leaf control.
     return GestureDetector(
       key: const Key('compact-bar'),
       onTap: onTogglePanel,
@@ -960,6 +962,7 @@ class _FilterPanel extends StatelessWidget {
                 horizontal: Spacing.md,
                 vertical: Spacing.xs,
               ),
+              // eac-clickable-owner-logs: PackScreen logs clear-filter callbacks before passing them into this leaf control.
               child: GestureDetector(
                 onTap: onClearFilters,
                 child: Text(
@@ -1034,6 +1037,7 @@ class _IconFilterToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: PackScreen logs filter/sort callbacks before passing them into this leaf control.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.lg),
@@ -1094,6 +1098,7 @@ class _SortToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: PackScreen logs sort callbacks before passing them into this leaf control.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.pill),
@@ -1164,6 +1169,7 @@ class _RarityFilterToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: PackScreen logs rarity filter callbacks before passing them into this leaf control.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.lg),
@@ -1291,6 +1297,7 @@ class _SearchBarState extends State<_SearchBar> {
             ),
           ),
           if (widget.query.isNotEmpty)
+            // eac-clickable-owner-logs: Search clear flows through widget.onChanged, which PackScreen logs as Pack search refinement.
             GestureDetector(
               onTap: _clear,
               child: Icon(
@@ -1376,6 +1383,7 @@ class _ItemSlot extends StatelessWidget {
     final status = IucnStatus.fromString(item.rarity);
     final hasFrame2 = item.iconUrlFrame2 != null;
 
+    // eac-clickable-owner-logs: PackScreen logs item opens as inspect-pack-find before this leaf control opens the SpeciesCard.
     return GestureDetector(
       onTap: () {
         onItemTap(item);
@@ -1666,6 +1674,7 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Spacing.xxl),
+            // eac-clickable-owner-logs: PackScreen logs retry callbacks as transport recovery inside the open Pack view.
             FilledButton(
               onPressed: onRetry,
               style: FilledButton.styleFrom(

@@ -47,20 +47,48 @@ void main() {
       }
     });
 
-    test('covers the app-level migrated pages and templates', () {
-      const requiredSurfaceContracts = <String, String>{
-        'TabShell': 'lib/shared/widgets/tab_shell.dart',
-        'MapRootScreen':
-            'lib/features/map/presentation/screens/map_root_screen.dart',
-        'MapScreen': 'lib/features/map/presentation/screens/map_screen.dart',
-        'PackScreen':
-            'lib/features/identification/presentation/screens/pack_screen.dart',
-        'TownScreen':
-            'lib/features/living_world/presentation/screens/town_screen.dart',
-        'NpcVenueDetailScreen':
-            'lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart',
-        'SettingsScreen':
-            'lib/features/profile/presentation/screens/settings_screen.dart',
+    test('covers the app-level migrated product surfaces', () {
+      const requiredSurfaceContracts = <String, ({String path, String kind})>{
+        'PrimaryNavigationShell': (
+          path: 'lib/shared/widgets/tab_shell.dart',
+          kind: 'Template'
+        ),
+        'ExplorationMapRoot': (
+          path: 'lib/features/map/presentation/screens/map_root_screen.dart',
+          kind: 'Template',
+        ),
+        'ExplorationMap': (
+          path: 'lib/features/map/presentation/screens/map_screen.dart',
+          kind: 'Page',
+        ),
+        'PlayerPack': (
+          path:
+              'lib/features/identification/presentation/screens/pack_screen.dart',
+          kind: 'Page',
+        ),
+        'TownDirectory': (
+          path:
+              'lib/features/living_world/presentation/screens/town_screen.dart',
+          kind: 'Page',
+        ),
+        'VenueDetail': (
+          path:
+              'lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart',
+          kind: 'Page',
+        ),
+        'PlayerSettings': (
+          path:
+              'lib/features/profile/presentation/screens/settings_screen.dart',
+          kind: 'Page',
+        ),
+        'TerritoryHierarchyHeader': (
+          path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
+          kind: 'Molecule',
+        ),
+        'MapCellDetailSheet': (
+          path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
+          kind: 'Molecule',
+        ),
       };
 
       final contractsByName = {
@@ -68,14 +96,16 @@ void main() {
       };
 
       for (final entry in requiredSurfaceContracts.entries) {
+        final expected = entry.value;
         final contract = contractsByName[entry.key];
         expect(contract, isNotNull,
-            reason: '${entry.key} needs a native EAC page/template contract.');
-        expect(contract!.exports, entry.value);
-        expect(File(contract.exports).existsSync(), isTrue);
-        expect(const {'Page', 'Template'}, contains(contract.kind),
             reason:
-                '${entry.key} must be modeled as a native EAC page or template, not an atom/molecule/organism.');
+                '${entry.key} needs a native EAC product-surface contract.');
+        expect(contract!.exports, expected.path);
+        expect(File(contract.exports).existsSync(), isTrue);
+        expect(contract.kind, expected.kind,
+            reason:
+                '${entry.key} should be modeled with product-facing Atomic Design language.');
         expect(contract.interactionPolicy, isNotEmpty,
             reason: '${entry.key} must declare an interaction policy.');
       }

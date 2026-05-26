@@ -17,6 +17,7 @@ import 'package:earth_nova/features/map/presentation/providers/player_marker_pro
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
+import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
@@ -57,23 +58,29 @@ const Duration _navMotionDuration = Duration(milliseconds: 280);
 class _BottomNavDestination {
   const _BottomNavDestination({
     required this.label,
+    required this.actionId,
   });
 
   final String label;
+  final PlayerActionId actionId;
 }
 
 const _bottomNavItems = [
   _BottomNavDestination(
     label: 'Map',
+    actionId: PlayerActions.openMap,
   ),
   _BottomNavDestination(
     label: 'Player',
+    actionId: PlayerActions.openPack,
   ),
   _BottomNavDestination(
     label: 'Town',
+    actionId: PlayerActions.openTown,
   ),
   _BottomNavDestination(
     label: 'Home',
+    actionId: PlayerActions.openSanctuary,
   ),
 ];
 
@@ -181,34 +188,38 @@ class _EarthNovaNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final foreground = selected ? AppTheme.tertiary : AppTheme.onSurfaceVariant;
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: item.label,
-      child: InkWell(
-        key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOutCubic,
-          style: TextStyle(
-            color: foreground,
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            height: 1,
-            letterSpacing: selected ? 0.15 : 0,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-              ),
-            ],
+    return ProductActionSurface(
+      actionId: item.actionId,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: item.label,
+        // eac-clickable-owner-logs: _EarthNovaBottomNav receives an ObservableInteraction-wrapped callback from TabShell with per-tab product action IDs.
+        child: InkWell(
+          key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
+          borderRadius: BorderRadius.circular(22),
+          onTap: onTap,
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            style: TextStyle(
+              color: foreground,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              height: 1,
+              letterSpacing: selected ? 0.15 : 0,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                ),
+              ],
+            ),
           ),
         ),
       ),

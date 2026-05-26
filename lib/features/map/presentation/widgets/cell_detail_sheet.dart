@@ -5,6 +5,8 @@ import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart'
 import 'package:earth_nova/features/living_world/presentation/screens/npc_venue_detail_screen.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
+import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class CellDetailSheet extends StatelessWidget {
@@ -121,68 +123,72 @@ class CellDetailSheet extends StatelessWidget {
                   const SizedBox(height: 16),
                   const Divider(color: Color(0xFF333333), height: 1),
                   const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () => _openVenueDetail(context, npcVenue!),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFF3A3A3A)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: AppTheme.tertiary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'WR',
-                                style: TextStyle(
-                                  color: AppTheme.tertiary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
+                  ProductActionSurface(
+                    actionId: PlayerActions.openNpcVenueDetail,
+                    child: GestureDetector(
+                      onTap: () => _openVenueDetail(context, npcVenue!),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2A2A),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF3A3A3A)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color:
+                                    AppTheme.tertiary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'WR',
+                                  style: TextStyle(
+                                    color: AppTheme.tertiary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  npcVenue!.venueName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    npcVenue!.venueName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  '${npcVenue!.npcName}  •  '
-                                  '${npcVenue!.featureName}',
-                                  style: TextStyle(
-                                    color: AppTheme.onSurfaceVariant
-                                        .withValues(alpha: 0.72),
-                                    fontSize: 12,
+                                  Text(
+                                    '${npcVenue!.npcName}  •  '
+                                    '${npcVenue!.featureName}',
+                                    style: TextStyle(
+                                      color: AppTheme.onSurfaceVariant
+                                          .withValues(alpha: 0.72),
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: AppTheme.onSurfaceVariant
-                                .withValues(alpha: 0.5),
-                            size: 20,
-                          ),
-                        ],
+                            Icon(
+                              Icons.chevron_right,
+                              color: AppTheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5),
+                              size: 20,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

@@ -1,4 +1,4 @@
-Template: MapRootScreen
+Template: ExplorationMapRoot
 Status: canonical
 Role: feature-navigation-root
 Interaction policy: delegates-to-children
@@ -6,4 +6,4 @@ Exports: lib/features/map/presentation/screens/map_root_screen.dart
 Public API: lib/features/map/presentation/screens/map_root_screen.dart
 
 Purpose:
-  Map feature routing root that composes GPS map play and hierarchy routes without owning visual styling.
+  Exploration routing root that composes GPS map play and territory hierarchy routes without owning reusable visual styling.

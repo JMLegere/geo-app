@@ -19,6 +19,7 @@ class ErrorBoundaryRetry extends StatelessWidget {
             children: [
               const Text('Something went wrong'),
               const SizedBox(height: 16),
+              // eac-clickable-ignore: retry is observability/infrastructure recovery, not a gameplay product action.
               ElevatedButton(
                 onPressed: onRetry,
                 child: const Text('Retry'),

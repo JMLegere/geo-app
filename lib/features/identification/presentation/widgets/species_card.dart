@@ -128,6 +128,7 @@ class _SpeciesCardState extends State<SpeciesCard> {
     final borderWidth = isRare ? 2.5 : 1.5;
 
     return Center(
+      // eac-clickable-ignore: card drag-to-dismiss is local modal chrome, not a gameplay product action.
       child: GestureDetector(
         onVerticalDragEnd: (details) {
           if ((details.primaryVelocity ?? 0) > 300) {
@@ -257,6 +258,7 @@ class _ArtZone extends StatelessWidget {
                       style: const TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(width: Spacing.xs),
+                // eac-clickable-ignore: close button is local modal chrome, not a gameplay product action.
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
                   child: Container(
@@ -468,6 +470,7 @@ class _InfoZone extends StatelessWidget {
             if (!identificationReady)
               SizedBox(
                 width: double.infinity,
+                // eac-clickable-owner-logs: PackScreen logs start-identification callbacks as identify-unidentified-find.
                 child: ElevatedButton(
                   onPressed: onStartIdentification,
                   child: const Text('Start identification'),
@@ -576,6 +579,7 @@ class _RevealTheater extends StatelessWidget {
           Semantics(
             button: true,
             label: 'Hold to reveal identification',
+            // eac-clickable-owner-logs: PackScreen logs reveal callbacks as reveal-identification before this hold control runs.
             child: GestureDetector(
               onLongPress: canReveal ? onReveal : null,
               child: AnimatedContainer(

@@ -1630,6 +1630,7 @@ class _DiscoveryRewardModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into this modal.
     return GestureDetector(
       key: const Key('discovery-reward-modal'),
       behavior: HitTestBehavior.opaque,
@@ -1644,6 +1645,7 @@ class _DiscoveryRewardModal extends StatelessWidget {
               children: [
                 _DiscoveryRewardCard(encounter: encounter),
                 const SizedBox(height: 18),
+                // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into this modal.
                 FilledButton(
                   onPressed: onContinue,
                   child: const Text('Continue'),

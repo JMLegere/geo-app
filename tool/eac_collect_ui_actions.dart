@@ -5,6 +5,18 @@ import 'dart:io';
 // controls. A resolved action ID maps the control to a product action.
 // `actionId: null` is an explicit non-product-action decision.
 
+const _surfaceDesignEntityNames = <String, String>{
+  'TabShell': 'PrimaryNavigationShell',
+  'MapRootScreen': 'ExplorationMapRoot',
+  'MapScreen': 'ExplorationMap',
+  'PackScreen': 'PlayerPack',
+  'TownScreen': 'TownDirectory',
+  'NpcVenueDetailScreen': 'VenueDetail',
+  'SettingsScreen': 'PlayerSettings',
+  'HierarchyHeader': 'TerritoryHierarchyHeader',
+  'CellDetailSheet': 'MapCellDetailSheet',
+};
+
 void main() {
   final playerActions = _loadPlayerActions();
   final rows = <_UiActionEvidence>[];
@@ -17,12 +29,14 @@ void main() {
 
     final source = file.readAsStringSync();
     final surface = _surfaceNameFor(source: source, sourcePath: file.path);
+    final designEntity = _designEntityForSurface(surface);
     rows.addAll(
       _collectWidgetActionEvidence(
         source: source,
         sourcePath: file.path,
         surface: surface,
-        component: 'EarthActionButton',
+        designEntity: 'EarthActionButton',
+        controlComponent: 'EarthActionButton',
         role: 'button',
         evidenceType: 'explicit-design-control',
         playerActions: playerActions,
@@ -33,7 +47,8 @@ void main() {
         source: source,
         sourcePath: file.path,
         surface: surface,
-        component: 'ProductActionSurface',
+        designEntity: designEntity,
+        controlComponent: 'ProductActionSurface',
         role: 'button',
         evidenceType: 'explicit-action-surface',
         playerActions: playerActions,
@@ -44,6 +59,16 @@ void main() {
         source: source,
         sourcePath: file.path,
         surface: surface,
+        designEntity: designEntity,
+        playerActions: playerActions,
+      ),
+    );
+    rows.addAll(
+      _collectStaticNavigationDestinationEvidence(
+        source: source,
+        sourcePath: file.path,
+        surface: surface,
+        designEntity: designEntity,
         playerActions: playerActions,
       ),
     );
@@ -65,14 +90,15 @@ List<_UiActionEvidence> _collectWidgetActionEvidence({
   required String source,
   required String sourcePath,
   required String surface,
-  required String component,
+  required String designEntity,
+  required String controlComponent,
   required String role,
   required String evidenceType,
   required Map<String, String> playerActions,
 }) {
   final rows = <_UiActionEvidence>[];
   final matches = RegExp(
-    '$component\\s*\\([\\s\\S]*?actionId:\\s*([^,\\n)]+)',
+    '$controlComponent\\s*\\([\\s\\S]*?actionId:\\s*([^,\\n)]+)',
     multiLine: true,
   ).allMatches(source);
 
@@ -80,7 +106,8 @@ List<_UiActionEvidence> _collectWidgetActionEvidence({
     final actionId = _resolveActionId(match.group(1)!, playerActions);
     if (actionId == null) continue;
     rows.add(_UiActionEvidence(
-      component: component,
+      component: designEntity,
+      controlComponent: controlComponent,
       actionId: actionId,
       source: sourcePath,
       surface: surface,
@@ -97,6 +124,7 @@ List<_UiActionEvidence> _collectLoggedPlayerActionEvidence({
   required String source,
   required String sourcePath,
   required String surface,
+  required String designEntity,
   required Map<String, String> playerActions,
 }) {
   final rows = <_UiActionEvidence>[];
@@ -109,12 +137,46 @@ List<_UiActionEvidence> _collectLoggedPlayerActionEvidence({
     final actionId = playerActions[match.group(1)];
     if (actionId == null) continue;
     rows.add(_UiActionEvidence(
-      component: 'ProductActionSurface',
+      component: designEntity,
+      controlComponent: 'ObservableInteraction',
       actionId: actionId,
       source: sourcePath,
       surface: surface,
       role: 'button',
       evidenceType: 'observable-player-action',
+      line: _lineForOffset(source, match.start),
+    ));
+  }
+
+  return rows;
+}
+
+List<_UiActionEvidence> _collectStaticNavigationDestinationEvidence({
+  required String source,
+  required String sourcePath,
+  required String surface,
+  required String designEntity,
+  required Map<String, String> playerActions,
+}) {
+  if (!sourcePath.endsWith('tab_shell.dart')) return const [];
+
+  final rows = <_UiActionEvidence>[];
+  final matches = RegExp(
+    r'''_BottomNavDestination\s*\([\s\S]*?actionId:\s*PlayerActions\.([A-Za-z0-9_]+)''',
+    multiLine: true,
+  ).allMatches(source);
+
+  for (final match in matches) {
+    final actionId = playerActions[match.group(1)];
+    if (actionId == null) continue;
+    rows.add(_UiActionEvidence(
+      component: designEntity,
+      controlComponent: '_BottomNavDestination',
+      actionId: actionId,
+      source: sourcePath,
+      surface: surface,
+      role: 'navigation-tab',
+      evidenceType: 'static-navigation-destination',
       line: _lineForOffset(source, match.start),
     ));
   }
@@ -187,6 +249,9 @@ String _surfaceNameFor({required String source, required String sourcePath}) {
   return sourcePath.split(Platform.pathSeparator).last.replaceAll('.dart', '');
 }
 
+String _designEntityForSurface(String surface) =>
+    _surfaceDesignEntityNames[surface] ?? surface;
+
 int _lineForOffset(String source, int offset) {
   var line = 1;
   for (var index = 0; index < offset; index += 1) {
@@ -198,6 +263,7 @@ int _lineForOffset(String source, int offset) {
 class _UiActionEvidence {
   const _UiActionEvidence({
     required this.component,
+    required this.controlComponent,
     required this.actionId,
     required this.source,
     required this.surface,
@@ -207,6 +273,7 @@ class _UiActionEvidence {
   });
 
   final String component;
+  final String controlComponent;
   final String actionId;
   final String source;
   final String surface;
@@ -214,10 +281,12 @@ class _UiActionEvidence {
   final String evidenceType;
   final int line;
 
-  String get key => '$source:$line:$component:$actionId:$evidenceType';
+  String get key =>
+      '$source:$line:$component:$controlComponent:$actionId:$evidenceType';
 
   Map<String, Object> toJson() => {
         'component': component,
+        'controlComponent': controlComponent,
         'actionId': actionId,
         'source': source,
         'surface': surface,
