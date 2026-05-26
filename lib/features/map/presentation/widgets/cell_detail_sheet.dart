@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:earth_nova/core/domain/entities/habitat.dart';
+import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
+import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class CellDetailSheet extends StatelessWidget {
   const CellDetailSheet({
@@ -10,12 +14,14 @@ class CellDetailSheet extends StatelessWidget {
     required this.visitCount,
     required this.isFirstVisit,
     required this.currentRelationship,
+    this.npcVenue,
   });
 
   final Cell cell;
   final int visitCount;
   final bool isFirstVisit;
   final CellRelationship currentRelationship;
+  final NpcVenue? npcVenue;
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +29,11 @@ class CellDetailSheet extends StatelessWidget {
     final primaryHabitat = habitatDisplay.primaryHabitat;
 
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        border: Border.all(
-          color: const Color(0xFF333333),
-          width: 1,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        border: Border(
+          top: BorderSide(color: Color(0xFF333333), width: 1),
         ),
       ),
       child: Column(
@@ -90,7 +95,7 @@ class CellDetailSheet extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 _buildInfoRow(
                   icon: Icons.explore,
                   label: 'Visits',
@@ -112,12 +117,91 @@ class CellDetailSheet extends StatelessWidget {
                     valueColor: const Color(0xFF4CAF50),
                   ),
                 ],
+                if (npcVenue != null) ...[
+                  const SizedBox(height: 16),
+                  const Divider(color: Color(0xFF333333), height: 1),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => _openVenueDetail(context, npcVenue!),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF3A3A3A)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: AppTheme.tertiary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                'WR',
+                                style: TextStyle(
+                                  color: AppTheme.tertiary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  npcVenue!.venueName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '${npcVenue!.npcName}  •  '
+                                  '${npcVenue!.featureName}',
+                                  style: TextStyle(
+                                    color: AppTheme.onSurfaceVariant
+                                        .withValues(alpha: 0.72),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: AppTheme.onSurfaceVariant
+                                .withValues(alpha: 0.5),
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  void _openVenueDetail(BuildContext context, NpcVenue venue) {
+    Navigator.of(context).pop();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => NpcVenueDetailSheet(venue: venue),
     );
   }
 
@@ -129,11 +213,7 @@ class CellDetailSheet extends StatelessWidget {
   }) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF888888),
-          size: 20,
-        ),
+        Icon(icon, color: const Color(0xFF888888), size: 20),
         const SizedBox(width: 12),
         Text(
           label,

@@ -695,3 +695,17 @@
   - `mise exec -- flutter analyze --no-pub`
   - `mise exec -- flutter test --no-pub --reporter=compact`
   - `git diff --check`
+
+## Completed 2026-05-26 — NPC venue detail / visit surface split
+
+- Tightened the NPC venue model across map cell detail, Town, and the venue visiting sheet:
+  - map cell detail now shows a tight contained-venue row only when the inspected map cell actually contains the NPC venue
+  - tapping that contained-venue row opens a compact venue detail/visiting sheet with Rowan, role, Release to Wild, and Coming soon status
+  - Town now shows compact tappable venue rows instead of the rich detail card; rich/detail copy moved to the venue detail sheet
+- Added `NpcVenueDetailSheet` and documented it in `designSurfaceInventory`.
+- Town venue row taps now use `ObservableInteraction` with `PlayerActions.openNpcLedFeature`.
+- Verification passed locally:
+  - `mise exec -- flutter analyze --no-pub`
+  - `mise exec -- flutter test --no-pub --reporter=compact`
+  - `mise exec -- eac check`
+  - `git diff --check`

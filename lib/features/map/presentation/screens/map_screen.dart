@@ -11,6 +11,7 @@ import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
+import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
 import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_marker.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
@@ -1098,6 +1099,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         exactProjectionRequest.key,
                         cellsWithStates,
                         projectGeoCoord,
+                        npcVenueState.discoveredVenue,
                       ),
                     ),
                     child: CustomPaint(
@@ -1301,6 +1303,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     String exactProjectionKey,
     List<({Cell cell, CellState state})> cellsWithStates,
     Offset Function(GeoCoord coord) project,
+    NpcVenue? npcVenue,
   ) {
     final tapPosition = details.localPosition;
 
@@ -1327,7 +1330,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (closestEntry != null) {
       final cell = closestEntry.cell;
       final isFirstVisit = !mapState.visitedCellIds.contains(cell.id);
-      _showCellDetailSheet(context, cell, isFirstVisit, closestEntry.state);
+      final cellVenue = npcVenue?.cellId == cell.id ? npcVenue : null;
+      _showCellDetailSheet(
+        context,
+        cell,
+        isFirstVisit,
+        closestEntry.state,
+        cellVenue,
+      );
     }
   }
 
@@ -1367,6 +1377,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     Cell cell,
     bool isFirstVisit,
     CellState cellState,
+    NpcVenue? npcVenue,
   ) {
     showModalBottomSheet(
       context: context,
@@ -1376,6 +1387,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         visitCount: isFirstVisit ? 0 : 1,
         isFirstVisit: isFirstVisit,
         currentRelationship: cellState.relationship,
+        npcVenue: npcVenue,
       ),
     );
   }

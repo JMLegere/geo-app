@@ -78,7 +78,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Town place directory for discovered character-owned local places.',
     designSystemNotes:
-        'Composes EarthPanel, EarthFieldRow, and EarthTag; local screen layout only.',
+        'Compact directory rows compose app theme tokens directly until list-row primitives are added.',
   ),
   DesignSurfaceDefinition(
     path:
@@ -88,6 +88,15 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose: 'Map callout for discovered NPC venues.',
     designSystemNotes:
         'Map marker styling is documented here until map marker primitives are added to the design taxonomy.',
+  ),
+  DesignSurfaceDefinition(
+    path:
+        'lib/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart',
+    category: DesignSurfaceCategory.featureWidget,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'NPC venue visiting/detail sheet opened from Town and map cells.',
+    designSystemNotes:
+        'Compact visiting sheet composes app theme tokens directly until venue/detail-sheet primitives are added.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/painters/cell_overlay_painter.dart',

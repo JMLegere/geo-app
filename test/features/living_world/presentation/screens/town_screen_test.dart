@@ -67,10 +67,26 @@ void main() {
     );
 
     expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
-    expect(find.text('Rowan'), findsOneWidget);
-    expect(find.text('Wildlife Rehabilitator'), findsOneWidget);
+    expect(
+      find.text('Rowan  •  Release to Wild  •  Coming soon'),
+      findsOneWidget,
+    );
+    expect(find.text('Wildlife Rehabilitator'), findsNothing);
+    expect(find.text('Not yet accepting releases.'), findsNothing);
+
+    await tester.tap(find.text("Rowan's Wildlife Rehab Center"));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rowan  •  Wildlife Rehabilitator'), findsOneWidget);
+    expect(find.text('Service'), findsOneWidget);
     expect(find.text('Release to Wild'), findsOneWidget);
-    expect(find.text('OPENING SOON'), findsOneWidget);
-    expect(find.text('Not yet accepting releases.'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Coming soon'), findsOneWidget);
+    expect(
+      find.text(
+        'Rowan is preparing local release programs for animals that are ready to return to the wild.',
+      ),
+      findsOneWidget,
+    );
   });
 }

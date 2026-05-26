@@ -4,15 +4,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
+import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
-import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 
-class TownScreen extends ConsumerWidget {
+class TownScreen extends ConsumerStatefulWidget {
   const TownScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TownScreen> createState() => _TownScreenState();
+}
+
+class _TownScreenState extends ConsumerState<TownScreen> {
+  @override
+  Widget build(BuildContext context) {
     final obs = ref.watch(appObservabilityProvider);
     final npcVenueState = ref.watch(npcVenueProvider);
 
@@ -45,12 +52,19 @@ class TownScreen extends ConsumerWidget {
                     height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 4),
                 if (npcVenueState.discoveredVenue == null)
                   const _TownEmptyState()
                 else
-                  _DiscoveredVenueCard(
+                  _TownVenueRow(
                     venue: npcVenueState.discoveredVenue!,
+                    logger: ({required event, required category, data}) {
+                      ref.read(appObservabilityProvider).log(
+                            event,
+                            category,
+                            data: data,
+                          );
+                    },
                   ),
               ],
             ),
@@ -101,44 +115,92 @@ class _TownEmptyState extends StatelessWidget {
   }
 }
 
-class _DiscoveredVenueCard extends StatelessWidget {
-  const _DiscoveredVenueCard({required this.venue});
+class _TownVenueRow extends StatelessWidget {
+  const _TownVenueRow({required this.venue, required this.logger});
 
   final NpcVenue venue;
+  final InteractionLogger logger;
 
   @override
   Widget build(BuildContext context) {
-    return EarthPanel(
-      eyebrow: 'Discovered place',
-      title: venue.venueName,
-      tone: EarthPanelTone.success,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          EarthFieldRow(
-            label: 'Caretaker',
-            value: venue.npcName,
-            helper: venue.npcRole,
-          ),
-          EarthFieldRow(
-            label: 'Service',
-            value: venue.featureName,
-            helper: 'Not yet accepting releases.',
-            trailing: const EarthTag(
-              label: 'Opening soon',
-              tone: EarthTagTone.warning,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${venue.npcName} is preparing local release programs for animals '
-            'that are ready to return to the wild.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.86),
-                  height: 1.35,
+    return GestureDetector(
+      onTap: ObservableInteraction.wrapVoidCallback(
+        logger: logger,
+        screenName: 'town_screen',
+        widgetName: 'town_venue_row',
+        actionType: 'open_npc_led_feature',
+        playerActionId: PlayerActions.openNpcLedFeature,
+        payload: {
+          'venue_id': venue.id,
+          'venue_kind': venue.kind.name,
+          'feature_name': venue.featureName,
+        },
+        callback: () {
+          showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => NpcVenueDetailSheet(venue: venue),
+          );
+        },
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.outline),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.tertiary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  'WR',
+                  style: TextStyle(
+                    color: AppTheme.tertiary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-          ),
-        ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    venue.venueName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${venue.npcName}  •  ${venue.featureName}  •  Coming soon',
+                    style: TextStyle(
+                      color: AppTheme.onSurfaceVariant.withValues(alpha: 0.72),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.5),
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
