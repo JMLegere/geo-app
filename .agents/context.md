@@ -709,3 +709,9 @@
   - `mise exec -- flutter test --no-pub --reporter=compact`
   - `mise exec -- eac check`
   - `git diff --check`
+## Completed 2026-05-26 — beta deploy import outage fix
+- Deploy Beta run `26456334225` failed in Supabase Edge Function deployment because server-side bundling could not fetch `https://esm.sh/@supabase/supabase-js@2` (`esm.sh` HTTP 522) while deploying `enrich-location`.
+- Fixed in commit `df1ccc6` by switching all Supabase Edge Function Supabase client imports to the Supabase-recommended Deno npm import: `npm:@supabase/supabase-js@2`.
+- Added `test/deployment/supabase_function_dependency_test.dart` so future `https://esm.sh/` imports in `supabase/functions/**/*.ts` fail CI before deploy.
+- Verification passed: targeted dependency test, `flutter analyze --no-pub`, full `flutter test --no-pub`, `eac check`, `git diff --check`.
+- GitHub CI `26456897578` passed and Deploy Beta `26457197007` passed, including Railway beta app and beta Supabase Edge Function deployment.
