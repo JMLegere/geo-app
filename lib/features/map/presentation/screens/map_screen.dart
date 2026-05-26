@@ -59,6 +59,7 @@ const _kBuildVersion =
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
 const _kBaseMapSettledFallbackDelay = Duration(seconds: 5);
 const _kMapBootstrapTimeout = Duration(seconds: 12);
+const _kExactProjectionCenterTolerancePx = 96.0;
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -97,6 +98,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Size? _lastWebMapLayoutSize;
   bool _webMapResizeScheduled = false;
   String? _pendingWebMapResizeReason;
+  String? _lastRejectedExactProjectionKey;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -698,6 +700,42 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _exactScreenProjectionByCoordKey[_projectionCoordKey(coord)];
   }
 
+  bool _isExactProjectionCenterAligned({
+    required Offset? exactProjectedCameraPosition,
+    required Offset screenCenter,
+  }) {
+    if (exactProjectedCameraPosition == null) return false;
+    return (exactProjectedCameraPosition - screenCenter).distance <=
+        _kExactProjectionCenterTolerancePx;
+  }
+
+  void _handleMisalignedExactProjection({
+    required String projectionKey,
+    required Offset? exactProjectedCameraPosition,
+    required Offset screenCenter,
+    required Size mapSize,
+  }) {
+    if (_lastRejectedExactProjectionKey == projectionKey) return;
+    _lastRejectedExactProjectionKey = projectionKey;
+    _logMapEvent(
+      'map.screen_projection_rejected',
+      data: {
+        'reason': 'misaligned_exact_projection',
+        'exact_camera_x': exactProjectedCameraPosition?.dx.round(),
+        'exact_camera_y': exactProjectedCameraPosition?.dy.round(),
+        'expected_center_x': screenCenter.dx.round(),
+        'expected_center_y': screenCenter.dy.round(),
+        'delta_px': exactProjectedCameraPosition == null
+            ? null
+            : (exactProjectedCameraPosition - screenCenter).distance.round(),
+        'layout_width': mapSize.width.round(),
+        'layout_height': mapSize.height.round(),
+        'tolerance_px': _kExactProjectionCenterTolerancePx.round(),
+      },
+    );
+    _scheduleWebMapResize(reason: 'misaligned_exact_projection');
+  }
+
   Offset? _exactProjectedMarkerPosition(String projectionKey) {
     if (_exactScreenProjectionKey != projectionKey) return null;
     return _exactScreenProjectionMarkerScreenPosition;
@@ -951,24 +989,46 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _scheduleExactScreenProjection(exactProjectionRequest);
           final exactProjectionReady =
               _exactScreenProjectionKey == exactProjectionRequest.key;
-          final projectionMode = exactProjectionReady
-              ? 'maplibre_exact_screen'
-              : 'mercator_fallback';
-          final exactProjector =
+          final rawExactProjector =
               _exactScreenProjectionProjector(exactProjectionRequest.key);
+          final exactProjectedCameraPosition = exactProjectionReady
+              ? _exactScreenProjectionByCoordKey[
+                  exactProjectionRequest.cameraCoordKey]
+              : null;
+          final exactProjectionCenterAligned = !exactProjectionReady ||
+              _isExactProjectionCenterAligned(
+                exactProjectedCameraPosition: exactProjectedCameraPosition,
+                screenCenter: screenCenter,
+              );
+          if (exactProjectionReady && !exactProjectionCenterAligned) {
+            _handleMisalignedExactProjection(
+              projectionKey: exactProjectionRequest.key,
+              exactProjectedCameraPosition: exactProjectedCameraPosition,
+              screenCenter: screenCenter,
+              mapSize: mapSize,
+            );
+          }
+          final projectionMode = exactProjectionReady
+              ? (exactProjectionCenterAligned
+                  ? 'maplibre_exact_screen'
+                  : 'mercator_fallback_misaligned_exact')
+              : 'mercator_fallback';
+          final effectiveExactProjector =
+              exactProjectionCenterAligned ? rawExactProjector : null;
           Offset projectGeoCoord(GeoCoord coord) {
             return _projectGeoCoordToScreen(
               coord,
-              exactProjector: exactProjector,
+              exactProjector: effectiveExactProjector,
               cameraPosition: renderCameraPosition,
               screenCenter: screenCenter,
               zoom: renderZoom,
             );
           }
 
-          final markerScreenPosition =
-              _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
-                  projectGeoCoord(markerGeoCoord);
+          final markerScreenPosition = exactProjectionCenterAligned
+              ? _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
+                  projectGeoCoord(markerGeoCoord)
+              : projectGeoCoord(markerGeoCoord);
           final npcVenue = npcVenueState.discoveredVenue;
           final npcVenueScreenPosition =
               npcVenue == null ? null : projectGeoCoord(npcVenue.position);
@@ -1412,6 +1472,7 @@ class _ExactScreenProjectionRequest {
     required this.coordinateKeys,
     required this.cellCenterCoordKeyById,
     required this.markerCoordKey,
+    required this.cameraCoordKey,
   });
 
   factory _ExactScreenProjectionRequest.from({
@@ -1434,6 +1495,7 @@ class _ExactScreenProjectionRequest {
     }
 
     final markerCoordKey = addCoordinate(markerPosition);
+    final cameraCoordKey = addCoordinate(cameraPosition);
     final cellCenterCoordKeyById = <String, String>{};
     for (final entry in cellsWithStates) {
       for (final polygon in entry.cell.polygons) {
@@ -1468,6 +1530,7 @@ class _ExactScreenProjectionRequest {
       coordinateKeys: coordinateKeys,
       cellCenterCoordKeyById: cellCenterCoordKeyById,
       markerCoordKey: markerCoordKey,
+      cameraCoordKey: cameraCoordKey,
     );
   }
 
@@ -1476,6 +1539,7 @@ class _ExactScreenProjectionRequest {
   final List<String> coordinateKeys;
   final Map<String, String> cellCenterCoordKeyById;
   final String markerCoordKey;
+  final String cameraCoordKey;
 }
 
 String _projectionCoordKey(GeoCoord coord) {

@@ -514,6 +514,25 @@ void main() {
       expect(mapSource, contains("'projection_mode': projectionMode"));
       expect(mapSource, contains("projectionMode = exactProjectionReady"));
     });
+    test(
+        'rejects exact MapLibre projections when the camera target is not at the Flutter viewport center',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_kExactProjectionCenterTolerancePx'));
+      expect(mapSource, contains('exactProjectedCameraPosition'));
+      expect(mapSource, contains('effectiveExactProjector'));
+      expect(
+        mapSource,
+        contains("'mercator_fallback_misaligned_exact'"),
+        reason:
+            'Mobile Safari can leave MapLibre with a stale internal viewport; if project(cameraTarget) is not near the Flutter viewport center, overlays must fall back to Flutter-owned projection math.',
+      );
+      expect(mapSource, contains("reason: 'misaligned_exact_projection'"));
+      expect(mapSource, contains('cameraCoordKey'));
+    });
     test('resizes web MapLibre when the Flutter map viewport changes', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')

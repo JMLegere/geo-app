@@ -27,7 +27,26 @@
 - Added pure `FogStateService` for present/explored/nearby computation from current marker cell plus persisted/optimistic visits.
 - Updated `MapScreen` to use `FogStateService`, so the current marker cell can render as `present`.
 - Removed the `IgnorePointer` block that prevented cell overlay taps from reaching the `GestureDetector`.
+
+## NPC Venue Detail Pass — Completed 2026-05-26
+- User request: rename venue name, make NPC-first, replace bottom sheet with dedicated full-screen page.
+- Commit dc074a8: NPC venue detail pass — 35 files changed, 456 insertions, 251 deletions.
+- Created screens/npc_venue_detail_screen.dart — full-screen page: venue name hero, Rowan + role, About copy, Features section with Release to Wild + Coming soon.
+- Removed npc_venue_detail_sheet.dart (bottom sheet) — replaced with screen.
+- TownScreen row tap -> Navigator.push to new page; CellDetailSheet venue row -> same opener.
+- Venue name: Rowans Wildlife Rehab Center -> Rowans Rehab Center throughout (provider + tests).
+- PlayerActions.openNpcVenueDetail added to product/actions.ts + player_actions.dart.
+- ObservableScreen + ObservableInteraction wrapping for telemetry compliance.
+- surface_inventory.dart updated: sheet -> screen path, featureWidget -> featureScreen.
+- Tests: town_screen_test.dart + cell_detail_sheet_test.dart updated with ProviderScope + appObservabilityProvider override.
+- CI 26459492054 passed (877 tests, analyze clean). Deploy Beta 26459700102 passed (Railway + Supabase Edge Functions). Live at geo-app-beta.up.railway.app.
 - Verification: focused map tests passed with `flutter test --no-pub ...`; `flutter analyze --no-pub` passed with no issues.
+
+## Mobile Safari Map Projection Guard — Completed 2026-05-26
+- User screenshot showed current beta bundle (`beta 2026-05-26-1300-local`) still placing the player/current cell too high in the mobile Safari map viewport.
+- Root cause hypothesis: MapLibre web exact projection can be stale/misaligned after mobile Safari visual viewport/layout changes; `project(cameraTarget)` should land near the Flutter map center but can report a point hundreds of pixels high.
+- Fix: `MapScreen` now includes the camera target in exact projection batches, rejects exact MapLibre screen coordinates when projected camera center is more than 96px from Flutter `screenCenter`, logs `map.screen_projection_rejected` with reason `misaligned_exact_projection`, schedules a web map resize, and falls back to Flutter-owned Mercator projection for marker/cells/NPC cues.
+- Verification: focused `map_screen_test.dart`, `flutter analyze --no-pub`, and full `flutter test --no-pub --reporter=compact` passed locally.
 
 ## Current State
 - Beta Railway URL: `https://geo-app-beta.up.railway.app`
