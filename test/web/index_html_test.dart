@@ -305,6 +305,44 @@ void main() {
         expect(html, contains('within_maplibre'));
         expect(html, contains('window.__earthnovaLowLevelTelemetryInstalled'));
       });
+      test('captures browser responsiveness with long tasks and frame pacing',
+          () {
+        expect(
+          html,
+          contains('installResponsivenessTelemetry'),
+          reason: 'Responsiveness regressions need a browser-level signal, not '
+              'only Flutter screen build timing.',
+        );
+        expect(
+          html,
+          contains('PerformanceObserver'),
+          reason: 'Long main-thread tasks should be captured when the browser '
+              'supports the Long Tasks API.',
+        );
+        expect(html, contains("entryTypes: ['longtask']"));
+        expect(
+          html,
+          contains("push('low_level', 'long_task'"),
+          reason: 'Long task events must be queryable in telemetry_logs.',
+        );
+        expect(
+          html,
+          contains('requestAnimationFrame(sampleFramePacing)'),
+          reason: 'Frame pacing needs requestAnimationFrame deltas so dropped '
+              'frames are visible even when Dart build timing looks fine.',
+        );
+        expect(
+          html,
+          contains("push('low_level', 'frame_pacing_sample'"),
+          reason: 'Frame pacing summaries must be queryable in telemetry_logs.',
+        );
+        expect(html, contains("'low_level.responsiveness'"));
+        expect(html, contains('blocking_duration_ms'));
+        expect(html, contains('long_frame_count'));
+        expect(html, contains('dropped_frame_count'));
+        expect(html, contains('worst_frame_delta_ms'));
+        expect(html, contains('fps_estimate'));
+      });
 
       test(
           'covers core browser input, viewport, lifecycle, network, and resource events',

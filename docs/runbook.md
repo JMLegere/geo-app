@@ -375,6 +375,70 @@ WHERE category = 'low_level'
 GROUP BY 1, 2, 3
 ORDER BY events DESC, event_name;
 
+-- Browser responsiveness / frame-pacing diagnostics in last 24h
+WITH responsiveness AS (
+  SELECT
+    occurred_at,
+    session_id,
+    event_name,
+    attributes,
+    CASE
+      WHEN jsonb_typeof(attributes->'duration_ms') = 'number'
+        THEN (attributes->>'duration_ms')::numeric
+      WHEN (attributes->>'duration_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'duration_ms')::numeric
+      ELSE NULL
+    END AS duration_ms,
+    CASE
+      WHEN jsonb_typeof(attributes->'blocking_duration_ms') = 'number'
+        THEN (attributes->>'blocking_duration_ms')::numeric
+      WHEN (attributes->>'blocking_duration_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'blocking_duration_ms')::numeric
+      ELSE NULL
+    END AS blocking_duration_ms,
+    CASE
+      WHEN jsonb_typeof(attributes->'worst_frame_delta_ms') = 'number'
+        THEN (attributes->>'worst_frame_delta_ms')::numeric
+      WHEN (attributes->>'worst_frame_delta_ms') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'worst_frame_delta_ms')::numeric
+      ELSE NULL
+    END AS worst_frame_delta_ms,
+    CASE
+      WHEN jsonb_typeof(attributes->'dropped_frame_count') = 'number'
+        THEN (attributes->>'dropped_frame_count')::numeric
+      WHEN (attributes->>'dropped_frame_count') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'dropped_frame_count')::numeric
+      ELSE NULL
+    END AS dropped_frame_count,
+    CASE
+      WHEN jsonb_typeof(attributes->'fps_estimate') = 'number'
+        THEN (attributes->>'fps_estimate')::numeric
+      WHEN (attributes->>'fps_estimate') ~ '^[0-9]+(\\.[0-9]+)?$'
+        THEN (attributes->>'fps_estimate')::numeric
+      ELSE NULL
+    END AS fps_estimate
+  FROM telemetry_logs
+  WHERE event_name IN ('low_level.long_task', 'low_level.frame_pacing_sample')
+    AND occurred_at > now() - interval '24 hours'
+)
+SELECT
+  occurred_at,
+  session_id,
+  event_name,
+  duration_ms,
+  blocking_duration_ms,
+  worst_frame_delta_ms,
+  dropped_frame_count,
+  fps_estimate,
+  attributes->>'visibility_state' AS visibility_state,
+  attributes
+FROM responsiveness
+WHERE event_name = 'low_level.long_task'
+   OR dropped_frame_count > 0
+   OR worst_frame_delta_ms >= 50
+ORDER BY occurred_at DESC;
+
+
 -- Pinch/zoom attempts seen below Flutter's gesture recognizer
 SELECT
   occurred_at,
@@ -408,6 +472,7 @@ Run after every production deploy that touches UI observability, navigation, or 
 4. Validate observability rows in Supabase using the queries above (`telemetry_logs`, last 24h):
    - `interaction.action`
    - `low_level.%`
+   - `low_level.long_task` / `low_level.frame_pacing_sample`
    - `navigation.%`
    - `ui.screen.%`
    - `ui.widget.build_jank`

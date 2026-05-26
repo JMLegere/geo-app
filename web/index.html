@@ -422,6 +422,127 @@
           });
         }
 
+        function installResponsivenessTelemetry() {
+          if (window.__earthnovaResponsivenessTelemetryInstalled) return;
+          window.__earthnovaResponsivenessTelemetryInstalled = true;
+
+          var longTaskThresholdMs = 50;
+          var frameSampleWindowMs = 10000;
+          var longFrameThresholdMs = 50;
+          var droppedFrameThresholdMs = 32;
+          var expectedFrameMs = 16.667;
+          var sampleStartedAt = null;
+          var lastFrameAt = null;
+          var frameCount = 0;
+          var longFrameCount = 0;
+          var droppedFrameCount = 0;
+          var totalFrameDeltaMs = 0;
+          var worstFrameDeltaMs = 0;
+
+          function resetFrameWindow(at) {
+            sampleStartedAt = typeof at === 'number' ? at : 0;
+            frameCount = 0;
+            longFrameCount = 0;
+            droppedFrameCount = 0;
+            totalFrameDeltaMs = 0;
+            worstFrameDeltaMs = 0;
+          }
+
+          function logFramePacingSample(at, source) {
+            var sampleWindowMs = sampleStartedAt === null
+              ? frameSampleWindowMs
+              : Math.max(1, at - sampleStartedAt);
+            push('low_level', 'frame_pacing_sample', source, lowLevelAttrs(
+              'low_level.responsiveness',
+              'state_changed',
+              document.documentElement,
+              {
+                sample_window_ms: Math.round(sampleWindowMs),
+                frame_count: frameCount,
+                long_frame_count: longFrameCount,
+                dropped_frame_count: droppedFrameCount,
+                avg_frame_delta_ms: frameCount > 0 ? round(totalFrameDeltaMs / frameCount) : null,
+                worst_frame_delta_ms: round(worstFrameDeltaMs),
+                fps_estimate: round(frameCount * 1000 / sampleWindowMs),
+                long_frame_threshold_ms: longFrameThresholdMs,
+                dropped_frame_threshold_ms: droppedFrameThresholdMs,
+                visibility_state: document.visibilityState || 'unknown'
+              }
+            ));
+            resetFrameWindow(at);
+          }
+
+          function sampleFramePacing(at) {
+            try {
+              if (document.visibilityState === 'hidden') {
+                lastFrameAt = null;
+                resetFrameWindow(at);
+                window.requestAnimationFrame(sampleFramePacing);
+                return;
+              }
+
+              if (sampleStartedAt === null) resetFrameWindow(at);
+              if (lastFrameAt !== null) {
+                var delta = at - lastFrameAt;
+                if (delta > 0 && delta < 30000) {
+                  frameCount += 1;
+                  totalFrameDeltaMs += delta;
+                  if (delta > worstFrameDeltaMs) worstFrameDeltaMs = delta;
+                  if (delta >= longFrameThresholdMs) longFrameCount += 1;
+                  if (delta >= droppedFrameThresholdMs) {
+                    droppedFrameCount += Math.max(1, Math.floor(delta / expectedFrameMs) - 1);
+                  }
+                }
+              }
+              lastFrameAt = at;
+
+              if (sampleStartedAt !== null && at - sampleStartedAt >= frameSampleWindowMs) {
+                logFramePacingSample(at, 'requestAnimationFrame');
+              }
+            } catch (_) {}
+            window.requestAnimationFrame(sampleFramePacing);
+          }
+
+          if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(sampleFramePacing);
+          }
+
+          if (window.PerformanceObserver) {
+            try {
+              var observer = new PerformanceObserver(function(list) {
+                var entries = list.getEntries ? list.getEntries() : [];
+                entries.forEach(function(entry) {
+                  var duration = entry && typeof entry.duration === 'number'
+                    ? entry.duration
+                    : 0;
+                  if (duration < longTaskThresholdMs) return;
+                  push('low_level', 'long_task', entry.name || 'longtask', lowLevelAttrs(
+                    'low_level.responsiveness',
+                    'blocked',
+                    document.documentElement,
+                    {
+                      duration_ms: round(duration),
+                      blocking_duration_ms: round(Math.max(0, duration - longTaskThresholdMs)),
+                      start_time_ms: round(entry.startTime || 0),
+                      long_task_name: entry.name || null,
+                      attribution_count: entry.attribution ? entry.attribution.length : 0,
+                      visibility_state: document.visibilityState || 'unknown'
+                    }
+                  ));
+                });
+              });
+              observer.observe({ entryTypes: ['longtask'] });
+            } catch (e) {
+              push('low_level', 'long_task_observer_unavailable', (e && e.message) || String(e), lowLevelAttrs(
+                'low_level.responsiveness',
+                'unsupported',
+                document.documentElement,
+                { reason: 'performance_observer_longtask_unavailable' }
+              ));
+            }
+          }
+        }
+
         function pointerValues() {
           return Object.keys(activePointers).map(function(key) {
             return activePointers[key];
@@ -837,6 +958,8 @@
         document.addEventListener('paste', function(event) {
           logClipboard('paste', event);
         }, listenerOptions);
+
+        installResponsivenessTelemetry();
       }
 
       installLowLevelEventTelemetry();
