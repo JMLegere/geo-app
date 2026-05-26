@@ -1,0 +1,9 @@
+Page: PackScreen
+Status: canonical
+Role: inventory-page
+Interaction policy: action-required
+Exports: lib/features/identification/presentation/screens/pack_screen.dart
+Public API: lib/features/identification/presentation/screens/pack_screen.dart
+
+Purpose:
+  Player Pack page for browsing discovered finds, filtering records, and opening find detail actions.

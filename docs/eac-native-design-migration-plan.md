@@ -207,3 +207,45 @@ Smallest safe slice:
 ## Main risk
 
 The risky part is not Atomic Design naming. It is forcing every existing clickable Flutter control into product-action mapping before the action catalog and widget APIs are ready. Keep the first cut centered on `EarthActionButton` and current reusable design components; defer raw Material buttons and feature-local bespoke controls until the collector and action catalog prove stable.
+
+## Implementation status — 2026-05-26
+
+Shipped in local migration commits after the initial plan:
+
+- Upgraded the repo toolchain from EAC 1.2.1 to EAC 1.4.2.
+- Added `design.contracts` and `uiActions.evidence` to `eac.config.ts`.
+- Added native Atomic Design contracts for the shared design registry:
+  - atoms: `EarthActionButton`, `EarthIcon`, `EarthMetaText`, `EarthNotice`, `EarthTag`, `ProductActionSurface`
+  - molecules: `EarthFieldRow`, `EarthPanel`, `EarthStatGrid`
+  - organism: `DesignLibraryExample`
+- Added native app-level contracts for the main migrated surfaces:
+  - templates: `TabShell`, `MapRootScreen`
+  - pages: `MapScreen`, `PackScreen`, `TownScreen`, `NpcVenueDetailScreen`, `SettingsScreen`
+- Added `test/shared/design/native_design_contract_test.dart` to enforce:
+  - native atom/molecule/organism contracts stay in parity with the Dart `designComponentRegistry`
+  - the app-level migrated pages/templates stay contracted
+  - every native design contract declares status, role, interaction policy, and purpose
+- Made `EarthActionButton.actionId` explicitly required and nullable, so product actions are declared with a known ID and design/catalog/demo/non-product usages are explicitly `null`.
+- Added `ProductActionSurface` as a no-visual wrapper for non-button clickables that need EAC product-action evidence.
+- Customized `tool/eac_collect_ui_actions.dart` to collect:
+  - explicit `EarthActionButton(actionId: ...)`
+  - explicit `ProductActionSurface(actionId: ...)`
+  - existing observable `playerActionId: PlayerActions.*` evidence
+  - `surface`, `evidenceType`, and source `line` metadata
+  - deterministic deduped output for `artifacts/eac/ui-actions.json`
+
+Current verification gates passed:
+
+```bash
+mise exec -- npm run eac:check
+mise exec -- flutter test --no-pub test/shared/design
+mise exec -- flutter analyze
+mise exec -- flutter test --no-pub
+```
+
+Remaining migration direction:
+
+1. Keep using the existing Flutter design tests for import boundaries, style escape-hatch prevention, widget smoke tests, and runtime touch-target behavior.
+2. Move additional reusable UI into native `.atom/.molecule/.organism` contracts only when it enters `lib/shared/design/` or becomes a repeated pattern.
+3. Add stricter raw-clickable coverage later if the team decides every `GestureDetector` / `InkWell` / Material button must either map to a product action or declare an explicit non-product reason.
+4. Defer moving product action/capability truth out of TypeScript until the native design/action evidence path is stable in day-to-day work.

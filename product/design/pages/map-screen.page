@@ -1,0 +1,9 @@
+Page: MapScreen
+Status: canonical
+Role: primary-gameplay-page
+Interaction policy: action-required
+Exports: lib/features/map/presentation/screens/map_screen.dart
+Public API: lib/features/map/presentation/screens/map_screen.dart
+
+Purpose:
+  Primary GPS gameplay page for movement, fog-of-war, cell inspection, discovery rewards, and map status.

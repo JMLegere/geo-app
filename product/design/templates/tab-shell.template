@@ -1,0 +1,9 @@
+Template: TabShell
+Status: canonical
+Role: app-navigation-shell
+Interaction policy: action-required
+Exports: lib/shared/widgets/tab_shell.dart
+Public API: lib/shared/widgets/tab_shell.dart
+
+Purpose:
+  Four-tab app shell that owns primary navigation chrome and maps tab taps to product actions.

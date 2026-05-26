@@ -1,0 +1,9 @@
+Page: NpcVenueDetailScreen
+Status: canonical
+Role: place-detail-page
+Interaction policy: action-required
+Exports: lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart
+Public API: lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart
+
+Purpose:
+  NPC-first venue detail page that explains local services, place identity, and future place-led actions.

@@ -1,0 +1,9 @@
+Page: TownScreen
+Status: canonical
+Role: place-directory-page
+Interaction policy: action-required
+Exports: lib/features/living_world/presentation/screens/town_screen.dart
+Public API: lib/features/living_world/presentation/screens/town_screen.dart
+
+Purpose:
+  Town directory page for discovered NPC-led venues and location-first gameplay entry points.
