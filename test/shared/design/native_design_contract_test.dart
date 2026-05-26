@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:earth_nova/shared/design.dart';
@@ -110,6 +111,78 @@ void main() {
             reason: '${entry.key} must declare an interaction policy.');
       }
     });
+    test('ui-action evidence is anchored to native design exports', () {
+      final controls = _collectUiActionEvidence();
+      final contractsByExport = {
+        for (final contract in _nativeContracts()) contract.exports: contract,
+      };
+
+      final offenders = <String>[];
+
+      for (final control in controls) {
+        final source = control['source'] as String;
+        final component = control['component'] as String;
+        final controlComponent = control['controlComponent'] as String;
+        final line = control['line'] as int;
+        final contract = contractsByExport[source];
+
+        if (contract == null) {
+          offenders.add(
+            '$source:$line has UI-action evidence but no native design contract exports that source file.',
+          );
+          continue;
+        }
+
+        if (controlComponent == 'EarthActionButton') {
+          expect(
+            component,
+            'EarthActionButton',
+            reason:
+                '$source:$line EarthActionButton evidence should remain anchored to the shared atom.',
+          );
+          continue;
+        }
+
+        if (component != contract.name) {
+          offenders.add(
+            '$source:$line $controlComponent evidence reports component "$component", but native contract export maps that file to "${contract.name}".',
+          );
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'The collector should derive feature/page/template/molecule evidence components from native contract Exports, not a separate Dart surface-name map.',
+      );
+    });
+    test('action-required product surfaces emit native UI-action evidence', () {
+      final evidencedComponents = _collectUiActionEvidence()
+          .map((control) => control['component'] as String)
+          .toSet();
+      final missing = <String>[];
+
+      for (final contract in _nativeContracts()) {
+        if (contract.exports.startsWith('lib/shared/design/') ||
+            contract.exports.startsWith('lib/shared/product/')) {
+          continue;
+        }
+        if (contract.interactionPolicy != 'action-required') continue;
+        if (!evidencedComponents.contains(contract.name)) {
+          missing.add(
+            '${contract.name} (${contract.path}) declares action-required but has no collected UI-action evidence.',
+          );
+        }
+      }
+
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'App-level action-required native design contracts must be visible in the generated EAC UI-action evidence.',
+      );
+    });
 
     test('requires explicit interaction policy on every native contract', () {
       for (final contract in _nativeContracts()) {
@@ -124,6 +197,29 @@ void main() {
       }
     });
   });
+}
+
+List<Map<String, Object?>> _collectUiActionEvidence() {
+  final collector = Process.runSync(
+    'dart',
+    ['run', 'tool/eac_collect_ui_actions.dart'],
+  );
+
+  expect(
+    collector.exitCode,
+    0,
+    reason:
+        'The UI-action collector must run before validating native evidence. stdout: ${collector.stdout} stderr: ${collector.stderr}',
+  );
+
+  final evidence = jsonDecode(
+    File('artifacts/eac/ui-actions.json').readAsStringSync(),
+  ) as Map<String, Object?>;
+
+  return (evidence['controls'] as List<Object?>)
+      .map((control) =>
+          (control as Map<Object?, Object?>).cast<String, Object?>())
+      .toList(growable: false);
 }
 
 List<_NativeDesignContract> _nativeContracts() {

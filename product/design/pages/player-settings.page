@@ -1,7 +1,7 @@
 Page: PlayerSettings
 Status: canonical
 Role: settings-page
-Interaction policy: action-required
+Interaction policy: delegates-to-children
 Exports: lib/features/profile/presentation/screens/settings_screen.dart
 Public API: lib/features/profile/presentation/screens/settings_screen.dart
 

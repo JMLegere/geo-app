@@ -270,3 +270,20 @@ Follow-up cleanup after the initial production migration:
 - Raw-clickable coverage is enforced by `test/shared/design/interactive_control_contract_test.dart`: `GestureDetector`, `InkWell`, and Material button controls must expose action evidence directly, be wrapped in `ProductActionSurface`, or carry an explicit `eac-clickable-owner-logs` / `eac-clickable-ignore` reason.
 - `CellDetailSheet` venue navigation now uses `ProductActionSurface(actionId: PlayerActions.openNpcVenueDetail)` and has a native `MapCellDetailSheet` molecule contract.
 - Bottom navigation destinations now carry static `PlayerActionId`s and the collector emits `static-navigation-destination` evidence for `open-map`, `open-pack`, `open-town`, and `open-sanctuary`.
+
+## Full migration cleanup — 2026-05-26
+
+The geo-app migration is now considered complete for the current EAC/native design operating model:
+
+- `tool/eac_collect_ui_actions.dart` derives product-surface component names from native `product/design/*` contract `Exports:` fields instead of maintaining a separate Dart class-name map.
+- Generated `artifacts/eac/ui-actions.json` now uses product-facing native design names for both `component` and `surface` on app-level evidence.
+- `test/shared/design/native_design_contract_test.dart` enforces that generated UI-action evidence is anchored to native contract exports.
+- The same test enforces that app-level contracts declaring `Interaction policy: action-required` have generated UI-action evidence.
+- `PlayerSettings` is explicitly `Interaction policy: delegates-to-children`, because its debug/sign-out controls are account/developer chrome with telemetry-only reasons rather than SuperBDD gameplay actions.
+- Duplicate town venue evidence was removed by keeping the existing `ObservableInteraction(playerActionId: PlayerActions.openNpcVenueDetail)` as the single source of action evidence there; `ProductActionSurface` remains for raw clickables that do not otherwise log a player action.
+
+Remaining intentional split:
+
+- Native `product/design` contracts are the authoritative design/product-surface source.
+- Dart `designComponentRegistry` remains a runtime projection for Flutter design-library UI and tests.
+- Flutter-specific tests stay responsible for import boundaries, style escape hatches, widget rendering, and touch-target behavior.

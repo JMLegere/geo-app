@@ -5,20 +5,9 @@ import 'dart:io';
 // controls. A resolved action ID maps the control to a product action.
 // `actionId: null` is an explicit non-product-action decision.
 
-const _surfaceDesignEntityNames = <String, String>{
-  'TabShell': 'PrimaryNavigationShell',
-  'MapRootScreen': 'ExplorationMapRoot',
-  'MapScreen': 'ExplorationMap',
-  'PackScreen': 'PlayerPack',
-  'TownScreen': 'TownDirectory',
-  'NpcVenueDetailScreen': 'VenueDetail',
-  'SettingsScreen': 'PlayerSettings',
-  'HierarchyHeader': 'TerritoryHierarchyHeader',
-  'CellDetailSheet': 'MapCellDetailSheet',
-};
-
 void main() {
   final playerActions = _loadPlayerActions();
+  final nativeDesignContracts = _loadNativeDesignContracts();
   final rows = <_UiActionEvidence>[];
 
   for (final file
@@ -29,12 +18,16 @@ void main() {
 
     final source = file.readAsStringSync();
     final surface = _surfaceNameFor(source: source, sourcePath: file.path);
-    final designEntity = _designEntityForSurface(surface);
+    final designEntity = nativeDesignContracts.designEntityFor(
+      sourcePath: file.path,
+      fallbackSurface: surface,
+    );
+    final evidenceSurface = designEntity;
     rows.addAll(
       _collectWidgetActionEvidence(
         source: source,
         sourcePath: file.path,
-        surface: surface,
+        surface: evidenceSurface,
         designEntity: 'EarthActionButton',
         controlComponent: 'EarthActionButton',
         role: 'button',
@@ -46,7 +39,7 @@ void main() {
       _collectWidgetActionEvidence(
         source: source,
         sourcePath: file.path,
-        surface: surface,
+        surface: evidenceSurface,
         designEntity: designEntity,
         controlComponent: 'ProductActionSurface',
         role: 'button',
@@ -58,7 +51,7 @@ void main() {
       _collectLoggedPlayerActionEvidence(
         source: source,
         sourcePath: file.path,
-        surface: surface,
+        surface: evidenceSurface,
         designEntity: designEntity,
         playerActions: playerActions,
       ),
@@ -67,7 +60,7 @@ void main() {
       _collectStaticNavigationDestinationEvidence(
         source: source,
         sourcePath: file.path,
-        surface: surface,
+        surface: evidenceSurface,
         designEntity: designEntity,
         playerActions: playerActions,
       ),
@@ -219,6 +212,59 @@ String? _resolveActionId(String expression, Map<String, String> playerActions) {
   return null;
 }
 
+_NativeDesignContracts _loadNativeDesignContracts() {
+  final root = Directory('product/design');
+  if (!root.existsSync()) {
+    throw StateError('product/design is missing.');
+  }
+
+  final byExportPath = <String, String>{};
+  final contractFiles = root
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => RegExp(r'\.(atom|molecule|organism|template|page)$')
+          .hasMatch(file.path))
+      .toList()
+    ..sort((a, b) => a.path.compareTo(b.path));
+
+  for (final file in contractFiles) {
+    final source = file.readAsStringSync();
+    final header = RegExp(r'^(Atom|Molecule|Organism|Template|Page):\s*(.+)$',
+            multiLine: true)
+        .firstMatch(source);
+    if (header == null) {
+      throw StateError('${file.path} is missing a native design header.');
+    }
+
+    final exportPath = _contractField(source, 'Exports');
+    if (exportPath == null) continue;
+
+    final normalizedExportPath = _normalizePath(exportPath);
+    final name = header.group(2)!.trim();
+    final existingName = byExportPath[normalizedExportPath];
+    if (existingName != null && existingName != name) {
+      throw StateError(
+        'Native design contracts $existingName and $name both export $normalizedExportPath.',
+      );
+    }
+
+    byExportPath[normalizedExportPath] = name;
+  }
+
+  return _NativeDesignContracts(byExportPath: byExportPath);
+}
+
+String? _contractField(String source, String field) {
+  final match = RegExp('^${RegExp.escape(field)}:\\s*(.+)\$', multiLine: true)
+      .firstMatch(source);
+  return match?.group(1)?.trim();
+}
+
+String _normalizePath(String path) {
+  final normalized = path.replaceAll(Platform.pathSeparator, '/');
+  return normalized.startsWith('./') ? normalized.substring(2) : normalized;
+}
+
 Map<String, String> _loadPlayerActions() {
   final source =
       File('lib/shared/product/player_actions.dart').readAsStringSync();
@@ -249,15 +295,25 @@ String _surfaceNameFor({required String source, required String sourcePath}) {
   return sourcePath.split(Platform.pathSeparator).last.replaceAll('.dart', '');
 }
 
-String _designEntityForSurface(String surface) =>
-    _surfaceDesignEntityNames[surface] ?? surface;
-
 int _lineForOffset(String source, int offset) {
   var line = 1;
   for (var index = 0; index < offset; index += 1) {
     if (source.codeUnitAt(index) == 10) line += 1;
   }
   return line;
+}
+
+class _NativeDesignContracts {
+  const _NativeDesignContracts({required Map<String, String> byExportPath})
+      : _byExportPath = byExportPath;
+
+  final Map<String, String> _byExportPath;
+
+  String designEntityFor({
+    required String sourcePath,
+    required String fallbackSurface,
+  }) =>
+      _byExportPath[_normalizePath(sourcePath)] ?? fallbackSurface;
 }
 
 class _UiActionEvidence {
