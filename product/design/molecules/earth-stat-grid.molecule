@@ -1,0 +1,9 @@
+Molecule: EarthStatGrid
+Status: canonical
+Role: grid
+Interaction policy: display
+Exports: lib/shared/design/composites/stat_grid.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Compact two-column stat block for progress, territory, and diagnostic summaries.

@@ -1,0 +1,9 @@
+Atom: EarthIcon
+Status: canonical
+Role: image
+Interaction policy: display
+Exports: lib/shared/design/primitives/icon.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Canonical app-chrome and status icon wrapper so screens avoid raw Icons or emoji glyphs.

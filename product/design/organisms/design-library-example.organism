@@ -1,0 +1,9 @@
+Organism: DesignLibraryExample
+Status: experimental
+Role: document
+Interaction policy: structural
+Exports: lib/shared/design/patterns/design_library_example.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Build and test catalog example for reviewing the design API without Storybook ceremony.

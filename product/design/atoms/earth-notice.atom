@@ -1,0 +1,9 @@
+Atom: EarthNotice
+Status: canonical
+Role: status
+Interaction policy: display
+Exports: lib/shared/design/primitives/notice.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Inline status, information, and warning box with semantic tone instead of ad hoc containers.
