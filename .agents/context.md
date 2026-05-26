@@ -48,6 +48,14 @@
 - Fix: `MapScreen` now includes the camera target in exact projection batches, rejects exact MapLibre screen coordinates when projected camera center is more than 96px from Flutter `screenCenter`, logs `map.screen_projection_rejected` with reason `misaligned_exact_projection`, schedules a web map resize, and falls back to Flutter-owned Mercator projection for marker/cells/NPC cues.
 - Verification: focused `map_screen_test.dart`, `flutter analyze --no-pub`, and full `flutter test --no-pub --reporter=compact` passed locally.
 
+## Browser Responsiveness Telemetry — Completed 2026-05-26
+- User reported app responsiveness was "in the gutter" and asked whether observability covered it.
+- Gap found: existing Supabase OTel/UI telemetry covered screen lifecycle, synchronous Flutter screen build jank, interactions, navigation, errors, and low-level input, but not true browser main-thread long tasks or frame pacing.
+- Commit `dc74662` adds web-bootstrap `low_level.long_task` events from the Long Tasks API (`PerformanceObserver`) and `low_level.frame_pacing_sample` events from `requestAnimationFrame`.
+- Frame samples emit bounded diagnostics: sample window, frame count, long-frame count, dropped-frame count, average/worst frame delta, FPS estimate, and visibility state.
+- Runbook now includes a Supabase SQL query for responsiveness/frame-pacing diagnostics.
+- Verification passed: `flutter test --no-pub test/web/index_html_test.dart`, `flutter analyze --no-pub`, full `flutter test --no-pub` (887 tests), `npm run eac:check`, CI `26475839627`, Deploy Beta `26476021648`, Promote Beta to Production `26476086261`, beta smoke, and production smoke.
+
 ## Current State
 - Beta Railway URL: `https://geo-app-beta.up.railway.app`
 - Production Railway URL: `https://geo-app-production-47b0.up.railway.app`
