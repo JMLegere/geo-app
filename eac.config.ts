@@ -22,5 +22,10 @@ export default {
       "product/design/**/*.template",
       "product/design/**/*.page"
     ]
+  },
+  "uiActions": {
+    "evidence": [
+      "artifacts/eac/ui-actions.json"
+    ]
   }
 };

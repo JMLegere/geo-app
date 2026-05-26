@@ -35,6 +35,7 @@ void main() {
             child: EarthActionButton(
               label: 'Continue',
               onPressed: () => taps += 1,
+              actionId: null,
             ),
           ),
         ),

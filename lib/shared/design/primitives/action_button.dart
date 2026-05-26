@@ -9,6 +9,7 @@ class EarthActionButton extends StatelessWidget {
   const EarthActionButton({
     required this.label,
     required this.onPressed,
+    required this.actionId,
     this.icon,
     this.tone = EarthActionTone.primary,
     this.expand = false,
@@ -17,6 +18,7 @@ class EarthActionButton extends StatelessWidget {
 
   final String label;
   final VoidCallback? onPressed;
+  final String? actionId;
   final IconData? icon;
   final EarthActionTone tone;
   final bool expand;

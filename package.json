@@ -3,7 +3,9 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "superbdd:cucumber": "cucumber-js --config cucumber.mjs"
+    "superbdd:cucumber": "cucumber-js --config cucumber.mjs",
+    "eac:collect-ui-actions": "dart run tool/eac_collect_ui_actions.dart",
+    "eac:check": "npm run eac:collect-ui-actions && eac check"
   },
   "devDependencies": {
     "@cucumber/cucumber": "^12.2.0"

@@ -15,21 +15,28 @@ void main() {
       tester,
     ) async {
       final widgets = [
-        const EarthActionButton(label: 'Primary', onPressed: null),
+        const EarthActionButton(
+          label: 'Primary',
+          onPressed: null,
+          actionId: null,
+        ),
         const EarthActionButton(
           label: 'Secondary',
           onPressed: null,
+          actionId: null,
           tone: EarthActionTone.secondary,
         ),
         const EarthActionButton(
           label: 'Neutral',
           onPressed: null,
+          actionId: null,
           tone: EarthActionTone.neutral,
           icon: Icons.map,
         ),
         const EarthActionButton(
           label: 'Danger',
           onPressed: null,
+          actionId: null,
           tone: EarthActionTone.danger,
           expand: true,
         ),

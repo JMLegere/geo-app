@@ -52,6 +52,7 @@ class DesignLibraryExample extends StatelessWidget {
             EarthActionButton(
               label: 'Continue',
               onPressed: null,
+              actionId: null,
               tone: EarthActionTone.primary,
               expand: true,
             ),
