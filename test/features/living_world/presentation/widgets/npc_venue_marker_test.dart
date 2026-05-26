@@ -17,7 +17,8 @@ const _venue = NpcVenue(
 );
 
 void main() {
-  testWidgets('renders discovered NPC venue marker on the map', (tester) async {
+  testWidgets('renders discovered NPC venue as a compact place cue',
+      (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -26,8 +27,28 @@ void main() {
       ),
     );
 
-    expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
-    expect(find.text('Rowan • Wildlife Rehabilitator'), findsOneWidget);
+    expect(find.text('WR'), findsOneWidget);
+    expect(find.text('Wildlife Rehab'), findsOneWidget);
+    expect(find.text("Rowan's Wildlife Rehab Center"), findsNothing);
+    expect(find.text('Rowan • Wildlife Rehabilitator'), findsNothing);
     expect(find.text('Release to Wild — Coming soon'), findsNothing);
+  });
+
+  testWidgets('collapses distant discovered NPC venues to a glyph-only marker',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: NpcVenueMarker(
+            venue: _venue,
+            displayMode: NpcVenueMarkerDisplayMode.glyphOnly,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('WR'), findsOneWidget);
+    expect(find.text('Wildlife Rehab'), findsNothing);
+    expect(find.text("Rowan's Wildlife Rehab Center"), findsNothing);
   });
 }

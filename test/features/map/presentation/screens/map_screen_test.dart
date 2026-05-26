@@ -410,6 +410,22 @@ void main() {
           contains('attributionButtonMargins: const math.Point(12, 144)'));
     });
 
+    test('renders NPC venues as anchored compact glyph cues', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('NpcVenueMarkerDisplayMode.compactLabel'));
+      expect(mapSource, contains('NpcVenueMarkerDisplayMode.glyphOnly'));
+      expect(mapSource,
+          contains('entry.state.relationship == CellRelationship.present'));
+      expect(mapSource, contains('left: npcVenueScreenPosition.dx - 16'));
+      expect(mapSource, contains('top: npcVenueScreenPosition.dy - 16'));
+      expect(
+          mapSource, isNot(contains('left: npcVenueScreenPosition.dx - 96')));
+      expect(mapSource, isNot(contains('top: npcVenueScreenPosition.dy - 54')));
+    });
+
     test('adds a top fog feather below the status area', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
@@ -497,6 +513,19 @@ void main() {
       expect(mapSource, contains('_scheduleExactScreenProjection('));
       expect(mapSource, contains("'projection_mode': projectionMode"));
       expect(mapSource, contains("projectionMode = exactProjectionReady"));
+    });
+    test('resizes web MapLibre when the Flutter map viewport changes', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('with WidgetsBindingObserver'));
+      expect(mapSource, contains('WidgetsBinding.instance.addObserver(this)'));
+      expect(mapSource, contains('void didChangeMetrics()'));
+      expect(mapSource, contains('_syncWebMapLayoutSize(mapSize)'));
+      expect(mapSource, contains('forceResizeWebMap()'));
+      expect(mapSource, contains('_clearExactScreenProjection()'));
+      expect(mapSource, contains("eventName: 'map.web_viewport_resized'"));
     });
     test('keeps a safety fallback for missing base-map settled signal', () {
       final mapSource =

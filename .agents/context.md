@@ -667,3 +667,31 @@
   - before discovery, Town points back to Map exploration
   - after discovery, Town shows `Release to Wild` as a Coming Soon option bound to the Wildlife Rehabilitation Center / Wildlife Rehabilitator
 - This slice does not implement Release to Wild mechanics, backend schema, persistent NPC storage, or Orb rewards.
+
+## Completed 2026-05-26 — mobile web map viewport positioning hardening
+
+- Investigated mobile screenshot where map/NPC marker content appeared vertically mispositioned under the HUD.
+- Added web MapLibre viewport resize handling in `MapScreen`:
+  - observe Flutter metric changes
+  - track the actual `LayoutBuilder` map size
+  - force `MapLibreMapController.forceResizeWebMap()` after map creation, style load, layout-size changes, and mobile viewport metric changes
+  - clear exact MapLibre screen projections after resize so Flutter overlay/cell/marker positions are recomputed against the corrected map container
+  - emit `map.web_viewport_resized` telemetry for terminal-agent diagnosis
+- Verification passed locally:
+  - `mise exec -- flutter test --no-pub test/features/map/presentation/screens/map_screen_test.dart`
+  - `mise exec -- flutter analyze --no-pub`
+  - `git diff --check`
+
+## Completed 2026-05-26 — NPC map visualization pass
+
+- Replaced the oversized always-visible NPC venue card with an anchored venue cue:
+  - current-cell venue uses a compact `WR` pin plus `Wildlife Rehab` label
+  - non-current discovered venue collapses to glyph-only `WR`
+  - full NPC identity (`Rowan`, `Wildlife Rehabilitator`, venue name, feature binding) remains available in Town/semantics rather than dominating the map
+- MapScreen now chooses compact vs glyph-only display from the venue cell's fog relationship and anchors the marker at the projected venue point instead of offsetting a floating card above the cell.
+- Verification passed locally:
+  - `mise exec -- flutter test --no-pub test/features/living_world/presentation/widgets/npc_venue_marker_test.dart test/features/map/presentation/screens/map_screen_test.dart`
+  - `mise exec -- eac check`
+  - `mise exec -- flutter analyze --no-pub`
+  - `mise exec -- flutter test --no-pub --reporter=compact`
+  - `git diff --check`

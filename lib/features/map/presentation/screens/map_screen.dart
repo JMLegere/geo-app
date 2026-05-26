@@ -66,7 +66,8 @@ class MapScreen extends ConsumerStatefulWidget {
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends ConsumerState<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen>
+    with WidgetsBindingObserver {
   maplibre.MapLibreMapController? _mapController;
 
   bool _mapCreated = false;
@@ -92,6 +93,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Map<String, Offset> _exactScreenProjectionCellCentersById = const {};
   Offset? _exactScreenProjectionMarkerScreenPosition;
   int _exactScreenProjectionRevision = 0;
+  Size? _lastWebMapLayoutSize;
+  bool _webMapResizeScheduled = false;
+  String? _pendingWebMapResizeReason;
 
   /// Cell ID for the currently-shown discovery notification (null = hidden).
   String? _notificationCellId;
@@ -100,6 +104,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _mapBootstrapSpan = ref.read(appObservabilityProvider).startSpan(
       'map.bootstrap',
       attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
@@ -131,6 +136,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _notificationTimer?.cancel();
     _baseMapSettledSignal?.dispose();
     _baseMapStyleLoadedSignal?.dispose();
@@ -153,6 +159,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
     _mapController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    _scheduleWebMapResize(reason: 'metrics_changed');
   }
 
   TelemetrySpan _ensureMapBootstrapSpan() {
@@ -240,6 +252,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _markMapCreated() {
     if (_mapCreated) return;
     setState(() => _mapCreated = true);
+    _scheduleWebMapResize(reason: 'map_created');
   }
 
   void _updateRenderCamera(maplibre.CameraPosition cameraPosition) {
@@ -269,6 +282,67 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _scheduleBaseMapSettledFallback();
   }
 
+  void _syncWebMapLayoutSize(Size mapSize) {
+    if (!kIsWeb || mapSize.isEmpty) return;
+    final previous = _lastWebMapLayoutSize;
+    final sizeChanged = previous == null ||
+        (previous.width - mapSize.width).abs() >= 0.5 ||
+        (previous.height - mapSize.height).abs() >= 0.5;
+    if (!sizeChanged) return;
+
+    _lastWebMapLayoutSize = mapSize;
+    _scheduleWebMapResize(reason: 'layout_size_changed');
+  }
+
+  void _scheduleWebMapResize({required String reason}) {
+    if (!kIsWeb || _mapController == null) return;
+
+    _pendingWebMapResizeReason = reason;
+    if (_webMapResizeScheduled) return;
+    _webMapResizeScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        _webMapResizeScheduled = false;
+        return;
+      }
+
+      final controller = _mapController;
+      if (controller == null) {
+        _webMapResizeScheduled = false;
+        return;
+      }
+
+      final resizeReason = _pendingWebMapResizeReason ?? reason;
+      _pendingWebMapResizeReason = null;
+      controller.forceResizeWebMap();
+      _clearExactScreenProjection();
+
+      _logMapFlowEvent(
+        TelemetryFlowPhase.dependencyReady,
+        eventName: 'map.web_viewport_resized',
+        dependency: 'map_viewport',
+        data: {
+          'reason': resizeReason,
+          'layout_width': _lastWebMapLayoutSize?.width.round(),
+          'layout_height': _lastWebMapLayoutSize?.height.round(),
+        },
+      );
+
+      _webMapResizeScheduled = false;
+    });
+  }
+
+  void _clearExactScreenProjection() {
+    if (!mounted) return;
+    setState(() {
+      _exactScreenProjectionKey = null;
+      _exactScreenProjectionByCoordKey = const {};
+      _exactScreenProjectionCellCentersById = const {};
+      _exactScreenProjectionMarkerScreenPosition = null;
+    });
+  }
+
   void _handleStyleLoaded({required String source}) {
     if (_mapStyleLoaded) {
       unawaited(_hideBaseMapTextLabels(source: source));
@@ -282,6 +356,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
     ref.read(mapProvider.notifier).setZoom(_kGpsZoom);
     _markStyleLoaded();
+    _scheduleWebMapResize(reason: 'style_loaded');
     unawaited(_hideBaseMapTextLabels(source: source));
   }
 
@@ -847,6 +922,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final mapSize = constraints.biggest;
+          _syncWebMapLayoutSize(mapSize);
           final screenCenter = Offset(mapSize.width / 2, mapSize.height / 2);
           final desiredCameraPosition = cameraFollowState.hasFix
               ? (lat: cameraFollowState.lat, lng: cameraFollowState.lng)
@@ -895,6 +971,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           final npcVenue = npcVenueState.discoveredVenue;
           final npcVenueScreenPosition =
               npcVenue == null ? null : projectGeoCoord(npcVenue.position);
+          final isNpcVenueInCurrentCell = npcVenue != null &&
+              cellsWithStates.any(
+                (entry) =>
+                    entry.cell.id == npcVenue.cellId &&
+                    entry.state.relationship == CellRelationship.present,
+              );
+          final npcVenueDisplayMode = isNpcVenueInCurrentCell
+              ? NpcVenueMarkerDisplayMode.compactLabel
+              : NpcVenueMarkerDisplayMode.glyphOnly;
           final renderDiagnostics = {
             ...const MapRenderDiagnosticsService().summarize(
               cellsWithStates: cellsWithStates,
@@ -1043,10 +1128,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
               if (npcVenue != null && npcVenueScreenPosition != null)
                 Positioned(
-                  left: npcVenueScreenPosition.dx - 96,
-                  top: npcVenueScreenPosition.dy - 54,
+                  left: npcVenueScreenPosition.dx - 16,
+                  top: npcVenueScreenPosition.dy - 16,
                   child: IgnorePointer(
-                    child: NpcVenueMarker(venue: npcVenue),
+                    child: NpcVenueMarker(
+                      venue: npcVenue,
+                      displayMode: npcVenueDisplayMode,
+                    ),
                   ),
                 ),
 
