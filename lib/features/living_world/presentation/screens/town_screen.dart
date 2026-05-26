@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
-import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart';
+import 'package:earth_nova/features/living_world/presentation/screens/npc_venue_detail_screen.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
@@ -128,18 +128,18 @@ class _TownVenueRow extends StatelessWidget {
         logger: logger,
         screenName: 'town_screen',
         widgetName: 'town_venue_row',
-        actionType: 'open_npc_led_feature',
-        playerActionId: PlayerActions.openNpcLedFeature,
+        actionType: 'open_npc_venue_detail',
+        playerActionId: PlayerActions.openNpcVenueDetail,
         payload: {
           'venue_id': venue.id,
           'venue_kind': venue.kind.name,
           'feature_name': venue.featureName,
         },
         callback: () {
-          showModalBottomSheet(
-            context: context,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => NpcVenueDetailSheet(venue: venue),
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => NpcVenueDetailScreen(venue: venue),
+            ),
           );
         },
       ),

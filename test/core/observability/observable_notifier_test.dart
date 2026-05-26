@@ -172,7 +172,9 @@ void main() {
       );
     });
 
-    test('silentTransition calls document why telemetry is intentionally skipped', () {
+    test(
+        'silentTransition calls document why telemetry is intentionally skipped',
+        () {
       final libDir = Directory('lib');
       final violations = <String>[];
 

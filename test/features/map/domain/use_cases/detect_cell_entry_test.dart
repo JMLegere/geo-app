@@ -134,7 +134,8 @@ void main() {
       expect(result?.id, 'cell-1');
     });
 
-    test('execute returns null when current point is outside all cells', () async {
+    test('execute returns null when current point is outside all cells',
+        () async {
       final result = await useCase.execute(
         (
           cells: const [],
@@ -147,7 +148,8 @@ void main() {
       expect(result, isNull);
     });
 
-    test('execute returns first cell id when entering any cell initially', () async {
+    test('execute returns first cell id when entering any cell initially',
+        () async {
       final result = await useCase.execute(
         (
           cells: [

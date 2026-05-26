@@ -317,6 +317,13 @@ export const actionCapabilities = {
     "binds an unlocked feature UI to the nearest eligible NPC of that authored type",
     playerActionWorkflows.npcFeatureUnlock,
   ),
+  openNpcVenueDetail: navigationAction(
+    "open-npc-venue-detail",
+    "Open NPC venue detail",
+    "NPC venue detail page",
+    "opens a dedicated NPC-first venue detail page from Town or map cell",
+    playerActionWorkflows.npcFeatureUnlock,
+  ),
 
   openFieldGuide: navigationAction(
     "open-field-guide",

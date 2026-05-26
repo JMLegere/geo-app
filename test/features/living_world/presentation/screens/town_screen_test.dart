@@ -15,7 +15,7 @@ class _DiscoveredNpcVenueNotifier extends NpcVenueNotifier {
       discoveredVenue: NpcVenue(
         id: 'wildlife-rehabilitation-center:city-a',
         kind: NpcVenueKind.wildlifeRehabilitationCenter,
-        venueName: "Rowan's Wildlife Rehab Center",
+        venueName: "Rowan's Rehab Center",
         npcName: 'Rowan',
         npcRole: 'Wildlife Rehabilitator',
         featureName: 'Release to Wild',
@@ -51,8 +51,7 @@ void main() {
     );
   });
 
-  testWidgets(
-      'shows a character-owned Wildlife Rehab Center after NPC discovery',
+  testWidgets('opens a dedicated NPC-first venue page after NPC discovery',
       (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -66,7 +65,7 @@ void main() {
       ),
     );
 
-    expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
+    expect(find.text("Rowan's Rehab Center"), findsOneWidget);
     expect(
       find.text('Rowan  •  Release to Wild  •  Coming soon'),
       findsOneWidget,
@@ -74,13 +73,15 @@ void main() {
     expect(find.text('Wildlife Rehabilitator'), findsNothing);
     expect(find.text('Not yet accepting releases.'), findsNothing);
 
-    await tester.tap(find.text("Rowan's Wildlife Rehab Center"));
+    await tester.tap(find.text("Rowan's Rehab Center"));
     await tester.pumpAndSettle();
 
-    expect(find.text('Rowan  •  Wildlife Rehabilitator'), findsOneWidget);
-    expect(find.text('Service'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text("Rowan's Rehab Center"), findsOneWidget);
+    expect(find.text('Rowan'), findsOneWidget);
+    expect(find.text('Wildlife Rehabilitator'), findsOneWidget);
+    expect(find.text('Features'), findsOneWidget);
     expect(find.text('Release to Wild'), findsOneWidget);
-    expect(find.text('Status'), findsOneWidget);
     expect(find.text('Coming soon'), findsOneWidget);
     expect(
       find.text(

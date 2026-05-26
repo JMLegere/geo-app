@@ -20,7 +20,8 @@ class FakeItemRepository implements ItemRepository {
   }
 
   @override
-  Future<List<Item>> fetchItems(String userId, {String? traceId}) async => [item];
+  Future<List<Item>> fetchItems(String userId, {String? traceId}) async =>
+      [item];
 
   @override
   Future<Item> identifyUnidentifiedFind(
@@ -35,7 +36,8 @@ class FakeItemRepository implements ItemRepository {
 class TestObservabilityService extends ObservabilityService {
   TestObservabilityService() : super(sessionId: 'test-session');
 
-  final List<({String event, String category, Map<String, dynamic>? data})> events = [];
+  final List<({String event, String category, Map<String, dynamic>? data})>
+      events = [];
 
   @override
   void log(String event, String category, {Map<String, dynamic>? data}) {

@@ -74,8 +74,7 @@ class ItemDto {
             ? null
             : DateTime.parse(json['identified_at'] as String),
         identifiedDisplayName: json['identified_display_name'] as String?,
-        identifiedScientificName:
-            json['identified_scientific_name'] as String?,
+        identifiedScientificName: json['identified_scientific_name'] as String?,
         identifiedTaxonomicClass: json['identified_taxonomic_class'] as String?,
         identifiedHabitats:
             _parseJsonArray(json['identified_habitats_json'] as String?),

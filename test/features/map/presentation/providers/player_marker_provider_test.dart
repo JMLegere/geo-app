@@ -106,7 +106,6 @@ Future<void> _anchorMarkerAt(
   await Future<void>.delayed(Duration.zero);
 }
 
-
 void main() {
   group('SplineConfig', () {
     test('ringThresholdMeters is 100m', () {
@@ -200,8 +199,7 @@ void main() {
       expect(state.isRing, isFalse);
     });
 
-    test('low-confidence GPS still drags marker below ring distance',
-        () async {
+    test('low-confidence GPS still drags marker below ring distance', () async {
       container.read(playerMarkerProvider);
 
       repo.emitPosition(_trustedPosition(45.9636, -66.6431));

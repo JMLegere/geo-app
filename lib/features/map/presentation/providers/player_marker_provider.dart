@@ -69,7 +69,6 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
     );
   }
 
-
   void _setGpsTarget(LocationState location) {
     final hadGps = _hasGps;
     _gpsLat = location.lat;
@@ -94,6 +93,7 @@ class PlayerMarkerNotifier extends ObservableNotifier<PlayerMarkerState> {
       },
     );
   }
+
   void _tick() {
     if (!_hasGps) return;
 

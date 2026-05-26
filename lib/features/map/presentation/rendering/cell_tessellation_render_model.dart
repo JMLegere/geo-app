@@ -172,7 +172,8 @@ class CellTessellationRenderModel {
     return switch (side.state.relationship) {
       CellRelationship.present ||
       CellRelationship.explored ||
-      CellRelationship.frontier => true,
+      CellRelationship.frontier =>
+        true,
       CellRelationship.unknown => false,
     };
   }

@@ -34,7 +34,8 @@ class TestObservabilityService extends ObservabilityService {
 Item _testItem({
   String id = 'item-1',
   String name = 'Test Ocelot',
-  ItemIdentificationState identificationState = ItemIdentificationState.identified,
+  ItemIdentificationState identificationState =
+      ItemIdentificationState.identified,
   String? identifiedDisplayName,
 }) =>
     Item(
@@ -334,7 +335,8 @@ void main() {
       expect(container.read(itemsProvider).items, hasLength(1));
     });
 
-    test('identifyUnidentifiedFind updates Pack item to identified state', () async {
+    test('identifyUnidentifiedFind updates Pack item to identified state',
+        () async {
       final unidentified = _testItem(
         id: 'discovery-1',
         name: 'Unidentified fauna specimen',
@@ -358,13 +360,16 @@ void main() {
           .read(authProvider.notifier)
           .signInWithPhone('+15551234567');
       container.read(itemsProvider);
-      container.read(itemsProvider.notifier).registerOwnedDiscovery(unidentified);
+      container
+          .read(itemsProvider.notifier)
+          .registerOwnedDiscovery(unidentified);
       final identified = await container
           .read(itemsProvider.notifier)
           .identifyUnidentifiedFind(unidentified.id);
 
       expect(identified, isNotNull);
-      expect(identified!.identificationState, ItemIdentificationState.identified);
+      expect(
+          identified!.identificationState, ItemIdentificationState.identified);
       expect(identified.displayName, 'Amberwing Warbler');
       expect(container.read(itemsProvider).items.single.displayName,
           'Amberwing Warbler');

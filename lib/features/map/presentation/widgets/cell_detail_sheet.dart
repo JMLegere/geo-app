@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
-import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart';
+import 'package:earth_nova/features/living_world/presentation/screens/npc_venue_detail_screen.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
@@ -197,11 +197,23 @@ class CellDetailSheet extends StatelessWidget {
   }
 
   void _openVenueDetail(BuildContext context, NpcVenue venue) {
-    Navigator.of(context).pop();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => NpcVenueDetailSheet(venue: venue),
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigator.push(
+          MaterialPageRoute<void>(
+            builder: (_) => NpcVenueDetailScreen(venue: venue),
+          ),
+        );
+      });
+      return;
+    }
+
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => NpcVenueDetailScreen(venue: venue),
+      ),
     );
   }
 

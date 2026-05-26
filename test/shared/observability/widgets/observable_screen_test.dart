@@ -33,7 +33,8 @@ void main() {
 
       expect(observability.findEvent('ui.widget.dispose'), isNotNull);
       expect(observability.findEvent('ui.screen.disposed'), isNotNull);
-      expect(observability.findEvent('ui.screen.disposed_before_ready'), isNull);
+      expect(
+          observability.findEvent('ui.screen.disposed_before_ready'), isNull);
     });
 
     testWidgets('emits build jank event for 101ms build', (tester) async {
@@ -124,7 +125,8 @@ void main() {
       expect(find.text('Recovered'), findsOneWidget);
     });
 
-    testWidgets('emits load_timeout and disposed_before_ready when screen never becomes ready',
+    testWidgets(
+        'emits load_timeout and disposed_before_ready when screen never becomes ready',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
@@ -102,34 +105,49 @@ void main() {
       },
     );
 
-    testWidgets('shows a tight row when the map cell contains an NPC venue',
+    testWidgets('opens a venue page when the map cell contains an NPC venue',
         (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CellDetailSheet(
-              cell: _cell(habitats: const [Habitat.urban]),
-              visitCount: 1,
-              isFirstVisit: false,
-              currentRelationship: CellRelationship.present,
-              npcVenue: const NpcVenue(
-                id: 'wildlife-rehabilitation-center:city-a',
-                kind: NpcVenueKind.wildlifeRehabilitationCenter,
-                venueName: "Rowan's Wildlife Rehab Center",
-                npcName: 'Rowan',
-                npcRole: 'Wildlife Rehabilitator',
-                featureName: 'Release to Wild',
-                cellId: 'v_22982_-33322',
-                cityId: 'city_fredericton',
-                position: (lat: 45.0, lng: -66.0),
+        ProviderScope(
+          overrides: [
+            appObservabilityProvider.overrideWithValue(
+              ObservabilityService(sessionId: 'test-session'),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CellDetailSheet(
+                cell: _cell(habitats: const [Habitat.urban]),
+                visitCount: 1,
+                isFirstVisit: false,
+                currentRelationship: CellRelationship.present,
+                npcVenue: const NpcVenue(
+                  id: 'wildlife-rehabilitation-center:city-a',
+                  kind: NpcVenueKind.wildlifeRehabilitationCenter,
+                  venueName: "Rowan's Rehab Center",
+                  npcName: 'Rowan',
+                  npcRole: 'Wildlife Rehabilitator',
+                  featureName: 'Release to Wild',
+                  cellId: 'v_22982_-33322',
+                  cityId: 'city_fredericton',
+                  position: (lat: 45.0, lng: -66.0),
+                ),
               ),
             ),
           ),
         ),
       );
 
-      expect(find.text("Rowan's Wildlife Rehab Center"), findsOneWidget);
+      expect(find.text("Rowan's Rehab Center"), findsOneWidget);
       expect(find.text('Rowan  •  Release to Wild'), findsOneWidget);
+
+      await tester.tap(find.text("Rowan's Rehab Center"));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Back'), findsOneWidget);
+      expect(find.text('Features'), findsOneWidget);
+      expect(find.text('Release to Wild'), findsOneWidget);
+      expect(find.text('Coming soon'), findsOneWidget);
     });
   });
 }

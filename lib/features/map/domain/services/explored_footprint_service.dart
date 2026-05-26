@@ -32,7 +32,8 @@ class ExploredFootprintService {
     required Set<String> persistedVisitedCellIds,
     required Set<String> optimisticVisitedCellIds,
   }) {
-    final overlap = persistedVisitedCellIds.intersection(optimisticVisitedCellIds);
+    final overlap =
+        persistedVisitedCellIds.intersection(optimisticVisitedCellIds);
     final visitedCellIds = {
       ...persistedVisitedCellIds,
       ...optimisticVisitedCellIds,

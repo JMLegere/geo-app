@@ -283,8 +283,7 @@ void main() {
       expect(testObs.eventNames, isNot(contains('map.cell_entered')));
     });
 
-    test(
-        "eligible initial occupancy discovers Rowan's Wildlife Rehab Center venue",
+    test("eligible initial occupancy discovers Rowan's Rehab Center venue",
         () async {
       final notifier = container.read(explorationProvider.notifier);
       await notifier.onPositionUpdate(
@@ -300,7 +299,7 @@ void main() {
 
       final venue = container.read(npcVenueProvider).discoveredVenue;
       expect(venue, isNotNull);
-      expect(venue!.venueName, "Rowan's Wildlife Rehab Center");
+      expect(venue!.venueName, "Rowan's Rehab Center");
       expect(venue.npcName, 'Rowan');
       expect(venue.featureName, 'Release to Wild');
       expect(venue.cellId, 'cell-A');

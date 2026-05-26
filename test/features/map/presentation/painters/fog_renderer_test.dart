@@ -89,8 +89,10 @@ void main() {
         final frontier = _state(CellRelationship.frontier);
         final unknown = _state(CellRelationship.unknown);
 
-        expect(FogRenderer.seamGlowStrokeWidth(frontier), greaterThanOrEqualTo(0.9));
-        expect(FogRenderer.seamStrokeWidth(frontier), greaterThanOrEqualTo(0.55));
+        expect(FogRenderer.seamGlowStrokeWidth(frontier),
+            greaterThanOrEqualTo(0.9));
+        expect(
+            FogRenderer.seamStrokeWidth(frontier), greaterThanOrEqualTo(0.55));
         expect(FogRenderer.seamGlowStrokeWidth(unknown), 0.0);
         expect(FogRenderer.seamStrokeWidth(unknown), 0.0);
       });

@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('fetch_nearby_cells uses indexed geometry coverage before JSON projection', () {
+  test(
+      'fetch_nearby_cells uses indexed geometry coverage before JSON projection',
+      () {
     final migration = File(
       '${Directory.current.path}/supabase/migrations/073_optimize_fetch_nearby_cells.sql',
     );

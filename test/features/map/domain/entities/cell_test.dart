@@ -120,7 +120,8 @@ void main() {
       expect(a, isNot(equals(b)));
     });
 
-    test('hasRenderableGeometry is false when no exterior ring has 3 points', () {
+    test('hasRenderableGeometry is false when no exterior ring has 3 points',
+        () {
       const cell = Cell(
         id: id,
         habitats: habitats,

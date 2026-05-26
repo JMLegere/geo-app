@@ -8,8 +8,10 @@ void main() {
       final ciFile = File('.github/workflows/ci.yml');
       final dockerfile = File('Dockerfile');
 
-      expect(ciFile.existsSync(), isTrue, reason: 'Expected CI workflow to exist');
-      expect(dockerfile.existsSync(), isTrue, reason: 'Expected Dockerfile to exist');
+      expect(ciFile.existsSync(), isTrue,
+          reason: 'Expected CI workflow to exist');
+      expect(dockerfile.existsSync(), isTrue,
+          reason: 'Expected Dockerfile to exist');
 
       final ci = ciFile.readAsStringSync();
       final docker = dockerfile.readAsStringSync();
@@ -22,7 +24,8 @@ void main() {
           reason: 'CI workflow must declare a Flutter version pin');
 
       final flutterVersion = versionMatch!.group(1)!;
-      final expectedImage = 'FROM instrumentisto/flutter:$flutterVersion AS build';
+      final expectedImage =
+          'FROM instrumentisto/flutter:$flutterVersion AS build';
 
       expect(
         docker,

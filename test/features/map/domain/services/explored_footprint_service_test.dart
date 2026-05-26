@@ -4,7 +4,8 @@ import 'package:earth_nova/features/map/domain/services/explored_footprint_servi
 
 void main() {
   group('ExploredFootprintService', () {
-    test('projects persisted and optimistic visits into one unique footprint', () {
+    test('projects persisted and optimistic visits into one unique footprint',
+        () {
       const service = ExploredFootprintService();
 
       final projection = service.project(
@@ -33,7 +34,8 @@ void main() {
       );
     });
 
-    test('wouldAddToFootprint describes derived unique footprint membership', () {
+    test('wouldAddToFootprint describes derived unique footprint membership',
+        () {
       const service = ExploredFootprintService();
 
       final projection = service.project(

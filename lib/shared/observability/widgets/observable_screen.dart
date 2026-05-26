@@ -182,7 +182,6 @@ class _ObservableScreenState extends State<ObservableScreen> {
     );
   }
 
-
   void _handleRetry() {
     widget.onRetry?.call();
     if (!mounted) return;

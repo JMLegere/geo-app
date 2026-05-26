@@ -46,7 +46,8 @@ void main() {
       );
     });
 
-    test('acquireDiscoveryItem creates and returns a new unidentified item', () async {
+    test('acquireDiscoveryItem creates and returns a new unidentified item',
+        () async {
       final repo = MockItemRepository();
       final draft = DiscoveryItemDraft(
         userId: 'user-123',

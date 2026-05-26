@@ -35,7 +35,8 @@ void main() {
       expect(result, {'cell-1', 'cell-2'});
     });
 
-    test('isFirstVisit returns true when injected lookup returns no rows', () async {
+    test('isFirstVisit returns true when injected lookup returns no rows',
+        () async {
       final adapter = SupabaseCellVisitAdapter(
         client: null,
         firstVisitQuery: (userId, cellId) async {
@@ -53,7 +54,8 @@ void main() {
       expect(result, isTrue);
     });
 
-    test('isFirstVisit returns false when injected lookup finds a row', () async {
+    test('isFirstVisit returns false when injected lookup finds a row',
+        () async {
       final adapter = SupabaseCellVisitAdapter(
         client: null,
         firstVisitQuery: (_, __) async => [
@@ -69,7 +71,8 @@ void main() {
       expect(result, isFalse);
     });
 
-    test('throws when recordVisit has neither client nor injected query', () async {
+    test('throws when recordVisit has neither client nor injected query',
+        () async {
       final adapter = SupabaseCellVisitAdapter(client: null);
 
       await expectLater(

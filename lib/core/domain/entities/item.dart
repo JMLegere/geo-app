@@ -103,8 +103,9 @@ class Item {
   bool get isUnidentified =>
       identificationState == ItemIdentificationState.unidentified;
 
-  String get visibleDisplayName =>
-      isUnidentified ? 'Unidentified ${category.label.toLowerCase()} specimen' : displayName;
+  String get visibleDisplayName => isUnidentified
+      ? 'Unidentified ${category.label.toLowerCase()} specimen'
+      : displayName;
 
   String? get visibleScientificName => isUnidentified ? null : scientificName;
 
@@ -153,7 +154,8 @@ class Item {
         continents: continents ?? this.continents,
         identificationState: identificationState ?? this.identificationState,
         identifiedAt: identifiedAt ?? this.identifiedAt,
-        identifiedDisplayName: identifiedDisplayName ?? this.identifiedDisplayName,
+        identifiedDisplayName:
+            identifiedDisplayName ?? this.identifiedDisplayName,
         identifiedScientificName:
             identifiedScientificName ?? this.identifiedScientificName,
         identifiedTaxonomicClass:
@@ -166,8 +168,7 @@ class Item {
         displayName: identifiedDisplayName ?? displayName,
         scientificName: identifiedScientificName ?? scientificName,
         taxonomicClass: identifiedTaxonomicClass ?? taxonomicClass,
-        habitats:
-            identifiedHabitats.isNotEmpty ? identifiedHabitats : habitats,
+        habitats: identifiedHabitats.isNotEmpty ? identifiedHabitats : habitats,
         continents:
             identifiedContinents.isNotEmpty ? identifiedContinents : continents,
         identificationState: ItemIdentificationState.identified,

@@ -40,6 +40,7 @@ abstract final class PlayerActions {
   static const PlayerActionId discoverNpcVenue = 'discover-npc-venue';
   static const PlayerActionId openTown = 'open-town';
   static const PlayerActionId openNpcLedFeature = 'open-npc-led-feature';
+  static const PlayerActionId openNpcVenueDetail = 'open-npc-venue-detail';
 
   static const PlayerActionId openFieldGuide = 'open-field-guide';
   static const PlayerActionId inspectFieldGuideEntry =
@@ -109,6 +110,7 @@ abstract final class PlayerActions {
     discoverNpcVenue,
     openTown,
     openNpcLedFeature,
+    openNpcVenueDetail,
     openFieldGuide,
     inspectFieldGuideEntry,
     viewConservationGoal,

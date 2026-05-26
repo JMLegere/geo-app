@@ -91,12 +91,13 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
   ),
   DesignSurfaceDefinition(
     path:
-        'lib/features/living_world/presentation/widgets/npc_venue_detail_sheet.dart',
-    category: DesignSurfaceCategory.featureWidget,
+        'lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart',
+    category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'NPC venue visiting/detail sheet opened from Town and map cells.',
+    purpose:
+        'NPC-first venue/location detail page opened from Town and map cells.',
     designSystemNotes:
-        'Compact visiting sheet composes app theme tokens directly until venue/detail-sheet primitives are added.',
+        'Dedicated venue page composes app theme tokens directly until venue/detail-page primitives are added.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/painters/cell_overlay_painter.dart',
