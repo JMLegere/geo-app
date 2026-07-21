@@ -48,7 +48,10 @@ jobs:
         run: mise install github:JMLegere/eac
 
       - name: Run EAC check
-        run: mise exec -- npm run eac:check
+        run: |
+          EAC_BIN="$(mise which eac)"
+          export PATH="$(dirname "$EAC_BIN"):$PATH"
+          npm run eac:check
 
   test:
     name: Test
