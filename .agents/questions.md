@@ -33,6 +33,7 @@
 ## Operational Gates
 
 - **Production migration secret:** Verify whether `SUPABASE_PRODUCTION_DB_PASSWORD` is configured before any production migration workflow is approved.
+- **Railway production auto-deploy policy:** The `main` push for beta commit `ba85fdc` was observed as a successful Railway `production / geo-app` deployment even though the GitHub workflow invokes Railway with `--environment beta`. Decide whether production must be disconnected from the GitHub `main` auto-deploy source, retargeted to an explicit promotion branch, or explicitly allowed; confirm whether this production deployment requires a separate rollback/production acceptance review.
 - **Legacy Railway beta service cleanup:** Re-verify the unused sibling service and available deletion permissions before requesting manual removal.
 
 ## Resolved or Superseded Questions
