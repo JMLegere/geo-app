@@ -32,7 +32,7 @@ Feature: Map Frame
     Given the Map first slice is being designed
     When the map frame coordinates marker trust, cell border crossing, fog reveal, and map cell acknowledgement
     Then the player should get one coherent walking loop before territory dashboards or discovery rewards expand
-    And the frame should not require Pack, Identification, Field Guide, or multiplayer systems to feel playable
+    And the frame should not require Pack, Identification, Index, or multiplayer systems to feel playable
 
   Scenario: Readiness contract prevents false playability
     Given the first-slice map requires map style, nearby cells, visit history, location state, and overlay paint

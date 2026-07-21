@@ -14,133 +14,152 @@ export const productFeatures = {
     label: "Map Frame",
     capability: "map",
     kind: "surface",
-    description: "GPS-first map shell that answers where am I, where have I been, and where should I go without exposing raw debug mechanics.",
+    description:
+      "GPS-first map shell that answers where am I, where have I been, and where should I go without exposing raw debug mechanics.",
   }),
   mapDebugControls: feature({
     id: "map-debug-controls",
     label: "Map Debug Controls",
     capability: "map",
     kind: "surface",
-    description: "Developer-only on-screen controls for moving the gameplay marker and injecting map gestures so map state can be tested without real walking.",
+    description:
+      "Developer-only on-screen controls for moving the gameplay marker and injecting map gestures so map state can be tested without real walking.",
   }),
   playerMarkerAccuracyRing: feature({
     id: "player-marker-accuracy-ring",
     label: "Player Marker + Accuracy Ring",
     capability: "map",
     kind: "surface",
-    description: "Trusted gameplay position surface with marker smoothing, accuracy ring, and suspended-exploration ring state for unreliable GPS.",
+    description:
+      "Trusted gameplay position surface with marker smoothing, accuracy ring, and suspended-exploration ring state for unreliable GPS.",
   }),
   fogOverlay: feature({
     id: "fog-overlay",
     label: "Fog Overlay",
     capability: "map",
     kind: "surface",
-    description: "Visual reveal layer for present, explored, frontier, unknown, and beyond states, tuned to make movement feel like cozy accumulation.",
+    description:
+      "Visual reveal layer for present, explored, frontier, unknown, and beyond states, tuned to make movement feel like cozy accumulation.",
   }),
   mapCellDetailSheet: feature({
     id: "map-cell-detail-sheet",
     label: "Map Cell Detail Sheet",
     capability: "map",
     kind: "surface",
-    description: "Tap/detail sheet that describes the current Voronoi map cell before deeper discovery or collection systems take over.",
+    description:
+      "Tap/detail sheet that describes the current Voronoi map cell before deeper discovery or collection systems take over.",
   }),
   nearbyOpportunityLayer: feature({
     id: "nearby-opportunity-layer",
     label: "Nearby Opportunity Layer",
     capability: "map",
     kind: "surface",
-    description: "Reachable tease layer for nearby unexplored map cells and possible finds, so the map says where should I go next.",
+    description:
+      "Reachable tease layer for nearby unexplored map cells and possible activity, so the map says where should I go next.",
   }),
   worldEventCueLayer: feature({
     id: "world-event-cue-layer",
     label: "World Event Cue Layer",
     capability: "map",
     kind: "surface",
-    description: "Map cue layer for optional time-sensitive happenings such as Wildlife Migration without making events the core map loop.",
+    description:
+      "Aspirational map-event cue evidence; event timing, eligibility, and Encounter integration are not approved target behavior.",
   }),
   districts: feature({
     id: "districts",
     label: "Districts",
     capability: "map",
     kind: "app-section",
-    description: "Local territory view where explored map cells roll up into a neighborhood-sized footprint map, with the current district highlighted and adjacent districts faded for context.",
+    description:
+      "Aspirational atlas surface for the canonical District geography level; the UI and progression rollup are not approved here.",
   }),
   cities: feature({
     id: "cities",
     label: "Cities",
     capability: "map",
     kind: "app-section",
-    description: "City-scale atlas view where district progress combines into city identity, pride, and navigation.",
+    description:
+      "Aspirational atlas surface for the canonical City geography level; the UI and progression rollup are not approved here.",
   }),
   states: feature({
     id: "states",
     label: "States",
     capability: "map",
     kind: "app-section",
-    description: "State or province passport view where city progress becomes larger regional travel progress.",
+    description:
+      "Aspirational atlas surface for the canonical State geography level; the UI and progression rollup are not approved here.",
   }),
   countries: feature({
     id: "countries",
     label: "Countries",
     capability: "map",
     kind: "app-section",
-    description: "Country-scale passport view where state/province progress becomes national exploration progress.",
+    description:
+      "Aspirational atlas surface for the canonical Country geography level; the UI and progression rollup are not approved here.",
   }),
   world: feature({
     id: "world",
     label: "World",
     capability: "map",
     kind: "app-section",
-    description: "World atlas view where the player's lifelong footprint becomes global progress.",
+    description:
+      "Aspirational atlas surface for the canonical World geography level; global progress behavior is not approved here.",
   }),
   territoryNavigation: feature({
     id: "territory-navigation",
     label: "Territory Navigation",
     capability: "map",
     kind: "surface",
-    description: "Zoom ladder and navigation rules connecting GPS cell view to District, City, State, Country, and World views.",
+    description:
+      "Aspirational navigation evidence for the canonical Cell → District → City → State → Country → World hierarchy; zoom behavior is not approved here.",
   }),
   explorationEligibilityState: feature({
     id: "exploration-eligibility-state",
     label: "Exploration Eligibility State",
     capability: "map",
     kind: "data-model",
-    description: "State model that decides when movement may record visits, reveal fog, and trigger discovery handoff versus when GPS trust pauses play.",
+    description:
+      "Determines whether Exploration may record a Cell Visit and reveal fog. Selector, Encounter, and Condition behavior remains target routing, not implementation evidence.",
   }),
   cellEntryModel: feature({
     id: "cell-entry-model",
-    label: "Map Cell Entry Model",
+    label: "Cell Visit evidence",
     capability: "map",
     kind: "data-model",
-    description: "Map-cell entry model that turns eligible movement into a single reward-clean entry event, with Voronoi border crossing treated as a geometric implementation detail.",
+    description:
+      "Legacy map-cell-entry identifier retained for evidence compatibility. The approved target records a Cell Visit, which resolves a Selector to None or one Encounter.",
   }),
   fogStateModel: feature({
     id: "fog-state-model",
     label: "Fog State Model",
     capability: "map",
     kind: "data-model",
-    description: "Computed fog relationship model derived from current marker cell, visit history, and shared map-cell borders without persisted fog snapshots.",
+    description:
+      "Computed fog relationship model derived from current marker cell, visit history, and shared map-cell borders without persisted fog snapshots.",
   }),
   globalMapStateModel: feature({
     id: "global-map-state-model",
     label: "Global Map State Model",
     capability: "map",
     kind: "data-model",
-    description: "Shared daily/weekly/season/permanent map state model where map cells refresh globally on GMT cadence while player visits, fog, and claims remain personal.",
+    description:
+      "Legacy shared-cadence map-state evidence. It does not settle Encounter rates, Selector weights, or future recurrence rules.",
   }),
   territoryProgressModel: feature({
     id: "territory-progress-model",
     label: "Territory Progress Model",
     capability: "map",
     kind: "data-model",
-    description: "Rollup model for district, city, state, country, and world progress from explored map cells.",
+    description:
+      "Aspirational rollup evidence for canonical geography levels; progress formulas and rewards are not approved target behavior.",
   }),
   worldEventInstanceModel: feature({
     id: "world-event-instance-model",
     label: "World Event Instance Model",
     capability: "map",
     kind: "data-model",
-    description: "Timed event instance model for map-visible happenings, locations, expiration, eligibility, and event detail handoff.",
+    description:
+      "Aspirational event-instance evidence; event timing, eligibility, presentation, and Outcomes are not approved target behavior.",
   }),
 
   zoology: feature({
@@ -148,49 +167,56 @@ export const productFeatures = {
     label: "Zoology",
     capability: "zoology",
     kind: "app-section",
-    description: "Animal-focused discipline section surfaced through the Field Guide feature for fauna, threatened species meaning, behavior, signs, and migrations.",
+    description:
+      "Animal-focused Discipline section surfaced through Index for Fauna knowledge. Discipline tuning remains open.",
   }),
   botany: feature({
     id: "botany",
     label: "Botany",
     capability: "botany",
     kind: "app-section",
-    description: "Plant-focused discipline section surfaced through the Field Guide feature for flora, habitats, growth stages, and seasonal plant states.",
+    description:
+      "Plant-focused Discipline section surfaced through Index for Flora knowledge. Discipline tuning remains open.",
   }),
   mycology: feature({
     id: "mycology",
     label: "Mycology",
     capability: "mycology",
     kind: "app-section",
-    description: "Fungi-focused discipline section surfaced through the Field Guide feature for fungal finds, substrates, spores, and hidden environmental conditions.",
+    description:
+      "Legacy Mycology evidence; the current canonical Discipline mappings are limited to the five resolved knowledge Item Categories.",
   }),
   geology: feature({
     id: "geology",
     label: "Geology",
     capability: "geology",
     kind: "app-section",
-    description: "Rock and mineral discipline section surfaced through the Field Guide feature for mineral finds, specimens, and landform context.",
+    description:
+      "Mineral-focused Discipline section surfaced through Index for Mineral knowledge. Discipline tuning remains open.",
   }),
   paleontology: feature({
     id: "paleontology",
     label: "Paleontology",
     capability: "paleontology",
     kind: "app-section",
-    description: "Fossil discipline section surfaced through the Field Guide feature for extinct life, fossil records, and deep-time timeline context.",
+    description:
+      "Fossil-focused Discipline section surfaced through Index for Fossil knowledge. Discipline tuning remains open.",
   }),
   genetics: feature({
     id: "genetics",
     label: "Genetics",
     capability: "genetics",
     kind: "data-model",
-    description: "Trait and inheritance model surfaced through the Field Guide feature for variation within species and generation-to-generation changes.",
+    description:
+      "Legacy genetics evidence; it is not a current canonical Discipline or a settled target model.",
   }),
   archaeology: feature({
     id: "archaeology",
     label: "Archaeology",
     capability: "archaeology",
     kind: "app-section",
-    description: "Artifact and human-trace discipline section surfaced through the Field Guide feature for material culture, ruins, and place-based human history.",
+    description:
+      "Artifact-focused Discipline section surfaced through Index for Artifact knowledge. Discipline tuning remains open.",
   }),
 
   discovery: feature({
@@ -198,21 +224,24 @@ export const productFeatures = {
     label: "Discovery",
     capability: "exploration-discovery-lifecycle",
     kind: "game-system",
-    description: "Resolver and reward bridge from reward-clean map-cell entry into quiet revisits, committed unidentified living-specimen rewards, Slay the Spire-style reward modal presentation, queued reward continuation, and fly-to-Pack impact before Identification reveals known finds.",
+    description:
+      "Discovery is the durable first-identification milestone for one Base Item and feeds Index. The retained legacy reward-bridge evidence must not be read as Cell entry, Encounter, or Item acquisition being Discovery.",
   }),
   pack: feature({
     id: "pack",
     label: "Pack",
     capability: "exploration-discovery-lifecycle",
     kind: "app-section",
-    description: "Owned unidentified and identified-find inventory that verifies Discovery acquisition with grid/search, filters, find cards, details, identification state, acquisition provenance, and reward-card landing impact feedback.",
+    description:
+      "Player-facing collection of owned Items. The retained legacy find/reward-card evidence is historical terminology, not current target behavior.",
   }),
   identification: feature({
     id: "identification",
     label: "Identification",
     capability: "exploration-discovery-lifecycle",
     kind: "surface",
-    description: "Required unknown-to-known follow-up system for unidentified finds acquired from Discovery, revealing species identity, deterministic traits, and known Pack state.",
+    description:
+      "Identification reveals an Item's Base Item and resolves Variable Property Selectors from its exact Base Item Version. It may record Discovery; legacy deterministic-trait evidence does not settle target behavior.",
   }),
 
   town: feature({
@@ -220,78 +249,89 @@ export const productFeatures = {
     label: "Town",
     capability: "living-world",
     kind: "app-section",
-    description: "Top-level NPC-led world surface that lists unlocked character-owned local places and opens each place's authored service bound to the nearest eligible local NPC.",
+    description:
+      "Player-facing index of known Venues, Villagers, and Services. Existing NPC/place/feature binding evidence is legacy only.",
   }),
   npcVenues: feature({
     id: "npc-venues",
-    label: "NPC Venues",
+    label: "Venues",
     capability: "living-world",
     kind: "data-model",
-    description: "City-scoped, POI-anchored venue placement model for authored NPC functions: one NPC type per city, one NPC venue per cell, placed at the most popular eligible POI.",
+    description:
+      "Legacy identifier retained for evidence compatibility. The approved target uses Venues, Villagers, and Services; placement and reveal behavior are not implemented by this catalog.",
   }),
   wildlifeRehabilitationCenter: feature({
     id: "wildlife-rehabilitation-center",
     label: "Wildlife Rehabilitation Center",
     capability: "living-world",
     kind: "surface",
-    description: "First concrete NPC venue/role: a city-owned, character-owned Wildlife Rehab Center run by a Wildlife Rehabilitator that introduces Release to Wild.",
+    description:
+      "Legacy example of a Venue and Service. Its role and release behavior do not establish approved target implementation.",
   }),
 
   fieldGuide: feature({
     id: "field-guide",
-    label: "Field Guide",
+    label: "Index",
     capability: "progression-permanence",
     kind: "app-section",
-    description: "Persistent knowledge codex where species pages, discipline sections, learned observations, and known-find history outlive inventory ownership.",
+    description:
+      "Legacy identifier retained for evidence compatibility. Index projects the Base Items the player has Discovered; it is distinct from Pack and its implementation remains outside this catalog.",
   }),
   conservation: feature({
     id: "conservation",
     label: "Conservation",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "Stewardship layer for threat status meaning, conservation goals, and species/place care context.",
+    description:
+      "Aspirational conservation-system evidence. Conservation Status remains factual Item content; goals and contribution mechanics are not approved here.",
   }),
   releaseToWild: feature({
     id: "release-to-wild",
     label: "Release to Wild",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "Wildlife rehabilitation loop where players perform base one-off releases for a flat Orb item-stack reward, optionally contribute eligible fauna to local conservation programs for fixed bonus Orb item-stack rewards, remove released animals from active Pack, and preserve release history.",
+    description:
+      "Legacy release-loop evidence. Orb rewards and release rules are not approved target mechanics.",
   }),
   orbCrafting: feature({
     id: "orb-crafting",
     label: "Orb Crafting",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "PoE-style crafting system where Orb item stacks are consumed to reroll an owned animal's personality, cosmetic variant, or authored non-science traits without changing species, provenance, rarity, or conservation status.",
+    description:
+      "Explicitly open: Orb purpose and behavior are unresolved. This legacy crafting identifier and its reroll model do not describe an active target mechanic.",
   }),
   collections: feature({
     id: "collections",
     label: "Collections",
     capability: "progression-permanence",
     kind: "app-section",
-    description: "Collection catalog, collection details, bundle slots, donation/commit flow, cross-domain sets, and completion rewards.",
+    description:
+      "Aspirational collection-system evidence; bundle, donation, commitment, and reward rules are not approved target behavior.",
   }),
   sanctuary: feature({
     id: "sanctuary",
-    label: "Sanctuary",
+    label: "Home",
     capability: "progression-permanence",
     kind: "app-section",
-    description: "Persistent personal base/world with placement model, growth state, and placed-find details.",
+    description:
+      "Legacy identifier retained for evidence compatibility. Every Player has one Home; Home Module behavior remains unresolved.",
   }),
   buddy: feature({
     id: "buddy",
     label: "Buddy",
     capability: "progression-permanence",
     kind: "app-section",
-    description: "Active companion system with buddy slot, map presence, and tamagotchi-style care state/panel.",
+    description:
+      "Aspirational companion-system evidence; buddy ownership, care, and map-presence behavior are not part of the frozen foundation.",
   }),
   lineage: feature({
     id: "lineage",
     label: "Lineage",
     capability: "progression-permanence",
     kind: "game-system",
-    description: "Family tree, breeding pairing flow, offspring result model, inherited traits, and lineage rarity chase.",
+    description:
+      "Legacy lineage evidence. Rarity is not a current mechanic; pairing and offspring behavior remain open.",
   }),
 
   quests: feature({
@@ -299,21 +339,24 @@ export const productFeatures = {
     label: "Quests",
     capability: "motivation",
     kind: "app-section",
-    description: "Science quest board, quest details, progress model, and rewards for directed field goals.",
+    description:
+      "Aspirational quest-system evidence; quest progression and rewards are not approved target behavior.",
   }),
   achievements: feature({
     id: "achievements",
     label: "Achievements",
     capability: "motivation",
     kind: "app-section",
-    description: "Achievement list, milestone unlocks, achievement diaries, and progress models for recognized mastery.",
+    description:
+      "Aspirational achievement-system evidence; milestone and diary behavior are not approved target behavior.",
   }),
   recap: feature({
     id: "recap",
     label: "Recap",
     capability: "motivation",
     kind: "surface",
-    description: "Return recap card stack with progress deltas, world changes, and dismissal model.",
+    description:
+      "Aspirational recap-surface evidence; recap contents and acknowledgement behavior are not approved target behavior.",
   }),
 
   community: feature({
@@ -321,13 +364,15 @@ export const productFeatures = {
     label: "Community",
     capability: "multiplayer",
     kind: "app-section",
-    description: "Community progress surfaces, aggregate discovery model, community events, and shared milestones.",
+    description:
+      "Aspirational multiplayer evidence; community progress, events, and shared milestones are not approved target behavior.",
   }),
   economy: feature({
     id: "economy",
     label: "Economy",
     capability: "multiplayer",
     kind: "game-system",
-    description: "Duplicate value, trading flow, market signal sections, and exchangeable surplus/resource value.",
+    description:
+      "Aspirational economy evidence; trading, markets, and exchangeable value are not approved target behavior.",
   }),
 } as const;

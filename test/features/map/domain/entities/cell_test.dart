@@ -151,8 +151,8 @@ void main() {
         countryId: 'co',
       );
       final expected =
-          Habitat.blendHabitats([Habitat.forest, Habitat.freshwater]);
-      expect(cell.blendedColor, expected);
+          Habitat.blendColorValues([Habitat.forest, Habitat.freshwater]);
+      expect(cell.blendedColor.toARGB32(), expected);
     });
   });
 }

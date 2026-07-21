@@ -3,7 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
-import 'package:earth_nova/features/identification/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';
+import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
 import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
@@ -22,8 +23,6 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/design.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/widgets/stub_screen.dart';
 
 const int _mapTabIndex = 0;
 const int _playerTabIndex = 1;
@@ -39,7 +38,7 @@ PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
       _ => null,
     };
 
-/// 4-tab bottom navigation. Player is backed by Pack; Town lists discovered NPC venues; Home is a stub.
+/// 4-tab bottom navigation. Player is backed by Pack; Town lists discovered NPC venues; Home shows the Player's read-only identity.
 class TabShell extends ConsumerStatefulWidget {
   const TabShell({
     super.key,
@@ -254,7 +253,7 @@ class _TabShellState extends ConsumerState<TabShell>
                   onEdgeSwipe: _onPackEdgeSwipe,
                 ),
             () => const TownScreen(),
-            () => const StubScreen(label: 'Home'),
+            () => const HomeScreen(),
           ];
     _screens = List<Widget>.filled(
       _screenFactories.length,

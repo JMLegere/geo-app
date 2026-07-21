@@ -1,5 +1,4 @@
 import 'package:earth_nova/shared/design.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

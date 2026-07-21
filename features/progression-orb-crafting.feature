@@ -1,28 +1,16 @@
 @capability.progression-permanence @feature.orb-crafting
-Feature: Orb Crafting
-  Orb Crafting is the PoE-style crafting sink for Orb item stacks. Orbs are
-  consumable Pack/inventory resources earned from Release to Wild and spent to
-  reroll safe authored attributes on owned animals.
+Feature: Orb behavior remains open
+  Status: The orb-crafting feature tag and use-orb-on-animal action identifier
+  preserve historical evidence only. Orb purpose, consumption, crafting, and
+  reroll behavior are unresolved; rarity is not a current mechanic.
 
-  Scenario: Orb Crafting defines its game system
-    Given Orb Crafting belongs to the Progression-Permanence capability
-    When the feature is expanded beyond its first design pass
-    Then it should specify Orb item-stack ownership, Orb consumption, target animal eligibility, safe reroll bounds, result audit history, and failed-crafting protection
+  Scenario: Orb does not imply a target mechanic
+    Given Orb is an Item Category with explicit Orb Base Items
+    When current product evidence is read
+    Then it must not claim Orb stacks, currency, crafting, consumption, rerolls, or Release to Wild rewards
 
   @action.use-orb-on-animal
-  Scenario: Player uses an Orb on an animal
-    Given the player is viewing an eligible owned animal on the Pack animal detail surface
-    And the player owns an Orb item stack
-    When the player applies the Orb item stack to that animal
-    Then one Orb stack quantity should be consumed exactly once
-    And the animal should reroll personality, cosmetic variant, or authored non-science traits within safe bounds
-    But species identity, provenance, rarity, and conservation status should never change
-    And the original animal instance should remain owned by the player
-    And the crafting result should be recorded for audit/history
-
-  Scenario: Orb Crafting protects ineligible targets
-    Given the player owns an Orb item stack
-    When Orb Crafting evaluates a target animal
-    Then released animals should be ineligible
-    And animals not owned by the player should be ineligible
-    And unidentified animals should be ineligible until identified
+  Scenario: The legacy Orb action is explicitly gated
+    Given the legacy action identifier remains for evidence compatibility
+    When its catalog entry is read
+    Then it must be marked open rather than an implemented target behavior

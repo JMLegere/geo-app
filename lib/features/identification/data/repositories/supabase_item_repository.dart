@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/data/dtos/item_dto.dart';
@@ -10,6 +8,14 @@ typedef ItemFetchQuery = Future<List<Map<String, dynamic>>> Function(
     String userId);
 typedef ItemAcquireQuery = Future<Map<String, dynamic>> Function(
   DiscoveryItemDraft draft,
+);
+typedef ItemAcquireRpcCaller = Future<dynamic> Function(
+  String functionName,
+  Map<String, dynamic> params,
+);
+typedef ItemFetchRpcCaller = Future<dynamic> Function(
+  String functionName,
+  Map<String, dynamic> params,
 );
 typedef ItemIdentifyQuery = Future<Map<String, dynamic>> Function(
   Item item,
@@ -24,18 +30,24 @@ class SupabaseItemRepository implements ItemRepository {
   SupabaseItemRepository({
     required SupabaseClient? client,
     ItemFetchQuery? fetchItemsQuery,
+    ItemFetchRpcCaller? fetchItemsRpcCaller,
     RepositoryLogEvent? logEvent,
     ItemAcquireQuery? acquireDiscoveryItemQuery,
+    ItemAcquireRpcCaller? acquireDiscoveryItemRpcCaller,
     ItemIdentifyQuery? identifyUnidentifiedFindQuery,
   })  : _client = client,
         _fetchItemsQuery = fetchItemsQuery,
+        _fetchItemsRpcCaller = fetchItemsRpcCaller,
         _acquireDiscoveryItemQuery = acquireDiscoveryItemQuery,
+        _acquireDiscoveryItemRpcCaller = acquireDiscoveryItemRpcCaller,
         _identifyUnidentifiedFindQuery = identifyUnidentifiedFindQuery,
         _logEvent = logEvent;
 
   final SupabaseClient? _client;
   final ItemFetchQuery? _fetchItemsQuery;
+  final ItemFetchRpcCaller? _fetchItemsRpcCaller;
   final ItemAcquireQuery? _acquireDiscoveryItemQuery;
+  final ItemAcquireRpcCaller? _acquireDiscoveryItemRpcCaller;
   final ItemIdentifyQuery? _identifyUnidentifiedFindQuery;
   final RepositoryLogEvent? _logEvent;
   static const _category = 'identification.item_repository';
@@ -64,9 +76,9 @@ class SupabaseItemRepository implements ItemRepository {
         'operation': 'fetch_items',
         'duration_ms': stopwatch.elapsedMilliseconds,
         'error_type': error.runtimeType.toString(),
-        'error_message': error.toString(),
+        'error_message': _safeErrorMessage(error),
       });
-      rethrow;
+      throw StateError('Fetching Pack Items failed.');
     }
   }
 
@@ -90,7 +102,6 @@ class SupabaseItemRepository implements ItemRepository {
         'trace_id': traceId,
         'operation': 'acquire_discovery_item',
         'item_id': item.id,
-        'definition_id': item.definitionId,
         'duration_ms': stopwatch.elapsedMilliseconds,
       });
       return item;
@@ -101,9 +112,9 @@ class SupabaseItemRepository implements ItemRepository {
         'definition_id': draft.definitionId,
         'duration_ms': stopwatch.elapsedMilliseconds,
         'error_type': error.runtimeType.toString(),
-        'error_message': error.toString(),
+        'error_message': _safeErrorMessage(error),
       });
-      rethrow;
+      throw StateError('Acquiring the Item failed.');
     }
   }
 
@@ -138,65 +149,69 @@ class SupabaseItemRepository implements ItemRepository {
         'definition_id': item.definitionId,
         'duration_ms': stopwatch.elapsedMilliseconds,
         'error_type': error.runtimeType.toString(),
-        'error_message': error.toString(),
+        'error_message': _safeErrorMessage(error),
       });
-      rethrow;
+      throw StateError('Identifying the Item failed.');
     }
   }
 
   Future<List<Map<String, dynamic>>> _runFetchItemsQuery(String userId) async {
-    if (_fetchItemsQuery != null) {
-      return _fetchItemsQuery!(userId);
+    final query = _fetchItemsQuery;
+    if (query != null) return query(userId);
+
+    final dynamic response;
+    final caller = _fetchItemsRpcCaller;
+    if (caller != null) {
+      response = await caller('fetch_v3_pack_items', const {});
+    } else {
+      final client = _client;
+      if (client == null) {
+        throw StateError(
+          'Supabase client is required when no Pack query or RPC caller is provided.',
+        );
+      }
+      response = await client.rpc('fetch_v3_pack_items');
     }
-    final client = _client;
-    if (client == null) {
-      throw StateError(
-          'Supabase client is required when no fetchItemsQuery is provided.');
+
+    if (response is! Map || response['items'] is! List) {
+      throw StateError('Pack Item projection must return an items array.');
     }
-    final response = await client
-        .from('v3_items')
-        .select()
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('acquired_at', ascending: false);
-    return (response as List)
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
+    return (response['items'] as List).map((row) {
+      if (row is! Map) {
+        throw StateError('Pack Item projection contains a non-object row.');
+      }
+      return Map<String, dynamic>.from(row);
+    }).toList(growable: false);
   }
 
   Future<Map<String, dynamic>> _runAcquireDiscoveryItemQuery(
     DiscoveryItemDraft draft,
   ) async {
     if (_acquireDiscoveryItemQuery != null) {
-      return _acquireDiscoveryItemQuery!(draft);
-    }
-    final client = _client;
-    if (client == null) {
-      throw StateError(
-          'Supabase client is required when no acquireDiscoveryItemQuery is provided.');
+      final response = await _acquireDiscoveryItemQuery!(draft);
+      return _requireAcquiredDiscoveryItemResponse(response, draft);
     }
 
-    final existingResponse = await client
-        .from('v3_items')
-        .select()
-        .eq('user_id', draft.userId)
-        .eq('definition_id', draft.definitionId)
-        .eq('acquired_in_cell_id', draft.acquiredInCellId)
-        .eq('status', ItemStatus.active.name)
-        .limit(1);
-    final existingRows = (existingResponse as List)
-        .whereType<Map>()
-        .map((row) => Map<String, dynamic>.from(row))
-        .toList();
-    if (existingRows.isNotEmpty) return existingRows.first;
-
-    final response = await client
-        .from('v3_items')
-        .insert(_draftInsertPayload(draft))
-        .select()
-        .single();
-    return Map<String, dynamic>.from(response);
+    final params = _legacyAcquisitionRpcParams(draft);
+    final dynamic response;
+    if (_acquireDiscoveryItemRpcCaller != null) {
+      response = await _acquireDiscoveryItemRpcCaller!(
+        'acquire_v3_legacy_discovery_item',
+        params,
+      );
+    } else {
+      final client = _client;
+      if (client == null) {
+        throw StateError(
+          'Supabase client is required when no acquisition query or RPC caller is provided.',
+        );
+      }
+      response = await client.rpc(
+        'acquire_v3_legacy_discovery_item',
+        params: params,
+      );
+    }
+    return _requireAcquiredDiscoveryItemResponse(response, draft);
   }
 
   Future<Map<String, dynamic>> _runIdentifyUnidentifiedFindQuery(
@@ -205,49 +220,47 @@ class SupabaseItemRepository implements ItemRepository {
     if (_identifyUnidentifiedFindQuery != null) {
       return _identifyUnidentifiedFindQuery!(item);
     }
-    final client = _client;
-    if (client == null) {
-      throw StateError(
-          'Supabase client is required when no identifyUnidentifiedFindQuery is provided.');
-    }
-    final identified = item.identify();
-    final response = await client
-        .from('v3_items')
-        .update(_identifiedUpdatePayload(identified))
-        .eq('id', item.id)
-        .select()
-        .single();
-    return Map<String, dynamic>.from(response);
+    throw StateError(
+      'Direct Item Identification is unavailable; use the authoritative command.',
+    );
   }
 
-  Map<String, dynamic> _draftInsertPayload(DiscoveryItemDraft draft) => {
-        'user_id': draft.userId,
-        'definition_id': draft.definitionId,
-        'display_name': draft.displayName,
-        'scientific_name': draft.scientificName,
-        'category': draft.category.name,
-        'rarity': draft.rarity,
-        'acquired_in_cell_id': draft.acquiredInCellId,
-        'status': ItemStatus.active.name,
-        'taxonomic_class': draft.taxonomicClass,
-        'habitats_json': jsonEncode(draft.habitats),
-        'continents_json': jsonEncode(draft.continents),
-        'identification_state': draft.identificationState.name,
-        'identified_at': draft.identifiedAt?.toIso8601String(),
-        'identified_display_name': draft.identifiedDisplayName,
-        'identified_scientific_name': draft.identifiedScientificName,
-        'identified_taxonomic_class': draft.identifiedTaxonomicClass,
-        'identified_habitats_json': jsonEncode(draft.identifiedHabitats),
-        'identified_continents_json': jsonEncode(draft.identifiedContinents),
+  Map<String, dynamic> _legacyAcquisitionRpcParams(
+    DiscoveryItemDraft draft,
+  ) =>
+      {
+        'p_definition_id': draft.definitionId,
+        'p_acquired_in_cell_id': draft.acquiredInCellId,
+        'p_map_cell_entry_id': draft.mapCellEntryId,
       };
 
-  Map<String, dynamic> _identifiedUpdatePayload(Item item) => {
-        'display_name': item.displayName,
-        'scientific_name': item.scientificName,
-        'taxonomic_class': item.taxonomicClass,
-        'habitats_json': jsonEncode(item.habitats),
-        'continents_json': jsonEncode(item.continents),
-        'identification_state': item.identificationState.name,
-        'identified_at': item.identifiedAt?.toIso8601String(),
-      };
+  Map<String, dynamic> _requireAcquiredDiscoveryItemResponse(
+    dynamic response,
+    DiscoveryItemDraft draft,
+  ) {
+    if (response is! Map) {
+      throw StateError(
+        'Legacy discovery acquisition must return exactly one Item object.',
+      );
+    }
+    final item = Map<String, dynamic>.from(response);
+    if (item['acquired_in_cell_id'] != draft.acquiredInCellId ||
+        !_hasNonBlankString(item['id']) ||
+        !_hasNonBlankString(item['display_name']) ||
+        !_hasNonBlankString(item['category']) ||
+        item['identification_state'] != 'unidentified') {
+      throw StateError(
+        'Legacy discovery acquisition returned an invalid safe Item projection.',
+      );
+    }
+    return item;
+  }
+
+  bool _hasNonBlankString(dynamic value) =>
+      value is String && value.trim().isNotEmpty;
 }
+
+String _safeErrorMessage(Object error) => switch (error) {
+      StateError() => 'invalid_repository_response',
+      _ => 'repository_operation_failed',
+    };

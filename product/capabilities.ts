@@ -35,8 +35,9 @@ export const productCapabilities = {
     id: "map",
     label: "Map",
     description:
-      "The player experiences the real world as a playable map made of framing, trusted position, fog, reward-clean map-cell entry, territory scale, and event cues.",
-    emotionalReward: "My real world is becoming a playable map that grows as I move.",
+      "The player experiences the real world as a playable map with trusted position, fog, Cell Visits, territory scale, and event cues; the legacy map-cell-entry evidence is not the approved Encounter model.",
+    emotionalReward:
+      "My real world is becoming a playable map that grows as I move.",
     cucumberFeatures: [
       spineFeature,
       "features/map-frame.feature",
@@ -75,8 +76,9 @@ export const productCapabilities = {
   zoology: capability({
     id: "zoology",
     label: "Zoology",
-    description: "The player studies animals, behavior, tracks, and migrations.",
-    emotionalReward: "Field-guide curiosity about animal life.",
+    description:
+      "The player studies animals, behavior, tracks, and migrations.",
+    emotionalReward: "Index-led curiosity about animal life.",
     cucumberFeatures: [spineFeature, "features/field-guide-zoology.feature"],
     requiredActions: [
       playerActions.viewZoologyGuide,
@@ -98,7 +100,7 @@ export const productCapabilities = {
     id: "mycology",
     label: "Mycology",
     description:
-      "The player studies fungi, spores, substrates, and seasonal conditions.",
+      "Legacy capability evidence only. Mycology is not one of the five resolved EarthNova Disciplines.",
     emotionalReward: "Hidden-world curiosity.",
     cucumberFeatures: [spineFeature, "features/field-guide-mycology.feature"],
     requiredActions: [
@@ -122,7 +124,10 @@ export const productCapabilities = {
     label: "Paleontology",
     description: "The player studies fossils, extinct life, and deep time.",
     emotionalReward: "Wonder at ancient life beneath present map cells.",
-    cucumberFeatures: [spineFeature, "features/field-guide-paleontology.feature"],
+    cucumberFeatures: [
+      spineFeature,
+      "features/field-guide-paleontology.feature",
+    ],
     requiredActions: [
       playerActions.viewPaleontologyGuide,
       playerActions.inspectFossilRecord,
@@ -132,8 +137,8 @@ export const productCapabilities = {
     id: "genetics",
     label: "Genetics",
     description:
-      "The player studies inherited traits, variation, and how life changes across generations.",
-    emotionalReward: "Pattern recognition and possibility.",
+      "Legacy capability evidence only. Genetics is not one of the five resolved EarthNova Disciplines, and lineage behavior remains open.",
+    emotionalReward: "Historical evidence only; no current Discipline promise.",
     cucumberFeatures: [spineFeature, "features/field-guide-genetics.feature"],
     requiredActions: [
       playerActions.viewGeneticsGuide,
@@ -146,7 +151,10 @@ export const productCapabilities = {
     description:
       "The player studies artifacts, ruins, and human traces in places.",
     emotionalReward: "Uncovering hidden human history.",
-    cucumberFeatures: [spineFeature, "features/field-guide-archaeology.feature"],
+    cucumberFeatures: [
+      spineFeature,
+      "features/field-guide-archaeology.feature",
+    ],
     requiredActions: [
       playerActions.viewArchaeologyGuide,
       playerActions.inspectArtifactRecord,
@@ -156,8 +164,9 @@ export const productCapabilities = {
     id: "exploration-discovery-lifecycle",
     label: "Exploration-Discovery Lifecycle",
     description:
-      "The player turns walking and map cell entry into unidentified finds, identification reveals, known finds, and find stories.",
-    emotionalReward: "Every walk can become a meaningful find and a story I keep.",
+      "Exploration records Cell Visits; each Visit may create one Encounter, whose Outcomes may generate Items in Pack. Identification can record Discovery and populate Index. The linked reward-card evidence is legacy only, not an approved target implementation.",
+    emotionalReward:
+      "Every walk can become a meaningful Item and a durable Discovery.",
     cucumberFeatures: [
       spineFeature,
       "features/exploration-discovery-discovery.feature",
@@ -177,8 +186,9 @@ export const productCapabilities = {
     id: "living-world",
     label: "Living World",
     description:
-      "The player discovers NPC venues in real places, unlocks NPC-led feature entries in Town, and opens those features through local authored roles.",
-    emotionalReward: "The world feels inhabited by helpful local experts rather than abstract menus.",
+      "The approved target presents known Venues, Villagers, and their Services in Town. Existing NPC-led feature evidence is legacy terminology and does not establish target implementation.",
+    emotionalReward:
+      "The world feels inhabited by helpful local experts rather than abstract menus.",
     cucumberFeatures: [
       spineFeature,
       "features/living-world-town.feature",
@@ -200,8 +210,9 @@ export const productCapabilities = {
     id: "progression-permanence",
     label: "Progression-Permanence",
     description:
-      "The player turns finds into durable progress through the field guide, collections, sanctuary growth, buddy care, lineage, and stewardship.",
-    emotionalReward: "My discoveries become a lasting world that is mine.",
+      "The approved target keeps durable knowledge in Index and one personal Home. Legacy Field Guide, Sanctuary, Orb crafting, and other progression evidence remain explicitly open or historical rather than active target behavior.",
+    emotionalReward:
+      "My identified Items and Discoveries become a lasting world that is mine.",
     cucumberFeatures: [
       spineFeature,
       "features/progression-field-guide.feature",
@@ -245,8 +256,9 @@ export const productCapabilities = {
     id: "motivation",
     label: "Motivation",
     description:
-      "The player gets reasons to return, goals to pursue, milestones to celebrate, and recaps that explain what changed.",
-    emotionalReward: "I know what to do next and feel proud of what I have done.",
+      "Aspirational historical capability evidence for quests, achievements, and recaps; this entry does not authorize or assert current target behavior.",
+    emotionalReward:
+      "I know what to do next and feel proud of what I have done.",
     cucumberFeatures: [
       spineFeature,
       "features/motivation-quests.feature",
@@ -271,7 +283,7 @@ export const productCapabilities = {
     id: "multiplayer",
     label: "Multiplayer",
     description:
-      "The player participates in shared progress, community events, trading, and multiplayer meaning without losing the cozy solo loop.",
+      "Aspirational historical capability evidence for community events, trading, and multiplayer; this entry does not authorize or assert current target behavior.",
     emotionalReward: "I am part of a larger living world with other explorers.",
     cucumberFeatures: [
       spineFeature,

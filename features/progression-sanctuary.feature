@@ -1,21 +1,18 @@
 @capability.progression-permanence @feature.sanctuary
-Feature: Sanctuary
-  Progression-Permanence needs a concrete sanctuary feature for the persistent
-  personal base or world where committed finds become visible growth.
+Feature: Home
+  Status: The sanctuary feature tag and action identifiers preserve legacy
+  evidence. The approved target gives every Player exactly one Home; Home
+  Module and Item-placement behavior remain unresolved.
 
-  Scenario: Sanctuary defines its app section
-    Given Sanctuary belongs to the Progression-Permanence capability
-    When the feature is expanded beyond this stub
-    Then it should specify sanctuary view, placement model, growth state, and placed-find details
+  Scenario: Home is one persistent identity
+    Given a Player has persistent base state
+    When the approved target is described
+    Then that Player has exactly one Home
+    And relocation, upgrades, or module changes do not create additional Homes
 
   @action.open-sanctuary
-  Scenario: Player opens the Sanctuary
-    Given the player has a Sanctuary
-    When the player opens the Sanctuary
-    Then the persistent base should be visible without changing placement state
-
   @action.place-find-in-sanctuary
-  Scenario: Player places a find in the Sanctuary
-    Given the player owns a find eligible for Sanctuary placement
-    When the player places the find in the Sanctuary
-    Then the placement should be committed into the player's persistent sanctuary state
+  Scenario: Legacy Home action identifiers are explicitly gated
+    Given the legacy action identifiers remain for evidence compatibility
+    When their catalog entries are read
+    Then they must not claim implemented Home Module or Item-placement behavior

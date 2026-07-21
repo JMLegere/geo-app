@@ -1,22 +1,22 @@
 @capability.exploration-discovery-lifecycle @feature.pack
 Feature: Pack
-  Pack is the owned unidentified and identified find inventory and verification
-  surface. Discovery may resolve a reward, but Pack proves whether the player
-  actually owns the unidentified find before Identification reveals it, and the
-  Pack tab can receive a reward-card impact when a living specimen reward lands.
+  Pack is the player-facing collection of owned Items. The reward-card and
+  find wording below is preserved legacy executable evidence only; it does not
+  make Cell entry or Item acquisition Discovery. Index projects Discovered
+  Base Items separately from Pack.
 
-  Scenario: Pack defines its app section
+  Scenario: Pack defines its player-facing collection
     Given Pack belongs to the Exploration-Discovery Lifecycle capability
     When the player opens the Pack
-    Then it should show owned unidentified finds, identified finds, domain filters, find cards, details, and acquisition history
+    Then it should show owned unidentified Items, identified Items, filters, Item cards, details, and acquisition history
     And opening or reading the Pack should not mutate ownership state
 
-  Scenario: Acquired Discovery unidentified find appears in Pack
+  Scenario: Legacy reward evidence lands an unidentified Item in Pack
     Given Discovery has committed an owned unidentified find for a map-cell entry
     And the Discovery reward card has landed on the Pack target
     When the player opens the Pack after the reward
     Then the owned unidentified find should be visible without a reload-only dependency
-    And the unidentified find should carry its category, rarity, acquisition time, and acquisition map cell
+    And the legacy Item should carry its category, acquisition time, and acquisition Cell
     But it should not reveal the specimen display name before Identification
 
   Scenario: Pack search does not leak pre-identification species names

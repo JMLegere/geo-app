@@ -40,12 +40,14 @@ void main() {
       expect(events[1]['data']['duration_ms'], isA<int>());
     });
 
-    test('logs query failed with trace_id', () async {
+    test('emits safe telemetry and failure for raw auth errors', () async {
+      const malicious =
+          'response={"access_token":"never-log-this","sql":"select *"}';
       final events = <Map<String, dynamic>>[];
 
       final repository = SupabaseAuthRepository(
         client: null,
-        signInAction: (_, __) async => throw const AuthException('bad creds'),
+        signInAction: (_, __) async => throw StateError(malicious),
         logEvent: (event, category, {data}) {
           events
               .add({'event': event, 'category': category, 'data': data ?? {}});
@@ -58,7 +60,13 @@ void main() {
           'secret',
           traceId: 'trace-auth-fail',
         ),
-        throwsA(isA<AuthException>()),
+        throwsA(
+          isA<AuthException>()
+              .having((failure) => failure.message, 'safe message',
+                  'Authentication service unavailable.')
+              .having((failure) => failure.toString(), 'safe failure',
+                  isNot(contains(malicious))),
+        ),
       );
 
       expect(events, hasLength(2));
@@ -66,8 +74,11 @@ void main() {
       expect(events[1]['event'], 'db.query_failed');
       expect(events[1]['data']['trace_id'], 'trace-auth-fail');
       expect(events[1]['data']['operation'], 'auth.sign_in_with_email');
+      expect(events[1]['data']['duration_ms'], isA<int>());
       expect(events[1]['data']['error_type'], 'AuthException');
-      expect(events[1]['data']['error_message'], contains('bad creds'));
+      expect(events[1]['data']['error_message'],
+          'Authentication service unavailable.');
+      expect(events.toString(), isNot(contains(malicious)));
     });
   });
 }

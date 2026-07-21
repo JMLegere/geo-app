@@ -56,7 +56,7 @@ class Cell {
           if (polygon.isNotEmpty) ...polygon.first,
       ];
 
-  Color get blendedColor => Habitat.blendHabitats(habitats);
+  Color get blendedColor => Color(Habitat.blendColorValues(habitats));
 
   bool get hasVerifiedHabitat =>
       habitatConfidence == 'classified' ||

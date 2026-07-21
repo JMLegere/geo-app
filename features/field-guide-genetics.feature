@@ -1,16 +1,16 @@
 @capability.genetics @feature.genetics
-Feature: Genetics
-  The Field Guide feature needs a concrete genetics feature for trait variation within
-  species and inheritance across generations.
+Feature: Genetics legacy evidence
+  Status: Genetics is not a resolved Discipline or settled target model. This
+  retained Index scenario evidence is historical.
 
   Scenario: Genetics defines its data model
-    Given Genetics is surfaced through the Field Guide feature
+    Given Genetics is surfaced through the Index feature
     When the feature is expanded beyond this stub
     Then it should specify trait profiles, variation models, inheritance rules, and links to Lineage
 
   @action.view-genetics-guide
   Scenario: Player views Genetics guide
-    Given the Field Guide has a Genetics section
+    Given the Index has a Genetics section
     When the player opens the Genetics guide
     Then trait and inheritance knowledge should be organized around variation and generations
 

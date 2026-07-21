@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_query_adapter.dart';
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_visit_adapter.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
+
 import 'package:earth_nova/features/map/domain/ports/cell_query_port.dart';
 import 'package:earth_nova/features/map/domain/ports/cell_visit_port.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
@@ -24,7 +26,7 @@ class SupabaseCellRepository implements CellRepository {
     CellQueryPort? queryPort,
     CellVisitPort? visitPort,
     CellFetchQuery? fetchCellsQuery,
-    CellRecordVisitQuery? recordVisitQuery,
+    CellVisitRpcQuery? rpcQuery,
     CellVisitedIdsQuery? visitedCellIdsQuery,
     CellFirstVisitQuery? firstVisitQuery,
     RepositoryLogEvent? logEvent,
@@ -36,7 +38,7 @@ class SupabaseCellRepository implements CellRepository {
         _visitPort = visitPort ??
             SupabaseCellVisitAdapter(
               client: client,
-              recordVisitQuery: recordVisitQuery,
+              rpcQuery: rpcQuery,
               visitedCellIdsQuery: visitedCellIdsQuery,
               firstVisitQuery: firstVisitQuery,
             ),
@@ -68,18 +70,20 @@ class SupabaseCellRepository implements CellRepository {
   }
 
   @override
-  Future<void> recordVisit(
+  Future<CellVisit> recordVisit(
     String userId,
-    String cellId, {
+    String cellId,
+    String clientEventId, {
     String? traceId,
-  }) async {
-    await _trace<void>(
+  }) {
+    return _trace<CellVisit>(
       traceId: traceId,
       operation: 'record_cell_visit',
       rowCount: (_) => 1,
       action: () => _visitPort.recordVisit(
         userId: userId,
         cellId: cellId,
+        clientEventId: clientEventId,
         traceId: traceId,
       ),
     );
@@ -141,14 +145,25 @@ class SupabaseCellRepository implements CellRepository {
       });
       return result;
     } catch (error) {
+      final failure = _safeCellFailure(error);
       _logEvent?.call('db.query_failed', _category, data: {
         'trace_id': traceId,
         'operation': operation,
         'duration_ms': stopwatch.elapsedMilliseconds,
-        'error_type': error.runtimeType.toString(),
-        'error_message': error.toString(),
+        'error_type': failure.runtimeType.toString(),
+        'error_message': failure.kind.name,
       });
-      rethrow;
+      throw failure;
     }
   }
 }
+
+CellRepositoryFailure _safeCellFailure(Object error) => switch (error) {
+      CellRepositoryFailure() => error,
+      StateError() ||
+      ArgumentError() ||
+      FormatException() ||
+      TypeError() =>
+        const CellRepositoryFailure.malformedPayload(),
+      _ => const CellRepositoryFailure.unavailable(),
+    };

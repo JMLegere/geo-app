@@ -113,5 +113,20 @@ void main() {
       );
       expect(a.hashCode, equals(b.hashCode));
     });
+
+    test('rejects a non-null blank or untrimmed client event identity', () {
+      for (final clientEventId in ['', '  ', ' event-1', 'event-1 ']) {
+        expect(
+          () => CellVisit(
+            id: 'visit-1',
+            cellId: 'cell-1',
+            userId: 'user-1',
+            visitedAt: now,
+            clientEventId: clientEventId,
+          ),
+          throwsArgumentError,
+        );
+      }
+    });
   });
 }

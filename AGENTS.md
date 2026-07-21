@@ -1,7 +1,22 @@
 # Agent Guidance — EarthNova v3
 
-> Friendly, social geogame. Real world GPS + fog-of-war + 32,752 IUCN species + sanctuary building.
-> See `docs/design.md` for the full product and architecture spec.
+**Role: ROUTER.** This file defines repository working rules and directs agents to current authority; it is not the domain glossary.
+
+> Welcoming real-world exploration game with a humane player surface and a rigorous, inspectable systems core.
+> Start with `CONTEXT.md` for resolved domain language and `docs/adr/` for accepted durable decisions. Older design documents are dated evidence only unless the authority order below explicitly reconfirms them.
+
+## Current Authority Order — 2026-07-20 Reboot
+
+When repository sources disagree, do not blend them:
+
+1. A current explicit human instruction and a human-approved GitHub Issue Outcome Contract define what non-trivial work is authorized and scoped. Repository files and EAC checks do not authorize work by themselves.
+2. `CONTEXT.md` is canonical for resolved EarthNova domain language, identities, relationships, and lifecycle invariants.
+3. Accepted records in `docs/adr/` are canonical for durable architecture and repository-operating decisions.
+4. `.agents/constraints.md` contains hard current implementation, data-continuity, quality, and deployment invariants until an approved migration explicitly changes them.
+5. Executable tests, SuperBDD scenarios, EAC catalogs, product registries, telemetry, and current code are evidence of implemented behavior. Keep them aligned, but do not let them silently overwrite the glossary or ADRs.
+6. `docs/design.md`, `docs/map-design.md`, `docs/prd-game-systems*.md`, backlog files, and the older Key Decisions below are historical, aspirational, or current-implementation evidence. They are not governing reboot truth unless a current approved artifact explicitly reconfirms them.
+
+Raise a conflict against the higher-authority source instead of guessing. Preserve existing player behavior and data until an approved issue authorizes a migration.
 
 ---
 
@@ -15,9 +30,10 @@
 | Auth | Phone → derived email+password — NO OTP |
 | Prod URL | https://geo-app-production-47b0.up.railway.app |
 | Supabase | `bfaczcsrpfcbijoaeckb` |
-| Design doc | `docs/design.md` |
+| Domain glossary | `CONTEXT.md` |
+| Architecture decisions | `docs/adr/` |
 | Runbook | `docs/runbook.md` |
-| Backlog | `2026-04-03-backlog.md` |
+| Historical backlog | `2026-04-03-backlog.md` — evidence only; not current authorization |
 
 **Run commands:**
 ```bash
@@ -33,10 +49,12 @@ npm run superbdd:cucumber                  # execute SuperBDD Cucumber scenarios
 ## How to Work
 
 ### Read First (every session)
-1. `docs/design.md` — product spec, architecture, data model, screen designs, acceptance criteria
-2. Key Decisions below — settled choices, do not re-litigate
-3. `docs/dependencies.md` — before adding any package
-4. `docs/runbook.md` — before any prod operation
+1. `CONTEXT.md` — frozen current domain language and explicitly open areas
+2. `docs/adr/` — accepted architecture and repository-operating decisions
+3. `.agents/constraints.md` — hard current implementation and deployment invariants
+4. `docs/design.md` and relevant focused docs — current/legacy evidence to reconcile, not automatic reboot authority
+5. `docs/dependencies.md` — before adding any package
+6. `docs/runbook.md` — before any beta or production operation
 
 ### Everything as Code
 
@@ -44,7 +62,9 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 
 | File | What it codifies |
 |------|-----------------|
-| `docs/design.md` | Product spec, architecture, screens, acceptance criteria |
+| `CONTEXT.md` | Canonical resolved domain language and lifecycle invariants |
+| `docs/adr/` | Accepted durable architecture and repository-operating decisions |
+| `docs/design.md` | Current/legacy product and implementation evidence to reconcile against the reboot foundation |
 | `docs/frontend-usability-design-system.md` | Enforced frontend/design-system taxonomy, usability rules, registry checks |
 | `docs/dependencies.md` | Every package + why removed packages are gone |
 | `docs/runbook.md` | Deploy, Supabase ops, incident response |
@@ -54,7 +74,7 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 | `Justfile` | Every runnable command |
 | `.lefthook.yml` | Pre-commit hooks (analyze + test) |
 | `.env.example` | All required environment variables |
-| `2026-04-03-backlog.md` | Post-MVP features — do not build these yet |
+| `2026-04-03-backlog.md` | Historical post-MVP evidence — not current authorization or target truth |
 | `product/design/**/*.atom|molecule|organism|template|page` | Native EAC design/product-surface contracts — authoritative over Dart registry prose |
 
 ### TDD — No Exceptions
@@ -67,25 +87,20 @@ Nothing is tribal knowledge. Every decision, constraint, and procedure is a file
 
 Tests live in `test/`, mirror `lib/` structure, use `flutter_test` only. No mockito, no mocktail.
 
-### SuperBDD-Driven Development
+### SuperBDD as Executable Evidence
 
-For product behavior, gameplay rules, UI flows, payload contracts, and state-model
-changes, use **SuperBDD as the source of truth**.
+For product behavior, gameplay rules, UI flows, payload contracts, and state-model changes, use SuperBDD as executable behavioral evidence—not as work authorization or self-proving product truth.
 
-1. Read the relevant `features/*.feature` scenarios and `product/*.ts` catalog
-   entries before coding.
-2. If the behavior, terminology, ownership boundary, or player-visible contract is
-   changing, update SuperBDD first or in the same change.
-3. Let scenarios drive the architecture. Do not invent payloads, state models, or
-   system boundaries first and retrofit BDD afterward.
-4. Treat the layers intentionally:
+1. Read the relevant `features/*.feature` scenarios and `product/*.ts` catalog entries before coding in that behavior.
+2. If implemented behavior, terminology, ownership, or a player-visible contract changes, update the relevant scenarios/catalog in the same approved change.
+3. Derive target domain and architecture from `CONTEXT.md`, accepted ADRs, approved outcomes, and observed behavior; use scenarios to preserve and verify the intended behavior rather than inventing the architecture.
+4. Treat the catalog layers intentionally:
    - **Capabilities** = game-system ownership
    - **Features** = concrete app surfaces / data models
    - **Actions** = player interactions
    - **Workflows** = stateful mutation paths
-5. When product truth or feature behavior changes, `mise exec -- eac check` is
-   required alongside the relevant tests.
-6. Native EAC design contracts are the source of truth for design/product-surface entities; Dart registries are Flutter runtime projections and must stay parity-tested.
+5. When product truth or feature behavior changes, `mise exec -- eac check` is required alongside relevant focused tests. EAC verifies integrity and traceability; it does not authorize or behaviorally certify the change.
+6. Native EAC design contracts govern their scoped product-surface entities; Dart registries are Flutter runtime projections and must stay parity-tested. Neither may contradict higher-authority domain or architecture decisions.
 
 ### Frontend / Design System
 
@@ -114,13 +129,13 @@ class FooNotifier extends ObservableNotifier<FooState> {
 
 ### Vertical Slices
 
-Build one complete feature end-to-end (model → service → provider → screen → test) before starting the next. Nothing is half-done. Each slice ships to prod before the next starts.
+Build one complete, user-verifiable feature slice end-to-end (model → application logic → adapter → screen → focused test) before starting another. Keep slices local and explicit; beta or production promotion is a separate human-authorized action.
 
 ---
 
 ## Key Decisions
 
-These are settled. Do not revisit without explicit instruction from the user.
+The table below records inherited v3 implementation decisions and constraints. Preserve them during behavior-preserving work unless an approved migration explicitly supersedes them, but do not treat them as the target reboot architecture when they conflict with `CONTEXT.md` or an accepted ADR.
 
 | Decision | What | Why |
 |----------|------|-----|
@@ -187,8 +202,9 @@ These are settled. Do not revisit without explicit instruction from the user.
 
 ## When You're Unsure
 
-1. Read `docs/design.md` — it probably has the answer
-2. Check Key Decisions above — it may be settled
-3. Check `docs/dependencies.md` — before adding anything
-4. Check `2026-04-03-backlog.md` — it may be a post-MVP item
-5. Ask the user — don't guess on architecture
+1. Read `CONTEXT.md` for resolved domain language and open areas.
+2. Read the relevant accepted record in `docs/adr/`.
+3. Check `.agents/constraints.md` for current invariants and protection boundaries.
+4. Inspect focused legacy docs, scenarios, tests, telemetry, and current code as evidence of what exists.
+5. Check `docs/dependencies.md` before adding anything and `docs/runbook.md` before any environment operation.
+6. If higher-authority sources still leave a material product or architecture choice open, surface that one decision instead of guessing.

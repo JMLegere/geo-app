@@ -56,7 +56,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Documented local composition; keep aligned with AppTheme until login form components exist in the design library.',
   ),
   DesignSurfaceDefinition(
-    path: 'lib/features/identification/presentation/screens/pack_screen.dart',
+    path: 'lib/features/pack/presentation/screens/pack_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Player inventory/Pack surface.',
@@ -64,7 +64,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Documented local composition; migrate filters, cards, and empty states into documented design components incrementally.',
   ),
   DesignSurfaceDefinition(
-    path: 'lib/features/identification/presentation/widgets/species_card.dart',
+    path: 'lib/features/pack/presentation/widgets/species_card.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Owned species/item card used by Pack.',
@@ -76,28 +76,35 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
     purpose:
-        'Town place directory for discovered character-owned local places.',
+        'Town directory for known Venues, introduced Villagers, and current Services.',
     designSystemNotes:
-        'Compact directory rows compose app theme tokens directly until list-row primitives are added.',
+        'Town composes shared design panels, notices, tags, and app theme tokens.',
   ),
   DesignSurfaceDefinition(
-    path:
-        'lib/features/living_world/presentation/widgets/npc_venue_marker.dart',
+    path: 'lib/features/home/presentation/screens/home_screen.dart',
+    category: DesignSurfaceCategory.featureScreen,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'Read-only Home identity surface for the authenticated Player.',
+    designSystemNotes:
+        'Home composes shared design panels, notices, field rows, and app theme tokens through the public design API.',
+  ),
+  DesignSurfaceDefinition(
+    path: 'lib/features/living_world/presentation/widgets/venue_marker.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Map callout for discovered NPC venues.',
+    purpose: 'Map callout for known Town Venues.',
     designSystemNotes:
         'Map marker styling is documented here until map marker primitives are added to the design taxonomy.',
   ),
   DesignSurfaceDefinition(
     path:
-        'lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart',
+        'lib/features/living_world/presentation/screens/venue_detail_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
     purpose:
-        'NPC-first venue/location detail page opened from Town and map cells.',
+        'Venue detail page grouping known Villagers and their current Services.',
     designSystemNotes:
-        'Dedicated venue page composes app theme tokens directly until venue/detail-page primitives are added.',
+        'Dedicated Venue page composes shared design panels, notices, tags, and app theme tokens.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/painters/cell_overlay_painter.dart',

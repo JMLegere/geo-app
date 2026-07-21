@@ -2,7 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/fetch_nearby_cells.dart';
 
 class TestObservabilityService extends ObservabilityService {
@@ -26,6 +28,7 @@ class FakeCellRepository implements CellRepository {
   final List<Cell> cells;
   final bool shouldThrow;
   final _visits = <String, Set<String>>{};
+  var _visitSequence = 0;
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
@@ -36,9 +39,20 @@ class FakeCellRepository implements CellRepository {
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId,
-      {String? traceId}) async {
+  Future<CellVisit> recordVisit(
+    String userId,
+    String cellId,
+    String clientEventId, {
+    String? traceId,
+  }) async {
     _visits.putIfAbsent(userId, () => {}).add(cellId);
+    return CellVisit(
+      id: 'visit-${++_visitSequence}',
+      userId: userId,
+      cellId: cellId,
+      clientEventId: clientEventId,
+      visitedAt: DateTime.utc(2026, 7, 20),
+    );
   }
 
   @override
@@ -101,10 +115,23 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('propagates repository exceptions', () async {
-      final repo = FakeCellRepository(shouldThrow: true);
+    test('keeps raw repository errors out of use-case observability', () async {
+      const malicious =
+          'PostgREST body={"access_token":"never-log-this","query":"select *"}';
+      final repositoryEvents = <Map<String, dynamic>>[];
+      final repository = SupabaseCellRepository(
+        client: null,
+        fetchCellsQuery: (_, __, ___) async => throw Exception(malicious),
+        logEvent: (event, category, {data}) {
+          repositoryEvents.add({
+            'event': event,
+            'category': category,
+            'data': data ?? const <String, dynamic>{},
+          });
+        },
+      );
       final obs = TestObservabilityService();
-      final useCase = FetchNearbyCells(repo, obs);
+      final useCase = FetchNearbyCells(repository, obs);
 
       await expectLater(
         () => useCase.call((
@@ -112,10 +139,33 @@ void main() {
           lng: 0.0,
           radiusMeters: 1000,
         )),
-        throwsException,
+        throwsA(
+          isA<CellRepositoryFailure>()
+              .having((failure) => failure.kind, 'kind',
+                  CellRepositoryFailureKind.unavailable)
+              .having((failure) => failure.toString(), 'safe message',
+                  isNot(contains(malicious))),
+        ),
       );
-      expect(obs.logs[0]['event'], 'operation.started');
-      expect(obs.logs[1]['event'], 'operation.failed');
+
+      final repositoryFailure = repositoryEvents.singleWhere(
+        (event) => event['event'] == 'db.query_failed',
+      );
+      final useCaseFailure =
+          obs.logs.singleWhere((log) => log['event'] == 'operation.failed');
+      expect(repositoryFailure['data']['operation'], 'fetch_cells_in_radius');
+      expect(repositoryFailure['data']['duration_ms'], isA<int>());
+      expect(repositoryFailure['data']['error_type'], 'CellRepositoryFailure');
+      expect(repositoryFailure['data']['error_message'], 'unavailable');
+      expect(useCaseFailure['data'],
+          containsPair('operation', 'fetch_nearby_cells'));
+      expect(useCaseFailure['data'], containsPair('duration_ms', isA<int>()));
+      expect(useCaseFailure['data'],
+          containsPair('error_type', 'CellRepositoryFailure'));
+      expect(useCaseFailure['data'],
+          containsPair('error_message', 'Cell request failed (unavailable).'));
+      expect(repositoryEvents.toString(), isNot(contains(malicious)));
+      expect(obs.logs.toString(), isNot(contains(malicious)));
     });
   });
 }

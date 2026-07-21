@@ -1,4 +1,7 @@
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
+import 'package:earth_nova/features/map/domain/ports/cell_visit_port.dart';
+import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -133,12 +136,41 @@ void main() {
       expect(cells.map((cell) => cell.id), ['valid-cell']);
     });
 
-    test('logs query failed with trace_id', () async {
+    test('forwards the exact recorded visit through the trace bridge',
+        () async {
+      final visit = CellVisit(
+        id: 'visit-1',
+        userId: 'user-1',
+        cellId: 'cell-1',
+        visitedAt: DateTime.utc(2026, 7, 20, 12, 34, 56),
+        clientEventId: 'event-1',
+      );
+      final visitPort = _StubCellVisitPort(visit);
+      final repository = SupabaseCellRepository(
+        client: null,
+        visitPort: visitPort,
+      );
+
+      final result = await repository.recordVisit(
+        'user-1',
+        'cell-1',
+        'event-1',
+        traceId: 'trace-1',
+      );
+
+      expect(result, visit);
+      expect(visitPort.lastTraceId, 'trace-1');
+      expect(visitPort.lastClientEventId, 'event-1');
+    });
+
+    test('emits safe telemetry and failure for raw port errors', () async {
+      const malicious =
+          'SQL: select secret_token from private_rows; token=never-log-this';
       final events = <Map<String, dynamic>>[];
 
       final repository = SupabaseCellRepository(
         client: null,
-        recordVisitQuery: (_, __) async => throw StateError('boom'),
+        rpcQuery: (_, __) async => throw Exception(malicious),
         logEvent: (event, category, {data}) {
           events
               .add({'event': event, 'category': category, 'data': data ?? {}});
@@ -146,8 +178,15 @@ void main() {
       );
 
       await expectLater(
-        () => repository.recordVisit('u1', 'c1', traceId: 'trace-999'),
-        throwsA(isA<StateError>()),
+        () =>
+            repository.recordVisit('u1', 'c1', 'event-1', traceId: 'trace-999'),
+        throwsA(
+          isA<CellRepositoryFailure>()
+              .having((failure) => failure.kind, 'kind',
+                  CellRepositoryFailureKind.unavailable)
+              .having((failure) => failure.toString(), 'safe message',
+                  isNot(contains(malicious))),
+        ),
       );
 
       expect(events, hasLength(2));
@@ -155,8 +194,45 @@ void main() {
       expect(events[1]['event'], 'db.query_failed');
       expect(events[1]['data']['trace_id'], 'trace-999');
       expect(events[1]['data']['operation'], 'record_cell_visit');
-      expect(events[1]['data']['error_type'], 'StateError');
-      expect(events[1]['data']['error_message'], contains('boom'));
+      expect(events[1]['data']['duration_ms'], isA<int>());
+      expect(events[1]['data']['error_type'], 'CellRepositoryFailure');
+      expect(events[1]['data']['error_message'], 'unavailable');
+      expect(events.toString(), isNot(contains(malicious)));
     });
   });
+}
+
+class _StubCellVisitPort implements CellVisitPort {
+  _StubCellVisitPort(this.visit);
+
+  final CellVisit visit;
+  String? lastTraceId;
+  String? lastClientEventId;
+
+  @override
+  Future<CellVisit> recordVisit({
+    required String userId,
+    required String cellId,
+    required String clientEventId,
+    String? traceId,
+  }) async {
+    lastTraceId = traceId;
+    lastClientEventId = clientEventId;
+    return visit;
+  }
+
+  @override
+  Future<Set<String>> getVisitedCellIds({
+    required String userId,
+    String? traceId,
+  }) async =>
+      {};
+
+  @override
+  Future<bool> isFirstVisit({
+    required String userId,
+    required String cellId,
+    String? traceId,
+  }) async =>
+      false;
 }

@@ -12,16 +12,36 @@ import 'package:earth_nova/core/observability/browser_telemetry_session_bridge.d
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart' as app_auth;
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/data/repositories/supabase_auth_repository.dart';
 import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/presentation/screens/loading_screen.dart';
 import 'package:earth_nova/features/auth/presentation/screens/login_screen.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
+import 'package:earth_nova/features/home/data/repositories/supabase_home_repository.dart';
+import 'package:earth_nova/features/home/domain/entities/home.dart';
+import 'package:earth_nova/features/home/domain/repositories/home_repository.dart';
+import 'package:earth_nova/features/home/presentation/providers/home_provider.dart';
 import 'package:earth_nova/features/identification/data/repositories/mock_item_repository.dart';
 import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
+import 'package:earth_nova/features/identification/data/repositories/supabase_identification_repository.dart';
+import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/index/data/repositories/mock_item_index_repository.dart';
+import 'package:earth_nova/features/index/data/repositories/supabase_item_index_repository.dart';
+import 'package:earth_nova/features/index/domain/repositories/item_index_repository.dart';
+import 'package:earth_nova/features/index/presentation/providers/item_index_provider.dart';
+import 'package:earth_nova/features/living_world/data/repositories/supabase_living_world_repository.dart';
+import 'package:earth_nova/features/living_world/domain/entities/living_world_knowledge.dart';
+import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
+import 'package:earth_nova/features/living_world/domain/repositories/living_world_repository.dart';
+import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
+import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
+import 'package:earth_nova/features/pack/data/repositories/supabase_pack_repository.dart';
+import 'package:earth_nova/features/pack/domain/repositories/pack_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/fallback_location_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/geolocator_location_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.dart';
@@ -120,9 +140,43 @@ void main() async {
       ? SupabaseAuthRepository(client: supabaseClient, logEvent: obs.log)
       : MockAuthRepository();
 
+  // Encounter acquisition remains on the legacy ItemRepository boundary.
   final ItemRepository itemRepository = supabaseClient != null
       ? SupabaseItemRepository(client: supabaseClient, logEvent: obs.log)
       : MockItemRepository();
+
+  final PackRepository packRepository = supabaseClient != null
+      ? SupabasePackRepository(client: supabaseClient, logEvent: obs.log)
+      : LegacyItemRepositoryPackAdapter(itemRepository);
+
+  final IdentificationRepository? identificationRepository =
+      supabaseClient != null
+          ? SupabaseIdentificationRepository(
+              client: supabaseClient,
+              logEvent: obs.log,
+            )
+          : null;
+
+  final ItemIndexRepository itemIndexRepository = supabaseClient != null
+      ? SupabaseItemIndexRepository.fromSupabase(
+          supabaseClient,
+          logEvent: obs.log,
+        )
+      : const MockItemIndexRepository();
+
+  final LivingWorldRepository livingWorldRepository = supabaseClient != null
+      ? SupabaseLivingWorldRepository.fromSupabase(
+          supabaseClient,
+          logEvent: obs.log,
+        )
+      : const _EmptyLivingWorldRepository();
+
+  final HomeRepository homeRepository = supabaseClient != null
+      ? SupabaseHomeRepository.fromSupabase(
+          supabaseClient,
+          logEvent: obs.log,
+        )
+      : const _PreviewHomeRepository();
 
   final CellRepository cellRepository = supabaseClient != null
       ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
@@ -152,12 +206,23 @@ void main() async {
         overrides: [
           authRepositoryProvider.overrideWithValue(authRepository),
           itemRepositoryProvider.overrideWithValue(itemRepository),
+          packRepositoryProvider.overrideWithValue(packRepository),
+          identificationRepositoryProvider
+              .overrideWithValue(identificationRepository),
+          itemIndexRepositoryProvider.overrideWithValue(itemIndexRepository),
+          livingWorldRepositoryProvider
+              .overrideWithValue(livingWorldRepository),
+          livingWorldObservabilityProvider.overrideWithValue(obs),
+          homeRepositoryProvider.overrideWithValue(homeRepository),
+          homeObservabilityProvider.overrideWithValue(obs),
           cellRepositoryProvider.overrideWithValue(cellRepository),
           locationRepositoryProvider.overrideWithValue(locationRepository),
+          nullableSupabaseClientProvider.overrideWithValue(supabaseClient),
           observabilityProvider.overrideWithValue(obs),
           appObservabilityProvider.overrideWithValue(obs),
           observableUseCaseProvider.overrideWithValue(obs),
           itemsObservabilityProvider.overrideWithValue(obs),
+          itemIndexObservabilityProvider.overrideWithValue(obs),
           mapObservabilityProvider.overrideWithValue(obs),
           locationObservabilityProvider.overrideWithValue(obs),
           encounterObservabilityProvider.overrideWithValue(obs),
@@ -194,6 +259,43 @@ void main() async {
     statusCode: TelemetrySpanStatus.ok,
     statusMessage: 'run_app_invoked',
   );
+}
+
+final class _PreviewHomeRepository implements HomeRepository {
+  const _PreviewHomeRepository();
+
+  @override
+  Future<Home> readHome(
+    String playerId, {
+    required String traceId,
+  }) async {
+    assert(traceId.isNotEmpty);
+    return Home(
+      id: 'preview-home',
+      playerId: playerId,
+      createdAt: DateTime.utc(2026, 7, 21),
+    );
+  }
+}
+
+final class _EmptyLivingWorldRepository implements LivingWorldRepository {
+  const _EmptyLivingWorldRepository();
+
+  @override
+  Future<TownProjection> readTown(
+    String playerId, {
+    required String traceId,
+  }) async {
+    return TownProjection(playerId: playerId);
+  }
+
+  @override
+  Future<VenueVisitResult> recordVenueVisit(
+    RecordVenueVisitCommand command, {
+    required String traceId,
+  }) async {
+    throw const LivingWorldFailure.unavailable();
+  }
 }
 
 WakeLockRepository _buildWakeLockRepository() {
@@ -301,6 +403,12 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<app_auth.AuthState>(authProvider, (previous, next) {
+      if (previous?.status == app_auth.AuthStatus.authenticated &&
+          next.status != app_auth.AuthStatus.authenticated) {
+        ref.read(homeProvider.notifier).invalidate();
+      }
+    });
     final authState = ref.watch(authProvider);
     final screenName = authState.when(
       loading: () => 'loading',

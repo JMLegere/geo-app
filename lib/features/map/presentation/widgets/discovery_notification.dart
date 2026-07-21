@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:earth_nova/shared/design.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 /// Brief notification shown just below the status bar when the player
 /// enters a new cell for the first time.

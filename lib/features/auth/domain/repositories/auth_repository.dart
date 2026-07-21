@@ -2,7 +2,17 @@ import 'package:earth_nova/core/domain/entities/user_profile.dart';
 
 class AuthException implements Exception {
   const AuthException(this.message);
+
+  /// Stable credential outcome used by the phone sign-in flow to initiate its
+  /// first-use sign-up path.
+  const AuthException.invalidCredentials() : this('Invalid login credentials.');
+
+  /// Stable safe failure for unavailable or malformed auth responses.
+  const AuthException.unavailable()
+      : this('Authentication service unavailable.');
+
   final String message;
+
   @override
   String toString() => 'AuthException: $message';
 }

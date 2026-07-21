@@ -1,5 +1,7 @@
 # EarthNova — Diagram Catalog
 
+> **Role: HISTORICAL-EVIDENCE.** This catalog preserves prior system diagrams and terminology; it is not a complete current specification. Use `CONTEXT.md` and accepted `docs/adr/` for current authority.
+
 > Complete system specification through diagrams. Detailed enough that a contractor
 > making zero decisions could build the entire app.
 >

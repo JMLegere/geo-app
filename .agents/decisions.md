@@ -1,5 +1,7 @@
 # Decisions
 
+**Role: CURRENT-SCOPED decision registry.** Entries preserve the decision made on their date. A later explicit supersession, `CONTEXT.md`, or an accepted `docs/adr/` controls when old language or architecture conflicts with current authority.
+
 ## 2026-05-03 — beta-first trunk deployment
 - Keep `main` as the only long-lived branch.
 - Deploy `main` to Railway beta first.
@@ -279,6 +281,8 @@
 - Unknown/non-frontier cells should use fully opaque fog so base-map detail does not leak through unexplored territory.
 - The map fetch radius must cover wide GPS-level viewports with padding; otherwise already-explored cells can appear hidden behind unknown fog because their geometry was not loaded.
 
+> **Current-authority note (2026-07-20):** This dated revisit-loop decision is implementation/product evidence only. `CONTEXT.md` now governs Cell Visit → Selector → zero-or-one Encounter semantics; production Encounter rates, weights, and additional Condition kinds remain open.
+
 ## 2026-05-19 — Daily map cell revisit loop can use positive FOMO
 - Jeremy clarified that FOMO is acceptable for the daily revisit loop; the design target should not over-optimize for anti-FOMO.
 - Use **positive FOMO** rather than punitive streak pressure: familiar map cells should feel alive on a daily schedule, making the player want to check them before the GMT day turns over.
@@ -288,6 +292,8 @@
 - Use the hybrid global-state architecture: deterministic on-demand resolution from global seeds is canonical, while persisted rows are limited to period seeds, resolver versions, player claims, audits, special event instances, and intentional caches/snapshots.
 - This architecture must be justified by the SuperBDD scenarios in `features/map-global-map-state-model.feature`, not by implementation preference alone.
 - Resolver payload shape must also be derived from BDD consumer scenarios. `GlobalMapCellState` is reward-clean shared state; player-specific fog/visit/claim status wraps it in a separate `PlayerMapCellStateView`.
+
+> **Superseded authority claim (2026-07-20):** SuperBDD and EAC remain executable evidence and traceability checks, but they are not the source of product truth or work authorization. Root `AGENTS.md`, `CONTEXT.md`, and ADRs 0003–0005 govern the current relationship.
 
 ## 2026-05-19 — Root repo workflow is SuperBDD-driven
 - Root `AGENTS.md` now explicitly instructs EarthNova work to use SuperBDD as the source of truth for product behavior, gameplay rules, UI flows, payload contracts, and state-model changes.
@@ -385,6 +391,8 @@
 - Keep native/mobile on the existing OpenFreeMap Liberty vector style for now, but serve web from a repo-owned `web/base-map-style.json` raster style that uses direct browser-safe tiles and no label-heavy vector source bootstrap.
 - Preserve the existing JS/Dart style-load bridge, but add a MapLibre JS style-ready poll (`map.isStyleLoaded()` / `map.getStyle()`) so style readiness can advance even if the JS `load` event never arrives because remote source fetches fail later in startup.
 
+> **Domain-language supersession (2026-07-20):** The dated rationale below remains historical evidence. Current canonical terms and relationships are Venue, Villager, Service, Venue Visit, Town projection, Home, Pack, Index, Item, and Discovery as defined in `CONTEXT.md`. Old NPC, Place, Feature, Field Guide, Sanctuary, rarity, and Orb-crafting assertions do not authorize or define current implementation.
+
 ## 2026-05-24 — NPCs introduce major game features
 
 - Major game features should be introduced through NPCs rather than appearing as unexplained menu systems.
@@ -464,3 +472,121 @@
 - Every Flutter UI implementation outside `lib/shared/design/` must be listed in `designSurfaceInventory` with category, status, purpose, and design-system notes.
 - There is no separate legacy exception path: app-specific UI is either part of the documented surface inventory or it fails validation.
 - This intentionally closes the old migration gap where feature-local screens/widgets could carry undocumented local styling; any new UI file now shows up as a design-system validation event.
+
+## 2026-07-20 — Encounter state creation and Outcome application use two transactional RPC boundaries
+
+- `v3_cell_visits` remains the exact append-only event that begins Encounter entry resolution.
+- The first RPC owns immutable Cell Visit resolution plus zero-or-one Encounter occurrence creation:
+  - derive ownership from `auth.uid()` and lock the owned Cell Visit
+  - accept the selected active Selector candidate and the exact Encounter Version the app planned
+  - verify the candidate belongs to the Selector and matches its result
+  - lock the selected Encounter Definition and reject a stale expected Version rather than silently rebinding it
+  - persist explicit None without an Encounter, or persist the resolution and exact-version-bound pending Encounter together
+  - make retries idempotent through the one-resolution-per-Cell-Visit constraints and reject changed retry inputs
+- The second RPC owns Option selection plus ordered Outcome application:
+  - lock the pending Encounter and return an already-resolved result idempotently
+  - derive the single implicit Option for automatic Encounter Versions; manual selection remains explicit
+  - validate and plan every ordered Outcome before mutation
+  - bind each generated Item to the Base Item's current published Version while holding the relevant content lock
+  - commit the Encounter transition, Items, and immutable Outcome results in one transaction
+  - use a nested PostgreSQL exception block so a failed Outcome commit rolls back every partial mutation before durable failure evidence is written
+- Add a unique generated-Item reference to Generate Item Outcome results so the mutation is reconstructable end to end.
+- Terminal Encounter states are immutable: only `pending → resolved` or `pending → failed` transitions are valid.
+- Runtime tables stay read-only under RLS; authenticated mutation is available only through security-definer RPCs that set `search_path`, check `auth.uid()`, and receive explicit execute grants.
+- Reveal Venue remains a recognized Outcome kind but cannot mutate player state until the living-world schema provides a durable player-known Venue projection. The first RPC implementation must fail it explicitly without partial results; the later living-world slice extends the same transaction boundary rather than adding a client-side write.
+- The current compatibility Selector candidate is app-resolved because the legacy loot input is not durable server context. This is a beta compatibility boundary, not a general authorization model; new Condition inputs must become server-verifiable before they authorize valuable outcomes.
+- Evidence: migrations `077`–`080`, `docs/adr/0006-bind-definition-versions-at-state-creation.md`, and the existing `041_cell_geometry_publish_function.sql` lock/validate/commit pattern.
+
+## 2026-07-20 — Cell Visit recording is an idempotent authenticated command
+
+- Record new Cell Visits only through `record_v3_cell_visit(cell_id, client_event_id)`.
+- The command derives the Player from `auth.uid()`, server-stamps `visited_at`, and returns the exact persisted row.
+- One canonical client event identity is unique per Player; a same-event/same-Cell retry returns the original identity and timestamp, while reusing that event for another Cell fails closed.
+- Existing Cell Visits keep nullable client event identity. New ids must be nonblank, bounded, and already trimmed.
+- Direct authenticated Cell Visit inserts and all Cell Visit updates/deletes are closed.
+- The command authenticates ownership and timing only. Client-reported Cell identity is not physical-presence or anti-cheat proof.
+
+## 2026-07-20 — Preserve legacy Index continuity with explicit Discovery provenance
+
+- Backfill one Discovery for each existing identified `(Player, stable Base Item)` pair so the new Index does not erase knowledge already visible through identified Items.
+- Select the first provenance Item deterministically by `identified_at`, then `acquired_at`, then Item id.
+- Preserve that Item's exact bound Base Item Version and label the row `legacy_backfill`.
+- Do not invent Property Values, Identification events, Discipline XP, or progression for legacy rows.
+- New transactional Identification will distinguish `explicit_identification` from `automatic_identification`.
+
+## 2026-07-20 — Item creation is command-owned before Identification cutover
+
+- Legacy/shadow compatibility acquisition uses `acquire_v3_legacy_discovery_item`; authoritative Generate Item Outcomes remain owned by the Encounter outcome command.
+- Neither command accepts caller-owned user, stable Base Item, or Base Item Version identity. Both derive ownership and bind the server's exact current published Version when creating an Item.
+- Direct authenticated Item INSERT and DELETE are revoked, and Item identity/acquisition/content binding plus hidden Identification source evidence are immutable.
+- Existing own-row UPDATE is temporarily restricted to the seven visible Identification projection fields needed by the current reveal path.
+- The later transactional Identification command must revoke that remaining direct UPDATE compatibility path; it is not a permanent client-authoritative mutation model.
+
+## 2026-07-20 — Variable Property resolution is deterministic and server-authoritative
+
+- Keep normalized `v3_variable_properties`, exact-Version assignments, Selectors, and Property Values as the only canonical authored/runtime model; do not duplicate effective properties inside authored JSON.
+- Derive one weighted roll from SHA-256 of `Item id + U+001F + Variable Property id`, using the first 32 bits divided by `2^32` and candidate ordinal order.
+- The client may prepare and retain the plan for presentation/retry, but the Identification command recomputes the expected candidate and rejects a mismatch.
+- Explicit None is a real candidate/result and is persisted as such.
+- Until a server Condition evaluator and trusted context exist, publishing an assigned Variable Property whose candidate carries a Condition fails closed.
+
+## 2026-07-20 — Identification is one atomic command and Item generation derives its lifecycle
+
+- Identification commits Discovery, every exact-Version Property Value, the visible Item projection, and an immutable explicit receipt in one transaction.
+- First Identification creates one Discovery keyed by Player and stable Base Item. Later Identifications never replace its first exact Item/Version provenance.
+- Every future command-created Item derives its state using one rule: Identification is required iff its stable Base Item is not Discovered or its exact bound Version has any Variable Properties.
+- A repeated no-property Item for a discovered stable Base Item is automatically identified at insert and receives an automatic receipt; it creates no duplicate Discovery and no Property Values.
+- Discipline XP, levels, thresholds, unlocks, and events remain inactive until separately tuned.
+- After the Flutter Pack runtime uses prepare/commit, authenticated direct Item UPDATE is revoked; the old pending-field copy path is mock-only compatibility.
+
+## 2026-07-20 — Pack and Index are separate read models
+
+- Pack owns the Player's active Item-instance collection, filters, screen, and cards; it may show instance Identification and Property state.
+- Index owns one player-facing entry per Discovered stable Base Item, retaining the first exact Version snapshot/provenance.
+- Index never derives from Pack multiplicity, never exposes Item Property Values, and never resolves an old Discovery through the current published Version.
+- The shared Item identity remains in core for cross-context use; feature behavior/repositories no longer live in the shared core or one mixed Identification read boundary.
+
+## 2026-07-21 — Reveal Venue and Town use exact durable knowledge
+
+- A `reveal_venue` Outcome binds the stable Venue and exact published Venue Version into the immutable Encounter Outcome result.
+- The same Encounter outcome transaction inserts first-known Venue provenance; repeat reveals retain the original known row while each ordered Outcome keeps its own result evidence.
+- Town is a projection, not a mutable aggregate table. It exposes only Player-known Venues and globally known Villagers at visited Venues' current published rosters, plus current Services.
+- Town presents current authored names/roles/Services while retaining each Venue/Villager's immutable first-known Version and Outcome/Visit provenance.
+- Unrevealed Living World authored tables and Reveal Outcome target payloads are not directly enumerable by authenticated clients.
+- The Rowan compatibility seed creates authored Venue/Villager/Service content only; it does not seed player knowledge.
+
+## 2026-07-21 — Venue Visit is exact, idempotent, and physically gated
+
+- `record_v3_venue_visit(cell_visit_id, venue_id, expected_venue_version_id)` is the only Venue Visit mutation boundary.
+- The command derives ownership, requires an owned exact Cell Visit at the Venue anchor Cell, and binds the current exact Venue Version for a new Visit.
+- Retrying the same Cell Visit/Venue requires the originally persisted Version, returns that historical Version, introduces nobody, and never repurposes an old Visit after authored content changes.
+- A later Cell Visit can introduce only Villagers on the current Venue roster whom the Player does not already know.
+- Physical-presence trust and the client trigger remain deliberately unresolved. Map, Town, GPS, and screen-open paths do not invoke the command.
+
+## 2026-07-21 — Home is identity-only and category completeness remains behavior-free
+
+- Every `v3_profiles` Player has exactly one immutable UUID Home, created automatically for new profiles and backfilled for existing profiles.
+- Home is read-only at this boundary. No Home Module kind, placement, capacity, upgrade, lifecycle, or Item-placement model is authorized.
+- The canonical Food Base Items are exactly Veg, Fruit, Critter, Fish, Grub, and Nectar; a validated stable-ID whitelist prevents a seventh Food type.
+- `orb:orb_type` / `Orb Type` is explicit authored Base Item identity only. Orb use, crafting, stacking, currency, consumption, and lifecycle behavior remain absent.
+- Player-facing navigation and copy use Home. The legacy `open-sanctuary` identifier remains only as EAC/telemetry compatibility evidence until a separately authorized identifier migration.
+
+## 2026-07-21 — Item identity is opaque until command-owned Identification
+
+- `acquire_v3_legacy_discovery_item` accepts only compatibility discovery identity/provenance, derives canonical Base Item and exact published Version evidence server-side, and retains idempotent retry semantics.
+- Authenticated clients cannot directly select `v3_items`. The owner-bound Pack projection is the only active collection read boundary.
+- Before Identification, an Item exposes only its opaque instance ID, generic display, category, acquisition provenance, and lifecycle state. It never exposes canonical definition/Base Item/Version IDs, taxonomy, habitat, continent, or identified fields.
+- Identification is the sole player-facing reveal boundary. Its prepare, deterministic plan, and commit share one trace ID; only identified Pack projections expose canonical identity.
+- Encounter outcome storage retains exact Item/Base Item/Version evidence server-side, while authenticated aggregate responses redact Generate Item canonical identity until that Item is identified.
+
+## 2026-07-21 — Encounter actions preserve every reward and one root trace
+
+- An Encounter action creates one root trace before Cell Visit persistence. That trace correlates Cell Visit, selector/version binding, transaction/retry, repository terminal events, and user-facing completion/failure logs.
+- Trace context is observability-only and does not change existing authenticated RPC parameter shapes or persist a client-controlled trace into game evidence.
+- Generated Item Outcomes are plural and ordered. The runtime validates, registers, and presents every committed generated Item rather than selecting a first reward.
+- Supabase Encounter providers must inject the active Encounter observability logger; repository telemetry is a production composition requirement, not a test-only adapter option.
+
+## 2026-07-21 — Repository boundaries sanitize outward failures
+
+- Map Cell, Map Hierarchy, Auth, and Encounter version-binding adapters emit stable non-secret terminal diagnostics internally, then expose only safe domain failures to use cases.
+- Raw transport bodies, SQL errors, parser payloads, and credentials may not cross into `ObservableUseCase` summaries or terminal telemetry.

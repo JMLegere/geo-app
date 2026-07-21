@@ -1,9 +1,8 @@
 @capability.living-world @capability.progression-permanence @feature.release-to-wild
-Feature: Release to Wild
-  Release to Wild is the first concrete NPC-led conservation loop. A Wildlife
-  Rehabilitation Center run by a Wildlife Rehabilitator accepts real owned animal
-  instances from the player. Base one-off release is always available, while
-  optional local programs offer extra rewards for authored trait requests.
+Feature: Release to Wild legacy evidence
+  Status: This retained scenario evidence is historical and unimplemented target
+  behavior. Its NPC, reward, Pack mutation, and Orb claims do not establish
+  approved current mechanics; Orb behavior remains open.
 
   Scenario: Release to Wild defines its game system
     Given Release to Wild belongs to the Progression-Permanence capability
@@ -29,7 +28,7 @@ Feature: Release to Wild
     When the player releases that animal to the wild
     Then the owned animal should leave the active Pack exactly once
     And the released animal should appear in the center's release ledger/history
-    And Field Guide knowledge should remain available after release
+    And Index knowledge should remain available after release
     And the player should gain the flat base Orb item-stack reward for releasing any eligible fauna
 
   @action.release-animal-to-wild

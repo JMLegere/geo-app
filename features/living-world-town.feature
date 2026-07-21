@@ -1,67 +1,31 @@
 @capability.living-world @feature.town @feature.npc-venues
-Feature: Town and NPC-led services
-  Living World makes major EarthNova systems feel grounded in places and people.
-  NPC venues are discovered on the Map, unlock character-owned place entries in
-  Town, and bind feature surfaces to the nearest eligible local NPC instead of
-  exposing unexplained menus.
+Feature: Town terminology and legacy venue evidence
+  Status: The retained npc-venues feature tag and action identifiers are legacy
+  evidence only. They do not establish placement, unlock, or binding behavior.
+  The approved target uses Venues, Villagers, and Services.
 
-  Scenario: Living World defines its app surfaces
-    Given major game systems should be introduced through NPCs
-    When the Living World capability is expanded beyond navigation stubs
-    Then it should specify NPC venue placement, venue discovery, Town entries, and NPC-led feature binding
-
-  Scenario: NPC venues are sparse and city-scoped
-    Given a city-level location node has eligible POIs and authored NPC functions
-    When NPC venues are placed for that city
-    Then each NPC type should appear at most once in the city
-    And each map cell should contain at most one NPC venue
-    And each venue should anchor to the most popular eligible POI in its chosen cell
-
-  Scenario: NPC function is authored before generated flavor
-    Given the game needs a specific authored NPC-led feature
-    When an NPC venue is generated
-    Then the NPC type, feature function, unlock rules, and feature binding should be authored by the game
-    And generated identity details should be limited to character name, place display name, portrait seed, affiliation, voice, intro copy, and cosmetic local flavor
+  Scenario: Town is the index of known world relationships
+    Given a Venue is known to the Player
+    When the target Town surface is described
+    Then Town indexes the known Venue, its known Villagers, and their Services
+    And a Venue becomes known through a Reveal Venue Outcome
+    And Villager introduction belongs to Venue Visits, not Encounter resolution
 
   @action.discover-npc-venue
-  Scenario: Player discovers an NPC venue by entering its map cell
-    Given the player enters a map cell that hosts an undiscovered NPC venue
-    When the venue discovery is resolved
-    Then the NPC venue should become visible on the Map and unlocked in Town
-    And the discovery should not grant items, identify species, or bypass normal Discovery and Identification gates
-
-  Scenario: Frontier cells can help the player plan toward the NPC venue
-    Given an NPC venue has been placed in a city
-    When the player explores nearby frontier, present, or explored cells
-    Then the venue should be allowed to appear as a planning cue before direct arrival
-    And the cue should remain tied to the same city-owned NPC venue rather than generating per-player variants
+  Scenario: Legacy venue-reveal identifier is preserved as evidence
+    Given the legacy action identifier is still cataloged
+    When its catalog entry is read
+    Then it must not imply that Cell entry, NPC discovery, or Item acquisition is current target behavior
 
   @action.open-town
-  Scenario: Player opens Town
-    Given the player is authenticated
+  Scenario: Town uses approved player-facing language
+    Given Town has known entries
     When the player opens Town
-    Then Town should show unlocked character-owned place entries
-    And if no places are unlocked, Town should show an empty state that points back to Map exploration
-    And discovered places whose services are not ready should appear as Opening Soon entries rather than fully interactive feature screens
+    Then the entries are Venues, Villagers, and Services
 
   @action.open-npc-led-feature
-  Scenario: Player opens an unlocked NPC-led feature
-    Given Town lists an unlocked character-owned place
-    When the player opens that feature from Town
-    Then the feature UI should bind to the nearest eligible NPC of that type relative to the player's current location
-    And the binding should respect one NPC type per city, one NPC venue per cell, and POI-anchored venue placement
-
   @action.open-npc-venue-detail
-  Scenario: Player opens NPC venue detail
-    Given Town or a map cell lists an unlocked character-owned place
-    When the player opens the venue detail
-    Then the app should show a dedicated NPC-first venue page
-    And the page should show the venue name, NPC role, and available services with Coming soon states
-
-  Scenario: First NPC-led feature belongs to a character-owned Wildlife Rehab Center
-    Given the first concrete NPC-led loop is selected
-    When Living World places the first NPC venue
-    Then the Town entry should be a character-owned Wildlife Rehab Center
-    And the NPC role should be Wildlife Rehabilitator
-    And the available service should be Release to Wild
-    And the center should support base one-off releases plus optional local conservation programs
+  Scenario: Legacy action identifiers do not redefine target language
+    Given the retained action identifiers support existing evidence
+    When their surfaces are described
+    Then target language remains Service, Venue, and Villager

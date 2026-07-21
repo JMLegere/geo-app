@@ -74,51 +74,51 @@ void main() {
 
     test('each habitat has a color', () {
       for (final h in Habitat.values) {
-        expect(h.color, isA<Color>());
+        expect(h.colorValue, isA<int>());
       }
     });
 
     test('forest is green', () {
-      final c = Habitat.forest.color;
+      final c = Color(Habitat.forest.colorValue);
       expect(c.g, greaterThan(c.r));
       expect(c.g, greaterThan(c.b));
     });
 
     test('ocean is purple', () {
-      final c = Habitat.ocean.color;
+      final c = Color(Habitat.ocean.colorValue);
       expect(c.r, greaterThan(0));
       expect(c.b, greaterThan(0));
       expect(c.g, lessThan(c.r));
     });
 
     test('freshwater is blue', () {
-      final c = Habitat.freshwater.color;
+      final c = Color(Habitat.freshwater.colorValue);
       expect(c.b, greaterThan(c.r));
       expect(c.b, greaterThan(c.g));
     });
 
     test('desert is orange', () {
-      final c = Habitat.desert.color;
+      final c = Color(Habitat.desert.colorValue);
       expect(c.r, greaterThan(c.g));
       expect(c.r, greaterThan(c.b));
       expect(c.g, greaterThan(c.b));
     });
 
     test('plains is yellow', () {
-      final c = Habitat.plains.color;
+      final c = Color(Habitat.plains.colorValue);
       expect(c.r, greaterThan(0));
       expect(c.g, greaterThan(0));
       expect(c.b, lessThan(c.r));
     });
 
     test('mountain is red', () {
-      final c = Habitat.mountain.color;
+      final c = Color(Habitat.mountain.colorValue);
       expect(c.r, greaterThan(c.g));
       expect(c.r, greaterThan(c.b));
     });
 
     test('swamp is grey', () {
-      final c = Habitat.swamp.color;
+      final c = Color(Habitat.swamp.colorValue);
       final avg = (c.r + c.g + c.b) / 3;
       expect((c.r - avg).abs(), lessThan(0.1));
       expect((c.g - avg).abs(), lessThan(0.1));
@@ -126,39 +126,41 @@ void main() {
     });
 
     test('urban is slate-toned', () {
-      final c = Habitat.urban.color;
+      final c = Color(Habitat.urban.colorValue);
       expect(c.b, greaterThan(c.r * 0.8));
       expect(c.g, greaterThan(c.r * 0.8));
     });
   });
 
-  group('Habitat.blendHabitats', () {
+  group('Habitat.blendColorValues', () {
     test('single habitat returns its own color', () {
       expect(
-        Habitat.blendHabitats([Habitat.forest]),
-        Habitat.forest.color,
+        Habitat.blendColorValues([Habitat.forest]),
+        Habitat.forest.colorValue,
       );
     });
 
     test('blend of forest and freshwater is teal-ish', () {
-      final blended =
-          Habitat.blendHabitats([Habitat.forest, Habitat.freshwater]);
+      final blended = Color(
+        Habitat.blendColorValues([Habitat.forest, Habitat.freshwater]),
+      );
       expect(blended.g, greaterThan(blended.r));
       expect(blended.b, greaterThan(blended.r));
     });
 
     test('blend is weighted RGB average', () {
-      final forest = Habitat.forest.color;
-      final ocean = Habitat.ocean.color;
-      final blended = Habitat.blendHabitats([Habitat.forest, Habitat.ocean]);
+      final forest = Color(Habitat.forest.colorValue);
+      final ocean = Color(Habitat.ocean.colorValue);
+      final blended = Color(
+        Habitat.blendColorValues([Habitat.forest, Habitat.ocean]),
+      );
       expect(blended.r, closeTo((forest.r + ocean.r) / 2, 0.01));
       expect(blended.g, closeTo((forest.g + ocean.g) / 2, 0.01));
       expect(blended.b, closeTo((forest.b + ocean.b) / 2, 0.01));
     });
 
-    test('empty list returns transparent black', () {
-      final blended = Habitat.blendHabitats([]);
-      expect(blended, const Color(0x00000000));
+    test('empty list returns transparent ARGB', () {
+      expect(Habitat.blendColorValues([]), 0x00000000);
     });
   });
 }

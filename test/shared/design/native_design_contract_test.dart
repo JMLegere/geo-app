@@ -63,8 +63,7 @@ void main() {
           kind: 'Page',
         ),
         'PlayerPack': (
-          path:
-              'lib/features/identification/presentation/screens/pack_screen.dart',
+          path: 'lib/features/pack/presentation/screens/pack_screen.dart',
           kind: 'Page',
         ),
         'TownDirectory': (
@@ -74,12 +73,16 @@ void main() {
         ),
         'VenueDetail': (
           path:
-              'lib/features/living_world/presentation/screens/npc_venue_detail_screen.dart',
+              'lib/features/living_world/presentation/screens/venue_detail_screen.dart',
           kind: 'Page',
         ),
         'PlayerSettings': (
           path:
               'lib/features/profile/presentation/screens/settings_screen.dart',
+          kind: 'Page',
+        ),
+        'HomeIdentity': (
+          path: 'lib/features/home/presentation/screens/home_screen.dart',
           kind: 'Page',
         ),
         'TerritoryHierarchyHeader': (

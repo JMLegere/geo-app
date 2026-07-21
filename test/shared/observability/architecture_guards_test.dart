@@ -2,6 +2,100 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+final _dartDirectivePattern = RegExp(
+  r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''',
+  multiLine: true,
+);
+
+List<File> _dartFilesUnder(String directoryPath) {
+  final directory = Directory(directoryPath);
+  if (!directory.existsSync()) return const <File>[];
+
+  final files = directory
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((file) => _normalizePath(file.path).endsWith('.dart'))
+      .toList()
+    ..sort(
+      (left, right) =>
+          _normalizePath(left.path).compareTo(_normalizePath(right.path)),
+    );
+  return files;
+}
+
+String _normalizePath(String path) {
+  final segments = path.replaceAll('\\', '/').split('/');
+  final normalized = <String>[];
+  for (final segment in segments) {
+    if (segment.isEmpty || segment == '.') continue;
+    if (segment == '..') {
+      if (normalized.isNotEmpty && normalized.last != '..') {
+        normalized.removeLast();
+      } else {
+        normalized.add(segment);
+      }
+      continue;
+    }
+    normalized.add(segment);
+  }
+  return normalized.join('/');
+}
+
+String _resolvedImportPath(File sourceFile, String importUri) {
+  if (!importUri.startsWith('.')) return _normalizePath(importUri);
+
+  final sourceSegments = _normalizePath(sourceFile.path).split('/')
+    ..removeLast();
+  return _normalizePath([...sourceSegments, importUri].join('/'));
+}
+
+bool _matchesPackagePrefix(String path, String prefix) =>
+    path == prefix || path.startsWith('$prefix/');
+
+bool _isFeaturePackagePath(String path) {
+  if (path.startsWith('package:earth_nova/features/')) return true;
+
+  final segments = path.split('/');
+  for (var index = 0; index + 1 < segments.length; index++) {
+    if (segments[index] == 'lib' && segments[index + 1] == 'features') {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool _isFeatureLayerImport(
+  File sourceFile,
+  String importUri,
+  String layer,
+) {
+  final path = _resolvedImportPath(sourceFile, importUri);
+  if (!_isFeaturePackagePath(path)) return false;
+
+  final segments = path.split('/');
+  final featuresIndex = segments.indexOf('features');
+  return featuresIndex >= 0 &&
+      featuresIndex + 2 < segments.length &&
+      segments[featuresIndex + 2] == layer;
+}
+
+bool _isForbiddenDomainImport(File sourceFile, String importUri) {
+  final path = _resolvedImportPath(sourceFile, importUri);
+  const forbiddenPackagePrefixes = [
+    'package:flutter',
+    'package:flutter_riverpod',
+    'package:riverpod',
+    'package:supabase',
+  ];
+
+  return path == 'dart:ui' ||
+      forbiddenPackagePrefixes.any(
+        (prefix) => _matchesPackagePrefix(path, prefix),
+      ) ||
+      _isFeatureLayerImport(sourceFile, importUri, 'presentation') ||
+      _isFeatureLayerImport(sourceFile, importUri, 'data');
+}
+
 void main() {
   group('shared observability architecture guards', () {
     test('feature observability files do not import lib/shared', () {
@@ -23,6 +117,65 @@ void main() {
         violations,
         isEmpty,
         reason: 'Feature observability files must not import lib/shared:\n'
+            '${violations.join('\n')}',
+      );
+    });
+
+    test(
+        'core domain files do not import framework or feature presentation/data layers',
+        () {
+      final violations = <String>[];
+
+      for (final file in _dartFilesUnder('lib/core/domain')) {
+        final contents = file.readAsStringSync();
+        for (final match in _dartDirectivePattern.allMatches(contents)) {
+          final importUri = match.group(1)!;
+          if (_isForbiddenDomainImport(file, importUri)) {
+            violations.add(
+              '${_normalizePath(file.path)} imports forbidden dependency '
+              '$importUri',
+            );
+          }
+        }
+      }
+
+      violations.sort();
+
+      expect(
+        violations,
+        isEmpty,
+        reason:
+            'Core domain files must not import Flutter (including dart:ui), '
+            'Riverpod, Supabase, or feature presentation/data layers. '
+            'Move each dependency behind an appropriate adapter:\n'
+            '${violations.join('\n')}',
+      );
+    });
+
+    test('core domain rules do not import feature packages', () {
+      final violations = <String>[];
+
+      for (final file in _dartFilesUnder('lib/core/domain/rules')) {
+        final contents = file.readAsStringSync();
+        for (final match in _dartDirectivePattern.allMatches(contents)) {
+          final importUri = match.group(1)!;
+          final resolvedImportPath = _resolvedImportPath(file, importUri);
+          if (_isFeaturePackagePath(resolvedImportPath)) {
+            violations.add(
+              '${_normalizePath(file.path)} imports feature package '
+              '$importUri',
+            );
+          }
+        }
+      }
+
+      violations.sort();
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Rule files must not import feature packages. Move each '
+            'feature dependency out of lib/core/domain/rules/:\n'
             '${violations.join('\n')}',
       );
     });
@@ -101,8 +254,7 @@ void main() {
           'lib/features/auth/presentation/screens/loading_screen.dart',
       'login_screen':
           'lib/features/auth/presentation/screens/login_screen.dart',
-      'pack_screen':
-          'lib/features/identification/presentation/screens/pack_screen.dart',
+      'pack_screen': 'lib/features/pack/presentation/screens/pack_screen.dart',
       'map_root_screen':
           'lib/features/map/presentation/screens/map_root_screen.dart',
       'map_screen': 'lib/features/map/presentation/screens/map_screen.dart',

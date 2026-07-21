@@ -20,6 +20,8 @@ void main() {
       expect(baseItem.category, ItemCategory.fauna);
       expect(baseItem.status, ItemStatus.active);
       expect(baseItem.scientificName, isNull);
+      expect(baseItem.baseItemId, isNull);
+      expect(baseItem.baseItemVersionId, isNull);
       expect(baseItem.habitats, isEmpty);
       expect(baseItem.continents, isEmpty);
     });
@@ -30,6 +32,46 @@ void main() {
       expect(copied.displayName, 'Tiger');
       expect(copied.status, ItemStatus.donated);
       expect(copied.id, 'i1');
+    });
+
+    test('preserves exact Base Item binding through copyWith', () {
+      const baseItemId = 'fauna:lion';
+      const baseItemVersionId = '123e4567-e89b-12d3-a456-426614174000';
+      final bound = baseItem.copyWith(
+        baseItemId: baseItemId,
+        baseItemVersionId: baseItemVersionId,
+      );
+
+      final copied = bound.copyWith(displayName: 'Tiger');
+
+      expect(copied.baseItemId, baseItemId);
+      expect(copied.baseItemVersionId, baseItemVersionId);
+      expect(copied.displayName, 'Tiger');
+    });
+  });
+
+  group('Item identification', () {
+    test('reveals identified values without changing exact Base Item binding',
+        () {
+      final item = baseItem.copyWith(
+        baseItemId: 'fauna:lion',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174000',
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'African Lion',
+        identifiedScientificName: 'Panthera leo',
+      );
+
+      final identified = item.identify(at: DateTime.utc(2026, 1, 2));
+
+      expect(
+          identified.identificationState, ItemIdentificationState.identified);
+      expect(identified.visibleDisplayName, 'African Lion');
+      expect(identified.visibleScientificName, 'Panthera leo');
+      expect(identified.baseItemId, 'fauna:lion');
+      expect(
+        identified.baseItemVersionId,
+        '123e4567-e89b-12d3-a456-426614174000',
+      );
     });
   });
 
@@ -53,6 +95,24 @@ void main() {
       );
       expect(a, equals(b));
       expect(a.hashCode, b.hashCode);
+    });
+
+    test('Base Item bindings participate in equality', () {
+      final a = baseItem.copyWith(
+        baseItemId: 'fauna:lion',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174000',
+      );
+      final b = baseItem.copyWith(
+        baseItemId: 'fauna:lion',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174000',
+      );
+      final differentVersion = b.copyWith(
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174001',
+      );
+
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+      expect(a, isNot(equals(differentVersion)));
     });
   });
 

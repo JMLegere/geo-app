@@ -1,5 +1,44 @@
 import 'package:earth_nova/features/identification/data/repositories/supabase_item_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
+
+const _acquiredAt = '2026-04-12T10:30:00.000Z';
+
+DiscoveryItemDraft _draft() => DiscoveryItemDraft(
+      userId: 'user-1',
+      definitionId: 'species-101',
+      displayName: 'Northern cardinal',
+      category: ItemCategory.fauna,
+      acquiredInCellId: 'cell-42',
+      mapCellEntryId: 'entry-42',
+      scientificName: 'Cardinalis cardinalis',
+      rarity: 'common',
+      taxonomicClass: 'Aves',
+      habitats: const ['forest', 'garden'],
+      continents: const ['North America'],
+      identifiedAt: DateTime.utc(2026, 4, 13, 9),
+      identifiedDisplayName: 'Identified cardinal',
+      identifiedScientificName: 'Cardinalis cardinalis',
+      identifiedTaxonomicClass: 'Aves',
+      identifiedHabitats: const ['woodland'],
+      identifiedContinents: const ['North America'],
+    );
+
+Map<String, dynamic> _acquiredItemResponse({
+  String cellId = 'cell-42',
+  String displayName = 'Unidentified fauna specimen',
+  String category = 'fauna',
+}) =>
+    {
+      'id': 'item-1',
+      'display_name': displayName,
+      'category': category,
+      'acquired_at': _acquiredAt,
+      'acquired_in_cell_id': cellId,
+      'status': 'active',
+      'identification_state': 'unidentified',
+    };
 
 void main() {
   group('SupabaseItemRepository trace logging', () {
@@ -11,13 +50,11 @@ void main() {
         fetchItemsQuery: (_) async => [
           {
             'id': 'item_1',
-            'definition_id': 'species_101',
-            'display_name': 'A',
+            'display_name': 'Unidentified fauna specimen',
             'category': 'fauna',
             'status': 'active',
             'acquired_at': DateTime(2026).toIso8601String(),
-            'habitats_json': '[]',
-            'continents_json': '[]',
+            'identification_state': 'unidentified',
           }
         ],
         logEvent: (event, category, {data}) {
@@ -39,7 +76,7 @@ void main() {
       expect(events[1]['data']['duration_ms'], isA<int>());
     });
 
-    test('logs query failure with operation and error details', () async {
+    test('logs query failure with safe diagnostic attributes', () async {
       final events = <Map<String, dynamic>>[];
       final repository = SupabaseItemRepository(
         client: null,
@@ -62,7 +99,139 @@ void main() {
       expect(events.last['data']['operation'], 'fetch_items');
       expect(events.last['data']['trace_id'], 'trace-item-fail');
       expect(events.last['data']['error_type'], 'StateError');
-      expect(events.last['data']['error_message'], contains('items broken'));
+      expect(
+        events.last['data']['error_message'],
+        'invalid_repository_response',
+      );
+      expect(
+          events.last['data'].values.join(), isNot(contains('items broken')));
+    });
+  });
+
+  group('SupabaseItemRepository legacy discovery acquisition', () {
+    test('sends only discovery identity and provenance to the legacy RPC',
+        () async {
+      String? rpcName;
+      Map<String, dynamic>? rpcParams;
+      final repository = SupabaseItemRepository(
+        client: null,
+        acquireDiscoveryItemRpcCaller: (functionName, params) async {
+          rpcName = functionName;
+          rpcParams = params;
+          return _acquiredItemResponse();
+        },
+      );
+
+      final item = await repository.acquireDiscoveryItem(_draft());
+
+      expect(item.id, 'item-1');
+      expect(rpcName, 'acquire_v3_legacy_discovery_item');
+      expect(rpcParams, {
+        'p_definition_id': 'species-101',
+        'p_acquired_in_cell_id': 'cell-42',
+        'p_map_cell_entry_id': 'entry-42',
+      });
+      for (final forbiddenParam in [
+        'p_display_name',
+        'p_category',
+        'p_scientific_name',
+        'p_rarity',
+        'p_taxonomic_class',
+        'p_habitats_json',
+        'p_continents_json',
+        'p_identification_state',
+        'p_identified_at',
+        'p_identified_display_name',
+      ]) {
+        expect(rpcParams, isNot(contains(forbiddenParam)));
+      }
+    });
+
+    test('rejects a malformed non-object RPC response', () async {
+      final repository = SupabaseItemRepository(
+        client: null,
+        acquireDiscoveryItemRpcCaller: (_, __) async => [
+          _acquiredItemResponse(),
+        ],
+      );
+
+      await expectLater(
+        () => repository.acquireDiscoveryItem(_draft()),
+        throwsStateError,
+      );
+    });
+
+    test('rejects an unsafe or malformed safe Item projection', () async {
+      final invalidResponses = [
+        _acquiredItemResponse(cellId: 'other-cell'),
+        _acquiredItemResponse(displayName: ''),
+        _acquiredItemResponse(category: ''),
+        <String, dynamic>{
+          ..._acquiredItemResponse(),
+          'definition_id': 'forged-definition',
+        },
+      ];
+
+      for (final response in invalidResponses) {
+        final repository = SupabaseItemRepository(
+          client: null,
+          acquireDiscoveryItemRpcCaller: (_, __) async => response,
+        );
+
+        await expectLater(
+          () => repository.acquireDiscoveryItem(_draft()),
+          throwsStateError,
+        );
+      }
+    });
+
+    test('keeps the injectable acquisition query seam usable', () async {
+      DiscoveryItemDraft? receivedDraft;
+      final draft = _draft();
+      final repository = SupabaseItemRepository(
+        client: null,
+        acquireDiscoveryItemQuery: (draft) async {
+          receivedDraft = draft;
+          return _acquiredItemResponse();
+        },
+      );
+
+      final item = await repository.acquireDiscoveryItem(draft);
+
+      expect(receivedDraft, same(draft));
+      expect(item.definitionId, isNull);
+    });
+
+    test('logs acquisition failures without raw backend messages', () async {
+      final events = <Map<String, dynamic>>[];
+      final repository = SupabaseItemRepository(
+        client: null,
+        acquireDiscoveryItemQuery: (_) async =>
+            throw StateError('backend secret: acquisition failed'),
+        logEvent: (event, category, {data}) {
+          events
+              .add({'event': event, 'category': category, 'data': data ?? {}});
+        },
+      );
+
+      await expectLater(
+        () => repository.acquireDiscoveryItem(_draft()),
+        throwsStateError,
+      );
+
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_failed',
+      ]);
+      expect(events.last['data']['error_type'], 'StateError');
+      expect(
+        events.last['data']['error_message'],
+        'invalid_repository_response',
+      );
+      expect(
+        events.last['data'].values.join(),
+        isNot(contains('backend secret: acquisition failed')),
+      );
     });
   });
 }

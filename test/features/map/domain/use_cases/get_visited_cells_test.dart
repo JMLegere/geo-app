@@ -1,5 +1,6 @@
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_visited_cells.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,8 +51,20 @@ class FakeCellRepository implements CellRepository {
   }
 
   @override
-  Future<void> recordVisit(String userId, String cellId,
-      {String? traceId}) async {}
+  Future<CellVisit> recordVisit(
+    String userId,
+    String cellId,
+    String clientEventId, {
+    String? traceId,
+  }) async {
+    return CellVisit(
+      id: 'visit-1',
+      userId: userId,
+      cellId: cellId,
+      clientEventId: clientEventId,
+      visitedAt: DateTime.utc(2026, 7, 20),
+    );
+  }
 }
 
 void main() {

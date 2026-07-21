@@ -1,0 +1,9 @@
+Page: HomeIdentity
+Status: canonical
+Role: home-identity-page
+Interaction policy: delegates-to-children
+Exports: lib/features/home/presentation/screens/home_screen.dart
+Public API: lib/features/home/presentation/screens/home_screen.dart
+
+Purpose:
+  Home page for the authenticated Player, showing a permanent Home identity and a calm Modules future-state panel without a CTA.

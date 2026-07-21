@@ -13,13 +13,13 @@ void main() {
       ProviderScope(
         overrides: [appObservabilityProvider.overrideWithValue(obs)],
         child: const MaterialApp(
-          home: StubScreen(label: 'Sanctuary'),
+          home: StubScreen(label: 'Future tab'),
         ),
       ),
     );
 
-    expect(find.text('Sanctuary'), findsOneWidget);
-    expect(find.text('Sanctuary — Coming soon'), findsOneWidget);
+    expect(find.text('Future tab'), findsOneWidget);
+    expect(find.text('Future tab — Coming soon'), findsOneWidget);
     expect(find.text('More discoveries on the way!'), findsOneWidget);
   });
 }

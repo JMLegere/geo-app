@@ -6,9 +6,7 @@ import {
 } from "./actions.ts";
 
 export type WorkflowCoverageKind =
-  | "states"
-  | "transitions"
-  | "forbidden-transitions";
+  "states" | "transitions" | "forbidden-transitions";
 
 export type PlayerActionWorkflowTransition = {
   readonly from: string;
@@ -51,7 +49,7 @@ const workflow = <const Spec extends PlayerActionWorkflow>(spec: Spec) => spec;
 export const userActionWorkflows = {
   mapExploration: workflow({
     id: playerActionWorkflows.mapExploration,
-    label: "Map exploration readiness and cell entry",
+    label: "Map Exploration readiness and legacy Cell Visit proxy",
     initialState: "map-closed",
     states: [
       "map-closed",
@@ -69,7 +67,11 @@ export const userActionWorkflows = {
       playerActions.inspectMapCell,
     ],
     transitions: [
-      { from: "map-closed", action: playerActions.openMap, to: "map-not-ready" },
+      {
+        from: "map-closed",
+        action: playerActions.openMap,
+        to: "map-not-ready",
+      },
       {
         from: "map-not-ready",
         action: playerActions.readMapStatus,
@@ -115,22 +117,26 @@ export const userActionWorkflows = {
       {
         state: "map-closed",
         action: playerActions.crossMapCellBorder,
-        reason: "A closed map cannot record visits, reveal fog, or emit map cell entry identity.",
+        reason:
+          "A closed map cannot record visits, reveal fog, or emit map cell entry identity.",
       },
       {
         state: "map-not-ready",
         action: playerActions.crossMapCellBorder,
-        reason: "Map readiness must settle before visits, fog, or handoffs can mutate.",
+        reason:
+          "Map readiness must settle before visits, fog, or handoffs can mutate.",
       },
       {
         state: "browse-only",
         action: playerActions.crossMapCellBorder,
-        reason: "Bad or paused GPS can show context but must not count exploration progress.",
+        reason:
+          "Bad or paused GPS can show context but must not count exploration progress.",
       },
       {
         state: "map-not-ready",
         action: playerActions.inspectMapCell,
-        reason: "Map cell detail requires a resolved current or inspected map cell identity.",
+        reason:
+          "Map cell detail requires a resolved current or inspected map cell identity.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -139,7 +145,7 @@ export const userActionWorkflows = {
 
   discoveryOwnership: workflow({
     id: playerActionWorkflows.discoveryOwnership,
-    label: "Committed discovery reward to unidentified find lifecycle",
+    label: "Legacy reward-card Item lifecycle (not target Encounter behavior)",
     initialState: "reward-modal-active",
     states: [
       "no-result",
@@ -187,23 +193,29 @@ export const userActionWorkflows = {
         action: playerActions.revealIdentification,
         to: "identified",
       },
-      { from: "identified", action: playerActions.inspectPackFind, to: "identified" },
+      {
+        from: "identified",
+        action: playerActions.inspectPackFind,
+        to: "identified",
+      },
     ],
     forbiddenTransitions: [
       {
         state: "no-result",
         action: playerActions.continueDiscoveryReward,
-        reason: "There is no committed living-specimen reward modal to continue.",
+        reason: "There is no committed legacy reward modal to continue.",
       },
       {
         state: "no-result",
         action: playerActions.openPack,
-        reason: "Opening Pack cannot create reward ownership when Discovery resolved no reward.",
+        reason:
+          "Opening Pack cannot create Item ownership; this legacy reward bridge is not Discovery.",
       },
       {
         state: "reward-modal-active",
         action: playerActions.revealIdentification,
-        reason: "Identification reveal requires the reward card to land as an unidentified Pack find first.",
+        reason:
+          "Identification reveal requires the reward card to land as an unidentified Pack find first.",
       },
       {
         state: "unidentified",
@@ -213,7 +225,8 @@ export const userActionWorkflows = {
       {
         state: "identified",
         action: playerActions.revealIdentification,
-        reason: "Identification results are deterministic and must not replay as new progress.",
+        reason:
+          "Identification results are deterministic and must not replay as new progress.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -222,7 +235,7 @@ export const userActionWorkflows = {
 
   npcFeatureUnlock: workflow({
     id: playerActionWorkflows.npcFeatureUnlock,
-    label: "NPC venue discovery to Town feature binding",
+    label: "Legacy NPC venue-to-Town feature evidence",
     initialState: "town-empty",
     states: [
       "town-empty",
@@ -267,17 +280,20 @@ export const userActionWorkflows = {
       {
         state: "town-empty",
         action: playerActions.openNpcLedFeature,
-        reason: "NPC-led features must be unlocked through discovered venues before they can open.",
+        reason:
+          "This legacy feature flow requires its retained venue evidence first; target Town uses Services provided by Villagers at Venues.",
       },
       {
         state: "town-open",
         action: playerActions.discoverNpcVenue,
-        reason: "Venue discovery is driven by eligible map-cell entry, not by opening the Town menu.",
+        reason:
+          "Legacy map-cell-entry evidence does not define target Venue reveal behavior.",
       },
       {
         state: "npc-led-feature-open",
         action: playerActions.discoverNpcVenue,
-        reason: "Feature UI binding cannot discover a new map venue without a fresh eligible map-cell entry.",
+        reason:
+          "This historical feature binding cannot establish a target Venue without an approved Encounter Outcome.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -287,7 +303,7 @@ export const userActionWorkflows = {
 
   releaseToWild: workflow({
     id: playerActionWorkflows.releaseToWild,
-    label: "Wildlife Rehabilitation Center Release to Wild lifecycle",
+    label: "Legacy Release to Wild evidence (not an active target lifecycle)",
     initialState: "rehab-center-discovered",
     states: [
       "rehab-center-discovered",
@@ -332,17 +348,20 @@ export const userActionWorkflows = {
       {
         state: "rehab-center-discovered",
         action: playerActions.releaseAnimalToWild,
-        reason: "The player must open Release to Wild before committing an animal.",
+        reason:
+          "The player must open Release to Wild before committing an animal.",
       },
       {
         state: "rehab-center-discovered",
         action: playerActions.inspectReleaseBundle,
-        reason: "Program detail requires the rehabilitation center feature to be open first.",
+        reason:
+          "Program detail requires the rehabilitation center feature to be open first.",
       },
       {
         state: "local-program-complete",
         action: playerActions.releaseAnimalToWild,
-        reason: "A completed one-time local program cannot accept duplicate releases as new reward progress.",
+        reason:
+          "A completed one-time local program cannot accept duplicate releases as new reward progress.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -351,22 +370,27 @@ export const userActionWorkflows = {
   }),
   orbCrafting: workflow({
     id: playerActionWorkflows.orbCrafting,
-    label: "Orb Crafting animal reroll lifecycle",
-    initialState: "crafting-ready",
-    states: ["crafting-ready", "orb-missing", "reroll-committed"],
+    label: "Orb behavior remains open (legacy reroll evidence)",
+    initialState: "legacy-crafting-ready",
+    states: [
+      "legacy-crafting-ready",
+      "legacy-orb-missing",
+      "legacy-reroll-committed",
+    ],
     events: [playerActions.useOrbOnAnimal],
     transitions: [
       {
-        from: "crafting-ready",
+        from: "legacy-crafting-ready",
         action: playerActions.useOrbOnAnimal,
-        to: "reroll-committed",
+        to: "legacy-reroll-committed",
       },
     ],
     forbiddenTransitions: [
       {
-        state: "orb-missing",
+        state: "legacy-orb-missing",
         action: playerActions.useOrbOnAnimal,
-        reason: "Reroll crafting requires an owned Orb item stack to consume.",
+        reason:
+          "Historical evidence only: Orb purpose and behavior are unresolved.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -379,7 +403,10 @@ export const userActionWorkflows = {
     label: "Conservation contribution lifecycle",
     initialState: "goal-visible",
     states: ["goal-visible", "contribution-eligible", "contribution-recorded"],
-    events: [playerActions.viewConservationGoal, playerActions.contributeToConservation],
+    events: [
+      playerActions.viewConservationGoal,
+      playerActions.contributeToConservation,
+    ],
     transitions: [
       {
         from: "goal-visible",
@@ -401,7 +428,8 @@ export const userActionWorkflows = {
       {
         state: "goal-visible",
         action: playerActions.contributeToConservation,
-        reason: "Viewing a goal is not enough; contribution requires an eligible owned find or care context.",
+        reason:
+          "Viewing a goal is not enough; contribution requires an eligible owned find or care context.",
       },
       {
         state: "contribution-recorded",
@@ -440,7 +468,8 @@ export const userActionWorkflows = {
       {
         state: "owned-find",
         action: playerActions.addFindToCollection,
-        reason: "A find must be matched to an eligible collection slot before commitment.",
+        reason:
+          "A find must be matched to an eligible collection slot before commitment.",
       },
       {
         state: "collection-committed",
@@ -454,7 +483,7 @@ export const userActionWorkflows = {
 
   sanctuaryPlacement: workflow({
     id: playerActionWorkflows.sanctuaryPlacement,
-    label: "Sanctuary placement lifecycle",
+    label: "Legacy Home-placement evidence (Home Module behavior remains open)",
     initialState: "owned-find",
     states: ["owned-find", "placement-eligible", "placed-in-sanctuary"],
     events: [playerActions.openSanctuary, playerActions.placeFindInSanctuary],
@@ -479,12 +508,14 @@ export const userActionWorkflows = {
       {
         state: "owned-find",
         action: playerActions.placeFindInSanctuary,
-        reason: "A find needs an eligible sanctuary placement target before it mutates the base.",
+        reason:
+          "Legacy evidence only: Home Module and Item-placement behavior remain unresolved.",
       },
       {
         state: "placed-in-sanctuary",
         action: playerActions.placeFindInSanctuary,
-        reason: "The same placement cannot be committed twice as new sanctuary growth.",
+        reason:
+          "Legacy evidence only: Home placement does not define current target growth behavior.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -503,9 +534,21 @@ export const userActionWorkflows = {
         action: playerActions.selectBuddy,
         to: "buddy-active",
       },
-      { from: "buddy-active", action: playerActions.selectBuddy, to: "buddy-active" },
-      { from: "buddy-active", action: playerActions.careForBuddy, to: "care-cooldown" },
-      { from: "care-cooldown", action: playerActions.selectBuddy, to: "buddy-active" },
+      {
+        from: "buddy-active",
+        action: playerActions.selectBuddy,
+        to: "buddy-active",
+      },
+      {
+        from: "buddy-active",
+        action: playerActions.careForBuddy,
+        to: "care-cooldown",
+      },
+      {
+        from: "care-cooldown",
+        action: playerActions.selectBuddy,
+        to: "buddy-active",
+      },
     ],
     forbiddenTransitions: [
       {
@@ -516,7 +559,8 @@ export const userActionWorkflows = {
       {
         state: "care-cooldown",
         action: playerActions.careForBuddy,
-        reason: "Care cannot bypass cooldown, eligibility, or duplicate-result rules.",
+        reason:
+          "Care cannot bypass cooldown, eligibility, or duplicate-result rules.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -555,12 +599,14 @@ export const userActionWorkflows = {
       {
         state: "lineage-candidates",
         action: playerActions.pairLineage,
-        reason: "Pairing requires validated eligible candidates, not just visible lineage options.",
+        reason:
+          "Pairing requires validated eligible candidates, not just visible lineage options.",
       },
       {
         state: "offspring-pending",
         action: playerActions.pairLineage,
-        reason: "A new pairing cannot start before the current offspring result is resolved.",
+        reason:
+          "A new pairing cannot start before the current offspring result is resolved.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -579,13 +625,21 @@ export const userActionWorkflows = {
         action: playerActions.inspectQuest,
         to: "quest-in-progress",
       },
-      { from: "quest-complete", action: playerActions.inspectQuest, to: "quest-complete" },
+      {
+        from: "quest-complete",
+        action: playerActions.inspectQuest,
+        to: "quest-complete",
+      },
       {
         from: "quest-complete",
         action: playerActions.claimQuestReward,
         to: "reward-claimed",
       },
-      { from: "reward-claimed", action: playerActions.inspectQuest, to: "reward-claimed" },
+      {
+        from: "reward-claimed",
+        action: playerActions.inspectQuest,
+        to: "reward-claimed",
+      },
     ],
     forbiddenTransitions: [
       {
@@ -610,9 +664,21 @@ export const userActionWorkflows = {
     states: ["recap-available", "recap-viewed", "recap-dismissed"],
     events: [playerActions.viewRecap, playerActions.dismissRecap],
     transitions: [
-      { from: "recap-available", action: playerActions.viewRecap, to: "recap-viewed" },
-      { from: "recap-viewed", action: playerActions.dismissRecap, to: "recap-dismissed" },
-      { from: "recap-dismissed", action: playerActions.viewRecap, to: "recap-dismissed" },
+      {
+        from: "recap-available",
+        action: playerActions.viewRecap,
+        to: "recap-viewed",
+      },
+      {
+        from: "recap-viewed",
+        action: playerActions.dismissRecap,
+        to: "recap-dismissed",
+      },
+      {
+        from: "recap-dismissed",
+        action: playerActions.viewRecap,
+        to: "recap-dismissed",
+      },
     ],
     forbiddenTransitions: [
       {
@@ -635,7 +701,10 @@ export const userActionWorkflows = {
     label: "Community event contribution lifecycle",
     initialState: "event-visible",
     states: ["event-visible", "contribution-eligible", "contribution-recorded"],
-    events: [playerActions.inspectCommunityEvent, playerActions.contributeToCommunityProgress],
+    events: [
+      playerActions.inspectCommunityEvent,
+      playerActions.contributeToCommunityProgress,
+    ],
     transitions: [
       {
         from: "event-visible",
@@ -657,12 +726,14 @@ export const userActionWorkflows = {
       {
         state: "event-visible",
         action: playerActions.contributeToCommunityProgress,
-        reason: "Community contributions require eligibility context for the specific shared event.",
+        reason:
+          "Community contributions require eligibility context for the specific shared event.",
       },
       {
         state: "contribution-recorded",
         action: playerActions.contributeToCommunityProgress,
-        reason: "The same contribution cannot be double-counted into shared progress.",
+        reason:
+          "The same contribution cannot be double-counted into shared progress.",
       },
     ],
     requiredCoverage: fullStateCoverage,
@@ -674,12 +745,32 @@ export const userActionWorkflows = {
     label: "Trade offer and exchange lifecycle",
     initialState: "economy-open",
     states: ["economy-open", "offer-active", "exchange-committed"],
-    events: [playerActions.openEconomy, playerActions.offerTrade, playerActions.acceptTrade],
+    events: [
+      playerActions.openEconomy,
+      playerActions.offerTrade,
+      playerActions.acceptTrade,
+    ],
     transitions: [
-      { from: "economy-open", action: playerActions.openEconomy, to: "economy-open" },
-      { from: "economy-open", action: playerActions.offerTrade, to: "offer-active" },
-      { from: "offer-active", action: playerActions.offerTrade, to: "offer-active" },
-      { from: "offer-active", action: playerActions.acceptTrade, to: "exchange-committed" },
+      {
+        from: "economy-open",
+        action: playerActions.openEconomy,
+        to: "economy-open",
+      },
+      {
+        from: "economy-open",
+        action: playerActions.offerTrade,
+        to: "offer-active",
+      },
+      {
+        from: "offer-active",
+        action: playerActions.offerTrade,
+        to: "offer-active",
+      },
+      {
+        from: "offer-active",
+        action: playerActions.acceptTrade,
+        to: "exchange-committed",
+      },
       {
         from: "exchange-committed",
         action: playerActions.openEconomy,
@@ -695,7 +786,8 @@ export const userActionWorkflows = {
       {
         state: "exchange-committed",
         action: playerActions.acceptTrade,
-        reason: "A committed exchange cannot be replayed as a second ownership mutation.",
+        reason:
+          "A committed exchange cannot be replayed as a second ownership mutation.",
       },
     ],
     requiredCoverage: fullStateCoverage,

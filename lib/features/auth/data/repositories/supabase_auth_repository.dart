@@ -78,14 +78,14 @@ class SupabaseAuthRepository implements AuthRepository {
     required String operation,
     required String? traceId,
     required int durationMs,
-    required Object error,
+    required AuthException error,
   }) {
     _logEvent?.call('db.query_failed', _category, data: {
       'trace_id': traceId,
       'operation': operation,
       'duration_ms': durationMs,
       'error_type': error.runtimeType.toString(),
-      'error_message': error.toString(),
+      'error_message': error.message,
     });
   }
 
@@ -112,13 +112,14 @@ class SupabaseAuthRepository implements AuthRepository {
       );
       return profile;
     } catch (error) {
+      final failure = _safeAuthFailure(error);
       _logQueryFailed(
         operation: operation,
         traceId: traceId,
         durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
+        error: failure,
       );
-      rethrow;
+      throw failure;
     }
   }
 
@@ -143,13 +144,14 @@ class SupabaseAuthRepository implements AuthRepository {
       );
       return profile;
     } catch (error) {
+      final failure = _safeAuthFailure(error);
       _logQueryFailed(
         operation: operation,
         traceId: traceId,
         durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
+        error: failure,
       );
-      rethrow;
+      throw failure;
     }
   }
 
@@ -168,13 +170,14 @@ class SupabaseAuthRepository implements AuthRepository {
         durationMs: stopwatch.elapsedMilliseconds,
       );
     } catch (error) {
+      final failure = _safeAuthFailure(error);
       _logQueryFailed(
         operation: operation,
         traceId: traceId,
         durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
+        error: failure,
       );
-      rethrow;
+      throw failure;
     }
   }
 
@@ -193,13 +196,14 @@ class SupabaseAuthRepository implements AuthRepository {
       );
       return profile;
     } catch (error) {
+      final failure = _safeAuthFailure(error);
       _logQueryFailed(
         operation: operation,
         traceId: traceId,
         durationMs: stopwatch.elapsedMilliseconds,
-        error: error,
+        error: failure,
       );
-      rethrow;
+      throw failure;
     }
   }
 
@@ -208,23 +212,9 @@ class SupabaseAuthRepository implements AuthRepository {
     const operation = 'auth.restore_session';
     final stopwatch = Stopwatch()..start();
     _logQueryStarted(operation, traceId);
-    final session = _runCurrentSession();
-    if (session == null) {
-      _logQueryCompleted(
-        operation: operation,
-        traceId: traceId,
-        rowCount: 0,
-        durationMs: stopwatch.elapsedMilliseconds,
-      );
-      return false;
-    }
-    final rawUser = _client?.auth.currentUser;
-    if (rawUser != null) {
-      final isAnonymous = rawUser.userMetadata?['is_anonymous'] == true ||
-          (rawUser.appMetadata['provider'] == 'anonymous');
-      if (isAnonymous) {
-        await _runSignOut();
-        _controller.add(const AuthStateChanged(null));
+    try {
+      final session = _runCurrentSession();
+      if (session == null) {
         _logQueryCompleted(
           operation: operation,
           traceId: traceId,
@@ -233,9 +223,23 @@ class SupabaseAuthRepository implements AuthRepository {
         );
         return false;
       }
-    }
-    if (session.isExpired) {
-      try {
+      final rawUser = _client?.auth.currentUser;
+      if (rawUser != null) {
+        final isAnonymous = rawUser.userMetadata?['is_anonymous'] == true ||
+            (rawUser.appMetadata['provider'] == 'anonymous');
+        if (isAnonymous) {
+          await _runSignOut();
+          _controller.add(const AuthStateChanged(null));
+          _logQueryCompleted(
+            operation: operation,
+            traceId: traceId,
+            rowCount: 0,
+            durationMs: stopwatch.elapsedMilliseconds,
+          );
+          return false;
+        }
+      }
+      if (session.isExpired) {
         await _runRefreshSession();
         final refreshed = _runCurrentSession();
         if (refreshed != null && !refreshed.isExpired) {
@@ -251,35 +255,44 @@ class SupabaseAuthRepository implements AuthRepository {
             return true;
           }
         }
-      } catch (error) {
         _controller.add(const AuthSessionExpired());
-        _logQueryFailed(
+        _logQueryCompleted(
           operation: operation,
           traceId: traceId,
+          rowCount: 0,
           durationMs: stopwatch.elapsedMilliseconds,
-          error: error,
         );
         return false;
       }
-    }
-    final profile = await getCurrentUser(traceId: traceId);
-    if (profile != null) {
-      _controller.add(AuthStateChanged(profile));
+      final profile = await getCurrentUser(traceId: traceId);
+      if (profile != null) {
+        _controller.add(AuthStateChanged(profile));
+        _logQueryCompleted(
+          operation: operation,
+          traceId: traceId,
+          rowCount: 1,
+          durationMs: stopwatch.elapsedMilliseconds,
+        );
+        return true;
+      }
       _logQueryCompleted(
         operation: operation,
         traceId: traceId,
-        rowCount: 1,
+        rowCount: 0,
         durationMs: stopwatch.elapsedMilliseconds,
       );
-      return true;
+      return false;
+    } catch (error) {
+      final failure = _safeAuthFailure(error);
+      _controller.add(const AuthSessionExpired());
+      _logQueryFailed(
+        operation: operation,
+        traceId: traceId,
+        durationMs: stopwatch.elapsedMilliseconds,
+        error: failure,
+      );
+      return false;
     }
-    _logQueryCompleted(
-      operation: operation,
-      traceId: traceId,
-      rowCount: 0,
-      durationMs: stopwatch.elapsedMilliseconds,
-    );
-    return false;
   }
 
   @override
@@ -388,4 +401,12 @@ class SupabaseAuthRepository implements AuthRepository {
       createdAt: DateTime.parse(user.createdAt),
     ).toDomain();
   }
+}
+
+AuthException _safeAuthFailure(Object error) {
+  if (error is AuthException &&
+      error.message.toLowerCase().contains('invalid login credentials')) {
+    return const AuthException.invalidCredentials();
+  }
+  return const AuthException.unavailable();
 }

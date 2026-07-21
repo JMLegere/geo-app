@@ -3,6 +3,7 @@ import 'package:crypto/crypto.dart';
 import 'package:earth_nova/core/observability/observable_use_case.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
+import 'package:earth_nova/features/map/domain/rules/legacy_encounter_eligibility.dart';
 
 typedef ComputeEncounterInput = ({
   String cellId,
@@ -36,9 +37,12 @@ class ComputeEncounter
   @override
   Future<Encounter?> execute(
       ComputeEncounterInput input, String traceId) async {
-    if (!input.isFirstVisit && !input.hasLoot) {
-      return null;
-    }
+    final eligibility = legacyEncounterEligibilityCondition();
+    final context = LegacyEncounterEligibilityContext(
+      isFirstVisit: input.isFirstVisit,
+      hasLegacyLoot: input.hasLoot,
+    );
+    if (!eligibility.evaluate(context)) return null;
 
     final hashInput = '${input.seed}_${input.cellId}';
     final hashText = sha256.convert(utf8.encode(hashInput)).toString();

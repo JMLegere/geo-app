@@ -1,12 +1,8 @@
 @capability.progression-permanence @feature.lineage
-Feature: Lineage
-  Progression-Permanence needs a concrete lineage feature for ancestry,
-  generation-to-generation variation, breeding outcomes, and inherited traits.
-
-  Scenario: Lineage defines its game system
-    Given Lineage belongs to the Progression-Permanence capability
-    When the feature is expanded beyond this stub
-    Then it should specify family trees, breeding pairing flow, offspring result model, inherited traits, and lineage rarity
+Feature: Lineage legacy evidence
+  Status: Pairing, offspring, and inherited-trait behavior remain open. This
+  retained historical evidence does not establish a current target lifecycle,
+  and rarity is not a current mechanic.
 
   @action.pair-lineage
   Scenario: Player pairs lineage candidates

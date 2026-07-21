@@ -1,20 +1,20 @@
 @capability.exploration-discovery-lifecycle @feature.discovery
-Feature: Discovery
-  Discovery consumes reward-clean Map cell entry truth and resolves whether the
-  entered map cell creates no result or a committed living-specimen reward. It
-  must not pretend a map-cell entry is a completed reward until Pack ownership
-  has been committed, and it must not reveal the specimen identity before
-  Identification.
+Feature: Legacy reward-card evidence and Discovery routing
+  Status: This scenario file preserves legacy executable reward-card evidence;
+  it is not an implementation of the approved target. In the target,
+  Exploration records Cell Visits, a Cell Visit may create one Encounter, and
+  Encounter Outcomes may generate Items. Discovery is recorded only on a
+  Player's first Identification of a Base Item.
 
-  Scenario: Discovery consumes map-cell entry truth
+  Scenario: Legacy reward bridge consumes map-cell evidence
     Given Map has emitted one eligible map-cell entry event
     And the entry event includes entered cell, first-or-revisit status, timestamp, and territory context
     When Discovery resolves the entry
     Then the resolver should keep the Map entry identity as its correlation id
-    And the resolver should add only Discovery outcome fields such as result type, living specimen category, rarity, and reward eligibility
+    And the legacy resolver should add result type, living specimen category, and reward eligibility
     And the resolver should not mutate fog, visits, or map-cell entry state
 
-  Scenario: First-entry living specimen discovery commits ownership before reward presentation
+  Scenario: Legacy reward bridge commits an Item before presentation
     Given a first-visit map-cell entry resolves to an eligible living specimen reward
     And the reward category is fauna, flora, or fungi
     When Discovery prepares the reward presentation
@@ -23,7 +23,7 @@ Feature: Discovery
     And the reward modal should present a Slay the Spire-style unidentified card moment
     But it should not reveal the specimen display name before Identification
 
-  Scenario: Cell entry does not grant direct known living specimens
+  Scenario: Legacy reward bridge does not reveal an Item before Identification
     Given a first-visit map-cell entry resolves to a living specimen
     When Discovery commits acquisition
     Then Pack should receive an owned unidentified find rather than a known specimen card
@@ -38,7 +38,7 @@ Feature: Discovery
     And the failure should be observable with the map-cell entry correlation id
     And the result may be retried or withheld until ownership can be verified
 
-  Scenario: Revisit entries can stay quiet without breaking exploration
+  Scenario: Legacy reward bridge can remain quiet on a revisit
     Given a player re-enters a previously visited map cell
     When the Discovery resolver finds no daily or contextual reward
     Then no discovery reward should be shown
@@ -53,14 +53,14 @@ Feature: Discovery
     And only one reward modal should be visible at a time
     And queued rewards should play one at a time without dropping ownership
 
-  Scenario: Discovery reward telemetry links entry, resolver, acquisition, continuation, and Pack impact
+  Scenario: Legacy reward telemetry links entry, result, Item, continuation, and Pack impact
     Given a Discovery living specimen reward is resolved from a map-cell entry
     When acquisition succeeds and the player continues the reward
     Then telemetry should link map-cell entry id, discovery result id, owned item id, living specimen category, continue action, and Pack impact
     And each step should remain queryable without relying on player-visible copy
 
   @action.continue-discovery-reward
-  Scenario: Player continues a committed discovery reward
+  Scenario: Legacy action identifier continues a committed reward card
     Given a committed living specimen reward modal is active
     When the player clicks anywhere to continue the discovery reward
     Then the reward card should fly to the Pack target

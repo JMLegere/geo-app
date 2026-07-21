@@ -306,6 +306,57 @@ void main() {
         'tab_index': 2,
       });
     });
+
+    testWidgets('logs Home tab selection with legacy open-sanctuary evidence',
+        (tester) async {
+      final interactions = _TestObservabilityService();
+      final navigation = NavigationScreenTransitionLogger(
+        logEvent: (event, category, {data}) {},
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider
+                .overrideWithValue(_FakeWakeLockRepository()),
+            wakeLockObservabilityProvider.overrideWithValue(interactions),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider
+                .overrideWithValue(navigation),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Home'));
+      await tester.pump();
+
+      final tabSelectionEvents = interactions.events
+          .where((event) =>
+              event.event == 'interaction.action' &&
+              event.data?['widget_name'] == 'bottom_navigation_bar')
+          .toList();
+
+      expect(tabSelectionEvents, hasLength(1));
+      expect(tabSelectionEvents.single.data, {
+        'action_type': 'tab_selected',
+        'screen_name': 'tab_shell',
+        'widget_name': 'bottom_navigation_bar',
+        'player_action_id': PlayerActions.openSanctuary,
+        'tab_index': 3,
+      });
+    });
   });
 
   test('tab shell keeps cached IndexedStack screen list', () {
@@ -352,6 +403,22 @@ void main() {
       expect(source, isNot(contains('MapScreen()')));
     });
 
+    test('replaces the Home tab stub with HomeScreen', () {
+      final source =
+          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+
+      expect(
+        source,
+        contains(
+            "import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';"),
+      );
+      expect(source, contains('const HomeScreen()'));
+      expect(
+          source,
+          isNot(contains(
+              "import 'package:earth_nova/shared/widgets/stub_screen.dart';")));
+      expect(source, isNot(contains("const StubScreen(label: 'Home')")));
+    });
     testWidgets('renders injected screens correctly', (tester) async {
       // Use injected screens to avoid complex dependencies
       final screenKeys = [

@@ -1,4 +1,5 @@
 # Adversarial Review — `prd-game-systems.md`
+> **HISTORICAL-EVIDENCE:** This dated artifact is preserved as historical evidence, not current authority. Route resolved domain language to `CONTEXT.md`, durable architecture to accepted `docs/adr/*.md`, and current implementation/deployment constraints to `.agents/constraints.md`; current executable catalogs/scenarios are evidence only, and old Sanctuary, NPC, Field Guide, Province, rarity, and Orb-crafting claims do not override current authority.
 
 > Critical review of `docs/prd-game-systems.md` against the current codebase,
 > schema, and `docs/design.md`.

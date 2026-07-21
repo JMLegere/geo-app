@@ -51,7 +51,7 @@ void main() {
     group('recordVisit', () {
       test('records a visit and makes it retrievable', () async {
         final repo = MockCellRepository();
-        await repo.recordVisit('user-1', 'cell-1');
+        await repo.recordVisit('user-1', 'cell-1', 'event-1');
         final visited = await repo.getVisitedCellIds('user-1');
         expect(visited, contains('cell-1'));
       });
@@ -59,16 +59,27 @@ void main() {
       test('recording multiple visits for same cell still returns cell once',
           () async {
         final repo = MockCellRepository();
-        await repo.recordVisit('user-1', 'cell-1');
-        await repo.recordVisit('user-1', 'cell-1');
+        await repo.recordVisit('user-1', 'cell-1', 'event-1');
+        await repo.recordVisit('user-1', 'cell-1', 'event-2');
         final visited = await repo.getVisitedCellIds('user-1');
         expect(visited.where((id) => id == 'cell-1').length, 1);
       });
 
+      test('returns the exact recorded visit for an idempotent client event',
+          () async {
+        final repo = MockCellRepository();
+
+        final first = await repo.recordVisit('user-1', 'cell-1', 'event-1');
+        final retry = await repo.recordVisit('user-1', 'cell-1', 'event-1');
+
+        expect(retry, same(first));
+        expect(retry.clientEventId, 'event-1');
+      });
+
       test('visits are scoped per user', () async {
         final repo = MockCellRepository();
-        await repo.recordVisit('user-1', 'cell-1');
-        await repo.recordVisit('user-2', 'cell-2');
+        await repo.recordVisit('user-1', 'cell-1', 'event-1');
+        await repo.recordVisit('user-2', 'cell-2', 'event-2');
         final user1Visited = await repo.getVisitedCellIds('user-1');
         final user2Visited = await repo.getVisitedCellIds('user-2');
         expect(user1Visited, contains('cell-1'));
@@ -80,7 +91,7 @@ void main() {
       test('throws when configured to throw', () async {
         final repo = MockCellRepository(shouldThrow: true);
         expect(
-          () => repo.recordVisit('user-1', 'cell-1'),
+          () => repo.recordVisit('user-1', 'cell-1', 'event-1'),
           throwsA(isA<Exception>()),
         );
       });
@@ -95,8 +106,8 @@ void main() {
 
       test('returns set of visited cell ids', () async {
         final repo = MockCellRepository();
-        await repo.recordVisit('user-1', 'cell-a');
-        await repo.recordVisit('user-1', 'cell-b');
+        await repo.recordVisit('user-1', 'cell-a', 'event-a');
+        await repo.recordVisit('user-1', 'cell-b', 'event-b');
         final result = await repo.getVisitedCellIds('user-1');
         expect(result, {'cell-a', 'cell-b'});
       });
@@ -111,7 +122,7 @@ void main() {
 
       test('returns false after cell has been visited', () async {
         final repo = MockCellRepository();
-        await repo.recordVisit('user-1', 'cell-1');
+        await repo.recordVisit('user-1', 'cell-1', 'event-1');
         final result = await repo.isFirstVisit('user-1', 'cell-1');
         expect(result, isFalse);
       });

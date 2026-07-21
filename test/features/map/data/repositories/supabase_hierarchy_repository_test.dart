@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:earth_nova/features/map/data/repositories/supabase_hierarchy_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/hierarchy_repository.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 
 class _LoggedEvent {
@@ -67,9 +68,11 @@ void main() {
       expect(events.last.data, contains('duration_ms'));
     });
 
-    test('logs RPC failure with diagnostic error details', () async {
+    test('emits safe telemetry and failure for raw RPC errors', () async {
+      const malicious =
+          'SQL: select private_data; response={"token":"never-log-this"}';
       final repository = repo(
-        rpcCaller: (_, __) async => throw StateError('rpc broken'),
+        rpcCaller: (_, __) async => throw Exception(malicious),
       );
 
       await expectLater(
@@ -78,7 +81,13 @@ void main() {
           level: MapLevel.country,
           scopeId: 'country-1',
         ),
-        throwsStateError,
+        throwsA(
+          isA<HierarchyRepositoryFailure>()
+              .having((failure) => failure.kind, 'kind',
+                  HierarchyRepositoryFailureKind.unavailable)
+              .having((failure) => failure.toString(), 'safe failure',
+                  isNot(contains(malicious))),
+        ),
       );
 
       expect(events.map((event) => event.event), [
@@ -87,8 +96,11 @@ void main() {
       ]);
       expect(events.last.data,
           containsPair('operation', 'get_hierarchy_child_summaries_with_rank'));
-      expect(events.last.data, containsPair('error_type', 'StateError'));
-      expect(events.last.data['error_message'], contains('rpc broken'));
+      expect(events.last.data, containsPair('duration_ms', isA<int>()));
+      expect(events.last.data,
+          containsPair('error_type', 'HierarchyRepositoryFailure'));
+      expect(events.last.data, containsPair('error_message', 'unavailable'));
+      expect(events.toString(), isNot(contains(malicious)));
     });
   });
 }

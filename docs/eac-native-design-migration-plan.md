@@ -1,5 +1,7 @@
 # EAC 1.4.0 Native Design Migration Plan
 
+> **Role: HISTORICAL-EVIDENCE.** This dated migration plan is preserved as implementation history. Current domain language comes from `CONTEXT.md`, durable decisions from accepted `docs/adr/`, and current constraints from `.agents/constraints.md`.
+
 Date: 2026-05-26
 
 ## Goal

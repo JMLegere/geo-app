@@ -123,7 +123,11 @@ void main() {
       }
 
       final unregistered = throwingProviders
-          .where((p) => !mainContents.contains('$p.overrideWithValue('))
+          .where(
+            (provider) => !RegExp(
+              '${RegExp.escape(provider)}\\s*\\.\\s*overrideWithValue\\s*\\(',
+            ).hasMatch(mainContents),
+          )
           .toList()
         ..sort();
 

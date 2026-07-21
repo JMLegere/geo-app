@@ -1,5 +1,7 @@
 # Current Session Context
 
+**Role: CURRENT-SCOPED implementation history.** Entries record what was true or completed on their date; current authority comes from root `AGENTS.md`, `CONTEXT.md`, accepted `docs/adr/`, and `.agents/constraints.md`.
+
 ## Completed 2026-05-03 — deployment foundation
 - Set up Railway `beta` environment in project `fog-of-world`.
 - Created beta Supabase project `ggkvcpgvxqaqzwxehlns`.
@@ -742,3 +744,132 @@
 - Added `test/deployment/supabase_function_dependency_test.dart` so future `https://esm.sh/` imports in `supabase/functions/**/*.ts` fail CI before deploy.
 - Verification passed: targeted dependency test, `flutter analyze --no-pub`, full `flutter test --no-pub`, `eac check`, `git diff --check`.
 - GitHub CI `26456897578` passed and Deploy Beta `26457197007` passed, including Railway beta app and beta Supabase Edge Function deployment.
+
+## Completed 2026-07-20 — frozen foundation authority handoff
+
+- Jeremy approved and froze `CONTEXT.md` as EarthNova’s current resolved domain foundation after a diagram-first browser review and annotation reconciliation.
+- Accepted durable architecture and repository-operating decisions live in `docs/adr/0001-*.md` through `0006-*.md`.
+- Updated root `AGENTS.md` to expose an explicit authority order:
+  - current human instruction + an approved GitHub Issue Outcome Contract authorize and scope non-trivial work
+  - `CONTEXT.md` governs resolved domain language
+  - accepted ADRs govern durable architecture
+  - `.agents/constraints.md` protects current implementation, continuity, quality, and deployment invariants
+  - tests, SuperBDD, EAC, product registries, telemetry, and current code are implementation evidence
+  - legacy design, PRD, backlog, and older v3 decision material is lower-authority evidence unless reconfirmed
+- Reclassified SuperBDD as executable behavioral evidence and EAC as integrity/traceability rather than authorization or behavioral certification.
+- Removed the stale instruction that every vertical slice ships directly to production; beta and production promotion remain separate human-authorized actions.
+- Verification: `git diff --check` passed, rejected authority phrases were absent, and an independent cold-start scout followed root `AGENTS.md` to the frozen glossary, ADRs, and constraints with no material routing contradiction.
+
+## Completed 2026-07-20 — Phase 0 authority and evidence reconciliation
+
+- Classified every repository Markdown file as `CANONICAL`, `ROUTER`, `CURRENT-SCOPED`, `HISTORICAL-EVIDENCE`, or `GENERATED/VENDOR` in `docs/INDEX.md`.
+- Repaired `README.md`, root `AGENTS.md`, `.agents/AGENTS.md`, and `docs/INDEX.md` so cold starts route through `CONTEXT.md`, accepted ADRs, and `.agents/constraints.md`.
+- Added visible status notices to every historical Markdown family while preserving dated bodies as evidence.
+- Reconciled `.agents/architecture.md`, `.agents/questions.md`, `.agents/decisions.md`, `.agents/constraints.md`, and this context log with the frozen authority and approved additive migration direction.
+- Reconciled EAC catalogs, SuperBDD scenarios, and matching steps so legacy identifiers remain explicit evidence while current descriptions use Exploration, Cell Visit, Encounter, Item, Identification, Discovery, Pack, Index, Venue, Villager, Service, Town, and Home correctly.
+- Marked unapproved Mycology/Genetics disciplines, rarity, Orb crafting, Home placement, release, lineage, collections, buddy, quests, achievements, recap, community, economy, and world-event mechanics as legacy, aspirational, or deliberately open rather than active target truth.
+- Added `test/documentation/authority_contract_test.dart` to enforce complete Markdown classification, one visible notice per historical document, and cold-start authority routes.
+- Verification passed: documentation authority contract, `mise exec -- eac check`, `npm run superbdd:cucumber` (20 scenarios, 93 steps), Prettier check/write for touched executable evidence, and `git diff --check`.
+- No Flutter gameplay behavior, Supabase schema, beta data, deployment, or production environment was changed in this phase.
+
+## Completed 2026-07-20 — Phase 1 typed rule and version kernel
+
+- Added pure typed recursive Conditions with feature-owned leaves, optional absent eligibility, validated non-empty `All`/`Any`, and `Not`.
+- Added generalized weighted Selectors with immutable candidates, positive finite relative weights, Condition filtering before weighting, deterministic injected normalized rolls, explicit None, and zero-eligible failure.
+- Added typed stable content IDs, exact content Version IDs/references, positive revisions, and draft/published/retired publication state without mutable/latest lookup behavior.
+- Isolated the current first-visit-or-legacy-loot Encounter eligibility inputs behind explicitly labeled compatibility Conditions and wired `ComputeEncounter` through that compatibility boundary without changing results.
+- Added core-domain architecture guards rejecting Flutter, `dart:ui`, Riverpod, Supabase, feature presentation/data, and feature imports from the shared rule kernel.
+- Removed the existing `dart:ui` dependency from core `Habitat` by exposing pure ARGB values; current map presentation and Cell behavior continue to adapt those values to Flutter `Color`.
+- Verification passed: 75 focused tests across content identity, Conditions, Selectors, Habitat/Cell parity, legacy Encounter parity, and architecture guards.
+- No Supabase schema, beta data, deployment, or player-visible Encounter behavior changed in this phase.
+
+## Completed 2026-07-20 — Phase 2 additive versioned content foundation
+
+- Added additive `v3_base_items` and immutable `v3_base_item_versions` with the seven canonical categories, exact stable-owner references, service-role publication, current-published pointers, lifecycle checks, RLS, and stable identity/category protection.
+- Added immutable schema-versioned recursive Conditions and generalized Selectors/Candidates with explicit None, positive finite weights, zero-candidate activation checks, and recursive script/code/function/expression rejection.
+- Added reusable Variable Properties and Property Values, optional category scope, ordered Base Item Version assignments, stable/versioned Encounter content, ordered Options/Outcomes, explicit Cell Visit resolutions, durable Encounter occurrences, and immutable Outcome results.
+- Restricted Encounter Outcomes and persisted results to `generate_item` and `reveal_venue`; validated their closed payload shapes and rejected executable escape hatches.
+- Added failure evidence and immutable runtime bindings without marking a failed Encounter resolved.
+- Seeded the current eight-fauna compatibility catalog, added nullable stable/exact bindings to existing Items, and specified deterministic immutable legacy snapshots while preserving every old field, Item ID, rarity value, and Cell Visit row.
+- Added typed read-only Base Item and Encounter authored-content repositories with explicit current-for-new-state versus exact-for-existing-state reads, stable-owner validation, retired-Version support, and recursively immutable JSON snapshots. These adapters remain unwired.
+- Verification passed: 22 focused migration contract tests and 31 focused content identity/snapshot/repository tests. Live disposable Supabase migration rehearsal remains a final cutover verification step.
+- No beta/production schema, data, deployment, or player-visible behavior changed in this phase.
+
+## Completed 2026-07-20 — Phase 3 Encounter vertical slice and command cutover
+
+- Added durable Encounter occurrences, exact Cell Visit resolutions, ordered Outcome results, and transactional entry/outcome RPCs with exact immutable Encounter/Base Item Version bindings, explicit None, idempotent retries, all-or-none Outcome application, and terminal failure evidence.
+- Repaired and replay-proved the eight-fauna compatibility catalog seed, publication grants, recursive JSON guards, and local seed automation on a fresh disposable Supabase reset.
+- Added a pure Encounter engine coordinator with the exact `legacy`, `shadowPlanning`, and separately authorized `v3Authoritative` modes. Invalid or unauthorized v3 requests fail closed to shadow; legacy/shadow retain the legacy writer; authoritative mode never invokes legacy Item acquisition.
+- Moved Encounter triggering behind the exact persisted Cell Visit and matching border-entry identity. Cell Visit recording now uses an authenticated, server-timestamped, idempotent RPC keyed by `(user_id, client_event_id)`; direct authenticated inserts are removed.
+- Made the in-memory retry queue retain the exact border event, idempotency key, and persisted Cell Visit, serialize flushes, preserve concurrent enqueues, and retry Encounter coordination without recording another visit.
+- Adapted the existing reward presenter to consume an already-committed authoritative Item, with no reward for explicit None, pending, or failed terminals.
+- Added safe complete mode/gate/selector/comparison/mutation-owner terminal traces without raw user ids or backend messages.
+- Added an authenticated legacy Item acquisition RPC with server-derived ownership and exact current Base Item Version binding, then revoked direct Item INSERT/DELETE and limited temporary direct UPDATE to the current Identification projection.
+- Added the Item knowledge storage foundation: deterministic `legacy_backfill` Discovery continuity, exact-version-bound immutable Property Values with explicit None, and inactive schema-only Discipline Progress for the five resolved Disciplines.
+- Live disposable proofs passed for Cell Visit idempotency/ACL/immutability, Encounter transactionality/grants, legacy Item acquisition/idempotency/exact binding, post-Identification acquisition retry, and direct Item mutation closure.
+- No beta/production schema, data, deployment, or destructive cleanup was performed. Physical Cell/Venue presence trust remains an explicit beta/open gate.
+
+## Completed 2026-07-20 — Phase 4 Item knowledge and progression boundary
+
+- Added immutable player Discovery, exact-version-bound Property Values, and inactive Discipline Progress storage; deterministic legacy backfill preserves already-known stable Base Items without inventing values or XP.
+- Added normalized authored Variable Property integrity and publication guards. Condition-bearing property candidates fail closed until their inputs can be server verified.
+- Added deterministic client planning and server recomputation using SHA-256 of exact Item/property identity, weighted Selector order, and explicit None.
+- Added authenticated prepare/commit Identification RPCs with exact owned Item/Version locks, complete ordered plan validation, all-or-none Discovery/Property/visible projection/receipt writes, canonical idempotent retries, and no Discipline side effects.
+- Added one shared derived Item-creation rule for legacy and authoritative command inserts: first stable Base Item or any exact-Version Variable Property requires Identification; already-discovered no-property Items become automatically identified with an immutable receipt.
+- Rejected unauthored future legacy definition acquisition and client-created already-identified Items; historical generic compatibility rows remain untouched.
+- Moved Pack-owned read/filter/screen/card behavior into `features/pack`, added the independent stable Base Item Index projection/client, and wired Supabase Pack/Identification/Index repositories in the composition root.
+- Supabase-mode Pack Identification now uses prepare → one retained deterministic plan → commit and consumes the committed Item; direct pending hidden-field copying remains only as an explicit no-Supabase mock compatibility fallback.
+- Added migration 091 to revoke the remaining authenticated direct Item UPDATE/policy after runtime cutover. A transactional live proof showed direct update denied while authoritative Identification still committed.
+- Fresh migration reset through 090 plus live first/repeat/Variable Property/explicit None/rollback/Index proofs passed. Migration 091 was separately transaction-proved and awaits the next complete migration-chain rehearsal.
+- No beta/production data, deployment, XP tuning, Orb behavior, or destructive cleanup was performed.
+
+## Completed 2026-07-21 — Phase 5 Living World vertical slice
+
+- Added immutable authored Venue, Villager, and Service identities/Versions plus ordered Venue-roster and Villager-Service associations, strict publication closure, and the Rowan compatibility world seed without seeding player knowledge.
+- Added durable Player-known Venue/Villager provenance, exact-Version Venue Visits, and a Town projection that presents current authored content while retaining first-known immutable evidence.
+- Added atomic `reveal_venue` Encounter resolution. Reveal-only and mixed ordered Outcomes now commit exact Venue/Version results and first-known Venue state in the same transaction; repeats are inert and mixed failure rolls back every Item, result, and knowledge mutation.
+- Added transactional Venue Visit recording keyed by owned exact Cell Visit, Venue, and Venue Version. An exact retry preserves its historical Version and introduces nobody; a later Visit can introduce only newly unknown current roster Villagers.
+- Restricted unrevealed Venue authored tables and Reveal Outcome payloads from direct authenticated enumeration. Cell Visit planning now uses a least-privilege exact Encounter Version binding query rather than reading Outcome payloads.
+- Replaced the collapsed process-local NPC Venue model with the durable Town projection across Town, Venue detail, Map markers, and cell detail. Removed optimistic Venue discovery from initial occupancy and border entry; no UI, GPS, Map, or location path invokes the still-gated physical Venue Visit command.
+- Fresh disposable Supabase reset applied migrations 001–096. A rollback-isolated live proof covered Reveal-only, mixed success/failure, first/repeat/later Venue Visits, shared Villagers at two visited Venues, current presentation with exact first-Version continuity, RLS, grants, and zero Discipline progress.
+- Focused Living World/Encounter/domain/data/UI/design suites passed. The Home phase’s final browser QA and full shared gates remain part of cutover verification.
+- No beta/production schema, player data, deployment, physical-presence policy, or destructive cleanup was changed.
+
+## Completed 2026-07-21 — Phase 6 Home and category completeness
+
+- Added one immutable UUID Home identity per `v3_profiles` Player, automatic creation for new profiles, existing-profile backfill, own-read RLS, server-owned mutation, and strict authenticated `get_v3_home()` projection.
+- Added a pure read-only Home domain/data/provider slice and replaced the Home tab stub with a native Home identity surface. Visible terminology is Home; the old `open-sanctuary` identifier remains only as explicitly legacy EAC/telemetry evidence.
+- Persisted exactly the six canonical Food Base Items—Veg, Fruit, Critter, Fish, Grub, and Nectar—as immutable published revision-one content and validated the Food identity whitelist.
+- Added explicit published `orb:orb_type` / `Orb Type` authored identity while keeping every Orb use, crafting, stacking, currency, consumption, and lifecycle behavior absent.
+- Added no Home Module kind, placement, capacity, upgrade, lifecycle, or Item-placement schema/API. The Home UI exposes only a noninteractive coming-later state.
+- Fresh disposable Supabase reset applied migrations 001–097 without migration warnings. A rollback-isolated live proof covered automatic one-Home identity, RPC ownership, RLS/direct-mutation denial, immutable Home rows, exact Food/Orb publication, seventh-Food rejection, and the absence of Home Module/Orb behavior surfaces.
+- Focused Home migration/domain/data/provider/UI/bootstrap/design tests passed. The built web Home render was inspected at the player layer with no raw UUID, Sanctuary copy, clipping, overflow, or interactive Module affordance.
+- No beta/production schema, player data, deployment, speculative mechanics, or destructive cleanup was performed.
+
+## Completed 2026-07-21 — Phase 7 verification cutover and beta-readiness evidence
+
+- Repaired the final shared quality-gate regressions without weakening runtime contracts: Pack test composition now supplies the fail-closed Pack boundary, formatter-sensitive source guards accept canonical Dart whitespace, all domain use cases satisfy `ObservableUseCase`, and every Supabase repository boundary emits correlated started/completed/failed telemetry with safe terminal diagnostics.
+- `flutter analyze --no-pub` passed with no issues. The complete `flutter test --no-pub --reporter compact` suite passed after a second full run, including architecture, migration, domain, repository, provider, widget, source-contract, and observability enforcement coverage.
+- `npm run eac:check` passed with no diagnostics. `npm run superbdd:cucumber` passed twice cleanly at 20 scenarios and 93 steps per run. `git diff --check` passed.
+- `flutter build web --no-pub --base-href /` produced the final web artifact. The built Home and Town screens were opened in a 430×932 browser viewport and screenshot-inspected: no clipping, overflow, raw IDs, Sanctuary copy, implementation jargon, misleading Module affordance, or inconsistent navigation state was visible. Durable captures are `.agents/screenshots/2026-07-21-home-final.png` and `.agents/screenshots/2026-07-21-town-final.png`.
+- The disposable Supabase migration rehearsal remains green through migrations 001–097. Rollback-isolated live proofs covered exact/idempotent Encounter, Item/Identification, Reveal Venue, Venue Visit/Town, Home identity, category completeness, RLS/grants, and failure atomicity while leaving the disposable seed clean.
+- A fresh cold-start audit confirmed that current repository/runtime evidence agrees with `CONTEXT.md`, accepted ADRs, `.agents/constraints.md`, `.agents/decisions.md`, and `.agents/architecture.md`.
+- This is local beta-readiness evidence, not a deployment. No linked beta/production schema, player data, service, secret, feature mode, or deployment was changed.
+- Destructive cleanup remains a separate operational gate: the legacy Railway sibling service and any production migration action still require the explicit verification and authorization recorded in `.agents/questions.md`.
+
+## Reopened 2026-07-21 — adversarial release audit found contract gaps
+
+- The Phase 7 command and visual evidence above remains accurate for the tested implementation, but its beta-readiness interpretation is superseded by a subsequent cross-slice reviewer audit.
+- The audit found six current release blockers not exercised by the passing suites: client-authored hidden legacy Item identity evidence, authenticated reads that expose unidentified Item identity, singular presentation of plural generated Encounter rewards, uncorrelated Encounter repository traces, uncorrelated Identification transaction traces, and raw map-boundary errors reaching use-case telemetry.
+- Verification cutover is reopened until those gaps are corrected, directly regression-tested, rehearsed against a fresh disposable database where applicable, and the complete cutover suite is rerun. No deployment is authorized while this entry remains unresolved.
+
+## Completed 2026-07-21 — adversarial audit remediation and final local cutover
+
+- Append-only migration `098_secure_item_identity_boundary.sql` closed the Item secrecy/authority gap. Authenticated direct `v3_items` reads are revoked; the owner-bound Pack RPC masks all canonical identity evidence until command-owned Identification and reveals it only after the committed reveal.
+- A fresh disposable `supabase db reset --local` applied migrations 001–098 cleanly. A rollback-isolated authenticated local smoke proved direct Item SELECT denial, three-input acquisition, server exact Version binding, idempotent opaque retry, Pack masking before Identification, canonical reveal after Identification, and no synthetic data after rollback.
+- Encounter runtime now preserves every ordered generated Item reward and starts one root trace before Cell Visit persistence. The trace reaches selector/version binding, resolve/retry, repository terminal telemetry, and completion/failure logs. Production Encounter providers inject `logEvent: obs.log`; Item Identification prepare/plan/commit likewise retains one trace.
+- Raw transport/parser/SQL messages are now converted to safe domain failures at Cell, Map Hierarchy, Auth, and Encounter version-binding boundaries before observable use cases can emit them.
+- A final targeted reviewer audit returned PASS with no remaining blockers for the six reopened contracts or Encounter production telemetry composition.
+- Verification after the final source edits: focused repaired slices passed; `flutter analyze --no-pub` passed; complete Flutter coverage passed under `flutter test --no-pub --concurrency=2 --reporter compact` (1,114 tests, exit 0); `npm run eac:check` passed; `npm run superbdd:cucumber` passed twice (20 scenarios / 93 steps each); `git diff --check` passed.
+- `flutter build web --no-pub --base-href /` passed. A rebuilt 430×932 Player/Pack visual inspection confirmed no clipping, raw/server Item IDs, unrevealed canonical species identity, or implementation jargon; durable capture: `.agents/screenshots/2026-07-21-pack-security-final.png`. The first screenshot's bottom-right cyan strip was a focused semantics-artifact and was absent after defocus; no product layout defect remained.
+- Local beta-readiness is restored. No linked beta/production schema, player data, service, secret, feature mode, or deployment changed. Production rollout and destructive legacy cleanup remain separately gated in `.agents/questions.md`.

@@ -1,4 +1,5 @@
 # PRD: Enrichment Pipeline Redesign
+> **HISTORICAL-EVIDENCE:** This document preserves dated historical evidence. Route current domain claims to `CONTEXT.md`, durable architecture to `docs/adr/`, and current constraints to `.agents/constraints.md`; do not treat this document as current authority.
 
 > **Status:** Design Complete — Ready for Implementation
 > **Author:** Design Jam (2026-03-20)

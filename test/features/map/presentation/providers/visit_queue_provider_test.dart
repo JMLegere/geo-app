@@ -1,41 +1,62 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/record_cell_visit.dart';
 import 'package:earth_nova/features/map/presentation/providers/visit_queue_provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 class TestObservabilityService extends ObservabilityService {
   TestObservabilityService() : super(sessionId: 'test-session');
 
-  final List<({String event, String category, Map<String, dynamic>? data})>
-      events = [];
+  final List<({String event, Map<String, dynamic>? data})> events = [];
 
   @override
   void log(String event, String category, {Map<String, dynamic>? data}) {
-    events.add((event: event, category: category, data: data));
-    super.log(event, category, data: data);
+    events.add((event: event, data: data));
   }
-
-  List<String> get eventNames => events.map((e) => e.event).toList();
 }
 
-class _ControlledCellRepository implements CellRepository {
+class _FakeCellRepository implements CellRepository {
   bool shouldThrow = false;
-  final List<({String userId, String cellId})> recordedVisits = [];
+  Future<CellVisit> Function(
+    String userId,
+    String cellId,
+    String clientEventId,
+  )? onRecord;
+  final List<({String userId, String cellId, String clientEventId})>
+      recordInputs = [];
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters,
-          {String? traceId}) async =>
+    double lat,
+    double lng,
+    double radiusMeters, {
+    String? traceId,
+  }) async =>
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId,
-      {String? traceId}) async {
-    if (shouldThrow) throw Exception('network error');
-    recordedVisits.add((userId: userId, cellId: cellId));
+  Future<CellVisit> recordVisit(
+    String userId,
+    String cellId,
+    String clientEventId, {
+    String? traceId,
+  }) async {
+    recordInputs.add((
+      userId: userId,
+      cellId: cellId,
+      clientEventId: clientEventId,
+    ));
+    if (shouldThrow) throw StateError('backend unavailable');
+    final callback = onRecord;
+    if (callback != null) return callback(userId, cellId, clientEventId);
+    return _visit(userId, cellId, clientEventId, recordInputs.length);
   }
 
   @override
@@ -44,263 +65,240 @@ class _ControlledCellRepository implements CellRepository {
       {};
 
   @override
-  Future<bool> isFirstVisit(String userId, String cellId,
-          {String? traceId}) async =>
+  Future<bool> isFirstVisit(
+    String userId,
+    String cellId, {
+    String? traceId,
+  }) async =>
       true;
+}
+
+CellVisit _visit(
+  String userId,
+  String cellId,
+  String clientEventId,
+  int sequence,
+) {
+  return CellVisit(
+    id: 'visit-$sequence',
+    userId: userId,
+    cellId: cellId,
+    clientEventId: clientEventId,
+    visitedAt: DateTime.utc(2026, 7, 20),
+  );
+}
+
+CellBorderCrossingEvent _event(String id, {String cellId = 'cell-1'}) {
+  return CellBorderCrossingEvent(
+    borderCrossingId: id,
+    previousCellId: 'cell-0',
+    enteredCellId: cellId,
+    borderCrossingType: CellBorderCrossingType.firstEntry,
+    isFirstVisit: true,
+    occurredAt: DateTime.utc(2026, 7, 20),
+    districtId: 'district-1',
+    cityId: 'city-1',
+    stateId: 'state-1',
+    countryId: 'country-1',
+  );
 }
 
 void main() {
   group('VisitQueueNotifier', () {
     late ProviderContainer container;
-    late TestObservabilityService testObs;
-    late _ControlledCellRepository repo;
+    late _FakeCellRepository repository;
+    late TestObservabilityService observability;
+    late RecordCellVisit recordVisit;
+    late VisitQueueNotifier notifier;
 
     setUp(() {
-      testObs = TestObservabilityService();
-      repo = _ControlledCellRepository();
+      repository = _FakeCellRepository();
+      observability = TestObservabilityService();
+      recordVisit = RecordCellVisit(repository, observability);
       container = ProviderContainer(
         overrides: [
-          visitQueueObservabilityProvider.overrideWithValue(testObs),
+          visitQueueObservabilityProvider.overrideWithValue(observability),
         ],
       );
+      notifier = container.read(visitQueueProvider.notifier);
     });
 
-    tearDown(() {
-      container.dispose();
+    tearDown(() => container.dispose());
+
+    void enqueue(String eventId, {CellVisit? persistedCellVisit}) {
+      final event = _event(eventId);
+      notifier.enqueue(
+        userId: 'user-1',
+        cellId: event.enteredCellId,
+        clientEventId: event.mapCellEntryId,
+        borderCrossingEvent: event,
+        persistedCellVisit: persistedCellVisit,
+      );
+    }
+
+    test('keeps stable queue identity and exact border entry identity', () {
+      final event = _event(' raw-entry-id ');
+      notifier.enqueue(
+        userId: 'user-1',
+        cellId: event.enteredCellId,
+        clientEventId: event.mapCellEntryId,
+        borderCrossingEvent: event,
+      );
+
+      final item = container.read(visitQueueProvider).items.single;
+      expect(item.queueId, isNotEmpty);
+      expect(item.userId, 'user-1');
+      expect(item.cellId, 'cell-1');
+      expect(item.clientEventId, ' raw-entry-id ');
+      expect(item.borderCrossingEvent, same(event));
+      expect(item.persistedCellVisit, isNull);
     });
 
-    test('initial state has empty queue', () {
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(0));
-      expect(state.items, isEmpty);
-    });
-
-    test('enqueue adds item to queue', () {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(1));
-      expect(state.items.first.userId, equals('user-1'));
-      expect(state.items.first.cellId, equals('cell-1'));
-    });
-
-    test('enqueue multiple items accumulates queue', () {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-3');
-
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(3));
-    });
-
-    test('flush retries all queued items when network succeeds', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-3');
-
-      repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(0));
-      expect(repo.recordedVisits.length, equals(3));
-    });
-
-    test('flush keeps items in queue when network fails', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(2));
-    });
-
-    test('flush partial success: removes succeeded, keeps failed', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      // First call succeeds, second fails
-      final partialRepo = _PartialFailRepo(failAfter: 1);
-      final useCase = RecordCellVisit(partialRepo, testObs);
-      await notifier.flush(useCase);
-
-      final state = container.read(visitQueueProvider);
-      // First item removed, second kept
-      expect(state.pendingCount, equals(1));
-      expect(state.items.first.cellId, equals('cell-2'));
-    });
-
-    test('flush emits queue.flushed event on success', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-
-      repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      expect(testObs.eventNames, contains('visit_queue.flushed'));
-    });
-
-    test('flush emits queue.retry_failed event when all fail', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-
-      repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      expect(testObs.eventNames, contains('visit_queue.retry_failed'));
-    });
-
-    test('flush on empty queue is a no-op', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      final state = container.read(visitQueueProvider);
-      expect(state.pendingCount, equals(0));
-    });
-
-    test('enqueue emits visit_queue.enqueued event', () {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-
-      expect(testObs.eventNames, contains('visit_queue.enqueued'));
-    });
-
-    test('enqueue emits map.visit_queue_enqueued with cell_id and queue_size',
-        () {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      expect(testObs.eventNames, contains('map.visit_queue_enqueued'));
-      final events = testObs.events
-          .where((e) => e.event == 'map.visit_queue_enqueued')
-          .toList();
-      expect(events, hasLength(2));
-      expect(events.last.data?['cell_id'], 'cell-2');
-      expect(events.last.data?['queue_size'], 2);
-    });
-
-    test('flush emits map.visit_queue_flush_started with queue_size', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      expect(testObs.eventNames, contains('map.visit_queue_flush_started'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.visit_queue_flush_started');
-      expect(event.data?['queue_size'], 2);
-    });
-
-    test('flush emits map.visit_queue_flush_success on full success', () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      repo.shouldThrow = false;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.visit_queue_flush_success');
-      expect(event.data?['flushed_count'], 2);
-      expect(event.data?['remaining'], 0);
-    });
-
-    test('flush emits map.visit_queue_flush_success on partial success',
+    test('reuses one exact event ID across persistence retries and handoff',
         () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
+      final event = _event('entry-id-1');
+      notifier.enqueue(
+        userId: 'user-1',
+        cellId: event.enteredCellId,
+        clientEventId: event.mapCellEntryId,
+        borderCrossingEvent: event,
+      );
+      repository.shouldThrow = true;
 
-      final partialRepo = _PartialFailRepo(failAfter: 1);
-      final useCase = RecordCellVisit(partialRepo, testObs);
-      await notifier.flush(useCase);
+      await notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (_, __, {rootTrace}) async {},
+      );
+      repository.shouldThrow = false;
 
-      expect(testObs.eventNames, contains('map.visit_queue_flush_success'));
-      final event = testObs.events
-          .firstWhere((e) => e.event == 'map.visit_queue_flush_success');
-      expect(event.data?['flushed_count'], 1);
-      expect(event.data?['remaining'], 1);
-    });
+      CellVisit? handedOffVisit;
+      CellBorderCrossingEvent? handedOffEvent;
+      await notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (visit, borderEvent, {rootTrace}) async {
+          handedOffVisit = visit;
+          handedOffEvent = borderEvent;
+        },
+      );
 
-    test('flush emits map.visit_queue_item_failed for each failed item',
-        () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-2');
-
-      repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      final failEvents = testObs.events
-          .where((e) => e.event == 'map.visit_queue_item_failed')
-          .toList();
-      expect(failEvents, hasLength(2));
-      expect(failEvents.first.data?['cell_id'], isNotEmpty);
-      expect(failEvents.first.data?['error'], isNotEmpty);
+      expect(
+        repository.recordInputs.map((input) => input.clientEventId),
+        ['entry-id-1', 'entry-id-1'],
+      );
+      expect(handedOffVisit?.clientEventId, 'entry-id-1');
+      expect(handedOffEvent, same(event));
+      expect(container.read(visitQueueProvider).items, isEmpty);
     });
 
     test(
-        'flush does not emit map.visit_queue_flush_success when all items fail',
+        'retries coordinator failure with exact persisted visit, not record call',
         () async {
-      final notifier = container.read(visitQueueProvider.notifier);
-      notifier.enqueue(userId: 'user-1', cellId: 'cell-1');
-
-      repo.shouldThrow = true;
-      final useCase = RecordCellVisit(repo, testObs);
-      await notifier.flush(useCase);
-
-      expect(
-        testObs.eventNames,
-        isNot(contains('map.visit_queue_flush_success')),
+      final event = _event('entry-id-2');
+      notifier.enqueue(
+        userId: 'user-1',
+        cellId: event.enteredCellId,
+        clientEventId: event.mapCellEntryId,
+        borderCrossingEvent: event,
       );
+      CellVisit? firstVisit;
+      TraceContext? firstRootTrace;
+
+      await notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (visit, borderEvent, {rootTrace}) async {
+          firstRootTrace = rootTrace;
+          firstVisit = visit;
+          expect(borderEvent.mapCellEntryId, event.mapCellEntryId);
+          throw StateError('coordination failure');
+        },
+      );
+
+      final retained = container.read(visitQueueProvider).items.single;
+      expect(retained.persistedCellVisit, same(firstVisit));
+      expect(repository.recordInputs, hasLength(1));
+
+      CellVisit? retriedVisit;
+      CellBorderCrossingEvent? retriedEvent;
+      TraceContext? retriedRootTrace;
+      await notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (visit, borderEvent, {rootTrace}) async {
+          retriedRootTrace = rootTrace;
+          retriedVisit = visit;
+          retriedEvent = borderEvent;
+        },
+      );
+
+      expect(repository.recordInputs, hasLength(1));
+      expect(retriedVisit, same(firstVisit));
+      expect(retriedEvent, same(event));
+      expect(container.read(visitQueueProvider).items, isEmpty);
+      expect(retriedRootTrace, same(firstRootTrace));
+    });
+
+    test('preserves an item enqueued while a flush awaits', () async {
+      final firstPersist = Completer<CellVisit>();
+      repository.onRecord =
+          (userId, cellId, clientEventId) => firstPersist.future;
+      enqueue('entry-id-3');
+
+      final flushing = notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (_, __, {rootTrace}) async {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      enqueue('entry-id-4');
+      firstPersist.complete(_visit('user-1', 'cell-1', 'entry-id-3', 1));
+      await flushing;
+
+      final retained = container.read(visitQueueProvider).items.single;
+      expect(retained.clientEventId, 'entry-id-4');
+      expect(retained.persistedCellVisit, isNull);
+    });
+
+    test('serializes overlapping flush calls', () async {
+      final persist = Completer<CellVisit>();
+      repository.onRecord = (userId, cellId, clientEventId) => persist.future;
+      enqueue('entry-id-5');
+
+      final firstFlush = notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (_, __, {rootTrace}) async {},
+      );
+      final overlappingFlush = notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (_, __, {rootTrace}) async {},
+      );
+
+      expect(identical(firstFlush, overlappingFlush), isTrue);
+      expect(repository.recordInputs, hasLength(1));
+      persist.complete(_visit('user-1', 'cell-1', 'entry-id-5', 1));
+      await Future.wait([firstFlush, overlappingFlush]);
+      expect(repository.recordInputs, hasLength(1));
+      expect(container.read(visitQueueProvider).items, isEmpty);
+    });
+
+    test('removes only the item whose Encounter handoff succeeds', () async {
+      enqueue('entry-id-6');
+      enqueue('entry-id-7');
+
+      await notifier.flush(
+        recordVisit: recordVisit,
+        encounterHandler: (_, event, {rootTrace}) async {
+          if (event.mapCellEntryId == 'entry-id-7') {
+            throw StateError('coordination failure');
+          }
+        },
+      );
+
+      final retained = container.read(visitQueueProvider).items.single;
+      expect(retained.clientEventId, 'entry-id-7');
+      expect(retained.persistedCellVisit?.clientEventId, 'entry-id-7');
+      expect(repository.recordInputs, hasLength(2));
+      final failure = observability.events.singleWhere(
+        (event) => event.event == 'map.visit_queue_item_failed',
+      );
+      expect(failure.data, {'stage': 'coordination'});
     });
   });
-}
-
-class _PartialFailRepo implements CellRepository {
-  _PartialFailRepo({required this.failAfter});
-  final int failAfter;
-  int _callCount = 0;
-
-  @override
-  Future<List<Cell>> fetchCellsInRadius(
-          double lat, double lng, double radiusMeters,
-          {String? traceId}) async =>
-      [];
-
-  @override
-  Future<void> recordVisit(String userId, String cellId,
-      {String? traceId}) async {
-    _callCount++;
-    if (_callCount > failAfter) throw Exception('network error');
-  }
-
-  @override
-  Future<Set<String>> getVisitedCellIds(String userId,
-          {String? traceId}) async =>
-      {};
-
-  @override
-  Future<bool> isFirstVisit(String userId, String cellId,
-          {String? traceId}) async =>
-      true;
 }

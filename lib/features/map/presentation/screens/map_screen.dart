@@ -10,9 +10,9 @@ import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
-import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
-import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
-import 'package:earth_nova/features/living_world/presentation/widgets/npc_venue_marker.dart';
+import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
+import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
+import 'package:earth_nova/features/living_world/presentation/widgets/venue_marker.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
@@ -40,11 +40,10 @@ import 'package:earth_nova/features/map/presentation/widgets/discovery_notificat
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/state/map_readiness_state.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
 const _kWebMapStyleUrl = 'base-map-style.json';
 const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
@@ -781,6 +780,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
+  void _syncTownProjection(AuthState authState, TownState townState) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (authState.status == AuthStatus.authenticated) {
+        final playerId = authState.user!.id;
+        if (ref.read(townProvider).shouldLoadFor(playerId)) {
+          unawaited(ref.read(townProvider.notifier).load(playerId));
+        }
+        return;
+      }
+      if (townState.playerId != null || townState.town != null) {
+        ref.read(townProvider.notifier).invalidate();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final obs = ref.watch(appObservabilityProvider);
@@ -794,6 +809,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final explorationEligibility = ref.watch(explorationEligibilityProvider);
     final explorationState = ref.watch(explorationProvider);
     final encounterState = ref.watch(encounterProvider);
+    final townState = ref.watch(townProvider);
+    _syncTownProjection(authState, townState);
 
     // Move camera from the fast smoothed camera-follow state, not directly from
     // raw GPS. Raw GPS remains the target, but smoothing removes jitter.
@@ -854,12 +871,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       final enteredCellId = borderCrossingEvent.enteredCellId;
       final isFirstVisit = borderCrossingEvent.isFirstVisit;
-      ref.read(encounterProvider.notifier).onCellEntered(
-            cellId: enteredCellId,
-            isFirstVisit: isFirstVisit,
-            userId: userId,
-            mapCellEntryId: borderCrossingEvent.mapCellEntryId,
-          );
       // Show discovery notification on first visit.
       if (isFirstVisit) {
         _showDiscoveryNotification(enteredCellId);
@@ -922,6 +933,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
             playerMarkerState: playerMarkerState,
             explorationEligibility: explorationEligibility,
             explorationState: explorationState,
+            town: townState.town,
             encounterState: encounterState,
           ),
       },
@@ -937,6 +949,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
     required EncounterState encounterState,
+    required TownProjection? town,
   }) {
     void logger({
       required String event,
@@ -954,7 +967,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
     final cellsObserved = footprint.uniqueCount;
     final visitQueueState = ref.watch(visitQueueProvider);
-    final npcVenueState = ref.watch(npcVenueProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -1029,18 +1041,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               ? _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
                   projectGeoCoord(markerGeoCoord)
               : projectGeoCoord(markerGeoCoord);
-          final npcVenue = npcVenueState.discoveredVenue;
-          final npcVenueScreenPosition =
-              npcVenue == null ? null : projectGeoCoord(npcVenue.position);
-          final isNpcVenueInCurrentCell = npcVenue != null &&
-              cellsWithStates.any(
-                (entry) =>
-                    entry.cell.id == npcVenue.cellId &&
-                    entry.state.relationship == CellRelationship.present,
-              );
-          final npcVenueDisplayMode = isNpcVenueInCurrentCell
-              ? NpcVenueMarkerDisplayMode.compactLabel
-              : NpcVenueMarkerDisplayMode.glyphOnly;
+          final venueAnchors = _knownVenueAnchors(town, cellsWithStates);
           final renderDiagnostics = {
             ...const MapRenderDiagnosticsService().summarize(
               cellsWithStates: cellsWithStates,
@@ -1159,7 +1160,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                         exactProjectionRequest.key,
                         cellsWithStates,
                         projectGeoCoord,
-                        npcVenueState.discoveredVenue,
+                        venueAnchors,
                       ),
                     ),
                     child: CustomPaint(
@@ -1188,14 +1189,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   ),
                 ),
 
-              if (npcVenue != null && npcVenueScreenPosition != null)
+              for (final venueAnchor in venueAnchors)
                 Positioned(
-                  left: npcVenueScreenPosition.dx - 16,
-                  top: npcVenueScreenPosition.dy - 16,
+                  left: projectGeoCoord(venueAnchor.position).dx - 16,
+                  top: projectGeoCoord(venueAnchor.position).dy - 16,
                   child: IgnorePointer(
-                    child: NpcVenueMarker(
-                      venue: npcVenue,
-                      displayMode: npcVenueDisplayMode,
+                    child: VenueMarker(
+                      venue: venueAnchor.venue,
+                      displayMode:
+                          venueAnchor.relationship == CellRelationship.present
+                              ? VenueMarkerDisplayMode.compactLabel
+                              : VenueMarkerDisplayMode.glyphOnly,
                     ),
                   ),
                 ),
@@ -1363,7 +1367,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     String exactProjectionKey,
     List<({Cell cell, CellState state})> cellsWithStates,
     Offset Function(GeoCoord coord) project,
-    NpcVenue? npcVenue,
+    List<_KnownVenueAnchor> venueAnchors,
   ) {
     final tapPosition = details.localPosition;
 
@@ -1390,13 +1394,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
     if (closestEntry != null) {
       final cell = closestEntry.cell;
       final isFirstVisit = !mapState.visitedCellIds.contains(cell.id);
-      final cellVenue = npcVenue?.cellId == cell.id ? npcVenue : null;
+      final cellVenues = venueAnchors
+          .where((anchor) => anchor.anchorCellId == cell.id)
+          .map((anchor) => anchor.venue)
+          .toList(growable: false);
       _showCellDetailSheet(
         context,
         cell,
         isFirstVisit,
         closestEntry.state,
-        cellVenue,
+        cellVenues,
       );
     }
   }
@@ -1432,12 +1439,42 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
+  List<_KnownVenueAnchor> _knownVenueAnchors(
+    TownProjection? town,
+    List<({Cell cell, CellState state})> cellsWithStates,
+  ) {
+    if (town == null || town.venues.isEmpty || cellsWithStates.isEmpty) {
+      return const [];
+    }
+
+    final renderedCellsById = {
+      for (final entry in cellsWithStates) entry.cell.id: entry,
+    };
+    final anchors = <_KnownVenueAnchor>[];
+    for (final venue in town.venues) {
+      final anchorCellId = venue.venue.anchorCellId;
+      final entry = renderedCellsById[anchorCellId];
+      if (entry == null) continue;
+      final position = _cellCenter(entry.cell);
+      if (position == null) continue;
+      anchors.add(
+        _KnownVenueAnchor(
+          venue: venue,
+          anchorCellId: anchorCellId,
+          position: position,
+          relationship: entry.state.relationship,
+        ),
+      );
+    }
+    return List<_KnownVenueAnchor>.unmodifiable(anchors);
+  }
+
   void _showCellDetailSheet(
     BuildContext context,
     Cell cell,
     bool isFirstVisit,
     CellState cellState,
-    NpcVenue? npcVenue,
+    List<TownVenue> knownVenues,
   ) {
     showModalBottomSheet(
       context: context,
@@ -1447,7 +1484,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         visitCount: isFirstVisit ? 0 : 1,
         isFirstVisit: isFirstVisit,
         currentRelationship: cellState.relationship,
-        npcVenue: npcVenue,
+        knownVenues: knownVenues,
       ),
     );
   }
@@ -1463,6 +1500,20 @@ class _MapScreenState extends ConsumerState<MapScreen>
       exploredCellIds: exploredCellIds,
     );
   }
+}
+
+class _KnownVenueAnchor {
+  const _KnownVenueAnchor({
+    required this.venue,
+    required this.anchorCellId,
+    required this.position,
+    required this.relationship,
+  });
+
+  final TownVenue venue;
+  final String anchorCellId;
+  final GeoCoord position;
+  final CellRelationship relationship;
 }
 
 class _ExactScreenProjectionRequest {

@@ -1,5 +1,7 @@
 # Problem Space — Agent Guidance
 
+> **Role: HISTORICAL-EVIDENCE.** These dated canvases remain comparative player-needs evidence, not current product authority. Use `CONTEXT.md` for resolved domain language and accepted `docs/adr/` for durable architecture.
+
 > These canvases define **what players need** and **why**, independent of implementation.
 > They are the source of truth for product scope and player intent.
 >

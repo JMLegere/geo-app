@@ -6,6 +6,7 @@ import 'package:earth_nova/core/observability/observable_use_case_provider.dart'
 import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
@@ -109,6 +110,9 @@ void main() {
           itemsObservabilityProvider.overrideWithValue(testObs),
           observableUseCaseProvider.overrideWithValue(testObs),
           itemRepositoryProvider.overrideWithValue(itemRepo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(itemRepo),
+          ),
         ],
       );
     });
@@ -200,6 +204,39 @@ void main() {
       expect(testObs.eventNames, contains('discovery.acquisition_committed'));
       expect(testObs.eventNames, contains('discovery.reward_presented'));
       expect(testObs.eventNames, contains('map.encounter_triggered'));
+    });
+    test('precomputed legacy writer acquires and registers exactly once',
+        () async {
+      final encounter = Encounter(
+        type: EncounterType.species,
+        speciesId: 'amberwing_warbler',
+        displayName: 'Amberwing Warbler',
+        cellId: 'cell_123',
+        seed: 'shared-daily-seed',
+      );
+      final notifier = container.read(encounterProvider.notifier);
+
+      await notifier.writePrecomputedLegacyEncounter(
+        encounter: encounter,
+        cellId: 'cell_123',
+        mapCellEntryId: 'persisted-entry-1',
+        userId: 'user-123',
+      );
+      await notifier.writePrecomputedLegacyEncounter(
+        encounter: encounter,
+        cellId: 'cell_123',
+        mapCellEntryId: 'persisted-entry-1',
+        userId: 'user-123',
+      );
+
+      expect(itemRepo.acquiredDrafts, hasLength(1));
+      expect(
+          itemRepo.acquiredDrafts.single.mapCellEntryId, 'persisted-entry-1');
+      expect(container.read(itemsProvider).items, hasLength(1));
+      expect(container.read(itemsProvider).items.single.id, 'owned-1');
+      expect(
+          container.read(encounterProvider).currentEncounter?.acquiredItem?.id,
+          'owned-1');
     });
 
     test('continuing reward starts card flight and impacts Pack after landing',

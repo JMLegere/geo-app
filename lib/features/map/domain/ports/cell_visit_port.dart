@@ -1,7 +1,10 @@
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
+
 abstract interface class CellVisitPort {
-  Future<void> recordVisit({
+  Future<CellVisit> recordVisit({
     required String userId,
     required String cellId,
+    required String clientEventId,
     String? traceId,
   });
 

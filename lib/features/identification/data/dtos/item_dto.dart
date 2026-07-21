@@ -5,7 +5,9 @@ import 'package:earth_nova/core/domain/entities/item.dart';
 class ItemDto {
   const ItemDto({
     required this.id,
-    required this.definitionId,
+    this.definitionId,
+    this.baseItemId,
+    this.baseItemVersionId,
     required this.displayName,
     this.scientificName,
     required this.category,
@@ -29,7 +31,9 @@ class ItemDto {
   });
 
   final String id;
-  final String definitionId;
+  final String? definitionId;
+  final String? baseItemId;
+  final String? baseItemVersionId;
   final String displayName;
   final String? scientificName;
   final String category;
@@ -51,40 +55,80 @@ class ItemDto {
   final List<String> identifiedHabitats;
   final List<String> identifiedContinents;
 
-  factory ItemDto.fromJson(Map<String, dynamic> json) => ItemDto(
-        id: json['id'] as String,
-        definitionId: json['definition_id'] as String,
-        displayName:
-            json['display_name'] as String? ?? json['definition_id'] as String,
-        scientificName: json['scientific_name'] as String?,
-        category: json['category'] as String? ?? 'fauna',
-        rarity: json['rarity'] as String?,
-        iconUrl: json['icon_url'] as String?,
-        iconUrlFrame2: json['icon_url_frame2'] as String?,
-        artUrl: json['art_url'] as String?,
-        acquiredAt: DateTime.parse(json['acquired_at'] as String),
-        acquiredInCellId: json['acquired_in_cell_id'] as String?,
-        status: json['status'] as String? ?? 'active',
-        taxonomicClass: json['taxonomic_class'] as String?,
-        habitats: _parseJsonArray(json['habitats_json'] as String?),
-        continents: _parseJsonArray(json['continents_json'] as String?),
-        identificationState:
-            json['identification_state'] as String? ?? 'identified',
-        identifiedAt: json['identified_at'] == null
-            ? null
-            : DateTime.parse(json['identified_at'] as String),
-        identifiedDisplayName: json['identified_display_name'] as String?,
-        identifiedScientificName: json['identified_scientific_name'] as String?,
-        identifiedTaxonomicClass: json['identified_taxonomic_class'] as String?,
-        identifiedHabitats:
-            _parseJsonArray(json['identified_habitats_json'] as String?),
-        identifiedContinents:
-            _parseJsonArray(json['identified_continents_json'] as String?),
-      );
+  factory ItemDto.fromJson(Map<String, dynamic> json) {
+    final identificationState =
+        json['identification_state'] as String? ?? 'identified';
+    final isUnidentified = identificationState == 'unidentified';
+    final category = json['category'] as String? ?? 'fauna';
+
+    if (isUnidentified) {
+      _requireMaskedIdentity(json);
+    }
+
+    return ItemDto(
+      id: _requiredNonBlankText(json['id'], 'id'),
+      baseItemId: isUnidentified
+          ? null
+          : _requiredNonBlankText(json['base_item_id'], 'base_item_id'),
+      baseItemVersionId: isUnidentified
+          ? null
+          : _requiredUuid(json['base_item_version_id'], 'base_item_version_id'),
+      definitionId: isUnidentified
+          ? null
+          : _requiredNonBlankText(json['definition_id'], 'definition_id'),
+      displayName: isUnidentified
+          ? _requiredNonBlankText(json['display_name'], 'display_name')
+          : (json['display_name'] as String? ??
+              _requiredNonBlankText(json['definition_id'], 'definition_id')),
+      scientificName:
+          isUnidentified ? null : _nullableText(json['scientific_name']),
+      category: category,
+      rarity: isUnidentified ? null : _nullableText(json['rarity']),
+      iconUrl: isUnidentified ? null : _nullableText(json['icon_url']),
+      iconUrlFrame2:
+          isUnidentified ? null : _nullableText(json['icon_url_frame2']),
+      artUrl: isUnidentified ? null : _nullableText(json['art_url']),
+      acquiredAt: DateTime.parse(_requiredNonBlankText(
+        json['acquired_at'],
+        'acquired_at',
+      )),
+      acquiredInCellId: _nullableText(json['acquired_in_cell_id']),
+      status: json['status'] as String? ?? 'active',
+      taxonomicClass:
+          isUnidentified ? null : _nullableText(json['taxonomic_class']),
+      habitats: isUnidentified
+          ? const []
+          : _parseJsonArray(json['habitats_json'] as String?),
+      continents: isUnidentified
+          ? const []
+          : _parseJsonArray(json['continents_json'] as String?),
+      identificationState: identificationState,
+      identifiedAt: isUnidentified || json['identified_at'] == null
+          ? null
+          : DateTime.parse(json['identified_at'] as String),
+      identifiedDisplayName: isUnidentified
+          ? null
+          : _nullableText(json['identified_display_name']),
+      identifiedScientificName: isUnidentified
+          ? null
+          : _nullableText(json['identified_scientific_name']),
+      identifiedTaxonomicClass: isUnidentified
+          ? null
+          : _nullableText(json['identified_taxonomic_class']),
+      identifiedHabitats: isUnidentified
+          ? const []
+          : _parseJsonArray(json['identified_habitats_json'] as String?),
+      identifiedContinents: isUnidentified
+          ? const []
+          : _parseJsonArray(json['identified_continents_json'] as String?),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'definition_id': definitionId,
+        'base_item_id': baseItemId,
+        'base_item_version_id': baseItemVersionId,
         'display_name': displayName,
         'scientific_name': scientificName,
         'category': category,
@@ -110,6 +154,8 @@ class ItemDto {
   Item toDomain() => Item(
         id: id,
         definitionId: definitionId,
+        baseItemId: baseItemId,
+        baseItemVersionId: baseItemVersionId,
         displayName: displayName,
         scientificName: scientificName,
         category: ItemCategory.fromString(category),
@@ -136,6 +182,8 @@ class ItemDto {
   factory ItemDto.fromDomain(Item item) => ItemDto(
         id: item.id,
         definitionId: item.definitionId,
+        baseItemId: item.baseItemId,
+        baseItemVersionId: item.baseItemVersionId,
         displayName: item.displayName,
         scientificName: item.scientificName,
         category: item.category.name,
@@ -167,3 +215,60 @@ List<String> _parseJsonArray(String? json) {
     return const [];
   }
 }
+
+String? _nullableText(Object? value) {
+  if (value == null) return null;
+  if (value is! String) {
+    throw FormatException('Optional Item text must be a string when present.');
+  }
+  return value;
+}
+
+void _requireMaskedIdentity(Map<String, dynamic> json) {
+  const hiddenFields = <String>[
+    'definition_id',
+    'base_item_id',
+    'base_item_version_id',
+    'scientific_name',
+    'rarity',
+    'icon_url',
+    'icon_url_frame2',
+    'art_url',
+    'taxonomic_class',
+    'habitats_json',
+    'continents_json',
+    'identified_at',
+    'identified_display_name',
+    'identified_scientific_name',
+    'identified_taxonomic_class',
+    'identified_habitats_json',
+    'identified_continents_json',
+  ];
+
+  for (final field in hiddenFields) {
+    if (json[field] != null) {
+      throw FormatException(
+        'Unidentified Item response must not expose $field.',
+      );
+    }
+  }
+}
+
+String _requiredNonBlankText(Object? value, String field) {
+  if (value is! String || value.trim().isEmpty) {
+    throw FormatException('$field must be a nonblank string.');
+  }
+  return value;
+}
+
+String _requiredUuid(Object? value, String field) {
+  final text = _requiredNonBlankText(value, field);
+  if (!_uuidPattern.hasMatch(text)) {
+    throw FormatException('$field must be a UUID.');
+  }
+  return text;
+}
+
+final _uuidPattern = RegExp(
+  r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
+);

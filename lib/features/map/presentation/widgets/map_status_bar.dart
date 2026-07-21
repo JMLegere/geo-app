@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:earth_nova/shared/design.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 /// Frosted glass status bar overlaid at the top of the map.
 ///

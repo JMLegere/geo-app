@@ -1,0 +1,3 @@
+# EAC enforces integrity, not authorization
+
+Everything-as-Code remains EarthNova’s central mechanical integrity and evidence-traceability layer, enforcing authority-spine consistency, canonical commands, documentation ownership and links, architecture boundaries, approved-outcome plan snapshots, knowledge-role distinctions, and evidence mappings. EAC does not authorize or prioritize work, treat Vision as approved, or certify behavior from catalog or scenario presence; we accept the maintenance cost of a custom cross-language integrity layer because executable drift detection is worth preserving within these strict authority limits.

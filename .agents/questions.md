@@ -1,62 +1,46 @@
 # Open Questions
 
-Unresolved questions and blockers.
+**Role: CURRENT-SCOPED.** This registry contains only deliberately open product, architecture, implementation, or operational decisions. `CONTEXT.md` and accepted `docs/adr/` govern anything already resolved.
 
-<!-- Add questions as they arise, move to decisions.md when resolved -->
+## Product and Domain Gates
 
-## Pending
+### Encounter authoring
 
-### Backlog audit blockers — 2026-05-03
+- **Encounter rates and weights:** What production Selector weights should control explicit None versus each eligible Encounter Definition?
+- **Additional Outcome kinds:** Which typed Outcome kinds, beyond Generate Item and Reveal Venue, should enter the closed set?
+- **Concrete Condition leaves:** Which first leaf predicates are approved beyond the compatibility rules needed to preserve current behavior?
+- **Condition precedence:** If owning content, Options, and Selector candidates all have Conditions, what evaluation/diagnostic precedence should the player and authoring tools expose?
 
-- **Map acceptance criteria**: `docs/map-design.md` is the active map source of
-  truth, but the next execution pass should tighten testable criteria for map
-  screen, GPS service, cell detection, visit recording, fog computation, and map
-  observability before further implementation.
-- **Discovery encounter count**: The old backlog specified 3 encounter slots per
-  cell visit, while `docs/prd-game-systems.md` still leaves encounter rate open.
-  Decide whether to adopt 3, use 1, or make count variable before implementing
-  discovery progression.
-- **Identification stat model**: Decide between species-truth stats and
-  species-baseline plus per-instance variance. If instance variance is chosen,
-  define the deterministic rolling algorithm and test vectors.
-- **Enrichment to `v3_items` propagation**: Decide whether the enrichment pipeline
-  writes denormalized fields to `v3_items`, a DB trigger/view exposes enrichment
-  state, or the client joins/reads directly from `species`.
-- **Fully enriched predicate**: Define the exact schema-level predicate or view that
-  determines when an item can be identified.
-- **Identification persistence**: Replace the PRD's fire-and-forget write with an
-  optimistic, retryable, idempotent write path.
-- **Affix vocabulary and rules**: Define prefix/suffix vocabulary, generation rules,
-  and rarity gates before affixes are included in near-term identification work.
-- **Color identity timing**: Confirm color identity is deferred from the first
-  identification execution path.
+### Item knowledge and progression
 
-### Sanctuary, economy, and long-term systems
+- **Discipline tuning:** What XP amount does each completed automatic or explicit Identification grant, and what thresholds derive each visible numeric Level?
+- **Orb behavior:** What, if anything, may an Orb do? Currency, crafting, stacking, production, and consumption remain intentionally unassigned.
 
-- **Breeding mechanic design**: How does trait inheritance work? CryptoKitty model is
-  referenced in design docs but no implementation spec exists. What is the MVP?
-- **Museum bundle schema**: Stardew community center model referenced. What are the
-  bundle compositions, donation rules, and rewards?
-- **Sanctuary feeding MVP**: Infrastructure exists (CaretakingFeature, orb models) but
-  no feeding loop. What is the minimum viable feeding interaction?
-- **Art lock mechanism**: 51% of instances must select the same art at daily reset.
-  How is this tracked server-side? What is the Supabase schema for art voting?
-- **Orb crafting depth**: First Orb sink is safe animal reroll crafting from Pack animal detail. Remaining open questions: exact Orb item taxonomy, reroll result tables, odds/preview rules, and whether different Orb types target personality vs cosmetic variant vs authored non-science traits.
-- **Release to Wild backend slice**: First implementation should be schema/RPC/tests with minimal UI. Remaining open questions: exact table/RPC names, generated-program refresh cadence implementation, Orb reward amounts, and migration order.
+### Living world and Home
 
-### Operations
+- **Venue Visit trigger:** What exact physical event creates a Venue Visit: entering the Venue's Cell, satisfying a proximity boundary, or an explicit check-in while eligible?
+- **Home Module behavior:** What Module kinds, limits, installation rules, and lifecycle are approved?
 
-- **Production migration secret**: `SUPABASE_PRODUCTION_DB_PASSWORD` is not configured,
-  so production workflow migrations will skip until the secret is added.
-- **Legacy Railway beta service cleanup**: unused sibling service `geo-app beta`
-  still exists and may need manual dashboard deletion because API deletion returned
-  403 with the available token.
+### Architecture
 
-## Resolved (2026-04-07, map-experience-execution)
+- **Final bounded-context map:** After the first vertical slices expose real coupling, which module boundaries should become durable context boundaries?
 
-- **GPS status indicator**: Resolved — no separate indicator. Marker/ring state
-  communicates discovery state. See decisions.md.
-- **Pack session grouping (R12)**: Resolved — out of scope for this execution.
-  Post-MVP.
-- **`state` vs `province` naming**: Resolved — keep `state` in code. See decisions.md.
-- **0% child-region highlight overlays**: Resolved — not implemented. See decisions.md.
+### Map acceptance follow-ups
+
+- **Beyond-radius presentation:** Should Cells outside the fetch/render radius be absent, fully hidden, or represented by a softened edge fade?
+- **Qualitative visual bar:** What repeatable screenshot rubric distinguishes a sufficiently magical map from a debug artifact after the objective R1–R8 checks pass?
+
+## Operational Gates
+
+- **Production migration secret:** Verify whether `SUPABASE_PRODUCTION_DB_PASSWORD` is configured before any production migration workflow is approved.
+- **Legacy Railway beta service cleanup:** Re-verify the unused sibling service and available deletion permissions before requesting manual removal.
+
+## Resolved or Superseded Questions
+
+Resolved items are retained in `.agents/decisions.md`, dated `.agents/context.md`, and historical design/QA artifacts rather than duplicated here.
+
+- Cell entry creates **zero or one** Encounter through one Selector; the old three-slot question is superseded by `CONTEXT.md`.
+- Identification resolves Version-owned Variable Properties into permanent Item Property Values; the old generic stat/affix model is superseded.
+- Identification persistence must be explicit and atomic with its Property Values, first Discovery, and Discipline XP event; fire-and-forget is rejected.
+- EarthNova uses **State**, not Province.
+- Sanctuary, breeding, museum bundles, Orb crafting, and release-reward assumptions are not active rules merely because old plans mentioned them.

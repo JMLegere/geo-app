@@ -273,6 +273,59 @@ void main() {
     });
   });
 
+  group('MapScreen encounter boundary', () {
+    test(
+        'does not trigger encounters from optimistic exploration while retaining first-discovery notification',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(
+        mapSource,
+        isNot(contains('onCellEntered(')),
+        reason:
+            'Encounter entry is invoked only after RecordCellVisit returns the exact CellVisit.',
+      );
+      expect(
+        mapSource,
+        contains('ref.listen<ExplorationStateData>(explorationProvider'),
+        reason: 'The screen still reacts to entry state for non-mutating UI.',
+      );
+      expect(
+        mapSource,
+        contains('_showDiscoveryNotification(enteredCellId)'),
+        reason:
+            'First-visit discovery feedback remains owned by the Map screen.',
+      );
+      expect(
+        mapSource,
+        contains("'map.discovery_notification_shown'"),
+      );
+    });
+
+    test('does not record Venue Visits from UI, map taps, or location events',
+        () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+      final locationSource =
+          File('lib/features/map/presentation/providers/location_provider.dart')
+              .readAsStringSync();
+      final cellSheetSource =
+          File('lib/features/map/presentation/widgets/cell_detail_sheet.dart')
+              .readAsStringSync();
+      final townSource = File(
+              'lib/features/living_world/presentation/screens/town_screen.dart')
+          .readAsStringSync();
+
+      expect(mapSource, isNot(contains('recordVenueVisit')));
+      expect(locationSource, isNot(contains('recordVenueVisit')));
+      expect(cellSheetSource, isNot(contains('recordVenueVisit')));
+      expect(townSource, isNot(contains('recordVenueVisit')));
+    });
+  });
+
   group('Startup/recovery — no blank screen', () {
     test('LoadingDots is used for GPS loading state (not blank scaffold)', () {
       // Verify the loading state uses LoadingDots widget (non-blank UI).
@@ -410,20 +463,29 @@ void main() {
           contains('attributionButtonMargins: const math.Point(12, 144)'));
     });
 
-    test('renders NPC venues as anchored compact glyph cues', () {
+    test('renders known Town Venues as anchored compact glyph cues', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
-      expect(mapSource, contains('NpcVenueMarkerDisplayMode.compactLabel'));
-      expect(mapSource, contains('NpcVenueMarkerDisplayMode.glyphOnly'));
-      expect(mapSource,
-          contains('entry.state.relationship == CellRelationship.present'));
-      expect(mapSource, contains('left: npcVenueScreenPosition.dx - 16'));
-      expect(mapSource, contains('top: npcVenueScreenPosition.dy - 16'));
+      expect(mapSource, contains('TownProjection? town'));
       expect(
-          mapSource, isNot(contains('left: npcVenueScreenPosition.dx - 96')));
-      expect(mapSource, isNot(contains('top: npcVenueScreenPosition.dy - 54')));
+        mapSource,
+        contains(
+            'final venueAnchors = _knownVenueAnchors(town, cellsWithStates)'),
+      );
+      expect(mapSource, contains('venue.venue.anchorCellId'));
+      expect(mapSource, contains('final position = _cellCenter(entry.cell)'));
+      expect(mapSource, contains('VenueMarkerDisplayMode.compactLabel'));
+      expect(mapSource, contains('VenueMarkerDisplayMode.glyphOnly'));
+      expect(mapSource, contains('knownVenues: knownVenues'));
+      expect(mapSource,
+          contains('left: projectGeoCoord(venueAnchor.position).dx - 16'));
+      expect(mapSource,
+          contains('top: projectGeoCoord(venueAnchor.position).dy - 16'));
+      expect(mapSource, isNot(contains('npcVenueProvider')));
+      expect(
+          mapSource, isNot(contains('discoverWildlifeRehabilitationCenter')));
     });
 
     test('adds a top fog feather below the status area', () {
@@ -616,20 +678,26 @@ void main() {
     });
 
     test(
-        'encounters are keyed to gameplay map-cell entry events, not tracking state',
+        'encounters use persisted entry handler rather than optimistic map listener',
         () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final entrySource = File(
+        'lib/features/encounters/presentation/providers/encounter_entry_provider.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('lastBorderCrossingEvent'));
-      expect(mapSource, contains('borderCrossingEvent.mapCellEntryId'));
-      expect(mapSource, contains('mapCellEntryId:'));
+      expect(mapSource, isNot(contains('.onCellEntered(')));
+      expect(
+          entrySource, contains('persistedCellVisitEncounterHandlerProvider'));
+      expect(entrySource,
+          contains('mapEntryId: borderCrossingEvent.mapCellEntryId'));
       expect(
         mapSource,
         isNot(contains('next.lastEntrySequence > previousEntrySequence')),
         reason:
-            'Gameplay entry should follow explicit map-cell entry identity, not a generic sequence counter.',
+            'Gameplay entry should follow exact persisted/border identities, not a generic sequence counter.',
       );
     });
 

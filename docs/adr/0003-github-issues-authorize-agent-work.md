@@ -1,0 +1,3 @@
+# GitHub Issues authorize agent work
+
+GitHub Issues is EarthNova’s authoritative execution queue: non-trivial work requires a structured Outcome Contract and a trusted human-applied approval state before an agent begins, while the repository supplies knowledge, commands, local fixtures, the Living Execution Plan, and verification evidence. We accept GitHub’s external dependency and untrusted-input risks because its established ownership, status, history, and branch/CI integration are preferable to a custom queue; the approved outcome is snapshotted into the branch plan for cold-start and offline continuity.

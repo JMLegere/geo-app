@@ -1,12 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
-import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
@@ -283,7 +286,7 @@ void main() {
       expect(testObs.eventNames, isNot(contains('map.cell_entered')));
     });
 
-    test("eligible initial occupancy discovers Rowan's Rehab Center venue",
+    test('eligible initial occupancy does not create an optimistic Venue',
         () async {
       final notifier = container.read(explorationProvider.notifier);
       await notifier.onPositionUpdate(
@@ -297,12 +300,47 @@ void main() {
         visitedCellIds: const <String>{},
       );
 
-      final venue = container.read(npcVenueProvider).discoveredVenue;
-      expect(venue, isNotNull);
-      expect(venue!.venueName, "Rowan's Rehab Center");
-      expect(venue.npcName, 'Rowan');
-      expect(venue.featureName, 'Release to Wild');
-      expect(venue.cellId, 'cell-A');
+      expect(container.read(explorationProvider).currentCellId, 'cell-A');
+      expect(
+        testObs.eventNames,
+        isNot(contains('living_world.npc_venue_discovered')),
+      );
+      expect(
+        File('lib/features/map/presentation/providers/exploration_provider.dart')
+            .readAsStringSync(),
+        isNot(contains('discoverWildlifeRehabilitationCenter')),
+      );
+    });
+
+    test('eligible border entry does not create an optimistic Venue', () async {
+      final notifier = container.read(explorationProvider.notifier);
+      final cells = adjacentCells();
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const <String>{},
+      );
+      await notifier.onPositionUpdate(
+        markerState: const PlayerMarkerState(
+          lat: 1.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const <String>{},
+      );
+
+      expect(container.read(explorationProvider).currentCellId, 'cell-B');
+      expect(
+        testObs.eventNames,
+        isNot(contains('living_world.npc_venue_discovered')),
+      );
     });
 
     test('paused eligibility tracks cell without recording a visit', () async {
@@ -575,11 +613,17 @@ void main() {
       expect(testObs.eventNames, contains('map.cell_exited'));
     });
 
-    test('logs map.cell_visited on successful backend persist after crossing',
+    test(
+        'passes the exact persisted visit and matching border event to the handler after persistence',
         () async {
-      final repo = _MockCellRepository();
+      final callOrder = <String>[];
+      final repo = _MockCellRepository(
+        onRecord: () => callOrder.add('persisted'),
+      );
       final visitObs = TestObservabilityService();
       final cells = adjacentCells();
+      CellVisit? receivedVisit;
+      CellBorderCrossingEvent? receivedBorder;
       final c = ProviderContainer(
         overrides: [
           appObservabilityProvider.overrideWithValue(testObs),
@@ -587,6 +631,14 @@ void main() {
           observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
           visitQueueObservabilityProvider.overrideWithValue(visitObs),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (persistedVisit, borderCrossingEvent, {rootTrace}) async {
+              expect(callOrder, ['persisted']);
+              callOrder.add('handler');
+              receivedVisit = persistedVisit;
+              receivedBorder = borderCrossingEvent;
+            },
+          ),
         ],
       );
       addTearDown(c.dispose);
@@ -616,17 +668,25 @@ void main() {
             userId: 'user-123',
           );
 
+      final state = c.read(explorationProvider);
+      expect(callOrder, ['persisted', 'handler']);
+      expect(repo.recordedVisits, hasLength(1));
+      expect(receivedVisit, same(repo.recordedVisits.single));
+      expect(receivedBorder, same(state.lastBorderCrossingEvent));
+      expect(receivedVisit?.cellId, receivedBorder?.enteredCellId);
+      expect(
+        receivedVisit?.clientEventId,
+        receivedBorder?.mapCellEntryId,
+      );
       expect(testObs.eventNames, contains('map.cell_visited'));
-      final event = testObs.events
-          .firstWhere((entry) => entry.event == 'map.cell_visited');
-      expect(event.data?['cellId'], 'cell-B');
-      expect(event.data?['entered_cell_id'], 'cell-B');
+      expect(c.read(visitQueueProvider).pendingCount, 0);
     });
 
     test('enqueues visit when backend persist throws after crossing', () async {
       final repo = _MockCellRepository(shouldThrow: true);
       final visitObs = TestObservabilityService();
       final cells = adjacentCells();
+      var handlerCalls = 0;
       final c = ProviderContainer(
         overrides: [
           appObservabilityProvider.overrideWithValue(testObs),
@@ -634,6 +694,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(testObs),
           cellRepositoryProvider.overrideWithValue(repo),
           visitQueueObservabilityProvider.overrideWithValue(visitObs),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (_, __, {rootTrace}) async => handlerCalls += 1,
+          ),
         ],
       );
       addTearDown(c.dispose);
@@ -667,14 +730,103 @@ void main() {
 
       expect(explorationState.visitedCellIds, {'cell-B'});
       expect(queueState.pendingCount, 1);
+      expect(repo.recordedVisits, isEmpty);
+      expect(handlerCalls, 0);
       expect(testObs.eventNames, contains('operation.failed'));
+    });
+    test(
+        'a later valid position update retries queued coordination without another record call',
+        () async {
+      final repo = _MockCellRepository();
+      final visitObs = TestObservabilityService();
+      final cells = adjacentCells();
+      var handlerCalls = 0;
+      CellVisit? firstVisit;
+      CellVisit? retriedVisit;
+      CellBorderCrossingEvent? firstEvent;
+      CellBorderCrossingEvent? retriedEvent;
+      final c = ProviderContainer(
+        overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
+          explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(repo),
+          visitQueueObservabilityProvider.overrideWithValue(visitObs),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (visit, event, {rootTrace}) async {
+              handlerCalls += 1;
+              if (handlerCalls == 1) {
+                firstVisit = visit;
+                firstEvent = event;
+                throw StateError('coordinator failed after persistence');
+              }
+              retriedVisit = visit;
+              retriedEvent = event;
+            },
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      await c.read(explorationProvider.notifier).onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 0.5,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: cells,
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+      await c.read(explorationProvider.notifier).onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 1.5,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: cells,
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+
+      final queued = c.read(visitQueueProvider).items.single;
+      expect(queued.persistedCellVisit, same(firstVisit));
+      expect(queued.borderCrossingEvent, same(firstEvent));
+      expect(repo.recordedVisits, hasLength(1));
+
+      await c.read(explorationProvider.notifier).onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 1.6,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: cells,
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repo.recordedVisits, hasLength(1));
+      expect(handlerCalls, 2);
+      expect(retriedVisit, same(firstVisit));
+      expect(retriedEvent, same(firstEvent));
+      expect(c.read(visitQueueProvider).pendingCount, 0);
+      expect(
+        testObs.eventNames,
+        contains('encounter.entry.coordination_failed'),
+      );
     });
   });
 }
 
 class _MockCellRepository implements CellRepository {
-  _MockCellRepository({this.shouldThrow = false});
+  _MockCellRepository({this.shouldThrow = false, this.onRecord});
   final bool shouldThrow;
+  final void Function()? onRecord;
+  final List<CellVisit> recordedVisits = [];
 
   @override
   Future<List<Cell>> fetchCellsInRadius(
@@ -683,9 +835,23 @@ class _MockCellRepository implements CellRepository {
       [];
 
   @override
-  Future<void> recordVisit(String userId, String cellId,
-      {String? traceId}) async {
+  Future<CellVisit> recordVisit(
+    String userId,
+    String cellId,
+    String clientEventId, {
+    String? traceId,
+  }) async {
     if (shouldThrow) throw Exception('network error');
+    final visit = CellVisit(
+      id: 'visit-${recordedVisits.length + 1}',
+      userId: userId,
+      cellId: cellId,
+      clientEventId: clientEventId,
+      visitedAt: DateTime.utc(2026, 7, 20),
+    );
+    onRecord?.call();
+    recordedVisits.add(visit);
+    return visit;
   }
 
   @override

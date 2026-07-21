@@ -8,6 +8,8 @@ void main() {
   final fullJson = {
     'id': 'i1',
     'definition_id': 'def1',
+    'base_item_id': 'fauna:lion',
+    'base_item_version_id': '123e4567-e89b-12d3-a456-426614174000',
     'display_name': 'Lion',
     'scientific_name': 'Panthera leo',
     'category': 'fauna',
@@ -30,6 +32,11 @@ void main() {
       expect(domain.id, 'i1');
       expect(domain.definitionId, 'def1');
       expect(domain.displayName, 'Lion');
+      expect(domain.baseItemId, 'fauna:lion');
+      expect(
+        domain.baseItemVersionId,
+        '123e4567-e89b-12d3-a456-426614174000',
+      );
       expect(domain.scientificName, 'Panthera leo');
       expect(domain.category, ItemCategory.fauna);
       expect(domain.rarity, 'EN');
@@ -47,16 +54,11 @@ void main() {
     test('maps unidentified metadata without exposing species fields', () {
       final json = {
         'id': 'i-unidentified',
-        'definition_id': 'species.amberwing_warbler.abc12345',
         'display_name': 'Unidentified fauna specimen',
-        'scientific_name': null,
         'category': 'fauna',
-        'rarity': 'rare',
         'acquired_at': acquiredAt.toIso8601String(),
         'status': 'active',
         'identification_state': 'unidentified',
-        'identified_display_name': 'Amberwing Warbler',
-        'identified_scientific_name': 'Setophaga aestiva',
       };
 
       final item = ItemDto.fromJson(json).toDomain();
@@ -64,8 +66,11 @@ void main() {
       expect(item.identificationState, ItemIdentificationState.unidentified);
       expect(item.displayName, 'Unidentified fauna specimen');
       expect(item.scientificName, isNull);
-      expect(item.identifiedDisplayName, 'Amberwing Warbler');
-      expect(item.identifiedScientificName, 'Setophaga aestiva');
+      expect(item.definitionId, isNull);
+      expect(item.baseItemId, isNull);
+      expect(item.baseItemVersionId, isNull);
+      expect(item.identifiedDisplayName, isNull);
+      expect(item.identifiedScientificName, isNull);
       expect(item.visibleDisplayName, 'Unidentified fauna specimen');
       expect(item.visibleScientificName, isNull);
     });
@@ -75,6 +80,9 @@ void main() {
         'id': 'i2',
         'definition_id': 'def2',
         'acquired_at': acquiredAt.toIso8601String(),
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174002',
+        'display_name': 'Unknown',
       };
       final dto = ItemDto.fromJson(json);
       final domain = dto.toDomain();
@@ -84,6 +92,20 @@ void main() {
       expect(domain.habitats, isEmpty);
       expect(domain.continents, isEmpty);
     });
+
+    test('rejects canonical identity leaked by an unidentified projection', () {
+      final json = {
+        'id': 'i-leaked',
+        'display_name': 'Unidentified fauna specimen',
+        'category': 'fauna',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'status': 'active',
+        'identification_state': 'unidentified',
+        'definition_id': 'fauna:red_fox',
+      };
+
+      expect(() => ItemDto.fromJson(json), throwsA(isA<FormatException>()));
+    });
   });
 
   group('_parseJsonArray edge cases', () {
@@ -91,6 +113,8 @@ void main() {
       final json = {
         'id': 'i3',
         'definition_id': 'def3',
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174003',
         'acquired_at': acquiredAt.toIso8601String(),
         'habitats_json': null,
       };
@@ -103,6 +127,8 @@ void main() {
         'id': 'i3',
         'definition_id': 'def3',
         'acquired_at': acquiredAt.toIso8601String(),
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174004',
         'habitats_json': '',
       };
       final domain = ItemDto.fromJson(json).toDomain();
@@ -115,6 +141,8 @@ void main() {
         'definition_id': 'def3',
         'acquired_at': acquiredAt.toIso8601String(),
         'habitats_json': '[]',
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174005',
       };
       final domain = ItemDto.fromJson(json).toDomain();
       expect(domain.habitats, isEmpty);
@@ -124,6 +152,8 @@ void main() {
       final json = {
         'id': 'i3',
         'definition_id': 'def3',
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174006',
         'acquired_at': acquiredAt.toIso8601String(),
         'habitats_json': '["Forest","Mountain"]',
       };
@@ -135,6 +165,8 @@ void main() {
       final json = {
         'id': 'i3',
         'definition_id': 'def3',
+        'base_item_id': 'fauna:unknown',
+        'base_item_version_id': '123e4567-e89b-12d3-a456-426614174007',
         'acquired_at': acquiredAt.toIso8601String(),
         'habitats_json': 'not-json',
       };
@@ -153,6 +185,8 @@ void main() {
         acquiredAt: acquiredAt,
         status: ItemStatus.active,
         habitats: ['Forest'],
+        baseItemId: 'fauna:lion',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174000',
         continents: ['Africa'],
       );
       final dto = ItemDto.fromDomain(item);
@@ -162,6 +196,51 @@ void main() {
       expect(json['status'], 'active');
       expect(json['habitats_json'], '["Forest"]');
       expect(json['continents_json'], '["Africa"]');
+      expect(json['base_item_id'], 'fauna:lion');
+      expect(
+        json['base_item_version_id'],
+        '123e4567-e89b-12d3-a456-426614174000',
+      );
+    });
+  });
+
+  group('ItemDto.fromJson Base Item binding validation', () {
+    test('rejects missing Base Item binding fields', () {
+      final missingBaseItemId = Map<String, dynamic>.from(fullJson)
+        ..remove('base_item_id');
+      final missingBaseItemVersionId = Map<String, dynamic>.from(fullJson)
+        ..remove('base_item_version_id');
+
+      expect(
+        () => ItemDto.fromJson(missingBaseItemId),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => ItemDto.fromJson(missingBaseItemVersionId),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects blank or malformed Base Item bindings', () {
+      final blankBaseItemId = Map<String, dynamic>.from(fullJson)
+        ..['base_item_id'] = '  ';
+      final blankBaseItemVersionId = Map<String, dynamic>.from(fullJson)
+        ..['base_item_version_id'] = '';
+      final malformedBaseItemVersionId = Map<String, dynamic>.from(fullJson)
+        ..['base_item_version_id'] = 'not-a-uuid';
+
+      expect(
+        () => ItemDto.fromJson(blankBaseItemId),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => ItemDto.fromJson(blankBaseItemVersionId),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => ItemDto.fromJson(malformedBaseItemVersionId),
+        throwsA(isA<FormatException>()),
+      );
     });
   });
 }

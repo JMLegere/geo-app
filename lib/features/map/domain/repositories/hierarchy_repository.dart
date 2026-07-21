@@ -57,3 +57,26 @@ abstract class HierarchyRepository {
     String? scopeId,
   });
 }
+
+/// Safe failure emitted by hierarchy repository boundaries.
+///
+/// It excludes backend diagnostics so hierarchy callers and telemetry may
+/// safely surface it.
+final class HierarchyRepositoryFailure implements Exception {
+  const HierarchyRepositoryFailure._(this.kind);
+
+  const HierarchyRepositoryFailure.unavailable()
+      : this._(HierarchyRepositoryFailureKind.unavailable);
+  const HierarchyRepositoryFailure.malformedPayload()
+      : this._(HierarchyRepositoryFailureKind.malformedPayload);
+
+  final HierarchyRepositoryFailureKind kind;
+
+  @override
+  String toString() => 'Hierarchy request failed (${kind.name}).';
+}
+
+enum HierarchyRepositoryFailureKind {
+  unavailable,
+  malformedPayload,
+}

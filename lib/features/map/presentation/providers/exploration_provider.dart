@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
-import 'package:earth_nova/features/living_world/presentation/providers/npc_venue_provider.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
 import 'package:earth_nova/features/map/domain/use_cases/record_cell_visit.dart';
@@ -165,6 +169,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     // tracked in a previous map cell. Initial occupancy and trusted recovery
     // should establish current context without pretending a border was crossed.
     if (previousCellId == null) {
+      _triggerQueuedVisitRetry(userId);
       transition(
         newState,
         'map.cell_tracked',
@@ -173,9 +178,6 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
           'tracking_reason': 'initial_occupancy',
         },
       );
-      ref
-          .read(npcVenueProvider.notifier)
-          .discoverWildlifeRehabilitationCenter(currentCell);
       return;
     }
 
@@ -183,6 +185,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
 
     if (!isCellEntry) {
       // Same cell: movement may animate marker/camera, but no border event fires.
+      _triggerQueuedVisitRetry(userId);
       return;
     }
 
@@ -222,9 +225,6 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
         ...borderCrossingEvent.toTelemetryData(),
       },
     );
-    ref
-        .read(npcVenueProvider.notifier)
-        .discoverWildlifeRehabilitationCenter(currentCell);
 
     // Log cell_visited event.
     obs.log(
@@ -249,21 +249,76 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       );
     }
 
-    // Persist visit to backend; enqueue on failure.
-    if (userId != null && userId.isNotEmpty) {
-      final recordVisit = ref.read(recordCellVisitProvider);
-      try {
-        await recordVisit.call((
+    // Persist before Encounter resolution. Both retry paths retain the same
+    // border event and idempotency key: only coordination retries carry the
+    // exact already-persisted visit.
+    if (userId == null || userId.isEmpty) return;
+    final rootTrace = TraceContext.start();
+
+    final recordVisit = ref.read(recordCellVisitProvider);
+    late final CellVisit persistedCellVisit;
+    try {
+      persistedCellVisit = await recordVisit.call(
+        (
           userId: userId,
           cellId: currentCell.id,
-        ));
-      } catch (_) {
-        ref.read(visitQueueProvider.notifier).enqueue(
-              userId: userId,
-              cellId: currentCell.id,
-            );
-      }
+          clientEventId: borderCrossingEvent.mapCellEntryId,
+        ),
+        parent: rootTrace,
+      );
+    } catch (_) {
+      ref.read(visitQueueProvider.notifier).enqueue(
+            userId: userId,
+            cellId: currentCell.id,
+            clientEventId: borderCrossingEvent.mapCellEntryId,
+            borderCrossingEvent: borderCrossingEvent,
+            rootTrace: rootTrace,
+          );
+      return;
     }
+
+    try {
+      await ref.read(persistedCellVisitEncounterHandlerProvider)(
+        persistedCellVisit,
+        borderCrossingEvent,
+        rootTrace: rootTrace,
+      );
+    } catch (_) {
+      ref.read(visitQueueProvider.notifier).enqueue(
+            userId: userId,
+            cellId: currentCell.id,
+            clientEventId: borderCrossingEvent.mapCellEntryId,
+            borderCrossingEvent: borderCrossingEvent,
+            persistedCellVisit: persistedCellVisit,
+            rootTrace: rootTrace,
+          );
+      obs.log(
+        'encounter.entry.coordination_failed',
+        'encounter',
+        data: {
+          'trace_id': rootTrace.traceId,
+          'map_cell_entry_id': borderCrossingEvent.mapCellEntryId,
+        },
+      );
+    }
+  }
+
+  void _triggerQueuedVisitRetry(String? userId) {
+    if (userId == null ||
+        userId.isEmpty ||
+        ref.read(visitQueueProvider).pendingCount == 0) {
+      return;
+    }
+
+    // Retry only from updates that have no immediate border-entry operation,
+    // so recovery cannot race a new persistence/Encounter handoff.
+    unawaited(
+      ref.read(visitQueueProvider.notifier).flush(
+            recordVisit: ref.read(recordCellVisitProvider),
+            encounterHandler:
+                ref.read(persistedCellVisitEncounterHandlerProvider),
+          ),
+    );
   }
 
   CellBorderCrossingEvent _buildBorderCrossingEvent({

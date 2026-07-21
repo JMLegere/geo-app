@@ -1,9 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:earth_nova/features/map/data/dtos/cell_visit_dto.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 
 import 'package:earth_nova/features/map/domain/ports/cell_visit_port.dart';
 
-typedef CellRecordVisitQuery = Future<void> Function(
-    String userId, String cellId);
+typedef CellVisitRpcQuery = Future<Object?> Function(
+  String functionName,
+  Map<String, Object?> params,
+);
 typedef CellVisitedIdsQuery = Future<List<Map<String, dynamic>>> Function(
   String userId,
 );
@@ -15,41 +19,85 @@ typedef CellFirstVisitQuery = Future<List<Map<String, dynamic>>> Function(
 class SupabaseCellVisitAdapter implements CellVisitPort {
   SupabaseCellVisitAdapter({
     required SupabaseClient? client,
-    CellRecordVisitQuery? recordVisitQuery,
+    CellVisitRpcQuery? rpcQuery,
     CellVisitedIdsQuery? visitedCellIdsQuery,
     CellFirstVisitQuery? firstVisitQuery,
   })  : _client = client,
-        _recordVisitQuery = recordVisitQuery,
+        _rpcQuery = rpcQuery,
         _visitedCellIdsQuery = visitedCellIdsQuery,
         _firstVisitQuery = firstVisitQuery;
 
   final SupabaseClient? _client;
-  final CellRecordVisitQuery? _recordVisitQuery;
+  final CellVisitRpcQuery? _rpcQuery;
   final CellVisitedIdsQuery? _visitedCellIdsQuery;
   final CellFirstVisitQuery? _firstVisitQuery;
 
   @override
-  Future<void> recordVisit({
+  Future<CellVisit> recordVisit({
     required String userId,
     required String cellId,
+    required String clientEventId,
     String? traceId,
   }) async {
-    if (_recordVisitQuery != null) {
-      await _recordVisitQuery!(userId, cellId);
-      return;
+    final response = await _runRecordVisitRpc(cellId, clientEventId);
+    final visit = CellVisitDto.fromJson(
+      _requiredRecordVisitResponseObject(response),
+    ).toDomain();
+
+    if (visit.userId != userId ||
+        visit.cellId != cellId ||
+        visit.clientEventId != clientEventId) {
+      throw StateError(
+        'record_v3_cell_visit returned a Cell Visit that does not match '
+        'the requested ownership or identity.',
+      );
+    }
+    return visit;
+  }
+
+  Future<Object?> _runRecordVisitRpc(
+    String cellId,
+    String clientEventId,
+  ) async {
+    const functionName = 'record_v3_cell_visit';
+    final params = <String, Object?>{
+      'p_cell_id': cellId,
+      'p_client_event_id': clientEventId,
+    };
+    if (_rpcQuery != null) {
+      return _rpcQuery!(functionName, params);
     }
 
     final client = _client;
     if (client == null) {
       throw StateError(
-        'Supabase client is required when no recordVisitQuery is provided.',
+        'Supabase client is required when no RPC query is provided.',
       );
     }
 
-    await client.from('v3_cell_visits').insert({
-      'user_id': userId,
-      'cell_id': cellId,
-    });
+    return client.rpc(functionName, params: params);
+  }
+
+  static Map<String, Object?> _requiredRecordVisitResponseObject(
+    Object? response,
+  ) {
+    if (response is! Map) {
+      throw FormatException(
+        'record_v3_cell_visit must return a JSON object response.',
+      );
+    }
+
+    final row = <String, Object?>{};
+    for (final entry in response.entries) {
+      final key = entry.key;
+      if (key is! String) {
+        throw FormatException(
+          'record_v3_cell_visit response object keys must be strings.',
+        );
+      }
+      row[key] = entry.value;
+    }
+    return row;
   }
 
   @override

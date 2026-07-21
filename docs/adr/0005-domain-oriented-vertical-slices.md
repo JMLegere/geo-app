@@ -1,0 +1,3 @@
+# Organize product code as domain-oriented vertical slices
+
+EarthNova product code should be organized into domain-oriented vertical slices that own their UI, application logic, domain model, adapters, and focused tests behind small explicit public APIs, with dependency directions enforced mechanically by EAC. We accept deliberate cross-domain contracts and limited adapter duplication because locality, ownership, and bounded agent context are more valuable than convenience imports across centralized technical layers; the exact domain map must be derived from behavior and canonical language rather than copied from current folders.

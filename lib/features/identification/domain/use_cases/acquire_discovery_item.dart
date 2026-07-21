@@ -23,14 +23,15 @@ class AcquireDiscoveryItem extends ObservableUseCase<DiscoveryItemDraft, Item> {
 
   @override
   Object summarizeInput(DiscoveryItemDraft input) => {
-        'definition_id': input.definitionId,
-        'cell_id': input.acquiredInCellId,
-        'map_cell_entry_id': input.mapCellEntryId,
+        'category': input.category.name,
+        'has_map_cell_entry_provenance': true,
       };
 
   @override
   Object summarizeOutput(Item output) => {
         'item_id': output.id,
-        'definition_id': output.definitionId,
+        'category': output.category.name,
+        'status': output.status.name,
+        'identification_state': output.identificationState.name,
       };
 }

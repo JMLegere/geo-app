@@ -1,4 +1,5 @@
 # Enrichment Pipeline Redesign — Implementation Plan
+> **HISTORICAL-EVIDENCE:** This document preserves dated historical evidence. Route current domain claims to `CONTEXT.md`, durable architecture to `docs/adr/`, and current constraints to `.agents/constraints.md`; do not treat this document as current authority.
 
 > **PRD:** `.opencode/plans/enrichment-pipeline-redesign.md`
 > **Scope:** 5 PRs, each independently mergeable (compiles + tests pass)

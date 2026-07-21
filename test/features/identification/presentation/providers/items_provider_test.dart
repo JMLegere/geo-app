@@ -1,12 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/domain/content/base_item_content.dart';
+import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/identification/data/repositories/mock_item_repository.dart';
+import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
+import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
 
 class TestObservabilityService extends ObservabilityService {
   TestObservabilityService() : super(sessionId: 'test-session');
@@ -49,6 +55,84 @@ Item _testItem({
       identifiedDisplayName: identifiedDisplayName,
     );
 
+final class RecordingIdentificationRepository
+    implements IdentificationRepository {
+  RecordingIdentificationRepository({
+    required this.preparation,
+    required this.committedItem,
+    this.shouldFailCommit = false,
+  });
+
+  final IdentificationPreparation preparation;
+  final Item committedItem;
+  final bool shouldFailCommit;
+  int prepareCalls = 0;
+  int commitCalls = 0;
+  ItemIdentificationPlan? committedPlan;
+  String? preparedTraceId;
+  String? committedTraceId;
+
+  @override
+  Future<IdentificationPreparation> prepare(
+    ItemKnowledgeItemId itemId, {
+    String? traceId,
+  }) async {
+    prepareCalls++;
+    preparedTraceId = traceId;
+    if (itemId != preparation.item.id) {
+      throw StateError('Unexpected item id.');
+    }
+    return preparation;
+  }
+
+  @override
+  Future<ItemIdentificationResult> commit(
+    ItemIdentificationPlan plan, {
+    String? traceId,
+  }) async {
+    commitCalls++;
+    committedTraceId = traceId;
+    committedPlan = plan;
+    if (shouldFailCommit) throw StateError('Commit failed.');
+    return ItemIdentificationResult(
+      item: plan.item,
+      committedItem: committedItem,
+      discovery: ItemDiscovery(
+        playerId: plan.item.playerId,
+        baseItemId: plan.item.baseItemId,
+      ),
+      propertyValues: const [],
+      identification: plan,
+    );
+  }
+}
+
+RecordingIdentificationRepository _authoritativeRepositoryFor(
+  Item item, {
+  bool shouldFailCommit = false,
+}) {
+  final baseItemId = StableContentId<BaseItemContent>('base-item-1');
+  final itemRef = ItemKnowledgeItemRef(
+    id: ItemKnowledgeItemId(item.id),
+    playerId: 'player-1',
+    baseItemId: baseItemId,
+    baseItemVersion: ExactVersionRef(
+      stableId: baseItemId,
+      versionId: ContentVersionId<BaseItemContent>('version-1'),
+      revision: 1,
+    ),
+  );
+  return RecordingIdentificationRepository(
+    preparation: IdentificationPreparation(
+      item: itemRef,
+      playerDiscovered: false,
+      properties: const [],
+    ),
+    committedItem: item.identify(),
+    shouldFailCommit: shouldFailCommit,
+  );
+}
+
 void main() {
   group('ItemsNotifier observability', () {
     late ProviderContainer container;
@@ -67,6 +151,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(itemRepo),
+          ),
         ],
       );
 
@@ -91,6 +178,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(itemRepo),
+          ),
         ],
       );
       container.read(authProvider);
@@ -120,6 +210,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(repo),
+          ),
         ],
       );
       c.read(authProvider);
@@ -145,6 +238,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(repo),
+          ),
         ],
       );
       c.read(authProvider);
@@ -172,6 +268,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(repo),
+          ),
         ],
       );
       c.read(authProvider);
@@ -181,7 +280,7 @@ void main() {
       c.read(itemsProvider);
       await c.read(itemsProvider.notifier).fetchItems();
 
-      expect(obs.errors.map((e) => e.event), contains('items.fetch_error'));
+      expect(obs.eventNames, contains('items.fetch_error'));
       c.dispose();
     });
 
@@ -194,6 +293,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(repo),
+          ),
         ],
       );
       c.read(authProvider);
@@ -218,6 +320,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(freshAuth),
           itemRepositoryProvider.overrideWithValue(MockItemRepository()),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(MockItemRepository()),
+          ),
         ],
       );
       obs.events.clear();
@@ -255,6 +360,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(MockItemRepository()),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(MockItemRepository()),
+          ),
         ],
       );
       expect(() => c.read(itemsObservabilityProvider), throwsA(anything));
@@ -299,6 +407,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(repo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(repo),
+          ),
         ],
       );
       c.read(authProvider);
@@ -351,6 +462,9 @@ void main() {
           observableUseCaseProvider.overrideWithValue(obs),
           authRepositoryProvider.overrideWithValue(auth),
           itemRepositoryProvider.overrideWithValue(itemRepo),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(itemRepo),
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -373,6 +487,103 @@ void main() {
       expect(identified.displayName, 'Amberwing Warbler');
       expect(container.read(itemsProvider).items.single.displayName,
           'Amberwing Warbler');
+    });
+    test(
+        'authoritative identification prepares, plans once, and commits the Pack row',
+        () async {
+      final unidentified = Item(
+        id: 'authoritative-item',
+        definitionId: 'species-1',
+        baseItemId: 'base-item-1',
+        baseItemVersionId: 'version-1',
+        displayName: 'Unidentified fauna specimen',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime(2026, 1, 1),
+        status: ItemStatus.active,
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+      );
+      final authoritative = _authoritativeRepositoryFor(unidentified);
+      final legacy = MockItemRepository(shouldThrow: true);
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(legacy),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(legacy),
+          ),
+          identificationRepositoryProvider.overrideWithValue(authoritative),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(unidentified);
+      final identified = await c
+          .read(itemsProvider.notifier)
+          .identifyUnidentifiedFind(unidentified.id);
+
+      expect(identified, same(authoritative.committedItem));
+      expect(c.read(itemsProvider).items.single,
+          same(authoritative.committedItem));
+      expect(authoritative.prepareCalls, 1);
+      expect(authoritative.commitCalls, 1);
+      expect(authoritative.committedPlan, isNotNull);
+      expect(authoritative.preparedTraceId, isNotNull);
+      expect(authoritative.committedTraceId, authoritative.preparedTraceId);
+      final completed = obs.events.lastWhere(
+        (event) => event.event == 'items.identification_completed',
+      );
+      expect(completed.data!['mode'], 'authoritative');
+      expect(completed.data!['terminal'], 'committed');
+      expect(completed.data!['trace_id'], authoritative.preparedTraceId);
+    });
+
+    test('authoritative commit failure retains the original Pack row',
+        () async {
+      final unidentified = Item(
+        id: 'failed-authoritative-item',
+        definitionId: 'species-1',
+        baseItemId: 'base-item-1',
+        baseItemVersionId: 'version-1',
+        displayName: 'Unidentified fauna specimen',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime(2026, 1, 1),
+        status: ItemStatus.active,
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+      );
+      final authoritative = _authoritativeRepositoryFor(
+        unidentified,
+        shouldFailCommit: true,
+      );
+      final legacy = MockItemRepository(shouldThrow: true);
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(legacy),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(legacy),
+          ),
+          identificationRepositoryProvider.overrideWithValue(authoritative),
+        ],
+      );
+      addTearDown(c.dispose);
+
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(unidentified);
+      final identified = await c
+          .read(itemsProvider.notifier)
+          .identifyUnidentifiedFind(unidentified.id);
+
+      expect(identified, isNull);
+      expect(c.read(itemsProvider).items.single, same(unidentified));
+      expect(authoritative.prepareCalls, 1);
+      expect(authoritative.commitCalls, 1);
     });
   });
 }

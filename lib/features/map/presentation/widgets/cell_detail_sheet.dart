@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:earth_nova/core/domain/entities/habitat.dart';
-import 'package:earth_nova/features/living_world/domain/entities/npc_venue.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/npc_venue_detail_screen.dart';
+import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
+import 'package:earth_nova/features/living_world/presentation/screens/venue_detail_screen.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:earth_nova/shared/product/product_action_surface.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class CellDetailSheet extends StatelessWidget {
   const CellDetailSheet({
@@ -16,14 +16,14 @@ class CellDetailSheet extends StatelessWidget {
     required this.visitCount,
     required this.isFirstVisit,
     required this.currentRelationship,
-    this.npcVenue,
+    this.knownVenues = const [],
   });
 
   final Cell cell;
   final int visitCount;
   final bool isFirstVisit;
   final CellRelationship currentRelationship;
-  final NpcVenue? npcVenue;
+  final List<TownVenue> knownVenues;
 
   @override
   Widget build(BuildContext context) {
@@ -119,79 +119,21 @@ class CellDetailSheet extends StatelessWidget {
                     valueColor: const Color(0xFF4CAF50),
                   ),
                 ],
-                if (npcVenue != null) ...[
-                  const SizedBox(height: 16),
-                  const Divider(color: Color(0xFF333333), height: 1),
-                  const SizedBox(height: 16),
-                  ProductActionSurface(
-                    actionId: PlayerActions.openNpcVenueDetail,
-                    child: GestureDetector(
-                      onTap: () => _openVenueDetail(context, npcVenue!),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A2A),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF3A3A3A)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color:
-                                    AppTheme.tertiary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'WR',
-                                  style: TextStyle(
-                                    color: AppTheme.tertiary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    npcVenue!.venueName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${npcVenue!.npcName}  •  '
-                                    '${npcVenue!.featureName}',
-                                    style: TextStyle(
-                                      color: AppTheme.onSurfaceVariant
-                                          .withValues(alpha: 0.72),
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              color: AppTheme.onSurfaceVariant
-                                  .withValues(alpha: 0.5),
-                              size: 20,
-                            ),
-                          ],
-                        ),
+                if (knownVenues.isNotEmpty) ...[
+                  const SizedBox(height: Spacing.lg),
+                  const Divider(color: AppTheme.outline, height: 1),
+                  const SizedBox(height: Spacing.lg),
+                  for (final venue in knownVenues) ...[
+                    ProductActionSurface(
+                      actionId: PlayerActions.openNpcVenueDetail,
+                      child: GestureDetector(
+                        onTap: () => _openVenueDetail(context, venue),
+                        child: _VenueSheetRow(venue: venue),
                       ),
                     ),
-                  ),
+                    if (venue != knownVenues.last)
+                      const SizedBox(height: Spacing.sm),
+                  ],
                 ],
                 const SizedBox(height: 20),
               ],
@@ -202,14 +144,14 @@ class CellDetailSheet extends StatelessWidget {
     );
   }
 
-  void _openVenueDetail(BuildContext context, NpcVenue venue) {
+  void _openVenueDetail(BuildContext context, TownVenue venue) {
     final navigator = Navigator.of(context);
     if (navigator.canPop()) {
       navigator.pop();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         navigator.push(
           MaterialPageRoute<void>(
-            builder: (_) => NpcVenueDetailScreen(venue: venue),
+            builder: (_) => VenueDetailScreen(venue: venue),
           ),
         );
       });
@@ -218,7 +160,7 @@ class CellDetailSheet extends StatelessWidget {
 
     navigator.push(
       MaterialPageRoute<void>(
-        builder: (_) => NpcVenueDetailScreen(venue: venue),
+        builder: (_) => VenueDetailScreen(venue: venue),
       ),
     );
   }
@@ -286,7 +228,7 @@ class CellDetailSheet extends StatelessWidget {
 
     return _HabitatDisplay(
       label: habitats.map((h) => h.label).join(' / '),
-      color: habitats.first.color,
+      color: Color(habitats.first.colorValue),
       primaryHabitat: habitats.first,
     );
   }
@@ -309,6 +251,115 @@ class CellDetailSheet extends StatelessWidget {
     if (id.length <= 8) return id;
     return '${id.substring(0, 4)}...${id.substring(id.length - 4)}';
   }
+}
+
+class _VenueSheetRow extends StatelessWidget {
+  const _VenueSheetRow({required this.venue});
+
+  final TownVenue venue;
+
+  @override
+  Widget build(BuildContext context) {
+    final villagerCount = venue.villagers.length;
+    final serviceCount = _serviceCountFor(venue);
+    final summary = villagerCount == 0
+        ? 'No Villagers introduced here yet'
+        : '${_countLabel(villagerCount, 'Villager')}  •  '
+            '${_countLabel(serviceCount, 'Service')}  •  Opening soon';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        vertical: Spacing.sm,
+        horizontal: Spacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(Radii.lg),
+        border: Border.all(color: AppTheme.outline.withValues(alpha: 0.62)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppTheme.tertiary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+            child: Center(
+              child: Text(
+                _initialsFor(venue.venue.displayName),
+                style: const TextStyle(
+                  color: AppTheme.tertiary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: Spacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  venue.venue.displayName,
+                  style: const TextStyle(
+                    color: AppTheme.onSurface,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  summary,
+                  style: TextStyle(
+                    color: AppTheme.onSurfaceVariant.withValues(alpha: 0.78),
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            color: AppTheme.onSurfaceVariant.withValues(alpha: 0.55),
+            size: 20,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+int _serviceCountFor(TownVenue venue) {
+  var count = 0;
+  for (final villager in venue.villagers) {
+    count += villager.services.length;
+  }
+  return count;
+}
+
+String _countLabel(int count, String label) {
+  if (count == 1) return '1 $label';
+  return '$count ${label}s';
+}
+
+String _initialsFor(String value) {
+  final words = value
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList(growable: false);
+  if (words.isEmpty) return 'V';
+  if (words.length == 1) {
+    return words.single.characters.take(2).toString().toUpperCase();
+  }
+  return words
+      .take(2)
+      .map((word) => word.characters.first)
+      .join()
+      .toUpperCase();
 }
 
 class _HabitatDisplay {

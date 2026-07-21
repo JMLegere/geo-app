@@ -4,6 +4,8 @@
 
 # EarthNova — JTBD Job Maps (Problem Space)
 
+> **Role: HISTORICAL-EVIDENCE.** These dated job maps remain comparative research evidence. They do not override `CONTEXT.md`, accepted `docs/adr/`, or current approved Outcome Contracts.
+
 > Modeled using the JTBD Canvas (Kalbach & Matthias, V3).
 > Each canvas is a `.mmd` file representing one user story as a job-to-be-done.
 > These define WHAT the player is trying to accomplish. Architecture flows from here.

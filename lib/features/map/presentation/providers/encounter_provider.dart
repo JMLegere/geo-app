@@ -6,6 +6,8 @@ import 'package:earth_nova/features/identification/domain/entities/discovery_ite
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
+import 'package:earth_nova/features/encounters/application/encounter_entry_coordinator.dart';
+import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 
 // Provider for observability service (must be overridden)
 final encounterObservabilityProvider = Provider<ObservabilityService>((ref) {
@@ -71,11 +73,10 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
     return const EncounterState();
   }
 
-  /// Called when player enters a cell.
+  /// Legacy-compatible entry point retained for existing callers.
   ///
-  /// - First visit: computes species encounter
-  /// - Revisit with loot: computes critter encounter
-  /// - Revisit without loot: no encounter
+  /// It computes once, then delegates all durable acquisition and reward
+  /// presentation to the precomputed writer used by the entry coordinator.
   Future<void> onCellEntered({
     required String cellId,
     required bool isFirstVisit,
@@ -84,34 +85,44 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
     String? userId,
     String? mapCellEntryId,
   }) async {
-    final computeEncounter = ref.read(computeEncounterProvider);
-
-    // For now, use daily seed if not provided
     final effectiveSeed = seed.isEmpty ? _getDailySeed() : seed;
-
     final effectiveMapCellEntryId = mapCellEntryId ??
         'legacy-map-cell-entry-$cellId-${isFirstVisit ? 'first' : 'revisit'}-$effectiveSeed';
-    if (_processedMapCellEntryIds.contains(effectiveMapCellEntryId)) {
+    if (_processedMapCellEntryIds.contains(effectiveMapCellEntryId)) return;
+
+    final encounter = await ref.read(computeEncounterProvider).call((
+      cellId: cellId,
+      seed: effectiveSeed,
+      isFirstVisit: isFirstVisit,
+      hasLoot: hasLoot,
+    ));
+    await writePrecomputedLegacyEncounter(
+      encounter: encounter,
+      cellId: cellId,
+      mapCellEntryId: effectiveMapCellEntryId,
+      userId: userId,
+    );
+  }
+
+  /// Applies the old Item acquisition path to an already-computed legacy
+  /// presentation. It never recomputes selector eligibility or encounter data.
+  Future<void> writePrecomputedLegacyEncounter({
+    required Encounter? encounter,
+    required String cellId,
+    required String mapCellEntryId,
+    String? userId,
+  }) async {
+    if (encounter == null ||
+        _processedMapCellEntryIds.contains(mapCellEntryId)) {
       return;
     }
-
-    final encounter = await computeEncounter.call(
-      (
-        cellId: cellId,
-        seed: effectiveSeed,
-        isFirstVisit: isFirstVisit,
-        hasLoot: hasLoot,
-      ),
-    );
-
-    if (encounter == null) return;
 
     obs.log(
       'discovery.result_resolved',
       category,
       data: {
         'cell_id': cellId,
-        'map_cell_entry_id': effectiveMapCellEntryId,
+        'map_cell_entry_id': mapCellEntryId,
         'result_id': encounter.speciesId,
         'result_type': encounter.type == EncounterType.species
             ? 'unidentified_fauna'
@@ -136,7 +147,7 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
                 category: ItemCategory.fauna,
                 rarity: encounter.rarity,
                 acquiredInCellId: encounter.cellId,
-                mapCellEntryId: effectiveMapCellEntryId,
+                mapCellEntryId: mapCellEntryId,
                 identificationState: ItemIdentificationState.unidentified,
                 identifiedDisplayName: encounter.displayName,
                 identifiedScientificName: encounter.scientificName,
@@ -152,30 +163,80 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
           category,
           data: {
             'cell_id': cellId,
-            'map_cell_entry_id': effectiveMapCellEntryId,
+            'map_cell_entry_id': mapCellEntryId,
             'result_id': encounter.speciesId,
             'owned_item_id': ownedItem.id,
             'unidentified_category': ItemCategory.fauna.name,
           },
         );
-      } catch (error, stack) {
-        obs.logError(error, stack, event: 'discovery.acquisition_failed');
+      } catch (error) {
         obs.log(
           'discovery.acquisition_failed',
           category,
           data: {
             'cell_id': cellId,
-            'map_cell_entry_id': effectiveMapCellEntryId,
+            'map_cell_entry_id': mapCellEntryId,
             'result_id': encounter.speciesId,
             'error_type': error.runtimeType.toString(),
-            'error_message': error.toString(),
           },
         );
         return;
       }
     }
 
-    _processedMapCellEntryIds.add(effectiveMapCellEntryId);
+    _presentResolvedEncounter(
+      resolvedEncounter,
+      mapCellEntryId: mapCellEntryId,
+    );
+  }
+
+  /// Registers and presents every Item committed by one v3 Encounter command.
+  ///
+  /// The repository order is authored Outcome order and is retained in the
+  /// existing reward queue. This never invokes legacy acquisition.
+  Future<void> presentCommittedEncounterRewards({
+    required EncounterEntryContext context,
+    required LegacyEncounterComputation legacyComputation,
+    required List<GeneratedItemCommit> generatedItems,
+  }) async {
+    final legacyEncounter = legacyComputation.legacyEncounter;
+    if (legacyEncounter == null) {
+      throw StateError(
+          'Committed Items require a legacy presentation Encounter.');
+    }
+    if (generatedItems.isEmpty ||
+        _processedMapCellEntryIds.contains(context.mapEntryId)) {
+      return;
+    }
+
+    for (final generatedItem in generatedItems) {
+      final ownedItem = generatedItem.item;
+      ref.read(itemsProvider.notifier).registerOwnedDiscovery(ownedItem);
+      final resolvedEncounter =
+          legacyEncounter.copyWith(acquiredItem: ownedItem);
+      obs.log(
+        'discovery.acquisition_committed',
+        category,
+        data: {
+          'cell_id': context.persistedCellVisit.cellId,
+          'map_cell_entry_id': context.mapEntryId,
+          'result_id': generatedItem.outcomeResult.id.value,
+          'owned_item_id': ownedItem.id,
+          'unidentified_category': ownedItem.category.name,
+        },
+      );
+      _presentResolvedEncounter(
+        resolvedEncounter,
+        mapCellEntryId: context.mapEntryId,
+      );
+    }
+  }
+
+  void _presentResolvedEncounter(
+    Encounter resolvedEncounter, {
+    required String mapCellEntryId,
+  }) {
+    _processedMapCellEntryIds.add(mapCellEntryId);
     final isQueued = state.hasActiveReward;
     if (isQueued) {
       final queued = [...state.queuedRewards, resolvedEncounter];
@@ -183,8 +244,8 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         'discovery.reward_queued',
         category,
         data: {
-          'cell_id': cellId,
-          'map_cell_entry_id': effectiveMapCellEntryId,
+          'cell_id': resolvedEncounter.cellId,
+          'map_cell_entry_id': mapCellEntryId,
           'result_id': resolvedEncounter.speciesId,
           'owned_item_id': resolvedEncounter.acquiredItem?.id,
           'queue_depth': queued.length,
@@ -194,8 +255,8 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         state.copyWith(queuedRewards: queued),
         'discovery.reward_queued',
         data: {
-          'cellId': cellId,
-          'map_cell_entry_id': effectiveMapCellEntryId,
+          'cellId': resolvedEncounter.cellId,
+          'map_cell_entry_id': mapCellEntryId,
           'encounterType': resolvedEncounter.type.name,
           'speciesId': resolvedEncounter.speciesId,
           'owned_item_id': resolvedEncounter.acquiredItem?.id,
@@ -205,13 +266,13 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
       return;
     }
 
-    _logRewardPresented(resolvedEncounter, effectiveMapCellEntryId);
+    _logRewardPresented(resolvedEncounter, mapCellEntryId);
     transition(
       state.copyWith(currentEncounter: resolvedEncounter),
       'map.encounter_triggered',
       data: {
-        'cellId': cellId,
-        'map_cell_entry_id': effectiveMapCellEntryId,
+        'cellId': resolvedEncounter.cellId,
+        'map_cell_entry_id': mapCellEntryId,
         'encounterType': resolvedEncounter.type.name,
         'speciesId': resolvedEncounter.speciesId,
         'display_name': resolvedEncounter.acquiredItem?.visibleDisplayName ??

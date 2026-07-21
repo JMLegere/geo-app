@@ -1,4 +1,5 @@
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 
 abstract class ObservableUseCase<Input, Output> {
   const ObservableUseCase();
@@ -6,9 +7,12 @@ abstract class ObservableUseCase<Input, Output> {
   ObservabilityService get obs;
   String get operationName;
 
-  Future<Output> call(Input input) async {
+  /// Starts this operation under [parent] when it belongs to an existing
+  /// player action; otherwise starts a new trace.
+  Future<Output> call(Input input, {TraceContext? parent}) async {
     final span = obs.startSpan(
       operationName,
+      parent: parent,
       attributes: {
         'flow': operationName,
         'operation': operationName,

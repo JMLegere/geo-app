@@ -54,8 +54,10 @@ enum ItemIdentificationState {
 class Item {
   const Item({
     required this.id,
-    required this.definitionId,
+    this.definitionId,
     required this.displayName,
+    this.baseItemId,
+    this.baseItemVersionId,
     this.scientificName,
     required this.category,
     this.rarity,
@@ -78,7 +80,11 @@ class Item {
   });
 
   final String id;
-  final String definitionId;
+
+  /// Revealed only after server-authoritative Identification.
+  final String? definitionId;
+  final String? baseItemId;
+  final String? baseItemVersionId;
   final String displayName;
   final String? scientificName;
   final ItemCategory category;
@@ -115,6 +121,8 @@ class Item {
   Item copyWith({
     String? id,
     String? definitionId,
+    String? baseItemId,
+    String? baseItemVersionId,
     String? displayName,
     String? scientificName,
     ItemCategory? category,
@@ -139,6 +147,8 @@ class Item {
       Item(
         id: id ?? this.id,
         definitionId: definitionId ?? this.definitionId,
+        baseItemId: baseItemId ?? this.baseItemId,
+        baseItemVersionId: baseItemVersionId ?? this.baseItemVersionId,
         displayName: displayName ?? this.displayName,
         scientificName: scientificName ?? this.scientificName,
         category: category ?? this.category,
@@ -182,6 +192,8 @@ class Item {
           runtimeType == other.runtimeType &&
           id == other.id &&
           definitionId == other.definitionId &&
+          baseItemId == other.baseItemId &&
+          baseItemVersionId == other.baseItemVersionId &&
           displayName == other.displayName &&
           scientificName == other.scientificName &&
           category == other.category &&
@@ -207,6 +219,8 @@ class Item {
   int get hashCode => Object.hashAll([
         id,
         definitionId,
+        baseItemId,
+        baseItemVersionId,
         displayName,
         scientificName,
         category,

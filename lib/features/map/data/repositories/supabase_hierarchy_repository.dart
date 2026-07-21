@@ -31,20 +31,28 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     required String userId,
     required MapLevel level,
     String? scopeId,
-  }) async {
-    final rows = await _runRpc('get_hierarchy_scope_summary', {
-      'p_user_id': userId,
-      'p_scope_level': level.name,
-      'p_scope_id': scopeId,
-    });
-
-    if (rows.isEmpty) {
-      throw StateError(
-        'No scope summary returned for level=${level.name}, scopeId=$scopeId.',
-      );
-    }
-
-    return _summaryFromRow(rows.first);
+  }) {
+    const operation = 'get_hierarchy_scope_summary';
+    return _trace(
+      operation: operation,
+      scopeLevel: level.name,
+      scopeId: scopeId,
+      rowCount: (_) => 1,
+      action: () async {
+        final rows = await _fetchRows(operation, {
+          'p_user_id': userId,
+          'p_scope_level': level.name,
+          'p_scope_id': scopeId,
+        });
+        if (rows.isEmpty) {
+          throw StateError(
+            'No scope summary returned for level=${level.name}, '
+            'scopeId=$scopeId.',
+          );
+        }
+        return _summaryFromRow(rows.first);
+      },
+    );
   }
 
   @override
@@ -52,62 +60,73 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     required String userId,
     required MapLevel level,
     String? scopeId,
-  }) async {
-    final rows = await _runRpc('get_hierarchy_child_summaries_with_rank', {
-      'p_user_id': userId,
-      'p_scope_level': level.name,
-      'p_scope_id': scopeId,
-    });
-
-    return rows.map(_summaryFromRow).toList();
+  }) {
+    const operation = 'get_hierarchy_child_summaries_with_rank';
+    return _trace(
+      operation: operation,
+      scopeLevel: level.name,
+      scopeId: scopeId,
+      rowCount: (summaries) => summaries.length,
+      action: () async {
+        final rows = await _fetchRows(operation, {
+          'p_user_id': userId,
+          'p_scope_level': level.name,
+          'p_scope_id': scopeId,
+        });
+        return rows.map(_summaryFromRow).toList();
+      },
+    );
   }
 
-  Future<List<Map<String, dynamic>>> _runRpc(
+  Future<T> _trace<T>({
+    required String operation,
+    required String scopeLevel,
+    required String? scopeId,
+    required Future<T> Function() action,
+    required int Function(T result) rowCount,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.rpc_started', _category, data: {
+      'operation': operation,
+      'rpc_function': operation,
+      'scope_level': scopeLevel,
+      'scope_id': scopeId,
+    });
+    try {
+      final result = await action();
+      _logEvent?.call('db.rpc_completed', _category, data: {
+        'operation': operation,
+        'rpc_function': operation,
+        'row_count': rowCount(result),
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return result;
+    } catch (error) {
+      final failure = _safeHierarchyFailure(error);
+      _logEvent?.call('db.rpc_failed', _category, data: {
+        'operation': operation,
+        'rpc_function': operation,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': failure.runtimeType.toString(),
+        'error_message': failure.kind.name,
+      });
+      throw failure;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRows(
     String functionName,
     Map<String, dynamic> params,
   ) async {
-    final stopwatch = Stopwatch()..start();
-    _logEvent?.call('db.rpc_started', _category, data: {
-      'operation': functionName,
-      'rpc_function': functionName,
-      'scope_level': params['p_scope_level'],
-      'scope_id': params['p_scope_id'],
-    });
-    try {
-      final response = _rpcCaller != null
-          ? await _rpcCaller!(functionName, params)
-          : await _client.rpc(functionName, params: params);
-      if (response is! List) {
-        _logEvent?.call('db.rpc_completed', _category, data: {
-          'operation': functionName,
-          'rpc_function': functionName,
-          'row_count': 0,
-          'duration_ms': stopwatch.elapsedMilliseconds,
-        });
-        return [];
-      }
+    final response = _rpcCaller != null
+        ? await _rpcCaller!(functionName, params)
+        : await _client.rpc(functionName, params: params);
+    if (response is! List) return [];
 
-      final rows = response
-          .whereType<Map>()
-          .map((row) => Map<String, dynamic>.from(row))
-          .toList();
-      _logEvent?.call('db.rpc_completed', _category, data: {
-        'operation': functionName,
-        'rpc_function': functionName,
-        'row_count': rows.length,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-      });
-      return rows;
-    } catch (error) {
-      _logEvent?.call('db.rpc_failed', _category, data: {
-        'operation': functionName,
-        'rpc_function': functionName,
-        'duration_ms': stopwatch.elapsedMilliseconds,
-        'error_type': error.runtimeType.toString(),
-        'error_message': error.toString(),
-      });
-      rethrow;
-    }
+    return response
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList();
   }
 
   HierarchyProgressSummary _summaryFromRow(Map<String, dynamic> row) {
@@ -148,3 +167,14 @@ class SupabaseHierarchyRepository implements HierarchyRepository {
     return 0;
   }
 }
+
+HierarchyRepositoryFailure _safeHierarchyFailure(Object error) =>
+    switch (error) {
+      HierarchyRepositoryFailure() => error,
+      StateError() ||
+      ArgumentError() ||
+      FormatException() ||
+      TypeError() =>
+        const HierarchyRepositoryFailure.malformedPayload(),
+      _ => const HierarchyRepositoryFailure.unavailable(),
+    };

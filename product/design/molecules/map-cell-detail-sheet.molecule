@@ -6,4 +6,4 @@ Exports: lib/features/map/presentation/widgets/cell_detail_sheet.dart
 Public API: lib/features/map/presentation/widgets/cell_detail_sheet.dart
 
 Purpose:
-  Map-cell detail sheet that summarizes visited cell state and exposes NPC venue navigation as product action evidence.
+  Map-cell detail sheet that summarizes visited cell state and exposes known Venue navigation as product action evidence.
