@@ -204,6 +204,76 @@ void main() {
     });
   });
 
+  group('ItemDto unidentified projection boundary', () {
+    test(
+        'rejects every canonical or identified field leaked by an unknown find',
+        () {
+      const hiddenFields = [
+        'definition_id',
+        'base_item_id',
+        'base_item_version_id',
+        'scientific_name',
+        'rarity',
+        'icon_url',
+        'icon_url_frame2',
+        'art_url',
+        'taxonomic_class',
+        'habitats_json',
+        'continents_json',
+        'identified_at',
+        'identified_display_name',
+        'identified_scientific_name',
+        'identified_taxonomic_class',
+        'identified_habitats_json',
+        'identified_continents_json',
+      ];
+      final unknown = <String, dynamic>{
+        'id': 'unknown-1',
+        'display_name': 'Unidentified fauna specimen',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'identification_state': 'unidentified',
+      };
+
+      for (final hiddenField in hiddenFields) {
+        final leaked = Map<String, dynamic>.from(unknown)
+          ..[hiddenField] = 'canonical-value';
+        expect(
+          () => ItemDto.fromJson(leaked),
+          throwsA(isA<FormatException>()),
+          reason: '$hiddenField must remain masked before identification',
+        );
+      }
+    });
+
+    test('serializes a masked unknown find without canonical identity values',
+        () {
+      final unknown = ItemDto.fromJson({
+        'id': 'unknown-2',
+        'display_name': 'Unidentified flora specimen',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'identification_state': 'unidentified',
+      });
+
+      final wire = unknown.toJson();
+
+      expect(wire['identification_state'], 'unidentified');
+      expect(wire['display_name'], 'Unidentified flora specimen');
+      expect(wire['definition_id'], isNull);
+      expect(wire['base_item_id'], isNull);
+      expect(wire['identified_display_name'], isNull);
+    });
+
+    test('rejects non-string optional item text rather than coercing it', () {
+      final invalidScientificName = Map<String, dynamic>.from(fullJson)
+        ..['scientific_name'] = 42;
+
+      expect(
+        () => ItemDto.fromJson(invalidScientificName),
+        throwsA(isA<FormatException>()),
+      );
+    });
+  });
+
   group('ItemDto.fromJson Base Item binding validation', () {
     test('rejects missing Base Item binding fields', () {
       final missingBaseItemId = Map<String, dynamic>.from(fullJson)

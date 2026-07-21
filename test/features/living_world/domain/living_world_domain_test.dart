@@ -480,5 +480,328 @@ void main() {
       expect(repository.receivedTraceId, 'trace-venue-visit');
       expect(result.isIdempotentRetry, isTrue);
     });
+
+    test('rejects authored association and snapshot integrity violations', () {
+      final validAssociation = VenueVillagerAssociation(
+        venueId: _rowanVenueId,
+        villagerId: _rowanId,
+        ordinal: 1,
+      );
+
+      expect(
+        () => VenueVersion(
+          venue: _rowanVenue,
+          version: _rowanVenueV2,
+          kind: 'wildlifeRehabilitationCenter',
+          displayName: "Rowan's Rehab Center",
+          cityId: 'city_fredericton',
+          anchorCellId: 'v_22982_-33322',
+          villagers: [
+            validAssociation,
+            VenueVillagerAssociation(
+              venueId: _rowanVenueId,
+              villagerId: _rowanId,
+              ordinal: 2,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVersion(
+          venue: _rowanVenue,
+          version: _rowanVenueV2,
+          kind: 'wildlifeRehabilitationCenter',
+          displayName: "Rowan's Rehab Center",
+          cityId: 'city_fredericton',
+          anchorCellId: 'v_22982_-33322',
+          villagers: [
+            validAssociation,
+            VenueVillagerAssociation(
+              venueId: _rowanVenueId,
+              villagerId: _miraId,
+              ordinal: 1,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVersion(
+          venue: _rowanVenue,
+          version: _rowanVenueV2,
+          kind: 'wildlifeRehabilitationCenter',
+          displayName: "Rowan's Rehab Center",
+          cityId: 'city_fredericton',
+          anchorCellId: 'v_22982_-33322',
+          villagers: [
+            VenueVillagerAssociation(
+              venueId: VenueId('venue-other'),
+              villagerId: _rowanId,
+              ordinal: 1,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VillagerVersion(
+          villager: _rowan,
+          version: _rowanV1,
+          displayName: ' ',
+          role: 'Wildlife Rehabilitator',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => ServiceVersion(
+          service: _release,
+          version: ExactVersionRef<ServiceContent>(
+            stableId: StableContentId<ServiceContent>('service-other'),
+            versionId: ContentVersionId<ServiceContent>('service-other-v1'),
+            revision: 1,
+          ),
+          displayName: 'Release to Wild',
+          description: 'Prepare a recovered animal for release.',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVillagerAssociation(
+          venueId: _rowanVenueId,
+          villagerId: _rowanId,
+          ordinal: 0,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects projections that violate authored roster or player ownership',
+        () {
+      final service = ServiceVersion(
+        service: _release,
+        version: _releaseV1,
+        displayName: 'Release to Wild',
+        description: 'Prepare a recovered animal for release.',
+      );
+      final villager = _rowanVersion(
+        services: [
+          VillagerServiceAssociation(
+            villagerId: _rowanId,
+            serviceId: _releaseId,
+            ordinal: 1,
+          ),
+        ],
+      );
+      final venue = _venueVersion(
+        villagers: [
+          VenueVillagerAssociation(
+            venueId: _rowanVenueId,
+            villagerId: _rowanId,
+            ordinal: 1,
+          ),
+        ],
+      );
+      final playerTwoVillager = TownVillager(
+        knownVillager: _knownRowan(playerId: 'player-2'),
+        villager: villager,
+        venueAssociationOrdinal: 1,
+      );
+      final playerOneVenue = TownVenue(
+        knownVenue: _knownVenue(),
+        venue: venue,
+      );
+
+      expect(
+        () => TownService(service: service, associationOrdinal: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => TownVillager(
+          knownVillager: _knownRowan(),
+          villager: villager,
+          venueAssociationOrdinal: 1,
+          services: [TownService(service: service, associationOrdinal: 2)],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TownVenue(
+          knownVenue: _knownVenue(),
+          venue: venue,
+          villagers: [playerTwoVillager],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TownProjection(
+          playerId: 'player-1',
+          venues: [
+            TownVenue(
+              knownVenue: _knownVenue(playerId: 'player-2'),
+              venue: venue,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => TownProjection(
+          playerId: 'player-1',
+          venues: [playerOneVenue, playerOneVenue],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects invalid introduction evidence and orders valid outcomes', () {
+      final visit = _visit();
+      final knownMira = KnownVillager(
+        playerId: 'player-1',
+        villagerId: _miraId,
+        villagerVersion: _miraV1,
+        introducedAtVenueId: _rowanVenueId,
+        introducedByVenueVisitId: visit.id,
+        introducedAt: DateTime.utc(2026, 7, 21),
+      );
+      final otherVenueVillager = KnownVillager(
+        playerId: 'player-1',
+        villagerId: _miraId,
+        villagerVersion: _miraV1,
+        introducedAtVenueId: VenueId('venue-other'),
+        introducedByVenueVisitId: visit.id,
+        introducedAt: DateTime.utc(2026, 7, 21),
+      );
+
+      expect(
+        () => IntroducedService(
+          service: ServiceVersion(
+            service: _release,
+            version: _releaseV1,
+            displayName: 'Release to Wild',
+            description: 'Prepare a recovered animal for release.',
+          ),
+          ordinal: 0,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVisitResult(
+          visit: visit,
+          town: TownProjection(playerId: 'player-1'),
+          isIdempotentRetry: false,
+          introducedVillagers: [
+            IntroducedVillager(villager: otherVenueVillager, ordinal: 1),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVisitResult(
+          visit: visit,
+          town: TownProjection(playerId: 'player-1'),
+          isIdempotentRetry: false,
+          introducedVillagers: [
+            IntroducedVillager(
+              villager: _knownRowan(visitId: 'other-visit'),
+              ordinal: 1,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVisitResult(
+          visit: visit,
+          town: TownProjection(playerId: 'player-1'),
+          isIdempotentRetry: false,
+          introducedVillagers: [
+            IntroducedVillager(
+              villager: _knownRowan(visitId: visit.id.value),
+              ordinal: 1,
+            ),
+            IntroducedVillager(
+              villager: _knownRowan(visitId: visit.id.value),
+              ordinal: 2,
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => VenueVisitResult(
+          visit: visit,
+          town: TownProjection(playerId: 'player-1'),
+          isIdempotentRetry: false,
+          introducedVillagers: [
+            IntroducedVillager(
+              villager: _knownRowan(visitId: visit.id.value),
+              ordinal: 1,
+            ),
+            IntroducedVillager(villager: knownMira, ordinal: 1),
+          ],
+        ),
+        throwsArgumentError,
+      );
+
+      final result = VenueVisitResult(
+        visit: visit,
+        town: TownProjection(playerId: 'player-1'),
+        isIdempotentRetry: false,
+        introducedVillagers: [
+          IntroducedVillager(
+            villager: _knownRowan(visitId: visit.id.value),
+            ordinal: 2,
+          ),
+          IntroducedVillager(villager: knownMira, ordinal: 1),
+        ],
+      );
+      expect(
+        result.introducedVillagers.map((entry) => entry.villager.villagerId),
+        [_miraId, _rowanId],
+      );
+      expect(
+        () => result.introducedVillagers.clear(),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('emits exact visit provenance in the observable use-case trace',
+        () async {
+      final command = RecordVenueVisitCommand(
+        cellVisit: _cellVisit(),
+        venueId: _rowanVenueId,
+        venueVersion: _rowanVenueV2,
+      );
+      final result = VenueVisitResult(
+        visit: _visit(),
+        town: TownProjection(playerId: 'player-1'),
+        isIdempotentRetry: true,
+      );
+      final observability = ObservabilityService(
+        sessionId: 'living-world-trace-contract',
+      );
+      final useCase = RecordVenueVisit(
+        _RecordingCommandRepository(result),
+        observability,
+      );
+
+      await useCase(command);
+
+      final started = observability.pendingLogRecords.first['attributes']
+          as Map<String, dynamic>;
+      final completed = observability.pendingLogRecords.last['attributes']
+          as Map<String, dynamic>;
+      expect(started['input'], {
+        'cell_visit_id': 'cell-visit-1',
+        'venue_id': 'venue-rowan',
+        'venue_version_id': 'venue-rowan-v2',
+      });
+      expect(completed['output'], {
+        'venue_visit_id': 'venue-visit-1',
+        'idempotent_retry': true,
+        'introduced_villager_count': 0,
+      });
+    });
   });
 }

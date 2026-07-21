@@ -39,4 +39,67 @@ void main() {
     expect(() => nested['name'] = 'Mutated', throwsUnsupportedError);
     expect(() => values.add('Mutated'), throwsUnsupportedError);
   });
+
+  test('rejects non-finite JSON numbers at their authored content path', () {
+    expect(
+      () => AuthoredContentSnapshot<BaseItemContent>(
+        stableId: StableContentId<BaseItemContent>('base-item-1'),
+        versionId: ContentVersionId<BaseItemContent>('version-1'),
+        revision: 1,
+        publicationState: PublicationState.published,
+        authoredContent: {
+          'metadata': {'rarity': double.infinity}
+        },
+      ),
+      throwsA(
+        isA<ArgumentError>().having(
+          (error) => error.name,
+          'path',
+          'metadata.rarity',
+        ),
+      ),
+    );
+  });
+
+  test('rejects authored JSON objects with non-string keys', () {
+    expect(
+      () => AuthoredContentSnapshot<BaseItemContent>(
+        stableId: StableContentId<BaseItemContent>('base-item-1'),
+        versionId: ContentVersionId<BaseItemContent>('version-1'),
+        revision: 1,
+        publicationState: PublicationState.published,
+        authoredContent: {
+          'metadata': <Object?, Object?>{1: 'not JSON'},
+        },
+      ),
+      throwsA(
+        isA<ArgumentError>().having(
+          (error) => error.name,
+          'path',
+          'metadata',
+        ),
+      ),
+    );
+  });
+
+  test('rejects non-JSON values nested in authored arrays', () {
+    expect(
+      () => AuthoredContentSnapshot<BaseItemContent>(
+        stableId: StableContentId<BaseItemContent>('base-item-1'),
+        versionId: ContentVersionId<BaseItemContent>('version-1'),
+        revision: 1,
+        publicationState: PublicationState.published,
+        authoredContent: {
+          'effects': <Object?>['valid', DateTime.utc(2026, 7, 21)],
+        },
+      ),
+      throwsA(
+        isA<ArgumentError>().having(
+          (error) => error.name,
+          'path',
+          'effects[1]',
+        ),
+      ),
+    );
+  });
 }

@@ -11,11 +11,17 @@ void main() {
     test('calls frozen get_v3_home with no params or client-supplied user id',
         () async {
       final calls = <({String name, Map<String, Object?>? params})>[];
+      final events = <Map<String, Object?>>[];
       final repository = SupabaseHomeRepository(
         rpc: (name, {params}) async {
           calls.add((name: name, params: params));
           return homePayload();
         },
+        logEvent: (event, category, {data}) => events.add({
+          'event': event,
+          'category': category,
+          'data': data,
+        }),
       );
 
       final home = await repository.readHome(playerId, traceId: 'home-read');
@@ -24,6 +30,10 @@ void main() {
       expect(calls, hasLength(1));
       expect(calls.single.name, 'get_v3_home');
       expect(calls.single.params, isNull);
+      expect(
+        events.map((event) => (event['data'] as Map)['trace_id']),
+        ['home-read', 'home-read'],
+      );
     });
 
     test('preserves safe parse failures and hides transport details', () async {

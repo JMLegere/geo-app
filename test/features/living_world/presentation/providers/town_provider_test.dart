@@ -152,5 +152,32 @@ void main() {
       expect(observability.events.join(), isNot(contains('database password')));
       expect(observability.events.last['failure_kind'], 'unavailable');
     });
+
+    test('keeps the matching Town on a safe terminal visit-command failure',
+        () async {
+      final initial = LivingWorldTownDto.fromJson(
+        town(withVillager: false),
+        playerId: playerId,
+      ).toDomain();
+      final repository = FakeLivingWorldRepository();
+      repository.onRead = (_) async => initial;
+      repository.onRecord = (_) => Future<VenueVisitResult>.error(
+            const LivingWorldFailure.cellVisitNotOwned(),
+          );
+      final observability = RecordingObservabilityService();
+      final container = containerFor(repository, observability);
+      addTearDown(container.dispose);
+
+      await container.read(townProvider.notifier).load(playerId);
+      await container.read(townProvider.notifier).recordVenueVisit(command());
+
+      final state = container.read(townProvider);
+      expect(state.town, same(initial));
+      expect(state.isRecordingVenueVisit, isFalse);
+      expect(state.error, 'Unable to update your Town. Please try again.');
+      expect(
+          observability.events.last['event'], 'town.record_venue_visit.failed');
+      expect(observability.events.last['failure_kind'], 'cellVisitNotOwned');
+    });
   });
 }

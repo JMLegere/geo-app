@@ -4,6 +4,7 @@ import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/content/current_encounter_version_binding_repository.dart';
 import 'package:earth_nova/core/domain/content/encounter_content.dart';
+import 'package:earth_nova/core/domain/rules/selector.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
@@ -21,6 +22,7 @@ import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_eve
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/rules/legacy_encounter_eligibility.dart';
+import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,6 +60,33 @@ CellBorderCrossingEvent _border() => CellBorderCrossingEvent(
       stateId: 'state-1',
       countryId: 'country-1',
     );
+
+EncounterEntryContext _context({
+  CellVisit? visit,
+  bool isFirstVisit = true,
+  bool hasLootCompatibility = false,
+  String deterministicSeed = 'seed-1',
+  String mapEntryId = 'map-entry-1',
+}) {
+  final persistedVisit = visit ?? _visit();
+  return EncounterEntryContext(
+    rootTrace: TraceContext(
+      traceId: '0123456789abcdef0123456789abcdef',
+      spanId: '0123456789abcdef',
+      startTime: DateTime.utc(2026, 7, 20),
+    ),
+    persistedCellVisit: persistedVisit,
+    userId: persistedVisit.userId,
+    mapEntryId: mapEntryId,
+    deterministicSeed: deterministicSeed,
+    isFirstVisit: isFirstVisit,
+    hasLootCompatibility: hasLootCompatibility,
+    borderContext: EncounterBorderContext(
+      enteredCellId: persistedVisit.cellId,
+      previousCellId: 'cell-0',
+    ),
+  );
+}
 
 final _legacyEncounter = Encounter(
   type: EncounterType.species,
@@ -230,6 +259,45 @@ final class _NoAcquireItemRepository implements ItemRepository {
       item;
 }
 
+final class _StubComputeEncounter extends ComputeEncounter {
+  _StubComputeEncounter(this.result) : super(_RecordingObservabilityService());
+
+  final Encounter? result;
+  ComputeEncounterInput? receivedInput;
+
+  @override
+  Future<Encounter?> execute(
+    ComputeEncounterInput input,
+    String traceId,
+  ) async {
+    receivedInput = input;
+    return result;
+  }
+}
+
+final class _RecordingItemRepository implements ItemRepository {
+  final List<DiscoveryItemDraft> acquiredDrafts = [];
+
+  @override
+  Future<Item> acquireDiscoveryItem(
+    DiscoveryItemDraft draft, {
+    String? traceId,
+  }) async {
+    acquiredDrafts.add(draft);
+    return _itemCommit().item;
+  }
+
+  @override
+  Future<List<Item>> fetchItems(String userId, {String? traceId}) async => [];
+
+  @override
+  Future<Item> identifyUnidentifiedFind(
+    Item item, {
+    String? traceId,
+  }) async =>
+      item;
+}
+
 final class _EmptyPackRepository implements PackRepository {
   @override
   Future<List<Item>> fetchActiveItems(String userId, {String? traceId}) async =>
@@ -335,6 +403,253 @@ void main() {
       expect(selected.definitionId, definitionId);
       expect(selected.definitionVersion, binding);
       expect(repository.requestedDefinitionIds, [definitionId]);
+    });
+
+    test(
+        'legacy computation preserves compute inputs and returns the compatible selected candidate',
+        () async {
+      final compute = _StubComputeEncounter(_legacyEncounter);
+      final context = _context();
+      final container = ProviderContainer(
+        overrides: [
+          computeEncounterProvider.overrideWithValue(compute),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final computation =
+          await container.read(legacyEncounterComputationProvider)(context);
+      final selectedCandidate =
+          buildLegacyCellEncounterCompatibilitySelector().resolveCandidate(
+        const LegacyEncounterEligibilityContext(
+          isFirstVisit: true,
+          hasLegacyLoot: false,
+        ),
+        () => legacyCellEncounterRoll(
+          seed: context.deterministicSeed,
+          cellId: context.persistedCellVisit.cellId,
+        ),
+      );
+
+      expect(compute.receivedInput, (
+        cellId: context.persistedCellVisit.cellId,
+        seed: context.deterministicSeed,
+        isFirstVisit: true,
+        hasLoot: false,
+      ));
+      expect(computation.isEligible, isTrue);
+      expect(
+        computation.selectorCandidateId,
+        SelectorCandidateId(selectedCandidate.id),
+      );
+      expect(
+        computation.definitionId,
+        (selectedCandidate.result
+                as SelectedValue<StableContentId<EncounterContent>>)
+            .value,
+      );
+      expect(computation.legacyEncounter, same(_legacyEncounter));
+    });
+
+    test(
+        'legacy computation returns no selection when legacy compute returns null',
+        () async {
+      final compute = _StubComputeEncounter(null);
+      final container = ProviderContainer(
+        overrides: [
+          computeEncounterProvider.overrideWithValue(compute),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final computation =
+          await container.read(legacyEncounterComputationProvider)(
+        _context(isFirstVisit: false, hasLootCompatibility: false),
+      );
+
+      expect(computation.isEligible, isFalse);
+      expect(computation.selectorCandidateId, isNull);
+      expect(computation.definitionId, isNull);
+      expect(computation.legacyEncounter, isNull);
+    });
+
+    test(
+        'legacy computation rejects a legacy result when compatibility selection is None',
+        () async {
+      final compute = _StubComputeEncounter(_legacyEncounter);
+      final container = ProviderContainer(
+        overrides: [
+          computeEncounterProvider.overrideWithValue(compute),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container.read(legacyEncounterComputationProvider)(
+          _context(isFirstVisit: false, hasLootCompatibility: false),
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'Legacy encounter compute selected no compatible candidate.',
+          ),
+        ),
+      );
+    });
+
+    test('versioned planner maps selected and explicit None selector plans',
+        () async {
+      final context = _context();
+      final selectedCandidate =
+          buildLegacyCellEncounterCompatibilitySelector().resolveCandidate(
+        const LegacyEncounterEligibilityContext(
+          isFirstVisit: true,
+          hasLegacyLoot: false,
+        ),
+        () => legacyCellEncounterRoll(
+          seed: context.deterministicSeed,
+          cellId: context.persistedCellVisit.cellId,
+        ),
+      );
+      final selectedDefinition = (selectedCandidate.result
+              as SelectedValue<StableContentId<EncounterContent>>)
+          .value;
+      final version = ExactVersionRef<EncounterContent>(
+        stableId: selectedDefinition,
+        versionId: ContentVersionId<EncounterContent>(
+          'version:${selectedDefinition.value}:1',
+        ),
+        revision: 1,
+      );
+      final bindingRepository =
+          _FixedCurrentEncounterVersionBindingRepository(version);
+      final container = ProviderContainer(
+        overrides: [
+          currentEncounterVersionBindingRepositoryProvider
+              .overrideWithValue(bindingRepository),
+          encounterObservabilityProvider.overrideWithValue(
+            _RecordingObservabilityService(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final selected =
+          await container.read(versionedEncounterPlannerProvider)(context);
+      final none = await container.read(versionedEncounterPlannerProvider)(
+        _context(isFirstVisit: false, hasLootCompatibility: false),
+      );
+
+      expect(selected.selection, isA<EncounterSelectedCellVisitPlan>());
+      expect(selected.isAutomatic, isTrue);
+      expect(
+        (selected.selection as EncounterSelectedCellVisitPlan)
+            .definitionVersion,
+        version,
+      );
+      expect(none.selection, isA<NoEncounterCellVisitPlan>());
+      expect(none.isAutomatic, isFalse);
+      expect(
+        bindingRepository.requestedDefinitionIds,
+        [(selected.selection as EncounterSelectedCellVisitPlan).definitionId],
+      );
+    });
+
+    test('null Supabase client exposes explicit unavailable repository errors',
+        () async {
+      final visit = _visit();
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container
+            .read(currentEncounterVersionBindingRepositoryProvider)
+            .currentPublishedVersionForNewCellVisit(_definitionId),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'Encounter Version binding requires Supabase.',
+          ),
+        ),
+      );
+      final repository = container.read(encounterCommandRepositoryProvider);
+      await expectLater(
+        repository.commitCellVisitSelection(
+          _selectionPlan(visit),
+          traceId: 'trace-1',
+        ),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'Encounter commands require Supabase.',
+          ),
+        ),
+      );
+      await expectLater(
+        repository.resolveEncounterOutcomes(
+          EncounterId('encounter-1'),
+          traceId: 'trace-1',
+        ),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test(
+        'writer and committed rewards presenter delegate the exact persisted visit context',
+        () async {
+      final context = _context();
+      final itemRepository = _RecordingItemRepository();
+      final obs = _RecordingObservabilityService();
+      final container = ProviderContainer(
+        overrides: [
+          encounterObservabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          itemRepositoryProvider.overrideWithValue(itemRepository),
+          packRepositoryProvider.overrideWithValue(_EmptyPackRepository()),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(legacyEncounterWriterProvider)(
+        context,
+        _legacySelection(),
+      );
+
+      expect(itemRepository.acquiredDrafts, hasLength(1));
+      final draft = itemRepository.acquiredDrafts.single;
+      expect(draft.userId, context.userId);
+      expect(draft.acquiredInCellId, context.persistedCellVisit.cellId);
+      expect(draft.mapCellEntryId, context.mapEntryId);
+      expect(
+        container.read(encounterProvider).currentEncounter?.acquiredItem?.id,
+        'item-1',
+      );
+
+      final presenterContext = _context(mapEntryId: 'map-entry-2');
+      final secondItem = _itemCommit(suffix: 'presented', ordinal: 1);
+      await container.read(committedRewardsPresenterProvider)(
+        presenterContext,
+        _legacySelection(),
+        [secondItem],
+      );
+
+      expect(
+        container.read(itemsProvider).items.map((item) => item.id),
+        unorderedEquals(['item-1', 'item-presented']),
+      );
+      expect(
+        container.read(encounterProvider).queuedRewards.single.acquiredItem?.id,
+        'item-presented',
+      );
+      expect(
+        obs.events
+            .where((event) => event.event == 'discovery.acquisition_committed')
+            .map((event) => event.data?['map_cell_entry_id']),
+        [context.mapEntryId, presenterContext.mapEntryId],
+      );
     });
 
     test(

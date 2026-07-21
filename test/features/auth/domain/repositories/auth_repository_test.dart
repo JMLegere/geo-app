@@ -3,27 +3,47 @@ import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dar
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('AuthException stringifies with message', () {
-    expect(
-      const AuthException('bad credentials').toString(),
-      'AuthException: bad credentials',
-    );
+  group('AuthException', () {
+    test('uses stable safe messages for credential and availability failures',
+        () {
+      const invalidCredentials = AuthException.invalidCredentials();
+      const unavailable = AuthException.unavailable();
+
+      expect(invalidCredentials.message, 'Invalid login credentials.');
+      expect(
+        invalidCredentials.toString(),
+        'AuthException: Invalid login credentials.',
+      );
+      expect(unavailable.message, 'Authentication service unavailable.');
+      expect(
+        unavailable.toString(),
+        'AuthException: Authentication service unavailable.',
+      );
+    });
   });
 
-  test('auth event types preserve payloads', () {
-    final user = UserProfile(
-      id: 'u1',
-      phone: '+15551234567',
-      displayName: 'Jeremy',
-      createdAt: DateTime.utc(2026, 5, 4),
-    );
+  group('AuthEvent', () {
+    test('state changes retain the exact optional authenticated identity', () {
+      final profile = UserProfile(
+        id: 'player-7',
+        phone: '+15551234567',
+        displayName: 'Riley',
+        createdAt: DateTime.utc(2026, 7, 21),
+      );
+      final signedIn = AuthStateChanged(profile);
+      const signedOut = AuthStateChanged(null);
 
-    final changed = AuthStateChanged(user);
-    const expired = AuthSessionExpired();
-    const externalSignOut = AuthExternalSignOut();
+      expect(signedIn.user, same(profile));
+      expect(signedOut.user, isNull);
+    });
 
-    expect(changed.user, user);
-    expect(expired, isA<AuthEvent>());
-    expect(externalSignOut, isA<AuthEvent>());
+    test('terminal auth events retain their distinct public kinds', () {
+      const expired = AuthSessionExpired();
+      const externalSignOut = AuthExternalSignOut();
+
+      expect(expired, isA<AuthEvent>());
+      expect(externalSignOut, isA<AuthEvent>());
+      expect(expired.runtimeType, isNot(externalSignOut.runtimeType));
+    });
   });
 }

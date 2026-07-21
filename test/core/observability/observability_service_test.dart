@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -73,6 +77,31 @@ void main() {
       expect(attributes, containsPair('screen', 'map_screen'));
     });
 
+    test('logFlowEvent retains state transitions and owns grammar attributes',
+        () {
+      obs.logFlowEvent(
+        'item.identification',
+        TelemetryFlowPhase.stateChanged,
+        'identification',
+        previousState: 'pending',
+        nextState: 'identified',
+        data: {
+          'flow': 'caller-controlled',
+          'phase': 'caller-controlled',
+          'previous_state': 'wrong',
+          'next_state': 'wrong',
+        },
+      );
+
+      final row = obs.pendingLogRecords.single;
+      final attributes = row['attributes'] as Map<String, dynamic>;
+      expect(row['event_name'], 'item.identification.state_changed');
+      expect(attributes['flow'], 'item.identification');
+      expect(attributes['phase'], 'state_changed');
+      expect(attributes['previous_state'], 'pending');
+      expect(attributes['next_state'], 'identified');
+    });
+
     test('startSpan and endSpan store OTel-shaped spans', () {
       final span = obs.startSpan('map.bootstrap');
       obs.endSpan(span, statusCode: TelemetrySpanStatus.ok);
@@ -140,6 +169,69 @@ void main() {
       obs.log('event.two', 'test');
       await obs.flush();
       await obs.flush();
+    });
+
+    test(
+        'flush sends an OTel resource envelope and clears acknowledged records',
+        () async {
+      Map<String, dynamic>? sentEnvelope;
+      final client = supa.SupabaseClient(
+        'https://example.supabase.co',
+        'anon-key',
+        httpClient: MockClient((request) async {
+          expect(request.method, 'post');
+          expect(request.url.path, '/functions/v1/telemetry-ingest');
+          sentEnvelope = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response('{}', 200,
+              headers: {'content-type': 'application/json'});
+        }),
+      );
+      final service = ObservabilityService(
+        sessionId: 'envelope-session',
+        client: client,
+        serviceName: 'earthnova-test',
+        serviceVersion: '2026.7.21',
+        deploymentEnvironment: 'test',
+        platform: 'web',
+      );
+      service.log('item.revealed', 'item', data: {'item_id': 'item-1'});
+      service.endSpan(
+        service.startSpan('item.reveal'),
+        statusCode: TelemetrySpanStatus.ok,
+      );
+
+      await service.flush();
+
+      expect(sentEnvelope, isNotNull);
+      expect(sentEnvelope!['resource'], {
+        'service_name': 'earthnova-test',
+        'service_version': '2026.7.21',
+        'deployment_environment': 'test',
+        'platform': 'web',
+      });
+      expect(sentEnvelope!['logs'], hasLength(1));
+      expect(sentEnvelope!['spans'], hasLength(1));
+      expect(service.pendingLogRecords, isEmpty);
+      expect(service.pendingSpanRecords, isEmpty);
+    });
+
+    test('flush preserves records when the ingest client fails', () async {
+      final client = supa.SupabaseClient(
+        'https://example.supabase.co',
+        'anon-key',
+        httpClient: MockClient((_) async => throw StateError('offline')),
+      );
+      final service = ObservabilityService(
+        sessionId: 'failed-flush-session',
+        client: client,
+      );
+      service.log('item.reveal_failed', 'item');
+      service.endSpan(service.startSpan('item.reveal'));
+
+      await service.flush();
+
+      expect(service.pendingLogRecords, hasLength(1));
+      expect(service.pendingSpanRecords, hasLength(1));
     });
 
     test('startPeriodicFlush does not throw', () {

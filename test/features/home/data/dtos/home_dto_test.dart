@@ -45,5 +45,30 @@ void main() {
         );
       }
     });
+
+    test('rejects an empty or non-object response and invalid local owner', () {
+      for (final response in <Object?>[
+        <String, Object?>{},
+        <Object?>[],
+        'not a response object',
+      ]) {
+        expect(
+          () => HomeDto.fromJson(response, playerId: playerId),
+          throwsA(isA<HomeFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            HomeFailureKind.malformedPayload,
+          )),
+        );
+      }
+      expect(
+        () => HomeDto.validatePlayerId('not-a-player-id'),
+        throwsA(isA<HomeFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          HomeFailureKind.malformedPayload,
+        )),
+      );
+    });
   });
 }

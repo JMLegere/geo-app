@@ -167,6 +167,132 @@ void main() {
         throwsStateError,
       );
     });
+    test(
+        'preserves plural generated Item response order while linking each exact outcome',
+        () {
+      final aggregate = _selectedAggregate();
+      final firstOutcome = (aggregate['outcome_results']! as List<Object?>)
+          .single as Map<String, Object?>;
+      final secondOutcome = Map<String, Object?>.from(firstOutcome)
+        ..['id'] = '00000000-0000-4000-8000-000000000018'
+        ..['encounter_outcome_id'] = '00000000-0000-4000-8000-000000000019'
+        ..['outcome_ordinal'] = 1
+        ..['generated_item_id'] = _otherItemId;
+      final firstItem = (aggregate['generated_items']! as List<Object?>).single
+          as Map<String, Object?>;
+      final secondItem = Map<String, Object?>.from(firstItem)
+        ..['id'] = _otherItemId
+        ..['display_name'] = 'Second committed find';
+      aggregate['outcome_results'] = [firstOutcome, secondOutcome];
+      aggregate['generated_items'] = [secondItem, firstItem];
+
+      final parsed =
+          EncounterRuntimeAggregateDto.fromJson(aggregate).toDomain();
+
+      expect(
+        parsed.generatedItemCommits.map((commit) => commit.item.id),
+        [_otherItemId, _itemId],
+      );
+      expect(
+        parsed.generatedItemCommits
+            .map((commit) => commit.outcomeResult.ordinal),
+        [1, 0],
+      );
+    });
+
+    test(
+        'accepts a failed terminal Encounter only with its safe failure evidence and no commits',
+        () {
+      final aggregate = _selectedAggregate();
+      final encounter = aggregate['encounter']! as Map<String, Object?>;
+      encounter
+        ..['resolution_status'] = 'failed'
+        ..['selected_option_id'] = null
+        ..['resolved_at'] = null
+        ..['failure_code'] = 'outcome_failed'
+        ..['failure_details'] = <String, Object?>{'reason': 'rule_rejected'};
+      aggregate['outcome_results'] = <Object?>[];
+      aggregate['generated_items'] = <Object?>[];
+
+      final parsed =
+          EncounterRuntimeAggregateDto.fromJson(aggregate).toDomain();
+
+      expect(parsed.encounter?.status, EncounterResolutionStatus.failed);
+      expect(parsed.encounter?.failure?.code, 'outcome_failed');
+      expect(parsed.encounter?.failure?.details, {'reason': 'rule_rejected'});
+      expect(parsed.outcomeResults, isEmpty);
+    });
+
+    test('rejects malformed terminal and identity evidence without leaking it',
+        () {
+      const secret = 'internal-server-detail-that-must-not-escape';
+      final failureWithoutCode = _selectedAggregate();
+      final failedEncounter =
+          failureWithoutCode['encounter']! as Map<String, Object?>;
+      failedEncounter
+        ..['resolution_status'] = 'failed'
+        ..['selected_option_id'] = null
+        ..['resolved_at'] = null
+        ..['failure_code'] = null
+        ..['failure_details'] = <String, Object?>{'detail': secret};
+      failureWithoutCode['outcome_results'] = <Object?>[];
+      failureWithoutCode['generated_items'] = <Object?>[];
+
+      final canonicalIdentityForUnidentified = _selectedAggregate();
+      final generatedItem =
+          (canonicalIdentityForUnidentified['generated_items']!
+                  as List<Object?>)
+              .single as Map<String, Object?>;
+      generatedItem['identification_state'] = 'unidentified';
+
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(failureWithoutCode),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.toString(),
+            'safe diagnostic',
+            isNot(contains(secret)),
+          ),
+        ),
+      );
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(
+          canonicalIdentityForUnidentified,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('rejects inconsistent selection and ordered outcome evidence', () {
+      final explicitNoneWithEncounter = _noneAggregate()
+        ..['encounter'] = _selectedAggregate()['encounter'];
+      final selectedWithoutEncounter = _selectedAggregate()
+        ..['encounter'] = null;
+      final resolvedWithoutOutcomes = _selectedAggregate()
+        ..['outcome_results'] = <Object?>[]
+        ..['generated_items'] = <Object?>[];
+      final duplicateOrdinal = _mixedAggregate();
+      final reveal = (duplicateOrdinal['outcome_results']! as List<Object?>)
+          .last as Map<String, Object?>;
+      reveal['outcome_ordinal'] = 0;
+
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(explicitNoneWithEncounter),
+        throwsStateError,
+      );
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(selectedWithoutEncounter),
+        throwsStateError,
+      );
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(resolvedWithoutOutcomes),
+        throwsStateError,
+      );
+      expect(
+        () => EncounterRuntimeAggregateDto.fromJson(duplicateOrdinal),
+        throwsStateError,
+      );
+    });
   });
 }
 

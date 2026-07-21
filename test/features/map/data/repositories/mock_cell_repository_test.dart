@@ -75,6 +75,37 @@ void main() {
         expect(retry, same(first));
         expect(retry.clientEventId, 'event-1');
       });
+      test(
+          'rejects a replayed client event for a different cell while accepting trace IDs',
+          () async {
+        final repo = MockCellRepository();
+
+        final first = await repo.recordVisit(
+          'user-1',
+          'cell-1',
+          'event-1',
+          traceId: 'visit-trace',
+        );
+
+        await expectLater(
+          repo.recordVisit(
+            'user-1',
+            'cell-2',
+            'event-1',
+            traceId: 'retry-trace',
+          ),
+          throwsA(isA<StateError>()),
+        );
+        expect(
+          await repo.getVisitedCellIds('user-1', traceId: 'read-trace'),
+          {'cell-1'},
+        );
+        expect(
+          await repo.isFirstVisit('user-1', 'cell-1', traceId: 'check-trace'),
+          isFalse,
+        );
+        expect(first.clientEventId, 'event-1');
+      });
 
       test('visits are scoped per user', () async {
         final repo = MockCellRepository();

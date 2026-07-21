@@ -5,6 +5,7 @@ import 'package:earth_nova/features/encounters/domain/entities/encounter_entitie
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/domain/use_cases/resolve_cell_visit_encounter_selector.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -153,6 +154,128 @@ void main() {
         repository.resolveEncounterOutcomes(EncounterId(_encounterId),
             traceId: _traceId),
         throwsA(isA<EncounterMalformedResponseFailure>()),
+      );
+    });
+
+    test('maps PostgREST command failures to safe typed terminal failures',
+        () async {
+      const secret = 'raw-backend-message-that-must-not-be-logged';
+      final cases = <({String code, Matcher matcher, String diagnostic})>[
+        (
+          code: '42501',
+          matcher: isA<EncounterAuthenticationOrOwnershipFailure>(),
+          diagnostic: 'sqlstate_42501',
+        ),
+        (
+          code: '40001',
+          matcher: isA<EncounterStalePlanFailure>(),
+          diagnostic: 'sqlstate_40001',
+        ),
+        (
+          code: 'P0001',
+          matcher: isA<EncounterRetryInputConflictFailure>(),
+          diagnostic: 'sqlstate_P0001',
+        ),
+        (
+          code: 'invalid code with spaces',
+          matcher: isA<EncounterDomainFailure>(),
+          diagnostic: 'sqlstate_unknown',
+        ),
+      ];
+
+      for (final testCase in cases) {
+        final events = <Map<String, Object?>>[];
+        final repository = SupabaseEncounterRepository(
+          rpcGateway: (_, __) async => throw supabase.PostgrestException(
+            message: secret,
+            code: testCase.code,
+          ),
+          logEvent: (event, category, {data}) => events.add({
+            'event': event,
+            'category': category,
+            'data': data,
+          }),
+        );
+
+        await expectLater(
+          repository.commitCellVisitSelection(_selectedPlan(),
+              traceId: _traceId),
+          throwsA(testCase.matcher),
+        );
+
+        final failure = events.singleWhere(
+          (event) => event['event'] == 'db.rpc_failed',
+        );
+        final data = failure['data']! as Map<String, dynamic>;
+        expect(data['error_message'], testCase.diagnostic);
+        expect(data.values, isNot(contains(secret)));
+      }
+    });
+
+    test('keeps malformed and unexpected RPC errors terminal and redacted',
+        () async {
+      const secret = 'untrusted-network-detail';
+      final events = <Map<String, Object?>>[];
+      final repository = SupabaseEncounterRepository(
+        rpcGateway: (_, __) async => throw Exception(secret),
+        logEvent: (event, category, {data}) => events.add({
+          'event': event,
+          'category': category,
+          'data': data,
+        }),
+      );
+
+      await expectLater(
+        repository.commitCellVisitSelection(_selectedPlan(), traceId: _traceId),
+        throwsA(
+          isA<EncounterTransportFailure>().having(
+            (EncounterTransportFailure failure) => failure.diagnosticCode,
+            'safe diagnostic code',
+            'transport_unexpected',
+          ),
+        ),
+      );
+
+      final data = events.singleWhere(
+        (event) => event['event'] == 'db.rpc_failed',
+      )['data']! as Map<String, dynamic>;
+      expect(data['error_message'], 'transport_unexpected');
+      expect(data.values, isNot(contains(secret)));
+    });
+
+    test('rejects pending and retry-conflicting terminal outcome responses',
+        () async {
+      final pending = _selectedAggregate();
+      final pendingEncounter = pending['encounter']! as Map<String, Object?>;
+      pendingEncounter
+        ..['resolution_status'] = 'pending'
+        ..['selected_option_id'] = null
+        ..['resolved_at'] = null;
+      pending['outcome_results'] = <Object?>[];
+      pending['generated_items'] = <Object?>[];
+
+      final conflictingOption = _selectedAggregate();
+      final resolvedEncounter =
+          conflictingOption['encounter']! as Map<String, Object?>;
+      resolvedEncounter['selected_option_id'] = _otherCandidateId;
+
+      await expectLater(
+        SupabaseEncounterRepository(rpcGateway: _FakeRpcGateway(pending).call)
+            .resolveEncounterOutcomes(
+          EncounterId(_encounterId),
+          traceId: _traceId,
+        ),
+        throwsA(isA<EncounterMalformedResponseFailure>()),
+      );
+      await expectLater(
+        SupabaseEncounterRepository(
+          rpcGateway: _FakeRpcGateway(conflictingOption).call,
+        ).resolveEncounterOutcomes(
+          EncounterId(_encounterId),
+          traceId: _traceId,
+          selectedOptionId: EncounterOptionId(_optionId),
+        ),
+        throwsA(isA<EncounterRetryInputConflictFailure>()),
       );
     });
   });

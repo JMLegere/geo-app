@@ -37,4 +37,30 @@ void main() {
     expect(events.last['event'], 'db.rpc_failed');
     expect((events.last['data'] as Map)['error_message'], 'unavailable');
   });
+  test('preserves owner mismatch while logging a terminal safe failure',
+      () async {
+    final events = <Map<String, Object?>>[];
+    final repository = SupabaseHomeRepository(
+      rpc: (_, {params}) async => {
+        'id': '22222222-2222-4222-8222-222222222222',
+        'user_id': '33333333-3333-4333-8333-333333333333',
+        'created_at': '2026-07-20T12:00:00Z',
+      },
+      logEvent: (event, category, {data}) =>
+          events.add({'event': event, 'category': category, 'data': data}),
+    );
+
+    await expectLater(
+      repository.readHome(_playerId, traceId: 'home-owner-trace'),
+      throwsA(isA<HomeFailure>().having(
+        (failure) => failure.kind,
+        'kind',
+        HomeFailureKind.ownerMismatch,
+      )),
+    );
+
+    expect(events.map((event) => event['event']),
+        ['db.rpc_started', 'db.rpc_failed']);
+    expect((events.last['data'] as Map)['error_message'], 'ownerMismatch');
+  });
 }

@@ -3,7 +3,9 @@ import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/encounter_content.dart';
 import 'package:earth_nova/core/domain/content/venue_content.dart';
 import 'package:earth_nova/core/domain/entities/venue_id.dart';
+import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
+import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _encounterDefinitionId = StableContentId<EncounterContent>('enc-fox');
@@ -427,6 +429,68 @@ void main() {
       expect(() => EncounterId('  '), throwsArgumentError);
       expect(() => VenueId(''), throwsArgumentError);
       expect(() => EncounterFailure(code: ' '), throwsArgumentError);
+    });
+  });
+
+  group('Committed generated Item boundary', () {
+    GenerateItemOutcomeResult result({
+      ExactVersionRef<BaseItemContent>? exactVersion,
+    }) =>
+        GenerateItemOutcomeResult(
+          id: EncounterOutcomeResultId('result-item'),
+          encounterId: EncounterId('encounter-1'),
+          outcomeId: EncounterOutcomeId('outcome-item'),
+          ordinal: 0,
+          createdAt: DateTime.utc(2026, 7, 20, 11),
+          resolvedBaseItemVersion: exactVersion,
+        );
+
+    Item item({
+      String? definitionId,
+      ItemIdentificationState identificationState =
+          ItemIdentificationState.identified,
+    }) =>
+        Item(
+          id: 'item-1',
+          definitionId: definitionId,
+          displayName: 'Captured fox',
+          category: ItemCategory.fauna,
+          acquiredAt: DateTime.utc(2026, 7, 20, 11),
+          status: ItemStatus.active,
+          identificationState: identificationState,
+        );
+
+    test(
+        'rejects canonical identity that differs from committed exact evidence',
+        () {
+      expect(
+        () => GeneratedItemCommit(
+          outcomeResult: result(exactVersion: _baseItemVersion),
+          item: item(definitionId: 'item-otter'),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('permits only redacted unidentified Items without an exact result',
+        () {
+      expect(
+        () => GeneratedItemCommit(
+          outcomeResult: result(),
+          item: item(),
+        ),
+        throwsArgumentError,
+      );
+
+      final commit = GeneratedItemCommit(
+        outcomeResult: result(),
+        item: item(
+          identificationState: ItemIdentificationState.unidentified,
+        ),
+      );
+
+      expect(commit.item.isUnidentified, isTrue);
+      expect(commit.resolvedBaseItemVersion, isNull);
     });
   });
 }

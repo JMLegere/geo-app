@@ -80,5 +80,31 @@ void main() {
       expect(events.last['event'], 'db.rpc_failed');
       expect((events.last['data'] as Map)['error_message'], 'unavailable');
     });
+
+    test('maps record transport failures to safe terminal telemetry', () async {
+      final events = <Map<String, Object?>>[];
+      final repository = SupabaseLivingWorldRepository(
+        rpc: (_, {params}) =>
+            Future<Object?>.error(StateError('record secret must not leak')),
+        logEvent: (event, category, {data}) =>
+            events.add({'event': event, 'category': category, 'data': data}),
+      );
+
+      await expectLater(
+        repository.recordVenueVisit(command(), traceId: 'record-failure-trace'),
+        throwsA(isA<LivingWorldFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          LivingWorldFailureKind.unavailable,
+        )),
+      );
+
+      expect(events.map((event) => event['event']),
+          ['db.rpc_started', 'db.rpc_failed']);
+      expect(
+          (events.last['data'] as Map)['operation'], 'record_v3_venue_visit');
+      expect((events.last['data'] as Map)['error_message'], 'unavailable');
+      expect(events.join(), isNot(contains('record secret')));
+    });
   });
 }

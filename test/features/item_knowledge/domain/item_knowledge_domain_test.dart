@@ -199,6 +199,32 @@ void main() {
       expect(first, same);
       expect(first.hashCode, same.hashCode);
     });
+
+    test('preserves canonical, type-safe value and hash semantics', () {
+      final candidate = PropertySelectorCandidateId(' candidate:red ');
+      final sameCandidate = PropertySelectorCandidateId('candidate:red');
+      final selector = PropertySelectorId('candidate:red');
+      final selected = SelectedPropertyValue(' value:red ');
+      final sameSelected = SelectedPropertyValue('value:red');
+
+      expect(candidate.value, 'candidate:red');
+      expect(candidate.toString(), 'candidate:red');
+      expect(candidate, sameCandidate);
+      expect(candidate.hashCode, sameCandidate.hashCode);
+      expect(candidate, isNot(selector));
+      expect(selected, sameSelected);
+      expect(selected.hashCode, sameSelected.hashCode);
+      expect(
+        <PropertyValueResolution>{
+          selected,
+          sameSelected,
+          const NoPropertyValue()
+        },
+        hasLength(2),
+      );
+      expect(
+          const NoPropertyValue().hashCode, const NoPropertyValue().hashCode);
+    });
   });
 
   group('Discipline', () {

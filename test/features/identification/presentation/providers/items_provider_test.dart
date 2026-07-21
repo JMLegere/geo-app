@@ -65,7 +65,7 @@ final class RecordingIdentificationRepository
 
   final IdentificationPreparation preparation;
   final Item committedItem;
-  final bool shouldFailCommit;
+  bool shouldFailCommit;
   int prepareCalls = 0;
   int commitCalls = 0;
   ItemIdentificationPlan? committedPlan;
@@ -584,6 +584,69 @@ void main() {
       expect(c.read(itemsProvider).items.single, same(unidentified));
       expect(authoritative.prepareCalls, 1);
       expect(authoritative.commitCalls, 1);
+    });
+    test(
+        'authoritative failure preserves state and a retry recovers the same row',
+        () async {
+      final unidentified = Item(
+        id: 'retry-authoritative-item',
+        definitionId: 'species-1',
+        baseItemId: 'base-item-1',
+        baseItemVersionId: 'version-1',
+        displayName: 'Unidentified fauna specimen',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime(2026, 1, 1),
+        status: ItemStatus.active,
+        identificationState: ItemIdentificationState.unidentified,
+        identifiedDisplayName: 'Amberwing Warbler',
+      );
+      final authoritative = _authoritativeRepositoryFor(
+        unidentified,
+        shouldFailCommit: true,
+      );
+      final legacy = MockItemRepository(shouldThrow: true);
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(legacy),
+          packRepositoryProvider.overrideWithValue(
+            LegacyItemRepositoryPackAdapter(legacy),
+          ),
+          identificationRepositoryProvider.overrideWithValue(authoritative),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(unidentified);
+
+      expect(
+        await c
+            .read(itemsProvider.notifier)
+            .identifyUnidentifiedFind(unidentified.id),
+        isNull,
+      );
+      expect(c.read(itemsProvider).items.single, same(unidentified));
+      expect(c.read(itemsProvider).error,
+          "Couldn't identify that find. Try again.");
+
+      authoritative.shouldFailCommit = false;
+      final recovered = await c
+          .read(itemsProvider.notifier)
+          .identifyUnidentifiedFind(unidentified.id);
+
+      expect(recovered, same(authoritative.committedItem));
+      expect(c.read(itemsProvider).items.single,
+          same(authoritative.committedItem));
+      expect(c.read(itemsProvider).error, isNull);
+      expect(authoritative.prepareCalls, 2);
+      expect(authoritative.commitCalls, 2);
+      final completed = obs.events
+          .where((event) => event.event == 'items.identification_completed')
+          .toList();
+      expect(completed.last.data!['terminal'], 'committed');
+      expect(completed.last.data!['mode'], 'authoritative');
     });
   });
 }

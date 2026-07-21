@@ -77,7 +77,9 @@ jobs:
             exit 1
           fi
 
-          # Exclude files not suitable for unit testing
+          # Exclude UI, concrete Supabase adapters, and abstract domain ports:
+          # the latter declare boundaries and safe value types but contain no
+          # executable production implementation.
           python3 -c "
           import re
           with open('coverage/lcov.info') as f:
@@ -88,7 +90,8 @@ jobs:
               r'supabase_.*_adapter\.dart',
               r'presentation/screens/.*\.dart',
               r'presentation/widgets/.*\.dart',
-              r'presentation/painters/.*\.dart'
+              r'presentation/painters/.*\.dart',
+              r'domain/repositories/.*\.dart'
           ]
           filtered = []
           for r in records:

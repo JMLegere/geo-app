@@ -22,6 +22,7 @@ void main() {
       expect(first, isNot(equals(otherType)));
       expect(first, isNot(equals(otherValue)));
       expect(first.value, equals('encounter.fox'));
+      expect(first.toString(), equals('encounter.fox'));
     });
 
     test('rejects empty and whitespace-only canonical values', () {
@@ -54,6 +55,7 @@ void main() {
       expect(first, isNot(equals(next)));
       expect(first, isNot(equals(stable)));
       expect(first.value, equals('encounter.fox.v1'));
+      expect(first.toString(), equals('encounter.fox.v1'));
     });
 
     test('rejects empty and whitespace-only opaque values', () {

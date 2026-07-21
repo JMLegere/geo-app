@@ -143,6 +143,31 @@ void main() {
       );
     });
 
+    test(
+        'selects the final candidate when floating-point subtraction leaves a zero residual',
+        () {
+      final selector = Selector<String, _Context>(
+        candidates: [
+          SelectorCandidate.value(
+            id: 'first',
+            value: 'first',
+            weight: 6.07921287862e-15,
+          ),
+          SelectorCandidate.value(
+            id: 'second',
+            value: 'second',
+            weight: 4.20062197344e-11,
+          ),
+          SelectorCandidate.value(id: 'last', value: 'last', weight: 1),
+        ],
+      );
+
+      expect(
+        selector.resolve(permitted, () => 0.9999999999999999),
+        const SelectedValue<String>('last'),
+      );
+    });
+
     test('rejects rolls outside the normalized half-open interval', () {
       final selector = Selector<String, _Context>(
         candidates: [
