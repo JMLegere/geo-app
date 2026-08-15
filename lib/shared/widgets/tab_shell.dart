@@ -1,11 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
-import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';
 import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
-import 'package:earth_nova/features/living_world/presentation/screens/town_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
 import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
@@ -25,20 +21,16 @@ import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/design.dart';
 
 const int _mapTabIndex = 0;
-const int _playerTabIndex = 1;
-const int _townTabIndex = 2;
-const int _homeTabIndex = 3;
-const _tabScreenNames = ['map', 'player', 'town', 'home'];
+const int _packTabIndex = 1;
+const _tabScreenNames = ['map', 'pack'];
 
 PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
       _mapTabIndex => PlayerActions.openMap,
-      _playerTabIndex => PlayerActions.openPack,
-      _townTabIndex => PlayerActions.openTown,
-      _homeTabIndex => PlayerActions.openSanctuary,
+      _packTabIndex => PlayerActions.openPack,
       _ => null,
     };
 
-/// 4-tab bottom navigation. Player is backed by Pack; Town lists discovered NPC venues; Home shows the Player's read-only identity.
+/// 2-tab bottom navigation for Map and Pack.
 class TabShell extends ConsumerStatefulWidget {
   const TabShell({
     super.key,
@@ -53,6 +45,16 @@ class TabShell extends ConsumerStatefulWidget {
 
 const double _bottomNavHeight = 76;
 const Duration _navMotionDuration = Duration(milliseconds: 280);
+const Duration _navLabelMotionDuration = Duration(milliseconds: 180);
+
+const Color _carbonGray100 = Color(0xFF161616);
+const Color _carbonGray70 = Color(0xFF525252);
+const Color _carbonGray20 = Color(0xFFE0E0E0);
+const Color _carbonWhite = Color(0xFFFFFFFF);
+const Color _carbonBlue60 = Color(0xFF0F62FE);
+const Color _carbonFocus = Color(0xFFD0E2FF);
+
+const double _mapSwipeEdgeWidth = 24;
 
 class _BottomNavDestination {
   const _BottomNavDestination({
@@ -70,16 +72,8 @@ const _bottomNavItems = [
     actionId: PlayerActions.openMap,
   ),
   _BottomNavDestination(
-    label: 'Player',
+    label: 'Pack',
     actionId: PlayerActions.openPack,
-  ),
-  _BottomNavDestination(
-    label: 'Town',
-    actionId: PlayerActions.openTown,
-  ),
-  _BottomNavDestination(
-    label: 'Home',
-    actionId: PlayerActions.openSanctuary,
   ),
 ];
 
@@ -94,19 +88,16 @@ class _EarthNovaBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        border: Border(
-          top: BorderSide(color: AppTheme.outline.withValues(alpha: 0.44)),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.30),
-            blurRadius: 22,
-            offset: const Offset(0, -10),
-          ),
-        ],
+    final animationDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : _navMotionDuration;
+
+    return Material(
+      key: const Key('tab-shell-bottom-navigation'),
+      color: _carbonWhite,
+      elevation: 0,
+      shape: const Border(
+        top: BorderSide(color: _carbonGray20),
       ),
       child: SafeArea(
         top: false,
@@ -115,39 +106,12 @@ class _EarthNovaBottomNav extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final tabWidth = constraints.maxWidth / _bottomNavItems.length;
-              final indicatorWidth = math.min(
-                48.0,
-                math.max(30.0, tabWidth * 0.34),
-              );
+              final indicatorWidth = tabWidth / 2;
               final indicatorLeft = (tabWidth * selectedIndex) +
                   ((tabWidth - indicatorWidth) / 2);
 
               return Stack(
-                clipBehavior: Clip.none,
                 children: [
-                  AnimatedPositioned(
-                    key: const Key('tab-shell-nav-indicator-position'),
-                    duration: _navMotionDuration,
-                    curve: Curves.easeOutCubic,
-                    left: indicatorLeft,
-                    top: 64,
-                    width: indicatorWidth,
-                    height: 3,
-                    child: DecoratedBox(
-                      key: const Key('tab-shell-nav-indicator'),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        color: AppTheme.tertiary.withValues(alpha: 0.92),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.tertiary.withValues(alpha: 0.32),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                   Row(
                     children: [
                       for (var index = 0;
@@ -161,6 +125,21 @@ class _EarthNovaBottomNav extends StatelessWidget {
                           ),
                         ),
                     ],
+                  ),
+                  AnimatedPositioned(
+                    key: const Key('tab-shell-nav-indicator-position'),
+                    duration: animationDuration,
+                    curve: Curves.easeOutCubic,
+                    left: indicatorLeft,
+                    bottom: 0,
+                    width: indicatorWidth,
+                    height: 2,
+                    child: const IgnorePointer(
+                      child: ColoredBox(
+                        key: Key('tab-shell-nav-indicator'),
+                        color: _carbonBlue60,
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -185,7 +164,10 @@ class _EarthNovaNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? AppTheme.tertiary : AppTheme.onSurfaceVariant;
+    final foreground = selected ? _carbonGray100 : _carbonGray70;
+    final animationDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : _navLabelMotionDuration;
 
     return ProductActionSurface(
       actionId: item.actionId,
@@ -193,31 +175,35 @@ class _EarthNovaNavItem extends StatelessWidget {
         button: true,
         selected: selected,
         label: item.label,
-        // eac-clickable-owner-logs: _EarthNovaBottomNav receives an ObservableInteraction-wrapped callback from TabShell with per-tab product action IDs.
-        child: InkWell(
-          key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
-          borderRadius: BorderRadius.circular(22),
-          onTap: onTap,
-          child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            style: TextStyle(
-              color: foreground,
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              height: 1,
-              letterSpacing: selected ? 0.15 : 0,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                ),
-              ],
+        child: Material(
+          key: Key('tab-shell-nav-surface-${item.label.toLowerCase()}'),
+          color: selected ? _carbonGray20 : _carbonWhite,
+          // eac-clickable-owner-logs: _EarthNovaBottomNav receives an ObservableInteraction-wrapped callback from TabShell with per-tab product action IDs.
+          child: InkWell(
+            key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
+            focusColor: _carbonFocus,
+            onTap: onTap,
+            child: AnimatedDefaultTextStyle(
+              key: Key('tab-shell-nav-label-${item.label.toLowerCase()}'),
+              duration: animationDuration,
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                height: 1,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    softWrap: false,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -242,6 +228,7 @@ class _TabShellState extends ConsumerState<TabShell>
   @override
   void initState() {
     super.initState();
+    assert(widget.screens == null || widget.screens!.length == 2);
     WidgetsBinding.instance.addObserver(this);
     _packPageController = PageController();
     _screenFactories = widget.screens != null
@@ -252,8 +239,6 @@ class _TabShellState extends ConsumerState<TabShell>
                   pageController: _packPageController,
                   onEdgeSwipe: _onPackEdgeSwipe,
                 ),
-            () => const TownScreen(),
-            () => const HomeScreen(),
           ];
     _screens = List<Widget>.filled(
       _screenFactories.length,
@@ -277,11 +262,11 @@ class _TabShellState extends ConsumerState<TabShell>
   void _onPackEdgeSwipe(EdgeSwipeDirection direction) {
     switch (direction) {
       case EdgeSwipeDirection.left:
-        // Swiped right past page 0 → go to Map (tab to the left of Player).
+        // Swiped right past page 0 → go to Map.
         _onTabSelected(_mapTabIndex);
       case EdgeSwipeDirection.right:
-        // Swiped left past last page → go to Town (tab to the right).
-        _onTabSelected(_townTabIndex);
+        // Pack owns its trailing edge.
+        return;
     }
   }
 
@@ -448,36 +433,37 @@ class _TabShellState extends ConsumerState<TabShell>
       builder: (_) => Scaffold(
         body: Stack(
           children: [
-            // Wrap in GestureDetector to catch horizontal swipes on the map
-            // tab. Only the map tab triggers a cross-tab swipe (rightward →
-            // Player). Player's own PageView handles its own edge overscroll
-            // via onEdgeSwipe; other tabs have no swipe gesture.
-            GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onHorizontalDragEnd: _currentIndex == _mapTabIndex
-                  ? (details) {
-                      if (details.primaryVelocity != null &&
-                          details.primaryVelocity! < 0) {
-                        ObservableInteraction.log(
-                          logger: logger,
-                          screenName: 'tab_shell',
-                          widgetName: 'map_edge_swipe',
-                          actionType: 'edge_swipe_to_player',
-                          playerActionId: PlayerActions.openPack,
-                          payload: const {
-                            'from_tab_index': _mapTabIndex,
-                            'to_tab_index': _playerTabIndex,
-                          },
-                        );
-                        _onTabSelected(_playerTabIndex);
-                      }
-                    }
-                  : null,
-              child: IndexedStack(
-                index: _currentIndex,
-                children: _screens,
-              ),
+            IndexedStack(
+              index: _currentIndex,
+              children: _screens,
             ),
+            if (_currentIndex == _mapTabIndex)
+              Positioned(
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: _mapSwipeEdgeWidth,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragEnd: (details) {
+                    if (details.primaryVelocity != null &&
+                        details.primaryVelocity! < 0) {
+                      ObservableInteraction.log(
+                        logger: logger,
+                        screenName: 'tab_shell',
+                        widgetName: 'map_edge_swipe',
+                        actionType: 'edge_swipe_to_pack',
+                        playerActionId: PlayerActions.openPack,
+                        payload: const {
+                          'from_tab_index': _mapTabIndex,
+                          'to_tab_index': _packTabIndex,
+                        },
+                      );
+                      _onTabSelected(_packTabIndex);
+                    }
+                  },
+                ),
+              ),
             if (debugMode && _debugOverlayVisible)
               DebugGestureOverlay(
                 onMovePlayer: _onDebugMovePlayer,
