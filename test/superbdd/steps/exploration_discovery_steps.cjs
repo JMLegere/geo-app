@@ -30,6 +30,10 @@ Before(function () {
   this.cardFlight = undefined;
   this.packTarget = { reaction: "none", forcedOpen: false };
   this.liveMapControl = "map";
+  this.presentCell = undefined;
+  this.pendingEncounter = undefined;
+  this.encounterCommits = new Map();
+  this.encounterRewardFlights = [];
 });
 
 function createEntry({ firstVisit = true } = {}) {
@@ -186,6 +190,54 @@ function visiblePackItem(item) {
     searchableText: `${item.category} unidentified specimen`,
     speciesName: undefined,
   };
+}
+
+function resolvePresentEncounter(world) {
+  assert.equal(
+    world.presentCell?.trusted,
+    true,
+    "Present Encounter resolution requires a trusted Present Cell.",
+  );
+  assert.equal(
+    world.pendingEncounter?.cellId,
+    world.presentCell.id,
+    "Pending Encounter must belong to the Present Cell.",
+  );
+
+  const option = world.pendingEncounter.options[0];
+  assert.equal(option?.authored, true, "Encounter needs an authored Option.");
+  const resolutionId = `${world.pendingEncounter.id}:${option.id}`;
+  const committed = world.encounterCommits.get(resolutionId);
+
+  if (committed) {
+    world.presentEncounterResolution = { ...committed, replayed: true };
+    return committed;
+  }
+
+  const item = {
+    id: `item-${resolutionId}`,
+    kind: "Item",
+    sourceEncounterId: world.pendingEncounter.id,
+  };
+  const outcome = {
+    id: `outcome-${resolutionId}`,
+    kind: "Outcome",
+    encounterId: world.pendingEncounter.id,
+    optionId: option.id,
+    itemId: item.id,
+  };
+  const rewardFlight = { itemId: item.id, target: "Pack" };
+  const commit = { outcome, item, rewardFlight };
+
+  world.encounterCommits.set(resolutionId, commit);
+  world.pack.push(item);
+  world.encounterRewardFlights.push(rewardFlight);
+  world.pendingEncounterLayer = {
+    component: "PendingEncounterLayer",
+    gestureOwner: "card-only",
+  };
+  world.presentEncounterResolution = { ...commit, replayed: false };
+  return commit;
 }
 
 Given("Map has emitted one eligible map-cell entry event", function () {
@@ -855,5 +907,67 @@ Then(
   "the Pack should show details, acquisition history, identification state, and available handoffs",
   function () {
     assert.equal(this.packDetail.identificationState, "unidentified");
+  },
+);
+
+Given(
+  "the Present Cell is trusted and has one pending Encounter",
+  function () {
+    this.presentCell = { id: "present-cell-1", trusted: true };
+    this.pendingEncounter = {
+      id: "encounter-1",
+      cellId: this.presentCell.id,
+      options: [],
+    };
+    this.pendingEncounterLayer = {
+      component: "PendingEncounterLayer",
+      gestureOwner: "card-only",
+    };
+  },
+);
+
+Given("the pending Encounter offers one authored Option", function () {
+  this.pendingEncounter.options = [
+    { id: "option-observe", label: "Observe quietly", authored: true },
+  ];
+});
+
+When("the player resolves the Present Encounter", function () {
+  this.lastPlayerAction = "resolve-present-encounter";
+  resolvePresentEncounter(this);
+});
+
+Then(
+  "PendingEncounterLayer should atomically commit one Outcome and one Item",
+  function () {
+    const { item, outcome } = this.presentEncounterResolution;
+    assert.equal(this.lastPlayerAction, "resolve-present-encounter");
+    assert.equal(this.pendingEncounterLayer.component, "PendingEncounterLayer");
+    assert.equal(this.encounterCommits.size, 1);
+    assert.equal(outcome.kind, "Outcome");
+    assert.equal(item.kind, "Item");
+    assert.equal(outcome.itemId, item.id);
+    assert.deepEqual(this.pack, [item]);
+  },
+);
+
+Then("the committed Item reward should fly to the Pack", function () {
+  assert.deepEqual(this.encounterRewardFlights, [
+    this.presentEncounterResolution.rewardFlight,
+  ]);
+  assert.equal(this.presentEncounterResolution.rewardFlight.target, "Pack");
+});
+
+When("the same Present Encounter resolution is replayed", function () {
+  resolvePresentEncounter(this);
+});
+
+Then(
+  "the replay should not create another Outcome, Item, or Pack reward flight",
+  function () {
+    assert.equal(this.presentEncounterResolution.replayed, true);
+    assert.equal(this.encounterCommits.size, 1);
+    assert.equal(this.pack.length, 1);
+    assert.equal(this.encounterRewardFlights.length, 1);
   },
 );

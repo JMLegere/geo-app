@@ -143,6 +143,13 @@ export const actionCapabilities = {
     "records Exploration as one Cell Visit when movement is eligible; the retained border-crossing identifier is legacy geometric evidence, not an Encounter or Discovery",
     playerActionWorkflows.mapExploration,
   ),
+  resolvePresentEncounter: mutationAction(
+    "resolve-present-encounter",
+    "Resolve present Encounter",
+    "Pending Encounter layer",
+    "resolves the selected authored Option for the trusted Present Cell and presents only its committed Item reward",
+    playerActionWorkflows.mapExploration,
+  ),
   inspectMapCell: viewAction(
     "inspect-map-cell",
     "Inspect a map cell",

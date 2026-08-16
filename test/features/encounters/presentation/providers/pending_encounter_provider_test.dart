@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/content/encounter_content.dart';
+import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
@@ -28,10 +30,20 @@ final class _NoopObservabilityService extends ObservabilityService {
 }
 
 final class _FakeEncounterRepository implements EncounterRepository {
-  _FakeEncounterRepository(this.onRead);
+  _FakeEncounterRepository(this.onRead, {this.onResolve});
 
   final Future<PendingEncounter?> Function(String cellId) onRead;
+  final Future<EncounterRuntimeAggregate> Function(
+    EncounterId encounterId, {
+    required String traceId,
+    EncounterOptionId? selectedOptionId,
+  })? onResolve;
   final List<String> readCellIds = [];
+  final resolveCalls = <({
+    EncounterId encounterId,
+    EncounterOptionId? optionId,
+    String traceId
+  })>[];
 
   @override
   Future<EncounterRuntimeAggregate> commitCellVisitSelection(
@@ -56,10 +68,21 @@ final class _FakeEncounterRepository implements EncounterRepository {
     EncounterId encounterId, {
     required String traceId,
     EncounterOptionId? selectedOptionId,
-  }) =>
-      Future<EncounterRuntimeAggregate>.error(
-        StateError('pending state must not resolve'),
-      );
+  }) {
+    resolveCalls.add((
+      encounterId: encounterId,
+      optionId: selectedOptionId,
+      traceId: traceId,
+    ));
+    return onResolve?.call(
+          encounterId,
+          traceId: traceId,
+          selectedOptionId: selectedOptionId,
+        ) ??
+        Future<EncounterRuntimeAggregate>.error(
+          StateError('pending state must not resolve'),
+        );
+  }
 }
 
 final class _TestExplorationNotifier extends ExplorationNotifier {
@@ -82,9 +105,14 @@ final class _TestExplorationNotifier extends ExplorationNotifier {
 ProviderContainer _containerFor(
   _FakeEncounterRepository repository, {
   required bool canRecordVisits,
+  Future<void> Function(PendingEncounter, GeneratedItemCommit)? presentReward,
 }) =>
     ProviderContainer(
       overrides: [
+        if (presentReward != null)
+          committedPendingEncounterRewardPresenterProvider.overrideWithValue(
+            presentReward,
+          ),
         encounterCommandRepositoryProvider.overrideWithValue(repository),
         explorationProvider.overrideWith(_TestExplorationNotifier.new),
         explorationEligibilityProvider.overrideWithValue(
@@ -126,6 +154,71 @@ PendingEncounter _pending(String cellId) => PendingEncounter(
         ),
       ],
     );
+
+final _baseItemVersion = ExactVersionRef<BaseItemContent>(
+  stableId: StableContentId<BaseItemContent>('item:red_fox'),
+  versionId: ContentVersionId<BaseItemContent>('version:red_fox:2'),
+  revision: 2,
+);
+
+EncounterRuntimeAggregate _resolvedAggregate(
+  PendingEncounter pending, {
+  EncounterOptionId? optionId,
+  bool includeOutcomeEvidence = true,
+  int generatedItemCount = 1,
+}) {
+  final selectedOptionId = optionId ?? pending.options.single.id;
+  final results = List<GenerateItemOutcomeResult>.generate(
+    generatedItemCount,
+    (index) => GenerateItemOutcomeResult(
+      id: EncounterOutcomeResultId('result:${pending.cellId}:$index'),
+      encounterId: pending.encounter.id,
+      outcomeId: EncounterOutcomeId('outcome:${pending.cellId}:$index'),
+      ordinal: index,
+      createdAt: DateTime.utc(2026, 8, 16, 0, 1),
+      resolvedBaseItemVersion: _baseItemVersion,
+    ),
+  );
+  final commits = results
+      .map(
+        (result) => GeneratedItemCommit(
+          outcomeResult: result,
+          item: Item(
+            id: 'item:${pending.cellId}:${result.ordinal}',
+            definitionId: _baseItemVersion.stableId.value,
+            displayName: 'Red Fox Feather',
+            category: ItemCategory.fauna,
+            acquiredAt: result.createdAt,
+            status: ItemStatus.active,
+          ),
+        ),
+      )
+      .toList();
+
+  return EncounterRuntimeAggregate(
+    cellVisitResolution: CellVisitResolution.selectedDefinition(
+      id: pending.encounter.cellVisitResolutionId,
+      cellVisitId: pending.encounter.cellVisitId,
+      selectorId: SelectorId('selector:pending'),
+      selectorCandidateId: SelectorCandidateId('candidate:pending'),
+      definitionId: pending.encounter.definitionVersion.stableId,
+      resolvedAt: DateTime.utc(2026, 8, 16, 0, 1),
+    ),
+    encounter: EncounterOccurrence(
+      id: pending.encounter.id,
+      cellVisitId: pending.encounter.cellVisitId,
+      cellVisitResolutionId: pending.encounter.cellVisitResolutionId,
+      definitionVersion: pending.encounter.definitionVersion,
+      status: EncounterResolutionStatus.resolved,
+      createdAt: pending.encounter.createdAt,
+      selectedOptionId: selectedOptionId,
+      resolvedAt: DateTime.utc(2026, 8, 16, 0, 1),
+    ),
+    outcomeResults: includeOutcomeEvidence ? results : const [],
+    generatedItemCommits: commits,
+    revealedVenueCommits: const [],
+  );
+}
 
 void main() {
   group('pending encounter provider', () {
@@ -273,6 +366,244 @@ void main() {
 
       expect(container.read(pendingEncounterProvider),
           isA<PendingEncounterFailure>());
+    });
+
+    test('resolves ready encounter through resolving to resolved then presents',
+        () async {
+      final pending = _pending('cell-1');
+      final committed = Completer<EncounterRuntimeAggregate>();
+      final presented =
+          <({PendingEncounter pending, GeneratedItemCommit item})>[];
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            committed.future,
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (resolvedPending, item) async {
+          presented.add((pending: resolvedPending, item: item));
+        },
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      final resolution = container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterResolving>());
+      expect(repository.resolveCalls, hasLength(1));
+
+      committed.complete(_resolvedAggregate(pending));
+      await resolution;
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterResolved>());
+      expect(presented.single.item.item.id, 'item:cell-1:0');
+      expect(presented.single.pending, same(pending));
+    });
+
+    test('rejects unowned options and incomplete committed aggregates',
+        () async {
+      final pending = _pending('cell-1');
+      final presented = <GeneratedItemCommit>[];
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            Future<EncounterRuntimeAggregate>.value(
+          _resolvedAggregate(
+            pending,
+            includeOutcomeEvidence: false,
+          ),
+        ),
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (_, item) async => presented.add(item),
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(EncounterOptionId('option:other'));
+      expect(repository.resolveCalls, isEmpty);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterReady>());
+
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterFailure>());
+      expect(presented, isEmpty);
+    });
+
+    test('suppresses duplicate and inflight resolution commands', () async {
+      final pending = _pending('cell-1');
+      final committed = Completer<EncounterRuntimeAggregate>();
+      var presentations = 0;
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            committed.future,
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (_, __) async => presentations += 1,
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      final first = container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      final duplicate = container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      expect(repository.resolveCalls, hasLength(1));
+
+      committed.complete(_resolvedAggregate(pending));
+      await Future.wait([first, duplicate]);
+      expect(presentations, 1);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterResolved>());
+    });
+
+    test('suppresses stale and untrusted resolution completions', () async {
+      final pending = _pending('cell-1');
+      final staleCommit = Completer<EncounterRuntimeAggregate>();
+      var presentations = 0;
+      final repository = _FakeEncounterRepository(
+        (cellId) => Future<PendingEncounter?>.value(_pending(cellId)),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            staleCommit.future,
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (_, __) async => presentations += 1,
+      );
+      addTearDown(container.dispose);
+      final exploration = _exploration(container);
+      exploration.showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      final stale = container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      exploration.showCell('cell-2');
+      await _drain();
+      staleCommit.complete(_resolvedAggregate(pending));
+      await stale;
+
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterReady>());
+      expect(
+        (container.read(pendingEncounterProvider) as PendingEncounterReady)
+            .pendingEncounter
+            .cellId,
+        'cell-2',
+      );
+      expect(presentations, 0);
+
+      final untrusted = _containerFor(repository, canRecordVisits: true);
+      addTearDown(untrusted.dispose);
+      untrusted.read(pendingEncounterProvider);
+      await untrusted
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      expect(repository.resolveCalls, hasLength(1));
+    });
+
+    test('failure preserves exact command identity for retry', () async {
+      final pending = _pending('cell-1');
+      var attempts = 0;
+      var presentations = 0;
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) {
+          attempts += 1;
+          return attempts == 1
+              ? Future<EncounterRuntimeAggregate>.error(StateError('offline'))
+              : Future<EncounterRuntimeAggregate>.value(
+                  _resolvedAggregate(pending),
+                );
+        },
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (_, __) async => presentations += 1,
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterFailure>());
+
+      await container.read(pendingEncounterProvider.notifier).retryResolution();
+
+      expect(repository.resolveCalls, hasLength(2));
+      expect(repository.resolveCalls[1].encounterId,
+          repository.resolveCalls.first.encounterId);
+      expect(repository.resolveCalls[1].optionId,
+          repository.resolveCalls.first.optionId);
+      expect(repository.resolveCalls[1].traceId,
+          repository.resolveCalls.first.traceId);
+      expect(presentations, 1);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterResolved>());
+    });
+
+    test('does not replay a committed result after resolve, retry, or refresh',
+        () async {
+      final pending = _pending('cell-1');
+      var presentations = 0;
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            Future<EncounterRuntimeAggregate>.value(
+                _resolvedAggregate(pending)),
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        presentReward: (_, __) async => presentations += 1,
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+      await container.read(pendingEncounterProvider.notifier).retryResolution();
+      await container.read(pendingEncounterProvider.notifier).refresh();
+
+      expect(repository.resolveCalls, hasLength(1));
+      expect(presentations, 1);
+      expect(container.read(pendingEncounterProvider),
+          isA<PendingEncounterResolved>());
     });
 
     test('depends only on trusted current cell and visit eligibility', () {

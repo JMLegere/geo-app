@@ -8,6 +8,7 @@ import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/domain/use_cases/compute_encounter.dart';
 import 'package:earth_nova/features/encounters/application/encounter_entry_coordinator.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
+import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 
 // Provider for observability service (must be overridden)
 final encounterObservabilityProvider = Provider<ObservabilityService>((ref) {
@@ -68,6 +69,7 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
   String get category => 'map';
 
   final _processedMapCellEntryIds = <String>{};
+  final _processedPendingEncounterIds = <String>{};
   @override
   EncounterState build() {
     return const EncounterState();
@@ -230,6 +232,45 @@ class EncounterNotifier extends ObservableNotifier<EncounterState> {
         mapCellEntryId: context.mapEntryId,
       );
     }
+  }
+
+  /// Registers and presents one Item committed from a persisted pending Encounter.
+  ///
+  /// The pending Encounter identity owns replay protection; this never invokes
+  /// legacy acquisition.
+  Future<void> presentCommittedPendingEncounterReward({
+    required PendingEncounter pendingEncounter,
+    required GeneratedItemCommit generatedItem,
+  }) async {
+    final encounterId = pendingEncounter.encounter.id.value;
+    if (_processedPendingEncounterIds.contains(encounterId)) return;
+
+    final ownedItem = generatedItem.item;
+    ref.read(itemsProvider.notifier).registerOwnedDiscovery(ownedItem);
+    final resolvedEncounter = Encounter(
+      type: EncounterType.species,
+      speciesId: pendingEncounter.encounter.definitionVersion.stableId.value,
+      displayName: pendingEncounter.definitionDisplayName,
+      cellId: pendingEncounter.cellId,
+      seed: encounterId,
+      acquiredItem: ownedItem,
+    );
+    obs.log(
+      'discovery.acquisition_committed',
+      category,
+      data: {
+        'cell_id': pendingEncounter.cellId,
+        'encounter_id': encounterId,
+        'result_id': generatedItem.outcomeResult.id.value,
+        'owned_item_id': ownedItem.id,
+        'unidentified_category': ownedItem.category.name,
+      },
+    );
+    _presentResolvedEncounter(
+      resolvedEncounter,
+      mapCellEntryId: encounterId,
+    );
+    _processedPendingEncounterIds.add(encounterId);
   }
 
   void _presentResolvedEncounter(

@@ -5,6 +5,8 @@ abstract final class PlayerActions {
   static const PlayerActionId readMapStatus = 'read-map-status';
   static const PlayerActionId moveInRealWorld = 'move-in-real-world';
   static const PlayerActionId crossMapCellBorder = 'cross-map-cell-border';
+  static const PlayerActionId resolvePresentEncounter =
+      'resolve-present-encounter';
   static const PlayerActionId inspectMapCell = 'inspect-map-cell';
   static const PlayerActionId inspectNearbyOpportunity =
       'inspect-nearby-opportunity';
@@ -85,6 +87,7 @@ abstract final class PlayerActions {
     crossMapCellBorder,
     inspectMapCell,
     inspectNearbyOpportunity,
+    resolvePresentEncounter,
     inspectWorldEventCue,
     changeTerritoryScale,
     browseTerritoryProgress,

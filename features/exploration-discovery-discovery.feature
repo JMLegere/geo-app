@@ -67,3 +67,13 @@ Feature: Legacy reward-card evidence and Discovery routing
     And the Pack target should react with a small impact shake when the card lands
     And the reward modal should leave the active overlay
     And the already-owned unidentified find should remain visible through Pack
+
+  @action.resolve-present-encounter
+  Scenario: Player resolves a trusted Present Encounter
+    Given the Present Cell is trusted and has one pending Encounter
+    And the pending Encounter offers one authored Option
+    When the player resolves the Present Encounter
+    Then PendingEncounterLayer should atomically commit one Outcome and one Item
+    And the committed Item reward should fly to the Pack
+    When the same Present Encounter resolution is replayed
+    Then the replay should not create another Outcome, Item, or Pack reward flight
