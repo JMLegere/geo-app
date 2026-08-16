@@ -13,6 +13,7 @@ void main() {
     String versionId = 'version-2',
     Object? revision = 2,
     Object? publicationStatus = 'published',
+    Object? isAutomatic = false,
   }) =>
       <String, Object?>{
         'id': ownerId,
@@ -22,6 +23,7 @@ void main() {
           'encounter_definition_id': ownerId,
           'revision': revision,
           'publication_status': publicationStatus,
+          'is_automatic': isAutomatic,
         },
       };
 
@@ -36,9 +38,23 @@ void main() {
         await repository.currentPublishedVersionForNewCellVisit(definitionId);
 
     expect(binding, isNotNull);
-    expect(binding!.stableId, definitionId);
-    expect(binding.versionId.value, 'version-2');
-    expect(binding.revision, 7);
+    expect(binding!.version.stableId, definitionId);
+    expect(binding.version.versionId.value, 'version-2');
+    expect(binding.version.revision, 7);
+    expect(binding.isAutomatic, isFalse);
+  });
+
+  test('parses automatic policy with the exact published revision', () async {
+    final repository = SupabaseCurrentEncounterVersionBindingRepository(
+      client: null,
+      currentQuery: (_) async => currentRow(isAutomatic: true),
+    );
+
+    final binding =
+        await repository.currentPublishedVersionForNewCellVisit(definitionId);
+
+    expect(binding!.isAutomatic, isTrue);
+    expect(binding.version.revision, 2);
   });
 
   test('returns null when the selected Definition has no current Version',
@@ -77,6 +93,10 @@ void main() {
     );
     expect(
       () => read(currentRow(publicationStatus: 'retired')),
+      throwsA(isA<CurrentEncounterVersionBindingFailure>()),
+    );
+    expect(
+      () => read(currentRow(isAutomatic: 'true')),
       throwsA(isA<CurrentEncounterVersionBindingFailure>()),
     );
   });
@@ -136,6 +156,7 @@ void main() {
     expect(currentEncounterVersionBindingSelect, contains('revision'));
     expect(
         currentEncounterVersionBindingSelect, contains('publication_status'));
+    expect(currentEncounterVersionBindingSelect, contains('is_automatic'));
     expect(currentEncounterVersionBindingSelect, isNot(contains('options')));
     expect(currentEncounterVersionBindingSelect, isNot(contains('outcomes')));
     expect(currentEncounterVersionBindingSelect, isNot(contains('payload')));

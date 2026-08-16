@@ -74,10 +74,12 @@ final class EncounterSelectedCellVisitPlan
     required super.selectorCandidateId,
     required this.definitionId,
     required this.definitionVersion,
+    required this.isAutomatic,
   });
 
   final StableContentId<EncounterContent> definitionId;
   final ExactVersionRef<EncounterContent> definitionVersion;
+  final bool isAutomatic;
 }
 
 /// The selected stable Definition cannot create new state without a current
@@ -137,10 +139,10 @@ final class ResolveCellVisitEncounterSelector<Context>
         if (binding == null) {
           throw MissingCurrentPublishedEncounterVersion(value);
         }
-        if (binding.stableId != value) {
+        if (binding.version.stableId != value) {
           throw StateError(
             'The current published Encounter Definition Version for '
-            '${value.value} belongs to ${binding.stableId.value}.',
+            '${value.value} belongs to ${binding.version.stableId.value}.',
           );
         }
         return EncounterSelectedCellVisitPlan(
@@ -148,7 +150,8 @@ final class ResolveCellVisitEncounterSelector<Context>
           selectorId: input.selectorId,
           selectorCandidateId: candidateId,
           definitionId: value,
-          definitionVersion: binding,
+          definitionVersion: binding.version,
+          isAutomatic: binding.isAutomatic,
         );
     }
   }

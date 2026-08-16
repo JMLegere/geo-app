@@ -278,6 +278,66 @@ void main() {
         throwsA(isA<EncounterRetryInputConflictFailure>()),
       );
     });
+    test('reads no pending encounter with its cell-only RPC parameter',
+        () async {
+      final fake = _FakeRpcGateway(null);
+      final pending = await SupabaseEncounterRepository(rpcGateway: fake.call)
+          .readPendingEncounterForCell('cell:one', traceId: _traceId);
+
+      expect(pending, isNull);
+      expect(
+          fake.calls.single.functionName, 'read_v3_pending_encounter_for_cell');
+      expect(
+        fake.calls.single.parameters,
+        <String, Object?>{'p_cell_id': 'cell:one'},
+      );
+    });
+
+    test('parses the ready pending encounter without resolving outcomes',
+        () async {
+      final pending = await SupabaseEncounterRepository(
+        rpcGateway: _FakeRpcGateway(_pendingEncounter()).call,
+      ).readPendingEncounterForCell('cell:one', traceId: _traceId);
+
+      expect(pending!.cellId, 'cell:one');
+      expect(pending.encounter.id.value, _encounterId);
+      expect(pending.encounter.status, EncounterResolutionStatus.pending);
+      expect(pending.encounter.definitionVersion.versionId.value,
+          _encounterVersionId);
+      expect(pending.definitionDisplayName, 'Red fox');
+      expect(pending.options.single.id.value, _optionId);
+    });
+
+    test('maps an unauthorized pending read to a safe authentication failure',
+        () async {
+      final repository = SupabaseEncounterRepository(
+        rpcGateway: (_, __) async => throw supabase.PostgrestException(
+          message: 'owner-secret',
+          code: '42501',
+        ),
+      );
+
+      await expectLater(
+        repository.readPendingEncounterForCell('cell:one', traceId: _traceId),
+        throwsA(
+          isA<EncounterAuthenticationOrOwnershipFailure>().having(
+            (failure) => failure.diagnosticCode,
+            'safe diagnostic code',
+            'sqlstate_42501',
+          ),
+        ),
+      );
+    });
+
+    test('rejects a pending projection for another cell', () async {
+      final otherCell = _pendingEncounter()..['cell_id'] = 'cell:other';
+
+      await expectLater(
+        SupabaseEncounterRepository(rpcGateway: _FakeRpcGateway(otherCell).call)
+            .readPendingEncounterForCell('cell:one', traceId: _traceId),
+        throwsA(isA<EncounterMalformedResponseFailure>()),
+      );
+    });
   });
 }
 
@@ -300,6 +360,25 @@ const _venueVersionId = '00000000-0000-4000-8000-000000000014';
 const _revealResultId = '00000000-0000-4000-8000-000000000015';
 const _revealOutcomeId = '00000000-0000-4000-8000-000000000016';
 
+Map<String, Object?> _pendingEncounter() => <String, Object?>{
+      'cell_id': 'cell:one',
+      'encounter_id': _encounterId,
+      'cell_visit_id': _visitId,
+      'cell_visit_resolution_id': _resolutionId,
+      'encounter_definition_id': 'encounter:red-fox',
+      'encounter_definition_version_id': _encounterVersionId,
+      'encounter_definition_revision': 2,
+      'created_at': '2026-07-20T12:00:00.000Z',
+      'definition_display_name': 'Red fox',
+      'options': <Object?>[
+        <String, Object?>{
+          'id': _optionId,
+          'ordinal': 0,
+          'display_name': 'Observe the fox',
+        },
+      ],
+    };
+
 NoEncounterCellVisitPlan _nonePlan() => NoEncounterCellVisitPlan(
       cellVisit: _cellVisit(),
       selectorId: SelectorId(_selectorId),
@@ -317,6 +396,7 @@ EncounterSelectedCellVisitPlan _selectedPlan() =>
         versionId: ContentVersionId<EncounterContent>(_encounterVersionId),
         revision: 3,
       ),
+      isAutomatic: false,
     );
 
 CellVisit _cellVisit() => CellVisit(

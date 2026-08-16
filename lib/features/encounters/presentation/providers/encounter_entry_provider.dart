@@ -10,6 +10,7 @@ import 'package:earth_nova/features/encounters/data/repositories/supabase_encoun
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/domain/use_cases/resolve_cell_visit_encounter_selector.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/rules/legacy_encounter_eligibility.dart';
@@ -130,7 +131,7 @@ final versionedEncounterPlannerProvider =
       NoEncounterCellVisitPlan() => VersionedEncounterPlan.none(selection),
       EncounterSelectedCellVisitPlan() => VersionedEncounterPlan.selected(
           selection: selection,
-          isAutomatic: true,
+          isAutomatic: selection.isAutomatic,
         ),
     };
   };
@@ -228,6 +229,7 @@ final persistedCellVisitEncounterHandlerProvider =
   final mode = ref.watch(encounterEngineModeResolutionProvider);
   final seed = ref.watch(encounterDailySeedProvider);
   final obs = ref.watch(encounterObservabilityProvider);
+  final repository = ref.watch(encounterCommandRepositoryProvider);
   return (persistedCellVisit, borderCrossingEvent, {rootTrace}) async {
     if (persistedCellVisit.cellId != borderCrossingEvent.enteredCellId) {
       throw ArgumentError.value(
@@ -265,7 +267,20 @@ final persistedCellVisitEncounterHandlerProvider =
       ),
     );
     try {
-      await coordinator.enter(context);
+      if (mode.effectiveMode == EncounterEngineMode.v3Authoritative) {
+        final pendingEncounter = await repository.readPendingEncounterForCell(
+          persistedCellVisit.cellId,
+          traceId: trace.traceId,
+        );
+        if (pendingEncounter != null) {
+          ref.read(pendingEncounterProvider.notifier).show(pendingEncounter);
+          return;
+        }
+      }
+      final result = await coordinator.enter(context);
+      if (result.terminal == EncounterEntryTerminal.pendingOutcomeResolution) {
+        await ref.read(pendingEncounterProvider.notifier).refresh();
+      }
     } catch (error) {
       obs.log(
         'encounter.entry.terminal',
@@ -294,12 +309,12 @@ final class _UnavailableCurrentEncounterVersionBindingRepository
   const _UnavailableCurrentEncounterVersionBindingRepository();
 
   @override
-  Future<ExactVersionRef<EncounterContent>?>
+  Future<CurrentEncounterVersionBinding?>
       currentPublishedVersionForNewCellVisit(
     StableContentId<EncounterContent> definitionId, {
     String? traceId,
   }) {
-    return Future<ExactVersionRef<EncounterContent>?>.error(
+    return Future<CurrentEncounterVersionBinding?>.error(
       StateError('Encounter Version binding requires Supabase.'),
     );
   }
@@ -314,6 +329,16 @@ final class _UnavailableEncounterRepository implements EncounterRepository {
     required String traceId,
   }) {
     return Future<EncounterRuntimeAggregate>.error(
+      StateError('Encounter commands require Supabase.'),
+    );
+  }
+
+  @override
+  Future<PendingEncounter?> readPendingEncounterForCell(
+    String cellId, {
+    required String traceId,
+  }) {
+    return Future<PendingEncounter?>.error(
       StateError('Encounter commands require Supabase.'),
     );
   }

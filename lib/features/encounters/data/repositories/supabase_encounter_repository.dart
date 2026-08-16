@@ -1,4 +1,5 @@
 import 'package:earth_nova/features/encounters/data/dtos/encounter_runtime_aggregate_dto.dart';
+import 'package:earth_nova/features/encounters/data/dtos/pending_encounter_dto.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/domain/use_cases/resolve_cell_visit_encounter_selector.dart';
@@ -16,7 +17,7 @@ typedef RepositoryLogEvent = void Function(
   Map<String, dynamic>? data,
 });
 
-/// Supabase implementation of the two transactional Encounter command RPCs.
+/// Supabase implementation of two Encounter commands and one guarded read.
 ///
 /// It deliberately exposes no table mutation API: all ownership, locking,
 /// idempotency, and commits remain in the security-definer RPC boundary.
@@ -101,6 +102,58 @@ final class SupabaseEncounterRepository implements EncounterRepository {
     return aggregate;
   }
 
+  @override
+  Future<PendingEncounter?> readPendingEncounterForCell(
+    String cellId, {
+    required String traceId,
+  }) async {
+    const functionName = 'read_v3_pending_encounter_for_cell';
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.rpc_started', _category, data: {
+      'trace_id': traceId,
+      'operation': functionName,
+    });
+    try {
+      final response = await _rpcGateway(
+        functionName,
+        <String, Object?>{'p_cell_id': cellId},
+      );
+      if (response == null) {
+        _logEvent?.call('db.rpc_completed', _category, data: {
+          'trace_id': traceId,
+          'operation': functionName,
+          'row_count': 0,
+          'duration_ms': stopwatch.elapsedMilliseconds,
+        });
+        return null;
+      }
+      final pending = PendingEncounterDto.fromJson(
+        _pendingObject(response),
+      ).toDomain();
+      if (pending.cellId != cellId) {
+        throw StateError(
+            'Pending Encounter does not belong to the requested cell.');
+      }
+      _logEvent?.call('db.rpc_completed', _category, data: {
+        'trace_id': traceId,
+        'operation': functionName,
+        'row_count': 1,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return pending;
+    } catch (error) {
+      final failure = _safeFailure(error);
+      _logEvent?.call('db.rpc_failed', _category, data: {
+        'trace_id': traceId,
+        'operation': functionName,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': failure.runtimeType.toString(),
+        'error_message': failure.diagnosticCode,
+      });
+      throw failure;
+    }
+  }
+
   Future<EncounterRuntimeAggregate> _callAggregate(
     String functionName,
     Map<String, Object?> parameters, {
@@ -168,6 +221,20 @@ final class SupabaseEncounterRepository implements EncounterRepository {
         break;
     }
   }
+}
+
+Map<String, Object?> _pendingObject(Object? value) {
+  if (value is! Map) {
+    throw StateError('Pending Encounter RPC must return an object.');
+  }
+  final result = <String, Object?>{};
+  for (final entry in value.entries) {
+    if (entry.key is! String) {
+      throw StateError('Pending Encounter RPC object keys must be strings.');
+    }
+    result[entry.key] = entry.value;
+  }
+  return result;
 }
 
 EncounterRepositoryFailure _safeFailure(Object error) => switch (error) {

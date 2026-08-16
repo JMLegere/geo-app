@@ -18,8 +18,19 @@ final class CurrentEncounterVersionBindingFailure implements Exception {
   String toString() => '$runtimeType($diagnosticCode)';
 }
 
+/// Exact published Encounter Version and its immutable resolution policy.
+final class CurrentEncounterVersionBinding {
+  const CurrentEncounterVersionBinding({
+    required this.version,
+    required this.isAutomatic,
+  });
+
+  final ExactVersionRef<EncounterContent> version;
+  final bool isAutomatic;
+}
+
 abstract interface class CurrentEncounterVersionBindingRepository {
-  Future<ExactVersionRef<EncounterContent>?>
+  Future<CurrentEncounterVersionBinding?>
       currentPublishedVersionForNewCellVisit(
     StableContentId<EncounterContent> definitionId, {
     String? traceId,

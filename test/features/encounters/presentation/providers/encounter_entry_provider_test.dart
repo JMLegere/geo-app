@@ -14,6 +14,7 @@ import 'package:earth_nova/features/encounters/domain/entities/encounter_entitie
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/domain/use_cases/resolve_cell_visit_encounter_selector.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
 import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
@@ -110,6 +111,7 @@ EncounterSelectedCellVisitPlan _selectionPlan(CellVisit visit) =>
       selectorCandidateId: SelectorCandidateId('candidate:warbler'),
       definitionId: _definitionId,
       definitionVersion: _definitionVersion,
+      isAutomatic: true,
     );
 
 NoEncounterCellVisitPlan _nonePlan(CellVisit visit) => NoEncounterCellVisitPlan(
@@ -206,12 +208,15 @@ final class _RecordingEncounterRepository implements EncounterRepository {
   _RecordingEncounterRepository({
     required this.selectionResult,
     required this.outcomeResult,
+    this.pendingEncounter,
   });
 
   final EncounterRuntimeAggregate selectionResult;
   final EncounterRuntimeAggregate outcomeResult;
+  PendingEncounter? pendingEncounter;
   final List<CellVisitEncounterSelectionPlan> committedPlans = [];
   final List<EncounterId> resolvedEncounterIds = [];
+  final List<String> pendingReadCellIds = [];
   final List<String> traceIds = [];
 
   @override
@@ -225,6 +230,16 @@ final class _RecordingEncounterRepository implements EncounterRepository {
   }
 
   @override
+  Future<PendingEncounter?> readPendingEncounterForCell(
+    String cellId, {
+    required String traceId,
+  }) async {
+    pendingReadCellIds.add(cellId);
+    traceIds.add(traceId);
+    return pendingEncounter;
+  }
+
+  @override
   Future<EncounterRuntimeAggregate> resolveEncounterOutcomes(
     EncounterId encounterId, {
     required String traceId,
@@ -233,6 +248,39 @@ final class _RecordingEncounterRepository implements EncounterRepository {
     resolvedEncounterIds.add(encounterId);
     traceIds.add(traceId);
     return outcomeResult;
+  }
+}
+
+PendingEncounter _pendingEncounter({String cellId = 'cell-1'}) =>
+    PendingEncounter(
+      cellId: cellId,
+      encounter: _encounter(EncounterResolutionStatus.pending),
+      definitionDisplayName: 'Amberwing Warbler',
+      options: [
+        PendingEncounterOption(
+          id: EncounterOptionId('option-1'),
+          ordinal: 0,
+          displayName: 'Observe quietly',
+        ),
+      ],
+    );
+
+final class _RecordingPendingEncounterNotifier
+    extends PendingEncounterNotifier {
+  final List<PendingEncounter> shown = [];
+  int refreshes = 0;
+
+  @override
+  PendingEncounterState build() => const PendingEncounterNone();
+
+  @override
+  void show(PendingEncounter pendingEncounter) {
+    shown.add(pendingEncounter);
+  }
+
+  @override
+  Future<void> refresh() async {
+    refreshes += 1;
   }
 }
 
@@ -312,13 +360,19 @@ final class _FixedCurrentEncounterVersionBindingRepository
   final List<StableContentId<EncounterContent>> requestedDefinitionIds = [];
 
   @override
-  Future<ExactVersionRef<EncounterContent>?>
+  Future<CurrentEncounterVersionBinding?>
       currentPublishedVersionForNewCellVisit(
     StableContentId<EncounterContent> definitionId, {
     String? traceId,
   }) async {
     requestedDefinitionIds.add(definitionId);
-    return binding;
+    final exactVersion = binding;
+    return exactVersion == null
+        ? null
+        : CurrentEncounterVersionBinding(
+            version: exactVersion,
+            isAutomatic: true,
+          );
   }
 }
 
@@ -792,7 +846,10 @@ void main() {
             .where((entry) => entry.event == 'discovery.reward_presented'),
         hasLength(1),
       );
-      expect(repository.traceIds, [rootTrace.traceId, rootTrace.traceId]);
+      expect(
+        repository.traceIds,
+        [rootTrace.traceId, rootTrace.traceId, rootTrace.traceId],
+      );
       expect(
         obs.events
             .where((entry) => entry.category == 'encounter')
@@ -851,6 +908,118 @@ void main() {
       expect(repository.committedPlans, hasLength(1));
       expect(repository.resolvedEncounterIds, isEmpty);
       expect(presented, 0);
+    });
+
+    test(
+        'authoritative re-entry shows the existing pending encounter without planning, committing, or resolving',
+        () async {
+      final visit = _visit();
+      final plan = _selectionPlan(visit);
+      final pending = _pendingEncounter();
+      final repository = _RecordingEncounterRepository(
+        selectionResult: _aggregate(visit: visit, selection: plan),
+        outcomeResult: _aggregate(visit: visit, selection: plan),
+        pendingEncounter: pending,
+      );
+      final pendingNotifier = _RecordingPendingEncounterNotifier();
+      var plannerCalls = 0;
+      final container = ProviderContainer(
+        overrides: [
+          encounterEngineModeResolutionProvider.overrideWithValue(
+            EncounterEngineModeResolution.parse(
+              requestedValue: 'v3Authoritative',
+              clientVerifiedWriteAuthorized: true,
+            ),
+          ),
+          legacyEncounterComputationProvider.overrideWithValue(
+            (_) async => fail('existing pending encounter must short-circuit'),
+          ),
+          versionedEncounterPlannerProvider.overrideWithValue((_) async {
+            plannerCalls += 1;
+            throw StateError('existing pending encounter must not plan');
+          }),
+          encounterCommandRepositoryProvider.overrideWithValue(repository),
+          pendingEncounterProvider.overrideWith(() => pendingNotifier),
+          encounterDailySeedProvider.overrideWithValue('seed-1'),
+          encounterObservabilityProvider.overrideWithValue(
+            _RecordingObservabilityService(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(persistedCellVisitEncounterHandlerProvider)(
+        visit,
+        _border(),
+      );
+
+      expect(repository.pendingReadCellIds, ['cell-1']);
+      expect(plannerCalls, 0);
+      expect(repository.committedPlans, isEmpty);
+      expect(repository.resolvedEncounterIds, isEmpty);
+      expect(pendingNotifier.shown, [same(pending)]);
+      expect(pendingNotifier.refreshes, 0);
+    });
+
+    test(
+        'a newly committed manual encounter refreshes pending state without resolving or presenting rewards',
+        () async {
+      final visit = _visit();
+      final plan = _selectionPlan(visit);
+      final repository = _RecordingEncounterRepository(
+        selectionResult: _aggregate(
+          visit: visit,
+          selection: plan,
+          encounter: _encounter(EncounterResolutionStatus.pending),
+        ),
+        outcomeResult: _aggregate(visit: visit, selection: plan),
+      );
+      final pendingNotifier = _RecordingPendingEncounterNotifier();
+      final container = ProviderContainer(
+        overrides: [
+          encounterEngineModeResolutionProvider.overrideWithValue(
+            EncounterEngineModeResolution.parse(
+              requestedValue: 'v3Authoritative',
+              clientVerifiedWriteAuthorized: true,
+            ),
+          ),
+          legacyEncounterComputationProvider.overrideWithValue(
+            (_) async => _legacySelection(),
+          ),
+          legacyEncounterWriterProvider.overrideWithValue(
+            (_, __) async =>
+                fail('authoritative mode must not use legacy writer'),
+          ),
+          versionedEncounterPlannerProvider.overrideWithValue(
+            (_) async => VersionedEncounterPlan.selected(
+              selection: plan,
+              isAutomatic: false,
+            ),
+          ),
+          encounterCommandRepositoryProvider.overrideWithValue(repository),
+          committedRewardsPresenterProvider.overrideWithValue(
+            (_, __, ___) async =>
+                fail('manual pending encounter must not present rewards'),
+          ),
+          pendingEncounterProvider.overrideWith(() => pendingNotifier),
+          encounterDailySeedProvider.overrideWithValue('seed-1'),
+          encounterObservabilityProvider.overrideWithValue(
+            _RecordingObservabilityService(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(persistedCellVisitEncounterHandlerProvider)(
+        visit,
+        _border(),
+      );
+
+      expect(repository.pendingReadCellIds, ['cell-1']);
+      expect(repository.committedPlans, hasLength(1));
+      expect(repository.resolvedEncounterIds, isEmpty);
+      expect(pendingNotifier.shown, isEmpty);
+      expect(pendingNotifier.refreshes, 1);
     });
 
     test(

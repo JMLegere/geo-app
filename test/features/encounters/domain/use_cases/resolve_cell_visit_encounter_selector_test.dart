@@ -24,13 +24,13 @@ final class _FakeCurrentEncounterVersionBindingRepository
     implements CurrentEncounterVersionBindingRepository {
   _FakeCurrentEncounterVersionBindingRepository(this.current);
 
-  final Map<StableContentId<EncounterContent>,
-      ExactVersionRef<EncounterContent>> current;
+  final Map<StableContentId<EncounterContent>, CurrentEncounterVersionBinding>
+      current;
   final List<StableContentId<EncounterContent>> requestedStableIds = [];
   final List<String?> traceIds = [];
 
   @override
-  Future<ExactVersionRef<EncounterContent>?>
+  Future<CurrentEncounterVersionBinding?>
       currentPublishedVersionForNewCellVisit(
     StableContentId<EncounterContent> definitionId, {
     String? traceId,
@@ -41,15 +41,19 @@ final class _FakeCurrentEncounterVersionBindingRepository
   }
 }
 
-ExactVersionRef<EncounterContent> _binding(
+CurrentEncounterVersionBinding _binding(
   StableContentId<EncounterContent> stableId, {
   int revision = 4,
+  bool isAutomatic = false,
 }) =>
-    ExactVersionRef<EncounterContent>(
-      stableId: stableId,
-      versionId:
-          ContentVersionId<EncounterContent>('version:${stableId.value}'),
-      revision: revision,
+    CurrentEncounterVersionBinding(
+      version: ExactVersionRef<EncounterContent>(
+        stableId: stableId,
+        versionId:
+            ContentVersionId<EncounterContent>('version:${stableId.value}'),
+        revision: revision,
+      ),
+      isAutomatic: isAutomatic,
     );
 
 String _postgresMd5Uuid(String input) {
@@ -97,7 +101,7 @@ void main() {
       final selectedId =
           StableContentId<EncounterContent>('encounter:selected');
       final repository = _FakeCurrentEncounterVersionBindingRepository({
-        selectedId: _binding(selectedId, revision: 7),
+        selectedId: _binding(selectedId, revision: 7, isAutomatic: true),
       });
       final useCase = _useCase<bool>(repository);
       final selector = Selector<StableContentId<EncounterContent>, bool>(
@@ -129,6 +133,7 @@ void main() {
       expect(selected.definitionVersion.versionId.value,
           'version:encounter:selected');
       expect(selected.definitionVersion.revision, 7);
+      expect(selected.isAutomatic, isTrue);
       expect(repository.requestedStableIds, [selectedId]);
       expect(repository.traceIds.single, matches(RegExp(r'^[0-9a-f]{32}$')));
     });
@@ -244,8 +249,8 @@ void main() {
         selector.candidates.last.id,
         _postgresMd5Uuid('earthnova:legacy-encounter-selector-candidate:none'),
       );
-      final bindings = <StableContentId<EncounterContent>,
-          ExactVersionRef<EncounterContent>>{
+      final bindings =
+          <StableContentId<EncounterContent>, CurrentEncounterVersionBinding>{
         for (final definition in definitions) definition: _binding(definition),
       };
       final repository =

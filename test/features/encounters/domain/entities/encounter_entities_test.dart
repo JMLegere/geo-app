@@ -50,6 +50,15 @@ GenerateItemOutcome _generateItemOutcome({
       baseItemId: _baseItemId,
     );
 
+EncounterOccurrence _pendingOccurrence() => EncounterOccurrence(
+      id: EncounterId('encounter-pending'),
+      cellVisitId: CellVisitId('visit-pending'),
+      cellVisitResolutionId: CellVisitResolutionId('resolution-pending'),
+      definitionVersion: _encounterVersion,
+      status: EncounterResolutionStatus.pending,
+      createdAt: DateTime.utc(2026, 7, 20, 11),
+    );
+
 void main() {
   group('Encounter Definition and Version', () {
     test('keeps a stable Definition identity distinct from exact Versions', () {
@@ -491,6 +500,109 @@ void main() {
 
       expect(commit.item.isUnidentified, isTrue);
       expect(commit.resolvedBaseItemVersion, isNull);
+    });
+  });
+  group('Pending Encounter', () {
+    test(
+        'retains trusted cell, pending occurrence, and ordered visible options',
+        () {
+      final source = <PendingEncounterOption>[
+        PendingEncounterOption(
+          id: EncounterOptionId('observe'),
+          ordinal: 0,
+          displayName: 'Observe the fox',
+        ),
+        PendingEncounterOption(
+          id: EncounterOptionId('leave'),
+          ordinal: 1,
+          displayName: 'Leave quietly',
+        ),
+      ];
+      final pending = PendingEncounter(
+        cellId: 'cell:red-fox',
+        encounter: _pendingOccurrence(),
+        definitionDisplayName: 'Red fox',
+        options: source,
+      );
+      source.clear();
+
+      expect(pending.cellId, 'cell:red-fox');
+      expect(pending.encounter.status, EncounterResolutionStatus.pending);
+      expect(pending.definitionDisplayName, 'Red fox');
+      expect(pending.options.map((option) => option.ordinal), [0, 1]);
+      expect(
+        () => pending.options.add(
+          PendingEncounterOption(
+            id: EncounterOptionId('other'),
+            ordinal: 2,
+            displayName: 'Other',
+          ),
+        ),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('rejects non-pending, blank, empty, and unordered pending data', () {
+      final resolved = EncounterOccurrence(
+        id: EncounterId('encounter-resolved'),
+        cellVisitId: CellVisitId('visit-pending'),
+        cellVisitResolutionId: CellVisitResolutionId('resolution-pending'),
+        definitionVersion: _encounterVersion,
+        status: EncounterResolutionStatus.resolved,
+        createdAt: DateTime.utc(2026, 7, 20, 11),
+        selectedOptionId: EncounterOptionId('observe'),
+        resolvedAt: DateTime.utc(2026, 7, 20, 12),
+      );
+      PendingEncounterOption option(int ordinal) => PendingEncounterOption(
+            id: EncounterOptionId('option-$ordinal'),
+            ordinal: ordinal,
+            displayName: 'Option $ordinal',
+          );
+
+      expect(
+        () => PendingEncounter(
+          cellId: 'cell:red-fox',
+          encounter: resolved,
+          definitionDisplayName: 'Red fox',
+          options: [option(0)],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => PendingEncounter(
+          cellId: 'cell:red-fox',
+          encounter: _pendingOccurrence(),
+          definitionDisplayName: ' ',
+          options: [option(0)],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => PendingEncounter(
+          cellId: 'cell:red-fox',
+          encounter: _pendingOccurrence(),
+          definitionDisplayName: 'Red fox',
+          options: const [],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => PendingEncounter(
+          cellId: 'cell:red-fox',
+          encounter: _pendingOccurrence(),
+          definitionDisplayName: 'Red fox',
+          options: [option(1), option(0)],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => PendingEncounterOption(
+          id: EncounterOptionId('bad'),
+          ordinal: 0,
+          displayName: ' ',
+        ),
+        throwsArgumentError,
+      );
     });
   });
 }

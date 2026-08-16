@@ -53,6 +53,30 @@ void main() {
     });
   });
 
+  group('pending encounter composition', () {
+    test('source composes PendingEncounterLayer only at the cell level', () {
+      final source = File(
+        'lib/features/map/presentation/screens/map_root_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        source,
+        contains(
+          "import 'package:earth_nova/features/encounters/presentation/widgets/"
+          "pending_encounter_layer.dart';",
+        ),
+      );
+      expect(
+        RegExp(
+          r'if \(level == MapLevel\.cell\)\s+'
+          r'const Positioned\.fill\(child: PendingEncounterLayer\(\)\),',
+        ).allMatches(source),
+        hasLength(1),
+        reason: 'The pending encounter is feature-local to the cell map level.',
+      );
+    });
+  });
+
   group('hierarchyScopeIdForLevel', () {
     final mapState = MapStateReady(
       cells: [
