@@ -431,6 +431,82 @@ final class EncounterOccurrence {
   final EncounterFailure? failure;
 }
 
+/// Read-only player-facing projection of a pending Encounter at one cell.
+final class PendingEncounter {
+  factory PendingEncounter({
+    required String cellId,
+    required EncounterOccurrence encounter,
+    required String definitionDisplayName,
+    required Iterable<PendingEncounterOption> options,
+  }) {
+    final orderedOptions = List<PendingEncounterOption>.unmodifiable(options);
+    if (encounter.status != EncounterResolutionStatus.pending) {
+      throw ArgumentError.value(
+        encounter,
+        'encounter',
+        'must be pending',
+      );
+    }
+    if (orderedOptions.isEmpty) {
+      throw ArgumentError.value(options, 'options', 'must not be empty');
+    }
+    for (var index = 1; index < orderedOptions.length; index++) {
+      if (orderedOptions[index - 1].ordinal >= orderedOptions[index].ordinal) {
+        throw ArgumentError.value(
+          options,
+          'options',
+          'must be ordered by increasing ordinal',
+        );
+      }
+    }
+    return PendingEncounter._(
+      cellId: _nonBlank(cellId, 'cellId'),
+      encounter: encounter,
+      definitionDisplayName:
+          _nonBlank(definitionDisplayName, 'definitionDisplayName'),
+      options: orderedOptions,
+    );
+  }
+
+  const PendingEncounter._({
+    required this.cellId,
+    required this.encounter,
+    required this.definitionDisplayName,
+    required this.options,
+  });
+
+  final String cellId;
+  final EncounterOccurrence encounter;
+  final String definitionDisplayName;
+  final List<PendingEncounterOption> options;
+}
+
+/// One ordered visible Option in a [PendingEncounter] projection.
+final class PendingEncounterOption {
+  factory PendingEncounterOption({
+    required EncounterOptionId id,
+    required int ordinal,
+    required String displayName,
+  }) {
+    _validateOrdinal(ordinal, 'ordinal');
+    return PendingEncounterOption._(
+      id: id,
+      ordinal: ordinal,
+      displayName: _nonBlank(displayName, 'displayName'),
+    );
+  }
+
+  const PendingEncounterOption._({
+    required this.id,
+    required this.ordinal,
+    required this.displayName,
+  });
+
+  final EncounterOptionId id;
+  final int ordinal;
+  final String displayName;
+}
+
 /// Immutable durable evidence of one committed ordered Encounter Outcome.
 sealed class EncounterOutcomeResult {
   const EncounterOutcomeResult({

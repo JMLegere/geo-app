@@ -56,6 +56,15 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Documented local composition; keep aligned with AppTheme until login form components exist in the design library.',
   ),
   DesignSurfaceDefinition(
+    path:
+        'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
+    category: DesignSurfaceCategory.featureWidget,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'Feature-local read-only pending Encounter Map overlay.',
+    designSystemNotes:
+        'Consumes public EarthNova design tokens/components; noninteractive semantic presentation; resolution intentionally deferred.',
+  ),
+  DesignSurfaceDefinition(
     path: 'lib/features/pack/presentation/screens/pack_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,

@@ -5,11 +5,10 @@ import 'package:earth_nova/core/domain/entities/venue_id.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/use_cases/resolve_cell_visit_encounter_selector.dart';
 
-/// Command boundary for the two transactional Encounter RPCs.
+/// Runtime boundary for Encounter command RPCs and the pending-read projection.
 ///
-/// The client never writes Encounter runtime tables directly. Both commands
-/// return the complete committed runtime aggregate so callers can use an exact
-/// immutable snapshot rather than reconstructing state from mutable content.
+/// The client never writes Encounter runtime tables directly. Commands return
+/// complete committed runtime aggregates; the read exposes only pending state.
 abstract interface class EncounterRepository {
   Future<EncounterRuntimeAggregate> commitCellVisitSelection(
     CellVisitEncounterSelectionPlan plan, {
@@ -20,6 +19,12 @@ abstract interface class EncounterRepository {
     EncounterId encounterId, {
     required String traceId,
     EncounterOptionId? selectedOptionId,
+  });
+
+  /// Reads the sole visible pending Encounter for a trusted cell, if any.
+  Future<PendingEncounter?> readPendingEncounterForCell(
+    String cellId, {
+    required String traceId,
   });
 }
 

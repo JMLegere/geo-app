@@ -23,7 +23,7 @@ typedef RepositoryLogEvent = void Function(
 const currentEncounterVersionBindingSelect = 'id,current_published_version_id,'
     'current_version:v3_encounter_definition_versions!'
     'v3_encounter_definitions_current_published_version_owner_fk('
-    'id,encounter_definition_id,revision,publication_status)';
+    'id,encounter_definition_id,revision,publication_status,is_automatic)';
 
 /// Supabase adapter for the immutable Version binding required by Cell Visit
 /// planning. This is intentionally separate from the full authored-content
@@ -54,13 +54,13 @@ final class SupabaseCurrentEncounterVersionBindingRepository
       );
 
   @override
-  Future<ExactVersionRef<EncounterContent>?>
+  Future<CurrentEncounterVersionBinding?>
       currentPublishedVersionForNewCellVisit(
     StableContentId<EncounterContent> definitionId, {
     String? traceId,
   }) async {
     try {
-      return await _trace<ExactVersionRef<EncounterContent>?>(
+      return await _trace<CurrentEncounterVersionBinding?>(
         traceId: traceId,
         operation: 'fetch_current_encounter_version_binding',
         rowCount: (binding) => binding == null ? 0 : 1,
@@ -108,7 +108,13 @@ final class SupabaseCurrentEncounterVersionBindingRepository
               'Current Encounter Definition Version must be published.',
             );
           }
-          return binding;
+          return CurrentEncounterVersionBinding(
+            version: binding,
+            isAutomatic: _requiredBool(
+              version['is_automatic'],
+              'is_automatic',
+            ),
+          );
         },
       );
     } catch (error) {
@@ -202,6 +208,11 @@ int _requiredRevision(Object? value) {
   if (value is! int || value <= 0) {
     throw StateError('revision must be a positive integer.');
   }
+  return value;
+}
+
+bool _requiredBool(Object? value, String field) {
+  if (value is! bool) throw StateError('$field must be a boolean.');
   return value;
 }
 

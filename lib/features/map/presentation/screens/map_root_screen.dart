@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/features/encounters/presentation/widgets/pending_encounter_layer.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/map_level.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_level_gesture_bridge.dart';
@@ -118,6 +119,8 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
           children: [
             if (level == MapLevel.cell)
               Positioned.fill(child: const MapScreen()),
+            if (level == MapLevel.cell)
+              const Positioned.fill(child: PendingEncounterLayer()),
             // Hierarchy screens are only mounted when active.
             if (level != MapLevel.cell)
               Positioned.fill(

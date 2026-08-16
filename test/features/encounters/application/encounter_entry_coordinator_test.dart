@@ -67,6 +67,7 @@ EncounterSelectedCellVisitPlan _selectionPlan(CellVisit visit) =>
       selectorCandidateId: SelectorCandidateId('candidate:warbler'),
       definitionId: _definitionId,
       definitionVersion: _definitionVersion,
+      isAutomatic: true,
     );
 
 NoEncounterCellVisitPlan _nonePlan(CellVisit visit) => NoEncounterCellVisitPlan(
@@ -216,6 +217,13 @@ final class _FakeRepository implements EncounterRepository {
     outcomeTraceIds.add(traceId);
     return outcomeResult;
   }
+
+  @override
+  Future<PendingEncounter?> readPendingEncounterForCell(
+    String cellId, {
+    required String traceId,
+  }) async =>
+      null;
 }
 
 void main() {
