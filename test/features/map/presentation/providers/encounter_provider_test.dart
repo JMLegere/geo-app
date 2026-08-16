@@ -1,9 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/domain/content/base_item_content.dart';
+import 'package:earth_nova/core/domain/content/content_identity.dart';
+import 'package:earth_nova/core/domain/content/encounter_content.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/features/identification/domain/entities/discovery_item_draft.dart';
+import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
+import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/identification/domain/repositories/item_repository.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
@@ -93,6 +98,69 @@ class RecordingItemRepository implements ItemRepository {
     return identified;
   }
 }
+
+final _manualPendingDefinitionVersion = ExactVersionRef<EncounterContent>(
+  stableId: StableContentId<EncounterContent>('encounter:manual-reward'),
+  versionId: ContentVersionId<EncounterContent>(
+    'version:manual-reward:1',
+  ),
+  revision: 1,
+);
+
+final _manualRewardItemVersion = ExactVersionRef<BaseItemContent>(
+  stableId: StableContentId<BaseItemContent>('item:manual-reward'),
+  versionId: ContentVersionId<BaseItemContent>(
+    'version:manual-reward:1',
+  ),
+  revision: 1,
+);
+
+PendingEncounter _pendingManualReward({
+  required String encounterId,
+  required String cellId,
+}) =>
+    PendingEncounter(
+      cellId: cellId,
+      encounter: EncounterOccurrence(
+        id: EncounterId(encounterId),
+        cellVisitId: CellVisitId('visit:$encounterId'),
+        cellVisitResolutionId: CellVisitResolutionId('resolution:$encounterId'),
+        definitionVersion: _manualPendingDefinitionVersion,
+        status: EncounterResolutionStatus.pending,
+        createdAt: DateTime.utc(2026, 8, 16),
+      ),
+      definitionDisplayName: 'Amberwing Warbler',
+      options: [
+        PendingEncounterOption(
+          id: EncounterOptionId('option:$encounterId'),
+          ordinal: 0,
+          displayName: 'Observe',
+        ),
+      ],
+    );
+
+GeneratedItemCommit _manualRewardCommit({
+  required String encounterId,
+  required String itemId,
+}) =>
+    GeneratedItemCommit(
+      outcomeResult: GenerateItemOutcomeResult(
+        id: EncounterOutcomeResultId('result:$encounterId'),
+        encounterId: EncounterId(encounterId),
+        outcomeId: EncounterOutcomeId('outcome:$encounterId'),
+        ordinal: 0,
+        createdAt: DateTime.utc(2026, 8, 16, 0, 1),
+        resolvedBaseItemVersion: _manualRewardItemVersion,
+      ),
+      item: Item(
+        id: itemId,
+        definitionId: _manualRewardItemVersion.stableId.value,
+        displayName: 'Amberwing Warbler',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime.utc(2026, 8, 16, 0, 1),
+        status: ItemStatus.active,
+      ),
+    );
 
 void main() {
   group('EncounterProvider', () {
@@ -340,6 +408,120 @@ void main() {
       expect(state.flyingReward, isNull);
       expect(state.queuedRewards, isEmpty);
       expect(testObs.eventNames, contains('discovery.reward_flight_completed'));
+    });
+
+    test(
+        'manual pending committed reward registers its exact Item and uses the existing reward flight',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+      final pending = _pendingManualReward(
+        encounterId: 'encounter:manual-1',
+        cellId: 'cell-manual-1',
+      );
+      final generatedItem = _manualRewardCommit(
+        encounterId: pending.encounter.id.value,
+        itemId: 'item-manual-1',
+      );
+
+      await notifier.presentCommittedPendingEncounterReward(
+        pendingEncounter: pending,
+        generatedItem: generatedItem,
+      );
+
+      var state = container.read(encounterProvider);
+      expect(itemRepo.acquiredDrafts, isEmpty);
+      expect(container.read(itemsProvider).items.map((item) => item.id),
+          [generatedItem.item.id]);
+      expect(state.currentEncounter?.cellId, pending.cellId);
+      expect(state.currentEncounter?.acquiredItem?.id, generatedItem.item.id);
+      expect(state.flyingReward, isNull);
+      expect(state.queuedRewards, isEmpty);
+
+      notifier.continueDiscoveryReward();
+
+      state = container.read(encounterProvider);
+      expect(state.currentEncounter, isNull);
+      expect(state.flyingReward?.acquiredItem?.id, generatedItem.item.id);
+      expect(state.packImpactCount, 0);
+      expect(itemRepo.acquiredDrafts, isEmpty);
+    });
+
+    test(
+        'manual pending committed rewards queue and dedupe by Encounter identity',
+        () async {
+      final notifier = container.read(encounterProvider.notifier);
+      final firstPending = _pendingManualReward(
+        encounterId: 'encounter:manual-first',
+        cellId: 'cell-manual-first',
+      );
+      final firstItem = _manualRewardCommit(
+        encounterId: firstPending.encounter.id.value,
+        itemId: 'item-manual-first',
+      );
+      final secondPending = _pendingManualReward(
+        encounterId: 'encounter:manual-second',
+        cellId: 'cell-manual-second',
+      );
+      final secondItem = _manualRewardCommit(
+        encounterId: secondPending.encounter.id.value,
+        itemId: 'item-manual-second',
+      );
+
+      await notifier.presentCommittedPendingEncounterReward(
+        pendingEncounter: firstPending,
+        generatedItem: firstItem,
+      );
+      await notifier.presentCommittedPendingEncounterReward(
+        pendingEncounter: secondPending,
+        generatedItem: secondItem,
+      );
+
+      var state = container.read(encounterProvider);
+      expect(itemRepo.acquiredDrafts, isEmpty);
+      expect(
+        container.read(itemsProvider).items.map((item) => item.id),
+        unorderedEquals([firstItem.item.id, secondItem.item.id]),
+      );
+      expect(state.currentEncounter?.acquiredItem?.id, firstItem.item.id);
+      expect(state.queuedRewards.map((reward) => reward.acquiredItem?.id),
+          [secondItem.item.id]);
+
+      final queuedEvents = testObs.events
+          .where((event) => event.event == 'discovery.reward_queued')
+          .length;
+      await notifier.presentCommittedPendingEncounterReward(
+        pendingEncounter: _pendingManualReward(
+          encounterId: secondPending.encounter.id.value,
+          cellId: 'replayed-cell',
+        ),
+        generatedItem: secondItem,
+      );
+
+      state = container.read(encounterProvider);
+      expect(container.read(itemsProvider).items, hasLength(2));
+      expect(state.queuedRewards, hasLength(1));
+      expect(state.packImpactCount, 0);
+      expect(
+        testObs.events
+            .where((event) => event.event == 'discovery.reward_queued')
+            .length,
+        queuedEvents,
+      );
+
+      notifier.continueDiscoveryReward();
+      notifier.completeRewardFlight();
+      await notifier.presentCommittedPendingEncounterReward(
+        pendingEncounter: secondPending,
+        generatedItem: secondItem,
+      );
+
+      state = container.read(encounterProvider);
+      expect(state.flyingReward, isNull);
+      expect(state.currentEncounter?.acquiredItem?.id, secondItem.item.id);
+      expect(state.queuedRewards, isEmpty);
+      expect(state.packImpactCount, 1);
+      expect(container.read(itemsProvider).items, hasLength(2));
+      expect(itemRepo.acquiredDrafts, isEmpty);
     });
 
     test('same map-cell entry id is acquired exactly once', () async {

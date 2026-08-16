@@ -60,9 +60,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Feature-local read-only pending Encounter Map overlay.',
+    purpose: 'Feature-local pending Encounter resolution Map overlay.',
     designSystemNotes:
-        'Consumes public EarthNova design tokens/components; noninteractive semantic presentation; resolution intentionally deferred.',
+        'Uses public EarthNova design components for a semantic resolve/retry action while preserving Map gestures outside the card.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/pack/presentation/screens/pack_screen.dart',

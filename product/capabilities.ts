@@ -174,6 +174,7 @@ export const productCapabilities = {
       "features/exploration-discovery-identification.feature",
     ],
     requiredActions: [
+      playerActions.resolvePresentEncounter,
       playerActions.continueDiscoveryReward,
       playerActions.openPack,
       playerActions.inspectPackFind,

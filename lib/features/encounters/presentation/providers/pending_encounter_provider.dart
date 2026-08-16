@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
+import 'package:earth_nova/features/encounters/domain/use_cases/resolve_pending_encounter.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_eligibility_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
@@ -27,8 +29,25 @@ final class PendingEncounterReady extends PendingEncounterState {
   final PendingEncounter pendingEncounter;
 }
 
+final class PendingEncounterResolving extends PendingEncounterState {
+  const PendingEncounterResolving(this.pendingEncounter, this.optionId);
+
+  final PendingEncounter pendingEncounter;
+  final EncounterOptionId optionId;
+}
+
+final class PendingEncounterResolved extends PendingEncounterState {
+  const PendingEncounterResolved(this.pendingEncounter, this.aggregate);
+
+  final PendingEncounter pendingEncounter;
+  final EncounterRuntimeAggregate aggregate;
+}
+
 final class PendingEncounterFailure extends PendingEncounterState {
-  const PendingEncounterFailure();
+  const PendingEncounterFailure({this.pendingEncounter, this.optionId});
+
+  final PendingEncounter? pendingEncounter;
+  final EncounterOptionId? optionId;
 }
 
 final pendingEncounterProvider =
@@ -36,11 +55,22 @@ final pendingEncounterProvider =
   PendingEncounterNotifier.new,
 );
 
+final class _PendingResolution {
+  const _PendingResolution({required this.input, required this.traceContext});
+
+  final ResolvePendingEncounterInput input;
+  final TraceContext traceContext;
+}
+
 class PendingEncounterNotifier
     extends ObservableNotifier<PendingEncounterState> {
   late EncounterRepository _repository;
+  late ResolvePendingEncounter _resolvePendingEncounter;
+  late Future<void> Function(PendingEncounter, GeneratedItemCommit)
+      _presentCommittedReward;
   String? _trustedCellId;
   String? _loadedCellId;
+  _PendingResolution? _retryResolution;
   int _requestGeneration = 0;
 
   @override
@@ -51,27 +81,43 @@ class PendingEncounterNotifier
 
   @override
   PendingEncounterState build() {
-    _repository = ref.watch(encounterCommandRepositoryProvider);
-    final currentCellId = ref.watch(
-      explorationProvider.select((state) => state.currentCellId),
+    _repository = ref.read(encounterCommandRepositoryProvider);
+    _resolvePendingEncounter = ResolvePendingEncounter(_repository, obs);
+    _presentCommittedReward = ref.read(
+      committedPendingEncounterRewardPresenterProvider,
     );
-    final canRecordVisits = ref.watch(
-      explorationEligibilityProvider.select(
-        (eligibility) => eligibility.canRecordVisits,
-      ),
+    ref.listen<ExplorationStateData>(
+      explorationProvider,
+      (_, __) => _syncTrustedCell(),
     );
-    final trustedCellId = canRecordVisits ? currentCellId : null;
-
-    if (trustedCellId != _trustedCellId) {
-      _trustedCellId = trustedCellId;
-      _loadedCellId = null;
-      _requestGeneration += 1;
-      if (trustedCellId != null) {
-        Future<void>.microtask(load);
-      }
-    }
+    ref.listen<ExplorationEligibility>(
+      explorationEligibilityProvider,
+      (_, __) => _syncTrustedCell(),
+    );
+    _syncTrustedCell();
 
     return const PendingEncounterNone();
+  }
+
+  void _syncTrustedCell() {
+    final currentCellId = ref.read(explorationProvider).currentCellId;
+    final canRecordVisits =
+        ref.read(explorationEligibilityProvider).canRecordVisits;
+    final trustedCellId = canRecordVisits ? currentCellId : null;
+    if (trustedCellId == _trustedCellId) return;
+
+    _trustedCellId = trustedCellId;
+    _loadedCellId = null;
+    _retryResolution = null;
+    _requestGeneration += 1;
+    transition(
+      const PendingEncounterNone(),
+      'encounter.pending.trust_changed',
+      data: {'cell_id': trustedCellId},
+    );
+    if (trustedCellId != null) {
+      Future<void>.microtask(load);
+    }
   }
 
   Future<void> load() async {
@@ -81,14 +127,54 @@ class PendingEncounterNotifier
   }
 
   Future<void> refresh() async {
+    final current = state;
+    if (current is PendingEncounterResolving ||
+        current is PendingEncounterResolved ||
+        (current is PendingEncounterFailure &&
+            current.pendingEncounter != null)) {
+      return;
+    }
     final cellId = _trustedCellId;
     if (cellId == null) return;
     await _read(cellId, operation: 'refresh');
   }
 
+  Future<void> resolve(EncounterOptionId optionId) async {
+    final current = state;
+    if (current is! PendingEncounterReady ||
+        current.pendingEncounter.cellId != _trustedCellId ||
+        !current.pendingEncounter.options
+            .any((option) => option.id == optionId)) {
+      return;
+    }
+    final command = _PendingResolution(
+      input: ResolvePendingEncounterInput(
+        pendingEncounter: current.pendingEncounter,
+        optionId: optionId,
+      ),
+      traceContext: TraceContext.start(),
+    );
+    _retryResolution = command;
+    await _resolve(command);
+  }
+
+  Future<void> retryResolution() async {
+    final command = _retryResolution;
+    final current = state;
+    if (command == null ||
+        current is! PendingEncounterFailure ||
+        !identical(current.pendingEncounter, command.input.pendingEncounter) ||
+        current.optionId != command.input.optionId ||
+        command.input.pendingEncounter.cellId != _trustedCellId) {
+      return;
+    }
+    await _resolve(command);
+  }
+
   void show(PendingEncounter pendingEncounter) {
     if (pendingEncounter.cellId != _trustedCellId) return;
     _requestGeneration += 1;
+    _retryResolution = null;
     _loadedCellId = pendingEncounter.cellId;
     transition(
       PendingEncounterReady(pendingEncounter),
@@ -97,8 +183,71 @@ class PendingEncounterNotifier
     );
   }
 
+  Future<void> _resolve(_PendingResolution command) async {
+    final pendingEncounter = command.input.pendingEncounter;
+    if (pendingEncounter.cellId != _trustedCellId ||
+        state is PendingEncounterResolving ||
+        state is PendingEncounterResolved) {
+      return;
+    }
+    final request = ++_requestGeneration;
+    transition(
+      PendingEncounterResolving(pendingEncounter, command.input.optionId),
+      'encounter.pending.resolve.started',
+      data: {
+        'cell_id': pendingEncounter.cellId,
+        'encounter_id': pendingEncounter.encounter.id.value,
+        'option_id': command.input.optionId.value,
+      },
+    );
+    try {
+      final aggregate = await _resolvePendingEncounter(
+        command.input,
+        parent: command.traceContext,
+      );
+      if (!_isCurrentResolution(request, pendingEncounter)) return;
+      await _presentCommittedReward(
+        pendingEncounter,
+        aggregate.generatedItemCommits.single,
+      );
+      if (!_isCurrentResolution(request, pendingEncounter)) return;
+      _retryResolution = null;
+      transition(
+        PendingEncounterResolved(pendingEncounter, aggregate),
+        'encounter.pending.resolve.completed',
+        data: {
+          'cell_id': pendingEncounter.cellId,
+          'encounter_id': pendingEncounter.encounter.id.value,
+          'option_id': command.input.optionId.value,
+        },
+      );
+    } catch (error) {
+      if (!_isCurrentResolution(request, pendingEncounter)) return;
+      transition(
+        PendingEncounterFailure(
+          pendingEncounter: pendingEncounter,
+          optionId: command.input.optionId,
+        ),
+        'encounter.pending.resolve.failed',
+        data: {
+          'cell_id': pendingEncounter.cellId,
+          'encounter_id': pendingEncounter.encounter.id.value,
+          'option_id': command.input.optionId.value,
+          'error_type': error.runtimeType.toString(),
+        },
+      );
+    }
+  }
+
+  bool _isCurrentResolution(int request, PendingEncounter pendingEncounter) {
+    return request == _requestGeneration &&
+        pendingEncounter.cellId == _trustedCellId &&
+        state is PendingEncounterResolving;
+  }
+
   Future<void> _read(String cellId, {required String operation}) async {
     final request = ++_requestGeneration;
+    _retryResolution = null;
     _loadedCellId = cellId;
     transition(
       const PendingEncounterLoading(),

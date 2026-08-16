@@ -21,6 +21,13 @@ void main() {
       expect(PlayerActions.all, unorderedEquals(superBddActionIds));
     });
 
+    test('includes the present Encounter resolution action', () {
+      expect(
+        PlayerActions.resolvePresentEncounter,
+        'resolve-present-encounter',
+      );
+    });
+
     test('all action ids are known and kebab-case', () {
       final kebabCase = RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$');
 

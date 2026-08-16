@@ -161,6 +161,16 @@ final committedRewardsPresenterProvider =
   };
 });
 
+final committedPendingEncounterRewardPresenterProvider =
+    Provider<Future<void> Function(PendingEncounter, GeneratedItemCommit)>(
+  (ref) => (pendingEncounter, generatedItem) => ref
+      .read(encounterProvider.notifier)
+      .presentCommittedPendingEncounterReward(
+        pendingEncounter: pendingEncounter,
+        generatedItem: generatedItem,
+      ),
+);
+
 final encounterTraceSinkProvider = Provider<EncounterTraceSink>((ref) {
   final obs = ref.watch(encounterObservabilityProvider);
   return (trace) {
