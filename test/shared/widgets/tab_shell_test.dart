@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -200,6 +201,45 @@ class _TrackingLocationNotifier extends LocationNotifier {
 }
 
 void main() {
+  Future<void> pumpCarbonShell(
+    WidgetTester tester, {
+    bool disableAnimations = false,
+  }) async {
+    tester.view.physicalSize = const Size(800, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          wakeLockRepositoryProvider
+              .overrideWithValue(_FakeWakeLockRepository()),
+          wakeLockObservabilityProvider
+              .overrideWithValue(_TestObservabilityService()),
+          appObservabilityProvider
+              .overrideWithValue(_TestObservabilityService()),
+          navigationScreenTransitionLoggerProvider.overrideWithValue(
+            NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+          ),
+          debugModeProvider.overrideWith(() => _FalseDebugMode()),
+        ],
+        child: MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: disableAnimations),
+            child: const TabShell(
+              screens: [
+                SizedBox.shrink(),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
   group('TabShell navigation observability', () {
     testWidgets('logs tab screen changes exactly once per transition',
         (tester) async {
@@ -229,18 +269,16 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Player'));
+      await tester.tap(find.text('Pack'));
       await tester.pump();
 
-      await tester.tap(find.text('Player'));
+      await tester.tap(find.text('Pack'));
       await tester.pump();
 
       final screenChangedEvents = transitions
@@ -251,12 +289,13 @@ void main() {
       expect(screenChangedEvents.single.data, {
         'source': 'tab_shell',
         'from_screen': 'map_root_screen',
-        'to_screen': 'player',
+        'to_screen': 'pack_screen',
         'raw_from_screen': 'map',
+        'raw_to_screen': 'pack',
       });
     });
 
-    testWidgets('logs Town tab selection as an open-town player action',
+    testWidgets('logs Pack tab selection as an open-pack player action',
         (tester) async {
       final interactions = _TestObservabilityService();
       final navigation = NavigationScreenTransitionLogger(
@@ -280,15 +319,13 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
         ),
       );
 
-      await tester.tap(find.text('Town'));
+      await tester.tap(find.text('Pack'));
       await tester.pump();
 
       final tabSelectionEvents = interactions.events
@@ -302,59 +339,8 @@ void main() {
         'action_type': 'tab_selected',
         'screen_name': 'tab_shell',
         'widget_name': 'bottom_navigation_bar',
-        'player_action_id': PlayerActions.openTown,
-        'tab_index': 2,
-      });
-    });
-
-    testWidgets('logs Home tab selection with legacy open-sanctuary evidence',
-        (tester) async {
-      final interactions = _TestObservabilityService();
-      final navigation = NavigationScreenTransitionLogger(
-        logEvent: (event, category, {data}) {},
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            wakeLockRepositoryProvider
-                .overrideWithValue(_FakeWakeLockRepository()),
-            wakeLockObservabilityProvider.overrideWithValue(interactions),
-            appObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
-            navigationScreenTransitionLoggerProvider
-                .overrideWithValue(navigation),
-            debugModeProvider.overrideWith(() => _FalseDebugMode()),
-          ],
-          child: const MaterialApp(
-            home: TabShell(
-              screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      await tester.tap(find.text('Home'));
-      await tester.pump();
-
-      final tabSelectionEvents = interactions.events
-          .where((event) =>
-              event.event == 'interaction.action' &&
-              event.data?['widget_name'] == 'bottom_navigation_bar')
-          .toList();
-
-      expect(tabSelectionEvents, hasLength(1));
-      expect(tabSelectionEvents.single.data, {
-        'action_type': 'tab_selected',
-        'screen_name': 'tab_shell',
-        'widget_name': 'bottom_navigation_bar',
-        'player_action_id': PlayerActions.openSanctuary,
-        'tab_index': 3,
+        'player_action_id': PlayerActions.openPack,
+        'tab_index': 1,
       });
     });
   });
@@ -403,29 +389,22 @@ void main() {
       expect(source, isNot(contains('MapScreen()')));
     });
 
-    test('replaces the Home tab stub with HomeScreen', () {
+    test('declares Map and Pack as the only bottom navigation destinations',
+        () {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
 
-      expect(
-        source,
-        contains(
-            "import 'package:earth_nova/features/home/presentation/screens/home_screen.dart';"),
-      );
-      expect(source, contains('const HomeScreen()'));
-      expect(
-          source,
-          isNot(contains(
-              "import 'package:earth_nova/shared/widgets/stub_screen.dart';")));
-      expect(source, isNot(contains("const StubScreen(label: 'Home')")));
+      expect(source, contains("label: 'Map'"));
+      expect(source, contains("label: 'Pack'"));
+      expect(source, isNot(contains("label: 'Player'")));
+      expect(source, isNot(contains("label: 'Town'")));
+      expect(source, isNot(contains("label: 'Home'")));
     });
     testWidgets('renders injected screens correctly', (tester) async {
       // Use injected screens to avoid complex dependencies
       final screenKeys = [
         const ValueKey('screen-0'),
         const ValueKey('screen-1'),
-        const ValueKey('screen-2'),
-        const ValueKey('screen-3'),
       ];
 
       await tester.pumpWidget(
@@ -447,8 +426,6 @@ void main() {
               screens: [
                 SizedBox(key: screenKeys[0]),
                 SizedBox(key: screenKeys[1]),
-                SizedBox(key: screenKeys[2]),
-                SizedBox(key: screenKeys[3]),
               ],
             ),
           ),
@@ -461,6 +438,80 @@ void main() {
       expect(find.byKey(screenKeys[0]), findsOneWidget);
       // Verify IndexedStack is present
       expect(find.byType(IndexedStack), findsOneWidget);
+    });
+
+    testWidgets(
+        'Map starts selected, Pack mounts once, and returning to Map reacquires the wake lock',
+        (tester) async {
+      final wakeLockCalls = <String>[];
+      final semantics = tester.ensureSemantics();
+      const mapScreenKey = Key('map-screen');
+      const packScreenKey = Key('pack-screen');
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            wakeLockRepositoryProvider.overrideWithValue(
+              _TrackingWakeLockRepository(wakeLockCalls),
+            ),
+            wakeLockObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider
+                .overrideWithValue(_TestObservabilityService()),
+            navigationScreenTransitionLoggerProvider.overrideWithValue(
+              NavigationScreenTransitionLogger(logEvent: (_, __, {data}) {}),
+            ),
+            debugModeProvider.overrideWith(() => _FalseDebugMode()),
+          ],
+          child: const MaterialApp(
+            home: TabShell(
+              screens: [
+                SizedBox.expand(key: mapScreenKey),
+                SizedBox.expand(key: packScreenKey),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      wakeLockCalls.clear();
+
+      expect(find.byKey(mapScreenKey), findsOneWidget);
+      expect(find.byKey(packScreenKey), findsNothing);
+      expect(
+        tester
+                .getSemantics(
+                  find.byKey(const Key('tab-shell-nav-item-map')),
+                )
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isTrue,
+      );
+
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-pack')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(mapScreenKey), findsNothing);
+      expect(find.byKey(packScreenKey), findsOneWidget);
+      expect(
+        tester
+                .getSemantics(
+                  find.byKey(const Key('tab-shell-nav-item-pack')),
+                )
+                .flagsCollection
+                .isSelected ==
+            Tristate.isTrue,
+        isTrue,
+      );
+      expect(wakeLockCalls, ['release']);
+
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-map')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(mapScreenKey), findsOneWidget);
+      expect(wakeLockCalls, ['release', 'acquire']);
+      semantics.dispose();
     });
 
     testWidgets('does not overlay Pack icon when a reward lands',
@@ -486,8 +537,6 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -496,6 +545,112 @@ void main() {
 
       expect(find.byKey(const Key('pack-reward-impact')), findsNothing);
       expect(find.byKey(const Key('pack-reward-flight-card')), findsNothing);
+    });
+
+    testWidgets('renders the approved Carbon bottom navigation surface',
+        (tester) async {
+      await pumpCarbonShell(tester);
+
+      const gray100 = Color(0xFF161616);
+      const gray70 = Color(0xFF525252);
+      const gray20 = Color(0xFFE0E0E0);
+      const white = Color(0xFFFFFFFF);
+      const blue60 = Color(0xFF0F62FE);
+      const focus = Color(0xFFD0E2FF);
+
+      final navFinder = find.byKey(const Key('tab-shell-bottom-navigation'));
+      final nav = tester.widget<Material>(navFinder);
+      final navBorder = nav.shape! as Border;
+      expect(tester.getSize(navFinder).height, 76);
+      expect(nav.color, white);
+      expect(nav.elevation, 0);
+      expect(navBorder.top.color, gray20);
+      expect(navBorder.top.width, 1);
+
+      Material surface(String label) => tester.widget<Material>(
+            find.byKey(
+              Key('tab-shell-nav-surface-${label.toLowerCase()}'),
+            ),
+          );
+      AnimatedDefaultTextStyle labelStyle(String label) =>
+          tester.widget<AnimatedDefaultTextStyle>(
+            find.byKey(
+              Key('tab-shell-nav-label-${label.toLowerCase()}'),
+            ),
+          );
+      InkWell ink(String label) => tester.widget<InkWell>(
+            find.byKey(
+              Key('tab-shell-nav-item-${label.toLowerCase()}'),
+            ),
+          );
+
+      expect(surface('Map').color, gray20);
+      expect(surface('Pack').color, white);
+      expect(surface('Map').shape, isNull);
+      expect(surface('Pack').shape, isNull);
+      expect(labelStyle('Map').style.color, gray100);
+      expect(labelStyle('Map').style.fontSize, 14);
+      expect(labelStyle('Map').style.fontWeight, FontWeight.w600);
+      expect(labelStyle('Map').duration, const Duration(milliseconds: 180));
+      expect(labelStyle('Pack').style.color, gray70);
+      expect(labelStyle('Pack').style.fontSize, 14);
+      expect(ink('Map').focusColor, focus);
+      expect(ink('Pack').focusColor, focus);
+      expect(ink('Map').borderRadius, isNull);
+      expect(ink('Pack').borderRadius, isNull);
+      expect(ink('Map').canRequestFocus, isTrue);
+      expect(ink('Pack').canRequestFocus, isTrue);
+
+      final indicatorPosition = tester.widget<AnimatedPositioned>(
+        find.byKey(const Key('tab-shell-nav-indicator-position')),
+      );
+      final indicator = tester.widget<ColoredBox>(
+        find.byKey(const Key('tab-shell-nav-indicator')),
+      );
+      final navWidth = tester.getSize(navFinder).width;
+      expect(indicatorPosition.left, navWidth / 8);
+      expect(indicatorPosition.bottom, 0);
+      expect(indicatorPosition.width, navWidth / 4);
+      expect(indicatorPosition.height, 2);
+      expect(indicator.color, blue60);
+
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-pack')));
+      await tester.pump();
+
+      expect(surface('Map').color, white);
+      expect(surface('Pack').color, gray20);
+      expect(labelStyle('Map').style.color, gray70);
+      expect(labelStyle('Pack').style.color, gray100);
+      expect(
+        tester
+            .widget<AnimatedPositioned>(
+              find.byKey(const Key('tab-shell-nav-indicator-position')),
+            )
+            .left,
+        navWidth * 5 / 8,
+      );
+    });
+
+    testWidgets('disables bottom navigation animation when requested',
+        (tester) async {
+      await pumpCarbonShell(tester, disableAnimations: true);
+
+      expect(
+        tester
+            .widget<AnimatedPositioned>(
+              find.byKey(const Key('tab-shell-nav-indicator-position')),
+            )
+            .duration,
+        Duration.zero,
+      );
+      expect(
+        tester
+            .widget<AnimatedDefaultTextStyle>(
+              find.byKey(const Key('tab-shell-nav-label-map')),
+            )
+            .duration,
+        Duration.zero,
+      );
     });
 
     testWidgets('bottom nav selected indicator moves between tabs',
@@ -519,8 +674,6 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -535,15 +688,15 @@ void main() {
       expect(initialIndicator.duration, const Duration(milliseconds: 280));
       final initialLeft = initialIndicator.left!;
 
-      await tester.tap(find.byKey(const Key('tab-shell-nav-item-player')));
+      await tester.tap(find.byKey(const Key('tab-shell-nav-item-pack')));
       await tester.pump();
 
-      final playerIndicator = tester.widget<AnimatedPositioned>(
+      final packIndicator = tester.widget<AnimatedPositioned>(
         find.byKey(const Key('tab-shell-nav-indicator-position')),
       );
-      final playerLeft = playerIndicator.left!;
+      final packLeft = packIndicator.left!;
 
-      expect(playerLeft, greaterThan(initialLeft));
+      expect(packLeft, greaterThan(initialLeft));
     });
 
     testWidgets('completes discovery reward without drawing Pack nav overlays',
@@ -572,8 +725,6 @@ void main() {
           child: const MaterialApp(
             home: TabShell(
               screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
                 SizedBox.shrink(),
                 SizedBox.shrink(),
               ],
@@ -620,8 +771,6 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -633,29 +782,20 @@ void main() {
       // Verify IndexedStack is present
       expect(find.byType(IndexedStack), findsOneWidget);
 
-      // Tap on Player tab (index 1)
-      await tester.tap(find.text('Player'));
+      // Tap Pack (index 1).
+      await tester.tap(find.text('Pack'));
       await tester.pumpAndSettle();
 
-      // Should have logged the transition
-      expect(transitions.length, 1);
+      expect(transitions, hasLength(1));
       expect(transitions.last['from_screen'], 'map_root_screen');
-      expect(transitions.last['to_screen'], 'player');
+      expect(transitions.last['to_screen'], 'pack_screen');
 
-      // Tap on Town tab (index 2)
-      await tester.tap(find.text('Town'));
-      await tester.pumpAndSettle();
-
-      expect(transitions.length, 2);
-      expect(transitions.last['from_screen'], 'player');
-      expect(transitions.last['to_screen'], 'town');
-
-      // Tap back to Map tab (index 0)
+      // Tap back to Map (index 0).
       await tester.tap(find.text('Map'));
       await tester.pumpAndSettle();
 
-      expect(transitions.length, 3);
-      expect(transitions.last['from_screen'], 'town');
+      expect(transitions, hasLength(2));
+      expect(transitions.last['from_screen'], 'pack_screen');
       expect(transitions.last['to_screen'], 'map_root_screen');
     });
 
@@ -685,8 +825,6 @@ void main() {
           child: const MaterialApp(
             home: TabShell(
               screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
                 SizedBox.shrink(),
                 SizedBox.shrink(),
               ],
@@ -733,8 +871,6 @@ void main() {
           child: const MaterialApp(
             home: TabShell(
               screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
                 SizedBox.shrink(),
                 SizedBox.shrink(),
               ],
@@ -796,8 +932,6 @@ void main() {
               screens: [
                 SizedBox.expand(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -840,8 +974,6 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -874,8 +1006,6 @@ void main() {
           child: const MaterialApp(
             home: TabShell(
               screens: [
-                SizedBox.shrink(),
-                SizedBox.shrink(),
                 SizedBox.shrink(),
                 SizedBox.shrink(),
               ],
@@ -916,8 +1046,6 @@ void main() {
               screens: [
                 SizedBox.shrink(),
                 SizedBox.shrink(),
-                SizedBox.shrink(),
-                SizedBox.shrink(),
               ],
             ),
           ),
@@ -947,6 +1075,8 @@ void main() {
       expect(source, contains('PackScreen('));
       expect(source, contains('pageController:'));
       expect(source, contains('onEdgeSwipe:'));
+      expect(source, contains("actionType: 'edge_swipe_to_pack'"));
+      expect(source, isNot(contains("actionType: 'edge_swipe_to_player'")));
     });
 
     test('source: TabShell completes Pack rewards without nav overlays', () {
@@ -959,28 +1089,28 @@ void main() {
       expect(source, isNot(contains('_PackRewardFlightOverlay')));
     });
 
-    test('source: TabShell handles EdgeSwipeDirection.left → map tab', () {
+    test('source: Pack left-edge overscroll returns to Map', () {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
-      expect(source, contains('EdgeSwipeDirection.left'));
-      expect(source, contains('_mapTabIndex'));
+      final leftCase = source.substring(
+        source.indexOf('case EdgeSwipeDirection.left:'),
+        source.indexOf('case EdgeSwipeDirection.right:'),
+      );
+
+      expect(leftCase, contains('_onTabSelected(_mapTabIndex)'));
     });
 
-    test('source: TabShell handles EdgeSwipeDirection.right → town tab', () {
+    test('source: Pack right-edge overscroll remains Pack-owned', () {
       final source =
           File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
-      expect(source, contains('EdgeSwipeDirection.right'));
-      expect(source, contains('_townTabIndex'));
-    });
+      final rightCaseStart = source.indexOf('case EdgeSwipeDirection.right:');
+      final rightCase = source.substring(
+        rightCaseStart,
+        source.indexOf('\n  @override', rightCaseStart),
+      );
 
-    test('source: TabShell wraps IndexedStack in GestureDetector for map swipe',
-        () {
-      final source =
-          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
-      // A GestureDetector with onHorizontalDragEnd (or onPanEnd) must wrap the
-      // IndexedStack so a leftward swipe on the map tab navigates to Player.
-      expect(source, contains('onHorizontalDragEnd'));
-      expect(source, contains('_playerTabIndex'));
+      expect(rightCase, isNot(contains('_onTabSelected(')));
+      expect(rightCase, isNot(contains('_townTabIndex')));
     });
   }); // end cross-tab swipe group
 
@@ -1016,12 +1146,10 @@ void main() {
           ],
           child: MaterialApp(
             home: TabShell(
-              screens: const [
-                // Use SizedBox.expand so the GestureDetector has a hit area.
+              screens: [
+                // Use SizedBox.expand so the gesture surface has a hit area.
                 SizedBox.expand(), // map
-                SizedBox.expand(), // player
-                SizedBox.expand(), // town
-                SizedBox.expand(), // home
+                SizedBox.expand(), // pack
               ],
             ),
           ),
@@ -1030,24 +1158,34 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('leftward fling on map tab navigates to Player tab',
+    testWidgets('leftward drag in the Map interior remains Map-owned',
         (tester) async {
       final transitions = <String>[];
       await pumpShellWithFakeScreens(tester, transitions: transitions);
 
-      // We are on Map (index 0). Fling leftward (negative x velocity) to
-      // trigger onHorizontalDragEnd with primaryVelocity < 0 → Player tab.
-      // Matches the natural "next page" swipe convention (right→left).
-      // Use the GestureDetector directly — IndexedStack children are SizedBox.expand()
-      // and have a hit area.
-      await tester.fling(
-        find.byType(GestureDetector).first,
-        const Offset(-300, 0), // negative x = leftward fling
-        800, // px/s — enough to produce negative primaryVelocity
+      await tester.flingFrom(
+        const Offset(400, 400),
+        const Offset(-300, 0),
+        800,
       );
       await tester.pumpAndSettle();
 
-      expect(transitions, contains('map_root_screen→player'));
+      expect(transitions, isEmpty);
+    });
+
+    testWidgets('leftward drag inside Map right 24px edge changes Map to Pack',
+        (tester) async {
+      final transitions = <String>[];
+      await pumpShellWithFakeScreens(tester, transitions: transitions);
+
+      await tester.flingFrom(
+        const Offset(784, 400),
+        const Offset(-300, 0),
+        800,
+      );
+      await tester.pumpAndSettle();
+
+      expect(transitions, ['map_root_screen→pack_screen']);
     });
   }); // end swipe-from-map group
 } // end main()
