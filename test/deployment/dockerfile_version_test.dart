@@ -35,5 +35,30 @@ void main() {
             'different web engine and ship runtime-only regressions.',
       );
     });
+
+    test('forwards fail-closed Encounter engine build controls', () {
+      final docker = File('Dockerfile').readAsStringSync();
+
+      expect(docker, contains('ARG ENCOUNTER_ENGINE_MODE="legacy"'));
+      expect(
+        docker,
+        contains(
+          'ARG ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES="false"',
+        ),
+      );
+      expect(
+        docker,
+        contains(
+          '"--dart-define=ENCOUNTER_ENGINE_MODE=\$ENCOUNTER_ENGINE_MODE"',
+        ),
+      );
+      expect(
+        docker,
+        contains(
+          '"--dart-define=ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES='
+          '\$ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES"',
+        ),
+      );
+    });
   });
 }
