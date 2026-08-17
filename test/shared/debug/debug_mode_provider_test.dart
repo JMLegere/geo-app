@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 
 class _TestObservabilityService extends ObservabilityService {

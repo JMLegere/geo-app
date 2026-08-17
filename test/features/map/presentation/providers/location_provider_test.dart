@@ -2,14 +2,21 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
+import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
+import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 
 class TestObservabilityService extends ObservabilityService {
-  TestObservabilityService() : super(sessionId: 'test-session');
+  TestObservabilityService({super.deploymentEnvironment = 'unknown'})
+      : super(sessionId: 'test-session');
 
   final List<({String event, String category, Map<String, dynamic>? data})>
       events = [];
@@ -29,12 +36,19 @@ class ControllableMockLocationRepository implements LocationRepository {
   LocationState? _currentPosition;
   bool _throwOnGetCurrent = false;
   Completer<bool>? _permissionCompleter;
+  int permissionRequests = 0;
+  int currentPositionRequests = 0;
+  int positionStreamReads = 0;
 
   @override
-  Stream<LocationState> get positionStream => _controller.stream;
+  Stream<LocationState> get positionStream {
+    positionStreamReads += 1;
+    return _controller.stream;
+  }
 
   @override
   Future<LocationState> getCurrentPosition({String? traceId}) async {
+    currentPositionRequests += 1;
     if (_throwOnGetCurrent) throw Exception('Location unavailable');
     if (_currentPosition != null) return _currentPosition!;
     return LocationState(
@@ -48,6 +62,7 @@ class ControllableMockLocationRepository implements LocationRepository {
 
   @override
   Future<bool> requestPermission({String? traceId}) async {
+    permissionRequests += 1;
     final completer = _permissionCompleter;
     if (completer != null) return completer.future;
     return _permissionGranted;
@@ -67,6 +82,28 @@ class ControllableMockLocationRepository implements LocationRepository {
   }
 
   void dispose() => _controller.close();
+}
+
+class _AuthenticatedAuthNotifier extends AuthNotifier {
+  _AuthenticatedAuthNotifier(this.userId);
+
+  final String userId;
+
+  @override
+  AuthState build() => AuthState.authenticated(UserProfile(
+        id: userId,
+        phone: '+15555550100',
+        createdAt: DateTime(2026),
+      ));
+}
+
+class _DesktopControlsNotifier extends DesktopControlsNotifier {
+  _DesktopControlsNotifier(this.enabled);
+
+  final bool enabled;
+
+  @override
+  bool build() => enabled;
 }
 
 void main() {
@@ -548,6 +585,193 @@ void main() {
       };
       expect(location, gpsPosition);
       expect(obs.eventNames, contains('map.debug_location_disabled'));
+    });
+    group('Desktop Mode location', () {
+      Future<ProviderContainer> desktopContainer({
+        required SharedPreferences prefs,
+        required TestObservabilityService obs,
+        required ControllableMockLocationRepository repo,
+        required String userId,
+        required bool enabled,
+      }) async {
+        return ProviderContainer(
+          overrides: [
+            locationObservabilityProvider.overrideWithValue(obs),
+            observableUseCaseProvider.overrideWithValue(obs),
+            observabilityProvider.overrideWithValue(obs),
+            locationRepositoryProvider.overrideWithValue(repo),
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            authProvider.overrideWith(() => _AuthenticatedAuthNotifier(userId)),
+            desktopControlsAvailableProvider.overrideWithValue(true),
+            desktopControlsProvider
+                .overrideWith(() => _DesktopControlsNotifier(enabled)),
+          ],
+        );
+      }
+
+      test(
+          'uses Fredericton without touching GPS when Desktop Mode is available',
+          () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final repo = ControllableMockLocationRepository();
+        final container = await desktopContainer(
+          prefs: prefs,
+          obs: TestObservabilityService(deploymentEnvironment: 'desktop-test'),
+          repo: repo,
+          userId: 'player-a',
+          enabled: false,
+        );
+        addTearDown(container.dispose);
+        addTearDown(repo.dispose);
+
+        final state = container.read(locationProvider);
+        final location = (state as LocationProviderActive).location;
+        expect(location.lat, 45.9636);
+        expect(location.lng, -66.6431);
+        expect(repo.permissionRequests, 0);
+        expect(repo.currentPositionRequests, 0);
+        expect(repo.positionStreamReads, 0);
+      });
+
+      test('restores the persisted environment and Player Position', () async {
+        SharedPreferences.setMockInitialValues({
+          'desktop_player_position.desktop-test.player-a.lat': 45.9642,
+          'desktop_player_position.desktop-test.player-a.lng': -66.6424,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final repo = ControllableMockLocationRepository();
+        final container = await desktopContainer(
+          prefs: prefs,
+          obs: TestObservabilityService(deploymentEnvironment: 'desktop-test'),
+          repo: repo,
+          userId: 'player-a',
+          enabled: false,
+        );
+        addTearDown(container.dispose);
+        addTearDown(repo.dispose);
+
+        final location =
+            (container.read(locationProvider) as LocationProviderActive)
+                .location;
+        expect(location.lat, 45.9642);
+        expect(location.lng, -66.6424);
+        expect(location.accuracy, 1.0);
+        expect(location.isConfident, isTrue);
+        expect(repo.permissionRequests, 0);
+        expect(repo.currentPositionRequests, 0);
+        expect(repo.positionStreamReads, 0);
+      });
+
+      test(
+          'moves in metres, clamps coordinates, and persists only when flushed',
+          () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final repo = ControllableMockLocationRepository();
+        final container = await desktopContainer(
+          prefs: prefs,
+          obs: TestObservabilityService(deploymentEnvironment: 'desktop-test'),
+          repo: repo,
+          userId: 'player-a',
+          enabled: true,
+        );
+        addTearDown(container.dispose);
+        addTearDown(repo.dispose);
+
+        final notifier = container.read(locationProvider.notifier);
+        container.read(locationProvider);
+        notifier.moveDesktopByMeters(north: 111320.0, east: 111320.0);
+
+        final moved =
+            (container.read(locationProvider) as LocationProviderActive)
+                .location;
+        expect(moved.lat, closeTo(46.9636, 0.000001));
+        expect(moved.lng, greaterThan(-66.6431));
+        expect(moved.accuracy, 1.0);
+        expect(moved.isConfident, isTrue);
+        expect(
+          prefs
+              .containsKey('desktop_player_position.desktop-test.player-a.lat'),
+          isFalse,
+        );
+
+        notifier.moveDesktopByMeters(north: 1e12, east: 1e12);
+        final clamped =
+            (container.read(locationProvider) as LocationProviderActive)
+                .location;
+        expect(clamped.lat, 85.0);
+        expect(clamped.lng, 180.0);
+
+        await notifier.persistDesktopPosition();
+        expect(
+          prefs.getDouble('desktop_player_position.desktop-test.player-a.lat'),
+          85.0,
+        );
+        expect(
+          prefs.getDouble('desktop_player_position.desktop-test.player-a.lng'),
+          180.0,
+        );
+      });
+
+      test('does not move while Desktop Mode is disabled', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final repo = ControllableMockLocationRepository();
+        final container = await desktopContainer(
+          prefs: prefs,
+          obs: TestObservabilityService(deploymentEnvironment: 'desktop-test'),
+          repo: repo,
+          userId: 'player-a',
+          enabled: false,
+        );
+        addTearDown(container.dispose);
+        addTearDown(repo.dispose);
+
+        final initial = container.read(locationProvider);
+        container
+            .read(locationProvider.notifier)
+            .moveDesktopByMeters(north: 50.0, east: 50.0);
+        expect(container.read(locationProvider), same(initial));
+      });
+
+      test('keeps persisted Player Positions isolated by account', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final obs =
+            TestObservabilityService(deploymentEnvironment: 'desktop-test');
+        final firstRepo = ControllableMockLocationRepository();
+        final first = await desktopContainer(
+          prefs: prefs,
+          obs: obs,
+          repo: firstRepo,
+          userId: 'player-a',
+          enabled: true,
+        );
+        addTearDown(first.dispose);
+        addTearDown(firstRepo.dispose);
+        first.read(locationProvider);
+        first
+            .read(locationProvider.notifier)
+            .moveDesktopByMeters(north: 100.0, east: 0.0);
+        await first.read(locationProvider.notifier).persistDesktopPosition();
+
+        final secondRepo = ControllableMockLocationRepository();
+        final second = await desktopContainer(
+          prefs: prefs,
+          obs: obs,
+          repo: secondRepo,
+          userId: 'player-b',
+          enabled: true,
+        );
+        addTearDown(second.dispose);
+        addTearDown(secondRepo.dispose);
+
+        final secondLocation =
+            (second.read(locationProvider) as LocationProviderActive).location;
+        expect(secondLocation.lat, 45.9636);
+        expect(secondLocation.lng, -66.6431);
+      });
     });
   });
 }

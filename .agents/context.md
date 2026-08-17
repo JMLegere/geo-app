@@ -881,3 +881,14 @@
 - GitHub Actions Deploy Beta run `29867007644` passed both Railway beta app deployment and beta Supabase deployment.
 - The deployed beta artifact at `https://geo-app-beta.up.railway.app/` was opened at 430×932. It returned title `EarthNova`, fully rendered the login screen, loaded its Flutter/MapLibre resources, emitted no console/page errors on a clean reload, and had no clipping, internal identifiers, or implementation jargon. Capture: `.agents/screenshots/2026-07-21-beta-live-login.png`.
 - Railway status also showed an unexpected successful `production / geo-app` deployment for `ba85fdc`, likely from a Railway GitHub auto-deploy independent of the explicit beta workflow. No production migration was dispatched by this session; the auto-deploy policy and whether production needs rollback/acceptance are now an explicit operational gate in `.agents/questions.md`.
+
+## Completed 2026-08-17 — production-connected Desktop Mode input
+
+- Added issue #565 Desktop Mode as an input-only client capability: compile-time availability, per-production-environment/account enablement, a canonical locally persisted Player Position, and normalized focused WASD/arrow movement at 1.4 m/s.
+- Desktop movement reuses the existing location, Cell Visit, and Encounter paths with no backend schema, RPC, or input provenance. Ordinary GPS behavior remains the default when the capability is unavailable.
+- Desktop Map interaction preserves native click, wheel zoom, and drag pan; focus loss, modal/reward/readiness boundaries stop movement and flush position persistence.
+- Added a desktop-only Settings affordance showing `Connected Server Environment`, the persisted `Desktop Controls` toggle, and the existing account controls. The rendered 1440×900 production-connected Settings state passed visual inspection at `.agents/screenshots/2026-08-17-desktop-mode-settings-production.png`.
+- Added the ignored `.env.prod-desktop` contract and verified the exact `mise run desktop:prod` Chrome launcher reaches Flutter's run loop. The tracked example contains only browser-safe placeholders.
+- Verification passed: `flutter analyze --no-pub`, the complete 1,470-test Flutter suite, focused post-suite Desktop pointer/focus tests, EAC with no diagnostics, SuperBDD at 24 scenarios / 148 steps, and `git diff --check`.
+- Production-connected browser QA authenticated a dedicated explorer and proved the Desktop Controls default, toggle, and reload persistence. Map traversal remained unavailable because production returned HTTP 404 for `get_v3_town` and `fetch_v3_player_cell_states`; the separate production schema-promotion gate is recorded in `.agents/questions.md`.
+- No backend schema, `.github` workflow, primary production deployment, or production promotion was changed.

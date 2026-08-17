@@ -42,6 +42,7 @@ export const productCapabilities = {
       spineFeature,
       "features/map-frame.feature",
       "features/map-debug-controls.feature",
+      "features/map-desktop-traversal.feature",
       "features/map-player-marker-accuracy-ring.feature",
       "features/map-fog-overlay.feature",
       "features/map-cell-detail-sheet.feature",

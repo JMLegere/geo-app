@@ -33,6 +33,7 @@
 ## Operational Gates
 
 - **Production migration secret:** Verify whether `SUPABASE_PRODUCTION_DB_PASSWORD` is configured before any production migration workflow is approved.
+- **Production API compatibility:** A production-connected Desktop Mode smoke on 2026-08-17 received HTTP 404 for `get_v3_town` and `fetch_v3_player_cell_states`, leaving the Map in its reveal/loading state. Confirm and promote the required production schema separately before treating production gameplay traversal as operational.
 - **Railway production auto-deploy policy:** The `main` push for beta commit `ba85fdc` was observed as a successful Railway `production / geo-app` deployment even though the GitHub workflow invokes Railway with `--environment beta`. Decide whether production must be disconnected from the GitHub `main` auto-deploy source, retargeted to an explicit promotion branch, or explicitly allowed; confirm whether this production deployment requires a separate rollback/production acceptance review.
 - **Legacy Railway beta service cleanup:** Re-verify the unused sibling service and available deletion permissions before requesting manual removal.
 

@@ -1,15 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 
 const _kDebugModeKey = 'debug_mode_enabled';
 
 final debugModeObservabilityProvider = Provider<ObservabilityService>((ref) {
-  throw UnimplementedError('Must be overridden with overrideWithValue');
-});
-
-final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
 });
 

@@ -259,8 +259,9 @@ void main() {
       );
       expect(
         mapSource,
-        contains(
-            'styleString: kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl'),
+        matches(RegExp(
+          r'styleString:\s*kIsWeb\s*\?\s*_kWebMapStyleUrl\s*:\s*_kNativeMapStyleUrl',
+        )),
         reason:
             'Web should use the repo-owned browser-safe raster style while native builds keep the existing vector style.',
       );
@@ -272,6 +273,17 @@ void main() {
       expect(styleJson,
           isNot(contains('"url": "https://tiles.openfreemap.org/planet"')));
     });
+  });
+
+  test('Desktop Mode leaves native map pointer gestures available', () {
+    final source = File('lib/features/map/presentation/screens/map_screen.dart')
+        .readAsStringSync();
+
+    expect(source, contains('scrollGesturesEnabled: desktopTraversalEnabled'));
+    expect(source, contains('zoomGesturesEnabled: desktopTraversalEnabled'));
+    expect(source, contains('dragEnabled: desktopTraversalEnabled'));
+    expect(source, contains('onMapClick: desktopTraversalEnabled'));
+    expect(source, contains('ignoring: desktopTraversalEnabled'));
   });
 
   group('MapScreen canonical Cell knowledge chrome', () {
@@ -495,8 +507,9 @@ void main() {
       expect(mapSource, contains('myLocationEnabled: false'));
       expect(
         mapSource,
-        contains(
-            'myLocationTrackingMode: maplibre.MyLocationTrackingMode.none'),
+        matches(RegExp(
+          r'myLocationTrackingMode:\s*maplibre\.MyLocationTrackingMode\.none',
+        )),
       );
       expect(mapSource, contains('child: PlayerMarker()'));
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
