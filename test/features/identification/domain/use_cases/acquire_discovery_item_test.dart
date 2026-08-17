@@ -69,4 +69,7 @@ final class _UnusedItemRepository implements ItemRepository {
   Future<Item> identifyUnidentifiedFind(Item item, {String? traceId}) {
     throw UnimplementedError();
   }
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError();
 }

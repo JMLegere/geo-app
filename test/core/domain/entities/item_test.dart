@@ -75,6 +75,29 @@ void main() {
     });
   });
 
+  group('Item examination', () {
+    test('keeps three-level Item knowledge distinct', () {
+      final unexamined = baseItem.copyWith(
+        identificationState: ItemIdentificationState.unidentified,
+        examinationState: ItemExaminationState.unexamined,
+      );
+      final examined = unexamined.copyWith(
+        examinationState: ItemExaminationState.examined,
+        examinedAt: DateTime.utc(2026, 1, 2),
+      );
+      final identified = unexamined.identify(at: DateTime.utc(2026, 1, 3));
+
+      expect(unexamined.isExamined, isFalse);
+      expect(examined.isExamined, isTrue);
+      expect(
+          examined.identificationState, ItemIdentificationState.unidentified);
+      expect(examined.examinedAt, DateTime.utc(2026, 1, 2));
+      expect(identified.isExamined, isTrue);
+      expect(
+          identified.identificationState, ItemIdentificationState.identified);
+    });
+  });
+
   group('Item value equality', () {
     test('equal items', () {
       final a = Item(

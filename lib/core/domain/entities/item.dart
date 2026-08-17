@@ -51,6 +51,19 @@ enum ItemIdentificationState {
   }
 }
 
+enum ItemExaminationState {
+  unexamined,
+  examined;
+
+  static ItemExaminationState fromString(String? value) {
+    if (value == null) return ItemExaminationState.examined;
+    for (final state in ItemExaminationState.values) {
+      if (state.name.toLowerCase() == value.toLowerCase()) return state;
+    }
+    return ItemExaminationState.examined;
+  }
+}
+
 class Item {
   const Item({
     required this.id,
@@ -71,13 +84,18 @@ class Item {
     this.habitats = const [],
     this.continents = const [],
     this.identificationState = ItemIdentificationState.identified,
+    ItemExaminationState? examinationState,
+    this.examinedAt,
     this.identifiedAt,
     this.identifiedDisplayName,
     this.identifiedScientificName,
     this.identifiedTaxonomicClass,
     this.identifiedHabitats = const [],
     this.identifiedContinents = const [],
-  });
+  }) : examinationState =
+            identificationState == ItemIdentificationState.identified
+                ? ItemExaminationState.examined
+                : examinationState ?? ItemExaminationState.unexamined;
 
   final String id;
 
@@ -105,6 +123,11 @@ class Item {
   final String? identifiedTaxonomicClass;
   final List<String> identifiedHabitats;
   final List<String> identifiedContinents;
+
+  final ItemExaminationState examinationState;
+  final DateTime? examinedAt;
+
+  bool get isExamined => examinationState == ItemExaminationState.examined;
 
   bool get isUnidentified =>
       identificationState == ItemIdentificationState.unidentified;
@@ -137,42 +160,52 @@ class Item {
     List<String>? habitats,
     List<String>? continents,
     ItemIdentificationState? identificationState,
+    ItemExaminationState? examinationState,
+    DateTime? examinedAt,
     DateTime? identifiedAt,
     String? identifiedDisplayName,
     String? identifiedScientificName,
     String? identifiedTaxonomicClass,
     List<String>? identifiedHabitats,
     List<String>? identifiedContinents,
-  }) =>
-      Item(
-        id: id ?? this.id,
-        definitionId: definitionId ?? this.definitionId,
-        baseItemId: baseItemId ?? this.baseItemId,
-        baseItemVersionId: baseItemVersionId ?? this.baseItemVersionId,
-        displayName: displayName ?? this.displayName,
-        scientificName: scientificName ?? this.scientificName,
-        category: category ?? this.category,
-        rarity: rarity ?? this.rarity,
-        iconUrl: iconUrl ?? this.iconUrl,
-        iconUrlFrame2: iconUrlFrame2 ?? this.iconUrlFrame2,
-        artUrl: artUrl ?? this.artUrl,
-        acquiredAt: acquiredAt ?? this.acquiredAt,
-        acquiredInCellId: acquiredInCellId ?? this.acquiredInCellId,
-        status: status ?? this.status,
-        taxonomicClass: taxonomicClass ?? this.taxonomicClass,
-        habitats: habitats ?? this.habitats,
-        continents: continents ?? this.continents,
-        identificationState: identificationState ?? this.identificationState,
-        identifiedAt: identifiedAt ?? this.identifiedAt,
-        identifiedDisplayName:
-            identifiedDisplayName ?? this.identifiedDisplayName,
-        identifiedScientificName:
-            identifiedScientificName ?? this.identifiedScientificName,
-        identifiedTaxonomicClass:
-            identifiedTaxonomicClass ?? this.identifiedTaxonomicClass,
-        identifiedHabitats: identifiedHabitats ?? this.identifiedHabitats,
-        identifiedContinents: identifiedContinents ?? this.identifiedContinents,
-      );
+  }) {
+    final nextIdentificationState =
+        identificationState ?? this.identificationState;
+    return Item(
+      id: id ?? this.id,
+      definitionId: definitionId ?? this.definitionId,
+      baseItemId: baseItemId ?? this.baseItemId,
+      baseItemVersionId: baseItemVersionId ?? this.baseItemVersionId,
+      displayName: displayName ?? this.displayName,
+      scientificName: scientificName ?? this.scientificName,
+      category: category ?? this.category,
+      rarity: rarity ?? this.rarity,
+      iconUrl: iconUrl ?? this.iconUrl,
+      iconUrlFrame2: iconUrlFrame2 ?? this.iconUrlFrame2,
+      artUrl: artUrl ?? this.artUrl,
+      acquiredAt: acquiredAt ?? this.acquiredAt,
+      acquiredInCellId: acquiredInCellId ?? this.acquiredInCellId,
+      status: status ?? this.status,
+      taxonomicClass: taxonomicClass ?? this.taxonomicClass,
+      habitats: habitats ?? this.habitats,
+      continents: continents ?? this.continents,
+      identificationState: nextIdentificationState,
+      examinationState:
+          nextIdentificationState == ItemIdentificationState.identified
+              ? ItemExaminationState.examined
+              : examinationState ?? this.examinationState,
+      examinedAt: examinedAt ?? this.examinedAt,
+      identifiedAt: identifiedAt ?? this.identifiedAt,
+      identifiedDisplayName:
+          identifiedDisplayName ?? this.identifiedDisplayName,
+      identifiedScientificName:
+          identifiedScientificName ?? this.identifiedScientificName,
+      identifiedTaxonomicClass:
+          identifiedTaxonomicClass ?? this.identifiedTaxonomicClass,
+      identifiedHabitats: identifiedHabitats ?? this.identifiedHabitats,
+      identifiedContinents: identifiedContinents ?? this.identifiedContinents,
+    );
+  }
 
   Item identify({DateTime? at}) => copyWith(
         displayName: identifiedDisplayName ?? displayName,
@@ -182,6 +215,7 @@ class Item {
         continents:
             identifiedContinents.isNotEmpty ? identifiedContinents : continents,
         identificationState: ItemIdentificationState.identified,
+        examinationState: ItemExaminationState.examined,
         identifiedAt: at ?? DateTime.now(),
       );
 
@@ -208,6 +242,8 @@ class Item {
           _listEquals(habitats, other.habitats) &&
           _listEquals(continents, other.continents) &&
           identificationState == other.identificationState &&
+          examinationState == other.examinationState &&
+          examinedAt == other.examinedAt &&
           identifiedAt == other.identifiedAt &&
           identifiedDisplayName == other.identifiedDisplayName &&
           identifiedScientificName == other.identifiedScientificName &&
@@ -235,6 +271,8 @@ class Item {
         habitats.join(','),
         continents.join(','),
         identificationState,
+        examinationState,
+        examinedAt,
         identifiedAt,
         identifiedDisplayName,
         identifiedScientificName,

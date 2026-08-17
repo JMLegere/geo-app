@@ -22,13 +22,17 @@ class ItemDto {
     this.habitats = const [],
     this.continents = const [],
     this.identificationState = 'identified',
+    String? examinationState,
+    this.examinedAt,
     this.identifiedAt,
     this.identifiedDisplayName,
     this.identifiedScientificName,
     this.identifiedTaxonomicClass,
     this.identifiedHabitats = const [],
     this.identifiedContinents = const [],
-  });
+  }) : examinationState = identificationState == 'identified'
+            ? 'examined'
+            : examinationState ?? 'unexamined';
 
   final String id;
   final String? definitionId;
@@ -48,6 +52,8 @@ class ItemDto {
   final List<String> habitats;
   final List<String> continents;
   final String identificationState;
+  final String examinationState;
+  final DateTime? examinedAt;
   final DateTime? identifiedAt;
   final String? identifiedDisplayName;
   final String? identifiedScientificName;
@@ -56,38 +62,48 @@ class ItemDto {
   final List<String> identifiedContinents;
 
   factory ItemDto.fromJson(Map<String, dynamic> json) {
-    final identificationState =
-        json['identification_state'] as String? ?? 'identified';
+    final identificationState = ItemIdentificationState.fromString(
+      json['identification_state'] as String?,
+    ).name;
     final isUnidentified = identificationState == 'unidentified';
+    final requestedExaminationState = json['examination_state'] as String?;
+    final examinationState = identificationState == 'identified'
+        ? 'examined'
+        : requestedExaminationState == null
+            ? 'unexamined'
+            : ItemExaminationState.fromString(requestedExaminationState).name;
+    final isUnexamined = examinationState == 'unexamined';
     final category = json['category'] as String? ?? 'fauna';
 
-    if (isUnidentified) {
+    if (isUnexamined) {
       _requireMaskedIdentity(json);
+    } else if (isUnidentified) {
+      _requireMaskedIdentificationProperties(json);
     }
 
     return ItemDto(
       id: _requiredNonBlankText(json['id'], 'id'),
-      baseItemId: isUnidentified
+      baseItemId: isUnexamined
           ? null
           : _requiredNonBlankText(json['base_item_id'], 'base_item_id'),
-      baseItemVersionId: isUnidentified
+      baseItemVersionId: isUnexamined
           ? null
           : _requiredUuid(json['base_item_version_id'], 'base_item_version_id'),
-      definitionId: isUnidentified
+      definitionId: isUnexamined
           ? null
           : _requiredNonBlankText(json['definition_id'], 'definition_id'),
-      displayName: isUnidentified
+      displayName: isUnexamined
           ? _requiredNonBlankText(json['display_name'], 'display_name')
           : (json['display_name'] as String? ??
               _requiredNonBlankText(json['definition_id'], 'definition_id')),
       scientificName:
-          isUnidentified ? null : _nullableText(json['scientific_name']),
+          isUnexamined ? null : _nullableText(json['scientific_name']),
       category: category,
-      rarity: isUnidentified ? null : _nullableText(json['rarity']),
-      iconUrl: isUnidentified ? null : _nullableText(json['icon_url']),
+      rarity: isUnexamined ? null : _nullableText(json['rarity']),
+      iconUrl: isUnexamined ? null : _nullableText(json['icon_url']),
       iconUrlFrame2:
-          isUnidentified ? null : _nullableText(json['icon_url_frame2']),
-      artUrl: isUnidentified ? null : _nullableText(json['art_url']),
+          isUnexamined ? null : _nullableText(json['icon_url_frame2']),
+      artUrl: isUnexamined ? null : _nullableText(json['art_url']),
       acquiredAt: DateTime.parse(_requiredNonBlankText(
         json['acquired_at'],
         'acquired_at',
@@ -95,14 +111,18 @@ class ItemDto {
       acquiredInCellId: _nullableText(json['acquired_in_cell_id']),
       status: json['status'] as String? ?? 'active',
       taxonomicClass:
-          isUnidentified ? null : _nullableText(json['taxonomic_class']),
-      habitats: isUnidentified
+          isUnexamined ? null : _nullableText(json['taxonomic_class']),
+      habitats: isUnexamined
           ? const []
           : _parseJsonArray(json['habitats_json'] as String?),
-      continents: isUnidentified
+      continents: isUnexamined
           ? const []
           : _parseJsonArray(json['continents_json'] as String?),
       identificationState: identificationState,
+      examinationState: examinationState,
+      examinedAt: isUnexamined || json['examined_at'] == null
+          ? null
+          : DateTime.parse(json['examined_at'] as String),
       identifiedAt: isUnidentified || json['identified_at'] == null
           ? null
           : DateTime.parse(json['identified_at'] as String),
@@ -143,6 +163,8 @@ class ItemDto {
         'habitats_json': jsonEncode(habitats),
         'continents_json': jsonEncode(continents),
         'identification_state': identificationState,
+        'examination_state': examinationState,
+        'examined_at': examinedAt?.toIso8601String(),
         'identified_at': identifiedAt?.toIso8601String(),
         'identified_display_name': identifiedDisplayName,
         'identified_scientific_name': identifiedScientificName,
@@ -172,6 +194,8 @@ class ItemDto {
         identificationState:
             ItemIdentificationState.fromString(identificationState),
         identifiedAt: identifiedAt,
+        examinationState: ItemExaminationState.fromString(examinationState),
+        examinedAt: examinedAt,
         identifiedDisplayName: identifiedDisplayName,
         identifiedScientificName: identifiedScientificName,
         identifiedTaxonomicClass: identifiedTaxonomicClass,
@@ -198,6 +222,8 @@ class ItemDto {
         habitats: item.habitats,
         continents: item.continents,
         identificationState: item.identificationState.name,
+        examinationState: item.examinationState.name,
+        examinedAt: item.examinedAt,
         identifiedAt: item.identifiedAt,
         identifiedDisplayName: item.identifiedDisplayName,
         identifiedScientificName: item.identifiedScientificName,
@@ -237,6 +263,25 @@ void _requireMaskedIdentity(Map<String, dynamic> json) {
     'taxonomic_class',
     'habitats_json',
     'continents_json',
+    'identified_at',
+    'identified_display_name',
+    'identified_scientific_name',
+    'identified_taxonomic_class',
+    'identified_habitats_json',
+    'identified_continents_json',
+  ];
+
+  for (final field in hiddenFields) {
+    if (json[field] != null) {
+      throw FormatException(
+        'Unidentified Item response must not expose $field.',
+      );
+    }
+  }
+}
+
+void _requireMaskedIdentificationProperties(Map<String, dynamic> json) {
+  const hiddenFields = <String>[
     'identified_at',
     'identified_display_name',
     'identified_scientific_name',

@@ -9,6 +9,7 @@ import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
 import 'package:earth_nova/features/pack/domain/entities/pack_filter_state.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
+import 'package:earth_nova/features/identification/presentation/screens/identification_service_screen.dart';
 import 'package:earth_nova/features/pack/presentation/widgets/species_card.dart';
 import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
@@ -56,6 +57,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
   PackFilterState _filters = const PackFilterState();
   bool _panelExpanded = false;
   String _searchQuery = '';
+  final Set<String> _examinationsInFlight = {};
 
   /// True when this widget created the controller and is responsible for
   /// disposing it. False when the controller was injected by the caller.
@@ -175,8 +177,7 @@ class _PackScreenState extends ConsumerState<PackScreen> {
                     onSearchChanged: _onSearchChanged,
                     onEdgeSwipe: widget.onEdgeSwipe,
                     onItemTapped: _onItemTapped,
-                    onStartIdentification: _onStartIdentification,
-                    onRevealIdentification: _onRevealIdentification,
+                    onOpenIdentificationService: _openIdentificationService,
                   ),
       ),
     );
@@ -318,7 +319,27 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     setState(() => _searchQuery = query);
   }
 
-  void _onItemTapped(Item item) {
+  Future<Item?> _onItemTapped(Item item) async {
+    if (!item.isExamined) {
+      if (!_examinationsInFlight.add(item.id)) return null;
+      _logInteraction(
+        'examine_pack_item',
+        'pack_item',
+        playerActionId: PlayerActions.examinePackItem,
+        data: {
+          'item_id': item.id,
+          'category': item.category.name,
+        },
+      );
+      try {
+        final examined =
+            await ref.read(itemsProvider.notifier).examinePackItem(item.id);
+        return examined?.id == item.id ? examined : null;
+      } finally {
+        _examinationsInFlight.remove(item.id);
+      }
+    }
+
     _logInteraction(
       'open_species_card',
       'species_card',
@@ -330,31 +351,26 @@ class _PackScreenState extends ConsumerState<PackScreen> {
         'has_frame2': item.iconUrlFrame2 != null,
       },
     );
+    return item;
   }
 
-  void _onStartIdentification(Item item) {
+  void _openIdentificationService(Item item) {
     _logInteraction(
-      'identify_unidentified_find',
+      'open_identification_service',
       'species_card',
-      playerActionId: PlayerActions.identifyUnidentifiedFind,
+      playerActionId: PlayerActions.openIdentificationService,
       data: {
         'item_id': item.id,
         'category': item.category.name,
       },
     );
-  }
-
-  Future<Item?> _onRevealIdentification(Item item) {
-    _logInteraction(
-      'reveal_identification',
-      'species_card',
-      playerActionId: PlayerActions.revealIdentification,
-      data: {
-        'item_id': item.id,
-        'category': item.category.name,
-      },
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    navigator.push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => IdentificationServiceScreen(item: item),
+      ),
     );
-    return ref.read(itemsProvider.notifier).identifyUnidentifiedFind(item.id);
   }
 }
 
@@ -422,8 +438,7 @@ class _PackBody extends StatelessWidget {
     required this.onSearchChanged,
     this.onEdgeSwipe,
     required this.onItemTapped,
-    required this.onStartIdentification,
-    required this.onRevealIdentification,
+    required this.onOpenIdentificationService,
   });
 
   final List<Item> allItems;
@@ -443,9 +458,8 @@ class _PackBody extends StatelessWidget {
   final VoidCallback onTogglePanel;
   final void Function(String) onSearchChanged;
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
-  final void Function(Item) onItemTapped;
-  final void Function(Item) onStartIdentification;
-  final Future<Item?> Function(Item) onRevealIdentification;
+  final Future<Item?> Function(Item) onItemTapped;
+  final void Function(Item) onOpenIdentificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -518,8 +532,7 @@ class _PackBody extends StatelessWidget {
                 return _ItemGrid(
                   items: items,
                   onItemTap: onItemTapped,
-                  onStartIdentification: onStartIdentification,
-                  onRevealIdentification: onRevealIdentification,
+                  onOpenIdentificationService: onOpenIdentificationService,
                 );
               },
             ),
@@ -599,6 +612,9 @@ class _CategoryChip extends StatelessWidget {
       child: AnimatedContainer(
         duration: Durations.quick,
         curve: AppCurves.standard,
+        constraints: const BoxConstraints(
+          minHeight: ComponentSizes.compactBarHeight,
+        ),
         padding: const EdgeInsets.all(Spacing.xxs),
         decoration: BoxDecoration(
           color: selected ? AppTheme.primary : AppTheme.surfaceContainerHigh,
@@ -1318,13 +1334,11 @@ class _ItemGrid extends StatelessWidget {
   const _ItemGrid({
     required this.items,
     required this.onItemTap,
-    required this.onStartIdentification,
-    required this.onRevealIdentification,
+    required this.onOpenIdentificationService,
   });
   final List<Item> items;
-  final void Function(Item) onItemTap;
-  final void Function(Item) onStartIdentification;
-  final Future<Item?> Function(Item) onRevealIdentification;
+  final Future<Item?> Function(Item) onItemTap;
+  final void Function(Item) onOpenIdentificationService;
 
   static int _columns(double width) {
     if (width < 600) return 3;
@@ -1355,8 +1369,7 @@ class _ItemGrid extends StatelessWidget {
           itemBuilder: (_, i) => _ItemSlot(
             item: items[i],
             onItemTap: onItemTap,
-            onStartIdentification: onStartIdentification,
-            onRevealIdentification: onRevealIdentification,
+            onOpenIdentificationService: onOpenIdentificationService,
           ),
         );
       },
@@ -1370,122 +1383,137 @@ class _ItemSlot extends StatelessWidget {
   const _ItemSlot({
     required this.item,
     required this.onItemTap,
-    required this.onStartIdentification,
-    required this.onRevealIdentification,
+    required this.onOpenIdentificationService,
   });
   final Item item;
-  final void Function(Item) onItemTap;
-  final void Function(Item) onStartIdentification;
-  final Future<Item?> Function(Item) onRevealIdentification;
+  final Future<Item?> Function(Item) onItemTap;
+  final void Function(Item) onOpenIdentificationService;
 
   @override
   Widget build(BuildContext context) {
-    final status = IucnStatus.fromString(item.rarity);
-    final hasFrame2 = item.iconUrlFrame2 != null;
+    final status = item.isExamined ? IucnStatus.fromString(item.rarity) : null;
+    final hasFrame2 = item.isExamined && item.iconUrlFrame2 != null;
+    final silhouetteLabel = 'Unexamined ${item.category.name} Item';
 
-    // eac-clickable-owner-logs: PackScreen logs item opens as inspect-pack-find before this leaf control opens the SpeciesCard.
-    return GestureDetector(
-      onTap: () {
-        onItemTap(item);
-        showSpeciesCard(
-          context,
-          item,
-          onStartIdentification: onStartIdentification,
-          onRevealIdentification: onRevealIdentification,
-        );
-      },
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(Radii.xl),
-          border: Border.all(
-            color: status != null
-                ? status.color.withValues(alpha: status.borderAlpha)
-                : AppTheme.outline.withValues(alpha: 0.5),
-            width: 1.5,
+    return Semantics(
+      label: item.isExamined ? null : silhouetteLabel,
+      button: true,
+      excludeSemantics: !item.isExamined,
+      // eac-clickable-owner-logs: onItemTap logs examine/inspect before opening the Pack item card.
+      child: GestureDetector(
+        key: ValueKey('pack-item-${item.id}'),
+        onTap: () async {
+          final openedItem = await onItemTap(item);
+          if (openedItem == null ||
+              openedItem.id != item.id ||
+              !context.mounted) {
+            return;
+          }
+          showSpeciesCard(
+            context,
+            openedItem,
+            onOpenIdentificationService: onOpenIdentificationService,
+          );
+        },
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(Radii.xl),
+            border: Border.all(
+              color: status != null
+                  ? status.color.withValues(alpha: status.borderAlpha)
+                  : AppTheme.outline.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
+            boxShadow: status != null && status.glowAlpha > 0
+                ? [
+                    BoxShadow(
+                      color: status.color.withValues(alpha: status.glowAlpha),
+                      blurRadius: 12,
+                      spreadRadius: -2,
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: status != null && status.glowAlpha > 0
-              ? [
-                  BoxShadow(
-                    color: status.color.withValues(alpha: status.glowAlpha),
-                    blurRadius: 12,
-                    spreadRadius: -2,
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 5,
-              child: Stack(
-                children: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        Spacing.xs,
-                        Spacing.md,
-                        Spacing.xs,
-                        Spacing.xxs,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          Spacing.xs,
+                          Spacing.md,
+                          Spacing.xs,
+                          Spacing.xxs,
+                        ),
+                        child: item.isExamined
+                            ? _SpeciesIcon(item: item)
+                            : const Icon(
+                                Icons.help_outline,
+                                size: 44,
+                                color: AppTheme.onSurfaceVariant,
+                              ),
                       ),
-                      child: _SpeciesIcon(item: item),
                     ),
-                  ),
-                  if (status != null)
-                    Positioned(
-                      top: Spacing.xs,
-                      right: Spacing.xs,
-                      child: _RarityBadge(status: status),
-                    ),
-                  if (hasFrame2)
-                    Positioned(
-                      bottom: Spacing.xs,
-                      left: Spacing.xs,
-                      child: Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppTheme.tertiary.withValues(alpha: 0.9),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.tertiary.withValues(alpha: 0.5),
-                              blurRadius: 4,
-                            ),
-                          ],
+                    if (status != null)
+                      Positioned(
+                        top: Spacing.xs,
+                        right: Spacing.xs,
+                        child: _RarityBadge(status: status),
+                      ),
+                    if (hasFrame2)
+                      Positioned(
+                        bottom: Spacing.xs,
+                        left: Spacing.xs,
+                        child: Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: AppTheme.tertiary.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.tertiary.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Spacing.xs,
-                vertical: Spacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceContainer.withValues(alpha: 0.85),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(Radii.lg),
+                  ],
                 ),
               ),
-              child: Text(
-                item.visibleDisplayName,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.onSurface,
-                  height: 1.25,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Spacing.xs,
+                  vertical: Spacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainer.withValues(alpha: 0.85),
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(Radii.lg),
+                  ),
+                ),
+                child: Text(
+                  item.isExamined ? item.visibleDisplayName : silhouetteLabel,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurface,
+                    height: 1.25,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

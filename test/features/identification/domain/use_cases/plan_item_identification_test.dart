@@ -6,6 +6,7 @@ import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
 import 'package:earth_nova/features/identification/domain/use_cases/plan_item_identification.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,20 @@ final _foxEarlierVersion = ExactVersionRef<BaseItemContent>(
   stableId: _foxId,
   versionId: ContentVersionId<BaseItemContent>('base-item-fox-v1'),
   revision: 1,
+);
+
+final _serviceAccess = IdentificationServiceAccess(
+  villagerId: VillagerId('villager:rowan'),
+  villagerDisplayName: 'Rowan',
+  serviceId: ServiceId('service:identify_item_properties'),
+  serviceVersion: ExactVersionRef<ServiceContent>(
+    stableId: StableContentId<ServiceContent>(
+      'service:identify_item_properties',
+    ),
+    versionId: ContentVersionId<ServiceContent>('service-version-2'),
+    revision: 2,
+  ),
+  serviceDisplayName: 'Identification',
 );
 
 ItemKnowledgeItemRef _item({String id = 'item-fox-1'}) => ItemKnowledgeItemRef(
@@ -77,6 +92,7 @@ IdentificationPreparation _preparation({
       item: item ?? _item(),
       playerDiscovered: playerDiscovered,
       properties: properties,
+      serviceAccess: _serviceAccess,
     );
 
 SelectorCandidate<String, Object?> _value(
@@ -142,7 +158,11 @@ void main() {
     test('accepts exactly the three derived requirement cases', () async {
       expect(
         await planner(_preparation(playerDiscovered: false)),
-        ItemIdentificationPlan(item: _item(), propertyResolutions: const []),
+        ItemIdentificationPlan(
+          item: _item(),
+          serviceAccess: _serviceAccess,
+          propertyResolutions: const [],
+        ),
       );
 
       final property = _property('coat-color');
@@ -162,6 +182,10 @@ void main() {
         ))
             .propertyResolutions,
         hasLength(1),
+      );
+      expect(
+        (await planner(_preparation(properties: [assignment]))).serviceAccess,
+        _serviceAccess,
       );
     });
 

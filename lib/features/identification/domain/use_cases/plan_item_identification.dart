@@ -67,6 +67,7 @@ final class PlanItemIdentification extends ObservableUseCase<
 
     return ItemIdentificationPlan(
       item: preparation.item,
+      serviceAccess: preparation.serviceAccess,
       propertyResolutions: resolutions,
     );
   }

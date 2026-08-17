@@ -3,6 +3,7 @@ import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/data/dtos/identification_aggregate_dto.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -24,6 +25,22 @@ final _itemRef = ItemKnowledgeItemRef(
   baseItemId: _baseItemId,
   baseItemVersion: _exactVersion,
 );
+
+final _serviceAccess = IdentificationServiceAccess(
+  villagerId: VillagerId('villager:rowan'),
+  villagerDisplayName: 'Rowan',
+  serviceId: ServiceId('service:identify_item_properties'),
+  serviceVersion: ExactVersionRef<ServiceContent>(
+    stableId: StableContentId<ServiceContent>(
+      'service:identify_item_properties',
+    ),
+    versionId: ContentVersionId<ServiceContent>(
+      '66666666-6666-4666-8666-666666666666',
+    ),
+    revision: 2,
+  ),
+  serviceDisplayName: 'Identification',
+);
 final _coat = VariablePropertyDefinition(
   id: VariablePropertyDefinitionId('coat-color'),
   baseItemId: _baseItemId,
@@ -39,6 +56,7 @@ final _song = VariablePropertyDefinition(
 
 ItemIdentificationPlan _plan() => ItemIdentificationPlan(
       item: _itemRef,
+      serviceAccess: _serviceAccess,
       propertyResolutions: [
         PlannedPropertyResolution(
           ordinal: 0,

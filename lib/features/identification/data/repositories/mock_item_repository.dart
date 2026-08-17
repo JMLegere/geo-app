@@ -67,4 +67,20 @@ class MockItemRepository implements ItemRepository {
     }
     return identified;
   }
+
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) async {
+    if (shouldThrow) throw Exception('Mock examination error');
+    final examined = item.copyWith(
+      examinationState: ItemExaminationState.examined,
+      examinedAt: DateTime.now(),
+    );
+    final index = _items.indexWhere((candidate) => candidate.id == item.id);
+    if (index == -1) {
+      _items.insert(0, examined);
+    } else {
+      _items[index] = examined;
+    }
+    return examined;
+  }
 }

@@ -36,6 +36,9 @@ abstract final class PlayerActions {
       'continue-discovery-reward';
   static const PlayerActionId openPack = 'open-pack';
   static const PlayerActionId inspectPackFind = 'inspect-pack-find';
+  static const PlayerActionId examinePackItem = 'examine-pack-item';
+  static const PlayerActionId openIdentificationService =
+      'open-identification-service';
   static const PlayerActionId identifyUnidentifiedFind =
       'identify-unidentified-find';
   static const PlayerActionId revealIdentification = 'reveal-identification';
@@ -108,6 +111,8 @@ abstract final class PlayerActions {
     continueDiscoveryReward,
     openPack,
     inspectPackFind,
+    examinePackItem,
+    openIdentificationService,
     identifyUnidentifiedFind,
     revealIdentification,
     discoverNpcVenue,

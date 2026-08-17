@@ -1,9 +1,9 @@
 import 'package:earth_nova/core/domain/content/base_item_content.dart';
-import 'package:earth_nova/core/domain/content/content_version_id.dart';
-import 'package:earth_nova/core/domain/content/exact_version_ref.dart';
+import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/rules/selector.dart';
 import 'package:earth_nova/features/identification/data/dtos/identification_wire_validation.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 
 /// Strict wire binding for prepare_v3_item_identification.
@@ -15,15 +15,17 @@ final class IdentificationPreparationDto {
   factory IdentificationPreparationDto.fromJson(Map<String, dynamic> json) {
     final root = IdentificationWireValidation.object(
       json,
-      const {'item', 'discovery', 'properties'},
+      const {'item', 'discovery', 'service_access', 'properties'},
     );
     final item = _parseItem(root['item']);
     final playerDiscovered = _parseDiscovery(root['discovery'], item);
+    final serviceAccess = _parseServiceAccess(root['service_access']);
     final properties = _parseProperties(root['properties'], item);
     return IdentificationPreparationDto._(
       IdentificationPreparation(
         item: item,
         playerDiscovered: playerDiscovered,
+        serviceAccess: serviceAccess,
         properties: properties,
       ),
     );
@@ -84,6 +86,39 @@ bool _parseDiscovery(Object? value, ItemKnowledgeItemRef item) {
   IdentificationWireValidation.string(discovery['provenance']);
   IdentificationWireValidation.timestamp(discovery['discovered_at']);
   return true;
+}
+
+IdentificationServiceAccess _parseServiceAccess(Object? value) {
+  final access = IdentificationWireValidation.object(value, const {
+    'villager_id',
+    'villager_display_name',
+    'service_id',
+    'service_version_id',
+    'service_version_revision',
+    'service_display_name',
+  });
+  final serviceId = ServiceId(
+    IdentificationWireValidation.string(access['service_id']),
+  );
+  return IdentificationServiceAccess(
+    villagerId: VillagerId(
+      IdentificationWireValidation.string(access['villager_id']),
+    ),
+    villagerDisplayName:
+        IdentificationWireValidation.string(access['villager_display_name']),
+    serviceId: serviceId,
+    serviceVersion: ExactVersionRef<ServiceContent>(
+      stableId: StableContentId<ServiceContent>(serviceId.value),
+      versionId: ContentVersionId<ServiceContent>(
+        IdentificationWireValidation.uuid(access['service_version_id']),
+      ),
+      revision: IdentificationWireValidation.positiveInt(
+        access['service_version_revision'],
+      ),
+    ),
+    serviceDisplayName:
+        IdentificationWireValidation.string(access['service_display_name']),
+  );
 }
 
 List<IdentificationProperty> _parseProperties(

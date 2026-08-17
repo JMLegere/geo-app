@@ -1,6 +1,67 @@
-import 'package:earth_nova/core/domain/rules/selector.dart';
+import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/domain/rules/selector.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
+
+/// Exact current Service evidence supplied by the authoritative preparation.
+final class IdentificationServiceAccess {
+  factory IdentificationServiceAccess({
+    required VillagerId villagerId,
+    required String villagerDisplayName,
+    required ServiceId serviceId,
+    required ExactVersionRef<ServiceContent> serviceVersion,
+    required String serviceDisplayName,
+  }) {
+    if (serviceId.value != serviceVersion.stableId.value) {
+      throw ArgumentError.value(
+        serviceVersion,
+        'serviceVersion',
+        'must belong to serviceId',
+      );
+    }
+    return IdentificationServiceAccess._(
+      villagerId: villagerId,
+      villagerDisplayName: villagerDisplayName,
+      serviceId: serviceId,
+      serviceVersion: serviceVersion,
+      serviceDisplayName: serviceDisplayName,
+    );
+  }
+
+  const IdentificationServiceAccess._({
+    required this.villagerId,
+    required this.villagerDisplayName,
+    required this.serviceId,
+    required this.serviceVersion,
+    required this.serviceDisplayName,
+  });
+
+  final VillagerId villagerId;
+  final String villagerDisplayName;
+  final ServiceId serviceId;
+  final ExactVersionRef<ServiceContent> serviceVersion;
+  final String serviceDisplayName;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is IdentificationServiceAccess &&
+          villagerId == other.villagerId &&
+          villagerDisplayName == other.villagerDisplayName &&
+          serviceId == other.serviceId &&
+          serviceVersion == other.serviceVersion &&
+          serviceDisplayName == other.serviceDisplayName;
+
+  @override
+  int get hashCode => Object.hash(
+        villagerId,
+        villagerDisplayName,
+        serviceId,
+        serviceVersion,
+        serviceDisplayName,
+      );
+}
 
 /// Immutable server-prepared input for one exact Item Identification command.
 ///
@@ -10,23 +71,27 @@ final class IdentificationPreparation {
   factory IdentificationPreparation({
     required ItemKnowledgeItemRef item,
     required bool playerDiscovered,
+    required IdentificationServiceAccess serviceAccess,
     required Iterable<IdentificationProperty> properties,
   }) =>
       IdentificationPreparation._(
         item: item,
         playerDiscovered: playerDiscovered,
         properties: List<IdentificationProperty>.unmodifiable(properties),
+        serviceAccess: serviceAccess,
       );
 
   const IdentificationPreparation._({
     required this.item,
     required this.playerDiscovered,
     required this.properties,
+    required this.serviceAccess,
   });
 
   final ItemKnowledgeItemRef item;
   final bool playerDiscovered;
   final List<IdentificationProperty> properties;
+  final IdentificationServiceAccess serviceAccess;
 
   @override
   bool operator ==(Object other) =>
@@ -34,13 +99,15 @@ final class IdentificationPreparation {
       other is IdentificationPreparation &&
           item == other.item &&
           playerDiscovered == other.playerDiscovered &&
-          _sameList(properties, other.properties);
+          _sameList(properties, other.properties) &&
+          serviceAccess == other.serviceAccess;
 
   @override
   int get hashCode => Object.hash(
         item,
         playerDiscovered,
         Object.hashAll(properties),
+        serviceAccess,
       );
 }
 
@@ -155,6 +222,7 @@ final class PlannedPropertyResolution {
 final class ItemIdentificationPlan {
   factory ItemIdentificationPlan({
     required ItemKnowledgeItemRef item,
+    required IdentificationServiceAccess serviceAccess,
     required Iterable<PlannedPropertyResolution> propertyResolutions,
   }) {
     final resolutions = List<PlannedPropertyResolution>.unmodifiable(
@@ -164,26 +232,32 @@ final class ItemIdentificationPlan {
     return ItemIdentificationPlan._(
       item: item,
       propertyResolutions: resolutions,
+      serviceAccess: serviceAccess,
     );
   }
 
   const ItemIdentificationPlan._({
     required this.item,
     required this.propertyResolutions,
+    required this.serviceAccess,
   });
 
   final ItemKnowledgeItemRef item;
   final List<PlannedPropertyResolution> propertyResolutions;
+
+  final IdentificationServiceAccess serviceAccess;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is ItemIdentificationPlan &&
           item == other.item &&
-          _sameList(propertyResolutions, other.propertyResolutions);
+          _sameList(propertyResolutions, other.propertyResolutions) &&
+          serviceAccess == other.serviceAccess;
 
   @override
-  int get hashCode => Object.hash(item, Object.hashAll(propertyResolutions));
+  int get hashCode =>
+      Object.hash(item, Object.hashAll(propertyResolutions), serviceAccess);
 }
 
 /// The immutable canonical result of a successfully committed Identification.

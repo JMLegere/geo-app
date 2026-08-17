@@ -97,6 +97,9 @@ class RecordingItemRepository implements ItemRepository {
     }
     return identified;
   }
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError();
 }
 
 final _manualPendingDefinitionVersion = ExactVersionRef<EncounterContent>(

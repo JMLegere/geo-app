@@ -233,7 +233,7 @@ export const productFeatures = {
     capability: "exploration-discovery-lifecycle",
     kind: "app-section",
     description:
-      "Player-facing collection of owned Items. The retained legacy find/reward-card evidence is historical terminology, not current target behavior.",
+      "Newest-first, unlimited projection of the Player's owned active Items. Unexamined Items are semantic silhouettes; Examination recognizes shared Base Item identity and content without identifying exact Item Property Values.",
   }),
   identification: feature({
     id: "identification",
@@ -241,7 +241,7 @@ export const productFeatures = {
     capability: "exploration-discovery-lifecycle",
     kind: "surface",
     description:
-      "Identification reveals an Item's Base Item and resolves Variable Property Selectors from its exact Base Item Version. It may record Discovery; legacy deterministic-trait evidence does not settle target behavior.",
+      "Distinct Service screen for an examined, unidentified, owned active Item. A known Villager's current published Identification Service is prepared on entry; only hold/reveal commits the retained exact-version Property Values, while cancellation writes nothing.",
   }),
 
   town: feature({

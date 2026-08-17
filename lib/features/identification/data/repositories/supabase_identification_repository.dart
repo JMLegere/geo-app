@@ -76,6 +76,10 @@ final class SupabaseIdentificationRepository
               'p_expected_base_item_id': plan.item.baseItemId.value,
               'p_expected_base_item_version_id':
                   plan.item.baseItemVersion.versionId.value,
+              'p_expected_service_id': plan.serviceAccess.serviceId.value,
+              'p_expected_service_version_id':
+                  plan.serviceAccess.serviceVersion.versionId.value,
+              'p_expected_villager_id': plan.serviceAccess.villagerId.value,
               'p_property_resolutions': _serializePlan(plan),
             },
           );

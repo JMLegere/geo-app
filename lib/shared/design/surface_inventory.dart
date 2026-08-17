@@ -65,6 +65,15 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Uses public EarthNova design components for a semantic resolve/retry action while preserving Map gestures outside the card.',
   ),
   DesignSurfaceDefinition(
+    path:
+        'lib/features/identification/presentation/screens/identification_service_screen.dart',
+    category: DesignSurfaceCategory.featureScreen,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'Player-facing Villager service flow for identifying an examined find.',
+    designSystemNotes:
+        'Composes shared panels, notices, action controls, and app theme tokens for the identification service flow.',
+  ),
+  DesignSurfaceDefinition(
     path: 'lib/features/pack/presentation/screens/pack_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
