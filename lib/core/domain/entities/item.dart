@@ -99,7 +99,8 @@ class Item {
 
   final String id;
 
-  /// Revealed only after server-authoritative Identification.
+  /// Shared Base Item identity revealed by Examination; Variable Property
+  /// Values remain concealed until server-authoritative Identification.
   final String? definitionId;
   final String? baseItemId;
   final String? baseItemVersionId;
@@ -132,11 +133,11 @@ class Item {
   bool get isUnidentified =>
       identificationState == ItemIdentificationState.unidentified;
 
-  String get visibleDisplayName => isUnidentified
-      ? 'Unidentified ${category.label.toLowerCase()} specimen'
-      : displayName;
+  String get visibleDisplayName => isExamined
+      ? displayName
+      : 'Unidentified ${category.label.toLowerCase()} specimen';
 
-  String? get visibleScientificName => isUnidentified ? null : scientificName;
+  String? get visibleScientificName => isExamined ? scientificName : null;
 
   TaxonomicGroup get taxonomicGroup =>
       TaxonomicGroup.fromTaxonomicClass(taxonomicClass);

@@ -341,7 +341,7 @@ void main() {
       expect(notifier.examineCalls, 1);
       expect(notifier.lastExaminedItemId, '2');
       expect(find.byKey(const ValueKey('species-card-2')), findsOneWidget);
-      expect(find.text('Amberwing Warbler'), findsOneWidget);
+      expect(find.text('Amberwing Warbler'), findsNWidgets(2));
       expect(find.text('Setophaga aestiva'), findsOneWidget);
       semantics.dispose();
     });

@@ -1895,16 +1895,7 @@ class _DiscoveryRewardModal extends StatelessWidget {
                 // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into this modal.
                 FilledButton(
                   onPressed: onContinue,
-                  child: const Text('Continue'),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tap anywhere to return to Map',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.74),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  child: const Text('Return to Map'),
                 ),
               ],
             ),
