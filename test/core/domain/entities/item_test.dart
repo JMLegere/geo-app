@@ -78,6 +78,7 @@ void main() {
   group('Item examination', () {
     test('keeps three-level Item knowledge distinct', () {
       final unexamined = baseItem.copyWith(
+        scientificName: 'Panthera leo',
         identificationState: ItemIdentificationState.unidentified,
         examinationState: ItemExaminationState.unexamined,
       );
@@ -88,10 +89,14 @@ void main() {
       final identified = unexamined.identify(at: DateTime.utc(2026, 1, 3));
 
       expect(unexamined.isExamined, isFalse);
+      expect(unexamined.visibleDisplayName, 'Unidentified fauna specimen');
+      expect(unexamined.visibleScientificName, isNull);
       expect(examined.isExamined, isTrue);
       expect(
           examined.identificationState, ItemIdentificationState.unidentified);
       expect(examined.examinedAt, DateTime.utc(2026, 1, 2));
+      expect(examined.visibleDisplayName, 'Lion');
+      expect(examined.visibleScientificName, 'Panthera leo');
       expect(identified.isExamined, isTrue);
       expect(
           identified.identificationState, ItemIdentificationState.identified);

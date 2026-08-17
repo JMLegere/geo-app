@@ -49,15 +49,15 @@ class MapStatusBar extends StatelessWidget {
           children: [
             _StatPill(
               value: _formatCount(cellsObserved),
-              label: 'cells',
+              label: cellsObserved == 1 ? 'cell' : 'cells',
             ),
             _StatPill(
               value: _formatSteps(totalSteps),
-              label: 'steps',
+              label: totalSteps == 1 ? 'step' : 'steps',
             ),
             _StatPill(
               value: '$streakDays',
-              label: 'days',
+              label: streakDays == 1 ? 'day' : 'days',
             ),
             if (pendingVisits > 0)
               _StatPill(
