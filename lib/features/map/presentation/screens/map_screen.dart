@@ -50,11 +50,6 @@ const _kWebMapStyleUrl = 'base-map-style.json';
 const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 const _kGpsZoom = 15.0;
 
-/// Build version injected at compile time via --dart-define=BUILD_TIMESTAMP.
-/// Format: yyyy-mm-dd-hhmm-commit (AST). Falls back to 'dev' for local builds.
-const _kBuildVersion =
-    String.fromEnvironment('BUILD_TIMESTAMP', defaultValue: 'dev');
-
 /// Duration the discovery notification is visible before auto-dismissing.
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
 const _kBaseMapSettledFallbackDelay = Duration(seconds: 5);
@@ -1285,36 +1280,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 child: IgnorePointer(child: MapCellKnowledgeLegend()),
               ),
 
-              // Build version — bottom-left corner, visible to devs during testing
-              Positioned(
-                left: 8,
-                bottom: 8,
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      child: Text(
-                        'beta $_kBuildVersion',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontFamily: 'monospace',
-                          letterSpacing: 0,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
               // Error message
               if (mapState is MapStateError)
                 Positioned(
@@ -1934,7 +1899,7 @@ class _DiscoveryRewardModal extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tap anywhere to send it to your Pack',
+                  'Tap anywhere to return to Map',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.74),
                     fontSize: 12,
