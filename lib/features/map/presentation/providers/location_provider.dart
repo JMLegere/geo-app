@@ -2,12 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_location_stream.dart';
+import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
+import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 
 sealed class LocationProviderState {
   const LocationProviderState();
@@ -48,7 +52,7 @@ const _kDebugLocationMoveMeters = 35.0;
 const _kGpsStartupWaitingDelay = Duration(seconds: 3);
 const _kGpsStartupTimeout = Duration(seconds: 10);
 const _kMetersPerDegreeLatitude = 111320.0;
-
+const _kDesktopPositionKeyPrefix = 'desktop_player_position';
 final locationObservabilityProvider = Provider<ObservabilityService>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
 });
@@ -70,7 +74,7 @@ final locationProvider =
         LocationNotifier.new);
 
 class LocationNotifier extends ObservableNotifier<LocationProviderState> {
-  late final LocationRepository _repository;
+  LocationRepository? _repository;
   StreamSubscription<LocationState>? _subscription;
   bool _disposed = false;
   DateTime? _pausedAt;
@@ -89,12 +93,15 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
 
   @override
   LocationProviderState build() {
-    _repository = ref.watch(locationRepositoryProvider);
     ref.onDispose(() {
       _disposed = true;
       _subscription?.cancel();
       _cancelGpsStartupWatchdog();
     });
+    if (ref.watch(desktopControlsAvailableProvider)) {
+      return LocationProviderActive(_restoredDesktopPosition());
+    }
+    _repository = ref.watch(locationRepositoryProvider);
     _start();
     return const LocationProviderLoading();
   }
@@ -126,6 +133,45 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
         if (targetCellId != null) 'target_cell_id': targetCellId,
       },
     );
+  }
+
+  /// Moves the canonical Player Position through the existing location flow,
+  /// without recording separate input provenance.
+  void moveDesktopByMeters({
+    required double north,
+    required double east,
+  }) {
+    if (!ref.read(desktopControlsAvailableProvider) ||
+        !ref.read(desktopControlsProvider)) {
+      return;
+    }
+
+    final nextLocation = _moveByMeters(
+      _currentLocationOrDesktopDefault(),
+      north: north,
+      east: east,
+    );
+    // silentTransition: desktop movement updates every animation frame; logging
+    // each frame would obscure the ordinary map transitions it drives.
+    silentTransition(LocationProviderActive(nextLocation));
+  }
+
+  /// Flushes the canonical Desktop Mode Player Position at a lifecycle boundary.
+  Future<void> persistDesktopPosition() async {
+    if (!ref.read(desktopControlsAvailableProvider)) return;
+
+    final location = switch (state) {
+      LocationProviderActive(location: final location) => location,
+      _ => null,
+    };
+    final key = _desktopPositionKey;
+    if (location == null || key == null) return;
+
+    final prefs = ref.read(sharedPreferencesProvider);
+    await Future.wait([
+      prefs.setDouble('$key.lat', location.lat),
+      prefs.setDouble('$key.lng', location.lng),
+    ]);
   }
 
   void _activateDebugLocation(
@@ -179,6 +225,14 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
 
   Future<void> _start() async {
     if (_disposed || _debugLocationEnabled) return;
+    if (ref.read(desktopControlsAvailableProvider)) {
+      // silentTransition: switching to the already-persisted desktop position
+      // is startup restoration, not a diagnostic state transition.
+      silentTransition(LocationProviderActive(_restoredDesktopPosition()));
+      return;
+    }
+    final repository = _repository;
+    if (repository == null) return;
     final startupAttempt = ++_gpsStartupAttempt;
     _gpsStartupStage = 'permission_request';
     transition(const LocationProviderLoading(), 'map.gps_started', data: {
@@ -194,7 +248,7 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
       'dependency': 'gps_permission',
       'startup_attempt': startupAttempt,
     });
-    final granted = await _repository.requestPermission();
+    final granted = await repository.requestPermission();
     if (_disposed || _debugLocationEnabled) {
       _cancelGpsStartupWatchdog();
       return;
@@ -223,7 +277,7 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
     });
 
     try {
-      final initial = await _repository.getCurrentPosition();
+      final initial = await repository.getCurrentPosition();
       if (_disposed || _debugLocationEnabled) {
         _cancelGpsStartupWatchdog();
         return;
@@ -302,9 +356,13 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
   }
 
   void _subscribe() {
-    if (_debugLocationEnabled) return;
+    if (_debugLocationEnabled ||
+        ref.read(desktopControlsAvailableProvider) ||
+        _repository == null) {
+      return;
+    }
     _subscription?.cancel();
-    _subscription = _repository.positionStream.listen(
+    _subscription = _repository!.positionStream.listen(
       (position) {
         if (_debugLocationEnabled) return;
         final wasPaused = state is LocationProviderPaused;
@@ -354,29 +412,39 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
 
   LocationState _movedDebugLocation(DebugLocationMoveDirection direction) {
     final base = _debugLocation ?? _currentLocationOrDebugDefault();
-    final latDelta = _kDebugLocationMoveMeters / _kMetersPerDegreeLatitude;
+    return _moveByMeters(
+      base,
+      north: switch (direction) {
+        DebugLocationMoveDirection.north => _kDebugLocationMoveMeters,
+        DebugLocationMoveDirection.south => -_kDebugLocationMoveMeters,
+        DebugLocationMoveDirection.west ||
+        DebugLocationMoveDirection.east =>
+          0.0,
+      },
+      east: switch (direction) {
+        DebugLocationMoveDirection.east => _kDebugLocationMoveMeters,
+        DebugLocationMoveDirection.west => -_kDebugLocationMoveMeters,
+        DebugLocationMoveDirection.north ||
+        DebugLocationMoveDirection.south =>
+          0.0,
+      },
+    );
+  }
+
+  LocationState _moveByMeters(
+    LocationState base, {
+    required double north,
+    required double east,
+  }) {
     final metersPerDegreeLng = _kMetersPerDegreeLatitude *
         math.max(0.01, math.cos(base.lat * math.pi / 180).abs());
-    final lngDelta = _kDebugLocationMoveMeters / metersPerDegreeLng;
-
-    final nextLat = switch (direction) {
-      DebugLocationMoveDirection.north => base.lat + latDelta,
-      DebugLocationMoveDirection.south => base.lat - latDelta,
-      DebugLocationMoveDirection.west ||
-      DebugLocationMoveDirection.east =>
-        base.lat,
-    };
-    final nextLng = switch (direction) {
-      DebugLocationMoveDirection.east => base.lng + lngDelta,
-      DebugLocationMoveDirection.west => base.lng - lngDelta,
-      DebugLocationMoveDirection.north ||
-      DebugLocationMoveDirection.south =>
-        base.lng,
-    };
-
     return LocationState(
-      lat: nextLat.clamp(-85.0, 85.0).toDouble(),
-      lng: nextLng.clamp(-180.0, 180.0).toDouble(),
+      lat: (base.lat + north / _kMetersPerDegreeLatitude)
+          .clamp(-85.0, 85.0)
+          .toDouble(),
+      lng: (base.lng + east / metersPerDegreeLng)
+          .clamp(-180.0, 180.0)
+          .toDouble(),
       accuracy: 1.0,
       timestamp: DateTime.now(),
       isConfident: true,
@@ -400,5 +468,44 @@ class LocationNotifier extends ObservableNotifier<LocationProviderState> {
       timestamp: DateTime.now(),
       isConfident: true,
     );
+  }
+
+  LocationState _restoredDesktopPosition() {
+    final prefs = ref.read(sharedPreferencesProvider);
+    final key = _desktopPositionKey;
+    final lat = key == null ? null : prefs.getDouble('$key.lat');
+    final lng = key == null ? null : prefs.getDouble('$key.lng');
+    if (lat != null && lng != null) {
+      return LocationState(
+        lat: lat.clamp(-85.0, 85.0).toDouble(),
+        lng: lng.clamp(-180.0, 180.0).toDouble(),
+        accuracy: 1.0,
+        timestamp: DateTime.now(),
+        isConfident: true,
+      );
+    }
+    return _desktopDefaultLocation();
+  }
+
+  LocationState _currentLocationOrDesktopDefault() {
+    return switch (state) {
+      LocationProviderActive(location: final location) => location,
+      _ => _desktopDefaultLocation(),
+    };
+  }
+
+  LocationState _desktopDefaultLocation() => LocationState(
+        lat: _kDebugLocationDefaultLat,
+        lng: _kDebugLocationDefaultLng,
+        accuracy: 1.0,
+        timestamp: DateTime.now(),
+        isConfident: true,
+      );
+
+  String? get _desktopPositionKey {
+    final authState = ref.read(authProvider);
+    if (authState.status != AuthStatus.authenticated) return null;
+    final environment = ref.read(observabilityProvider).deploymentEnvironment;
+    return '$_kDesktopPositionKeyPrefix.$environment.${authState.user!.id}';
   }
 }

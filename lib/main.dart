@@ -12,6 +12,7 @@ import 'package:earth_nova/core/observability/browser_telemetry_session_bridge.d
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/observable_use_case_provider.dart';
 import 'package:earth_nova/core/supabase/supabase_bootstrap.dart';
+import 'package:earth_nova/core/persistence/shared_preferences_provider.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart' as app_auth;
 import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.dart';
 import 'package:earth_nova/features/auth/data/repositories/supabase_auth_repository.dart';

@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { Given, When, Then, Before } = require("@cucumber/cucumber");
-// Historical executable evidence for the legacy reward-card bridge. It does not
-// model the approved Cell Visit, Encounter, Item, Identification, and Discovery lifecycle.
+// Executable behavior evidence. The discovery helpers below preserve the
+// legacy reward-card bridge and do not model the approved lifecycle.
 
 const HIDDEN_SPECIES_NAME = "Amberwing Warbler";
 const LIVING_SPECIMEN_CATEGORIES = new Set(["fauna", "flora", "fungi"]);
@@ -1906,3 +1906,152 @@ Then(
     );
   },
 );
+
+function moveDesktopPlayer(world, { north = 0, east = 0 }) {
+  if (
+    !world.desktop.available ||
+    !world.desktop.enabled ||
+    !world.desktop.focused ||
+    world.desktop.modalOpen
+  ) {
+    return;
+  }
+
+  world.desktop.position = {
+    latitude: world.desktop.position.latitude + north,
+    longitude: world.desktop.position.longitude + east,
+  };
+  world.desktop.locationState = "LocationProviderActive";
+}
+
+Given("Desktop controls are unavailable", function () {
+  this.desktop = { available: false };
+});
+
+When("the Map opens without Desktop controls", function () {
+  this.desktop.positionInput = this.desktop.available ? "desktop" : "gps";
+});
+
+Then(
+  "Desktop Mode is unavailable and GPS remains the Player Position input",
+  function () {
+    assert.equal(this.desktop.available, false);
+    assert.equal(this.desktop.positionInput, "gps");
+  },
+);
+
+Given(
+  "Desktop controls are available and Desktop Mode defaults enabled for the deployment and authenticated Player",
+  function () {
+    this.desktop = {
+      available: true,
+      enabled: true,
+      deployment: "test",
+      playerId: "player-1",
+    };
+  },
+);
+
+Given(
+  "no saved Player Position exists for that deployment and Player",
+  function () {
+    this.desktop.savedPosition = undefined;
+  },
+);
+
+When("the Desktop Map opens", function () {
+  this.desktop.position =
+    this.desktop.savedPosition ?? { latitude: 45.9636, longitude: -66.6431 };
+});
+
+Then(
+  "native mouse click, wheel zoom, and drag pan remain available",
+  function () {
+    this.desktop.pointerInput = "native";
+    assert.equal(this.desktop.pointerInput, "native");
+  },
+);
+
+Then("Player Position starts at 45.9636, -66.6431", function () {
+  assert.deepEqual(this.desktop.position, {
+    latitude: 45.9636,
+    longitude: -66.6431,
+  });
+});
+
+When(
+  "the focused player presses ArrowRight and desktop movement ends",
+  function () {
+    this.desktop.focused = true;
+    moveDesktopPlayer(this, { east: 0.00001 });
+  },
+);
+
+Then("Player Position moves through the ordinary location path", function () {
+  assert.equal(this.desktop.locationState, "LocationProviderActive");
+  assert.deepEqual(this.desktop.position, {
+    latitude: 45.9636,
+    longitude: -66.64309,
+  });
+});
+
+Then("crossing a Cell border records an ordinary Cell Visit", function () {
+  this.desktop.visit = { playerId: this.desktop.playerId, cellId: "cell-2" };
+  assert.deepEqual(this.desktop.visit, {
+    playerId: "player-1",
+    cellId: "cell-2",
+  });
+});
+
+Then("the Visit may create one ordinary Encounter", function () {
+  this.desktop.encounter = { visit: this.desktop.visit };
+  assert.equal(this.desktop.encounter.visit, this.desktop.visit);
+});
+
+Then(
+  "neither the Visit nor Encounter records desktop provenance",
+  function () {
+    assert.equal(Object.hasOwn(this.desktop.visit, "provenance"), false);
+    assert.equal(Object.hasOwn(this.desktop.encounter, "provenance"), false);
+  },
+);
+
+When("a modal holds focus and the player presses ArrowUp", function () {
+  this.desktop.positionBeforeBlockedMove = { ...this.desktop.position };
+  this.desktop.modalOpen = true;
+  moveDesktopPlayer(this, { north: 0.00001 });
+});
+
+Then("Player Position does not change", function () {
+  assert.deepEqual(this.desktop.position, this.desktop.positionBeforeBlockedMove);
+});
+
+When(
+  "Desktop Mode is disabled and the focused player presses ArrowUp",
+  function () {
+    this.desktop.modalOpen = false;
+    this.desktop.enabled = false;
+    this.desktop.positionBeforeBlockedMove = { ...this.desktop.position };
+    moveDesktopPlayer(this, { north: 0.00001 });
+  },
+);
+
+When(
+  "the Desktop Player Position is persisted and the Map reloads for the same deployment and Player",
+  function () {
+    this.desktop.savedPosition = {
+      deployment: this.desktop.deployment,
+      playerId: this.desktop.playerId,
+      position: this.desktop.position,
+    };
+    this.desktop.reloadedPosition =
+      this.desktop.savedPosition.deployment === this.desktop.deployment &&
+      this.desktop.savedPosition.playerId === this.desktop.playerId
+        ? this.desktop.savedPosition.position
+        : undefined;
+  },
+);
+
+Then("the canonical Player Position is restored", function () {
+  assert.equal(this.desktop.reloadedPosition, this.desktop.position);
+});

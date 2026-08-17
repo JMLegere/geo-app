@@ -6,10 +6,12 @@ import 'package:earth_nova/features/map/presentation/providers/wake_lock_provide
 import 'package:earth_nova/features/map/presentation/debug/debug_unvisited_cell_target.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/player_marker_provider.dart';
+import 'package:earth_nova/features/profile/presentation/screens/settings_screen.dart';
 
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
@@ -405,6 +407,8 @@ class _TabShellState extends ConsumerState<TabShell>
     }
 
     final debugMode = ref.watch(debugModeProvider);
+    final desktopControlsAvailable =
+        ref.watch(desktopControlsAvailableProvider);
     final flyingReward = ref.watch(
       encounterProvider.select((state) => state.flyingReward),
     );
@@ -462,6 +466,37 @@ class _TabShellState extends ConsumerState<TabShell>
                       _onTabSelected(_packTabIndex);
                     }
                   },
+                ),
+              ),
+            if (desktopControlsAvailable)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: SafeArea(
+                  child: Material(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    elevation: 2,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      key: const Key('desktop_settings_button'),
+                      icon: const EarthIcon(glyph: EarthGlyph.settings),
+                      tooltip: 'Settings',
+                      onPressed: ObservableInteraction.wrapVoidCallback(
+                        logger: logger,
+                        screenName: 'tab_shell',
+                        widgetName: 'desktop_settings_button',
+                        actionType: 'open_settings',
+                        telemetryOnlyReason:
+                            'Settings navigation is account and input chrome outside the gameplay action catalog.',
+                        callback: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            settings: const RouteSettings(name: 'settings'),
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             if (debugMode && _debugOverlayVisible)

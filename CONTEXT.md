@@ -14,6 +14,18 @@ EarthNova should pair a welcoming, humane player experience with a precise, insp
 The player activity of moving through and inspecting the world, including entering Cells.
 _Avoid_: Discovery when referring to Cell entry
 
+**Player Position**:
+The canonical current location of a Player, regardless of which enabled input updates it.
+_Avoid_: separate GPS and desktop positions
+
+**Desktop Mode**:
+An available, enabled input mode for controlled Desktop Traversal. It changes Player Position input only and preserves native Map mouse click, wheel zoom, and drag pan; it does not change gameplay semantics.
+_Avoid_: desktop gameplay rules, a parallel world state
+
+**Desktop Traversal**:
+Focused keyboard movement that updates Player Position while Desktop Mode is enabled. Crossing a Cell border creates ordinary Cell Visits and Encounters with no desktop provenance.
+_Avoid_: simulated Visits, desktop-only Encounters, input-specific provenance
+
 **Cell Visit**:
 One recorded occurrence of a Player entering a Cell; the same Player may have many Cell Visits to the same Cell. Every Cell Visit resolves one Selector whose candidates are stable Encounter Definitions plus an explicit None outcome. Selecting a Definition binds its current published Encounter Definition Version and creates one Encounter; selecting None creates no Encounter. Conditions control first-visit-only content, cooldowns, recurrence, and suppression. A Cell Visit therefore creates zero or one Encounter, never several.
 _Avoid_: one permanent Player–Cell association, selection only on first visit, mandatory Encounter, implicit no-event result, more than one Encounter per Cell Visit

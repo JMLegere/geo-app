@@ -10,6 +10,7 @@ import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
 import 'package:earth_nova/features/living_world/domain/entities/town_projection.dart';
 import 'package:earth_nova/features/living_world/presentation/providers/town_provider.dart';
 import 'package:earth_nova/features/living_world/presentation/widgets/venue_marker.dart';
@@ -27,6 +28,7 @@ import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart'
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/camera_follow_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
+import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_settled_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/base_map_style_loaded_signal.dart';
 import 'package:earth_nova/features/map/presentation/platform/map_style_label_layers.dart';
@@ -40,6 +42,7 @@ import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.d
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/state/map_readiness_state.dart';
+import 'package:earth_nova/features/map/presentation/widgets/desktop_traversal_input.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
@@ -52,6 +55,13 @@ const _kGpsZoom = 15.0;
 
 /// Duration the discovery notification is visible before auto-dismissing.
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
+
+bool _isPendingEncounterVisible(PendingEncounterState state) {
+  return state is PendingEncounterReady ||
+      state is PendingEncounterResolving ||
+      (state is PendingEncounterFailure && state.pendingEncounter != null);
+}
+
 const _kBaseMapSettledFallbackDelay = Duration(seconds: 5);
 const _kMapBootstrapTimeout = Duration(seconds: 12);
 const _kExactProjectionCenterTolerancePx = 96.0;
@@ -974,6 +984,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       optimisticVisitedCellIds: explorationState.visitedCellIds,
     );
     final cellsObserved = footprint.uniqueCount;
+    final desktopControlsAvailable =
+        ref.watch(desktopControlsAvailableProvider);
+    final desktopControlsEnabled = ref.watch(desktopControlsProvider);
+    final pendingEncounterState = ref.watch(pendingEncounterProvider);
+    final desktopTraversalEnabled =
+        desktopControlsAvailable && desktopControlsEnabled;
+    final locationNotifier = ref.read(locationProvider.notifier);
     final visitQueueState = ref.watch(visitQueueProvider);
 
     return Scaffold(
@@ -1069,6 +1086,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
             locationReady: true,
             mapState: mapState,
           );
+          final desktopTraversalBlocked = !readiness.isSteadyStateReady ||
+              _isPendingEncounterVisible(pendingEncounterState) ||
+              encounterState.hasActiveReward ||
+              !(ModalRoute.of(context)?.isCurrent ?? true);
           _ensureBaseMapSettledFallback(readiness);
           _armOverlayFrameReadiness(
             readiness,
@@ -1089,56 +1110,89 @@ class _MapScreenState extends ConsumerState<MapScreen>
               // Camera follow is handled by cameraFollowProvider above so raw
               // GPS remains the target without hard-snapping the camera.
               Positioned.fill(
-                child: maplibre.MapLibreMap(
-                  styleString: kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl,
-                  initialCameraPosition: maplibre.CameraPosition(
-                    target: maplibre.LatLng(
-                      desiredCameraPosition.lat,
-                      desiredCameraPosition.lng,
-                    ),
-                    zoom: _kGpsZoom,
+                child: DesktopTraversalInput(
+                  enabled: desktopTraversalEnabled,
+                  blocked: desktopTraversalBlocked,
+                  onMove: (north, east) => locationNotifier.moveDesktopByMeters(
+                    north: north,
+                    east: east,
                   ),
-                  compassEnabled: false,
-                  rotateGesturesEnabled: false,
-                  scrollGesturesEnabled: false,
-                  zoomGesturesEnabled: false,
-                  tiltGesturesEnabled: false,
-                  doubleClickZoomEnabled: false,
-                  dragEnabled: false,
-                  trackCameraPosition: true,
-                  myLocationEnabled: false,
-                  myLocationTrackingMode: maplibre.MyLocationTrackingMode.none,
-                  attributionButtonPosition:
-                      maplibre.AttributionButtonPosition.topRight,
-                  attributionButtonMargins: const math.Point(12, 144),
-                  onMapCreated: (controller) {
-                    _mapController = controller;
-                    _updateRenderCamera(
-                      controller.cameraPosition ??
-                          maplibre.CameraPosition(
-                            target: maplibre.LatLng(
-                              desiredCameraPosition.lat,
-                              desiredCameraPosition.lng,
+                  onMovementEnded: locationNotifier.persistDesktopPosition,
+                  child: maplibre.MapLibreMap(
+                    styleString:
+                        kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl,
+                    initialCameraPosition: maplibre.CameraPosition(
+                      target: maplibre.LatLng(
+                        desiredCameraPosition.lat,
+                        desiredCameraPosition.lng,
+                      ),
+                      zoom: _kGpsZoom,
+                    ),
+                    compassEnabled: false,
+                    rotateGesturesEnabled: false,
+                    scrollGesturesEnabled: desktopTraversalEnabled,
+                    zoomGesturesEnabled: desktopTraversalEnabled,
+                    tiltGesturesEnabled: false,
+                    doubleClickZoomEnabled: desktopTraversalEnabled,
+                    dragEnabled: desktopTraversalEnabled,
+                    trackCameraPosition: true,
+                    myLocationEnabled: false,
+                    myLocationTrackingMode:
+                        maplibre.MyLocationTrackingMode.none,
+                    attributionButtonPosition:
+                        maplibre.AttributionButtonPosition.topRight,
+                    attributionButtonMargins: const math.Point(12, 144),
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                      _updateRenderCamera(
+                        controller.cameraPosition ??
+                            maplibre.CameraPosition(
+                              target: maplibre.LatLng(
+                                desiredCameraPosition.lat,
+                                desiredCameraPosition.lng,
+                              ),
+                              zoom: _kGpsZoom,
                             ),
-                            zoom: _kGpsZoom,
-                          ),
-                    );
-                    _markMapCreated();
-                    _logMapFlowEvent(
-                      TelemetryFlowPhase.dependencyReady,
-                      eventName: 'map.map_created',
-                      dependency: 'map_widget',
-                    );
-                  },
-                  onCameraMove: (cameraPosition) {
-                    _updateRenderCamera(cameraPosition);
-                  },
-                  onStyleLoadedCallback: () {
-                    _handleStyleLoaded(source: 'plugin_style_loaded');
-                  },
-                  onMapIdle: () {
-                    _markBaseMapSettled(source: 'map_idle');
-                  },
+                      );
+                      _markMapCreated();
+                      _logMapFlowEvent(
+                        TelemetryFlowPhase.dependencyReady,
+                        eventName: 'map.map_created',
+                        dependency: 'map_widget',
+                      );
+                    },
+                    onCameraMove: (cameraPosition) {
+                      _updateRenderCamera(cameraPosition);
+                    },
+                    onMapClick: desktopTraversalEnabled
+                        ? (point, _) {
+                            final readyMapState = renderableMapState;
+                            if (readyMapState == null) return;
+                            ObservableInteraction.log(
+                              logger: logger,
+                              screenName: 'map_screen',
+                              widgetName: 'cell_overlay',
+                              actionType: 'cell_overlay_tap',
+                              playerActionId: PlayerActions.inspectMapCell,
+                            );
+                            _onMapTapAt(
+                              context,
+                              Offset(point.x, point.y),
+                              readyMapState,
+                              exactProjectionRequest.key,
+                              cellsWithStates,
+                              projectGeoCoord,
+                              venueAnchors,
+                            );
+                          }
+                        : null,
+                    onStyleLoadedCallback: () {
+                      _handleStyleLoaded(source: 'plugin_style_loaded');
+                    },
+                    onMapIdle: () {
+                      _markBaseMapSettled(source: 'map_idle');
+                    },
+                  ),
                 ),
               ),
 
@@ -1154,34 +1208,37 @@ class _MapScreenState extends ConsumerState<MapScreen>
               // Cell overlay layer - drawn on top of map using Flutter Canvas
               if (renderableMapState != null)
                 Positioned.fill(
-                  child: GestureDetector(
-                    onTapUp: ObservableInteraction.wrapTapUp(
-                      logger: logger,
-                      screenName: 'map_screen',
-                      widgetName: 'cell_overlay',
-                      actionType: 'cell_overlay_tap',
-                      playerActionId: PlayerActions.inspectMapCell,
-                      callback: (details) => _onMapTap(
-                        context,
-                        details,
-                        renderableMapState,
-                        exactProjectionRequest.key,
-                        cellsWithStates,
-                        projectGeoCoord,
-                        venueAnchors,
+                  child: IgnorePointer(
+                    ignoring: desktopTraversalEnabled,
+                    child: GestureDetector(
+                      onTapUp: ObservableInteraction.wrapTapUp(
+                        logger: logger,
+                        screenName: 'map_screen',
+                        widgetName: 'cell_overlay',
+                        actionType: 'cell_overlay_tap',
+                        playerActionId: PlayerActions.inspectMapCell,
+                        callback: (details) => _onMapTapAt(
+                          context,
+                          details.localPosition,
+                          renderableMapState,
+                          exactProjectionRequest.key,
+                          cellsWithStates,
+                          projectGeoCoord,
+                          venueAnchors,
+                        ),
                       ),
-                    ),
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: CellOverlayPainter(
-                        cellsWithStates: cellsWithStates,
-                        cameraPosition: renderCameraPosition,
-                        zoom: renderZoom,
-                        cameraPixelOffset: screenCenter,
-                        project: projectGeoCoord,
-                        projectionRevision: exactProjectionReady
-                            ? _exactScreenProjectionRevision
-                            : -1,
+                      child: CustomPaint(
+                        size: Size.infinite,
+                        painter: CellOverlayPainter(
+                          cellsWithStates: cellsWithStates,
+                          cameraPosition: renderCameraPosition,
+                          zoom: renderZoom,
+                          cameraPixelOffset: screenCenter,
+                          project: projectGeoCoord,
+                          projectionRevision: exactProjectionReady
+                              ? _exactScreenProjectionRevision
+                              : -1,
+                        ),
                       ),
                     ),
                   ),
@@ -1325,17 +1382,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
     );
   }
 
-  void _onMapTap(
+  void _onMapTapAt(
     BuildContext context,
-    TapUpDetails details,
+    Offset tapPosition,
     MapStateReady mapState,
     String exactProjectionKey,
     List<({Cell cell, CellState state})> cellsWithStates,
     Offset Function(GeoCoord coord) project,
     List<_KnownVenueAnchor> venueAnchors,
   ) {
-    final tapPosition = details.localPosition;
-
     // Find the cell that was tapped (simplified - find closest cell center)
     ({Cell cell, CellState state})? closestEntry;
     double closestDistance = double.infinity;

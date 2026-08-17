@@ -69,7 +69,8 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'lib/features/identification/presentation/screens/identification_service_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Player-facing Villager service flow for identifying an examined find.',
+    purpose:
+        'Player-facing Villager service flow for identifying an examined find.',
     designSystemNotes:
         'Composes shared panels, notices, action controls, and app theme tokens for the identification service flow.',
   ),
@@ -203,6 +204,14 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose: 'Map-cell field-note/detail sheet.',
     designSystemNotes:
         'Known field-note pattern; migrate toward EarthPanel/EarthFieldRow composites when touched.',
+  ),
+  DesignSurfaceDefinition(
+    path: 'lib/features/map/presentation/widgets/desktop_traversal_input.dart',
+    category: DesignSurfaceCategory.featureWidget,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose: 'Desktop keyboard and pointer focus boundary for the map.',
+    designSystemNotes:
+        'Input-only wrapper with no visual styling; it preserves the map composition.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/discovery_notification.dart',
