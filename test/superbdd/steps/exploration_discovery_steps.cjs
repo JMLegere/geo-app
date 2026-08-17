@@ -42,6 +42,7 @@ Before(function () {
   this.identificationServiceStartCount = 0;
   this.discoveryWrites = 0;
   this.town = { activeBottomDestination: false };
+  this.localMvpLoop = undefined;
 });
 
 function createEntry({ firstVisit = true } = {}) {
@@ -141,9 +142,13 @@ function continueReward(world) {
     world.discoveryResult,
     "Cannot continue before Discovery resolves a result.",
   );
+  const continueActionId = `continue-${world.discoveryResult.ownedItemId}`;
+  const packImpactId = `pack-impact-${world.discoveryResult.ownedItemId}`;
+  const { outcome } = world.presentEncounterResolution ?? {};
   world.lastAdvanceInput = "click_anywhere";
   world.overlayDismissed = true;
   world.rewardSurface.active = false;
+  world.activeSurface = "map";
   world.cardFlight = {
     active: true,
     target: "pack",
@@ -152,7 +157,10 @@ function continueReward(world) {
   world.packTarget = { reaction: "shake", forcedOpen: false };
   world.telemetry.push({
     event: "discovery.reward_continued",
+    continueActionId,
     mapCellEntryId: world.discoveryResult.mapCellEntryId,
+    encounterId: outcome?.encounterId,
+    outcomeId: outcome?.id,
     discoveryResultId: world.discoveryResult.resultId,
     ownedItemId: world.discoveryResult.ownedItemId,
     livingSpecimenCategory: world.discoveryResult.livingSpecimenCategory,
@@ -160,7 +168,10 @@ function continueReward(world) {
   });
   world.telemetry.push({
     event: "pack.reward_impact",
+    packImpactId,
     mapCellEntryId: world.discoveryResult.mapCellEntryId,
+    encounterId: outcome?.encounterId,
+    outcomeId: outcome?.id,
     discoveryResultId: world.discoveryResult.resultId,
     ownedItemId: world.discoveryResult.ownedItemId,
     livingSpecimenCategory: world.discoveryResult.livingSpecimenCategory,
@@ -229,6 +240,11 @@ function createPackItem(
 
 function examinePackItem(world, item) {
   world.examinationDispatches ??= [];
+  if (world.examinationDispatches.includes(item.id)) {
+    return;
+  }
+
+  const examinationId = `examination-${item.id}`;
   world.examinationDispatches.push(item.id);
   world.baseItemJournal.set(item.baseItemId, {
     baseItemId: item.baseItemId,
@@ -240,6 +256,14 @@ function examinePackItem(world, item) {
     recognized: true,
     identificationState: item.identificationState,
   };
+  world.telemetry.push({
+    event: "item.examined",
+    examinationId,
+    mapCellEntryId: item.mapCellEntryId,
+    encounterId: item.sourceEncounterId,
+    outcomeId: world.presentEncounterResolution?.outcome.id,
+    itemId: item.id,
+  });
 }
 
 function isRecognized(world, item) {
@@ -334,15 +358,16 @@ function resolvePresentEncounter(world) {
   }
 
   const item = {
-    id: `item-${resolutionId}`,
-    kind: "Item",
+    ...createPackItem(`item-${resolutionId}`),
     sourceEncounterId: world.pendingEncounter.id,
+    mapCellEntryId: world.entry?.mapCellEntryId,
   };
   const outcome = {
     id: `outcome-${resolutionId}`,
     kind: "Outcome",
     encounterId: world.pendingEncounter.id,
     optionId: option.id,
+    mapCellEntryId: world.entry?.mapCellEntryId,
     itemId: item.id,
   };
   const rewardFlight = { itemId: item.id, target: "Pack" };
@@ -356,6 +381,21 @@ function resolvePresentEncounter(world) {
     gestureOwner: "card-only",
   };
   world.presentEncounterResolution = { ...commit, replayed: false };
+  if (world.entry) {
+    world.discoveryResult = {
+      resultId: `result-${resolutionId}`,
+      mapCellEntryId: world.entry.mapCellEntryId,
+      livingSpecimenCategory: item.category,
+      ownedItemId: item.id,
+    };
+  }
+  world.telemetry.push({
+    event: "encounter.outcome_committed",
+    mapCellEntryId: world.entry?.mapCellEntryId,
+    encounterId: world.pendingEncounter.id,
+    outcomeId: outcome.id,
+    itemId: item.id,
+  });
   return commit;
 }
 
@@ -1656,3 +1696,213 @@ When("the player opens Pack", function () {
 Given("the player has access to Pack", function () {
   this.hasPackAccess = true;
 });
+
+Given(
+  "a fresh local-loop Player occupies a trusted Present Cell with one canonical pending Encounter",
+  function () {
+    this.entry = {
+      ...createEntry(),
+      mapCellEntryId: "entry-local-loop-1",
+      enteredCellId: "present-cell-local-loop-1",
+    };
+    this.presentCell = { id: this.entry.enteredCellId, trusted: true };
+    this.pendingEncounter = {
+      id: "encounter-local-loop-1",
+      cellId: this.presentCell.id,
+      options: [],
+    };
+    this.localMvpLoop = {
+      trace: { entryId: this.entry.mapCellEntryId },
+    };
+  },
+);
+
+Given("the local-loop Encounter has one authored canonical Option", function () {
+  this.pendingEncounter.options = [
+    { id: "option-local-loop-observe-1", authored: true },
+  ];
+});
+
+When("the fresh local-loop Player resolves its canonical Encounter", function () {
+  this.lastPlayerAction = "resolve-present-encounter";
+  const { item, outcome } = resolvePresentEncounter(this);
+  this.localMvpLoop.trace = {
+    ...this.localMvpLoop.trace,
+    encounterId: this.pendingEncounter.id,
+    outcomeId: outcome.id,
+    itemId: item.id,
+  };
+});
+
+Then(
+  "the local-loop resolution commits exactly one canonical Outcome and Item",
+  function () {
+    const { item, outcome } = this.presentEncounterResolution;
+    assert.equal(this.lastPlayerAction, "resolve-present-encounter");
+    assert.equal(this.encounterCommits.size, 1);
+    assert.equal(this.pack.length, 1);
+    assert.equal(this.encounterRewardFlights.length, 1);
+    assert.deepEqual(
+      {
+        entryId: this.entry.mapCellEntryId,
+        encounterId: outcome.encounterId,
+        outcomeId: outcome.id,
+        itemId: item.id,
+        optionId: outcome.optionId,
+        rewardFlightItemId: this.encounterRewardFlights[0].itemId,
+      },
+      {
+        entryId: "entry-local-loop-1",
+        encounterId: "encounter-local-loop-1",
+        outcomeId:
+          "outcome-encounter-local-loop-1:option-local-loop-observe-1",
+        itemId: "item-encounter-local-loop-1:option-local-loop-observe-1",
+        optionId: "option-local-loop-observe-1",
+        rewardFlightItemId:
+          "item-encounter-local-loop-1:option-local-loop-observe-1",
+      },
+    );
+  },
+);
+
+When("the fresh local-loop Player continues the committed reward to Map", function () {
+  prepareRewardPresentation(this);
+  this.localMvpLoop.rewardWasActive = this.rewardSurface.active;
+  continueReward(this);
+  const continued = this.telemetry.find(
+    ({ event }) => event === "discovery.reward_continued",
+  );
+  const packImpact = this.telemetry.find(
+    ({ event }) => event === "pack.reward_impact",
+  );
+  this.localMvpLoop.trace = {
+    ...this.localMvpLoop.trace,
+    continueActionId: continued.continueActionId,
+    packImpactId: packImpact.packImpactId,
+  };
+});
+
+Then("the local-loop Pack begins with the same committed Item", function () {
+  assert.equal(this.rewardSurface.active, false);
+  assert.equal(this.localMvpLoop.rewardWasActive, true);
+  assert.equal(this.activeSurface, "map");
+  assert.deepEqual(this.pack.map(({ id }) => id), [
+    this.localMvpLoop.trace.itemId,
+  ]);
+  assert.deepEqual(
+    this.telemetry
+      .filter(({ event }) =>
+        ["discovery.reward_continued", "pack.reward_impact"].includes(event),
+      )
+      .map(({ continueActionId, ownedItemId, packImpactId }) => ({
+        continueActionId,
+        ownedItemId,
+        packImpactId,
+      })),
+    [
+      {
+        continueActionId: "continue-item-encounter-local-loop-1:option-local-loop-observe-1",
+        ownedItemId: this.localMvpLoop.trace.itemId,
+        packImpactId: undefined,
+      },
+      {
+        continueActionId: undefined,
+        ownedItemId: this.localMvpLoop.trace.itemId,
+        packImpactId:
+          "pack-impact-item-encounter-local-loop-1:option-local-loop-observe-1",
+      },
+    ],
+  );
+});
+
+When("the fresh local-loop Player taps that Pack Item for Examination", function () {
+  this.packView = this.pack.map(visiblePackItem);
+  examinePackItem(this, this.pack[0]);
+  const examination = this.telemetry.find(
+    ({ event }) => event === "item.examined",
+  );
+  this.localMvpLoop.trace = {
+    ...this.localMvpLoop.trace,
+    examinationId: examination.examinationId,
+  };
+});
+
+Then(
+  "the local-loop Examination recognizes the same Item exactly once",
+  function () {
+    assert.deepEqual(this.packView.map(({ id }) => id), [
+      this.localMvpLoop.trace.itemId,
+    ]);
+    assert.deepEqual(this.examinationDispatches, [this.localMvpLoop.trace.itemId]);
+    assert.equal(this.baseItemJournal.size, 1);
+    assert.equal(isRecognized(this, this.pack[0]), true);
+    assert.deepEqual(this.packDetail, {
+      id: this.localMvpLoop.trace.itemId,
+      recognized: true,
+      identificationState: "unidentified",
+    });
+  },
+);
+
+When(
+  "the fresh local-loop Player replays the resolution and Examination then reloads",
+  function () {
+    resolvePresentEncounter(this);
+    examinePackItem(this, this.pack[0]);
+    this.reloadedLocalMvpLoop = JSON.parse(
+      JSON.stringify({
+        pack: this.pack,
+        baseItemJournal: [...this.baseItemJournal.entries()],
+        trace: this.localMvpLoop.trace,
+      }),
+    );
+  },
+);
+
+Then(
+  "the local-loop reload preserves one linked entry-to-Examination lineage",
+  function () {
+    const itemId = "item-encounter-local-loop-1:option-local-loop-observe-1";
+    const expectedTrace = {
+      entryId: "entry-local-loop-1",
+      encounterId: "encounter-local-loop-1",
+      outcomeId: "outcome-encounter-local-loop-1:option-local-loop-observe-1",
+      itemId,
+      continueActionId: `continue-${itemId}`,
+      packImpactId: `pack-impact-${itemId}`,
+      examinationId: `examination-${itemId}`,
+    };
+    assert.equal(this.presentEncounterResolution.replayed, true);
+    assert.equal(this.encounterCommits.size, 1);
+    assert.equal(this.pack.length, 1);
+    assert.equal(this.encounterRewardFlights.length, 1);
+    assert.deepEqual(this.examinationDispatches, [itemId]);
+    assert.equal(this.baseItemJournal.size, 1);
+    assert.equal(this.pack[0].id, itemId);
+    assert.equal(this.pack[0].isExamined, true);
+    assert.deepEqual(this.localMvpLoop.trace, expectedTrace);
+    assert.deepEqual(this.reloadedLocalMvpLoop.trace, expectedTrace);
+    assert.deepEqual(this.reloadedLocalMvpLoop.pack, this.pack);
+    assert.deepEqual(this.reloadedLocalMvpLoop.baseItemJournal, [
+      [this.pack[0].baseItemId, this.baseItemJournal.get(this.pack[0].baseItemId)],
+    ]);
+    assert.deepEqual(
+      this.telemetry
+        .filter(({ event }) =>
+          [
+            "encounter.outcome_committed",
+            "discovery.reward_continued",
+            "pack.reward_impact",
+            "item.examined",
+          ].includes(event),
+        )
+        .map(({ event }) => event),
+      [
+        "encounter.outcome_committed",
+        "discovery.reward_continued",
+        "pack.reward_impact",
+        "item.examined",
+      ],
+    );
+  },
+);

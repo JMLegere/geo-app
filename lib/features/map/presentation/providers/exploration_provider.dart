@@ -178,12 +178,37 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       return;
     }
 
-    // Initial occupancy and trusted recovery use the ordinary persistence and
-    // Encounter path, but do not fabricate a previous cell.
+    // Initial occupancy and trusted recovery normally use the ordinary
+    // persistence and Encounter path, but do not fabricate a previous cell.
     final isInitialOrRecovery = !wasTrusted;
     newState = newState.copyWith(currentPositionIsTrusted: true);
     if (!isInitialOrRecovery && previousCellId == currentCell.id) {
       // Same trusted cell: movement may animate marker/camera, but no entry fires.
+      _triggerQueuedVisitRetry(userId);
+      return;
+    }
+
+    final isFirstVisit = !visitedCellIds.contains(currentCell.id) &&
+        !state.visitedCellIds.contains(currentCell.id);
+    final isInformed =
+        knowledgeByCellId[currentCell.id]?.state == CellKnowledgeState.informed;
+
+    // Durable knowledge makes an initial/recovered occupancy trusted Present,
+    // not another entry. Informed cells deliberately retain their repeat-entry
+    // opportunity.
+    if (isInitialOrRecovery &&
+        visitedCellIds.contains(currentCell.id) &&
+        !isInformed) {
+      transition(
+        newState.copyWith(
+          visitedCellIds: {...state.visitedCellIds, ...visitedCellIds},
+        ),
+        'map.cell_tracked',
+        data: {
+          'cellId': currentCell.id,
+          'tracking_reason': 'known_occupancy',
+        },
+      );
       _triggerQueuedVisitRetry(userId);
       return;
     }
@@ -202,19 +227,13 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     }
 
     final now = DateTime.now();
-
-    // Check if this is a first visit.
-    final isFirstVisit = !visitedCellIds.contains(currentCell.id) &&
-        !state.visitedCellIds.contains(currentCell.id);
-
     // Record visit optimistically.
     final newVisited = {...state.visitedCellIds, currentCell.id};
     final borderCrossingEvent = _buildBorderCrossingEvent(
       currentCell: currentCell,
       previousCellId: entryPreviousCellId,
       isFirstVisit: isFirstVisit,
-      hasInformedOpportunity: knowledgeByCellId[currentCell.id]?.state ==
-          CellKnowledgeState.informed,
+      hasInformedOpportunity: isInformed,
       occurredAt: now,
       sequence: state.lastEntrySequence + 1,
     );

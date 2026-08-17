@@ -36,7 +36,7 @@ class SupabaseCellKnowledgeRepository implements CellKnowledgeRepository {
     Iterable<String> cellIds, {
     String? traceId,
   }) async {
-    final requestedIds = _boundedDistinctCellIds(cellIds);
+    final requestedIds = _distinctCellIds(cellIds);
     if (requestedIds.isEmpty) {
       return {};
     }
@@ -49,36 +49,49 @@ class SupabaseCellKnowledgeRepository implements CellKnowledgeRepository {
     });
 
     try {
-      final response = await _runRpc(requestedIds);
-      if (response is! List) {
-        throw FormatException(
-          'fetch_v3_player_cell_states must return a JSON array response.',
-        );
-      }
-
-      final requestedIdSet = requestedIds.toSet();
       final projections = <String, CellKnowledgeProjection>{};
-      for (final rawRow in response) {
-        final row = _projectionRow(rawRow);
-        final cellId = row['cell_id'];
-        if (cellId is! String || cellId.isEmpty) {
-          throw FormatException(
-            'fetch_v3_player_cell_states rows require a non-empty cell_id.',
-          );
+      var rowCount = 0;
+      var requestCount = 0;
+      for (var start = 0; start < requestedIds.length;) {
+        var end = start + maxCellIdsPerRequest;
+        if (end > requestedIds.length) {
+          end = requestedIds.length;
         }
-        if (!requestedIdSet.contains(cellId)) {
+        final requestIds = requestedIds.sublist(start, end);
+        start = end;
+        final response = await _runRpc(requestIds);
+        requestCount++;
+        if (response is! List) {
           throw FormatException(
-            'fetch_v3_player_cell_states returned an unrequested cell_id.',
-          );
-        }
-        if (projections.containsKey(cellId)) {
-          throw FormatException(
-            'fetch_v3_player_cell_states returned a duplicate cell_id.',
+            'fetch_v3_player_cell_states must return a JSON array response.',
           );
         }
 
-        projections[cellId] =
-            CellKnowledgeProjectionDto.fromJson(_safeProjection(row)).toDomain();
+        rowCount += response.length;
+        final requestedIdSet = requestIds.toSet();
+        for (final rawRow in response) {
+          final row = _projectionRow(rawRow);
+          final cellId = row['cell_id'];
+          if (cellId is! String || cellId.isEmpty) {
+            throw FormatException(
+              'fetch_v3_player_cell_states rows require a non-empty cell_id.',
+            );
+          }
+          if (!requestedIdSet.contains(cellId)) {
+            throw FormatException(
+              'fetch_v3_player_cell_states returned an unrequested cell_id.',
+            );
+          }
+          if (projections.containsKey(cellId)) {
+            throw FormatException(
+              'fetch_v3_player_cell_states returned a duplicate cell_id.',
+            );
+          }
+
+          projections[cellId] =
+              CellKnowledgeProjectionDto.fromJson(_safeProjection(row))
+                  .toDomain();
+        }
       }
 
       for (final cellId in requestedIds) {
@@ -93,7 +106,8 @@ class SupabaseCellKnowledgeRepository implements CellKnowledgeRepository {
       _logEvent?.call('db.query_completed', _category, data: {
         'trace_id': traceId,
         'operation': operation,
-        'row_count': response.length,
+        'row_count': rowCount,
+        'request_count': requestCount,
         'duration_ms': stopwatch.elapsedMilliseconds,
       });
       return projections;
@@ -125,16 +139,12 @@ class SupabaseCellKnowledgeRepository implements CellKnowledgeRepository {
     return client.rpc(functionName, params: params);
   }
 
-  static List<String> _boundedDistinctCellIds(Iterable<String> cellIds) {
+  static List<String> _distinctCellIds(Iterable<String> cellIds) {
     final ids = <String>[];
     final seen = <String>{};
     for (final cellId in cellIds) {
-      if (cellId.isEmpty || !seen.add(cellId)) {
-        continue;
-      }
-      ids.add(cellId);
-      if (ids.length == maxCellIdsPerRequest) {
-        break;
+      if (cellId.isNotEmpty && seen.add(cellId)) {
+        ids.add(cellId);
       }
     }
     return ids;

@@ -36,7 +36,7 @@ void main() {
       );
 
       final projections = await repository.fetchForCells(
-        ['cell-1', 'cell-2'],
+        ['cell-1', '', 'cell-2', 'cell-1'],
         traceId: 'trace-1',
       );
 
@@ -68,7 +68,53 @@ void main() {
       expect(completed['trace_id'], 'trace-1');
       expect(completed['operation'], 'fetch_player_cell_states');
       expect(completed['row_count'], 2);
+      expect(completed['request_count'], 1);
       expect(completed['duration_ms'], isA<int>());
+    });
+
+    test('batches all distinct cell ids within the RPC cap', () async {
+      final calls = <List<String>>[];
+      final events = <Map<String, dynamic>>[];
+      final cellIds = List.generate(257, (index) => 'cell-$index');
+      final repository = SupabaseCellKnowledgeRepository(
+        client: null,
+        rpcQuery: (_, params) async {
+          final requestIds = params['p_cell_ids']! as List<String>;
+          calls.add(requestIds);
+          return [
+            for (final cellId in requestIds)
+              {'cell_id': cellId, 'state': 'informed'},
+          ];
+        },
+        logEvent: (event, category, {data}) {
+          events.add({
+            'event': event,
+            'category': category,
+            'data': data ?? const <String, dynamic>{},
+          });
+        },
+      );
+
+      final projections = await repository.fetchForCells([
+        ...cellIds.take(256),
+        'cell-0',
+        '',
+        cellIds.last,
+      ]);
+
+      expect(calls, hasLength(2));
+      expect(calls[0], cellIds.take(256).toList());
+      expect(calls[1], [cellIds.last]);
+      expect(calls.every((ids) => ids.length <= 256), isTrue);
+      expect(projections.keys, orderedEquals(cellIds));
+      expect(projections, hasLength(257));
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_completed',
+      ]);
+      final completed = events.last['data'] as Map<String, dynamic>;
+      expect(completed['row_count'], 257);
+      expect(completed['request_count'], 2);
     });
 
     test('redacts failed RPC diagnostics and throws a safe error', () async {

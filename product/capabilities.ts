@@ -170,6 +170,7 @@ export const productCapabilities = {
     cucumberFeatures: [
       spineFeature,
       "features/exploration-discovery-discovery.feature",
+      "features/exploration-discovery-mvp-loop.feature",
       "features/exploration-discovery-pack.feature",
       "features/exploration-discovery-identification.feature",
     ],
