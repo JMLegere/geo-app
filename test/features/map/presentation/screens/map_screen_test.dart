@@ -301,6 +301,65 @@ void main() {
       expect(find.text('Unknown'), findsNothing);
     });
 
+    testWidgets('legend exposes category and player shape cues',
+        (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: MapCellKnowledgeLegend()),
+        ),
+      );
+
+      final informedItem =
+          find.byKey(const ValueKey('cell-knowledge-informed'));
+      final categoryCue = find.descendant(
+        of: informedItem,
+        matching: find.byKey(
+          const ValueKey('cell-knowledge-informed-category-cue'),
+        ),
+      );
+      expect(categoryCue, findsOneWidget);
+      expect(tester.widget<Icon>(categoryCue).icon, Icons.category);
+      expect(
+        find.bySemanticsLabel('Informed Cell, category known'),
+        findsOneWidget,
+      );
+
+      final presentItem = find.byKey(const ValueKey('cell-knowledge-present'));
+      final playerMarker = find.descendant(
+        of: presentItem,
+        matching: find.byKey(
+          const ValueKey('cell-knowledge-present-player-marker'),
+        ),
+      );
+      final playerDot = find.descendant(
+        of: playerMarker,
+        matching: find.byKey(
+          const ValueKey('cell-knowledge-present-player-dot'),
+        ),
+      );
+      expect(playerMarker, findsOneWidget);
+      expect(playerDot, findsOneWidget);
+
+      final markerDecoration =
+          tester.widget<Container>(playerMarker).decoration! as BoxDecoration;
+      final markerBorder = markerDecoration.border! as Border;
+      final dotDecoration =
+          tester.widget<Container>(playerDot).decoration! as BoxDecoration;
+      expect(markerDecoration.shape, BoxShape.circle);
+      expect(markerDecoration.color, Colors.green);
+      expect(markerBorder.top.color, Colors.white);
+      expect(dotDecoration.shape, BoxShape.circle);
+      expect(dotDecoration.color, Colors.white);
+      expect(
+        find.bySemanticsLabel('Present Cell, player here'),
+        findsOneWidget,
+      );
+
+      semanticsHandle.dispose();
+    });
+
     testWidgets('paused banner is a live semantic status', (tester) async {
       final semanticsHandle = tester.ensureSemantics();
 

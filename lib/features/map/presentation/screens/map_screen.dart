@@ -1728,35 +1728,79 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final fill = FogRenderer.fillColor(state);
     final stroke = FogRenderer.strokeColor(state);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: Spacing.lg,
-          height: Spacing.lg,
-          decoration: BoxDecoration(
-            color: fill,
-            border: stroke.a > 0 ? Border.all(color: stroke) : null,
-            borderRadius: BorderRadius.circular(Radii.xs),
-          ),
-          child: state.knowledgeState == CellKnowledgeState.informed
-              ? const Icon(
-                  Icons.category_outlined,
-                  size: Spacing.md,
+    final semanticLabel = switch (state.knowledgeState) {
+      CellKnowledgeState.informed => 'Informed Cell, category known',
+      CellKnowledgeState.present => 'Present Cell, player here',
+      CellKnowledgeState.explored => 'Explored Cell',
+      CellKnowledgeState.shrouded => 'Shrouded Cell',
+    };
+    return Semantics(
+      container: true,
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: Spacing.xxl,
+            height: Spacing.xxl,
+            decoration: BoxDecoration(
+              color: fill,
+              border: stroke.a > 0 ? Border.all(color: stroke) : null,
+              borderRadius: BorderRadius.circular(Radii.xs),
+            ),
+            child: switch (state.knowledgeState) {
+              CellKnowledgeState.informed => const Icon(
+                  key: ValueKey('cell-knowledge-informed-category-cue'),
+                  Icons.category,
+                  size: Spacing.xl,
                   color: AppTheme.onSurface,
-                )
-              : null,
-        ),
-        const SizedBox(width: Spacing.xs),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.onSurfaceVariant,
-            fontSize: 10,
-            fontWeight: FontWeight.w500,
+                ),
+              CellKnowledgeState.present => Center(
+                  child: Container(
+                    key: const ValueKey(
+                      'cell-knowledge-present-player-marker',
+                    ),
+                    width: Spacing.lg,
+                    height: Spacing.lg,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white,
+                        width: Spacing.xxs,
+                      ),
+                    ),
+                    child: Container(
+                      key: const ValueKey(
+                        'cell-knowledge-present-player-dot',
+                      ),
+                      width: Spacing.xs,
+                      height: Spacing.xs,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              CellKnowledgeState.explored ||
+              CellKnowledgeState.shrouded =>
+                null,
+            },
           ),
-        ),
-      ],
+          const SizedBox(width: Spacing.xs),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTheme.onSurfaceVariant,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

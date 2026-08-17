@@ -267,7 +267,7 @@ void main() {
       expect(state.lastBorderCrossingEvent, isNull);
     });
 
-    test('trusted initial occupancy records exactly one visit and entry',
+    test('fresh trusted initial occupancy records exactly one visit and entry',
         () async {
       final repo = _MockCellRepository();
       final visitObs = TestObservabilityService();
@@ -313,9 +313,22 @@ void main() {
       expect(testObs.eventNames, contains('map.cell_visited'));
     });
 
-    test('captures informed opportunity for first and repeat entries only',
+    test('captures informed opportunity for first and informed repeat entries',
         () async {
-      final notifier = container.read(explorationProvider.notifier);
+      final repo = _MockCellRepository();
+      final c = ProviderContainer(
+        overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
+          explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(repo),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (_, __, {rootTrace}) async {},
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+      final notifier = c.read(explorationProvider.notifier);
 
       Future<CellBorderCrossingEvent> enter({
         required Set<String> visited,
@@ -342,7 +355,7 @@ void main() {
           },
           userId: 'user-123',
         );
-        return container.read(explorationProvider).lastBorderCrossingEvent!;
+        return c.read(explorationProvider).lastBorderCrossingEvent!;
       }
 
       final firstVisit = await enter(
@@ -353,17 +366,16 @@ void main() {
         visited: const {'cell-A'},
         knowledgeState: CellKnowledgeState.informed,
       );
-      final repeatExplored = await enter(
-        visited: const {'cell-A'},
-        knowledgeState: CellKnowledgeState.explored,
-      );
 
       expect(firstVisit.isFirstVisit, isTrue);
       expect(firstVisit.hasInformedOpportunity, isTrue);
       expect(repeatInformed.isFirstVisit, isFalse);
       expect(repeatInformed.hasInformedOpportunity, isTrue);
-      expect(repeatExplored.isFirstVisit, isFalse);
-      expect(repeatExplored.hasInformedOpportunity, isFalse);
+      expect(repo.recordedVisits, hasLength(2));
+      expect(
+        testObs.eventNames.where((event) => event == 'map.cell_visited'),
+        hasLength(2),
+      );
     });
 
     test('eligible initial occupancy does not create an optimistic Venue',
@@ -859,7 +871,7 @@ void main() {
       expect(testObs.eventNames, contains('operation.failed'));
     });
     test(
-        'a later valid position update retries queued coordination without another record call',
+        'explored app reload retries queued coordination without another visit',
         () async {
       final repo = _MockCellRepository();
       final visitObs = TestObservabilityService();
@@ -919,6 +931,10 @@ void main() {
       expect(queued.borderCrossingEvent, same(firstEvent));
       expect(repo.recordedVisits, hasLength(1));
 
+      final entryEventsBeforeReload = testObs.eventNames
+          .where((event) => event == 'map.cell_entered')
+          .length;
+      c.read(explorationProvider.notifier).clearVisitedCells();
       await c.read(explorationProvider.notifier).onPositionUpdate(
             markerState: const PlayerMarkerState(
               lat: 1.6,
@@ -927,12 +943,27 @@ void main() {
               gapDistance: 10.0,
             ),
             cells: cells,
-            visitedCellIds: const <String>{},
+            visitedCellIds: const {'cell-A', 'cell-B'},
+            knowledgeByCellId: const {
+              'cell-B': CellKnowledgeProjection(
+                cellId: 'cell-B',
+                state: CellKnowledgeState.explored,
+              ),
+            },
             userId: 'user-123',
           );
       await Future<void>.delayed(Duration.zero);
 
       expect(repo.recordedVisits, hasLength(1));
+      final reloadedState = c.read(explorationProvider);
+      expect(reloadedState.currentCellId, 'cell-B');
+      expect(reloadedState.currentPositionIsTrusted, isTrue);
+      expect(reloadedState.visitedCellIds, {'cell-A', 'cell-B'});
+      expect(reloadedState.lastBorderCrossingEvent, isNull);
+      expect(
+        testObs.eventNames.where((event) => event == 'map.cell_entered').length,
+        entryEventsBeforeReload,
+      );
       expect(handlerCalls, 2);
       expect(retriedVisit, same(firstVisit));
       expect(retriedEvent, same(firstEvent));
