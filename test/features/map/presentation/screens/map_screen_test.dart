@@ -310,6 +310,14 @@ void main() {
           home: Scaffold(body: MapCellKnowledgeLegend()),
         ),
       );
+      final legendSemantics = tester.widget<Semantics>(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics &&
+              widget.properties.label == 'Cell knowledge',
+        ),
+      );
+      expect(legendSemantics.explicitChildNodes, isTrue);
 
       final informedItem =
           find.byKey(const ValueKey('cell-knowledge-informed'));

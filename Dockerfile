@@ -2,6 +2,8 @@ FROM instrumentisto/flutter:3.41.3 AS build
 ARG RAILWAY_GIT_COMMIT_SHA=""
 ARG SUPABASE_URL=""
 ARG SUPABASE_ANON_KEY=""
+ARG ENCOUNTER_ENGINE_MODE="legacy"
+ARG ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES="false"
 ARG CACHEBUST=v3-rebuild
 WORKDIR /app
 COPY pubspec.yaml pubspec.lock ./
@@ -16,6 +18,8 @@ RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     flutter build web \
     "--dart-define=SUPABASE_URL=$SUPABASE_URL" \
     "--dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" \
+    "--dart-define=ENCOUNTER_ENGINE_MODE=$ENCOUNTER_ENGINE_MODE" \
+    "--dart-define=ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES=$ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES" \
     "--dart-define=BUILD_TIMESTAMP=$BUILD_TS" \
     "--dart-define=APP_VERSION=$BUILD_TS"
 

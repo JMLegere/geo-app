@@ -1679,6 +1679,7 @@ class MapCellKnowledgeLegend extends StatelessWidget {
 
     return Semantics(
       container: true,
+      explicitChildNodes: true,
       label: 'Cell knowledge',
       child: DecoratedBox(
         key: const ValueKey('map-cell-knowledge-legend'),
