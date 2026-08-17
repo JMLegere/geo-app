@@ -108,6 +108,83 @@ void main() {
     });
   });
 
+  group('ItemDto examination visibility and compatibility', () {
+    test('masks Base Item identity and content while unexamined', () {
+      final item = ItemDto.fromJson({
+        'id': 'i-unexamined',
+        'display_name': 'Unidentified fauna specimen',
+        'category': 'fauna',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'status': 'active',
+        'identification_state': 'unidentified',
+        'examination_state': 'unexamined',
+      }).toDomain();
+
+      expect(item.examinationState, ItemExaminationState.unexamined);
+      expect(item.isExamined, isFalse);
+      expect(item.definitionId, isNull);
+      expect(item.baseItemId, isNull);
+      expect(item.baseItemVersionId, isNull);
+      expect(item.scientificName, isNull);
+      expect(item.habitats, isEmpty);
+      expect(item.identifiedDisplayName, isNull);
+    });
+
+    test('reveals Base Item identity and content after examination only', () {
+      final item = ItemDto.fromJson({
+        ...fullJson,
+        'identification_state': 'unidentified',
+        'examination_state': 'examined',
+        'examined_at': '2026-01-02T03:04:05.000Z',
+      }).toDomain();
+
+      expect(item.examinationState, ItemExaminationState.examined);
+      expect(item.isExamined, isTrue);
+      expect(item.examinedAt, DateTime.utc(2026, 1, 2, 3, 4, 5));
+      expect(item.identificationState, ItemIdentificationState.unidentified);
+      expect(item.baseItemId, 'fauna:lion');
+      expect(
+        item.baseItemVersionId,
+        '123e4567-e89b-12d3-a456-426614174000',
+      );
+      expect(item.displayName, 'Lion');
+      expect(item.scientificName, 'Panthera leo');
+      expect(item.habitats, ['Forest', 'Mountain']);
+      expect(item.identifiedAt, isNull);
+      expect(item.identifiedDisplayName, isNull);
+      expect(item.identifiedScientificName, isNull);
+    });
+
+    test('derives legacy examination state from identification state', () {
+      final legacyIdentified = ItemDto.fromJson(fullJson).toDomain();
+      final legacyUnidentified = ItemDto.fromJson({
+        'id': 'legacy-unidentified',
+        'display_name': 'Unidentified fauna specimen',
+        'category': 'fauna',
+        'acquired_at': acquiredAt.toIso8601String(),
+        'status': 'active',
+        'identification_state': 'unidentified',
+      }).toDomain();
+
+      expect(legacyIdentified.examinationState, ItemExaminationState.examined);
+      expect(
+          legacyUnidentified.examinationState, ItemExaminationState.unexamined);
+    });
+
+    test(
+        'rejects identification property values leaked by an examined projection',
+        () {
+      final leaked = {
+        ...fullJson,
+        'identification_state': 'unidentified',
+        'examination_state': 'examined',
+        'identified_display_name': 'Northern cardinal',
+      };
+
+      expect(() => ItemDto.fromJson(leaked), throwsA(isA<FormatException>()));
+    });
+  });
+
   group('_parseJsonArray edge cases', () {
     test('null input returns empty list', () {
       final json = {

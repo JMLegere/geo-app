@@ -164,9 +164,9 @@ export const productCapabilities = {
     id: "exploration-discovery-lifecycle",
     label: "Exploration-Discovery Lifecycle",
     description:
-      "Exploration records Cell Visits; each Visit may create one Encounter, whose Outcomes may generate Items in Pack. Identification can record Discovery and populate Index. The linked reward-card evidence is legacy only, not an approved target implementation.",
+      "Exploration records Cell Visits; each Visit may create one Encounter, whose Outcomes may generate exact Items. Pack projects every owned active Item newest first. Examination records durable Base Item Journal knowledge, while a distinct known-Villager Identification Service resolves only the examined Item's exact-version Property Values.",
     emotionalReward:
-      "Every walk can become a meaningful Item and a durable Discovery.",
+      "Every walk can become a meaningful Item whose identity and exact properties are learned deliberately.",
     cucumberFeatures: [
       spineFeature,
       "features/exploration-discovery-discovery.feature",
@@ -178,6 +178,8 @@ export const productCapabilities = {
       playerActions.continueDiscoveryReward,
       playerActions.openPack,
       playerActions.inspectPackFind,
+      playerActions.examinePackItem,
+      playerActions.openIdentificationService,
       playerActions.identifyUnidentifiedFind,
       playerActions.revealIdentification,
     ],

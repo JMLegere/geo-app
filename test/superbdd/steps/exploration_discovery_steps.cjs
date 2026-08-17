@@ -34,6 +34,14 @@ Before(function () {
   this.pendingEncounter = undefined;
   this.encounterCommits = new Map();
   this.encounterRewardFlights = [];
+  this.baseItemJournal = new Map();
+  this.identificationCommits = new Map();
+  this.itemPropertyValues = [];
+  this.identificationService = undefined;
+  this.identificationServicePrepareCount = 0;
+  this.identificationServiceStartCount = 0;
+  this.discoveryWrites = 0;
+  this.town = { activeBottomDestination: false };
 });
 
 function createEntry({ firstVisit = true } = {}) {
@@ -190,6 +198,117 @@ function visiblePackItem(item) {
     searchableText: `${item.category} unidentified specimen`,
     speciesName: undefined,
   };
+}
+
+function createPackItem(
+  id,
+  {
+    baseItemId = "base-amberwing-warbler",
+    baseItemVersionId = "base-amberwing-warbler-v1",
+    examined = false,
+    identified = false,
+    acquiredAt = "2026-05-22T00:00:00.000Z",
+  } = {},
+) {
+  return {
+    id,
+    kind: "Item",
+    baseItemId,
+    baseItemVersionId,
+    category: "fauna",
+    isActive: true,
+    acquiredAt,
+    acquiredInCellId: "v_1_2",
+    identificationState: identified ? "identified" : "unidentified",
+    isExamined: examined || identified,
+    ...(identified
+      ? { speciesName: HIDDEN_SPECIES_NAME, baseItemContent: "Amberwing profile" }
+      : {}),
+  };
+}
+
+function examinePackItem(world, item) {
+  world.examinationDispatches ??= [];
+  world.examinationDispatches.push(item.id);
+  world.baseItemJournal.set(item.baseItemId, {
+    baseItemId: item.baseItemId,
+    recognizedAt: "2026-05-22T00:00:00.000Z",
+  });
+  item.isExamined = true;
+  world.packDetail = {
+    id: item.id,
+    recognized: true,
+    identificationState: item.identificationState,
+  };
+}
+
+function isRecognized(world, item) {
+  return world.baseItemJournal.has(item.baseItemId);
+}
+
+function prepareIdentificationService(world, item) {
+  assert.equal(item.isActive, true, "Identification requires an owned active Item.");
+  assert.equal(item.isExamined, true, "Identification requires an examined Item.");
+  assert.equal(
+    item.identificationState,
+    "unidentified",
+    "Identification requires an unidentified Item.",
+  );
+  assert.ok(world.knownVillager, "Identification requires a known Villager.");
+  assert.ok(world.identificationOffering, "Identification requires an offering.");
+
+  world.identificationServicePrepareCount += 1;
+  world.identificationService = {
+    state: "prepared",
+    itemId: item.id,
+    villagerId: world.knownVillager.id,
+    serviceId: world.identificationOffering.serviceId,
+    serviceVersionId: world.identificationOffering.serviceVersionId,
+    baseItemVersionId: item.baseItemVersionId,
+  };
+  return world.identificationService;
+}
+
+function startIdentificationService(world) {
+  assert.equal(world.identificationService?.state, "prepared");
+  world.identificationServiceStartCount += 1;
+  world.identificationService = {
+    ...world.identificationService,
+    state: "ready",
+    revealControl: {
+      itemId: world.identificationService.itemId,
+      villagerId: world.identificationService.villagerId,
+      serviceVersionId: world.identificationService.serviceVersionId,
+      baseItemVersionId: world.identificationService.baseItemVersionId,
+    },
+  };
+}
+
+function completeIdentificationService(world) {
+  const plan = world.identificationService;
+  assert.ok(plan, "Identification reveal needs a retained plan.");
+  const committed = world.identificationCommits.get(plan.itemId);
+  if (committed) {
+    return committed;
+  }
+  assert.equal(plan.state, "ready", "Identification reveal must be ready.");
+
+  const item = world.pack.find(({ id }) => id === plan.itemId);
+  assert.ok(item, "Prepared Identification Item must remain owned.");
+  const propertyValues = ["plumage", "song"].map((property) => ({
+    id: `${item.id}:${property}`,
+    itemId: item.id,
+    baseItemVersionId: plan.baseItemVersionId,
+    property,
+  }));
+  const commit = { itemId: item.id, propertyValues };
+  world.identificationCommits.set(item.id, commit);
+  world.itemPropertyValues.push(...propertyValues);
+  item.identificationState = "identified";
+  item.speciesName = HIDDEN_SPECIES_NAME;
+  item.propertyValueIds = propertyValues.map(({ id }) => id);
+  world.identificationService = { ...plan, state: "revealed" };
+  return commit;
 }
 
 function resolvePresentEncounter(world) {
@@ -971,3 +1090,569 @@ Then(
     assert.equal(this.encounterRewardFlights.length, 1);
   },
 );
+
+Given(
+  "the Map has Shrouded, Informed, Explored, and trusted Present Cells",
+  function () {
+    this.mapLegend = ["Shrouded", "Informed", "Explored", "Present"];
+    this.cellKnowledge = [
+      {
+        state: "Shrouded",
+        treatment: "generic",
+        details: {},
+        cues: [],
+      },
+      {
+        state: "Informed",
+        treatment: "explored",
+        details: { category: "fauna" },
+        cues: [{ kind: "category", label: "fauna" }],
+        legacyContents: "hasLoot",
+      },
+      {
+        state: "Explored",
+        treatment: "explored",
+        details: { visitCount: 2 },
+        cues: [],
+      },
+      {
+        state: "Present",
+        treatment: "present",
+        details: { trustedOccupancy: true },
+        cues: [],
+      },
+    ];
+  },
+);
+
+When("the player inspects each Cell knowledge state", function () {
+  this.lastPlayerAction = "inspect-map-cell";
+  this.inspectedCellKnowledge = this.cellKnowledge;
+});
+
+Then(
+  "the legend should label exactly Shrouded, Informed, Explored, and Present",
+  function () {
+    assert.equal(this.lastPlayerAction, "inspect-map-cell");
+    assert.deepEqual(this.mapLegend, [
+      "Shrouded",
+      "Informed",
+      "Explored",
+      "Present",
+    ]);
+  },
+);
+
+Then(
+  "Shrouded should expose only a generic unrevealed treatment",
+  function () {
+    const shrouded = this.inspectedCellKnowledge.find(
+      ({ state }) => state === "Shrouded",
+    );
+    assert.equal(shrouded.treatment, "generic");
+    assert.deepEqual(shrouded.details, {});
+    assert.deepEqual(shrouded.cues, []);
+  },
+);
+
+Then(
+  "Informed should reuse the Explored treatment with exactly one category cue",
+  function () {
+    const informed = this.inspectedCellKnowledge.find(
+      ({ state }) => state === "Informed",
+    );
+    const explored = this.inspectedCellKnowledge.find(
+      ({ state }) => state === "Explored",
+    );
+    assert.equal(informed.treatment, explored.treatment);
+    assert.deepEqual(informed.details, { category: "fauna" });
+    assert.deepEqual(informed.cues, [{ kind: "category", label: "fauna" }]);
+  },
+);
+
+Then(
+  "Informed should not expose an exact Encounter, fauna identity, Outcome, or reward",
+  function () {
+    const informed = this.inspectedCellKnowledge.find(
+      ({ state }) => state === "Informed",
+    );
+    assert.doesNotMatch(
+      JSON.stringify(informed.details),
+      /encounter|amberwing|outcome|reward/i,
+    );
+  },
+);
+
+Then("the legacy hasLoot star should not appear", function () {
+  const informed = this.inspectedCellKnowledge.find(
+    ({ state }) => state === "Informed",
+  );
+  assert.equal(informed.legacyContents, "hasLoot");
+  assert.equal(informed.cues.some(({ kind }) => kind === "star"), false);
+});
+
+Given(
+  "a Cell is current only because of untrusted or camera movement",
+  function () {
+    this.occupancy = {
+      cellId: "cell-camera-only",
+      trustedPhysicalOccupancy: false,
+      cameraCurrent: true,
+      priorState: "Explored",
+    };
+  },
+);
+
+When("Map projects private player Cell knowledge", function () {
+  this.projectedKnowledge = this.occupancy.trustedPhysicalOccupancy
+    ? "Present"
+    : this.occupancy.priorState;
+});
+
+Then("that Cell should not be Present", function () {
+  assert.equal(this.projectedKnowledge, "Explored");
+  assert.notEqual(this.projectedKnowledge, "Present");
+});
+
+When("trusted physical occupancy is recorded", function () {
+  this.occupancy.trustedPhysicalOccupancy = true;
+  this.projectedKnowledge = "Present";
+  this.otherCellKnowledge = "Explored";
+});
+
+Then("that Cell alone should be Present", function () {
+  assert.equal(this.projectedKnowledge, "Present");
+  assert.notEqual(this.otherCellKnowledge, "Present");
+});
+
+Given(
+  "canonical Cell fog is rendered with reduced motion enabled",
+  function () {
+    this.reducedMotion = true;
+    this.fogTreatments = ["Shrouded", "Informed", "Explored", "Present"].map(
+      (state) => ({ state, animation: "none" }),
+    );
+  },
+);
+
+When("Map pauses exploration outside trusted occupancy", function () {
+  this.pausedBanner = {
+    label: "Discovery paused",
+    semanticRole: "status",
+    liveRegion: true,
+  };
+});
+
+Then("every Cell knowledge treatment should remain static", function () {
+  assert.equal(this.reducedMotion, true);
+  assert.equal(
+    this.fogTreatments.every(({ animation }) => animation === "none"),
+    true,
+  );
+});
+
+Then('the paused banner should announce the status "Discovery paused"', function () {
+  assert.deepEqual(this.pausedBanner, {
+    label: "Discovery paused",
+    semanticRole: "status",
+    liveRegion: true,
+  });
+});
+
+Given("an Encounter Outcome committed an exact Item ID", function () {
+  const item = createPackItem("item-exact-1");
+  this.encounterOutcome = { id: "outcome-1", itemId: item.id };
+  this.pack = [item];
+  this.packInsertions = 1;
+});
+
+Given("older active Items already exist in Pack", function () {
+  this.pack.push(
+    createPackItem("item-older-1", { acquiredAt: "2026-05-21T00:00:00.000Z" }),
+    createPackItem("item-older-2", { acquiredAt: "2026-05-20T00:00:00.000Z" }),
+  );
+});
+
+Then("that exact Item ID should appear first in recent Pack order", function () {
+  assert.equal(this.packView[0].id, this.encounterOutcome.itemId);
+  assert.deepEqual(
+    this.packView.map(({ id }) => id),
+    ["item-exact-1", "item-older-1", "item-older-2"],
+  );
+});
+
+Then("no duplicate Item should be inserted", function () {
+  assert.equal(this.packInsertions, 1);
+  assert.equal(new Set(this.pack.map(({ id }) => id)).size, this.pack.length);
+});
+
+Then("the app should not force-open Pack or activate Town", function () {
+  assert.equal(this.packTarget.forcedOpen, false);
+  assert.equal(this.town.activeBottomDestination, false);
+});
+
+Given("the player owns more than twenty active Items", function () {
+  this.pack = Array.from({ length: 25 }, (_, index) =>
+    createPackItem(`item-${index + 1}`, {
+      acquiredAt: `2026-05-${String(22 - Math.floor(index / 5)).padStart(2, "0")}T00:00:00.000Z`,
+    }),
+  );
+});
+
+Then("every owned active Item should remain browsable", function () {
+  const activeItemIds = this.pack
+    .filter(({ isActive }) => isActive)
+    .map(({ id }) => id);
+  assert.ok(activeItemIds.length > 20);
+  assert.deepEqual(
+    this.packView.map(({ id }) => id),
+    activeItemIds,
+  );
+});
+
+Then(
+  "acquisition should not be rejected, overwritten, hidden, or orphaned",
+  function () {
+    assert.equal(this.pack.length, 25);
+    assert.equal(new Set(this.pack.map(({ id }) => id)).size, 25);
+    assert.equal(this.pack.every(({ isActive }) => isActive), true);
+  },
+);
+
+Given("an owned active Item is unexamined", function () {
+  const item = createPackItem("item-unexamined-1");
+  this.pack = [item];
+  this.unexaminedItemId = item.id;
+  this.futureSameBaseItem = createPackItem("item-future-1");
+});
+
+When("Pack renders the Item", function () {
+  const item = this.pack.find(({ id }) => id === this.unexaminedItemId);
+  this.packView = [{
+    id: item.id,
+    ariaLabel: "Unexamined Item",
+    identificationState: item.identificationState,
+  }];
+});
+
+Then("assistive semantics should describe an unexamined Item", function () {
+  assert.deepEqual(this.packView[0], {
+    id: this.unexaminedItemId,
+    ariaLabel: "Unexamined Item",
+    identificationState: "unidentified",
+  });
+});
+
+Then(
+  "Base Item identity, intrinsic content, and Variable Property Values should be concealed",
+  function () {
+    const rendered = this.packView[0];
+    assert.equal(rendered.baseItemId, undefined);
+    assert.equal(rendered.baseItemContent, undefined);
+    assert.equal(rendered.propertyValues, undefined);
+  },
+);
+
+When("the player taps its Pack grid surface once", function () {
+  examinePackItem(
+    this,
+    this.pack.find(({ id }) => id === this.unexaminedItemId),
+  );
+});
+
+Then(
+  "Examination should be dispatched once for that exact Item ID",
+  function () {
+    assert.deepEqual(this.examinationDispatches, [this.unexaminedItemId]);
+  },
+);
+
+Then("at most one Player Base Item Journal Entry should exist", function () {
+  assert.equal(this.baseItemJournal.size, 1);
+});
+
+Then("the recognized same-ID Item card should open", function () {
+  assert.equal(this.packDetail.id, this.unexaminedItemId);
+  assert.equal(this.packDetail.recognized, true);
+});
+
+Then(
+  "all current and future owned Items of that Base Item should be recognized",
+  function () {
+    assert.equal(isRecognized(this, this.pack[0]), true);
+    assert.equal(isRecognized(this, this.futureSameBaseItem), true);
+  },
+);
+
+Then("no Villager, Venue, or Service should be required", function () {
+  assert.equal(this.knownVillager, undefined);
+  assert.equal(this.venueVisit, undefined);
+  assert.equal(this.identificationService, undefined);
+});
+
+Then("no Item Property Value should be resolved", function () {
+  assert.deepEqual(this.itemPropertyValues, []);
+});
+
+When("the player opens, filters, sorts, searches, or reads Pack", function () {
+  if (this.pack.length === 0) {
+    this.pack = [createPackItem("item-browse-1")];
+  }
+  this.packReadSnapshot = JSON.stringify({
+    pack: this.pack,
+    journal: [...this.baseItemJournal.entries()],
+    propertyValues: this.itemPropertyValues,
+  });
+  this.packView = this.pack.map(visiblePackItem);
+  this.packSearchResults = this.packView.filter(({ category }) => category === "fauna");
+});
+
+Then(
+  "owned Items should remain visible without changing Item knowledge or identification state",
+  function () {
+    assert.ok(this.packView.length > 0);
+    assert.equal(
+      JSON.stringify({
+        pack: this.pack,
+        journal: [...this.baseItemJournal.entries()],
+        propertyValues: this.itemPropertyValues,
+      }),
+      this.packReadSnapshot,
+    );
+  },
+);
+
+Given("an examined or identified Item is visible in Pack", function () {
+  const item = createPackItem("item-recognized-1", { examined: true });
+  this.pack = [item];
+  this.baseItemJournal.set(item.baseItemId, { baseItemId: item.baseItemId });
+  this.packView = [visiblePackItem(item)];
+  this.inspectedItemSnapshot = JSON.stringify(item);
+});
+
+When("the player inspects that same Item", function () {
+  const item = this.pack[0];
+  this.packDetail = {
+    id: item.id,
+    baseItemContent: "Amberwing profile",
+    acquiredAt: item.acquiredAt,
+    acquiredInCellId: item.acquiredInCellId,
+    identificationState: item.identificationState,
+  };
+});
+
+Then(
+  "Pack should show allowed Base Item content, acquisition history, and identification state",
+  function () {
+    assert.equal(this.packDetail.baseItemContent, "Amberwing profile");
+    assert.equal(this.packDetail.id, this.pack[0].id);
+    assert.ok(this.packDetail.acquiredAt);
+    assert.ok(this.packDetail.acquiredInCellId);
+    assert.equal(this.packDetail.identificationState, "unidentified");
+  },
+);
+
+Then("inspection should not duplicate or mutate the Item", function () {
+  assert.equal(this.pack.length, 1);
+  assert.equal(JSON.stringify(this.pack[0]), this.inspectedItemSnapshot);
+});
+
+Given("an examined unidentified owned active Item is in Pack", function () {
+  const item = createPackItem("item-identification-1", { examined: true });
+  this.pack = [item];
+  this.baseItemJournal.set(item.baseItemId, { baseItemId: item.baseItemId });
+});
+
+Given(
+  "the player knows a Villager whose current Version offers the current published Identification Service",
+  function () {
+    this.knownVillager = { id: "villager-1", versionId: "villager-1-v2" };
+    this.identificationOffering = {
+      serviceId: "identification",
+      serviceVersionId: "identification-v3",
+      published: true,
+    };
+  },
+);
+
+Given("the player has no current Venue Visit", function () {
+  this.venueVisit = undefined;
+});
+
+When("the player opens Identification Service from the Item card", function () {
+  prepareIdentificationService(this, this.pack[0]);
+});
+
+Then("the distinct Service screen should prepare that exact Item once", function () {
+  assert.equal(this.identificationServicePrepareCount, 1);
+  assert.equal(this.identificationService.itemId, this.pack[0].id);
+  assert.equal(this.identificationService.state, "prepared");
+});
+
+Then("it should show the Villager and Service", function () {
+  assert.equal(this.identificationService.villagerId, this.knownVillager.id);
+  assert.equal(
+    this.identificationService.serviceId,
+    this.identificationOffering.serviceId,
+  );
+});
+
+Then("Town should not become an active bottom destination", function () {
+  assert.equal(this.town.activeBottomDestination, false);
+});
+
+Then("no Property Value should be committed", function () {
+  assert.deepEqual(this.itemPropertyValues, []);
+  assert.equal(this.identificationCommits.size, 0);
+});
+
+Given("the Identification Service prepared an eligible exact Item", function () {
+  const item = createPackItem("item-identification-1", { examined: true });
+  this.pack = [item];
+  this.knownVillager = { id: "villager-1", versionId: "villager-1-v2" };
+  this.identificationOffering = {
+    serviceId: "identification",
+    serviceVersionId: "identification-v3",
+    published: true,
+  };
+  prepareIdentificationService(this, item);
+});
+
+When("the player starts Identification", function () {
+  startIdentificationService(this);
+});
+
+Then(
+  "the reveal control should retain the prepared Item, Villager, and Service Version",
+  function () {
+    const { revealControl, itemId, villagerId, serviceVersionId } =
+      this.identificationService;
+    assert.deepEqual(revealControl, {
+      itemId,
+      villagerId,
+      serviceVersionId,
+      baseItemVersionId: this.pack[0].baseItemVersionId,
+    });
+  },
+);
+
+Then("starting should not commit Property Values", function () {
+  assert.equal(this.identificationServiceStartCount, 1);
+  assert.equal(this.identificationCommits.size, 0);
+  assert.deepEqual(this.itemPropertyValues, []);
+});
+
+Given("an Identification reveal is ready", function () {
+  const item = createPackItem("item-identification-1", { examined: true });
+  this.pack = [item];
+  this.knownVillager = { id: "villager-1", versionId: "villager-1-v2" };
+  this.identificationOffering = {
+    serviceId: "identification",
+    serviceVersionId: "identification-v3",
+    published: true,
+  };
+  prepareIdentificationService(this, item);
+  startIdentificationService(this);
+});
+
+When(
+  "the player cancels or releases before completing hold-to-reveal",
+  function () {
+    this.identificationService = {
+      ...this.identificationService,
+      state: "cancelled",
+      releasedBeforeReveal: true,
+    };
+  },
+);
+
+Then("no Identification commit should run", function () {
+  assert.equal(this.identificationService.state, "cancelled");
+  assert.equal(this.identificationCommits.size, 0);
+});
+
+Then("no Discovery or Item Property Value should be written", function () {
+  assert.equal(this.discoveryWrites, 0);
+  assert.deepEqual(this.itemPropertyValues, []);
+});
+
+Given("an Identification reveal is ready for the retained plan", function () {
+  const item = createPackItem("item-identification-1", { examined: true });
+  this.pack = [item];
+  this.baseItemJournal.set(item.baseItemId, { baseItemId: item.baseItemId });
+  this.knownVillager = { id: "villager-1", versionId: "villager-1-v2" };
+  this.identificationOffering = {
+    serviceId: "identification",
+    serviceVersionId: "identification-v3",
+    published: true,
+  };
+  prepareIdentificationService(this, item);
+  startIdentificationService(this);
+});
+
+When("the player completes hold-to-reveal", function () {
+  completeIdentificationService(this);
+});
+
+Then(
+  "the exact authored-version Property Values should be committed once",
+  function () {
+    const commit = this.identificationCommits.get(this.pack[0].id);
+    assert.ok(commit);
+    assert.equal(this.identificationCommits.size, 1);
+    assert.equal(commit.propertyValues.length, 2);
+    assert.equal(
+      commit.propertyValues.every(
+        ({ baseItemVersionId }) =>
+          baseItemVersionId === this.identificationService.baseItemVersionId,
+      ),
+      true,
+    );
+  },
+);
+
+Then("the identified result should retain the same Item ID", function () {
+  assert.equal(this.pack.length, 1);
+  assert.equal(this.pack[0].id, this.identificationService.itemId);
+  assert.equal(this.pack[0].identificationState, "identified");
+});
+
+Then("reloading should preserve the same Item and identified state", function () {
+  this.reloadedPack = JSON.parse(JSON.stringify(this.pack));
+  assert.deepEqual(this.reloadedPack, this.pack);
+  assert.equal(this.reloadedPack[0].identificationState, "identified");
+});
+
+Then(
+  "retrying should not duplicate Item, Journal Entry, Discovery, or Property Values",
+  function () {
+    const before = {
+      items: this.pack.length,
+      journalEntries: this.baseItemJournal.size,
+      discoveryWrites: this.discoveryWrites,
+      propertyValues: this.itemPropertyValues.length,
+    };
+    completeIdentificationService(this);
+    assert.deepEqual(
+      {
+        items: this.pack.length,
+        journalEntries: this.baseItemJournal.size,
+        discoveryWrites: this.discoveryWrites,
+        propertyValues: this.itemPropertyValues.length,
+      },
+      before,
+    );
+  },
+);
+
+When("the player opens Pack after the reward", function () {
+  this.packView = this.pack.map(visiblePackItem);
+});
+
+When("the player opens Pack", function () {
+  this.packView = this.pack.map(visiblePackItem);
+});
+
+Given("the player has access to Pack", function () {
+  this.hasPackAccess = true;
+});

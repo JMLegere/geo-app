@@ -11,4 +11,11 @@ abstract class ItemRepository {
     Item item, {
     String? traceId,
   });
+
+  /// Authoritatively reveals Base Item content for one owned Item instance.
+  ///
+  /// Concrete default preserves existing lightweight test doubles until they
+  /// opt into examination.
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError('Item examination is unavailable.');
 }

@@ -112,54 +112,68 @@ void main() {
       expect(find.text('Test Species'), findsOneWidget);
     });
 
-    testWidgets(
-        'unidentified card starts reveal path before committing known state',
-        (tester) async {
-      var startCount = 0;
-      var revealCount = 0;
+    testWidgets('unexamined card is a semantic silhouette', (tester) async {
+      final semantics = tester.ensureSemantics();
       final item = _item(
-        name: 'Unidentified fauna specimen',
+        name: 'Amberwing Warbler',
+        scientificName: 'Setophaga aestiva',
         rarity: 'rare',
+        examinationState: ItemExaminationState.unexamined,
         identificationState: ItemIdentificationState.unidentified,
-        identifiedDisplayName: 'Amberwing Warbler',
-        identifiedScientificName: 'Setophaga aestiva',
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SpeciesCard(item: item)),
+      ));
+
+      expect(
+        find.bySemanticsLabel('Unexamined fauna Item'),
+        findsOneWidget,
+      );
+      expect(find.text('Amberwing Warbler'), findsNothing);
+      expect(find.text('Setophaga aestiva'), findsNothing);
+      expect(find.text('Rare'), findsNothing);
+      expect(find.text('Start identification'), findsNothing);
+      expect(find.text('Hold to reveal'), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets(
+        'examined unidentified card opens service without direct identify or reveal',
+        (tester) async {
+      var openServiceCount = 0;
+      String? openedItemId;
+      final item = _item(
+        name: 'Amberwing Warbler',
+        scientificName: 'Setophaga aestiva',
+        rarity: 'rare',
+        examinationState: ItemExaminationState.examined,
+        identificationState: ItemIdentificationState.unidentified,
       );
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: SpeciesCard(
             item: item,
-            onStartIdentification: (_) => startCount++,
-            onRevealIdentification: (item) async {
-              revealCount++;
-              return item.identify();
+            onOpenIdentificationService: (item) {
+              openServiceCount++;
+              openedItemId = item.id;
             },
           ),
         ),
       ));
 
-      expect(find.text('Unidentified fauna specimen'), findsOneWidget);
-      expect(find.text('Amberwing Warbler'), findsNothing);
-      expect(find.text('Start identification'), findsOneWidget);
-      expect(find.text('Hold to reveal'), findsNothing);
-
-      await tester.tap(find.text('Start identification'));
-      await tester.pumpAndSettle();
-
-      expect(startCount, 1);
-      expect(revealCount, 0);
-      expect(find.text('Unidentified fauna specimen'), findsOneWidget);
-      expect(find.text('Amberwing Warbler'), findsNothing);
-      expect(find.text('Identification ready'), findsOneWidget);
-      expect(find.text('Hold to reveal'), findsOneWidget);
-
-      await tester.longPress(find.text('Hold to reveal'));
-      await tester.pumpAndSettle();
-
-      expect(revealCount, 1);
       expect(find.text('Amberwing Warbler'), findsOneWidget);
       expect(find.text('Setophaga aestiva'), findsOneWidget);
+      expect(find.text('Open identification service'), findsOneWidget);
+      expect(find.text('Start identification'), findsNothing);
       expect(find.text('Hold to reveal'), findsNothing);
+
+      await tester.tap(find.text('Open identification service'));
+      await tester.pump();
+
+      expect(openServiceCount, 1);
+      expect(openedItemId, item.id);
     });
 
     testWidgets('displays cell ID when available', (tester) async {
@@ -198,6 +212,7 @@ Item _item({
       ItemIdentificationState.identified,
   String? identifiedDisplayName,
   String? identifiedScientificName,
+  ItemExaminationState examinationState = ItemExaminationState.examined,
 }) =>
     Item(
       id: 'test-1',
@@ -213,6 +228,7 @@ Item _item({
       habitats: habitats,
       continents: continents,
       identificationState: identificationState,
+      examinationState: examinationState,
       identifiedDisplayName: identifiedDisplayName,
       identifiedScientificName: identifiedScientificName,
     );

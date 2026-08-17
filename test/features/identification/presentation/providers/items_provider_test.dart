@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
@@ -11,8 +13,10 @@ import 'package:earth_nova/features/identification/data/repositories/mock_item_r
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
 import 'package:earth_nova/features/identification/domain/repositories/identification_repository.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/pack/data/repositories/legacy_item_repository_pack_adapter.dart';
+import 'package:earth_nova/features/pack/domain/repositories/pack_repository.dart';
 
 class TestObservabilityService extends ObservabilityService {
   TestObservabilityService() : super(sessionId: 'test-session');
@@ -36,6 +40,19 @@ class TestObservabilityService extends ObservabilityService {
 
   List<String> get eventNames => events.map((e) => e.event).toList();
 }
+
+final _serviceAccess = IdentificationServiceAccess(
+  villagerId: VillagerId('villager:rowan'),
+  villagerDisplayName: 'Rowan',
+  serviceId: ServiceId('service:identify_item_properties'),
+  serviceVersion: ExactVersionRef<ServiceContent>(
+    stableId:
+        StableContentId<ServiceContent>('service:identify_item_properties'),
+    versionId: ContentVersionId<ServiceContent>('service-version-2'),
+    revision: 2,
+  ),
+  serviceDisplayName: 'Identification',
+);
 
 Item _testItem({
   String id = 'item-1',
@@ -127,10 +144,47 @@ RecordingIdentificationRepository _authoritativeRepositoryFor(
       item: itemRef,
       playerDiscovered: false,
       properties: const [],
+      serviceAccess: _serviceAccess,
     ),
     committedItem: item.identify(),
     shouldFailCommit: shouldFailCommit,
   );
+}
+
+final class RecordingExaminationItemRepository extends MockItemRepository {
+  RecordingExaminationItemRepository({
+    required this.examinedItem,
+    this.shouldFail = false,
+  });
+
+  final Item examinedItem;
+  bool shouldFail;
+  int examineCalls = 0;
+  Item? receivedItem;
+
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) async {
+    examineCalls++;
+    receivedItem = item;
+    if (shouldFail) throw StateError('Examination failed.');
+    return examinedItem;
+  }
+}
+
+final class ReloadingPackRepository implements PackRepository {
+  ReloadingPackRepository(this.fetch);
+
+  final Future<List<Item>> Function() fetch;
+  int fetchCalls = 0;
+
+  @override
+  Future<List<Item>> fetchActiveItems(
+    String userId, {
+    String? traceId,
+  }) {
+    fetchCalls++;
+    return fetch();
+  }
 }
 
 void main() {
@@ -647,6 +701,123 @@ void main() {
           .toList();
       expect(completed.last.data!['terminal'], 'committed');
       expect(completed.last.data!['mode'], 'authoritative');
+    });
+    test(
+        'examines only the tapped Item before reloading the authoritative Pack projection',
+        () async {
+      final target = Item(
+        id: 'target',
+        displayName: 'Unidentified fauna specimen',
+        category: ItemCategory.fauna,
+        acquiredAt: DateTime.utc(2026, 4, 12),
+        status: ItemStatus.active,
+        identificationState: ItemIdentificationState.unidentified,
+        examinationState: ItemExaminationState.unexamined,
+      );
+      final sameDefinition = target.copyWith(id: 'same-definition');
+      final examined = target.copyWith(
+        definitionId: 'fauna:northern_cardinal',
+        baseItemId: 'fauna:northern_cardinal',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174000',
+        displayName: 'Northern cardinal',
+        examinationState: ItemExaminationState.examined,
+        examinedAt: DateTime.utc(2026, 4, 13),
+      );
+      final reload = Completer<List<Item>>();
+      final itemRepository =
+          RecordingExaminationItemRepository(examinedItem: examined);
+      final packRepository = ReloadingPackRepository(() => reload.future);
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(itemRepository),
+          packRepositoryProvider.overrideWithValue(packRepository),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(authProvider);
+      await c.read(authProvider.notifier).signInWithPhone('+15551234567');
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(target);
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(sameDefinition);
+
+      final examination =
+          c.read(itemsProvider.notifier).examinePackItem(target.id);
+      await Future<void>.delayed(Duration.zero);
+      expect(itemRepository.receivedItem, same(target));
+      expect(c.read(itemsProvider).items.first, same(sameDefinition));
+      expect(c.read(itemsProvider).items.last, same(examined));
+      expect(packRepository.fetchCalls, 1);
+
+      final current = examined.copyWith(
+        displayName: 'Current northern cardinal',
+      );
+      final future = _testItem(id: 'future', name: 'Future Item');
+      reload.complete([future, current, sameDefinition]);
+      await examination;
+
+      expect(
+        c.read(itemsProvider).items.map((item) => item.id),
+        ['future', 'target', 'same-definition'],
+      );
+      expect(c.read(itemsProvider).items[1], same(current));
+    });
+
+    test(
+        'preserves state on examination failure and retries one idempotent command',
+        () async {
+      final target = Item(
+        id: 'retry-target',
+        displayName: 'Unidentified flora specimen',
+        category: ItemCategory.flora,
+        acquiredAt: DateTime.utc(2026, 4, 12),
+        status: ItemStatus.active,
+        identificationState: ItemIdentificationState.unidentified,
+        examinationState: ItemExaminationState.unexamined,
+      );
+      final examined = target.copyWith(
+        definitionId: 'flora:oak',
+        baseItemId: 'flora:oak',
+        baseItemVersionId: '123e4567-e89b-12d3-a456-426614174001',
+        displayName: 'Oak',
+        examinationState: ItemExaminationState.examined,
+      );
+      final itemRepository = RecordingExaminationItemRepository(
+        examinedItem: examined,
+        shouldFail: true,
+      );
+      final packRepository = ReloadingPackRepository(() async => [examined]);
+      final c = ProviderContainer(
+        overrides: [
+          observabilityProvider.overrideWithValue(obs),
+          itemsObservabilityProvider.overrideWithValue(obs),
+          observableUseCaseProvider.overrideWithValue(obs),
+          authRepositoryProvider.overrideWithValue(auth),
+          itemRepositoryProvider.overrideWithValue(itemRepository),
+          packRepositoryProvider.overrideWithValue(packRepository),
+        ],
+      );
+      addTearDown(c.dispose);
+      c.read(authProvider);
+      await c.read(authProvider.notifier).signInWithPhone('+15551234567');
+      c.read(itemsProvider.notifier).registerOwnedDiscovery(target);
+
+      await c.read(itemsProvider.notifier).examinePackItem(target.id);
+
+      expect(itemRepository.examineCalls, 1);
+      expect(c.read(itemsProvider).items.single, same(target));
+      expect(packRepository.fetchCalls, 0);
+      expect(c.read(itemsProvider).error, isNotNull);
+
+      itemRepository.shouldFail = false;
+      await c.read(itemsProvider.notifier).examinePackItem(target.id);
+
+      expect(itemRepository.examineCalls, 2);
+      expect(packRepository.fetchCalls, 1);
+      expect(c.read(itemsProvider).items.single, same(examined));
+      expect(c.read(itemsProvider).error, isNull);
     });
   });
 }

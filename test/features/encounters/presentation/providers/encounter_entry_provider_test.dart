@@ -305,6 +305,9 @@ final class _NoAcquireItemRepository implements ItemRepository {
     String? traceId,
   }) async =>
       item;
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError();
 }
 
 final class _StubComputeEncounter extends ComputeEncounter {
@@ -344,6 +347,9 @@ final class _RecordingItemRepository implements ItemRepository {
     String? traceId,
   }) async =>
       item;
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError();
 }
 
 final class _EmptyPackRepository implements PackRepository {

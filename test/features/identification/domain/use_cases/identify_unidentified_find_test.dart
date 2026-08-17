@@ -31,6 +31,9 @@ class FakeItemRepository implements ItemRepository {
     receivedTraceId = traceId;
     return item.identify(at: DateTime.utc(2026, 5, 22));
   }
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) =>
+      throw UnimplementedError();
 }
 
 class TestObservabilityService extends ObservabilityService {

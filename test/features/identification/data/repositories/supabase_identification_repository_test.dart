@@ -10,6 +10,7 @@ const _playerId = '22222222-2222-4222-8222-222222222222';
 const _versionId = '33333333-3333-4333-8333-333333333333';
 const _valueCandidateId = '44444444-4444-4444-8444-444444444444';
 const _noneCandidateId = '55555555-5555-4555-8555-555555555555';
+const _serviceVersionId = '66666666-6666-4666-8666-666666666666';
 const _acquiredAt = '2026-07-20T12:00:00.000Z';
 const _committedAt = '2026-07-20T12:01:00.000Z';
 
@@ -37,6 +38,12 @@ void main() {
       expect(preparation.item.playerId, _playerId);
       expect(preparation.item.baseItemVersion.revision, 7);
       expect(preparation.playerDiscovered, isFalse);
+      expect(
+        preparation.serviceAccess.serviceId.value,
+        'service:identify_item_properties',
+      );
+      expect(preparation.serviceAccess.serviceVersion.versionId.value,
+          _serviceVersionId);
     });
 
     test('keeps prepare and commit repository telemetry on the caller trace',
@@ -111,14 +118,18 @@ void main() {
       expect((events.last['data'] as Map)['error_message'],
           'repository_operation_failed');
     });
-    test('rejects malformed preparation keys, UUIDs, times, and current state',
+    test(
+        'rejects malformed preparation keys, unexamined Items, and missing service access',
         () async {
+      final missingService = preparationResponse()..remove('service_access');
       for (final response in <Map<String, dynamic>>[
         preparationResponse()..['extra'] = true,
         preparationResponse(itemId: 'not-a-uuid'),
         preparationResponse(state: 'identified'),
+        preparationResponse(state: 'unexamined'),
         preparationResponse(
             discovery: true, discoveredAt: '2026-07-20T12:00:00'),
+        missingService,
       ]) {
         final repository = SupabaseIdentificationRepository(
           client: null,
@@ -200,11 +211,20 @@ void main() {
         'p_item_id',
         'p_expected_base_item_id',
         'p_expected_base_item_version_id',
+        'p_expected_service_id',
+        'p_expected_service_version_id',
+        'p_expected_villager_id',
         'p_property_resolutions',
       ]);
       expect(params['p_item_id'], _itemId);
       expect(params['p_expected_base_item_id'], 'base-item-1');
       expect(params['p_expected_base_item_version_id'], _versionId);
+      expect(
+        params['p_expected_service_id'],
+        'service:identify_item_properties',
+      );
+      expect(params['p_expected_service_version_id'], _serviceVersionId);
+      expect(params['p_expected_villager_id'], 'villager:rowan');
       expect(params['p_property_resolutions'], [
         <String, dynamic>{
           'ordinal': 0,
@@ -214,8 +234,12 @@ void main() {
         },
       ]);
       expect(result.item, plan.item);
-      expect(result.propertyValues.single.resolution,
-          isA<SelectedPropertyValue>());
+      expect(result.committedItem.id, _itemId);
+      expect(result.propertyValues, hasLength(1));
+      expect(
+        result.propertyValues.single.resolution,
+        isA<SelectedPropertyValue>(),
+      );
     });
 
     test('accepts empty explicit plans and serializes an empty plan exactly',
@@ -225,6 +249,7 @@ void main() {
       final plan = ItemIdentificationPlan(
         item: preparation.item,
         propertyResolutions: const [],
+        serviceAccess: preparation.serviceAccess,
       );
       late Map<String, dynamic> params;
       final repository = SupabaseIdentificationRepository(
@@ -239,6 +264,39 @@ void main() {
 
       expect(params['p_property_resolutions'], isEmpty);
       expect(result.propertyValues, isEmpty);
+    });
+
+    test('retries the retained service contract without exposing conflicts',
+        () async {
+      final plan = await _plan(await prepareFrom(preparationResponse()));
+      final requests = <Map<String, dynamic>>[];
+      final success = SupabaseIdentificationRepository(
+        client: null,
+        rpcCaller: (_, params) async {
+          requests.add(params);
+          return aggregateResponse(plan);
+        },
+      );
+
+      final completed = await success.commit(plan);
+      final conflict = SupabaseIdentificationRepository(
+        client: null,
+        rpcCaller: (_, params) async {
+          requests.add(params);
+          throw StateError('service changed conflict secret');
+        },
+      );
+
+      await expectLater(conflict.commit(plan), throwsStateError);
+      expect(requests, hasLength(2));
+      for (final params in requests) {
+        expect(params['p_expected_service_id'],
+            'service:identify_item_properties');
+        expect(params['p_expected_service_version_id'], _serviceVersionId);
+        expect(params['p_expected_villager_id'], 'villager:rowan');
+      }
+      expect(completed.committedItem.id, _itemId);
+      expect(completed.propertyValues, hasLength(1));
     });
 
     test('rejects aggregate owner and exact Version mismatches', () async {
@@ -346,6 +404,14 @@ Map<String, dynamic> preparationResponse({
         'base_item_version_id': _versionId,
         'base_item_revision': 7,
         'identification_state': state,
+      },
+      'service_access': <String, dynamic>{
+        'villager_id': 'villager:rowan',
+        'villager_display_name': 'Rowan',
+        'service_id': 'service:identify_item_properties',
+        'service_version_id': _serviceVersionId,
+        'service_version_revision': 2,
+        'service_display_name': 'Identification',
       },
       'discovery': discovery
           ? <String, dynamic>{

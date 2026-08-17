@@ -6,4 +6,4 @@ Exports: lib/features/pack/presentation/screens/pack_screen.dart
 Public API: lib/features/pack/presentation/screens/pack_screen.dart
 
 Purpose:
-  Player Pack page for browsing discovered finds, filtering records, and opening find detail actions.
+  Newest-first unlimited Pack projection for browsing exact owned active Items. Unexamined grid surfaces are semantic silhouettes whose single tap Examines that same Item before opening its recognized card; ordinary browsing is read-only.

@@ -35,12 +35,14 @@ class SupabaseItemRepository implements ItemRepository {
     ItemAcquireQuery? acquireDiscoveryItemQuery,
     ItemAcquireRpcCaller? acquireDiscoveryItemRpcCaller,
     ItemIdentifyQuery? identifyUnidentifiedFindQuery,
+    ItemAcquireRpcCaller? examineItemRpcCaller,
   })  : _client = client,
         _fetchItemsQuery = fetchItemsQuery,
         _fetchItemsRpcCaller = fetchItemsRpcCaller,
         _acquireDiscoveryItemQuery = acquireDiscoveryItemQuery,
         _acquireDiscoveryItemRpcCaller = acquireDiscoveryItemRpcCaller,
         _identifyUnidentifiedFindQuery = identifyUnidentifiedFindQuery,
+        _examineItemRpcCaller = examineItemRpcCaller,
         _logEvent = logEvent;
 
   final SupabaseClient? _client;
@@ -49,6 +51,7 @@ class SupabaseItemRepository implements ItemRepository {
   final ItemAcquireQuery? _acquireDiscoveryItemQuery;
   final ItemAcquireRpcCaller? _acquireDiscoveryItemRpcCaller;
   final ItemIdentifyQuery? _identifyUnidentifiedFindQuery;
+  final ItemAcquireRpcCaller? _examineItemRpcCaller;
   final RepositoryLogEvent? _logEvent;
   static const _category = 'identification.item_repository';
 
@@ -155,6 +158,40 @@ class SupabaseItemRepository implements ItemRepository {
     }
   }
 
+  @override
+  Future<Item> examineItem(Item item, {String? traceId}) async {
+    final stopwatch = Stopwatch()..start();
+    _logEvent?.call('db.query_started', _category, data: {
+      'trace_id': traceId,
+      'operation': 'examine_item',
+      'item_id': item.id,
+    });
+    try {
+      final response = await _runExamineItemQuery(item);
+      final examined = ItemDto.fromJson(response).toDomain();
+      if (examined.id != item.id || !examined.isExamined) {
+        throw StateError('Examination returned an invalid Item projection.');
+      }
+      _logEvent?.call('db.query_completed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'examine_item',
+        'item_id': examined.id,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+      });
+      return examined;
+    } catch (error) {
+      _logEvent?.call('db.query_failed', _category, data: {
+        'trace_id': traceId,
+        'operation': 'examine_item',
+        'item_id': item.id,
+        'duration_ms': stopwatch.elapsedMilliseconds,
+        'error_type': error.runtimeType.toString(),
+        'error_message': _safeErrorMessage(error),
+      });
+      throw StateError('Examining the Item failed.');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> _runFetchItemsQuery(String userId) async {
     final query = _fetchItemsQuery;
     if (query != null) return query(userId);
@@ -212,6 +249,29 @@ class SupabaseItemRepository implements ItemRepository {
       );
     }
     return _requireAcquiredDiscoveryItemResponse(response, draft);
+  }
+
+  Future<Map<String, dynamic>> _runExamineItemQuery(Item item) async {
+    final dynamic response;
+    final caller = _examineItemRpcCaller;
+    if (caller != null) {
+      response = await caller('examine_v3_item', {'p_item_id': item.id});
+    } else {
+      final client = _client;
+      if (client == null) {
+        throw StateError(
+          'Supabase client is required when no examination RPC caller is provided.',
+        );
+      }
+      response = await client.rpc(
+        'examine_v3_item',
+        params: {'p_item_id': item.id},
+      );
+    }
+    if (response is! Map) {
+      throw StateError('Examination must return exactly one Item object.');
+    }
+    return Map<String, dynamic>.from(response);
   }
 
   Future<Map<String, dynamic>> _runIdentifyUnidentifiedFindQuery(

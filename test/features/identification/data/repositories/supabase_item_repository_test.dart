@@ -40,6 +40,21 @@ Map<String, dynamic> _acquiredItemResponse({
       'identification_state': 'unidentified',
     };
 
+Map<String, dynamic> _examinedItemResponse() => {
+      'id': 'item-1',
+      'definition_id': 'species-101',
+      'base_item_id': 'fauna:northern_cardinal',
+      'base_item_version_id': '123e4567-e89b-12d3-a456-426614174000',
+      'display_name': 'Northern cardinal',
+      'scientific_name': 'Cardinalis cardinalis',
+      'category': 'fauna',
+      'acquired_at': _acquiredAt,
+      'status': 'active',
+      'identification_state': 'unidentified',
+      'examination_state': 'examined',
+      'examined_at': '2026-04-13T09:00:00.000Z',
+    };
+
 void main() {
   group('SupabaseItemRepository trace logging', () {
     test('logs query started/completed with trace_id and row_count', () async {
@@ -105,6 +120,93 @@ void main() {
       );
       expect(
           events.last['data'].values.join(), isNot(contains('items broken')));
+    });
+  });
+
+  group('SupabaseItemRepository examination command', () {
+    final unexaminedItem = Item(
+      id: 'item-1',
+      displayName: 'Unidentified fauna specimen',
+      category: ItemCategory.fauna,
+      acquiredAt: DateTime.utc(2026, 4, 12, 10, 30),
+      status: ItemStatus.active,
+      identificationState: ItemIdentificationState.unidentified,
+      examinationState: ItemExaminationState.unexamined,
+    );
+
+    test('calls examine_v3_item with only the exact Item id and trace',
+        () async {
+      String? rpcName;
+      Map<String, dynamic>? rpcParams;
+      final events = <Map<String, dynamic>>[];
+      final repository = SupabaseItemRepository(
+        client: null,
+        examineItemRpcCaller: (functionName, params) async {
+          rpcName = functionName;
+          rpcParams = params;
+          return _examinedItemResponse();
+        },
+        logEvent: (event, category, {data}) {
+          events
+              .add({'event': event, 'category': category, 'data': data ?? {}});
+        },
+      );
+
+      final examined = await repository.examineItem(unexaminedItem,
+          traceId: 'trace-examine');
+
+      expect(rpcName, 'examine_v3_item');
+      expect(rpcParams, {'p_item_id': 'item-1'});
+      expect(examined.id, unexaminedItem.id);
+      expect(examined.isExamined, isTrue);
+      expect(
+          examined.identificationState, ItemIdentificationState.unidentified);
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_completed',
+      ]);
+      expect(events.first['data']['operation'], 'examine_item');
+      expect(events.first['data']['trace_id'], 'trace-examine');
+      expect(events.last['data']['operation'], 'examine_item');
+      expect(events.last['data']['item_id'], 'item-1');
+      expect(events.last['data']['trace_id'], 'trace-examine');
+    });
+
+    test('logs a safe examination failure and preserves the backend error',
+        () async {
+      final events = <Map<String, dynamic>>[];
+      final repository = SupabaseItemRepository(
+        client: null,
+        examineItemRpcCaller: (_, __) async =>
+            throw StateError('backend secret: examination failed'),
+        logEvent: (event, category, {data}) {
+          events
+              .add({'event': event, 'category': category, 'data': data ?? {}});
+        },
+      );
+
+      await expectLater(
+        () => repository.examineItem(unexaminedItem, traceId: 'trace-failed'),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            'Examining the Item failed.',
+          ),
+        ),
+      );
+
+      expect(events.map((event) => event['event']), [
+        'db.query_started',
+        'db.query_failed',
+      ]);
+      expect(events.last['data']['operation'], 'examine_item');
+      expect(events.last['data']['trace_id'], 'trace-failed');
+      expect(events.last['data']['error_type'], 'StateError');
+      expect(
+          events.last['data']['error_message'], 'invalid_repository_response');
+      expect(events.last['data'].values.join(),
+          isNot(contains('backend secret: examination failed')));
     });
   });
 

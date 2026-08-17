@@ -4,6 +4,7 @@ import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/rules/selector.dart';
 import 'package:earth_nova/features/identification/domain/entities/identification_entities.dart';
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
+import 'package:earth_nova/features/living_world/domain/entities/authored_living_world_entities.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _baseItemId = StableContentId<BaseItemContent>('fauna:amberwing');
@@ -22,6 +23,22 @@ final _item = ItemKnowledgeItemRef(
   playerId: 'player-1',
   baseItemId: _baseItemId,
   baseItemVersion: _exactVersion,
+);
+
+final _serviceAccess = IdentificationServiceAccess(
+  villagerId: VillagerId('villager:rowan'),
+  villagerDisplayName: 'Rowan',
+  serviceId: ServiceId('service:identify_item_properties'),
+  serviceVersion: ExactVersionRef<ServiceContent>(
+    stableId: StableContentId<ServiceContent>(
+      'service:identify_item_properties',
+    ),
+    versionId: ContentVersionId<ServiceContent>(
+      'service-version-2',
+    ),
+    revision: 2,
+  ),
+  serviceDisplayName: 'Identification',
 );
 
 VariablePropertyDefinition _definition(
@@ -94,12 +111,15 @@ void main() {
         item: _item,
         playerDiscovered: false,
         properties: input,
+        serviceAccess: _serviceAccess,
       );
       final equivalent = IdentificationPreparation(
         item: _item,
         playerDiscovered: false,
         properties: [_property(ordinal: 0, definition: definition)],
+        serviceAccess: _serviceAccess,
       );
+
       final differentSelector = IdentificationPreparation(
         item: _item,
         playerDiscovered: false,
@@ -110,6 +130,7 @@ void main() {
             candidateId: 'other-candidate',
           ),
         ],
+        serviceAccess: _serviceAccess,
       );
 
       input.clear();
@@ -119,6 +140,41 @@ void main() {
       expect(first, isNot(differentSelector));
       expect(first.properties, hasLength(1));
       expect(() => first.properties.clear(), throwsUnsupportedError);
+    });
+
+    test('retains exact service access as immutable plan evidence', () {
+      final equivalent = IdentificationServiceAccess(
+        villagerId: VillagerId('villager:rowan'),
+        villagerDisplayName: 'Rowan',
+        serviceId: ServiceId('service:identify_item_properties'),
+        serviceVersion: ExactVersionRef<ServiceContent>(
+          stableId: StableContentId<ServiceContent>(
+            'service:identify_item_properties',
+          ),
+          versionId: ContentVersionId<ServiceContent>('service-version-2'),
+          revision: 2,
+        ),
+        serviceDisplayName: 'Identification',
+      );
+
+      expect(_serviceAccess, equivalent);
+      expect(_serviceAccess.hashCode, equivalent.hashCode);
+      expect(
+        () => IdentificationServiceAccess(
+          villagerId: VillagerId('villager:rowan'),
+          villagerDisplayName: 'Rowan',
+          serviceId: ServiceId('service:identify_item_properties'),
+          serviceVersion: ExactVersionRef<ServiceContent>(
+            stableId: StableContentId<ServiceContent>(
+              'service:other',
+            ),
+            versionId: ContentVersionId<ServiceContent>('service-version-2'),
+            revision: 2,
+          ),
+          serviceDisplayName: 'Identification',
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('rejects negative property ordinals before an invalid command exists',
@@ -142,6 +198,7 @@ void main() {
       expect(
         () => ItemIdentificationPlan(
           item: _item,
+          serviceAccess: _serviceAccess,
           propertyResolutions: [_resolution(ordinal: 1, definition: coat)],
         ),
         throwsArgumentError,
@@ -149,6 +206,7 @@ void main() {
       expect(
         () => ItemIdentificationPlan(
           item: _item,
+          serviceAccess: _serviceAccess,
           propertyResolutions: [
             _resolution(ordinal: 0, definition: coat),
             _resolution(ordinal: 1, definition: coat, candidateId: 'second'),
@@ -159,6 +217,7 @@ void main() {
       expect(
         () => ItemIdentificationPlan(
           item: _item,
+          serviceAccess: _serviceAccess,
           propertyResolutions: [
             _resolution(
               ordinal: 0,
@@ -175,6 +234,7 @@ void main() {
     final definition = _definition('coat-color');
     final plan = ItemIdentificationPlan(
       item: _item,
+      serviceAccess: _serviceAccess,
       propertyResolutions: [_resolution(ordinal: 0, definition: definition)],
     );
     final discovery = ItemDiscovery(
@@ -222,6 +282,7 @@ void main() {
       );
       final otherPlan = ItemIdentificationPlan(
         item: otherItem,
+        serviceAccess: _serviceAccess,
         propertyResolutions: const [],
       );
 

@@ -1,3 +1,4 @@
+import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/pack/data/repositories/supabase_pack_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -28,6 +29,20 @@ Map<String, dynamic> _activeItem({
       'identified_at': '2026-04-12T10:30:00.000Z',
       'base_item_id': baseItemId,
       'base_item_version_id': baseItemVersionId,
+    };
+
+Map<String, dynamic> _unexaminedItem({
+  required String id,
+  required String acquiredAt,
+}) =>
+    {
+      'id': id,
+      'display_name': 'Unidentified fauna specimen',
+      'category': 'fauna',
+      'acquired_at': acquiredAt,
+      'status': 'active',
+      'identification_state': 'unidentified',
+      'examination_state': 'unexamined',
     };
 
 void main() {
@@ -132,6 +147,47 @@ void main() {
       expect(items.single.definitionId, isNull);
       expect(items.single.baseItemId, isNull);
       expect(items.single.baseItemVersionId, isNull);
+    });
+
+    test(
+        'keeps authoritative newest-first unexamined Items without a cap or dedupe',
+        () async {
+      final rows = <Map<String, dynamic>>[
+        _unexaminedItem(
+          id: 'newest',
+          acquiredAt: '2026-04-14T10:30:00.000Z',
+        ),
+        ...List.generate(
+          101,
+          (index) => _unexaminedItem(
+            id: 'item-$index',
+            acquiredAt: '2026-04-13T10:30:00.000Z',
+          ),
+        ),
+        _unexaminedItem(
+          id: 'newest',
+          acquiredAt: '2026-04-12T10:30:00.000Z',
+        ),
+      ];
+      final repository = SupabasePackRepository(
+        client: null,
+        rpcCaller: (_, __) async => {'items': rows},
+      );
+
+      final items = await repository.fetchActiveItems('user-1');
+
+      expect(items, hasLength(103));
+      expect(items.first.id, 'newest');
+      expect(items[1].id, 'item-0');
+      expect(items.last.id, 'newest');
+      expect(
+        items.every(
+          (item) =>
+              item.examinationState == ItemExaminationState.unexamined &&
+              item.isExamined == false,
+        ),
+        isTrue,
+      );
     });
   });
 }

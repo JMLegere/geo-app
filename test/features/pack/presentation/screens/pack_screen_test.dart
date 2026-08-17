@@ -278,6 +278,7 @@ void main() {
           rarity: 'rare',
           identificationState: ItemIdentificationState.unidentified,
           identifiedDisplayName: 'Amberwing Warbler',
+          examinationState: ItemExaminationState.unexamined,
         ),
       ];
 
@@ -292,52 +293,75 @@ void main() {
       );
       expect(find.text('Amberwing Warbler'), findsNothing);
     });
-    testWidgets('identification starts reveal path before Pack state commit',
+    testWidgets(
+        'newest exact Item is first and one unexamined tap opens its recognized same-ID card',
         (tester) async {
-      final notifier = _RevealTrackingItemsNotifier([
-        _item(
-          '1',
-          'Unidentified fauna specimen',
-          ItemCategory.fauna,
-          rarity: 'rare',
-          identificationState: ItemIdentificationState.unidentified,
-          identifiedDisplayName: 'Amberwing Warbler',
-          identifiedScientificName: 'Setophaga aestiva',
-        ),
-      ]);
-      final container = ProviderContainer(
-        overrides: [
-          itemsProvider.overrideWith(() => notifier),
-          appObservabilityProvider.overrideWithValue(
-            ObservabilityService(sessionId: 'test-session'),
-          ),
-        ],
+      final semantics = tester.ensureSemantics();
+      final newest = _item(
+        '2',
+        'Amberwing Warbler',
+        ItemCategory.fauna,
+        rarity: 'rare',
+        scientificName: 'Setophaga aestiva',
+        identificationState: ItemIdentificationState.unidentified,
+        examinationState: ItemExaminationState.unexamined,
       );
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(home: PackScreen()),
-        ),
+      final examined = newest.copyWith(
+        examinationState: ItemExaminationState.examined,
+        examinedAt: DateTime.utc(2026, 1, 3),
       );
-      await tester.pumpAndSettle();
+      final notifier = _ExaminationTrackingItemsNotifier(
+        [newest, _item('1', 'Older Item', ItemCategory.fauna)],
+        examined,
+      );
+      await _pumpPackWithNotifier(tester, notifier);
 
-      await tester.tap(find.text('Unidentified fauna specimen').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Start identification'));
-      await tester.pumpAndSettle();
-
-      expect(notifier.identifyCalls, 0);
+      final newestSurface = find.byKey(const ValueKey('pack-item-2'));
+      final olderSurface = find.byKey(const ValueKey('pack-item-1'));
+      expect(newestSurface, findsOneWidget);
+      expect(olderSurface, findsOneWidget);
+      final newestPosition = tester.getTopLeft(newestSurface);
+      final olderPosition = tester.getTopLeft(olderSurface);
+      expect(
+        newestPosition.dy < olderPosition.dy ||
+            newestPosition.dy == olderPosition.dy &&
+                newestPosition.dx < olderPosition.dx,
+        isTrue,
+      );
+      expect(
+        find.bySemanticsLabel('Unexamined fauna Item'),
+        findsOneWidget,
+      );
       expect(find.text('Amberwing Warbler'), findsNothing);
-      expect(find.text('Hold to reveal'), findsOneWidget);
+      expect(find.text('Setophaga aestiva'), findsNothing);
 
-      await tester.longPress(find.text('Hold to reveal'));
+      await tester.tap(newestSurface);
       await tester.pumpAndSettle();
 
-      expect(notifier.identifyCalls, 1);
-      expect(notifier.lastIdentifiedItemId, '1');
+      expect(notifier.examineCalls, 1);
+      expect(notifier.lastExaminedItemId, '2');
+      expect(find.byKey(const ValueKey('species-card-2')), findsOneWidget);
       expect(find.text('Amberwing Warbler'), findsOneWidget);
       expect(find.text('Setophaga aestiva'), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('browsing Pack performs no gameplay mutation', (tester) async {
+      final notifier = _ExaminationTrackingItemsNotifier(
+        [_item('1', 'Red Fox', ItemCategory.fauna)],
+        _item('1', 'Red Fox', ItemCategory.fauna),
+      );
+      await _pumpPackWithNotifier(tester, notifier);
+
+      await tester.tap(find.byKey(const Key('compact-bar')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Fox');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Red Fox'));
+      await tester.pumpAndSettle();
+
+      expect(notifier.examineCalls, 0);
+      expect(notifier.identifyCalls, 0);
     });
 
     testWidgets('tapping item opens species card bottom sheet', (tester) async {
@@ -559,6 +583,8 @@ Item _item(
       ItemIdentificationState.identified,
   String? identifiedDisplayName,
   String? identifiedScientificName,
+  ItemExaminationState examinationState = ItemExaminationState.examined,
+  DateTime? examinedAt,
 }) =>
     Item(
       id: id,
@@ -573,6 +599,8 @@ Item _item(
       habitats: habitats,
       continents: continents,
       identificationState: identificationState,
+      examinationState: examinationState,
+      examinedAt: examinedAt,
       identifiedDisplayName: identifiedDisplayName,
       identifiedScientificName: identifiedScientificName,
     );
@@ -601,6 +629,30 @@ Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpPackWithNotifier(
+  WidgetTester tester,
+  ItemsNotifier notifier,
+) async {
+  tester.view.physicalSize = const Size(800, 900);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  final container = ProviderContainer(
+    overrides: [
+      itemsProvider.overrideWith(() => notifier),
+      appObservabilityProvider.overrideWithValue(
+        ObservabilityService(sessionId: 'test-session'),
+      ),
+    ],
+  );
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: PackScreen()),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 class _MockItemsNotifier extends ItemsNotifier {
   _MockItemsNotifier(this._items);
   final List<Item> _items;
@@ -613,18 +665,31 @@ class _MockItemsNotifier extends ItemsNotifier {
   Future<void> fetchItems() async {}
 }
 
-class _RevealTrackingItemsNotifier extends _MockItemsNotifier {
-  _RevealTrackingItemsNotifier(super.items);
+class _ExaminationTrackingItemsNotifier extends _MockItemsNotifier {
+  _ExaminationTrackingItemsNotifier(super.items, this.examinedItem);
 
+  final Item examinedItem;
+  int examineCalls = 0;
   int identifyCalls = 0;
-  String? lastIdentifiedItemId;
+  String? lastExaminedItemId;
+
+  @override
+  Future<Item?> examinePackItem(String itemId) async {
+    examineCalls++;
+    lastExaminedItemId = itemId;
+    state = state.copyWith(
+      items: [
+        for (final item in state.items)
+          if (item.id == itemId) examinedItem else item,
+      ],
+    );
+    return examinedItem;
+  }
 
   @override
   Future<Item?> identifyUnidentifiedFind(String itemId) async {
     identifyCalls++;
-    lastIdentifiedItemId = itemId;
-    final item = state.items.firstWhere((item) => item.id == itemId);
-    return item.identify(at: DateTime(2026, 1, 2));
+    return null;
   }
 }
 

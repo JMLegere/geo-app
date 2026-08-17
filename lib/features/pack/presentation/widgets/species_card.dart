@@ -8,22 +8,25 @@ import 'package:earth_nova/shared/extensions/iconography.dart';
 import 'package:earth_nova/shared/extensions/iucn_status_theme.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
 import 'package:earth_nova/shared/theme/design_tokens.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
+import 'package:earth_nova/shared/product/product_action_surface.dart';
 
 /// Shows a TCG-style species card as a centered modal overlay.
 void showSpeciesCard(
   BuildContext context,
   Item item, {
-  void Function(Item item)? onStartIdentification,
-  Future<Item?> Function(Item item)? onRevealIdentification,
-  Future<Item?> Function(Item item)? onIdentify,
+  void Function(Item item)? onOpenIdentificationService,
 }) {
+  final disableAnimations = MediaQuery.disableAnimationsOf(context);
   showGeneralDialog<void>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.78),
     barrierDismissible: true,
     barrierLabel: 'Close species card',
-    transitionDuration: const Duration(milliseconds: 400),
+    transitionDuration:
+        disableAnimations ? Duration.zero : const Duration(milliseconds: 400),
     transitionBuilder: (context, animation, _, child) {
+      if (disableAnimations) return child;
       final curved = CurvedAnimation(
         parent: animation,
         curve: Curves.easeOutBack,
@@ -45,9 +48,7 @@ void showSpeciesCard(
     },
     pageBuilder: (context, _, __) => SpeciesCard(
       item: item,
-      onStartIdentification: onStartIdentification,
-      onRevealIdentification: onRevealIdentification,
-      onIdentify: onIdentify,
+      onOpenIdentificationService: onOpenIdentificationService,
     ),
   );
 }
@@ -57,65 +58,43 @@ class SpeciesCard extends StatefulWidget {
   const SpeciesCard({
     super.key,
     required this.item,
-    this.onStartIdentification,
-    this.onRevealIdentification,
-    this.onIdentify,
+    this.onOpenIdentificationService,
   });
   final Item item;
-  final void Function(Item item)? onStartIdentification;
-  final Future<Item?> Function(Item item)? onRevealIdentification;
-  final Future<Item?> Function(Item item)? onIdentify;
+  final void Function(Item item)? onOpenIdentificationService;
 
   @override
   State<SpeciesCard> createState() => _SpeciesCardState();
 }
 
 class _SpeciesCardState extends State<SpeciesCard> {
-  late Item _item = widget.item;
-  bool _identificationReady = false;
-  bool _isRevealingIdentification = false;
-
-  Future<Item?> Function(Item item)? get _revealIdentificationCallback =>
-      widget.onRevealIdentification ?? widget.onIdentify;
-
-  bool get _canStartIdentification =>
-      _item.isUnidentified &&
-      (widget.onStartIdentification != null ||
-          _revealIdentificationCallback != null);
-
-  bool get _canRevealIdentification =>
-      _item.isUnidentified && _revealIdentificationCallback != null;
-
-  void _startIdentification() {
-    widget.onStartIdentification?.call(_item);
-    setState(() {
-      _identificationReady = true;
-    });
-  }
-
-  Future<void> _revealIdentification() async {
-    final reveal = _revealIdentificationCallback;
-    if (reveal == null || _isRevealingIdentification) return;
-
-    setState(() {
-      _isRevealingIdentification = true;
-    });
-
-    final identified = await reveal(_item);
-    if (!mounted) return;
-
-    setState(() {
-      if (identified != null) {
-        _item = identified;
-        _identificationReady = false;
-      }
-      _isRevealingIdentification = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final item = _item;
+    final item = widget.item;
+    if (!item.isExamined) {
+      return Center(
+        child: Semantics(
+          label: 'Unexamined ${item.category.label.toLowerCase()} Item',
+          excludeSemantics: true,
+          child: Container(
+            key: ValueKey('species-card-${item.id}'),
+            padding: const EdgeInsets.all(Spacing.xl),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(Radii.xxxl),
+              border: Border.all(color: AppTheme.outline),
+            ),
+            child: Text(
+              'Unexamined ${item.category.label.toLowerCase()} Item',
+              style: const TextStyle(
+                color: AppTheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final status = IucnStatus.fromString(item.rarity);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final cardWidth = (screenWidth - 48).clamp(0.0, 320.0);
@@ -138,6 +117,7 @@ class _SpeciesCardState extends State<SpeciesCard> {
         child: Material(
           color: Colors.transparent,
           child: Container(
+            key: ValueKey('species-card-${item.id}'),
             width: cardWidth,
             decoration: BoxDecoration(
               color: _cardBgColor(status),
@@ -172,15 +152,10 @@ class _SpeciesCardState extends State<SpeciesCard> {
                   _InfoZone(
                     item: item,
                     status: status,
-                    identificationReady: _identificationReady,
-                    isRevealingIdentification: _isRevealingIdentification,
-                    onStartIdentification:
-                        _canStartIdentification ? _startIdentification : null,
-                    onRevealIdentification: _canRevealIdentification
-                        ? () {
-                            _revealIdentification();
-                          }
-                        : null,
+                    onOpenIdentificationService:
+                        widget.onOpenIdentificationService == null
+                            ? null
+                            : () => widget.onOpenIdentificationService!(item),
                   ),
                 ],
               ),
@@ -374,17 +349,11 @@ class _InfoZone extends StatelessWidget {
   const _InfoZone({
     required this.item,
     required this.status,
-    required this.identificationReady,
-    required this.isRevealingIdentification,
-    this.onStartIdentification,
-    this.onRevealIdentification,
+    this.onOpenIdentificationService,
   });
   final Item item;
   final IucnStatus? status;
-  final bool identificationReady;
-  final bool isRevealingIdentification;
-  final VoidCallback? onStartIdentification;
-  final VoidCallback? onRevealIdentification;
+  final VoidCallback? onOpenIdentificationService;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +373,7 @@ class _InfoZone extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            item.visibleDisplayName,
+            item.displayName,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -414,10 +383,10 @@ class _InfoZone extends StatelessWidget {
               letterSpacing: -0.3,
             ),
           ),
-          if (item.visibleScientificName != null) ...[
+          if (item.scientificName != null) ...[
             const SizedBox(height: 3),
             Text(
-              item.visibleScientificName!,
+              item.scientificName!,
               style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
@@ -464,23 +433,19 @@ class _InfoZone extends StatelessWidget {
             ),
           ],
           if (item.isUnidentified &&
-              (onStartIdentification != null ||
-                  onRevealIdentification != null)) ...[
-            const SizedBox(height: 12),
-            if (!identificationReady)
-              SizedBox(
+              item.isExamined &&
+              onOpenIdentificationService != null) ...[
+            const SizedBox(height: Spacing.md),
+            ProductActionSurface(
+              actionId: PlayerActions.openIdentificationService,
+              child: SizedBox(
                 width: double.infinity,
-                // eac-clickable-owner-logs: PackScreen logs start-identification callbacks as identify-unidentified-find.
                 child: ElevatedButton(
-                  onPressed: onStartIdentification,
-                  child: const Text('Start identification'),
+                  onPressed: onOpenIdentificationService,
+                  child: const Text('Open identification service'),
                 ),
-              )
-            else
-              _RevealTheater(
-                isBusy: isRevealingIdentification,
-                onReveal: onRevealIdentification,
               ),
+            ),
           ],
           const SizedBox(height: 10),
           Wrap(
@@ -493,20 +458,19 @@ class _InfoZone extends StatelessWidget {
                 _formatDate(item.acquiredAt),
                 style: TextStyle(
                   fontSize: 10,
-                  color: AppTheme.onSurfaceVariant.withValues(alpha: 0.60),
+                  color: AppTheme.onSurfaceVariant,
                 ),
               ),
               if (item.acquiredInCellId != null) ...[
                 Text('·',
                     style: TextStyle(
-                        color:
-                            AppTheme.onSurfaceVariant.withValues(alpha: 0.30))),
+                        color: AppTheme.onSurfaceVariant)),
                 const Text('📍', style: TextStyle(fontSize: 12)),
                 Text(
                   'Cell ${item.acquiredInCellId}',
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppTheme.onSurfaceVariant.withValues(alpha: 0.45),
+                    color: AppTheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -533,89 +497,6 @@ class _InfoZone extends StatelessWidget {
       'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-  }
-}
-
-class _RevealTheater extends StatelessWidget {
-  const _RevealTheater({required this.isBusy, required this.onReveal});
-
-  final bool isBusy;
-  final VoidCallback? onReveal;
-
-  @override
-  Widget build(BuildContext context) {
-    final canReveal = !isBusy && onReveal != null;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Spacing.md),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.86),
-        borderRadius: BorderRadius.circular(Radii.xl),
-        border: Border.all(
-          color: AppTheme.tertiary.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Identification ready',
-            style: TextStyle(
-              color: AppTheme.onSurface,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: Spacing.xs),
-          Text(
-            'Hold to reveal the deterministic result.',
-            style: TextStyle(
-              color: AppTheme.onSurfaceVariant.withValues(alpha: 0.82),
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(height: Spacing.sm),
-          Semantics(
-            button: true,
-            label: 'Hold to reveal identification',
-            // eac-clickable-owner-logs: PackScreen logs reveal callbacks as reveal-identification before this hold control runs.
-            child: GestureDetector(
-              onLongPress: canReveal ? onReveal : null,
-              child: AnimatedContainer(
-                duration: Durations.quick,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Spacing.md,
-                  vertical: Spacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: canReveal
-                      ? AppTheme.tertiary.withValues(alpha: 0.22)
-                      : AppTheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  border: Border.all(
-                    color: canReveal
-                        ? AppTheme.tertiary.withValues(alpha: 0.65)
-                        : AppTheme.outline.withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Text(
-                  isBusy ? 'Revealing…' : 'Hold to reveal',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: canReveal
-                        ? AppTheme.tertiary
-                        : AppTheme.onSurfaceVariant,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

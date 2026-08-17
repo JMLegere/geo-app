@@ -12,6 +12,7 @@ import 'package:earth_nova/features/identification/domain/use_cases/plan_item_id
 import 'package:earth_nova/features/item_knowledge/domain/entities/item_knowledge_entities.dart';
 import 'package:earth_nova/features/pack/domain/repositories/pack_repository.dart';
 import 'package:earth_nova/features/pack/domain/use_cases/fetch_pack_items.dart';
+import 'package:earth_nova/features/pack/domain/use_cases/examine_pack_item.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
 
 /// Observability provider for ItemsNotifier — overridden with real impl in main.dart.
@@ -95,6 +96,13 @@ final acquireDiscoveryItemProvider = Provider<AcquireDiscoveryItem>((ref) {
 final identifyUnidentifiedFindProvider =
     Provider<IdentifyUnidentifiedFind>((ref) {
   return IdentifyUnidentifiedFind(
+    ref.watch(itemRepositoryProvider),
+    ref.watch(itemsObservabilityProvider),
+  );
+});
+
+final examinePackItemProvider = Provider<ExaminePackItem>((ref) {
+  return ExaminePackItem(
     ref.watch(itemRepositoryProvider),
     ref.watch(itemsObservabilityProvider),
   );
@@ -210,6 +218,80 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
         state.copyWith(error: "Couldn't identify that find. Try again."),
         'items.identification_completed',
         data: {'mode': mode, 'terminal': 'failed', 'trace_id': traceId},
+      );
+      return null;
+    }
+  }
+
+  Future<Item?> examinePackItem(String itemId) async {
+    final index = state.items.indexWhere((item) => item.id == itemId);
+    if (index == -1) return null;
+    final item = state.items[index];
+    if (item.isExamined) return item;
+
+    final authState = ref.read(authProvider);
+    if (authState.status != AuthStatus.authenticated) return null;
+
+    final previousState = state;
+    final trace = TraceContext.start();
+    transition(
+      state.copyWith(error: null),
+      'items.examination_started',
+      data: {
+        'terminal': 'started',
+        'item_id': item.id,
+        'trace_id': trace.traceId,
+      },
+    );
+
+    try {
+      final examined =
+          await ref.read(examinePackItemProvider).call(item, parent: trace);
+      if (examined.id != item.id) {
+        throw StateError('Examination returned a different Item.');
+      }
+
+      final nextItems = [...state.items];
+      final currentIndex =
+          nextItems.indexWhere((existing) => existing.id == item.id);
+      if (currentIndex == -1) {
+        throw StateError('Examined Item is no longer in the Pack.');
+      }
+      nextItems[currentIndex] = examined;
+      transition(
+        state.copyWith(items: List<Item>.unmodifiable(nextItems), error: null),
+        'items.examination_optimistic',
+        data: {
+          'terminal': 'examined',
+          'item_id': item.id,
+          'trace_id': trace.traceId,
+        },
+      );
+
+      final reloaded = await ref
+          .read(fetchPackItemsProvider)
+          .call(authState.user!.id, parent: trace);
+      transition(
+        state.copyWith(items: reloaded, error: null),
+        'items.examination_completed',
+        data: {
+          'terminal': 'committed',
+          'item_id': item.id,
+          'trace_id': trace.traceId,
+        },
+      );
+      return examined;
+    } catch (_) {
+      transition(
+        previousState.copyWith(
+          error: "Couldn't examine that find. Try again.",
+        ),
+        'items.examination_completed',
+        data: {
+          'terminal': 'failed',
+          'item_id': item.id,
+          'trace_id': trace.traceId,
+        },
       );
       return null;
     }
