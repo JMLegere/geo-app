@@ -46,7 +46,10 @@ import 'package:earth_nova/features/map/data/repositories/fallback_location_repo
 import 'package:earth_nova/features/map/data/repositories/geolocator_location_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/mock_cell_repository.dart';
 import 'package:earth_nova/features/map/data/repositories/supabase_cell_repository.dart';
+import 'package:earth_nova/features/map/data/repositories/supabase_cell_knowledge_repository.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+import 'package:earth_nova/features/map/domain/repositories/cell_knowledge_repository.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/exploration_provider.dart';
@@ -181,6 +184,12 @@ void main() async {
   final CellRepository cellRepository = supabaseClient != null
       ? SupabaseCellRepository(client: supabaseClient, logEvent: obs.log)
       : MockCellRepository();
+  final CellKnowledgeRepository cellKnowledgeRepository = supabaseClient != null
+      ? SupabaseCellKnowledgeRepository(
+          client: supabaseClient,
+          logEvent: obs.log,
+        )
+      : const _EmptyCellKnowledgeRepository();
 
   final LocationRepository locationRepository = FallbackLocationRepository(
     real: GeolocatorLocationRepository(),
@@ -216,6 +225,8 @@ void main() async {
           homeRepositoryProvider.overrideWithValue(homeRepository),
           homeObservabilityProvider.overrideWithValue(obs),
           cellRepositoryProvider.overrideWithValue(cellRepository),
+          cellKnowledgeRepositoryProvider
+              .overrideWithValue(cellKnowledgeRepository),
           locationRepositoryProvider.overrideWithValue(locationRepository),
           nullableSupabaseClientProvider.overrideWithValue(supabaseClient),
           observabilityProvider.overrideWithValue(obs),
@@ -276,6 +287,17 @@ final class _PreviewHomeRepository implements HomeRepository {
       createdAt: DateTime.utc(2026, 7, 21),
     );
   }
+}
+
+final class _EmptyCellKnowledgeRepository implements CellKnowledgeRepository {
+  const _EmptyCellKnowledgeRepository();
+
+  @override
+  Future<Map<String, CellKnowledgeProjection>> fetchForCells(
+    Iterable<String> cellIds, {
+    String? traceId,
+  }) async =>
+      const {};
 }
 
 final class _EmptyLivingWorldRepository implements LivingWorldRepository {

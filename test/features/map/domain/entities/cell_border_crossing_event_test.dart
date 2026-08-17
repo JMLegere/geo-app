@@ -24,6 +24,7 @@ void main() {
         'entered_cell_id': 'cell-B',
         'border_crossing_type': 'firstEntry',
         'is_first_visit': true,
+        'has_informed_opportunity': false,
         'occurred_at': '2026-05-19T12:00:00.000Z',
         'district_id': 'd2',
         'city_id': 'c2',

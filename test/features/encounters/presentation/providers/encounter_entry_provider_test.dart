@@ -49,12 +49,14 @@ CellVisit _visit() => CellVisit(
       visitedAt: DateTime.utc(2026, 7, 20),
     );
 
-CellBorderCrossingEvent _border() => CellBorderCrossingEvent(
+CellBorderCrossingEvent _border({bool hasInformedOpportunity = false}) =>
+    CellBorderCrossingEvent(
       borderCrossingId: 'border-1',
       previousCellId: 'cell-0',
       enteredCellId: 'cell-1',
       borderCrossingType: CellBorderCrossingType.firstEntry,
       isFirstVisit: true,
+      hasInformedOpportunity: hasInformedOpportunity,
       occurredAt: DateTime.utc(2026, 7, 20),
       districtId: 'district-1',
       cityId: 'city-1',
@@ -384,6 +386,19 @@ final class _FixedCurrentEncounterVersionBindingRepository
 
 void main() {
   group('encounter entry runtime provider', () {
+    test('daily seed uses the UTC day at a local-day boundary', () {
+      final container = ProviderContainer(
+        overrides: [
+          encounterNowProvider.overrideWithValue(
+            DateTime.parse('2026-07-20T00:30:00+02:00'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(container.read(encounterDailySeedProvider), 'seed_2026_07_19');
+    });
+
     test(
         'production Supabase Encounter repositories receive the active observability logger',
         () {
@@ -597,22 +612,33 @@ void main() {
 
       final selected =
           await container.read(versionedEncounterPlannerProvider)(context);
-      final none = await container.read(versionedEncounterPlannerProvider)(
+      final repeatInformed =
+          await container.read(versionedEncounterPlannerProvider)(
+        _context(isFirstVisit: false, hasLootCompatibility: true),
+      );
+      final repeatExplored =
+          await container.read(versionedEncounterPlannerProvider)(
         _context(isFirstVisit: false, hasLootCompatibility: false),
       );
 
       expect(selected.selection, isA<EncounterSelectedCellVisitPlan>());
       expect(selected.isAutomatic, isTrue);
+      expect(repeatInformed.selection, isA<EncounterSelectedCellVisitPlan>());
+      expect(repeatInformed.isAutomatic, isTrue);
+      expect(repeatExplored.selection, isA<NoEncounterCellVisitPlan>());
+      expect(repeatExplored.isAutomatic, isFalse);
       expect(
         (selected.selection as EncounterSelectedCellVisitPlan)
             .definitionVersion,
         version,
       );
-      expect(none.selection, isA<NoEncounterCellVisitPlan>());
-      expect(none.isAutomatic, isFalse);
       expect(
         bindingRepository.requestedDefinitionIds,
-        [(selected.selection as EncounterSelectedCellVisitPlan).definitionId],
+        [
+          (selected.selection as EncounterSelectedCellVisitPlan).definitionId,
+          (repeatInformed.selection as EncounterSelectedCellVisitPlan)
+              .definitionId,
+        ],
       );
     });
 
@@ -864,7 +890,7 @@ void main() {
       );
     });
 
-    test('explicit None commits selection only and creates no reward',
+    test('forwards an informed opportunity into authoritative planning',
         () async {
       final visit = _visit();
       final plan = _nonePlan(visit);
@@ -873,6 +899,7 @@ void main() {
         outcomeResult: _aggregate(visit: visit, selection: plan),
       );
       var presented = 0;
+      EncounterEntryContext? plannedContext;
       final container = ProviderContainer(
         overrides: [
           encounterEngineModeResolutionProvider.overrideWithValue(
@@ -889,7 +916,10 @@ void main() {
                 fail('authoritative mode must not use legacy writer'),
           ),
           versionedEncounterPlannerProvider.overrideWithValue(
-            (_) async => VersionedEncounterPlan.none(plan),
+            (context) async {
+              plannedContext = context;
+              return VersionedEncounterPlan.none(plan);
+            },
           ),
           encounterCommandRepositoryProvider.overrideWithValue(repository),
           committedRewardsPresenterProvider.overrideWithValue(
@@ -908,11 +938,12 @@ void main() {
 
       await container.read(persistedCellVisitEncounterHandlerProvider)(
         visit,
-        _border(),
+        _border(hasInformedOpportunity: true),
       );
 
       expect(repository.committedPlans, hasLength(1));
       expect(repository.resolvedEncounterIds, isEmpty);
+      expect(plannedContext?.hasLootCompatibility, isTrue);
       expect(presented, 0);
     });
 
@@ -956,7 +987,7 @@ void main() {
 
       await container.read(persistedCellVisitEncounterHandlerProvider)(
         visit,
-        _border(),
+        _border(hasInformedOpportunity: true),
       );
 
       expect(repository.pendingReadCellIds, ['cell-1']);

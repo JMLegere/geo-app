@@ -187,6 +187,34 @@ void main() {
       );
     });
 
+    test('defines canonical Map Cell knowledge disclosure', () {
+      final contracts = {
+        for (final contract in _nativeContracts()) contract.name: contract,
+      };
+      final map = contracts['ExplorationMap']!;
+      final sheet = contracts['MapCellDetailSheet']!;
+
+      expect(map.interactionPolicy, 'action-required');
+      expect(
+        map.purpose,
+        contains('exactly Shrouded, Informed, Explored, and Present'),
+      );
+      expect(map.purpose, contains('static native fog legend'));
+      expect(
+          map.purpose, contains('Present requires trusted physical occupancy'));
+      expect(map.purpose, contains('paused banner is a semantic status'));
+      expect(map.purpose, contains('legacy hasLoot never adds a star'));
+
+      expect(sheet.interactionPolicy, 'action-required');
+      expect(sheet.purpose, contains('inspect-map-cell'));
+      expect(sheet.purpose, contains('Informed discloses only one category'));
+      expect(
+        sheet.purpose,
+        contains(
+            'never an exact Encounter, fauna identity, Outcome, or reward'),
+      );
+    });
+
     test('requires explicit interaction policy on every native contract', () {
       for (final contract in _nativeContracts()) {
         expect(contract.status, isNotEmpty,

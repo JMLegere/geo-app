@@ -16,6 +16,8 @@ class CellDetailSheet extends StatelessWidget {
     required this.visitCount,
     required this.isFirstVisit,
     required this.currentRelationship,
+    this.knowledgeState,
+    this.category,
     this.knownVenues = const [],
   });
 
@@ -23,12 +25,20 @@ class CellDetailSheet extends StatelessWidget {
   final int visitCount;
   final bool isFirstVisit;
   final CellRelationship currentRelationship;
+  final CellKnowledgeState? knowledgeState;
+  final String? category;
   final List<TownVenue> knownVenues;
 
   @override
   Widget build(BuildContext context) {
     final habitatDisplay = _habitatDisplayFor(cell);
     final primaryHabitat = habitatDisplay.primaryHabitat;
+    final disclosureState = knowledgeState == CellKnowledgeState.informed &&
+            (category == null || category!.isEmpty)
+        ? CellKnowledgeState.shrouded
+        : knowledgeState;
+    final restrictsDetail = disclosureState == CellKnowledgeState.shrouded ||
+        disclosureState == CellKnowledgeState.informed;
 
     return Container(
       decoration: const BoxDecoration(
@@ -56,83 +66,133 @@ class CellDetailSheet extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: habitatDisplay.color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
+                if (restrictsDetail) ...[
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppTheme.tertiary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          disclosureState == CellKnowledgeState.informed
+                              ? Icons.category_outlined
+                              : Icons.visibility_off_outlined,
+                          color: AppTheme.tertiary,
+                          size: 24,
+                        ),
                       ),
-                      child: Icon(
-                        _getHabitatIcon(primaryHabitat),
-                        color: habitatDisplay.color,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Cell ${_truncateId(cell.id)}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              disclosureState == CellKnowledgeState.informed
+                                  ? 'Informed'
+                                  : 'Shrouded',
+                              style: const TextStyle(
+                                color: AppTheme.onSurface,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            habitatDisplay.label,
-                            style: TextStyle(
-                              color: habitatDisplay.color,
-                              fontSize: 14,
+                            const SizedBox(height: 2),
+                            Text(
+                              disclosureState == CellKnowledgeState.informed
+                                  ? _categoryLabel(category!)
+                                  : 'Unrevealed area',
+                              style: const TextStyle(
+                                color: AppTheme.tertiary,
+                                fontSize: 14,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _buildInfoRow(
-                  icon: Icons.explore,
-                  label: 'Visits',
-                  value: '$visitCount ${visitCount == 1 ? 'time' : 'times'}',
-                ),
-                const SizedBox(height: 12),
-                _buildInfoRow(
-                  icon: Icons.layers,
-                  label: 'Cell state',
-                  value: _relationshipLabel(currentRelationship),
-                  valueColor: _relationshipColor(currentRelationship),
-                ),
-                if (isFirstVisit) ...[
+                    ],
+                  ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: habitatDisplay.color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          _getHabitatIcon(primaryHabitat),
+                          color: habitatDisplay.color,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cell ${_truncateId(cell.id)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              habitatDisplay.label,
+                              style: TextStyle(
+                                color: habitatDisplay.color,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildInfoRow(
+                    icon: Icons.explore,
+                    label: 'Visits',
+                    value: '$visitCount ${visitCount == 1 ? 'time' : 'times'}',
+                  ),
                   const SizedBox(height: 12),
                   _buildInfoRow(
-                    icon: Icons.auto_awesome,
-                    label: 'Status',
-                    value: 'First discovery!',
-                    valueColor: const Color(0xFF4CAF50),
+                    icon: Icons.layers,
+                    label: 'Cell state',
+                    value: _stateLabel(disclosureState),
+                    valueColor: _relationshipColor(currentRelationship),
                   ),
-                ],
-                if (knownVenues.isNotEmpty) ...[
-                  const SizedBox(height: Spacing.lg),
-                  const Divider(color: AppTheme.outline, height: 1),
-                  const SizedBox(height: Spacing.lg),
-                  for (final venue in knownVenues) ...[
-                    ProductActionSurface(
-                      actionId: PlayerActions.openNpcVenueDetail,
-                      child: GestureDetector(
-                        onTap: () => _openVenueDetail(context, venue),
-                        child: _VenueSheetRow(venue: venue),
-                      ),
+                  if (isFirstVisit) ...[
+                    const SizedBox(height: 12),
+                    _buildInfoRow(
+                      icon: Icons.auto_awesome,
+                      label: 'Status',
+                      value: 'First discovery!',
+                      valueColor: const Color(0xFF4CAF50),
                     ),
-                    if (venue != knownVenues.last)
-                      const SizedBox(height: Spacing.sm),
+                  ],
+                  if (knownVenues.isNotEmpty) ...[
+                    const SizedBox(height: Spacing.lg),
+                    const Divider(color: AppTheme.outline, height: 1),
+                    const SizedBox(height: Spacing.lg),
+                    for (final venue in knownVenues) ...[
+                      ProductActionSurface(
+                        actionId: PlayerActions.openNpcVenueDetail,
+                        child: GestureDetector(
+                          onTap: () => _openVenueDetail(context, venue),
+                          child: _VenueSheetRow(venue: venue),
+                        ),
+                      ),
+                      if (venue != knownVenues.last)
+                        const SizedBox(height: Spacing.sm),
+                    ],
                   ],
                 ],
                 const SizedBox(height: 20),
@@ -193,6 +253,20 @@ class CellDetailSheet extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _stateLabel(CellKnowledgeState? state) {
+    return switch (state) {
+      CellKnowledgeState.present => 'Present',
+      CellKnowledgeState.informed => 'Informed',
+      CellKnowledgeState.explored => 'Explored',
+      CellKnowledgeState.shrouded => 'Shrouded',
+      null => _relationshipLabel(currentRelationship),
+    };
+  }
+
+  String _categoryLabel(String value) {
+    return '${value[0].toUpperCase()}${value.substring(1)}';
   }
 
   String _relationshipLabel(CellRelationship relationship) {

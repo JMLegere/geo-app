@@ -23,6 +23,7 @@ import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 import 'package:earth_nova/features/map/presentation/diagnostics/map_render_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/services/explored_footprint_service.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/painters/player_marker.dart';
 import 'package:earth_nova/features/map/presentation/providers/camera_follow_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/encounter_provider.dart';
@@ -826,13 +827,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
       final mapState = ref.read(mapProvider);
-      if (mapState case MapStateReady(:final cells, :final visitedCellIds)) {
+      if (mapState
+          case MapStateReady(
+            :final cells,
+            :final visitedCellIds,
+            :final knowledgeByCellId,
+          )) {
         final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
           ref.read(explorationProvider.notifier).onPositionUpdate(
                 markerState: markerState,
                 cells: cells,
                 visitedCellIds: visitedCellIds,
+                knowledgeByCellId: knowledgeByCellId,
                 userId: userId,
                 explorationEligibility: explorationEligibility,
               ),
@@ -844,13 +851,19 @@ class _MapScreenState extends ConsumerState<MapScreen>
       if (next is MapStateLoading) {
         _resetOverlayReadinessForRefetch();
       }
-      if (next case MapStateReady(:final cells, :final visitedCellIds)) {
+      if (next
+          case MapStateReady(
+            :final cells,
+            :final visitedCellIds,
+            :final knowledgeByCellId,
+          )) {
         final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
           ref.read(explorationProvider.notifier).onPositionUpdate(
                 markerState: ref.read(playerMarkerProvider),
                 cells: cells,
                 visitedCellIds: visitedCellIds,
+                knowledgeByCellId: knowledgeByCellId,
                 userId: userId,
                 explorationEligibility: explorationEligibility,
               ),
@@ -983,7 +996,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           final renderZoom = _renderCameraZoom ?? _kGpsZoom;
           final cellsWithStates = renderableMapState != null
               ? _buildCellStates(
-                  renderableMapState.cells,
+                  renderableMapState,
                   footprint.visitedCellIds,
                   explorationState,
                 )
@@ -1265,6 +1278,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   child: Center(child: LoadingDots()),
                 ),
 
+              const Positioned(
+                left: Spacing.lg,
+                right: Spacing.lg,
+                bottom: Spacing.huge,
+                child: IgnorePointer(child: MapCellKnowledgeLegend()),
+              ),
+
               // Build version — bottom-left corner, visible to devs during testing
               Positioned(
                 left: 8,
@@ -1320,31 +1340,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
               // Discovery paused banner — shown when GPS is unavailable or ring state
               if (explorationEligibility.isPaused)
-                Positioned(
-                  top: 16,
-                  left: 16,
-                  right: 16,
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          'Discovery paused',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  ),
+                const Positioned(
+                  top: Spacing.lg,
+                  left: Spacing.lg,
+                  right: Spacing.lg,
+                  child: IgnorePointer(child: DiscoveryPausedBanner()),
                 ),
 
               if (!readiness.isSteadyStateReady)
@@ -1454,7 +1454,11 @@ class _MapScreenState extends ConsumerState<MapScreen>
     for (final venue in town.venues) {
       final anchorCellId = venue.venue.anchorCellId;
       final entry = renderedCellsById[anchorCellId];
-      if (entry == null) continue;
+      if (entry == null ||
+          (entry.state.knowledgeState != CellKnowledgeState.explored &&
+              entry.state.knowledgeState != CellKnowledgeState.present)) {
+        continue;
+      }
       final position = _cellCenter(entry.cell);
       if (position == null) continue;
       anchors.add(
@@ -1484,20 +1488,31 @@ class _MapScreenState extends ConsumerState<MapScreen>
         visitCount: isFirstVisit ? 0 : 1,
         isFirstVisit: isFirstVisit,
         currentRelationship: cellState.relationship,
-        knownVenues: knownVenues,
+        knowledgeState: cellState.knowledgeState,
+        category: cellState.category,
+        knownVenues: switch (cellState.knowledgeState) {
+          CellKnowledgeState.explored ||
+          CellKnowledgeState.present =>
+            knownVenues,
+          CellKnowledgeState.informed ||
+          CellKnowledgeState.shrouded =>
+            const [],
+        },
       ),
     );
   }
 
   List<({Cell cell, CellState state})> _buildCellStates(
-    List<Cell> cells,
+    MapStateReady mapState,
     Set<String> exploredCellIds,
     ExplorationStateData explorationState,
   ) {
     return const FogStateService().compute(
-      cells: cells,
+      cells: mapState.cells,
       currentCellId: explorationState.currentCellId,
       exploredCellIds: exploredCellIds,
+      currentPositionIsTrusted: explorationState.currentPositionIsTrusted,
+      knowledgeByCellId: mapState.knowledgeByCellId,
     );
   }
 }
@@ -1611,6 +1626,177 @@ GeoCoord? _cellCenter(Cell cell) {
     lat: sumLat / exteriorPoints.length,
     lng: sumLng / exteriorPoints.length,
   );
+}
+
+class MapCellKnowledgeLegend extends StatelessWidget {
+  const MapCellKnowledgeLegend({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const entries = <({
+      String keyName,
+      String label,
+      CellState state,
+    })>[
+      (
+        keyName: 'shrouded',
+        label: 'Shrouded',
+        state: CellState(
+          knowledgeState: CellKnowledgeState.shrouded,
+          relationship: CellRelationship.unknown,
+          contents: CellContents.empty,
+        ),
+      ),
+      (
+        keyName: 'informed',
+        label: 'Informed',
+        state: CellState(
+          knowledgeState: CellKnowledgeState.informed,
+          category: 'category',
+          relationship: CellRelationship.explored,
+          contents: CellContents.empty,
+        ),
+      ),
+      (
+        keyName: 'explored',
+        label: 'Explored',
+        state: CellState(
+          knowledgeState: CellKnowledgeState.explored,
+          relationship: CellRelationship.explored,
+          contents: CellContents.empty,
+        ),
+      ),
+      (
+        keyName: 'present',
+        label: 'Present',
+        state: CellState(
+          knowledgeState: CellKnowledgeState.present,
+          relationship: CellRelationship.present,
+          contents: CellContents.empty,
+        ),
+      ),
+    ];
+
+    return Semantics(
+      container: true,
+      label: 'Cell knowledge',
+      child: DecoratedBox(
+        key: const ValueKey('map-cell-knowledge-legend'),
+        decoration: BoxDecoration(
+          color: AppTheme.surface.withValues(alpha: 0.9),
+          border: Border.all(
+            color: AppTheme.outline.withValues(alpha: 0.6),
+            width: 0.5,
+          ),
+          borderRadius: BorderRadius.circular(Radii.pill),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.md,
+            vertical: Spacing.sm,
+          ),
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: Spacing.md,
+            runSpacing: Spacing.xs,
+            children: [
+              for (final entry in entries)
+                _MapCellKnowledgeLegendItem(
+                  key: ValueKey('cell-knowledge-${entry.keyName}'),
+                  label: entry.label,
+                  state: entry.state,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapCellKnowledgeLegendItem extends StatelessWidget {
+  const _MapCellKnowledgeLegendItem({
+    super.key,
+    required this.label,
+    required this.state,
+  });
+
+  final String label;
+  final CellState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = FogRenderer.fillColor(state);
+    final stroke = FogRenderer.strokeColor(state);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: Spacing.lg,
+          height: Spacing.lg,
+          decoration: BoxDecoration(
+            color: fill,
+            border: stroke.a > 0 ? Border.all(color: stroke) : null,
+            borderRadius: BorderRadius.circular(Radii.xs),
+          ),
+          child: state.knowledgeState == CellKnowledgeState.informed
+              ? const Icon(
+                  Icons.category_outlined,
+                  size: Spacing.md,
+                  color: AppTheme.onSurface,
+                )
+              : null,
+        ),
+        const SizedBox(width: Spacing.xs),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.onSurfaceVariant,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class DiscoveryPausedBanner extends StatelessWidget {
+  const DiscoveryPausedBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      key: const ValueKey('discovery-paused-status'),
+      container: true,
+      liveRegion: true,
+      label: 'Discovery paused',
+      child: ExcludeSemantics(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppTheme.surface.withValues(alpha: 0.9),
+            border: Border.all(color: AppTheme.outline),
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: Spacing.md,
+              vertical: Spacing.sm,
+            ),
+            child: Text(
+              'Discovery paused',
+              style: TextStyle(
+                color: AppTheme.onSurface,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _MapTopFogFeather extends StatelessWidget {

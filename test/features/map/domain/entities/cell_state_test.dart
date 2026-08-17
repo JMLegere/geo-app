@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 
 void main() {
+  group('CellKnowledgeState', () {
+    test('has exactly the canonical four knowledge states', () {
+      expect(
+        CellKnowledgeState.values,
+        [
+          CellKnowledgeState.present,
+          CellKnowledgeState.informed,
+          CellKnowledgeState.explored,
+          CellKnowledgeState.shrouded,
+        ],
+      );
+    });
+  });
+
   group('CellRelationship', () {
     test('has present, explored, frontier, unknown values', () {
       expect(
@@ -42,6 +56,8 @@ void main() {
       );
       expect(state.relationship, CellRelationship.present);
       expect(state.contents, CellContents.hasLoot);
+      expect(state.knowledgeState, CellKnowledgeState.present);
+      expect(state.category, isNull);
     });
 
     test('equality', () {
@@ -90,6 +106,39 @@ void main() {
         contents: CellContents.empty,
       );
       expect(a.hashCode, equals(b.hashCode));
+    });
+  });
+
+  group('CellState canonical knowledge', () {
+    test('keeps legacy decorations without letting loot imply knowledge', () {
+      const state = CellState(
+        knowledgeState: CellKnowledgeState.shrouded,
+        relationship: CellRelationship.frontier,
+        contents: CellContents.hasLoot,
+      );
+
+      expect(state.knowledgeState, CellKnowledgeState.shrouded);
+      expect(state.category, isNull);
+      expect(state.relationship, CellRelationship.frontier);
+      expect(state.contents, CellContents.hasLoot);
+    });
+
+    test('exposes a category only for informed knowledge', () {
+      const informed = CellState(
+        knowledgeState: CellKnowledgeState.informed,
+        category: 'fauna',
+        relationship: CellRelationship.explored,
+        contents: CellContents.empty,
+      );
+      const explored = CellState(
+        knowledgeState: CellKnowledgeState.explored,
+        category: 'fauna',
+        relationship: CellRelationship.explored,
+        contents: CellContents.empty,
+      );
+
+      expect(informed.category, 'fauna');
+      expect(explored.category, isNull);
     });
   });
 }

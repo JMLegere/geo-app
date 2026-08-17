@@ -145,6 +145,87 @@ void main() {
       expect(find.textContaining('NPC'), findsNothing);
     });
   });
+
+  group('CellDetailSheet canonical knowledge disclosure', () {
+    testWidgets('Shrouded is generic and exposes no Cell detail',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CellDetailSheet(
+              cell: _cell(habitats: const [Habitat.forest]),
+              visitCount: 4,
+              isFirstVisit: true,
+              currentRelationship: CellRelationship.unknown,
+              knowledgeState: CellKnowledgeState.shrouded,
+              knownVenues: [_venue()],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Shrouded'), findsOneWidget);
+      expect(find.text('Unrevealed area'), findsOneWidget);
+      expect(find.textContaining('Cell v_'), findsNothing);
+      expect(find.text('Forest'), findsNothing);
+      expect(find.text('Visits'), findsNothing);
+      expect(find.text('First discovery!'), findsNothing);
+      expect(find.text('Harbor Current'), findsNothing);
+    });
+
+    testWidgets('Informed discloses exactly one category label',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CellDetailSheet(
+              cell: _cell(habitats: const [Habitat.forest]),
+              visitCount: 4,
+              isFirstVisit: true,
+              currentRelationship: CellRelationship.frontier,
+              knowledgeState: CellKnowledgeState.informed,
+              category: 'fauna',
+              knownVenues: [_venue()],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Informed'), findsOneWidget);
+      expect(find.text('Fauna'), findsOneWidget);
+      expect(find.textContaining('Cell v_'), findsNothing);
+      expect(find.text('Visits'), findsNothing);
+      expect(find.text('First discovery!'), findsNothing);
+      expect(find.text('Harbor Current'), findsNothing);
+      for (final forbidden in [
+        'Encounter',
+        'Amberwing Warbler',
+        'Outcome',
+        'Reward',
+      ]) {
+        expect(find.textContaining(forbidden), findsNothing);
+      }
+    });
+    testWidgets('Explored keeps known visit context', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CellDetailSheet(
+              cell: _cell(habitats: const [Habitat.forest]),
+              visitCount: 4,
+              isFirstVisit: false,
+              currentRelationship: CellRelationship.explored,
+              knowledgeState: CellKnowledgeState.explored,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Explored'), findsOneWidget);
+      expect(find.text('Visits'), findsOneWidget);
+      expect(find.text('4 times'), findsOneWidget);
+    });
+  });
 }
 
 Cell _cell({

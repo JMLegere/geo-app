@@ -8,6 +8,8 @@ import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
 import 'package:earth_nova/features/map/domain/use_cases/detect_cell_entry.dart';
@@ -23,6 +25,7 @@ sealed class ExplorationState {
 class ExplorationStateData extends ExplorationState {
   const ExplorationStateData({
     this.currentCellId,
+    this.currentPositionIsTrusted = false,
     this.visitedCellIds = const {},
     this.lastVisitTimestamp,
     this.lastEnteredCellId,
@@ -32,6 +35,7 @@ class ExplorationStateData extends ExplorationState {
   });
 
   final String? currentCellId;
+  final bool currentPositionIsTrusted;
   final Set<String> visitedCellIds;
   final DateTime? lastVisitTimestamp;
   final String? lastEnteredCellId;
@@ -42,6 +46,7 @@ class ExplorationStateData extends ExplorationState {
   ExplorationStateData copyWith({
     String? currentCellId,
     bool clearCurrentCellId = false,
+    bool? currentPositionIsTrusted,
     Set<String>? visitedCellIds,
     DateTime? lastVisitTimestamp,
     String? lastEnteredCellId,
@@ -55,6 +60,8 @@ class ExplorationStateData extends ExplorationState {
     return ExplorationStateData(
       currentCellId:
           clearCurrentCellId ? null : (currentCellId ?? this.currentCellId),
+      currentPositionIsTrusted:
+          currentPositionIsTrusted ?? this.currentPositionIsTrusted,
       visitedCellIds: visitedCellIds ?? this.visitedCellIds,
       lastVisitTimestamp: lastVisitTimestamp ?? this.lastVisitTimestamp,
       lastEnteredCellId: clearLastEnteredCellId
@@ -108,6 +115,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     required PlayerMarkerState markerState,
     required List<Cell> cells,
     required Set<String> visitedCellIds,
+    Map<String, CellKnowledgeProjection> knowledgeByCellId = const {},
     String? userId,
     ExplorationEligibility? explorationEligibility,
   }) async {
@@ -124,10 +132,11 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
 
     if (currentCell == null) {
       // Not in any cell - clear current cell and allow a future re-entry to count.
-      if (state.currentCellId != null) {
+      if (state.currentCellId != null || state.currentPositionIsTrusted) {
         transition(
           state.copyWith(
             clearCurrentCellId: true,
+            currentPositionIsTrusted: false,
             clearLastEnteredCellId: true,
             clearLastEntryWasFirstVisit: true,
           ),
@@ -139,9 +148,13 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     }
 
     final previousCellId = state.currentCellId;
+    final wasTrusted = state.currentPositionIsTrusted;
 
-    // Update current cell (always track where we are)
-    var newState = state.copyWith(currentCellId: currentCell.id);
+    // The tracked cell is only gameplay current after an eligible position.
+    var newState = state.copyWith(
+      currentCellId: currentCell.id,
+      currentPositionIsTrusted: false,
+    );
 
     final canRecordVisits =
         explorationEligibility?.canRecordVisits ?? !markerState.isRing;
@@ -150,10 +163,10 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
             ? ExplorationEligibilityPauseReason.lowGpsConfidence.name
             : null);
 
-    // If exploration is paused, track position but do NOT record visits and do
-    // NOT create gameplay entry fields. Only log when the tracked cell changes.
+    // Paused tracking is raw location only: it must never become Present or
+    // establish a gameplay entry. Only log when the tracked cell/trust changes.
     if (!canRecordVisits) {
-      if (state.currentCellId == currentCell.id) return;
+      if (state.currentCellId == currentCell.id && !wasTrusted) return;
       transition(
         newState,
         'map.cell_tracked',
@@ -165,11 +178,18 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       return;
     }
 
-    // A gameplay border crossing only exists after the marker has already been
-    // tracked in a previous map cell. Initial occupancy and trusted recovery
-    // should establish current context without pretending a border was crossed.
-    if (previousCellId == null) {
+    // Initial occupancy and trusted recovery use the ordinary persistence and
+    // Encounter path, but do not fabricate a previous cell.
+    final isInitialOrRecovery = !wasTrusted;
+    newState = newState.copyWith(currentPositionIsTrusted: true);
+    if (!isInitialOrRecovery && previousCellId == currentCell.id) {
+      // Same trusted cell: movement may animate marker/camera, but no entry fires.
       _triggerQueuedVisitRetry(userId);
+      return;
+    }
+
+    final entryPreviousCellId = isInitialOrRecovery ? null : previousCellId;
+    if (isInitialOrRecovery && (userId == null || userId.isEmpty)) {
       transition(
         newState,
         'map.cell_tracked',
@@ -178,14 +198,6 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
           'tracking_reason': 'initial_occupancy',
         },
       );
-      return;
-    }
-
-    final isCellEntry = previousCellId != currentCell.id;
-
-    if (!isCellEntry) {
-      // Same cell: movement may animate marker/camera, but no border event fires.
-      _triggerQueuedVisitRetry(userId);
       return;
     }
 
@@ -199,8 +211,10 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     final newVisited = {...state.visitedCellIds, currentCell.id};
     final borderCrossingEvent = _buildBorderCrossingEvent(
       currentCell: currentCell,
-      previousCellId: previousCellId,
+      previousCellId: entryPreviousCellId,
       isFirstVisit: isFirstVisit,
+      hasInformedOpportunity: knowledgeByCellId[currentCell.id]?.state ==
+          CellKnowledgeState.informed,
       occurredAt: now,
       sequence: state.lastEntrySequence + 1,
     );
@@ -221,7 +235,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
       data: {
         'cellId': currentCell.id,
         'isFirstVisit': isFirstVisit,
-        'previousCellId': previousCellId,
+        'previousCellId': entryPreviousCellId,
         ...borderCrossingEvent.toTelemetryData(),
       },
     );
@@ -325,6 +339,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
     required Cell currentCell,
     required String? previousCellId,
     required bool isFirstVisit,
+    required bool hasInformedOpportunity,
     required DateTime occurredAt,
     required int sequence,
   }) {
@@ -337,6 +352,7 @@ class ExplorationNotifier extends ObservableNotifier<ExplorationStateData> {
           ? CellBorderCrossingType.firstEntry
           : CellBorderCrossingType.reEntry,
       isFirstVisit: isFirstVisit,
+      hasInformedOpportunity: hasInformedOpportunity,
       occurredAt: occurredAt,
       districtId: currentCell.districtId,
       cityId: currentCell.cityId,

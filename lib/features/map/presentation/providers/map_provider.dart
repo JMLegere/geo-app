@@ -8,10 +8,13 @@ import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
 import 'package:earth_nova/features/map/domain/services/cell_geometry_diagnostics_service.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
+import 'package:earth_nova/features/map/domain/repositories/cell_knowledge_repository.dart';
 import 'package:earth_nova/features/map/domain/use_cases/fetch_nearby_cells.dart';
 import 'package:earth_nova/features/map/domain/use_cases/get_visited_cells.dart';
+import 'package:earth_nova/features/map/domain/use_cases/fetch_cell_knowledge.dart';
 import 'package:earth_nova/features/map/presentation/providers/location_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_fetch_coverage_policy.dart';
 
@@ -28,11 +31,13 @@ class MapStateReady extends MapState {
     required this.cells,
     required this.visitedCellIds,
     required this.location,
+    this.knowledgeByCellId = const {},
   });
 
   final List<Cell> cells;
   final Set<String> visitedCellIds;
   final LocationState location;
+  final Map<String, CellKnowledgeProjection> knowledgeByCellId;
 }
 
 class MapStateRefreshing extends MapState {
@@ -57,6 +62,10 @@ final mapObservabilityProvider = Provider<ObservabilityService>((ref) {
 final cellRepositoryProvider = Provider<CellRepository>((ref) {
   throw UnimplementedError('Must be overridden with overrideWithValue');
 });
+final cellKnowledgeRepositoryProvider =
+    Provider<CellKnowledgeRepository>((ref) {
+  throw UnimplementedError('Must be overridden with overrideWithValue');
+});
 
 final fetchNearbyCellsProvider = Provider<FetchNearbyCells>(
   (ref) {
@@ -71,6 +80,15 @@ final getVisitedCellsProvider = Provider<GetVisitedCells>(
     ref.watch(observableUseCaseProvider);
     return GetVisitedCells(
         ref.watch(cellRepositoryProvider), ref.watch(mapObservabilityProvider));
+  },
+);
+final fetchCellKnowledgeProvider = Provider<FetchCellKnowledge>(
+  (ref) {
+    ref.watch(observableUseCaseProvider);
+    return FetchCellKnowledge(
+      ref.watch(cellKnowledgeRepositoryProvider),
+      ref.watch(mapObservabilityProvider),
+    );
   },
 );
 
@@ -165,6 +183,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
     try {
       final fetchCells = ref.read(fetchNearbyCellsProvider);
       final getVisited = ref.read(getVisitedCellsProvider);
+      final fetchKnowledge = ref.read(fetchCellKnowledgeProvider);
       final authState = ref.read(authProvider);
       final userId = authState.status == AuthStatus.authenticated
           ? authState.user!.id
@@ -183,6 +202,9 @@ class MapNotifier extends ObservableNotifier<MapState> {
 
       final cells = results[0] as List<Cell>;
       final visitedIds = results[1] as Set<String>;
+      final knowledgeByCellId = authState.status == AuthStatus.authenticated
+          ? await fetchKnowledge.call((cellIds: cells.map((cell) => cell.id)))
+          : const <String, CellKnowledgeProjection>{};
 
       final withPolygon = cells.where((c) => c.hasRenderableGeometry).length;
       final geometrySourceVersions = _nonEmptySortedSet(
@@ -202,6 +224,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
           cells: cells,
           visitedCellIds: visitedIds,
           location: location,
+          knowledgeByCellId: knowledgeByCellId,
         ),
         'map.cells_fetch_complete',
         data: {

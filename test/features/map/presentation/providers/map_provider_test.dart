@@ -9,6 +9,10 @@ import 'package:earth_nova/core/observability/observable_use_case_provider.dart'
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/domain/repositories/cell_knowledge_repository.dart';
+
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/domain/repositories/cell_repository.dart';
 import 'package:earth_nova/features/map/domain/repositories/location_repository.dart';
@@ -116,10 +120,26 @@ class ControllableMockCellRepository implements CellRepository {
       true;
 }
 
+class ControllableMockCellKnowledgeRepository
+    implements CellKnowledgeRepository {
+  Map<String, CellKnowledgeProjection> projections = {};
+  List<String>? lastRequestedCellIds;
+
+  @override
+  Future<Map<String, CellKnowledgeProjection>> fetchForCells(
+    Iterable<String> cellIds, {
+    String? traceId,
+  }) async {
+    lastRequestedCellIds = cellIds.toList();
+    return projections;
+  }
+}
+
 ProviderContainer makeContainer({
   required TestObservabilityService obs,
   required ControllableMockLocationRepository locationRepo,
   required ControllableMockCellRepository cellRepo,
+  required ControllableMockCellKnowledgeRepository cellKnowledgeRepo,
   AuthState authState = const AuthState.unauthenticated(),
 }) {
   return ProviderContainer(
@@ -130,6 +150,7 @@ ProviderContainer makeContainer({
       locationObservabilityProvider.overrideWithValue(obs),
       locationRepositoryProvider.overrideWithValue(locationRepo),
       cellRepositoryProvider.overrideWithValue(cellRepo),
+      cellKnowledgeRepositoryProvider.overrideWithValue(cellKnowledgeRepo),
     ],
   );
 }
@@ -158,15 +179,18 @@ void main() {
     late TestObservabilityService obs;
     late ControllableMockLocationRepository locationRepo;
     late ControllableMockCellRepository cellRepo;
+    late ControllableMockCellKnowledgeRepository cellKnowledgeRepo;
 
     setUp(() {
       obs = TestObservabilityService();
       locationRepo = ControllableMockLocationRepository();
       cellRepo = ControllableMockCellRepository();
+      cellKnowledgeRepo = ControllableMockCellKnowledgeRepository();
       container = makeContainer(
         obs: obs,
         locationRepo: locationRepo,
         cellRepo: cellRepo,
+        cellKnowledgeRepo: cellKnowledgeRepo,
         authState: AuthState.authenticated(
           UserProfile(
             id: 'user-123',
@@ -293,6 +317,45 @@ void main() {
       expect(state.visitedCellIds, containsAll(['cell-1', 'cell-2']));
     });
 
+    test('loads player cell knowledge projections for fetched cells', () async {
+      final cell = Cell(
+        id: 'cell-1',
+        habitats: const [],
+        polygons: const [],
+        districtId: 'district',
+        cityId: 'city',
+        stateId: 'state',
+        countryId: 'country',
+      );
+      cellRepo.cells = [cell];
+      cellKnowledgeRepo.projections = const {
+        'cell-1': CellKnowledgeProjection(
+          cellId: 'cell-1',
+          state: CellKnowledgeState.informed,
+          category: 'fauna',
+        ),
+      };
+
+      container.read(mapProvider);
+      await Future<void>.delayed(Duration.zero);
+      locationRepo.emitPosition(LocationState(
+        lat: 37.7749,
+        lng: -122.4194,
+        accuracy: 5.0,
+        timestamp: DateTime(2026),
+        isConfident: true,
+      ));
+      await Future<void>.delayed(Duration.zero);
+
+      final state = container.read(mapProvider) as MapStateReady;
+      expect(cellKnowledgeRepo.lastRequestedCellIds, ['cell-1']);
+      expect(
+        state.knowledgeByCellId['cell-1']!.state,
+        CellKnowledgeState.informed,
+      );
+      expect(state.knowledgeByCellId['cell-1']!.category, 'fauna');
+    });
+
     test('transitions to error when cell fetch fails', () async {
       cellRepo.shouldThrow = true;
 
@@ -340,6 +403,7 @@ void main() {
         obs: obs,
         locationRepo: locationRepo,
         cellRepo: cellRepo,
+        cellKnowledgeRepo: cellKnowledgeRepo,
         authState: AuthState.authenticated(
           UserProfile(
             id: 'user-123',
@@ -365,6 +429,7 @@ void main() {
         obs: obs,
         locationRepo: locationRepo,
         cellRepo: cellRepo,
+        cellKnowledgeRepo: cellKnowledgeRepo,
       );
       addTearDown(c.dispose);
 
@@ -457,6 +522,7 @@ void main() {
             () => _FakeLocationNotifier(LocationProviderActive(initial)),
           ),
           cellRepositoryProvider.overrideWithValue(cellRepo),
+          cellKnowledgeRepositoryProvider.overrideWithValue(cellKnowledgeRepo),
         ],
       );
       addTearDown(c.dispose);
