@@ -8,6 +8,7 @@ import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
 import 'package:earth_nova/features/map/presentation/widgets/shimmer_cells.dart';
@@ -273,6 +274,52 @@ void main() {
     });
   });
 
+  group('MapScreen canonical Cell knowledge chrome', () {
+    testWidgets('legend exposes exactly the four canonical labels and keys',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: MapCellKnowledgeLegend()),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey('map-cell-knowledge-legend')),
+        findsOneWidget,
+      );
+      for (final state in ['shrouded', 'informed', 'explored', 'present']) {
+        expect(
+          find.byKey(ValueKey('cell-knowledge-$state')),
+          findsOneWidget,
+        );
+      }
+      expect(find.text('Shrouded'), findsOneWidget);
+      expect(find.text('Informed'), findsOneWidget);
+      expect(find.text('Explored'), findsOneWidget);
+      expect(find.text('Present'), findsOneWidget);
+      expect(find.text('Frontier'), findsNothing);
+      expect(find.text('Unknown'), findsNothing);
+    });
+
+    testWidgets('paused banner is a live semantic status', (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: DiscoveryPausedBanner()),
+        ),
+      );
+
+      final status = tester.getSemantics(
+        find.byKey(const ValueKey('discovery-paused-status')),
+      );
+      expect(status.label, 'Discovery paused');
+      expect(status.flagsCollection.isLiveRegion, isTrue);
+      expect(find.text('Discovery paused'), findsOneWidget);
+      semanticsHandle.dispose();
+    });
+  });
+
   group('MapScreen encounter boundary', () {
     test(
         'does not trigger encounters from optimistic exploration while retaining first-discovery notification',
@@ -467,6 +514,7 @@ void main() {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final compactMapSource = mapSource.replaceAll(RegExp(r'\s+'), ' ');
 
       expect(mapSource, contains('TownProjection? town'));
       expect(
@@ -478,7 +526,22 @@ void main() {
       expect(mapSource, contains('final position = _cellCenter(entry.cell)'));
       expect(mapSource, contains('VenueMarkerDisplayMode.compactLabel'));
       expect(mapSource, contains('VenueMarkerDisplayMode.glyphOnly'));
-      expect(mapSource, contains('knownVenues: knownVenues'));
+      expect(
+        mapSource,
+        contains('knownVenues: switch (cellState.knowledgeState)'),
+      );
+      expect(
+        compactMapSource,
+        contains(
+          'CellKnowledgeState.explored || CellKnowledgeState.present => knownVenues',
+        ),
+      );
+      expect(
+        compactMapSource,
+        contains(
+          'CellKnowledgeState.informed || CellKnowledgeState.shrouded => const []',
+        ),
+      );
       expect(mapSource,
           contains('left: projectGeoCoord(venueAnchor.position).dx - 16'));
       expect(mapSource,

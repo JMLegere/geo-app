@@ -10,6 +10,7 @@ class CellBorderCrossingEvent {
     required this.enteredCellId,
     required this.borderCrossingType,
     required this.isFirstVisit,
+    this.hasInformedOpportunity = false,
     required this.occurredAt,
     required this.districtId,
     required this.cityId,
@@ -23,6 +24,7 @@ class CellBorderCrossingEvent {
   final String enteredCellId;
   final CellBorderCrossingType borderCrossingType;
   final bool isFirstVisit;
+  final bool hasInformedOpportunity;
   final DateTime occurredAt;
   final String districtId;
   final String cityId;
@@ -37,6 +39,7 @@ class CellBorderCrossingEvent {
       'entered_cell_id': enteredCellId,
       'border_crossing_type': borderCrossingType.name,
       'is_first_visit': isFirstVisit,
+      'has_informed_opportunity': hasInformedOpportunity,
       'occurred_at': occurredAt.toIso8601String(),
       'district_id': districtId,
       'city_id': cityId,

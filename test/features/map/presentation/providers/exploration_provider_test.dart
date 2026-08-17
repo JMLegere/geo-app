@@ -8,6 +8,8 @@ import 'package:earth_nova/core/observability/observable_use_case_provider.dart'
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_visit.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_border_crossing_event.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/encounter_entry_provider.dart';
 import 'package:earth_nova/features/map/domain/entities/player_marker_state.dart';
@@ -245,6 +247,10 @@ void main() {
         overrides: [
           appObservabilityProvider.overrideWithValue(testObs),
           explorationObservabilityProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(_MockCellRepository()),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (_, __, {rootTrace}) async {},
+          ),
           observableUseCaseProvider.overrideWithValue(testObs),
         ],
       );
@@ -261,29 +267,103 @@ void main() {
       expect(state.lastBorderCrossingEvent, isNull);
     });
 
-    test(
-        'eligible initial occupancy tracks current cell without visit mutation',
+    test('trusted initial occupancy records exactly one visit and entry',
+        () async {
+      final repo = _MockCellRepository();
+      final visitObs = TestObservabilityService();
+      var encounterEntries = 0;
+      final c = ProviderContainer(
+        overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
+          explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(repo),
+          visitQueueObservabilityProvider.overrideWithValue(visitObs),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (_, __, {rootTrace}) async => encounterEntries++,
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+      final notifier = c.read(explorationProvider.notifier);
+
+      Future<void> occupyCellA() => notifier.onPositionUpdate(
+            markerState: const PlayerMarkerState(
+              lat: 0.5,
+              lng: 0.5,
+              isRing: false,
+              gapDistance: 10.0,
+            ),
+            cells: adjacentCells(),
+            visitedCellIds: const <String>{},
+            userId: 'user-123',
+          );
+
+      await occupyCellA();
+      await occupyCellA();
+
+      final state = c.read(explorationProvider);
+      expect(state.currentCellId, 'cell-A');
+      expect(state.visitedCellIds, {'cell-A'});
+      expect(state.lastEnteredCellId, 'cell-A');
+      expect(state.lastEntrySequence, 1);
+      expect(repo.recordedVisits, hasLength(1));
+      expect(repo.recordedVisits.single.cellId, 'cell-A');
+      expect(encounterEntries, 1);
+      expect(testObs.eventNames, contains('map.cell_visited'));
+    });
+
+    test('captures informed opportunity for first and repeat entries only',
         () async {
       final notifier = container.read(explorationProvider.notifier);
-      await notifier.onPositionUpdate(
-        markerState: const PlayerMarkerState(
-          lat: 0.5,
-          lng: 0.5,
-          isRing: false,
-          gapDistance: 10.0,
-        ),
-        cells: adjacentCells(),
-        visitedCellIds: const <String>{},
+
+      Future<CellBorderCrossingEvent> enter({
+        required Set<String> visited,
+        required CellKnowledgeState knowledgeState,
+      }) async {
+        notifier.clearVisitedCells();
+        await notifier.onPositionUpdate(
+          markerState: const PlayerMarkerState(
+            lat: 0.5,
+            lng: 0.5,
+            isRing: false,
+            gapDistance: 10.0,
+          ),
+          cells: adjacentCells(),
+          visitedCellIds: visited,
+          knowledgeByCellId: {
+            'cell-A': CellKnowledgeProjection(
+              cellId: 'cell-A',
+              state: knowledgeState,
+              category: knowledgeState == CellKnowledgeState.informed
+                  ? 'fauna'
+                  : null,
+            ),
+          },
+          userId: 'user-123',
+        );
+        return container.read(explorationProvider).lastBorderCrossingEvent!;
+      }
+
+      final firstVisit = await enter(
+        visited: const {},
+        knowledgeState: CellKnowledgeState.informed,
+      );
+      final repeatInformed = await enter(
+        visited: const {'cell-A'},
+        knowledgeState: CellKnowledgeState.informed,
+      );
+      final repeatExplored = await enter(
+        visited: const {'cell-A'},
+        knowledgeState: CellKnowledgeState.explored,
       );
 
-      final state = container.read(explorationProvider);
-      expect(state.currentCellId, 'cell-A');
-      expect(state.visitedCellIds, isEmpty);
-      expect(state.lastEnteredCellId, isNull);
-      expect(state.lastEntrySequence, 0);
-      expect(state.lastBorderCrossingEvent, isNull);
-      expect(testObs.eventNames, contains('map.cell_tracked'));
-      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
+      expect(firstVisit.isFirstVisit, isTrue);
+      expect(firstVisit.hasInformedOpportunity, isTrue);
+      expect(repeatInformed.isFirstVisit, isFalse);
+      expect(repeatInformed.hasInformedOpportunity, isTrue);
+      expect(repeatExplored.isFirstVisit, isFalse);
+      expect(repeatExplored.hasInformedOpportunity, isFalse);
     });
 
     test('eligible initial occupancy does not create an optimistic Venue',
@@ -437,9 +517,57 @@ void main() {
       expect(testObs.eventNames, isNot(contains('map.cell_visited')));
     });
 
-    test('trusted recovery in the same cell does not replay a border crossing',
-        () async {
-      final notifier = container.read(explorationProvider.notifier);
+    test('untrusted camera movement records no visits', () async {
+      final repo = _MockCellRepository();
+      final visitObs = TestObservabilityService();
+      final c = ProviderContainer(
+        overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
+          explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(repo),
+          visitQueueObservabilityProvider.overrideWithValue(visitObs),
+        ],
+      );
+      addTearDown(c.dispose);
+      final notifier = c.read(explorationProvider.notifier);
+
+      for (final lat in [0.5, 1.5]) {
+        await notifier.onPositionUpdate(
+          markerState: PlayerMarkerState(
+            lat: lat,
+            lng: 0.5,
+            isRing: true,
+            gapDistance: 50.0,
+          ),
+          cells: adjacentCells(),
+          visitedCellIds: const <String>{},
+          userId: 'user-123',
+        );
+      }
+
+      expect(c.read(explorationProvider).currentCellId, 'cell-B');
+      expect(repo.recordedVisits, isEmpty);
+      expect(testObs.eventNames, isNot(contains('map.cell_visited')));
+    });
+
+    test('trusted recovery records only the recovered cell', () async {
+      final repo = _MockCellRepository();
+      final visitObs = TestObservabilityService();
+      final c = ProviderContainer(
+        overrides: [
+          appObservabilityProvider.overrideWithValue(testObs),
+          explorationObservabilityProvider.overrideWithValue(testObs),
+          observableUseCaseProvider.overrideWithValue(testObs),
+          cellRepositoryProvider.overrideWithValue(repo),
+          visitQueueObservabilityProvider.overrideWithValue(visitObs),
+          persistedCellVisitEncounterHandlerProvider.overrideWithValue(
+            (_, __, {rootTrace}) async {},
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+      final notifier = c.read(explorationProvider.notifier);
       const pausedEligibility = ExplorationEligibility(
         canRecordVisits: false,
         isPaused: true,
@@ -456,8 +584,8 @@ void main() {
         cells: adjacentCells(),
         visitedCellIds: const <String>{},
         explorationEligibility: pausedEligibility,
+        userId: 'user-123',
       );
-      testObs.events.clear();
 
       await notifier.onPositionUpdate(
         markerState: const PlayerMarkerState(
@@ -473,15 +601,13 @@ void main() {
           isPaused: false,
           reason: null,
         ),
+        userId: 'user-123',
       );
 
-      final state = container.read(explorationProvider);
+      final state = c.read(explorationProvider);
       expect(state.currentCellId, 'cell-A');
-      expect(state.visitedCellIds, isEmpty);
-      expect(state.lastEnteredCellId, isNull);
-      expect(state.lastBorderCrossingEvent, isNull);
-      expect(testObs.eventNames, isNot(contains('map.cell_entered')));
-      expect(testObs.eventNames, isNot(contains('map.cell_visited')));
+      expect(state.visitedCellIds, {'cell-A'});
+      expect(repo.recordedVisits.map((visit) => visit.cellId), ['cell-A']);
     });
 
     test(
@@ -644,16 +770,15 @@ void main() {
       addTearDown(c.dispose);
 
       await c.read(explorationProvider.notifier).onPositionUpdate(
-            markerState: const PlayerMarkerState(
-              lat: 0.5,
-              lng: 0.5,
-              isRing: false,
-              gapDistance: 10.0,
-            ),
-            cells: cells,
-            visitedCellIds: const <String>{},
-            userId: 'user-123',
-          );
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const <String>{},
+      );
       testObs.events.clear();
 
       await c.read(explorationProvider.notifier).onPositionUpdate(
@@ -702,16 +827,15 @@ void main() {
       addTearDown(c.dispose);
 
       await c.read(explorationProvider.notifier).onPositionUpdate(
-            markerState: const PlayerMarkerState(
-              lat: 0.5,
-              lng: 0.5,
-              isRing: false,
-              gapDistance: 10.0,
-            ),
-            cells: cells,
-            visitedCellIds: const <String>{},
-            userId: 'user-123',
-          );
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const <String>{},
+      );
 
       await c.read(explorationProvider.notifier).onPositionUpdate(
             markerState: const PlayerMarkerState(
@@ -769,16 +893,15 @@ void main() {
       addTearDown(c.dispose);
 
       await c.read(explorationProvider.notifier).onPositionUpdate(
-            markerState: const PlayerMarkerState(
-              lat: 0.5,
-              lng: 0.5,
-              isRing: false,
-              gapDistance: 10.0,
-            ),
-            cells: cells,
-            visitedCellIds: const <String>{},
-            userId: 'user-123',
-          );
+        markerState: const PlayerMarkerState(
+          lat: 0.5,
+          lng: 0.5,
+          isRing: false,
+          gapDistance: 10.0,
+        ),
+        cells: cells,
+        visitedCellIds: const <String>{},
+      );
       await c.read(explorationProvider.notifier).onPositionUpdate(
             markerState: const PlayerMarkerState(
               lat: 1.5,

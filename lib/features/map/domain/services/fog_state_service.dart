@@ -1,4 +1,5 @@
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 
 class FogStateService {
@@ -8,25 +9,41 @@ class FogStateService {
     required List<Cell> cells,
     required String? currentCellId,
     required Set<String> exploredCellIds,
+    bool currentPositionIsTrusted = true,
+    Map<String, CellKnowledgeProjection> knowledgeByCellId = const {},
   }) {
+    final presentCellId = currentPositionIsTrusted ? currentCellId : null;
+    final revealedCellIds = {
+      ...exploredCellIds,
+      ...knowledgeByCellId.entries
+          .where((entry) => entry.value.state == CellKnowledgeState.informed)
+          .map((entry) => entry.key),
+      if (presentCellId != null) presentCellId,
+    };
     final frontierCellIds = _frontierCellIds(
       cells: cells,
-      currentCellId: currentCellId,
-      exploredCellIds: exploredCellIds,
+      revealedCellIds: revealedCellIds,
     );
 
     return cells.map((cell) {
-      final relationship = _relationshipFor(
+      final projection = knowledgeByCellId[cell.id];
+      final knowledgeState = _knowledgeStateFor(
         cellId: cell.id,
-        currentCellId: currentCellId,
+        presentCellId: presentCellId,
         exploredCellIds: exploredCellIds,
-        frontierCellIds: frontierCellIds,
+        projection: projection,
       );
-
       return (
         cell: cell,
         state: CellState(
-          relationship: relationship,
+          knowledgeState: knowledgeState,
+          category: knowledgeState == CellKnowledgeState.informed
+              ? projection?.category
+              : null,
+          relationship: _relationshipFor(
+            knowledgeState: knowledgeState,
+            isFrontier: frontierCellIds.contains(cell.id),
+          ),
           contents: CellContents.empty,
         ),
       );
@@ -35,13 +52,8 @@ class FogStateService {
 
   Set<String> _frontierCellIds({
     required List<Cell> cells,
-    required String? currentCellId,
-    required Set<String> exploredCellIds,
+    required Set<String> revealedCellIds,
   }) {
-    final revealedCellIds = {
-      ...exploredCellIds,
-      if (currentCellId != null) currentCellId,
-    };
     final cellEdges = {
       for (final cell in cells) cell.id: _borderEdgesFor(cell).toSet(),
     };
@@ -92,17 +104,35 @@ class FogStateService {
     return a.lat == b.lat && a.lng == b.lng;
   }
 
-  CellRelationship _relationshipFor({
+  CellKnowledgeState _knowledgeStateFor({
     required String cellId,
-    required String? currentCellId,
+    required String? presentCellId,
     required Set<String> exploredCellIds,
-    required Set<String> frontierCellIds,
+    required CellKnowledgeProjection? projection,
   }) {
-    if (cellId == currentCellId) return CellRelationship.present;
-    if (exploredCellIds.contains(cellId)) return CellRelationship.explored;
-    if (frontierCellIds.contains(cellId)) return CellRelationship.frontier;
-    return CellRelationship.unknown;
+    if (cellId == presentCellId) return CellKnowledgeState.present;
+    if (projection?.state == CellKnowledgeState.informed) {
+      return CellKnowledgeState.informed;
+    }
+    if (exploredCellIds.contains(cellId) ||
+        projection?.state == CellKnowledgeState.explored) {
+      return CellKnowledgeState.explored;
+    }
+    return CellKnowledgeState.shrouded;
   }
+
+  CellRelationship _relationshipFor({
+    required CellKnowledgeState knowledgeState,
+    required bool isFrontier,
+  }) =>
+      switch (knowledgeState) {
+        CellKnowledgeState.present => CellRelationship.present,
+        CellKnowledgeState.informed ||
+        CellKnowledgeState.explored =>
+          CellRelationship.explored,
+        CellKnowledgeState.shrouded =>
+          isFrontier ? CellRelationship.frontier : CellRelationship.unknown,
+      };
 }
 
 class _GeoEdgeKey {

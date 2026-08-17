@@ -30,8 +30,10 @@ final encounterEngineModeResolutionProvider =
 
 /// One stable daily input shared by both the legacy compute and compatibility
 /// planner for a persisted Cell Visit.
+final encounterNowProvider = Provider<DateTime>((ref) => DateTime.now());
+
 final encounterDailySeedProvider = Provider<String>((ref) {
-  final now = DateTime.now();
+  final now = ref.watch(encounterNowProvider).toUtc();
   return 'seed_${now.year}_${now.month.toString().padLeft(2, '0')}_${now.day.toString().padLeft(2, '0')}';
 });
 
@@ -270,7 +272,7 @@ final persistedCellVisitEncounterHandlerProvider =
       mapEntryId: borderCrossingEvent.mapCellEntryId,
       deterministicSeed: seed,
       isFirstVisit: borderCrossingEvent.isFirstVisit,
-      hasLootCompatibility: false,
+      hasLootCompatibility: borderCrossingEvent.hasInformedOpportunity,
       borderContext: EncounterBorderContext(
         enteredCellId: borderCrossingEvent.enteredCellId,
         previousCellId: borderCrossingEvent.previousCellId,

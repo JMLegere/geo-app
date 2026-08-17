@@ -6,4 +6,4 @@ Exports: lib/features/map/presentation/screens/map_screen.dart
 Public API: lib/features/map/presentation/screens/map_screen.dart
 
 Purpose:
-  Primary GPS gameplay page for movement, fog-of-war, cell inspection, discovery rewards, and map status.
+  Primary GPS gameplay page for movement, map status, and Cell inspection through inspect-map-cell. Its static native fog legend is exactly Shrouded, Informed, Explored, and Present. Informed reuses the Explored base treatment with one category cue; Shrouded exposes no detail; Present requires trusted physical occupancy. Reduced motion does not change these treatments, the paused banner is a semantic status, and legacy hasLoot never adds a star.

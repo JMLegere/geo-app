@@ -6,4 +6,4 @@ Exports: lib/features/map/presentation/widgets/cell_detail_sheet.dart
 Public API: lib/features/map/presentation/widgets/cell_detail_sheet.dart
 
 Purpose:
-  Map-cell detail sheet that summarizes visited cell state and exposes known Venue navigation as product action evidence.
+  Read-only map Cell detail for inspect-map-cell. Shrouded remains generic; Informed discloses only one category label and never an exact Encounter, fauna identity, Outcome, or reward; Explored and trusted Present may disclose known visit context. Known Venue navigation remains separate product action evidence.

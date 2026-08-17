@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+
 import 'package:earth_nova/features/map/domain/services/fog_state_service.dart';
 
 Cell _cell(String id) => _squareCell(id, minLat: 0, minLng: 0);
@@ -116,6 +118,66 @@ void main() {
       );
 
       expect(states.single.state.relationship, CellRelationship.present);
+    });
+
+    test('applies canonical knowledge precedence over legacy decorations', () {
+      final states = FogStateService().compute(
+        cells: [
+          _cell('current'),
+          _cell('informed'),
+          _cell('visited'),
+          _cell('hidden')
+        ],
+        currentCellId: 'current',
+        currentPositionIsTrusted: true,
+        exploredCellIds: {'current', 'visited'},
+        knowledgeByCellId: const {
+          'current': CellKnowledgeProjection(
+            cellId: 'current',
+            state: CellKnowledgeState.informed,
+            category: 'fauna',
+          ),
+          'informed': CellKnowledgeProjection(
+            cellId: 'informed',
+            state: CellKnowledgeState.informed,
+            category: 'flora',
+          ),
+        },
+      );
+
+      CellState stateOf(String id) =>
+          states.firstWhere((entry) => entry.cell.id == id).state;
+
+      expect(stateOf('current').knowledgeState, CellKnowledgeState.present);
+      expect(stateOf('current').category, isNull);
+      expect(stateOf('informed').knowledgeState, CellKnowledgeState.informed);
+      expect(stateOf('visited').knowledgeState, CellKnowledgeState.explored);
+      expect(stateOf('visited').category, isNull);
+      expect(stateOf('informed').category, 'flora');
+      expect(stateOf('hidden').category, isNull);
+    });
+
+    test('does not turn an untrusted current location into Present', () {
+      final state = FogStateService()
+          .compute(
+            cells: [_cell('cell-a')],
+            currentCellId: 'cell-a',
+            currentPositionIsTrusted: false,
+            exploredCellIds: {'cell-a'},
+            knowledgeByCellId: const {
+              'cell-a': CellKnowledgeProjection(
+                cellId: 'cell-a',
+                state: CellKnowledgeState.informed,
+                category: 'fauna',
+              ),
+            },
+          )
+          .single
+          .state;
+
+      expect(state.knowledgeState, CellKnowledgeState.informed);
+      expect(state.category, 'fauna');
+      expect(state.relationship, isNot(CellRelationship.present));
     });
   });
 }

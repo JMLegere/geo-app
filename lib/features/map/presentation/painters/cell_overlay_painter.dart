@@ -1,10 +1,15 @@
 import 'dart:math';
 
+import 'package:flutter/rendering.dart' show SemanticsProperties;
+
 import 'package:flutter/material.dart';
+import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
+import 'package:earth_nova/shared/extensions/iconography.dart';
+import 'package:earth_nova/shared/theme/app_theme.dart';
 
 /// CustomPainter that renders cell polygons with fog-of-war styling.
 ///
@@ -67,7 +72,10 @@ class CellOverlayPainter extends CustomPainter {
     ];
 
     final renderModel = CellTessellationRenderModel.build(
-      cellsWithStates: renderableEntries,
+      cellsWithStates: [
+        for (final entry in renderableEntries)
+          (cell: entry.cell, state: _canonicalRenderState(entry.state)),
+      ],
       project: _geoCoordToScreen,
     );
 
@@ -138,15 +146,25 @@ class CellOverlayPainter extends CustomPainter {
     }
 
     for (final entry in renderableEntries) {
-      if (entry.state.contents != CellContents.hasLoot) continue;
-      final centroidPoints = [
-        for (final polygon in entry.cell.polygons)
-          if (polygon.isNotEmpty)
-            for (final coord in polygon.first) _geoCoordToScreen(coord),
-      ];
-      if (centroidPoints.isEmpty) continue;
-      final centroid = _calculateCentroid(centroidPoints);
-      _drawLootIcon(canvas, centroid);
+      if (entry.state.knowledgeState != CellKnowledgeState.informed) continue;
+      final cue = _categoryCue(entry.state.category);
+      final geometry = _screenGeometry(entry.cell);
+      if (cue == null || geometry == null) continue;
+
+      final cuePainter = TextPainter(
+        text: TextSpan(
+          text: cue,
+          style: const TextStyle(
+            color: AppTheme.onSurface,
+            fontSize: 18,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      cuePainter.paint(
+        canvas,
+        geometry.center - Offset(cuePainter.width / 2, cuePainter.height / 2),
+      );
     }
   }
 
@@ -161,54 +179,88 @@ class CellOverlayPainter extends CustomPainter {
     );
   }
 
-  Offset _calculateCentroid(List<Offset> points) {
-    if (points.isEmpty) return Offset.zero;
-
-    var xSum = 0.0;
-    var ySum = 0.0;
-    for (final point in points) {
-      xSum += point.dx;
-      ySum += point.dy;
-    }
-    return Offset(xSum / points.length, ySum / points.length);
+  CellState _canonicalRenderState(CellState state) {
+    final relationship = switch (state.knowledgeState) {
+      CellKnowledgeState.present => CellRelationship.present,
+      CellKnowledgeState.informed ||
+      CellKnowledgeState.explored =>
+        CellRelationship.explored,
+      CellKnowledgeState.shrouded => CellRelationship.unknown,
+    };
+    return CellState(
+      knowledgeState: state.knowledgeState,
+      category: state.category,
+      relationship: relationship,
+      contents: CellContents.empty,
+    );
   }
 
-  void _drawLootIcon(Canvas canvas, Offset center) {
-    const size = 12.0;
+  ({Rect bounds, Offset center})? _screenGeometry(Cell cell) {
+    var minX = double.infinity;
+    var minY = double.infinity;
+    var maxX = double.negativeInfinity;
+    var maxY = double.negativeInfinity;
+    var xSum = 0.0;
+    var ySum = 0.0;
+    var pointCount = 0;
 
-    final path = Path();
-    const points = 5;
-    const innerRadius = size * 0.4;
-    const outerRadius = size * 0.8;
-
-    for (var i = 0; i < points * 2; i++) {
-      final angle = (i * pi / points) - pi / 2;
-      final radius = i.isEven ? outerRadius : innerRadius;
-      final x = center.dx + cos(angle) * radius;
-      final y = center.dy + sin(angle) * radius;
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+    for (final polygon in cell.polygons) {
+      if (polygon.isEmpty) continue;
+      for (final coord in polygon.first) {
+        final point = _geoCoordToScreen(coord);
+        minX = min(minX, point.dx);
+        minY = min(minY, point.dy);
+        maxX = max(maxX, point.dx);
+        maxY = max(maxY, point.dy);
+        xSum += point.dx;
+        ySum += point.dy;
+        pointCount++;
       }
     }
-    path.close();
 
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFFFD700)
-        ..style = PaintingStyle.fill,
+    if (pointCount == 0) return null;
+    return (
+      bounds: Rect.fromLTRB(minX, minY, maxX, maxY),
+      center: Offset(xSum / pointCount, ySum / pointCount),
     );
+  }
 
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = const Color(0xFFB8860B)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
+  String? _categoryCue(String? value) {
+    if (value == null) return null;
+    for (final category in ItemCategory.values) {
+      if (category.name == value) return category.emoji;
+    }
+    return null;
+  }
+
+  String _semanticLabel(CellState state) {
+    return switch (state.knowledgeState) {
+      CellKnowledgeState.present => 'Present',
+      CellKnowledgeState.explored => 'Explored',
+      CellKnowledgeState.shrouded => 'Shrouded',
+      CellKnowledgeState.informed => 'Informed: ${state.category}',
+    };
+  }
+
+  @override
+  SemanticsBuilderCallback get semanticsBuilder => (_) {
+        return [
+          for (final entry in cellsWithStates)
+            if (entry.cell.hasRenderableGeometry)
+              if (_screenGeometry(entry.cell) case final geometry?)
+                CustomPainterSemantics(
+                  rect: geometry.bounds,
+                  properties: SemanticsProperties(
+                    label: _semanticLabel(entry.state),
+                    textDirection: TextDirection.ltr,
+                  ),
+                ),
+        ];
+      };
+
+  @override
+  bool shouldRebuildSemantics(covariant CellOverlayPainter oldDelegate) {
+    return shouldRepaint(oldDelegate);
   }
 
   @override

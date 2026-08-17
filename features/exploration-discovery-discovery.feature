@@ -77,3 +77,26 @@ Feature: Legacy reward-card evidence and Discovery routing
     And the committed Item reward should fly to the Pack
     When the same Present Encounter resolution is replayed
     Then the replay should not create another Outcome, Item, or Pack reward flight
+
+  @action.inspect-map-cell
+  Scenario: Map exposes canonical Cell knowledge without leaking an Encounter
+    Given the Map has Shrouded, Informed, Explored, and trusted Present Cells
+    When the player inspects each Cell knowledge state
+    Then the legend should label exactly Shrouded, Informed, Explored, and Present
+    And Shrouded should expose only a generic unrevealed treatment
+    And Informed should reuse the Explored treatment with exactly one category cue
+    But Informed should not expose an exact Encounter, fauna identity, Outcome, or reward
+    And the legacy hasLoot star should not appear
+
+  Scenario: Present knowledge requires trusted physical occupancy
+    Given a Cell is current only because of untrusted or camera movement
+    When Map projects private player Cell knowledge
+    Then that Cell should not be Present
+    When trusted physical occupancy is recorded
+    Then that Cell alone should be Present
+
+  Scenario: Canonical fog and paused status remain static with reduced motion
+    Given canonical Cell fog is rendered with reduced motion enabled
+    When Map pauses exploration outside trusted occupancy
+    Then every Cell knowledge treatment should remain static
+    And the paused banner should announce the status "Discovery paused"
