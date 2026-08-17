@@ -62,9 +62,14 @@ void main() {
       final aggregate = _selectedAggregate();
       final outcome = (aggregate['outcome_results']! as List<Object?>).single
           as Map<String, Object?>;
-      outcome['resolved_base_item_id'] = null;
-      outcome['resolved_base_item_version_id'] = null;
-      outcome['resolved_base_item_revision'] = null;
+      outcome
+        ..remove('resolved_base_item_id')
+        ..remove('resolved_base_item_version_id')
+        ..remove('resolved_base_item_revision')
+        ..remove('resolved_venue_id')
+        ..remove('resolved_venue_version_id')
+        ..remove('resolved_venue_revision')
+        ..remove('known_at');
       final item = (aggregate['generated_items']! as List<Object?>).single
           as Map<String, Object?>;
       item
