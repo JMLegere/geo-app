@@ -646,7 +646,7 @@ void main() {
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
 
-      expect(mapSource, contains('MapReadinessState('));
+      expect(mapSource, contains('ref.watch(mapReadinessProvider)'));
       expect(mapSource, contains('onMapIdle:'));
       expect(mapSource, contains('_MapSteadyStateLoadingOverlay('));
       expect(mapSource, contains('map.steady_state_ready'));
@@ -664,9 +664,12 @@ void main() {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final readinessSource = File(
+        'lib/features/map/presentation/providers/map_readiness_provider.dart',
+      ).readAsStringSync();
 
-      expect(mapSource, contains('_kMapBootstrapTimeout'));
-      expect(mapSource, contains('Timer? _mapBootstrapTimeoutTimer'));
+      expect(readinessSource, contains('kMapBootstrapTimeout'));
+      expect(readinessSource, contains('Timer? _bootstrapTimeoutTimer'));
       expect(mapSource, contains('_handleMapBootstrapTimeout'));
       expect(mapSource, contains("eventName: 'map.bootstrap.timed_out'"));
       expect(mapSource, contains('TelemetryFlowPhase.timedOut'));
@@ -752,20 +755,23 @@ void main() {
       expect(mapSource, contains("eventName: 'map.web_viewport_resized'"));
     });
     test('keeps a safety fallback for missing base-map settled signal', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final readinessSource = File(
+        'lib/features/map/presentation/providers/map_readiness_provider.dart',
+      ).readAsStringSync();
 
-      expect(mapSource, contains('_ensureBaseMapSettledFallback'));
-      expect(mapSource, contains("source: 'readiness_safety_fallback'"));
-      expect(mapSource, contains('readiness.styleLoaded'));
-      expect(mapSource, contains('readiness.cellsFetched'));
+      expect(readinessSource, contains('kBaseMapSettledFallbackDelay'));
+      expect(readinessSource, contains("source: 'readiness_safety_fallback'"));
+      expect(readinessSource, contains('state.styleLoaded'));
+      expect(readinessSource, contains('state.cellsFetched'));
     });
 
     test('uses web MapLibre idle bridge before the timer fallback', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
               .readAsStringSync();
+      final readinessSource = File(
+        'lib/features/map/presentation/providers/map_readiness_provider.dart',
+      ).readAsStringSync();
       final signalFile = File(
         'lib/features/map/presentation/platform/base_map_settled_signal_web.dart',
       );
@@ -783,8 +789,8 @@ void main() {
 
       final signalSource = signalFile.readAsStringSync();
       expect(mapSource, contains('BaseMapSettledSignal('));
-      expect(mapSource, contains('_kBaseMapSettledFallbackDelay'));
-      expect(mapSource, contains('Duration(seconds: 5)'));
+      expect(readinessSource, contains('kBaseMapSettledFallbackDelay'));
+      expect(readinessSource, contains('Duration(seconds: 5)'));
       expect(
           signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
       expect(signalSource, contains('earthnova.maplibre.idle'));

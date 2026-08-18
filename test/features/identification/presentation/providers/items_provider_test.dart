@@ -254,6 +254,16 @@ void main() {
       expect(startIdx, lessThan(successIdx));
     });
 
+    test('hydrate marks an empty Pack as loaded', () {
+      container.read(itemsProvider.notifier).hydrate(const []);
+
+      final state = container.read(itemsProvider);
+      expect(state.items, isEmpty);
+      expect(state.hasLoaded, isTrue);
+      expect(state.isLoading, isFalse);
+      expect(obs.eventNames, contains('items.hydrated'));
+    });
+
     test('fetchItems logs count in fetch_success data', () async {
       final repo =
           MockItemRepository(items: [_testItem(id: '1'), _testItem(id: '2')]);

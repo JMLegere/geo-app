@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/content_version_id.dart';
 import 'package:earth_nova/core/domain/content/encounter_content.dart';
 import 'package:earth_nova/core/domain/content/exact_version_ref.dart';
 import 'package:earth_nova/core/domain/content/stable_content_id.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/encounters/domain/entities/encounter_entities.dart';
 import 'package:earth_nova/features/encounters/domain/repositories/encounter_repository.dart';
 import 'package:earth_nova/features/encounters/presentation/providers/pending_encounter_provider.dart';
@@ -127,6 +131,30 @@ void main() {
       expect(notifier.resolveCalls, isEmpty);
     });
 
+    testWidgets('degraded session disables server-authoritative resolution',
+        (tester) async {
+      final pending = _pendingEncounter();
+      final notifier = await _pump(
+        tester,
+        PendingEncounterReady(pending),
+        readiness: AppReadinessPhase.degraded,
+      );
+      final action = find.byKey(const Key('resolve-present-encounter'));
+
+      expect(find.text('Sync required'), findsOneWidget);
+      expect(
+        tester.getSemantics(action),
+        matchesSemantics(
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: false,
+          hasTapAction: false,
+        ),
+      );
+      await tester.tap(action, warnIfMissed: false);
+      expect(notifier.resolveCalls, isEmpty);
+    });
+
     testWidgets('resolved encounter leaves reward presentation to the modal',
         (tester) async {
       final pending = _pendingEncounter();
@@ -148,12 +176,18 @@ void main() {
 
 Future<_TestPendingEncounterNotifier> _pump(
   WidgetTester tester,
-  PendingEncounterState state,
-) async {
+  PendingEncounterState state, {
+  AppReadinessPhase readiness = AppReadinessPhase.usable,
+}) async {
   final notifier = _TestPendingEncounterNotifier(state);
+  final observability = ObservabilityService(sessionId: 'test');
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        appObservabilityProvider.overrideWithValue(observability),
+        appReadinessProvider.overrideWith(
+          () => _StaticReadinessNotifier(readiness),
+        ),
         pendingEncounterProvider.overrideWith(() => notifier),
       ],
       child: const MaterialApp(
@@ -162,6 +196,21 @@ Future<_TestPendingEncounterNotifier> _pump(
     ),
   );
   return notifier;
+}
+
+final class _StaticReadinessNotifier extends AppReadinessNotifier {
+  _StaticReadinessNotifier(this.phase);
+
+  final AppReadinessPhase phase;
+
+  @override
+  AppReadinessState build() => AppReadinessState(
+        phase: phase,
+        completedCheckpoints: AppReadinessState.requiredCheckpoints,
+      );
+
+  @override
+  Future<void> start(String userId) async {}
 }
 
 final class _TestPendingEncounterNotifier extends PendingEncounterNotifier {
@@ -175,12 +224,15 @@ final class _TestPendingEncounterNotifier extends PendingEncounterNotifier {
   PendingEncounterState build() => value;
 
   @override
-  Future<void> resolve(EncounterOptionId optionId) async {
+  Future<void> resolve(
+    EncounterOptionId optionId, {
+    TraceContext? parent,
+  }) async {
     resolveCalls.add(optionId);
   }
 
   @override
-  Future<void> retryResolution() async {
+  Future<void> retryResolution({TraceContext? parent}) async {
     retryCalls++;
   }
 }

@@ -117,23 +117,22 @@ class MapNotifier extends ObservableNotifier<MapState> {
         }
 
         if (next case LocationProviderError(message: final message)) {
-          transition(MapStateError(message), 'map.data_fetch_error');
+          if (_renderableState == null) {
+            transition(MapStateError(message), 'map.data_fetch_error');
+          }
           return;
         }
 
         if (next is LocationProviderPermissionDenied) {
-          transition(
-            const MapStateError('Location permission denied'),
-            'map.data_fetch_error',
-          );
+          if (_renderableState == null) {
+            transition(
+              const MapStateError('Location permission denied'),
+              'map.data_fetch_error',
+            );
+          }
         }
       },
     );
-
-    final currentLocation = ref.read(locationProvider);
-    if (currentLocation is LocationProviderActive) {
-      Future.microtask(() => _onLocationUpdate(currentLocation.location));
-    }
 
     return const MapStateLoading();
   }
@@ -142,8 +141,46 @@ class MapNotifier extends ObservableNotifier<MapState> {
     obs.log('map.zoom_changed', category, data: {'zoom': zoom});
   }
 
-  Future<void> _onLocationUpdate(LocationState location) async {
-    if (!_shouldRefetch(location)) return;
+  void hydrate(MapStateReady ready) {
+    _lastFetchPosition = ready.location;
+    transition(
+      ready,
+      'map.hydrated',
+      data: {
+        'flow': 'map.bootstrap',
+        'phase': TelemetryFlowPhase.dependencyReady.wireName,
+        'dependency': 'cells',
+        'source': 'working_set',
+        'total_cells': ready.cells.length,
+        'visited_count': ready.visitedCellIds.length,
+      },
+    );
+  }
+
+  Future<bool> refresh() async {
+    final locationState = ref.read(locationProvider);
+    if (locationState is LocationProviderActive) {
+      return _onLocationUpdate(locationState.location, force: true);
+    }
+    if (locationState is LocationProviderError ||
+        locationState is LocationProviderPermissionDenied) {
+      return false;
+    }
+    final currentState = state;
+    if (currentState is MapStateReady) {
+      return _onLocationUpdate(currentState.location, force: true);
+    }
+    if (currentState is MapStateRefreshing) {
+      return _onLocationUpdate(currentState.refreshLocation, force: true);
+    }
+    return false;
+  }
+
+  Future<bool> _onLocationUpdate(
+    LocationState location, {
+    bool force = false,
+  }) async {
+    if (!force && !_shouldRefetch(location)) return true;
     _lastFetchPosition = location;
 
     final previousReady = switch (state) {
@@ -241,6 +278,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
           ...geometryDiagnostics,
         },
       );
+      return true;
     } catch (e, stack) {
       obs.logError(e, stack, event: 'map.data_fetch_error');
       if (previousReady != null) {
@@ -255,7 +293,7 @@ class MapNotifier extends ObservableNotifier<MapState> {
             'retained_cell_count': previousReady.cells.length,
           },
         );
-        return;
+        return false;
       }
       transition(MapStateError(e.toString()), 'map.cells_fetch_error', data: {
         'flow': 'map.bootstrap',
@@ -263,8 +301,15 @@ class MapNotifier extends ObservableNotifier<MapState> {
         'dependency': 'cells',
         'error': e.toString(),
       });
+      return false;
     }
   }
+
+  MapStateReady? get _renderableState => switch (state) {
+        MapStateReady ready => ready,
+        MapStateRefreshing refreshing => refreshing.previous,
+        _ => null,
+      };
 
   bool _shouldRefetch(LocationState location) {
     final last = _lastFetchPosition;

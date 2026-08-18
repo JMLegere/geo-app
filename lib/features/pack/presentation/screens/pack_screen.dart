@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart' hide Durations;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/domain/entities/game_region.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/core/domain/entities/iucn_status.dart';
 import 'package:earth_nova/core/domain/entities/taxonomic_group.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/features/pack/domain/entities/pack_filter_state.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/identification/presentation/screens/identification_service_screen.dart';
@@ -98,7 +100,10 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     }
     _pageController.addListener(_onPageScrolled);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(itemsProvider.notifier).fetchItems();
+      final items = ref.read(itemsProvider);
+      if (!items.hasLoaded && !items.isLoading) {
+        ref.read(itemsProvider.notifier).fetchItems();
+      }
     });
   }
 
@@ -319,38 +324,22 @@ class _PackScreenState extends ConsumerState<PackScreen> {
     setState(() => _searchQuery = query);
   }
 
-  Future<Item?> _onItemTapped(Item item) async {
+  Future<Item?> _onItemTapped(
+    Item item, {
+    TraceContext? parent,
+  }) async {
     if (!item.isExamined) {
       if (!_examinationsInFlight.add(item.id)) return null;
-      _logInteraction(
-        'examine_pack_item',
-        'pack_item',
-        playerActionId: PlayerActions.examinePackItem,
-        data: {
-          'item_id': item.id,
-          'category': item.category.name,
-        },
-      );
       try {
-        final examined =
-            await ref.read(itemsProvider.notifier).examinePackItem(item.id);
+        final examined = await ref
+            .read(itemsProvider.notifier)
+            .examinePackItem(item.id, parent: parent);
         return examined?.id == item.id ? examined : null;
       } finally {
         _examinationsInFlight.remove(item.id);
       }
     }
 
-    _logInteraction(
-      'open_species_card',
-      'species_card',
-      playerActionId: PlayerActions.inspectPackFind,
-      data: {
-        'item_id': item.id,
-        'category': item.category.name,
-        'rarity': item.rarity,
-        'has_frame2': item.iconUrlFrame2 != null,
-      },
-    );
     return item;
   }
 
@@ -458,7 +447,7 @@ class _PackBody extends StatelessWidget {
   final VoidCallback onTogglePanel;
   final void Function(String) onSearchChanged;
   final void Function(EdgeSwipeDirection)? onEdgeSwipe;
-  final Future<Item?> Function(Item) onItemTapped;
+  final Future<Item?> Function(Item, {TraceContext? parent}) onItemTapped;
   final void Function(Item) onOpenIdentificationService;
 
   @override
@@ -1337,7 +1326,7 @@ class _ItemGrid extends StatelessWidget {
     required this.onOpenIdentificationService,
   });
   final List<Item> items;
-  final Future<Item?> Function(Item) onItemTap;
+  final Future<Item?> Function(Item, {TraceContext? parent}) onItemTap;
   final void Function(Item) onOpenIdentificationService;
 
   static int _columns(double width) {
@@ -1379,18 +1368,26 @@ class _ItemGrid extends StatelessWidget {
 
 // ─── Item slot ────────────────────────────────────────────────────────────────
 
-class _ItemSlot extends StatelessWidget {
+class _ItemSlot extends ConsumerStatefulWidget {
   const _ItemSlot({
     required this.item,
     required this.onItemTap,
     required this.onOpenIdentificationService,
   });
   final Item item;
-  final Future<Item?> Function(Item) onItemTap;
+  final Future<Item?> Function(Item, {TraceContext? parent}) onItemTap;
   final void Function(Item) onOpenIdentificationService;
 
   @override
+  ConsumerState<_ItemSlot> createState() => _ItemSlotState();
+}
+
+class _ItemSlotState extends ConsumerState<_ItemSlot> {
+  bool _busy = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final status = item.isExamined ? IucnStatus.fromString(item.rarity) : null;
     final hasFrame2 = item.isExamined && item.iconUrlFrame2 != null;
     final silhouetteLabel = 'Unexamined ${item.category.name} Item';
@@ -1399,22 +1396,62 @@ class _ItemSlot extends StatelessWidget {
       label: item.isExamined ? null : silhouetteLabel,
       button: true,
       excludeSemantics: !item.isExamined,
-      // eac-clickable-owner-logs: onItemTap logs examine/inspect before opening the Pack item card.
+      // eac-clickable-owner-logs: this surface owns the Pack item trace.
       child: GestureDetector(
         key: ValueKey('pack-item-${item.id}'),
-        onTap: () async {
-          final openedItem = await onItemTap(item);
-          if (openedItem == null ||
-              openedItem.id != item.id ||
-              !context.mounted) {
-            return;
-          }
-          showSpeciesCard(
-            context,
-            openedItem,
-            onOpenIdentificationService: onOpenIdentificationService,
-          );
-        },
+        onTap: _busy
+            ? null
+            : () async {
+                final examining = !item.isExamined;
+                final interaction = ObservableInteractionTrace.start(
+                  observability: ref.read(appObservabilityProvider),
+                  interaction: examining
+                      ? PlayerActions.examinePackItem
+                      : PlayerActions.inspectPackFind,
+                  surface: 'pack.item',
+                  screenName: 'pack_screen',
+                  widgetName: 'pack_item',
+                  actionType:
+                      examining ? 'examine_pack_item' : 'open_species_card',
+                  readinessState: ref.read(appReadinessProvider).phase.name,
+                  payload: {
+                    'item_id': item.id,
+                    'category': item.category.name,
+                  },
+                );
+                if (examining) {
+                  setState(() => _busy = true);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      interaction.complete(
+                        transition: 'examination_started',
+                      );
+                    }
+                  });
+                }
+                final openedItem = await widget.onItemTap(
+                  item,
+                  parent: interaction.context,
+                );
+                if (!context.mounted) return;
+                if (examining) setState(() => _busy = false);
+                if (openedItem == null || openedItem.id != item.id) return;
+                showSpeciesCard(
+                  context,
+                  openedItem,
+                  onOpenIdentificationService:
+                      widget.onOpenIdentificationService,
+                );
+                if (!examining) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      interaction.complete(
+                        transition: 'species_card_visible',
+                      );
+                    }
+                  });
+                }
+              },
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -1451,13 +1488,20 @@ class _ItemSlot extends StatelessWidget {
                           Spacing.xs,
                           Spacing.xxs,
                         ),
-                        child: item.isExamined
-                            ? _SpeciesIcon(item: item)
-                            : const Icon(
-                                Icons.help_outline,
-                                size: 44,
-                                color: AppTheme.onSurfaceVariant,
-                              ),
+                        child: _busy
+                            ? const SizedBox.square(
+                                dimension: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : item.isExamined
+                                ? _SpeciesIcon(item: item)
+                                : const Icon(
+                                    Icons.help_outline,
+                                    size: 44,
+                                    color: AppTheme.onSurfaceVariant,
+                                  ),
                       ),
                     ),
                     if (status != null)

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/domain/content/base_item_content.dart';
 import 'package:earth_nova/core/domain/content/content_identity.dart';
 import 'package:earth_nova/core/domain/content/encounter_content.dart';
@@ -102,13 +103,32 @@ final class _TestExplorationNotifier extends ExplorationNotifier {
   }
 }
 
+final class _TestAppReadinessNotifier extends AppReadinessNotifier {
+  _TestAppReadinessNotifier(this.phase);
+
+  final AppReadinessPhase phase;
+
+  @override
+  AppReadinessState build() => AppReadinessState(
+        phase: phase,
+        completedCheckpoints: AppReadinessState.requiredCheckpoints,
+      );
+
+  @override
+  Future<void> start(String userId) async {}
+}
+
 ProviderContainer _containerFor(
   _FakeEncounterRepository repository, {
   required bool canRecordVisits,
   Future<void> Function(PendingEncounter, GeneratedItemCommit)? presentReward,
+  AppReadinessPhase readiness = AppReadinessPhase.usable,
 }) =>
     ProviderContainer(
       overrides: [
+        appReadinessProvider.overrideWith(
+          () => _TestAppReadinessNotifier(readiness),
+        ),
         if (presentReward != null)
           committedPendingEncounterRewardPresenterProvider.overrideWithValue(
             presentReward,
@@ -366,6 +386,36 @@ void main() {
 
       expect(container.read(pendingEncounterProvider),
           isA<PendingEncounterFailure>());
+    });
+
+    test('degraded readiness blocks the encounter mutation boundary', () async {
+      final pending = _pending('cell-1');
+      final repository = _FakeEncounterRepository(
+        (_) => Future<PendingEncounter?>.value(pending),
+        onResolve: (_, {required traceId, selectedOptionId}) =>
+            Future<EncounterRuntimeAggregate>.value(
+          _resolvedAggregate(pending),
+        ),
+      );
+      final container = _containerFor(
+        repository,
+        canRecordVisits: true,
+        readiness: AppReadinessPhase.degraded,
+      );
+      addTearDown(container.dispose);
+      _exploration(container).showCell(pending.cellId);
+      container.read(pendingEncounterProvider);
+      await _drain();
+
+      await container
+          .read(pendingEncounterProvider.notifier)
+          .resolve(pending.options.single.id);
+
+      expect(repository.resolveCalls, isEmpty);
+      expect(
+        container.read(pendingEncounterProvider),
+        isA<PendingEncounterReady>(),
+      );
     });
 
     test('resolves ready encounter through resolving to resolved then presents',

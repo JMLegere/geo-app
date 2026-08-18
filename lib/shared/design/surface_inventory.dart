@@ -40,6 +40,15 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'Owns no product UI styling beyond applying AppTheme and route wiring.',
   ),
   DesignSurfaceDefinition(
+    path: 'lib/app/readiness/app_readiness_gate.dart',
+    category: DesignSurfaceCategory.appRoot,
+    status: DesignSurfaceStatus.canonicalComposition,
+    purpose:
+        'Authenticated readiness overlay that keeps the app shell painted while client state becomes usable.',
+    designSystemNotes:
+        'Composes AppTheme tokens and registered action controls for progress, failure, and compact sync status.',
+  ),
+  DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/loading_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,

@@ -309,8 +309,7 @@ void main() {
             wakeLockRepositoryProvider
                 .overrideWithValue(_FakeWakeLockRepository()),
             wakeLockObservabilityProvider.overrideWithValue(interactions),
-            appObservabilityProvider
-                .overrideWithValue(_TestObservabilityService()),
+            appObservabilityProvider.overrideWithValue(interactions),
             navigationScreenTransitionLoggerProvider
                 .overrideWithValue(navigation),
             debugModeProvider.overrideWith(() => _FalseDebugMode()),
@@ -336,13 +335,19 @@ void main() {
           .toList();
 
       expect(tabSelectionEvents, hasLength(1));
-      expect(tabSelectionEvents.single.data, {
-        'action_type': 'tab_selected',
-        'screen_name': 'tab_shell',
-        'widget_name': 'bottom_navigation_bar',
-        'player_action_id': PlayerActions.openPack,
-        'tab_index': 1,
-      });
+      expect(
+          tabSelectionEvents.single.data,
+          containsPair(
+            'action_type',
+            'tab_selected',
+          ));
+      expect(tabSelectionEvents.single.data,
+          containsPair('screen_name', 'tab_shell'));
+      expect(tabSelectionEvents.single.data,
+          containsPair('widget_name', 'bottom_navigation_bar'));
+      expect(tabSelectionEvents.single.data,
+          containsPair('player_action_id', PlayerActions.openPack));
+      expect(tabSelectionEvents.single.data, containsPair('tab_index', 1));
     });
   });
 
@@ -1115,7 +1120,7 @@ void main() {
       expect(source, contains('PackScreen('));
       expect(source, contains('pageController:'));
       expect(source, contains('onEdgeSwipe:'));
-      expect(source, contains("actionType: 'edge_swipe_to_pack'"));
+      expect(source, contains("'edge_swipe_to_pack'"));
       expect(source, isNot(contains("actionType: 'edge_swipe_to_player'")));
     });
 

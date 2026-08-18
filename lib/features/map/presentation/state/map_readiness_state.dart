@@ -6,6 +6,8 @@ class MapReadinessState {
     required this.baseMapSettled,
     required this.cellsFetched,
     required this.overlayFramePainted,
+    this.bootstrapTimedOut = false,
+    this.baseMapSettledSource,
   });
 
   const MapReadinessState.initial()
@@ -14,7 +16,9 @@ class MapReadinessState {
         styleLoaded = false,
         baseMapSettled = false,
         cellsFetched = false,
-        overlayFramePainted = false;
+        overlayFramePainted = false,
+        bootstrapTimedOut = false,
+        baseMapSettledSource = null;
 
   final bool locationReady;
   final bool mapCreated;
@@ -22,6 +26,8 @@ class MapReadinessState {
   final bool baseMapSettled;
   final bool cellsFetched;
   final bool overlayFramePainted;
+  final bool bootstrapTimedOut;
+  final String? baseMapSettledSource;
 
   bool get isSteadyStateReady =>
       locationReady &&
@@ -40,14 +46,38 @@ class MapReadinessState {
         if (!overlayFramePainted) 'overlay_frame_painted',
       ];
 
+  MapReadinessState copyWith({
+    bool? locationReady,
+    bool? mapCreated,
+    bool? styleLoaded,
+    bool? baseMapSettled,
+    bool? cellsFetched,
+    bool? overlayFramePainted,
+    bool? bootstrapTimedOut,
+    String? baseMapSettledSource,
+  }) {
+    return MapReadinessState(
+      locationReady: locationReady ?? this.locationReady,
+      mapCreated: mapCreated ?? this.mapCreated,
+      styleLoaded: styleLoaded ?? this.styleLoaded,
+      baseMapSettled: baseMapSettled ?? this.baseMapSettled,
+      cellsFetched: cellsFetched ?? this.cellsFetched,
+      overlayFramePainted: overlayFramePainted ?? this.overlayFramePainted,
+      bootstrapTimedOut: bootstrapTimedOut ?? this.bootstrapTimedOut,
+      baseMapSettledSource: baseMapSettledSource ?? this.baseMapSettledSource,
+    );
+  }
+
   Map<String, dynamic> toLogData() => {
         'location_ready': locationReady,
         'map_created': mapCreated,
         'style_loaded': styleLoaded,
         'base_map_settled': baseMapSettled,
+        'base_map_settled_source': baseMapSettledSource,
         'cells_fetched': cellsFetched,
         'overlay_frame_painted': overlayFramePainted,
         'steady_state_ready': isSteadyStateReady,
+        'bootstrap_timed_out': bootstrapTimedOut,
         'waiting_for': waitingFor,
       };
 }

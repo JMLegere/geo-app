@@ -1,3 +1,9 @@
+import 'dart:async';
+
+import 'package:earth_nova/app/readiness/app_readiness.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,13 +39,34 @@ class PendingEncounterLayer extends ConsumerWidget {
     final option = pending.options.first;
     final isResolving = resolving != null;
     final isRetry = failure != null;
-    final onPressed = isResolving
+    final readiness = ref.watch(appReadinessProvider);
+    void resolveWithTrace({required bool retry}) {
+      final interaction = ObservableInteractionTrace.start(
+        observability: ref.read(appObservabilityProvider),
+        interaction: PlayerActions.resolvePresentEncounter,
+        surface: 'pending_encounter.resolve_button',
+        readinessState: readiness.phase.name,
+        screenName: 'pending_encounter_layer',
+        widgetName: 'resolve_present_encounter',
+        actionType:
+            retry ? 'retry_present_encounter' : 'resolve_present_encounter',
+      );
+      final notifier = ref.read(pendingEncounterProvider.notifier);
+      if (retry) {
+        unawaited(notifier.retryResolution(parent: interaction.context));
+      } else {
+        unawaited(notifier.resolve(option.id, parent: interaction.context));
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          interaction.complete(transition: 'resolution_started');
+        }
+      });
+    }
+
+    final onPressed = isResolving || readiness.isDegraded
         ? null
-        : isRetry
-            ? () =>
-                ref.read(pendingEncounterProvider.notifier).retryResolution()
-            : () =>
-                ref.read(pendingEncounterProvider.notifier).resolve(option.id);
+        : () => resolveWithTrace(retry: isRetry);
 
     return SafeArea(
       minimum: const EdgeInsets.all(Spacing.lg),
@@ -86,7 +113,11 @@ class PendingEncounterLayer extends ConsumerWidget {
                           ],
                         )
                       : EarthActionButton(
-                          label: isRetry ? 'Retry' : 'Resolve',
+                          label: readiness.isDegraded
+                              ? 'Sync required'
+                              : isRetry
+                                  ? 'Retry'
+                                  : 'Resolve',
                           onPressed: onPressed,
                           actionId: PlayerActions.resolvePresentEncounter,
                           tone: EarthActionTone.secondary,

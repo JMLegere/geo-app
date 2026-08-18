@@ -892,3 +892,13 @@
 - Verification passed: `flutter analyze --no-pub`, the complete 1,470-test Flutter suite, focused post-suite Desktop pointer/focus tests, EAC with no diagnostics, SuperBDD at 24 scenarios / 148 steps, and `git diff --check`.
 - Production-connected browser QA authenticated a dedicated explorer and proved the Desktop Controls default, toggle, and reload persistence. Map traversal remained unavailable because production returned HTTP 404 for `get_v3_town` and `fetch_v3_player_cell_states`; the separate production schema-promotion gate is recorded in `.agents/questions.md`.
 - No backend schema, `.github` workflow, primary production deployment, or production promotion was changed.
+
+## Completed 2026-08-18 — App Readiness and bounded Client Working Set
+
+- Implemented issue #567 as an authenticated app-wide readiness gate. Warm snapshots unlock after the Map surface is ready and refresh in the background; cold startup blocks until Map and Pack are usable; valid stale snapshots enter a Degraded Session; cacheless failure offers Retry and Sign out.
+- Added a versioned, explicitly configured environment- and Player-scoped SharedPreferences snapshot for the bounded Map and Pack working set. Load rejects corrupt, oversized, mismatched, unsupported, or unscoped payloads; replacement keeps the prior valid snapshot on failure; explicit Sign out removes every stored version for that Player/environment and stops if safe purge fails.
+- Promoted Map Readiness state and timers into an observable provider while preserving the five-second base-map fallback and twelve-second terminal timeout. App Readiness now owns the initial Map and Pack refresh rather than screen mount.
+- Added input-to-first-render interaction spans for opening Map/Pack, inspecting Map Cells and Pack finds, starting Item examination, and starting Encounter resolution. Degraded Sessions restore the last internally consistent snapshot and block server-authoritative Encounter resolution at both UI and provider boundaries.
+- Added the 250 ms delayed phase/checkpoint UI, compact degraded sync banner, and failure actions using the existing design system. Controlled 390×844 warm, cold, degraded, and failure renders were inspected with no clipping or blocking visual defect.
+- Verification passed: `flutter analyze --no-pub`; the complete 1,497-test Flutter suite; focused readiness, persistence, Map, Pack, Encounter, tab, and trace suites; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
+- Added accepted ADR 0008 for the bounded Client Working Set. No backend schema, production deployment, primary-production promotion, or new synchronization engine was changed.
