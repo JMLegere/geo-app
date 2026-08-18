@@ -26,6 +26,10 @@ _Avoid_: desktop gameplay rules, a parallel world state
 Focused keyboard movement that updates Player Position while Desktop Mode is enabled. Crossing a Cell border creates ordinary Cell Visits and Encounters with no desktop provenance.
 _Avoid_: simulated Visits, desktop-only Encounters, input-specific provenance
 
+**Execution Environment**:
+One of EarthNova’s two active runtime contexts: `local`, for a locally run Flutter/Desktop client, or `prod`, for the deployed production client. Both use the production Supabase source of truth, so local gameplay actions are production mutations. Beta is not an active environment.
+_Avoid_: beta, staging, local sandbox data, treating local actions as disposable
+
 **App Readiness**:
 The post-authentication gate that prepares enough client-resident EarthNova state for the signed-in app—not only Map—to meet its approved interaction latency target. App Readiness completes when the internally consistent Client Working Set can meet that target; Map Readiness is one dependency, and background synchronization does not delay entry.
 _Avoid_: map-only loading, cosmetic splash screen

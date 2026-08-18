@@ -54,7 +54,7 @@ npm run superbdd:cucumber                  # execute SuperBDD Cucumber scenarios
 3. `.agents/constraints.md` — hard current implementation and deployment invariants
 4. `docs/design.md` and relevant focused docs — current/legacy evidence to reconcile, not automatic reboot authority
 5. `docs/dependencies.md` — before adding any package
-6. `docs/runbook.md` — before any beta or production operation
+6. `docs/runbook.md` — before any local or prod operation
 
 ### Everything as Code
 
@@ -129,7 +129,7 @@ class FooNotifier extends ObservableNotifier<FooState> {
 
 ### Vertical Slices
 
-Build one complete, user-verifiable feature slice end-to-end (model → application logic → adapter → screen → focused test) before starting another. Keep slices local and explicit; beta or production promotion is a separate human-authorized action.
+Build one complete, user-verifiable feature slice end-to-end (model → application logic → adapter → screen → focused test) before starting another. Keep slices local and explicit; prod deployment is a separate manual human-authorized action.
 
 ---
 

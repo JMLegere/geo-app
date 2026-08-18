@@ -72,7 +72,7 @@ class AppReadinessNotifier extends ObservableNotifier<AppReadinessState> {
   String get _environment => ref.read(appReadinessEnvironmentProvider);
 
   bool get _persistenceEnabled =>
-      _environment.isNotEmpty && _environment != 'unknown';
+      _environment == 'local' || _environment == 'prod';
 
   @override
   AppReadinessState build() => const AppReadinessState.initial();

@@ -93,31 +93,61 @@ void main() {
       expect(items.hydrateCalls, 2);
     });
 
-    test('does not hydrate persistence without an explicit environment',
-        () async {
-      SharedPreferences.setMockInitialValues({});
-      final store = _FakeWorkingSetStore(
-        await SharedPreferences.getInstance(),
-        snapshot: _snapshot(),
-      );
-      final container = _container(
-        store: store,
-        map: _FakeMapNotifier(
-          initial: const MapStateError('Map unavailable'),
-          refresh: Future.value(false),
-        ),
-        items: _FakeItemsNotifier(),
-        environment: 'unknown',
-      );
-      addTearDown(container.dispose);
+    test('skips persistence for legacy and unknown environments', () async {
+      for (final environment in ['beta', 'production', 'unknown']) {
+        SharedPreferences.setMockInitialValues({});
+        final store = _FakeWorkingSetStore(
+          await SharedPreferences.getInstance(),
+          snapshot: _snapshot(environment: environment),
+        );
+        final container = _container(
+          store: store,
+          map: _FakeMapNotifier(
+            initial: const MapStateError('Map unavailable'),
+            refresh: Future.value(false),
+          ),
+          items: _FakeItemsNotifier(),
+          environment: environment,
+        );
 
-      await container.read(appReadinessProvider.notifier).start('user-1');
+        await container.read(appReadinessProvider.notifier).start('user-1');
+        expect(store.loadCalls, 0);
+        expect(
+          await container.read(appReadinessProvider.notifier).purge('user-1'),
+          isTrue,
+        );
+        expect(store.saved, 0);
+        expect(store.purged, ['user-1']);
+        container.dispose();
+      }
+    });
 
-      expect(store.loadCalls, 0);
-      expect(
-        container.read(appReadinessProvider).phase,
-        AppReadinessPhase.failed,
-      );
+    test('persists working sets only in local and prod environments', () async {
+      for (final environment in ['local', 'prod']) {
+        SharedPreferences.setMockInitialValues({});
+        final store = _FakeWorkingSetStore(
+          await SharedPreferences.getInstance(),
+          snapshot: _snapshot(environment: environment),
+        );
+        final container = _container(
+          store: store,
+          map: _FakeMapNotifier(refresh: Future.value(true)),
+          items: _FakeItemsNotifier(),
+          environment: environment,
+        );
+        _readyMapSurface(container);
+
+        await container.read(appReadinessProvider.notifier).start('user-1');
+        await _drain();
+        expect(store.loadCalls, 1);
+        expect(store.saved, 1);
+        expect(
+          await container.read(appReadinessProvider.notifier).purge('user-1'),
+          isTrue,
+        );
+        expect(store.purged, ['user-1']);
+        container.dispose();
+      }
     });
 
     test('blocks sign out when the player snapshot cannot be purged', () async {
@@ -186,7 +216,7 @@ void main() {
               ),
             ),
             itemsProvider.overrideWith(() => _FakeItemsNotifier()),
-            appReadinessEnvironmentProvider.overrideWithValue('test'),
+            appReadinessEnvironmentProvider.overrideWithValue('local'),
             appObservabilityProvider.overrideWithValue(
               ObservabilityService(sessionId: 'gate-lifecycle-test'),
             ),
@@ -296,7 +326,7 @@ ProviderContainer _container({
   required _FakeWorkingSetStore store,
   required _FakeMapNotifier map,
   required _FakeItemsNotifier items,
-  String environment = 'test',
+  String environment = 'local',
 }) =>
     ProviderContainer(
       overrides: [
@@ -325,8 +355,8 @@ Future<void> _drain() async {
   await Future<void>.delayed(Duration.zero);
 }
 
-ClientWorkingSet _snapshot() => ClientWorkingSet(
-      environment: 'test',
+ClientWorkingSet _snapshot({String environment = 'local'}) => ClientWorkingSet(
+      environment: environment,
       userId: 'user-1',
       capturedAt: DateTime.utc(2026, 8, 18),
       map: MapStateReady(

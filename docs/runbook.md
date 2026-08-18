@@ -9,11 +9,9 @@
 | Thing | Value |
 |-------|-------|
 | Prod URL | https://geo-app-production-47b0.up.railway.app |
-| Beta URL | https://geo-app-beta.up.railway.app |
 | Prod Supabase project | `bfaczcsrpfcbijoaeckb` |
-| Beta Supabase project | `ggkvcpgvxqaqzwxehlns` |
 | Railway dashboard | https://railway.app |
-| Git main branch | `main` — auto-deploys to beta first |
+| Git main branch | `main` — CI only; prod deployment is manual |
 
 ---
 
@@ -39,16 +37,13 @@ flutter test
 # Analyze
 flutter analyze
 
-# Build web (local)
-flutter build web \
-  --dart-define=SUPABASE_URL=https://your-project-ref.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=<anon_key>
+# Run local Desktop Mode against production Supabase
+cp .env.local.example .env.local
+# Set client-safe production values. Local gameplay actions mutate production data.
+mise run desktop:local
 
-# Trigger a beta deploy from the current checkout
-gh workflow run deploy-beta.yml
-
-# Promote a beta-validated commit to production
-gh workflow run deploy-production.yml
+# Manually deploy a selected commit to prod
+gh workflow run deploy-prod.yml
 ```
 
 See `.github/workflows/` for the deploy flow.
@@ -57,35 +52,24 @@ See `.github/workflows/` for the deploy flow.
 
 ## Deploy
 
-`main` is the trunk branch. CI runs on PRs and on pushes to `main`.
+`main` is the trunk branch. CI runs on PRs and on pushes to `main`; it does not deploy.
 
-**Automatic path:**
-1. Merge to `main`
-2. CI passes
-3. `deploy-beta.yml` deploys the same commit to Railway `beta`
-4. The reusable `deploy-supabase.yml` applies migrations/functions to beta Supabase
-5. Validate beta before any production rollout
-
-**Manual promotion:**
+**Manual prod deployment:**
 ```bash
-gh workflow run deploy-production.yml
+gh workflow run deploy-prod.yml
 ```
 
-Optional input: `commit_sha` if you want to promote a specific already-validated commit.
+Optional input: `commit_sha` to deploy a specific commit.
 
-**Beta checklist:**
-1. CI green (`flutter analyze` + `flutter test`)
-2. Beta Railway deploy green
-3. Beta login succeeds
-4. Core frontend smoke flows succeed
-5. Beta Supabase migrations/functions finished cleanly
+1. Confirm CI is green (`flutter analyze` + `flutter test`).
+2. Trigger `deploy-prod.yml`.
+3. The workflow applies production Supabase changes first.
+4. It then sets Railway `DEPLOYMENT_ENVIRONMENT=prod` without triggering a separate deploy and deploys the selected commit to the external Railway environment `production`.
+5. Verify the prod URL loads within 60s.
+6. Check `telemetry_logs` for `app.cold_start` + `supabase.init_success`.
+7. Keep the rollback target handy in Railway Deployments.
 
-**Production checklist:**
-1. Beta validation complete
-2. Trigger `deploy-production.yml`
-3. Verify prod URL loads within 60s
-4. Check `telemetry_logs` for `app.cold_start` + `supabase.init_success`
-5. Keep rollback target handy in Railway Deployments
+Local app actions use production Supabase and mutate production data. Beta project/data remain untouched pending separate destructive authorization.
 
 **If deploy fails:**
 - Check GitHub Actions logs first
@@ -102,9 +86,6 @@ Optional input: `commit_sha` if you want to promote a specific already-validated
 # Link CLI to prod project
 supabase link --project-ref bfaczcsrpfcbijoaeckb
 
-# Link CLI to beta project
-supabase link --project-ref ggkvcpgvxqaqzwxehlns
-
 # Run a management API query
 curl -X POST \
   "https://api.supabase.com/v1/projects/bfaczcsrpfcbijoaeckb/database/query" \
@@ -116,11 +97,9 @@ curl -X POST \
 ### Apply migrations
 
 ```bash
-# GitHub Actions is the default path. Beta migrations require
-# SUPABASE_BETA_DB_PASSWORD; production migrations require
-# SUPABASE_PRODUCTION_DB_PASSWORD. If no DB password is configured,
-# the workflow skips migrations and still deploys Edge Functions.
-gh workflow run deploy-beta.yml
+# GitHub Actions is the default path. Production migrations require
+# SUPABASE_PRODUCTION_DB_PASSWORD; the deployment fails closed when it is absent.
+gh workflow run deploy-prod.yml
 
 # For direct CLI work, link the target project first and then push.
 # Set SUPABASE_DB_PASSWORD in non-interactive shells.
@@ -554,14 +533,13 @@ See `.env.example` for the full list. Required secrets and variables:
 
 | Variable | Where set | Notes |
 |----------|-----------|-------|
-| `SUPABASE_URL` | Railway env variable | Set per environment at build time |
-| `SUPABASE_ANON_KEY` | Railway env variable | Public anon key for the target Supabase project |
+| `SUPABASE_URL` | `.env.local` and Railway `production` | Production URL; local actions mutate production data |
+| `SUPABASE_ANON_KEY` | `.env.local` and Railway `production` | Production client-safe anon key |
+| `DEPLOYMENT_ENVIRONMENT` | `.env.local` / Railway `production` | `local` locally; `prod` in Railway; no other values |
 | `SUPABASE_ACCESS_TOKEN` | GitHub secret | Required by Supabase CLI workflows |
-| `SUPABASE_BETA_PROJECT_REF` | GitHub secret | `ggkvcpgvxqaqzwxehlns` |
-| `SUPABASE_PRODUCTION_PROJECT_REF` | GitHub secret | `bfaczcsrpfcbijoaeckb` |
-| `SUPABASE_BETA_DB_PASSWORD` | GitHub secret | Enables non-interactive beta `supabase db push` |
-| `SUPABASE_PRODUCTION_DB_PASSWORD` | GitHub secret | Enables non-interactive production `supabase db push` |
+| `SUPABASE_PRODUCTION_PROJECT_REF` | GitHub secret | Legacy identifier mapped to `bfaczcsrpfcbijoaeckb` |
+| `SUPABASE_PRODUCTION_DB_PASSWORD` | GitHub secret | Enables non-interactive prod `supabase db push` |
 | `RAILWAY_API_TOKEN` | GitHub secret | Required by Railway CLI workflows |
 | `RAILWAY_PROJECT_ID` | Workflow env or secret | `e693a14e-316c-4280-842a-6258a048d326` |
 
-To rotate an anon key: update the Railway environment variable for the affected environment, then redeploy that environment.
+To rotate an anon key: update Railway environment `production`, then manually run `deploy-prod.yml`.

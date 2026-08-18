@@ -82,14 +82,16 @@ void main() {
       expect(container.read(debugModeProvider), true);
     });
     group('desktop controls', () {
-      testWidgets('shows the connected server environment', (tester) async {
+      testWidgets('shows execution environment and prod data backend',
+          (tester) async {
         await buildScreen(tester);
 
         expect(
-          find.byKey(const Key('connected_server_environment')),
+          find.byKey(const Key('execution_environment')),
           findsOneWidget,
         );
-        expect(find.text('Connected Server Environment'), findsOneWidget);
+        expect(find.text('Execution Environment'), findsOneWidget);
+        expect(find.text('unknown client · prod data'), findsOneWidget);
       });
 
       testWidgets('hides Desktop Controls when unavailable', (tester) async {

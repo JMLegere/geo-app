@@ -10,6 +10,14 @@
 - Inject Supabase frontend config at build time from Railway environment variables.
 - Seed beta from production data so backend/schema changes can be validated against realistic data.
 
+## 2026-08-18 — local/prod only (supersedes beta-first trunk deployment)
+- Active execution environments are exactly `local` and `prod`; see ADR 0009 and `CONTEXT.md`.
+- `local` is a locally run Flutter/Desktop client connected to production Supabase. Its gameplay actions mutate production data.
+- `prod` is the deployed production client using the same production Supabase source of truth.
+- `main` runs CI only. Production deployment is manual through `deploy-prod.yml`, with additive Supabase migrations applied before the Railway app deploy.
+- Legacy beta infrastructure/data remains untouched as archival evidence pending separate destructive authorization; it is not an active release stage.
+- Compatibility literals and historical evidence retain old beta wording where renaming would break auth or rewrite history.
+
 ## 2026-05-03 — per-cell geometry substrate source of truth
 - Missing fog on beta is caused by missing true per-cell geometry, not frontend fog logic.
 - Do not use district/admin boundaries as cell polygons; `districts.boundary_json` is not a valid cell geometry source.

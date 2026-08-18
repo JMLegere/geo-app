@@ -10,16 +10,16 @@ url = 'https://storage.googleapis.com/flutter_infra_release/releases/stable/linu
 supabase = "latest"
 terraform = "latest"
 
-[tasks."desktop:prod"]
-description = "Run the production-connected Desktop Mode in Chrome"
+[tasks."desktop:local"]
+description = "Run local Desktop Mode against production data in Chrome"
 run = """
-if [ ! -f .env.prod-desktop ]; then
-  echo "Missing .env.prod-desktop. Copy .env.prod-desktop.example and set the client-safe production values." >&2
+if [ ! -f .env.local ]; then
+  echo "Missing .env.local. Copy .env.local.example, set the client-safe production values, and note that gameplay changes production data." >&2
   exit 1
 fi
 if [ -z "${CHROME_EXECUTABLE:-}" ]; then
   CHROME_EXECUTABLE="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || true)"
   export CHROME_EXECUTABLE
 fi
-flutter run -d chrome --dart-define-from-file=.env.prod-desktop
+flutter run -d chrome --dart-define-from-file=.env.local
 """

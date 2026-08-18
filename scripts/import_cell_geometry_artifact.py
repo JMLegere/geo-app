@@ -29,8 +29,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('artifact', type=Path, help='Path to custom cell geometry artifact JSON bundle.')
     parser.add_argument(
         '--db-url',
-        default=os.environ.get('CELL_GEOMETRY_DB_URL') or os.environ.get('DATABASE_URL') or os.environ.get('BETA_DB_URL'),
-        help='Postgres connection string. Defaults to CELL_GEOMETRY_DB_URL, DATABASE_URL, then BETA_DB_URL.',
+        default=os.environ.get('CELL_GEOMETRY_DB_URL') or os.environ.get('DATABASE_URL'),
+        help='Postgres connection string. Defaults to CELL_GEOMETRY_DB_URL, then DATABASE_URL.',
     )
     parser.add_argument(
         '--artifact-uri',
@@ -281,7 +281,7 @@ def run_psql(db_url: str, sql: str) -> None:
 def main() -> int:
     args = parse_args()
     if not args.db_url and not args.emit_sql:
-        raise SystemExit('Missing DB URL. Provide --db-url or set CELL_GEOMETRY_DB_URL, DATABASE_URL, or BETA_DB_URL.')
+        raise SystemExit('Missing DB URL. Provide --db-url or set CELL_GEOMETRY_DB_URL or DATABASE_URL.')
 
     artifact_path = args.artifact.resolve()
     artifact = load_artifact(artifact_path)

@@ -33,13 +33,13 @@
 ## Operational Gates
 
 - **Production migration secret:** Verify whether `SUPABASE_PRODUCTION_DB_PASSWORD` is configured before any production migration workflow is approved.
-- **Production API compatibility:** A production-connected Desktop Mode smoke on 2026-08-17 received HTTP 404 for `get_v3_town` and `fetch_v3_player_cell_states`, leaving the Map in its reveal/loading state. Confirm and promote the required production schema separately before treating production gameplay traversal as operational.
-- **Railway production auto-deploy policy:** The `main` push for beta commit `ba85fdc` was observed as a successful Railway `production / geo-app` deployment even though the GitHub workflow invokes Railway with `--environment beta`. Decide whether production must be disconnected from the GitHub `main` auto-deploy source, retargeted to an explicit promotion branch, or explicitly allowed; confirm whether this production deployment requires a separate rollback/production acceptance review.
+- **Production API compatibility:** A production-connected Desktop Mode smoke on 2026-08-18 received HTTP 404 for `fetch_v3_pack_items` and `fetch_v3_player_cell_states`; `fetch_nearby_cells` and the Cell Visit query returned HTTP 200. Apply the pending production migrations through the human-authorized `deploy-prod.yml` path before treating production App Readiness as operational.
 - **Legacy Railway beta service cleanup:** Re-verify the unused sibling service and available deletion permissions before requesting manual removal.
 
 ## Resolved or Superseded Questions
 
 Resolved items are retained in `.agents/decisions.md`, dated `.agents/context.md`, and historical design/QA artifacts rather than duplicated here.
+- The `main` auto-deploy ambiguity is superseded by ADR 0009 and issue #569: `main` runs CI only, beta is retired, and prod deploys only through the manual `deploy-prod.yml` workflow.
 
 - Cell entry creates **zero or one** Encounter through one Selector; the old three-slot question is superseded by `CONTEXT.md`.
 - Identification resolves Version-owned Variable Properties into permanent Item Property Values; the old generic stat/affix model is superseded.

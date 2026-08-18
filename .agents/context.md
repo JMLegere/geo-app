@@ -908,3 +908,13 @@
 - Production-connected Desktop Mode proved that calling `AppReadinessNotifier.start` synchronously from `AppReadinessGate.initState` violated Riverpod's no-provider-mutation-during-build invariant and left all readiness checkpoints visibly pending.
 - `AppReadinessGate` now schedules initial and Player-change starts after the current frame. A real-notifier widget regression test covers the lifecycle boundary; focused analyzer and App Readiness tests pass.
 - The fixed gate advances to an honest cacheless Readiness Failure against production. Live CDP evidence shows production is missing `fetch_v3_pack_items` and `fetch_v3_player_cell_states` (both HTTP 404); the existing Map RPC and visit query return HTTP 200. No production migration or deployment was performed.
+
+## Completed 2026-08-18 — local/prod-only environment model
+
+- Implemented issue #569 and accepted ADR 0009: active execution environments are exactly `local` and `prod`. A local Flutter/Desktop client uses production Supabase and its gameplay actions mutate production data; `prod` is the deployed client using the same source of truth.
+- Retired the active beta release path: removed the automatic beta workflow, beta clone/seed scripts, beta credential fallbacks, template values, and local task. Legacy beta infrastructure/data remains untouched pending separate destructive authorization; the auth password compatibility salt and historical evidence remain unchanged.
+- `main` now runs CI only. Manual `deploy-prod.yml` applies required Supabase migrations first, fails closed without the production database password, then sets Railway `DEPLOYMENT_ENVIRONMENT=prod` and deploys the app to the external Railway environment named `production`.
+- Local Desktop Mode now runs through `mise run desktop:local` with `.env.local`, `DEPLOYMENT_ENVIRONMENT=local`, and explicit production-data warnings. App Readiness persists working sets only for exact `local`/`prod` labels while still purging legacy namespaces on Sign out.
+- Settings now reports the execution client and `prod data` separately instead of implying that `local` is a separate server.
+- Verification passed: `flutter analyze --no-pub`; the complete 1,500-test Flutter suite; focused environment, App Readiness, and Settings tests; workflow YAML parse; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
+- No production mutation occurred. Production App Readiness remains blocked until the missing Supabase migrations are explicitly deployed.
