@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:earth_nova/app/readiness/client_working_set.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_knowledge_projection.dart';
+import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +30,15 @@ void main() {
     expect(restored!.capturedAt, workingSet.capturedAt);
     expect(restored.map.cells.single.id, 'cell-1');
     expect(restored.map.visitedCellIds, {'cell-1'});
+    expect(restored.map.cells.single.polygons.single.single, hasLength(3));
+    expect(
+      restored.map.knowledgeByCellId['cell-1'],
+      const CellKnowledgeProjection(
+        cellId: 'cell-1',
+        state: CellKnowledgeState.informed,
+        category: 'fauna',
+      ),
+    );
     expect(restored.items.single.id, 'item-1');
   });
 
@@ -133,7 +144,15 @@ ClientWorkingSet _workingSet({String itemName = 'River Otter'}) =>
           Cell(
             id: 'cell-1',
             habitats: [],
-            polygons: [],
+            polygons: [
+              [
+                [
+                  (lat: 1, lng: 2),
+                  (lat: 2, lng: 3),
+                  (lat: 3, lng: 1),
+                ],
+              ],
+            ],
             districtId: 'district-1',
             cityId: 'city-1',
             stateId: 'state-1',
@@ -148,6 +167,13 @@ ClientWorkingSet _workingSet({String itemName = 'River Otter'}) =>
           timestamp: DateTime.utc(2026, 8, 18, 12),
           isConfident: true,
         ),
+        knowledgeByCellId: const {
+          'cell-1': CellKnowledgeProjection(
+            cellId: 'cell-1',
+            state: CellKnowledgeState.informed,
+            category: 'fauna',
+          ),
+        },
       ),
       items: [
         Item(
