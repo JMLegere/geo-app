@@ -22,14 +22,14 @@ void main() {
       await tester.tap(find.byKey(_mapKey));
       await tester.pump();
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyW);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
 
       await tester.pump(const Duration(seconds: 1));
-      expect(_north(moves), closeTo(1.4, 0.001));
+      expect(_north(moves), closeTo(100, 0.001));
       expect(_east(moves), closeTo(0, 0.001));
 
-      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyW);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowUp);
       final moveCount = moves.length;
       await tester.pump(const Duration(seconds: 1));
       expect(moves, hasLength(moveCount));
@@ -45,15 +45,15 @@ void main() {
       await tester.tap(find.byKey(_mapKey));
       await tester.pump();
 
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyW);
-      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyD);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
 
       await tester.pump(const Duration(seconds: 1));
 
-      expect(_north(moves), closeTo(1.4 / 1.414213562, 0.001));
-      expect(_east(moves), closeTo(1.4 / 1.414213562, 0.001));
-      expect(_distance(moves), closeTo(1.4, 0.001));
+      expect(_north(moves), closeTo(100 / math.sqrt(2), 0.001));
+      expect(_east(moves), closeTo(100 / math.sqrt(2), 0.001));
+      expect(_distance(moves), closeTo(100, 0.001));
     });
 
     testWidgets('does not move while disabled or blocked', (tester) async {

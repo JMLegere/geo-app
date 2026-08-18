@@ -27,7 +27,7 @@ class DesktopTraversalInput extends StatefulWidget {
 
 class _DesktopTraversalInputState extends State<DesktopTraversalInput>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  static const _metresPerSecond = 1.4;
+  static const _metresPerSecond = 100.0;
 
   final _focusNode = FocusNode(debugLabel: 'desktop-traversal');
   final _pressedKeys = <LogicalKeyboardKey>{};
