@@ -6,7 +6,7 @@ void main() {
   test('buffered coverage migration expands organic geometry source footprint',
       () {
     final migration = File(
-      '${Directory.current.path}/supabase/migrations/071_merge_overlapping_cluster_coverages.sql',
+      '${Directory.current.path}/supabase/migrations/104_make_cluster_coverages_valid.sql',
     );
 
     expect(migration.existsSync(), isTrue);
@@ -16,6 +16,9 @@ void main() {
         contains('CREATE FUNCTION stage_cell_geometry_from_organic_centroids'));
     expect(sql, contains('ST_Buffer('));
     expect(sql, contains('v_coverage_buffer_meters'));
+    expect(sql, contains('ST_MakeValid('));
+    expect(sql, contains('ST_CollectionExtract('));
+    expect(sql, contains('ST_SnapToGrid('));
     expect(sql, contains('true-voronoi-clipped-to-buffered-lattice-coverage'));
     expect(sql, contains('coverage_buffer_meters'));
     expect(sql, contains('artifact_uri'));
@@ -39,8 +42,17 @@ void main() {
     expect(sql, isNot(contains('ST_ClusterIntersecting(buffered_square)')));
     expect(sql, contains('tmp_cell_geometry_cluster_supermembers'));
     expect(sql, contains('tmp_cell_geometry_cluster_supercoverage'));
-    expect(sql, contains('ST_ClusterIntersecting(coverage_geom)'));
-    expect(sql, contains('supercluster_strategy'));
+    expect(sql, isNot(contains('ST_ClusterIntersecting(coverage_geom)')));
+    expect(sql, contains('ST_UnaryUnion(ST_Collect(coverage_geom))'));
+    expect(sql, contains('ST_PointOnSurface(coverage.coverage_geom)'));
+    expect(sql, contains('unary-union-connected-components'));
+    expect(
+        sql, contains("v_active_source = 'db-lattice-voronoi-production-v1'"));
+    expect(sql, contains("'organic-voronoi-production-v2'"));
+    expect(sql, contains('SELECT cell_id FROM cell_geometry_current'));
+    expect(sql, contains('validate_cell_geometry_source_version('));
+    expect(sql, contains("SET statement_timeout = '15min'"));
+    expect(sql, contains('RESET statement_timeout'));
     expect(sql,
         contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id'));
   });
