@@ -30,13 +30,19 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
   @override
   void initState() {
     super.initState();
-    _start();
+    _scheduleStart();
   }
 
   @override
   void didUpdateWidget(covariant AppReadinessGate oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.userId != widget.userId) _start();
+    if (oldWidget.userId != widget.userId) _scheduleStart();
+  }
+
+  void _scheduleStart() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _start();
+    });
   }
 
   void _start({bool retry = false}) {

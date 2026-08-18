@@ -902,3 +902,9 @@
 - Added the 250 ms delayed phase/checkpoint UI, compact degraded sync banner, and failure actions using the existing design system. Controlled 390×844 warm, cold, degraded, and failure renders were inspected with no clipping or blocking visual defect.
 - Verification passed: `flutter analyze --no-pub`; the complete 1,497-test Flutter suite; focused readiness, persistence, Map, Pack, Encounter, tab, and trace suites; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
 - Added accepted ADR 0008 for the bounded Client Working Set. No backend schema, production deployment, primary-production promotion, or new synchronization engine was changed.
+
+## Corrected 2026-08-18 — App Readiness lifecycle start
+
+- Production-connected Desktop Mode proved that calling `AppReadinessNotifier.start` synchronously from `AppReadinessGate.initState` violated Riverpod's no-provider-mutation-during-build invariant and left all readiness checkpoints visibly pending.
+- `AppReadinessGate` now schedules initial and Player-change starts after the current frame. A real-notifier widget regression test covers the lifecycle boundary; focused analyzer and App Readiness tests pass.
+- The fixed gate advances to an honest cacheless Readiness Failure against production. Live CDP evidence shows production is missing `fetch_v3_pack_items` and `fetch_v3_player_cell_states` (both HTTP 404); the existing Map RPC and visit query return HTTP 200. No production migration or deployment was performed.

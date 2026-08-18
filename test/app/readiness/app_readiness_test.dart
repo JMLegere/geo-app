@@ -168,6 +168,43 @@ void main() {
   });
 
   group('AppReadinessGate', () {
+    testWidgets('starts the real notifier after the first widget build',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final store = _FakeWorkingSetStore(
+        await SharedPreferences.getInstance(),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            clientWorkingSetStoreProvider.overrideWithValue(store),
+            mapProvider.overrideWith(
+              () => _FakeMapNotifier(
+                initial: const MapStateError('Map unavailable'),
+                refresh: Future.value(false),
+              ),
+            ),
+            itemsProvider.overrideWith(() => _FakeItemsNotifier()),
+            appReadinessEnvironmentProvider.overrideWithValue('test'),
+            appObservabilityProvider.overrideWithValue(
+              ObservabilityService(sessionId: 'gate-lifecycle-test'),
+            ),
+          ],
+          child: const MaterialApp(
+            home: AppReadinessGate(
+              userId: 'user-1',
+              child: Text('Map mounted'),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Map unavailable'), findsOneWidget);
+    });
+
     testWidgets('reveals real checkpoint details only after 250ms',
         (tester) async {
       final readiness = _StaticReadinessNotifier(
