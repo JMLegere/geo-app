@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a custom cell geometry artifact from existing encoded cell IDs.
 
-Current beta/prod cell IDs use v_<x>_<y>, where the center is:
+Current cell IDs use v_<x>_<y>, where the center is:
   lat = x / 500
   lng = y / 500
 

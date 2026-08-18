@@ -1,0 +1,58 @@
+name: Deploy Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Optional commit SHA to deploy to prod
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy-supabase:
+    name: Deploy prod Supabase
+    uses: ./.github/workflows/deploy-supabase.yml
+    with:
+      environment_name: prod
+      commit_sha: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
+    secrets:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PRODUCTION_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PRODUCTION_DB_PASSWORD }}
+
+  deploy-app:
+    name: Deploy Railway prod app
+    needs: deploy-supabase
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_PROJECT_ID: e693a14e-316c-4280-842a-6258a048d326
+      DEPLOY_REF: ${{ inputs.commit_sha != '' && inputs.commit_sha || github.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Set EarthNova prod environment
+        run: |
+          npx -y @railway/cli link \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service geo-app \
+            --environment production
+          npx -y @railway/cli variable set \
+            DEPLOYMENT_ENVIRONMENT=prod \
+            --skip-deploys
+
+      - name: Deploy to Railway production
+        run: |
+          npx -y @railway/cli up \
+            --project "$RAILWAY_PROJECT_ID" \
+            --service geo-app \
+            --environment production \
+            --ci \
+            --detach

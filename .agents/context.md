@@ -892,3 +892,29 @@
 - Verification passed: `flutter analyze --no-pub`, the complete 1,470-test Flutter suite, focused post-suite Desktop pointer/focus tests, EAC with no diagnostics, SuperBDD at 24 scenarios / 148 steps, and `git diff --check`.
 - Production-connected browser QA authenticated a dedicated explorer and proved the Desktop Controls default, toggle, and reload persistence. Map traversal remained unavailable because production returned HTTP 404 for `get_v3_town` and `fetch_v3_player_cell_states`; the separate production schema-promotion gate is recorded in `.agents/questions.md`.
 - No backend schema, `.github` workflow, primary production deployment, or production promotion was changed.
+
+## Completed 2026-08-18 — App Readiness and bounded Client Working Set
+
+- Implemented issue #567 as an authenticated app-wide readiness gate. Warm snapshots unlock after the Map surface is ready and refresh in the background; cold startup blocks until Map and Pack are usable; valid stale snapshots enter a Degraded Session; cacheless failure offers Retry and Sign out.
+- Added a versioned, explicitly configured environment- and Player-scoped SharedPreferences snapshot for the bounded Map and Pack working set. Load rejects corrupt, oversized, mismatched, unsupported, or unscoped payloads; replacement keeps the prior valid snapshot on failure; explicit Sign out removes every stored version for that Player/environment and stops if safe purge fails.
+- Promoted Map Readiness state and timers into an observable provider while preserving the five-second base-map fallback and twelve-second terminal timeout. App Readiness now owns the initial Map and Pack refresh rather than screen mount.
+- Added input-to-first-render interaction spans for opening Map/Pack, inspecting Map Cells and Pack finds, starting Item examination, and starting Encounter resolution. Degraded Sessions restore the last internally consistent snapshot and block server-authoritative Encounter resolution at both UI and provider boundaries.
+- Added the 250 ms delayed phase/checkpoint UI, compact degraded sync banner, and failure actions using the existing design system. Controlled 390×844 warm, cold, degraded, and failure renders were inspected with no clipping or blocking visual defect.
+- Verification passed: `flutter analyze --no-pub`; the complete 1,497-test Flutter suite; focused readiness, persistence, Map, Pack, Encounter, tab, and trace suites; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
+- Added accepted ADR 0008 for the bounded Client Working Set. No backend schema, production deployment, primary-production promotion, or new synchronization engine was changed.
+
+## Corrected 2026-08-18 — App Readiness lifecycle start
+
+- Production-connected Desktop Mode proved that calling `AppReadinessNotifier.start` synchronously from `AppReadinessGate.initState` violated Riverpod's no-provider-mutation-during-build invariant and left all readiness checkpoints visibly pending.
+- `AppReadinessGate` now schedules initial and Player-change starts after the current frame. A real-notifier widget regression test covers the lifecycle boundary; focused analyzer and App Readiness tests pass.
+- The fixed gate advances to an honest cacheless Readiness Failure against production. Live CDP evidence shows production is missing `fetch_v3_pack_items` and `fetch_v3_player_cell_states` (both HTTP 404); the existing Map RPC and visit query return HTTP 200. No production migration or deployment was performed.
+
+## Completed 2026-08-18 — local/prod-only environment model
+
+- Implemented issue #569 and accepted ADR 0009: active execution environments are exactly `local` and `prod`. A local Flutter/Desktop client uses production Supabase and its gameplay actions mutate production data; `prod` is the deployed client using the same source of truth.
+- Retired the active beta release path: removed the automatic beta workflow, beta clone/seed scripts, beta credential fallbacks, template values, and local task. Legacy beta infrastructure/data remains untouched pending separate destructive authorization; the auth password compatibility salt and historical evidence remain unchanged.
+- `main` now runs CI only. Manual `deploy-prod.yml` applies required Supabase migrations first, fails closed without the production database password, then sets Railway `DEPLOYMENT_ENVIRONMENT=prod` and deploys the app to the external Railway environment named `production`.
+- Local Desktop Mode now runs through `mise run desktop:local` with `.env.local`, `DEPLOYMENT_ENVIRONMENT=local`, and explicit production-data warnings. App Readiness persists working sets only for exact `local`/`prod` labels while still purging legacy namespaces on Sign out.
+- Settings now reports the execution client and `prod data` separately instead of implying that `local` is a separate server.
+- Verification passed: `flutter analyze --no-pub`; the complete 1,500-test Flutter suite; focused environment, App Readiness, and Settings tests; workflow YAML parse; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
+- No production mutation occurred. Production App Readiness remains blocked until the missing Supabase migrations are explicitly deployed.

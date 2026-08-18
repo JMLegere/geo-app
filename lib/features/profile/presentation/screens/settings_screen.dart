@@ -20,6 +20,10 @@ class SettingsScreen extends ConsumerWidget {
     final desktopControlsEnabled = ref.watch(desktopControlsProvider);
     final obs = ref.watch(appObservabilityProvider);
     final debugMode = ref.watch(debugModeProvider);
+    const executionEnvironment = String.fromEnvironment(
+      'DEPLOYMENT_ENVIRONMENT',
+      defaultValue: 'unknown',
+    );
     void logger({
       required String event,
       required String category,
@@ -75,15 +79,10 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: Spacing.md),
-                  const ListTile(
-                    key: Key('connected_server_environment'),
-                    title: Text('Connected Server Environment'),
-                    subtitle: Text(
-                      String.fromEnvironment(
-                        'DEPLOYMENT_ENVIRONMENT',
-                        defaultValue: 'unknown',
-                      ),
-                    ),
+                  ListTile(
+                    key: const Key('execution_environment'),
+                    title: const Text('Execution Environment'),
+                    subtitle: Text('$executionEnvironment client · prod data'),
                   ),
                   if (desktopControlsAvailable) ...[
                     const SizedBox(height: Spacing.md),

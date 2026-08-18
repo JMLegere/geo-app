@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/observable_notifier.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/core/observability/trace_context.dart';
@@ -139,7 +140,11 @@ class PendingEncounterNotifier
     await _read(cellId, operation: 'refresh');
   }
 
-  Future<void> resolve(EncounterOptionId optionId) async {
+  Future<void> resolve(
+    EncounterOptionId optionId, {
+    TraceContext? parent,
+  }) async {
+    if (_mutationsBlocked) return;
     final current = state;
     if (current is! PendingEncounterReady ||
         current.pendingEncounter.cellId != _trustedCellId ||
@@ -152,13 +157,14 @@ class PendingEncounterNotifier
         pendingEncounter: current.pendingEncounter,
         optionId: optionId,
       ),
-      traceContext: TraceContext.start(),
+      traceContext: parent ?? TraceContext.start(),
     );
     _retryResolution = command;
     await _resolve(command);
   }
 
-  Future<void> retryResolution() async {
+  Future<void> retryResolution({TraceContext? parent}) async {
+    if (_mutationsBlocked) return;
     final command = _retryResolution;
     final current = state;
     if (command == null ||
@@ -184,6 +190,7 @@ class PendingEncounterNotifier
   }
 
   Future<void> _resolve(_PendingResolution command) async {
+    if (_mutationsBlocked) return;
     final pendingEncounter = command.input.pendingEncounter;
     if (pendingEncounter.cellId != _trustedCellId ||
         state is PendingEncounterResolving ||
@@ -238,6 +245,8 @@ class PendingEncounterNotifier
       );
     }
   }
+
+  bool get _mutationsBlocked => ref.read(appReadinessProvider).isDegraded;
 
   bool _isCurrentResolution(int request, PendingEncounter pendingEncounter) {
     return request == _requestGeneration &&

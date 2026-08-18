@@ -1,7 +1,133 @@
 import 'dart:async';
 
+import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
 import 'package:flutter/material.dart';
+
+/// One Player-input correlation, completed at the first meaningful local
+/// transition. Child operations receive [context] rather than opening roots.
+class ObservableInteractionTrace {
+  ObservableInteractionTrace._({
+    required ObservabilityService observability,
+    required TelemetrySpan span,
+    required this.interaction,
+    required this.surface,
+    required this.readinessState,
+  })  : _observability = observability,
+        _span = span;
+
+  final ObservabilityService _observability;
+  final TelemetrySpan _span;
+  final PlayerActionId interaction;
+  final String surface;
+  final String readinessState;
+  bool _completed = false;
+
+  TraceContext get context => _span.context;
+
+  static ObservableInteractionTrace start({
+    required ObservabilityService observability,
+    required PlayerActionId interaction,
+    required String surface,
+    required String readinessState,
+    required String screenName,
+    required String widgetName,
+    required String actionType,
+    Map<String, dynamic>? payload,
+  }) {
+    final knownInteraction = PlayerActions.requireKnown(interaction);
+    final common = _commonAttributes(
+      observability: observability,
+      interaction: knownInteraction,
+      surface: surface,
+      readinessState: readinessState,
+    );
+    final span = observability.startSpan(
+      'interaction.$knownInteraction',
+      spanKind: 'client',
+      attributes: {
+        ...common,
+        'transition': 'input_received',
+        'outcome': 'pending',
+      },
+    );
+    ObservableInteraction.log(
+      logger: ({required event, required category, data}) =>
+          observability.log(event, category, data: data),
+      screenName: screenName,
+      widgetName: widgetName,
+      actionType: actionType,
+      playerActionId: knownInteraction,
+      payload: {
+        ...common,
+        'trace_id': span.traceId,
+        'span_id': span.spanId,
+        ...?payload,
+      },
+    );
+    return ObservableInteractionTrace._(
+      observability: observability,
+      span: span,
+      interaction: knownInteraction,
+      surface: surface,
+      readinessState: readinessState,
+    );
+  }
+
+  /// Ends exactly once; later transitions belong to the already-correlated
+  /// operation and must not create a second Player interaction.
+  void complete({
+    required String transition,
+    String outcome = 'success',
+    String? readinessState,
+  }) {
+    if (_completed) return;
+    _completed = true;
+    final attributes = {
+      ..._commonAttributes(
+        observability: _observability,
+        interaction: interaction,
+        surface: surface,
+        readinessState: readinessState ?? this.readinessState,
+      ),
+      'transition': transition,
+      'outcome': outcome,
+      'latency_ms': _span.context.elapsed.inMilliseconds,
+    };
+    _observability.log(
+      'interaction.transition',
+      'ui',
+      data: {
+        ...attributes,
+        'trace_id': _span.traceId,
+        'span_id': _span.spanId,
+      },
+    );
+    _observability.endSpan(
+      _span,
+      statusCode: outcome == 'success'
+          ? TelemetrySpanStatus.ok
+          : TelemetrySpanStatus.error,
+      attributes: attributes,
+    );
+  }
+
+  static Map<String, dynamic> _commonAttributes({
+    required ObservabilityService observability,
+    required String interaction,
+    required String surface,
+    required String readinessState,
+  }) =>
+      {
+        'interaction': interaction,
+        'surface': surface,
+        'readiness_state': readinessState,
+        'platform': observability.platform,
+        'app_version': observability.serviceVersion,
+        'deployment_environment': observability.deploymentEnvironment,
+      };
+}
 
 typedef InteractionLogger = void Function({
   required String event,

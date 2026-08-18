@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:earth_nova/app/readiness/app_readiness_gate.dart';
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/browser_telemetry_session_bridge.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
@@ -74,7 +76,6 @@ import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
 import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/widgets/tab_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -429,6 +430,12 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
     ref.listen<app_auth.AuthState>(authProvider, (previous, next) {
       if (previous?.status == app_auth.AuthStatus.authenticated &&
           next.status != app_auth.AuthStatus.authenticated) {
+        final previousUser = previous?.user;
+        if (previousUser != null) {
+          unawaited(
+            ref.read(appReadinessProvider.notifier).purge(previousUser.id),
+          );
+        }
         ref.read(homeProvider.notifier).invalidate();
       }
     });
@@ -462,7 +469,10 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
       home: authState.when(
         loading: () => const LoadingScreen(),
         unauthenticated: () => const LoginScreen(),
-        authenticated: (_) => const TabShell(),
+        authenticated: (user) => AppReadinessGate(
+          key: ValueKey(user.id),
+          userId: user.id,
+        ),
         error: (_) => const LoginScreen(),
       ),
     );

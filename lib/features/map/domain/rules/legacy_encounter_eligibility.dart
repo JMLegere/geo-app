@@ -2,7 +2,7 @@ import 'package:earth_nova/core/domain/rules/condition.dart';
 
 /// Compatibility inputs for the pre-versioned encounter computation path.
 ///
-/// These fields preserve current beta behavior while the authored Encounter
+/// These fields preserve current gameplay behavior while the authored Encounter
 /// rules are introduced. They are not canonical Condition kinds and must not
 /// be reused as implicit product policy.
 final class LegacyEncounterEligibilityContext {

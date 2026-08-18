@@ -16,7 +16,7 @@ on:
       SUPABASE_PROJECT_REF:
         required: true
       SUPABASE_DB_PASSWORD:
-        required: false
+        required: true
 
 jobs:
   deploy:
@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-      HAS_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD != '' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -37,24 +36,17 @@ jobs:
           version: latest
 
       - name: Link Supabase project
-        if: ${{ env.HAS_DB_PASSWORD == 'true' }}
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Apply pending migrations
-        if: ${{ env.HAS_DB_PASSWORD == 'true' }}
         run: yes | supabase db push --linked
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
-      - name: Skip migrations without DB password
-        if: ${{ env.HAS_DB_PASSWORD != 'true' }}
-        run: |
-          echo "SUPABASE_DB_PASSWORD was not provided for ${{ inputs.environment_name }}."
-          echo "Skipping database migrations; edge functions will still deploy."
 
       - name: Deploy Edge Functions
         run: |

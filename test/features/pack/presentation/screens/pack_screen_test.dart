@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/core/domain/entities/item.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
 import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
+import 'package:earth_nova/shared/product/player_actions.dart';
 import 'dart:io';
 
 void main() {
@@ -73,6 +75,30 @@ void main() {
       await _pumpPack(tester, []);
 
       expect(find.text('Pack'), findsOneWidget);
+    });
+
+    testWidgets('does not fetch an intentionally empty loaded Pack',
+        (tester) async {
+      final notifier = _FetchTrackingItemsNotifier(hasLoaded: true);
+      final container = ProviderContainer(
+        overrides: [
+          itemsProvider.overrideWith(() => notifier),
+          appObservabilityProvider.overrideWithValue(
+            ObservabilityService(sessionId: 'test-session'),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(home: PackScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(notifier.fetchCalls, 0);
     });
 
     testWidgets('compact bar shows sort mode and species count',
@@ -314,7 +340,7 @@ void main() {
         [newest, _item('1', 'Older Item', ItemCategory.fauna)],
         examined,
       );
-      await _pumpPackWithNotifier(tester, notifier);
+      final container = await _pumpPackWithNotifier(tester, notifier);
 
       final newestSurface = find.byKey(const ValueKey('pack-item-2'));
       final olderSurface = find.byKey(const ValueKey('pack-item-1'));
@@ -340,6 +366,19 @@ void main() {
 
       expect(notifier.examineCalls, 1);
       expect(notifier.lastExaminedItemId, '2');
+      expect(notifier.lastParent, isNotNull);
+      final trace = container
+          .read(appObservabilityProvider)
+          .pendingSpanRecords
+          .singleWhere(
+            (span) =>
+                span['span_name'] ==
+                'interaction.${PlayerActions.examinePackItem}',
+          );
+      expect(
+        (trace['attributes'] as Map<String, dynamic>)['transition'],
+        'examination_started',
+      );
       expect(find.byKey(const ValueKey('species-card-2')), findsOneWidget);
       expect(find.text('Amberwing Warbler'), findsNWidgets(2));
       expect(find.text('Setophaga aestiva'), findsOneWidget);
@@ -370,13 +409,25 @@ void main() {
             rarity: 'leastConcern', scientificName: 'Vulpes vulpes'),
       ];
 
-      await _pumpPack(tester, items);
+      final container = await _pumpPack(tester, items);
 
       await tester.tap(find.text('Red Fox'));
       await tester.pumpAndSettle();
 
       expect(find.text('Vulpes vulpes'), findsOneWidget);
       expect(find.text('Jan 1, 2026'), findsOneWidget);
+      final trace = container
+          .read(appObservabilityProvider)
+          .pendingSpanRecords
+          .singleWhere(
+            (span) =>
+                span['span_name'] ==
+                'interaction.${PlayerActions.inspectPackFind}',
+          );
+      expect(
+        (trace['attributes'] as Map<String, dynamic>)['transition'],
+        'species_card_visible',
+      );
     });
 
     testWidgets('toggling filter off restores all items', (tester) async {
@@ -605,7 +656,10 @@ Item _item(
       identifiedScientificName: identifiedScientificName,
     );
 
-Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
+Future<ProviderContainer> _pumpPack(
+  WidgetTester tester,
+  List<Item> items,
+) async {
   tester.view.physicalSize = const Size(800, 900);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
@@ -618,6 +672,7 @@ Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
       ),
     ],
   );
+  addTearDown(container.dispose);
 
   await tester.pumpWidget(
     UncontrolledProviderScope(
@@ -627,9 +682,10 @@ Future<void> _pumpPack(WidgetTester tester, List<Item> items) async {
   );
 
   await tester.pumpAndSettle();
+  return container;
 }
 
-Future<void> _pumpPackWithNotifier(
+Future<ProviderContainer> _pumpPackWithNotifier(
   WidgetTester tester,
   ItemsNotifier notifier,
 ) async {
@@ -644,6 +700,7 @@ Future<void> _pumpPackWithNotifier(
       ),
     ],
   );
+  addTearDown(container.dispose);
   await tester.pumpWidget(
     UncontrolledProviderScope(
       container: container,
@@ -651,6 +708,7 @@ Future<void> _pumpPackWithNotifier(
     ),
   );
   await tester.pumpAndSettle();
+  return container;
 }
 
 class _MockItemsNotifier extends ItemsNotifier {
@@ -665,16 +723,36 @@ class _MockItemsNotifier extends ItemsNotifier {
   Future<void> fetchItems() async {}
 }
 
+class _FetchTrackingItemsNotifier extends ItemsNotifier {
+  _FetchTrackingItemsNotifier({required this.hasLoaded});
+
+  final bool hasLoaded;
+  int fetchCalls = 0;
+
+  @override
+  ItemsState build() => ItemsState(hasLoaded: hasLoaded);
+
+  @override
+  Future<void> fetchItems() async {
+    fetchCalls++;
+  }
+}
+
 class _ExaminationTrackingItemsNotifier extends _MockItemsNotifier {
   _ExaminationTrackingItemsNotifier(super.items, this.examinedItem);
 
   final Item examinedItem;
   int examineCalls = 0;
   int identifyCalls = 0;
+  TraceContext? lastParent;
   String? lastExaminedItemId;
 
   @override
-  Future<Item?> examinePackItem(String itemId) async {
+  Future<Item?> examinePackItem(
+    String itemId, {
+    TraceContext? parent,
+  }) async {
+    lastParent = parent;
     examineCalls++;
     lastExaminedItemId = itemId;
     state = state.copyWith(

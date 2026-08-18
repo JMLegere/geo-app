@@ -25,21 +25,25 @@ class ItemsState {
   const ItemsState({
     this.items = const [],
     this.isLoading = false,
+    this.hasLoaded = false,
     this.error,
   });
 
   final List<Item> items;
   final bool isLoading;
+  final bool hasLoaded;
   final String? error;
 
   ItemsState copyWith({
     List<Item>? items,
     bool? isLoading,
+    bool? hasLoaded,
     String? error,
   }) =>
       ItemsState(
         items: items ?? this.items,
         isLoading: isLoading ?? this.isLoading,
+        hasLoaded: hasLoaded ?? this.hasLoaded,
         error: error,
       );
 
@@ -50,10 +54,11 @@ class ItemsState {
           runtimeType == other.runtimeType &&
           items == other.items &&
           isLoading == other.isLoading &&
+          hasLoaded == other.hasLoaded &&
           error == other.error;
 
   @override
-  int get hashCode => Object.hash(items, isLoading, error);
+  int get hashCode => Object.hash(items, isLoading, hasLoaded, error);
 }
 
 /// Provider for the item repository — overridden with real impl in main.dart.
@@ -125,6 +130,17 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     return const ItemsState();
   }
 
+  void hydrate(List<Item> items) {
+    transition(
+      ItemsState(
+        items: List<Item>.unmodifiable(items),
+        hasLoaded: true,
+      ),
+      'items.hydrated',
+      data: {'mode': 'pack', 'source': 'working_set', 'count': items.length},
+    );
+  }
+
   Future<void> fetchItems() async {
     final authState = ref.read(authProvider);
     if (authState.status != AuthStatus.authenticated) return;
@@ -138,7 +154,10 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     try {
       final items = await ref.read(fetchPackItemsProvider)(authState.user!.id);
       transition(
-        state.copyWith(items: items, isLoading: false),
+        ItemsState(
+          items: List<Item>.unmodifiable(items),
+          hasLoaded: true,
+        ),
         'items.fetch_success',
         data: {'mode': 'pack', 'terminal': 'succeeded', 'count': items.length},
       );
@@ -223,7 +242,10 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     }
   }
 
-  Future<Item?> examinePackItem(String itemId) async {
+  Future<Item?> examinePackItem(
+    String itemId, {
+    TraceContext? parent,
+  }) async {
     final index = state.items.indexWhere((item) => item.id == itemId);
     if (index == -1) return null;
     final item = state.items[index];
@@ -233,7 +255,7 @@ class ItemsNotifier extends ObservableNotifier<ItemsState> {
     if (authState.status != AuthStatus.authenticated) return null;
 
     final previousState = state;
-    final trace = TraceContext.start();
+    final trace = parent ?? TraceContext.start();
     transition(
       state.copyWith(error: null),
       'items.examination_started',

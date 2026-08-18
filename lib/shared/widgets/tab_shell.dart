@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/pack/presentation/screens/pack_screen.dart';
 import 'package:earth_nova/features/map/presentation/providers/wake_lock_provider.dart';
@@ -289,7 +290,33 @@ class _TabShellState extends ConsumerState<TabShell>
     _screens[index] = _screenFactories[index]();
   }
 
-  void _onTabSelected(int index) {
+  void _onPlayerTabSelected(int index, {String surface = 'bottom_navigation'}) {
+    if (index == _currentIndex) return;
+    final action = _playerActionIdForTab(index);
+    if (action == null) return;
+    final edgeSwipe = surface == 'map_edge_swipe';
+    final interaction = ObservableInteractionTrace.start(
+      observability: ref.read(appObservabilityProvider),
+      interaction: action,
+      surface: surface,
+      readinessState: ref.read(appReadinessProvider).phase.name,
+      screenName: 'tab_shell',
+      widgetName: edgeSwipe ? 'map_edge_swipe' : 'bottom_navigation_bar',
+      actionType: edgeSwipe ? 'edge_swipe_to_pack' : 'tab_selected',
+      payload: edgeSwipe
+          ? const {
+              'from_tab_index': _mapTabIndex,
+              'to_tab_index': _packTabIndex,
+            }
+          : {'tab_index': index},
+    );
+    _onTabSelected(index, interaction: interaction);
+  }
+
+  void _onTabSelected(
+    int index, {
+    ObservableInteractionTrace? interaction,
+  }) {
     if (index == _currentIndex) return;
 
     final previousIndex = _currentIndex;
@@ -305,6 +332,12 @@ class _TabShellState extends ConsumerState<TabShell>
           toScreen: _tabScreenNames[index],
         );
     setState(() => _currentIndex = index);
+    if (interaction != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        interaction.complete(transition: 'tab_visible');
+      });
+    }
   }
 
   void _onDebugMovePlayer(DebugPlayerMoveDirection direction) {
@@ -447,23 +480,16 @@ class _TabShellState extends ConsumerState<TabShell>
                 right: 0,
                 bottom: 0,
                 width: _mapSwipeEdgeWidth,
+                // eac-clickable-owner-logs: _onPlayerTabSelected owns this edge-swipe action trace.
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragEnd: (details) {
                     if (details.primaryVelocity != null &&
                         details.primaryVelocity! < 0) {
-                      ObservableInteraction.log(
-                        logger: logger,
-                        screenName: 'tab_shell',
-                        widgetName: 'map_edge_swipe',
-                        actionType: 'edge_swipe_to_pack',
-                        playerActionId: PlayerActions.openPack,
-                        payload: const {
-                          'from_tab_index': _mapTabIndex,
-                          'to_tab_index': _packTabIndex,
-                        },
+                      _onPlayerTabSelected(
+                        _packTabIndex,
+                        surface: 'map_edge_swipe',
                       );
-                      _onTabSelected(_packTabIndex);
                     }
                   },
                 ),
@@ -512,18 +538,7 @@ class _TabShellState extends ConsumerState<TabShell>
           children: [
             _EarthNovaBottomNav(
               selectedIndex: _currentIndex,
-              onDestinationSelected:
-                  ObservableInteraction.wrapValueChanged<int>(
-                logger: logger,
-                screenName: 'tab_shell',
-                widgetName: 'bottom_navigation_bar',
-                actionType: 'tab_selected',
-                playerActionIdBuilder: _playerActionIdForTab,
-                payloadBuilder: (tabIndex) => {
-                  'tab_index': tabIndex,
-                },
-                callback: _onTabSelected,
-              ),
+              onDestinationSelected: _onPlayerTabSelected,
             ),
             if (debugMode)
               Positioned(

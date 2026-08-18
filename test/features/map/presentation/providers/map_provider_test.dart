@@ -212,6 +212,26 @@ void main() {
       expect(state, isA<MapStateLoading>());
     });
 
+    test('hydrate restores a ready Map without fetching', () {
+      final ready = MapStateReady(
+        cells: const [],
+        visitedCellIds: const {},
+        location: LocationState(
+          lat: 1,
+          lng: 2,
+          accuracy: 3,
+          timestamp: DateTime.utc(2026),
+          isConfident: true,
+        ),
+      );
+
+      container.read(mapProvider.notifier).hydrate(ready);
+
+      expect(container.read(mapProvider), same(ready));
+      expect(cellRepo.fetchCallCount, 0);
+      expect(obs.eventNames, contains('map.hydrated'));
+    });
+
     test('mapObservabilityProvider throws when not overridden', () {
       final c = ProviderContainer();
       expect(() => c.read(mapObservabilityProvider), throwsA(anything));
@@ -496,8 +516,7 @@ void main() {
       expect(startedEvent.data?['radius_meters'], isA<double>());
     });
 
-    test('initial active location triggers a fetch on build microtask',
-        () async {
+    test('initial active location waits for the App Readiness refresh', () async {
       final initial = LocationState(
         lat: 45.9636,
         lng: -66.6431,
@@ -529,8 +548,11 @@ void main() {
 
       c.read(mapProvider);
       await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
 
+      expect(cellRepo.fetchCallCount, 0);
+      expect(c.read(mapProvider), isA<MapStateLoading>());
+
+      expect(await c.read(mapProvider.notifier).refresh(), isTrue);
       expect(cellRepo.fetchCallCount, 1);
       expect(c.read(mapProvider), isA<MapStateReady>());
     });
@@ -641,15 +663,9 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       cellRepo.shouldThrow = true;
-      final pos2 = LocationState(
-        lat: 37.8000,
-        lng: -122.4500,
-        accuracy: 5.0,
-        timestamp: DateTime(2026, 1, 1, 0, 1),
-        isConfident: true,
-      );
-      locationRepo.emitPosition(pos2);
-      await Future<void>.delayed(Duration.zero);
+      final refreshed = await container.read(mapProvider.notifier).refresh();
+
+      expect(refreshed, isFalse);
 
       final state = container.read(mapProvider) as MapStateReady;
       expect(state.cells.single.id, 'old-cell');

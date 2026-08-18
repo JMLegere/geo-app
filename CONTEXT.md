@@ -26,6 +26,30 @@ _Avoid_: desktop gameplay rules, a parallel world state
 Focused keyboard movement that updates Player Position while Desktop Mode is enabled. Crossing a Cell border creates ordinary Cell Visits and Encounters with no desktop provenance.
 _Avoid_: simulated Visits, desktop-only Encounters, input-specific provenance
 
+**Execution Environment**:
+One of EarthNova’s two active runtime contexts: `local`, for a locally run Flutter/Desktop client, or `prod`, for the deployed production client. Both use the production Supabase source of truth, so local gameplay actions are production mutations. Beta is not an active environment.
+_Avoid_: beta, staging, local sandbox data, treating local actions as disposable
+
+**App Readiness**:
+The post-authentication gate that prepares enough client-resident EarthNova state for the signed-in app—not only Map—to meet its approved interaction latency target. App Readiness completes when the internally consistent Client Working Set can meet that target; Map Readiness is one dependency, and background synchronization does not delay entry.
+_Avoid_: map-only loading, cosmetic splash screen
+
+**Interaction Response**:
+The elapsed time from Player input to the first meaningful UI update rendered from client-resident state after App Readiness completes. EarthNova targets each named primary interaction’s production p95 at or below 100 milliseconds; server-confirmed completion is a separate reliability and latency concern.
+_Avoid_: server response time, network round trip, tap acknowledgement without meaningful UI change
+
+**Client Working Set**:
+The bounded, player-scoped data kept client-resident because primary EarthNova interactions need it to meet the Interaction Response target. It is isolated by environment and Player identity, retained across ordinary restarts, purged on explicit Sign out, and incrementally synchronized; it does not include unbounded world data.
+_Avoid_: complete client replica, preload everything, transient screen cache
+
+**Degraded Session**:
+An authenticated session entered from the last internally consistent Client Working Set when required refresh cannot complete. Local browsing remains responsive while synchronization continues, and server-authoritative actions that cannot proceed safely are disabled or queued.
+_Avoid_: failed login, unrestricted offline mode, stale state treated as confirmed current state
+
+**Readiness Failure**:
+The recoverable state reached when App Readiness cannot produce an internally consistent Client Working Set and no prior snapshot can support a Degraded Session. It blocks app entry, replaces progress with Retry and Sign out, and never presents an indefinitely stalled progress bar.
+_Avoid_: partial app entry, endless loading, degraded session without a valid snapshot
+
 **Cell Visit**:
 One recorded occurrence of a Player entering a Cell; the same Player may have many Cell Visits to the same Cell. Every Cell Visit resolves one Selector whose candidates are stable Encounter Definitions plus an explicit None outcome. Selecting a Definition binds its current published Encounter Definition Version and creates one Encounter; selecting None creates no Encounter. Conditions control first-visit-only content, cooldowns, recurrence, and suppression. A Cell Visit therefore creates zero or one Encounter, never several.
 _Avoid_: one permanent Player–Cell association, selection only on first visit, mandatory Encounter, implicit no-event result, more than one Encounter per Cell Visit
