@@ -121,7 +121,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
       span: _mapBootstrapSpan,
       data: {'screen': 'map_screen'},
     );
-    ref.read(mapReadinessProvider.notifier).start();
     _mapReadinessSubscription = ref.listenManual<MapReadinessState>(
       mapReadinessProvider,
       (previous, next) {
@@ -146,7 +145,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
               next is LocationProviderActive || next is LocationProviderPaused,
             );
       },
-      fireImmediately: true,
     );
     _mapReadinessStateSubscription = ref.listenManual<MapState>(
       mapProvider,
@@ -156,7 +154,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
             .reportCellsFetched(_renderableMapState(next) != null);
         if (next is MapStateLoading) _resetOverlayReadinessForRefetch();
       },
-      fireImmediately: true,
     );
     _baseMapSettledSignal = BaseMapSettledSignal(
       onSettled: (source) {
@@ -170,6 +167,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
         _handleStyleLoaded(source: source);
       },
     );
+    _scheduleInitialMapReadiness();
+  }
+
+  void _scheduleInitialMapReadiness() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final readiness = ref.read(mapReadinessProvider.notifier)..start();
+      final location = ref.read(locationProvider);
+      readiness.reportLocationReady(
+        location is LocationProviderActive ||
+            location is LocationProviderPaused,
+      );
+      readiness.reportCellsFetched(
+        _renderableMapState(ref.read(mapProvider)) != null,
+      );
+    });
   }
 
   @override

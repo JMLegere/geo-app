@@ -660,6 +660,19 @@ void main() {
       expect(mapSource, contains('renderDiagnostics: renderDiagnostics'));
     });
 
+    test('defers initial readiness mutations until after widget build', () {
+      final mapSource =
+          File('lib/features/map/presentation/screens/map_screen.dart')
+              .readAsStringSync();
+
+      expect(mapSource, contains('_scheduleInitialMapReadiness();'));
+      expect(
+        mapSource,
+        contains('WidgetsBinding.instance.addPostFrameCallback'),
+      );
+      expect(mapSource, isNot(contains('fireImmediately: true')));
+    });
+
     test('terminates map bootstrap if steady state never completes', () {
       final mapSource =
           File('lib/features/map/presentation/screens/map_screen.dart')
