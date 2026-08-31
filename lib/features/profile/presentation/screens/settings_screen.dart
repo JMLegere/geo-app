@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/desktop_controls_provider.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/theme/design_tokens.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 
@@ -15,8 +16,9 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final desktopControlsAvailable =
-        ref.watch(desktopControlsAvailableProvider);
+    final desktopControlsAvailable = ref.watch(
+      desktopControlsAvailableProvider,
+    );
     final desktopControlsEnabled = ref.watch(desktopControlsProvider);
     final obs = ref.watch(appObservabilityProvider);
     final debugMode = ref.watch(debugModeProvider);
@@ -36,97 +38,128 @@ class SettingsScreen extends ConsumerWidget {
       screenName: 'settings_screen',
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
-        appBar: AppBar(
-          title: const Text('Settings'),
-          backgroundColor: AppTheme.surfaceContainer,
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.person,
-                      size: 96, color: AppTheme.onSurfaceVariant),
-                  const SizedBox(height: Spacing.md),
-                  Text(
-                    'Explorer',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
+        appBar: AppBar(title: const Text('Settings')),
+        body: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth < 640
+                      ? constraints.maxWidth
+                      : 640,
+                ),
+                child: SizedBox(
+                  key: const Key('settings_content'),
+                  width: double.infinity,
+                  child: AppCard(
+                    title: 'Explorer',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: MergeSemantics(
+                            key: const Key('debug_mode_semantics'),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: ShadSwitch(
+                                  key: const Key('debug_mode_toggle'),
+                                  value: debugMode,
+                                  label: const Text('Developer Mode'),
+                                  sublabel: const Text('Debug controls'),
+                                  onChanged:
+                                      ObservableInteraction.wrapValueChanged<
+                                        bool
+                                      >(
+                                        logger: logger,
+                                        screenName: 'settings_screen',
+                                        widgetName: 'debug_mode_toggle',
+                                        actionType: 'toggle_debug_mode',
+                                        payloadBuilder: (enabled) => {
+                                          'enabled': enabled,
+                                        },
+                                        telemetryOnlyReason:
+                                            'Developer mode toggle is debug chrome outside the SuperBDD gameplay action catalog.',
+                                        callback: (_) => ref
+                                            .read(debugModeProvider.notifier)
+                                            .toggle(),
+                                      ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        AppFieldRow(
+                          key: const Key('execution_environment'),
+                          label: 'Execution Environment',
+                          value: '$executionEnvironment client · prod data',
+                        ),
+                        if (desktopControlsAvailable)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: MergeSemantics(
+                              key: const Key('desktop_controls_semantics'),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: 44,
+                                ),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: ShadSwitch(
+                                    key: const Key('desktop_controls_toggle'),
+                                    value: desktopControlsEnabled,
+                                    label: const Text('Desktop Controls'),
+                                    sublabel: const Text(
+                                      'Enable Desktop Traversal input',
+                                    ),
+                                    onChanged:
+                                        ObservableInteraction.wrapValueChanged<
+                                          bool
+                                        >(
+                                          logger: logger,
+                                          screenName: 'settings_screen',
+                                          widgetName: 'desktop_controls_toggle',
+                                          actionType: 'toggle_desktop_controls',
+                                          payloadBuilder: (enabled) => {
+                                            'enabled': enabled,
+                                          },
+                                          telemetryOnlyReason:
+                                              'Desktop Controls toggle is input chrome outside the SuperBDD gameplay action catalog.',
+                                          callback: (enabled) => ref
+                                              .read(
+                                                desktopControlsProvider
+                                                    .notifier,
+                                              )
+                                              .setEnabled(enabled),
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        AppButton(
+                          key: const Key('sign_out_button'),
+                          label: 'Sign Out',
+                          variant: AppButtonVariant.destructive,
+                          expand: true,
+                          onPressed: ObservableInteraction.wrapVoidCallback(
+                            logger: logger,
+                            screenName: 'settings_screen',
+                            widgetName: 'sign_out_button',
+                            actionType: 'open_sign_out_dialog',
+                            telemetryOnlyReason:
+                                'Sign-out dialog entry is account chrome outside the SuperBDD gameplay action catalog.',
+                            callback: () => _showSignOutDialog(context, ref),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: Spacing.xxxl),
-                  SwitchListTile(
-                    key: const Key('debug_mode_toggle'),
-                    title: const Text('Developer Mode'),
-                    subtitle: const Text('Debug controls'),
-                    value: debugMode,
-                    onChanged: ObservableInteraction.wrapValueChanged<bool>(
-                      logger: logger,
-                      screenName: 'settings_screen',
-                      widgetName: 'debug_mode_toggle',
-                      actionType: 'toggle_debug_mode',
-                      payloadBuilder: (enabled) => {'enabled': enabled},
-                      telemetryOnlyReason:
-                          'Developer mode toggle is debug chrome outside the SuperBDD gameplay action catalog.',
-                      callback: (_) =>
-                          ref.read(debugModeProvider.notifier).toggle(),
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.md),
-                  ListTile(
-                    key: const Key('execution_environment'),
-                    title: const Text('Execution Environment'),
-                    subtitle: Text('$executionEnvironment client · prod data'),
-                  ),
-                  if (desktopControlsAvailable) ...[
-                    const SizedBox(height: Spacing.md),
-                    SwitchListTile(
-                      key: const Key('desktop_controls_toggle'),
-                      title: const Text('Desktop Controls'),
-                      subtitle: const Text('Enable Desktop Traversal input'),
-                      value: desktopControlsEnabled,
-                      onChanged: ObservableInteraction.wrapValueChanged<bool>(
-                        logger: logger,
-                        screenName: 'settings_screen',
-                        widgetName: 'desktop_controls_toggle',
-                        actionType: 'toggle_desktop_controls',
-                        payloadBuilder: (enabled) => {'enabled': enabled},
-                        telemetryOnlyReason:
-                            'Desktop Controls toggle is input chrome outside the SuperBDD gameplay action catalog.',
-                        callback: (enabled) => ref
-                            .read(desktopControlsProvider.notifier)
-                            .setEnabled(enabled),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: Spacing.md),
-                  OutlinedButton(
-                    onPressed: ObservableInteraction.wrapVoidCallback(
-                      logger: logger,
-                      screenName: 'settings_screen',
-                      widgetName: 'sign_out_button',
-                      actionType: 'open_sign_out_dialog',
-                      telemetryOnlyReason:
-                          'Sign-out dialog entry is account chrome outside the SuperBDD gameplay action catalog.',
-                      callback: () => _showSignOutDialog(context, ref),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.error,
-                      side: const BorderSide(color: AppTheme.error),
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Sign Out'),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -145,13 +178,16 @@ class SettingsScreen extends ConsumerWidget {
       obs.log(event, category, data: data);
     }
 
-    showDialog(
+    showShadDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => ShadDialog.alert(
         title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
+        description: const Text('Are you sure you want to sign out?'),
         actions: [
-          TextButton(
+          AppButton(
+            key: const Key('sign_out_dialog_cancel'),
+            label: 'Cancel',
+            variant: AppButtonVariant.secondary,
             onPressed: ObservableInteraction.wrapVoidCallback(
               logger: logger,
               screenName: 'settings_screen',
@@ -161,9 +197,11 @@ class SettingsScreen extends ConsumerWidget {
                   'Sign-out cancellation is account chrome outside the SuperBDD gameplay action catalog.',
               callback: () => Navigator.of(context).pop(),
             ),
-            child: const Text('Cancel'),
           ),
-          TextButton(
+          AppButton(
+            key: const Key('sign_out_dialog_confirm'),
+            label: 'Sign Out',
+            variant: AppButtonVariant.destructive,
             onPressed: ObservableInteraction.wrapVoidCallback(
               logger: logger,
               screenName: 'settings_screen',
@@ -176,7 +214,6 @@ class SettingsScreen extends ConsumerWidget {
                 ref.read(authProvider.notifier).signOut();
               },
             ),
-            child: const Text('Sign Out'),
           ),
         ],
       ),

@@ -40,9 +40,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     category: DesignSurfaceCategory.appRoot,
     status: DesignSurfaceStatus.canonicalComposition,
     purpose:
-        'Authenticated readiness overlay that keeps the app shell painted while client state becomes usable.',
+        'Authenticated readiness overlay that keeps the existing app shell painted while client state becomes usable.',
     designSystemNotes:
-        'Composes AppTheme tokens and registered action controls for progress, failure, and compact sync status.',
+        'Phase 2 neutral composition: AppCard, AppButton, and AppNotice with ShadProgress. Map and Pack content remain pending later phases.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/loading_screen.dart',
@@ -50,7 +50,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Authentication startup/loading route.',
     designSystemNotes:
-        'Documented local composition; should graduate to canonical loading/empty-state primitives when touched.',
+        'Phase 2 neutral composition: AppCard with the existing LoadingDots; no gameplay content is introduced here.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/login_screen.dart',
@@ -58,7 +58,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Phone sign-in screen.',
     designSystemNotes:
-        'Documented local composition; keep aligned with AppTheme until login form components exist in the design library.',
+        'Phase 2 neutral composition: AppCard, AppNotice, and AppButton with ShadInput, preserving the existing phone format and authentication flow.',
   ),
   DesignSurfaceDefinition(
     path:
@@ -279,9 +279,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/features/profile/presentation/screens/settings_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Settings/profile route.',
+    purpose: 'Settings/account route outside the gameplay destinations.',
     designSystemNotes:
-        'Documented local composition; should use canonical panel/action primitives when touched.',
+        'Phase 2 neutral composition: AppCard, AppFieldRow, and AppButton with ShadSwitch and ShadDialog; Map and Pack content remain unchanged.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/debug/debug_gesture_overlay.dart',
@@ -335,9 +335,10 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/shared/widgets/tab_shell.dart',
     category: DesignSurfaceCategory.sharedWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Four-tab app shell and navigation chrome.',
+    purpose:
+        'Two-destination Map and Pack shell with a separate Settings route.',
     designSystemNotes:
-        'App chrome must stay text-first or use canonical EarthIcon/EarthGlyph only.',
+        'Phase 2 neutral chrome: Material structural shell with text-first ShadButton.ghost navigation and selected semantics. Map and Pack content remain pending later phases.',
   ),
 ];
 

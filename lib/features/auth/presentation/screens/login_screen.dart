@@ -1,14 +1,13 @@
+import 'package:earth_nova/core/domain/entities/auth_state.dart';
+import 'package:earth_nova/core/observability/app_observability_provider.dart';
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
+import 'package:earth_nova/shared/design.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
+import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:earth_nova/core/observability/app_observability_provider.dart';
-import 'package:earth_nova/core/domain/entities/auth_state.dart';
-import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
-import 'package:earth_nova/shared/constants.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
-import 'package:earth_nova/shared/theme/design_tokens.dart';
-import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
-import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class _PhoneInputFormatter extends TextInputFormatter {
   @override
@@ -47,6 +46,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   String? _errorText;
+  bool _isSignInError = false;
 
   @override
   void initState() {
@@ -63,6 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _onPhoneChanged() {
     setState(() {
       if (_errorText != null) _errorText = null;
+      _isSignInError = false;
     });
   }
 
@@ -77,8 +78,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authProvider.notifier).signInWithPhone(phone);
     final authState = ref.read(authProvider);
     if (authState.status == AuthStatus.error) {
-      setState(() => _errorText = authState.errorMessage);
+      setState(() {
+        _errorText = authState.errorMessage;
+        _isSignInError = true;
+      });
     }
+  }
+
+  void _submitOrShowValidation(VoidCallback? submit) {
+    if (!_isValid) {
+      if (_phoneController.text.isNotEmpty) {
+        setState(() {
+          _errorText = 'Enter at least 10 digits.';
+          _isSignInError = false;
+        });
+      }
+      return;
+    }
+    submit?.call();
   }
 
   @override
@@ -86,6 +103,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState.status == AuthStatus.loading;
     final obs = ref.watch(appObservabilityProvider);
+    final canContinue = _isValid && !isLoading;
+    final errorMessage = _errorText == null
+        ? null
+        : _isSignInError
+        ? 'Sign-in failed. $_errorText'
+        : _errorText;
     void logger({
       required String event,
       required String category,
@@ -94,86 +117,100 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       obs.log(event, category, data: data);
     }
 
+    final submit = ObservableInteraction.wrapAsyncCallback(
+      logger: logger,
+      screenName: 'login_screen',
+      widgetName: 'continue_button',
+      actionType: 'submit',
+      payload: const {'flow': 'auth.sign_in'},
+      telemetryOnlyReason:
+          'Auth submit is account access outside the SuperBDD gameplay action catalog.',
+      callback: _onContinue,
+    );
+
     return ObservableScreen(
       screenName: 'login_screen',
       observability: obs,
       builder: (_) => Scaffold(
-        backgroundColor: AppTheme.surface,
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: Spacing.lg),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    AppConstants.appName,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.xs),
-                  Text(
-                    'Explore. Discover. Reveal.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.huge),
-                  TextField(
-                    controller: _phoneController,
-                    enabled: !isLoading,
-                    keyboardType: TextInputType.phone,
-                    inputFormatters: [_PhoneInputFormatter()],
-                    decoration: InputDecoration(
-                      prefixText: '+1 ',
-                      prefixStyle: TextStyle(
-                        color: AppTheme.onSurfaceVariant,
-                        fontSize: 16,
+              key: const Key('login_scroll'),
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: AppCard(
+                  title: 'Welcome',
+                  description: 'Enter your phone number to continue.',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 44),
+                        child: ShadInput(
+                          key: const Key('phone_input'),
+                          controller: _phoneController,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.done,
+                          inputFormatters: [_PhoneInputFormatter()],
+                          leading: const Text('+1'),
+                          placeholder: const Text('(555) 123-4567'),
+                          onSubmitted: (_) => _submitOrShowValidation(
+                            canContinue ? submit : null,
+                          ),
+                        ),
                       ),
-                      hintText: '(555) 123-4567',
-                      counterText: '',
-                      errorText: _errorText,
-                    ),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: Spacing.lg),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isValid && !isLoading
-                          ? ObservableInteraction.wrapAsyncCallback(
-                              logger: logger,
-                              screenName: 'login_screen',
-                              widgetName: 'continue_button',
-                              actionType: 'submit',
-                              payload: const {'flow': 'auth.sign_in'},
-                              telemetryOnlyReason:
-                                  'Auth submit is account access outside the SuperBDD gameplay action catalog.',
-                              callback: _onContinue,
-                            )
-                          : null,
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation(Colors.white),
+                      const SizedBox(height: 12),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 32),
+                        child: errorMessage == null
+                            ? const SizedBox.shrink()
+                            : Semantics(
+                                label: 'error: $errorMessage',
+                                liveRegion: true,
+                                child: ExcludeSemantics(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.error_outline,
+                                        size: 20,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.error,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          errorMessage,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.error,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            )
-                          : const Text('Continue'),
-                    ),
+                      ),
+                      AppButton(
+                        key: const Key('continue_button'),
+                        label: 'Continue',
+                        expand: true,
+                        isLoading: isLoading,
+                        onPressed: canContinue ? submit : null,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

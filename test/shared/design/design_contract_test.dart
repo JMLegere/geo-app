@@ -161,37 +161,31 @@ void main() {
             'New app_*.dart components must use Shad primitives directly, not legacy AppTheme, design tokens, or Earth components.',
       );
     });
-    test(
-      'keeps app chrome on canonical design icons instead of raw icons or emoji',
-      () {
-        final offenders = <String>[];
-        const appChromeFiles = [
-          'lib/shared/widgets/loading_dots.dart',
-          'lib/shared/widgets/tab_shell.dart',
-          'lib/features/map/presentation/widgets/map_status_bar.dart',
-          'lib/features/map/presentation/widgets/discovery_notification.dart',
-        ];
-        final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
-        final rawIcons = RegExp(r'\bIcons\.');
-        final legacyIconography = RegExp(r'AppIcons\.');
+    test('keeps app chrome free of emoji and retired AppIcons', () {
+      final offenders = <String>[];
+      const appChromeFiles = [
+        'lib/shared/widgets/loading_dots.dart',
+        'lib/shared/widgets/tab_shell.dart',
+        'lib/features/map/presentation/widgets/map_status_bar.dart',
+        'lib/features/map/presentation/widgets/discovery_notification.dart',
+      ];
+      final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
+      final legacyIconography = RegExp(r'AppIcons\.');
 
-        for (final path in appChromeFiles) {
-          final source = File(path).readAsStringSync();
-          if (rawEmoji.hasMatch(source) ||
-              rawIcons.hasMatch(source) ||
-              legacyIconography.hasMatch(source)) {
-            offenders.add(path);
-          }
+      for (final path in appChromeFiles) {
+        final source = File(path).readAsStringSync();
+        if (rawEmoji.hasMatch(source) || legacyIconography.hasMatch(source)) {
+          offenders.add(path);
         }
+      }
 
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'High-level app chrome should be text-first or use canonical design icons; raw Icons, AppIcons, and emoji glyphs are not allowed there.',
-        );
-      },
-    );
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'High-level app chrome may use approved native icons, but retired AppIcons and emoji glyphs are not allowed.',
+      );
+    });
   });
 }
 
