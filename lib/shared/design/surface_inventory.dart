@@ -8,11 +8,7 @@ enum DesignSurfaceCategory {
   painter,
 }
 
-enum DesignSurfaceStatus {
-  canonicalComposition,
-  infrastructure,
-  debugOnly,
-}
+enum DesignSurfaceStatus { canonicalComposition, infrastructure, debugOnly }
 
 class DesignSurfaceDefinition {
   const DesignSurfaceDefinition({
@@ -35,9 +31,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/main.dart',
     category: DesignSurfaceCategory.appRoot,
     status: DesignSurfaceStatus.infrastructure,
-    purpose: 'App bootstrap, providers, theme, and MaterialApp shell.',
+    purpose: 'App bootstrap, providers, Shad root theme, and Material shell.',
     designSystemNotes:
-        'Owns no product UI styling beyond applying AppTheme and route wiring.',
+        'ShadApp is the root design authority; Material derives from its dark Shad theme for compatibility.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/app/readiness/app_readiness_gate.dart',

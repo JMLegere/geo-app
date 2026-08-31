@@ -1,9 +1,9 @@
 Molecule: EarthFieldRow
-Status: canonical
+Status: deprecated
 Role: row
 Interaction policy: display
 Exports: lib/shared/design/composites/field_row.dart
 Public API: lib/shared/design.dart
 
 Purpose:
-  Label/value row for map-cell details, Pack provenance, settings, and diagnostics.
+  Temporary legacy label/value row; retain only until authorized surface waves migrate callers.

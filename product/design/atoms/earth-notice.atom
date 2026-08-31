@@ -1,9 +1,9 @@
 Atom: EarthNotice
-Status: canonical
+Status: deprecated
 Role: status
 Interaction policy: display
 Exports: lib/shared/design/primitives/notice.dart
 Public API: lib/shared/design.dart
 
 Purpose:
-  Inline status, information, and warning box with semantic tone instead of ad hoc containers.
+  Temporary legacy notice; retain only until authorized surface waves migrate callers.

@@ -1,9 +1,9 @@
 Atom: EarthActionButton
-Status: canonical
+Status: deprecated
 Role: button
 Interaction policy: action-required
 Exports: lib/shared/design/primitives/action_button.dart
 Public API: lib/shared/design.dart
 
 Purpose:
-  Canonical command button for player-visible actions with token-backed tone, size, and touch target behavior.
+  Temporary legacy action button; retain only until authorized surface waves migrate callers.

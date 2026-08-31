@@ -1,0 +1,9 @@
+Molecule: AppStatGrid
+Status: canonical
+Role: grid
+Interaction policy: display
+Exports: lib/shared/design/composites/app_stat_grid.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Neutral Shad grid for compact statistical summaries.

@@ -23,67 +23,59 @@ class DesignComponentDefinition {
 // treat it as the standalone source of truth.
 const designComponentRegistry = <DesignComponentDefinition>[
   DesignComponentDefinition(
-    name: 'EarthActionButton',
+    name: 'AppBadge',
     category: DesignComponentCategory.primitive,
     status: DesignComponentStatus.canonical,
-    purpose:
-        'Token-backed primary/secondary/neutral action button with usable touch target defaults.',
+    purpose: 'Neutral Shad status badge for concise semantic labels.',
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
-    name: 'EarthIcon',
+    name: 'AppButton',
     category: DesignComponentCategory.primitive,
     status: DesignComponentStatus.canonical,
-    purpose:
-        'Canonical app-chrome and status icon wrapper so screens stop reaching for raw Icons or emoji glyphs.',
+    purpose: 'Neutral Shad button for player-visible actions.',
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
-    name: 'EarthMetaText',
-    category: DesignComponentCategory.primitive,
-    status: DesignComponentStatus.canonical,
-    purpose:
-        'Compact uppercase metadata line for field-note labels, provenance, and screen context.',
-    allowedInScreens: true,
-  ),
-  DesignComponentDefinition(
-    name: 'EarthNotice',
-    category: DesignComponentCategory.primitive,
-    status: DesignComponentStatus.canonical,
-    purpose:
-        'Inline status/info/warning box with semantic tone instead of ad hoc containers.',
-    allowedInScreens: true,
-  ),
-  DesignComponentDefinition(
-    name: 'EarthTag',
-    category: DesignComponentCategory.primitive,
-    status: DesignComponentStatus.canonical,
-    purpose:
-        'Compact status/tag chip for terrain, rarity, filters, and technical labels.',
-    allowedInScreens: true,
-  ),
-  DesignComponentDefinition(
-    name: 'EarthFieldRow',
+    name: 'AppCard',
     category: DesignComponentCategory.composite,
     status: DesignComponentStatus.canonical,
-    purpose:
-        'Label/value row for map-cell details, Pack provenance, settings, and diagnostics.',
+    purpose: 'Neutral Shad surface grouping related content and actions.',
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
-    name: 'EarthPanel',
-    category: DesignComponentCategory.composite,
+    name: 'AppEmptyState',
+    category: DesignComponentCategory.pattern,
     status: DesignComponentStatus.canonical,
-    purpose:
-        'Bounded field-note panel with consistent heading, border, spacing, and action placement.',
+    purpose: 'Reusable screen-allowed empty-result pattern.',
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
-    name: 'EarthStatGrid',
+    name: 'AppErrorState',
+    category: DesignComponentCategory.pattern,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Reusable screen-allowed recoverable-error pattern.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppFieldRow',
     category: DesignComponentCategory.composite,
     status: DesignComponentStatus.canonical,
-    purpose:
-        'Compact two-column stat block for progress, territory, and diagnostic summaries.',
+    purpose: 'Neutral Shad label/value row for compact details.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppNotice',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Neutral Shad inline status or informational notice.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'AppStatGrid',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Neutral Shad grid for compact statistical summaries.',
     allowedInScreens: true,
   ),
   DesignComponentDefinition(
@@ -94,20 +86,97 @@ const designComponentRegistry = <DesignComponentDefinition>[
         'Build/test catalog example for reviewing the design API without Storybook ceremony.',
     allowedInScreens: false,
   ),
+  DesignComponentDefinition(
+    name: 'EarthActionButton',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy action button until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthFieldRow',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy label/value row until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthIcon',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy icon wrapper until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthMetaText',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy metadata text until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthNotice',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy notice until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthPanel',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy panel until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthStatGrid',
+    category: DesignComponentCategory.composite,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy stat grid until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'EarthTag',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.deprecated,
+    purpose:
+        'Temporary legacy tag until authorized surface waves migrate callers.',
+    allowedInScreens: true,
+  ),
+  DesignComponentDefinition(
+    name: 'LoadingDots',
+    category: DesignComponentCategory.primitive,
+    status: DesignComponentStatus.canonical,
+    purpose: 'Neutral Shad loading indicator for asynchronous waiting states.',
+    allowedInScreens: true,
+  ),
 ];
 
 final designTaxonomy =
     <DesignComponentCategory, List<DesignComponentDefinition>>{
-  DesignComponentCategory.primitive: designComponentRegistry
-      .where((component) =>
-          component.category == DesignComponentCategory.primitive)
-      .toList(growable: false),
-  DesignComponentCategory.composite: designComponentRegistry
-      .where((component) =>
-          component.category == DesignComponentCategory.composite)
-      .toList(growable: false),
-  DesignComponentCategory.pattern: designComponentRegistry
-      .where(
-          (component) => component.category == DesignComponentCategory.pattern)
-      .toList(growable: false),
-};
+      DesignComponentCategory.primitive: designComponentRegistry
+          .where(
+            (component) =>
+                component.category == DesignComponentCategory.primitive,
+          )
+          .toList(growable: false),
+      DesignComponentCategory.composite: designComponentRegistry
+          .where(
+            (component) =>
+                component.category == DesignComponentCategory.composite,
+          )
+          .toList(growable: false),
+      DesignComponentCategory.pattern: designComponentRegistry
+          .where(
+            (component) =>
+                component.category == DesignComponentCategory.pattern,
+          )
+          .toList(growable: false),
+    };

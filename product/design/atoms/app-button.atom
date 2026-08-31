@@ -1,0 +1,9 @@
+Atom: AppButton
+Status: canonical
+Role: button
+Interaction policy: action-required
+Exports: lib/shared/design/primitives/app_button.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Neutral Shad command button for player-visible actions.
