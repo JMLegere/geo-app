@@ -57,6 +57,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `docs/frontend-usability-design-system.md` | `CURRENT-SCOPED` | Frontend usability and design-system rules |
 | `docs/observability-interaction-coverage.md` | `CURRENT-SCOPED` | Interaction observability contract |
 | `docs/ios-safari-maplibre.md` | `CURRENT-SCOPED` | Scoped platform compatibility evidence |
+| `docs/c4/README.md` | `CURRENT-SCOPED` | Generated current C4 architecture views and maintenance instructions |
 | `lib/shared/design/README.md` | `CURRENT-SCOPED` | Shared design-library usage |
 | `2026-04-03-*.md` | `HISTORICAL-EVIDENCE` | Dated v3 planning and backlog |
 | `docs/design.md`, `docs/map-design.md`, `docs/prd-game-systems*.md` | `HISTORICAL-EVIDENCE` | Prior product and implementation intent |
@@ -69,6 +70,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 
 ## Non-Markdown Evidence
 
+- `docs/c4/*.mmd` — generated current C4 System Context, Container, Component, Dynamic, and Deployment views.
 - `features/*.feature` — executable behavioral evidence.
 - `product/{capabilities,features,actions,workflows}.ts` — EAC product catalog evidence.
 - `supabase/migrations/*.sql` — executable schema history.
