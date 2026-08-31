@@ -5,12 +5,16 @@ publish_to: 'none'
 version: 3.0.0+2
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.11.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
+  # Root UI and localization
+  flutter_localizations:
+    sdk: flutter
+  shadcn_ui: 0.56.2
   # State management
   flutter_riverpod: ^3.2.1
 

@@ -1,0 +1,9 @@
+Atom: AppBadge
+Status: canonical
+Role: status
+Interaction policy: display
+Exports: lib/shared/design/primitives/app_badge.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Neutral Shad badge for concise semantic labels.

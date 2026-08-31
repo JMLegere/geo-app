@@ -9,13 +9,22 @@ export 'registry.dart';
 export 'surface_inventory.dart';
 
 const publicDesignComponentNames = <String>{
+  'AppBadge',
+  'AppButton',
+  'AppCard',
+  'AppEmptyState',
+  'AppErrorState',
+  'AppFieldRow',
+  'AppNotice',
+  'AppStatGrid',
   'DesignLibraryExample',
   'EarthActionButton',
-  'EarthIcon',
   'EarthFieldRow',
+  'EarthIcon',
   'EarthMetaText',
   'EarthNotice',
   'EarthPanel',
   'EarthStatGrid',
   'EarthTag',
+  'LoadingDots',
 };

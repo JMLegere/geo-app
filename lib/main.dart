@@ -3,7 +3,9 @@ import 'dart:ui' show PointerDeviceKind;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -75,7 +77,6 @@ import 'package:earth_nova/shared/debug/debug_level_param.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
 import 'package:earth_nova/shared/observability/navigation/app_navigation_observer.dart';
 import 'package:earth_nova/shared/observability/navigation/auth_home_navigation_transition_tracker.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -448,32 +449,47 @@ class _EarthNovaAppState extends ConsumerState<_EarthNovaApp>
     );
     _authHomeTracker.onScreenVisible(screenName);
 
-    return MaterialApp(
-      title: 'EarthNova',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
-      // Include mouse as a drag device so PageView horizontal scroll and
-      // OverscrollNotification work correctly on Flutter web/desktop.
-      // Flutter's default ScrollBehavior only enables drag for touch.
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        dragDevices: {
-          PointerDeviceKind.touch,
-          PointerDeviceKind.mouse,
-          PointerDeviceKind.stylus,
-          PointerDeviceKind.trackpad,
-        },
+    return ShadApp.custom(
+      theme: ShadThemeData(
+        brightness: Brightness.dark,
+        colorScheme: const ShadZincColorScheme.dark(),
       ),
-      navigatorObservers: [
-        AppNavigationObserver(logEvent: ref.read(observabilityProvider).log),
-      ],
-      home: authState.when(
-        loading: () => const LoadingScreen(),
-        unauthenticated: () => const LoginScreen(),
-        authenticated: (user) => AppReadinessGate(
-          key: ValueKey(user.id),
-          userId: user.id,
+      themeMode: ThemeMode.dark,
+      appBuilder: (context) => MaterialApp(
+        title: 'EarthNova',
+        debugShowCheckedModeBanner: false,
+        theme: Theme.of(context),
+        supportedLocales: const [Locale('en', 'US')],
+        localizationsDelegates: const [
+          GlobalShadLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        // Include mouse as a drag device so PageView horizontal scroll and
+        // OverscrollNotification work correctly on Flutter web/desktop.
+        // Flutter's default ScrollBehavior only enables drag for touch.
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.stylus,
+            PointerDeviceKind.trackpad,
+          },
         ),
-        error: (_) => const LoginScreen(),
+        navigatorObservers: [
+          AppNavigationObserver(logEvent: ref.read(observabilityProvider).log),
+        ],
+        builder: (context, child) => ShadAppBuilder(child: child),
+        home: authState.when(
+          loading: () => const LoadingScreen(),
+          unauthenticated: () => const LoginScreen(),
+          authenticated: (user) => AppReadinessGate(
+            key: ValueKey(user.id),
+            userId: user.id,
+          ),
+          error: (_) => const LoginScreen(),
+        ),
       ),
     );
   }

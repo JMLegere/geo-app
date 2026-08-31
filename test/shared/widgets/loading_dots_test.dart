@@ -4,20 +4,53 @@ import 'package:earth_nova/shared/widgets/loading_dots.dart';
 
 void main() {
   group('LoadingDots', () {
-    testWidgets('renders a text-free progress spinner', (tester) async {
+    testWidgets('exposes loading semantics with an indeterminate indicator', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
+        const MaterialApp(
+          home: Scaffold(body: Center(child: LoadingDots())),
+        ),
       );
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.byIcon(Icons.public), findsNothing);
-      expect(find.text('🌍'), findsNothing);
-      expect(find.text('...'), findsNothing);
+      expect(find.bySemanticsLabel('Loading'), findsOneWidget);
+      expect(
+        tester
+            .widget<CircularProgressIndicator>(
+              find.byType(CircularProgressIndicator),
+            )
+            .value,
+        isNull,
+      );
+    });
+
+    testWidgets('uses a static progress value when motion is disabled', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: const MaterialApp(
+            home: Scaffold(body: Center(child: LoadingDots())),
+          ),
+        ),
+      );
+
+      expect(
+        tester
+            .widget<CircularProgressIndicator>(
+              find.byType(CircularProgressIndicator),
+            )
+            .value,
+        isNotNull,
+      );
     });
 
     testWidgets('disposes without error', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: Center(child: LoadingDots()))),
+        const MaterialApp(
+          home: Scaffold(body: Center(child: LoadingDots())),
+        ),
       );
 
       await tester.pump(const Duration(milliseconds: 200));

@@ -1,9 +1,9 @@
 Molecule: EarthPanel
-Status: canonical
+Status: deprecated
 Role: region
 Interaction policy: delegates-to-children
 Exports: lib/shared/design/composites/panel.dart
 Public API: lib/shared/design.dart
 
 Purpose:
-  Bounded field-note panel with consistent heading, border, spacing, and action placement.
+  Temporary legacy panel; retain only until authorized surface waves migrate callers.

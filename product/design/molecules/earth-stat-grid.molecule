@@ -1,9 +1,9 @@
 Molecule: EarthStatGrid
-Status: canonical
+Status: deprecated
 Role: grid
 Interaction policy: display
 Exports: lib/shared/design/composites/stat_grid.dart
 Public API: lib/shared/design.dart
 
 Purpose:
-  Compact two-column stat block for progress, territory, and diagnostic summaries.
+  Temporary legacy stat grid; retain only until authorized surface waves migrate callers.

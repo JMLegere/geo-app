@@ -84,12 +84,21 @@ void main() {
       );
 
       for (final surface in designSurfaceInventory) {
-        expect(File(surface.path).existsSync(), isTrue,
-            reason: '${surface.path} is documented but does not exist.');
-        expect(surface.purpose, isNotEmpty,
-            reason: '${surface.path} needs a purpose.');
-        expect(surface.designSystemNotes, isNotEmpty,
-            reason: '${surface.path} needs design-system notes.');
+        expect(
+          File(surface.path).existsSync(),
+          isTrue,
+          reason: '${surface.path} is documented but does not exist.',
+        );
+        expect(
+          surface.purpose,
+          isNotEmpty,
+          reason: '${surface.path} needs a purpose.',
+        );
+        expect(
+          surface.designSystemNotes,
+          isNotEmpty,
+          reason: '${surface.path} needs design-system notes.',
+        );
       }
     });
 
@@ -118,26 +127,30 @@ void main() {
             'Design widgets should expose semantic variants/tone props, not raw color/style/padding escape hatches.',
       );
     });
-    test(
-        'keeps app chrome on canonical design icons instead of raw icons or emoji',
-        () {
+    test('keeps canonical app components independent of legacy styling', () {
       final offenders = <String>[];
-      const appChromeFiles = [
-        'lib/shared/widgets/loading_dots.dart',
-        'lib/shared/widgets/tab_shell.dart',
-        'lib/features/map/presentation/widgets/map_status_bar.dart',
-        'lib/features/map/presentation/widgets/discovery_notification.dart',
-      ];
-      final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
-      final rawIcons = RegExp(r'\bIcons\.');
-      final legacyIconography = RegExp(r'AppIcons\.');
+      const taxonomyDirs = ['primitives', 'composites', 'patterns'];
 
-      for (final path in appChromeFiles) {
-        final source = File(path).readAsStringSync();
-        if (rawEmoji.hasMatch(source) ||
-            rawIcons.hasMatch(source) ||
-            legacyIconography.hasMatch(source)) {
-          offenders.add(path);
+      for (final dir in taxonomyDirs) {
+        for (final file in _dartFilesUnder('lib/shared/design/$dir')) {
+          if (!file.uri.pathSegments.last.startsWith('app_')) continue;
+
+          final source = file.readAsStringSync();
+          final imports = RegExp(
+            r'''^import\s+['"]([^'"]+)['"]''',
+            multiLine: true,
+          ).allMatches(source);
+          for (final import in imports) {
+            final uri = import.group(1)!;
+            if (RegExp(r'(?:app_theme|design_tokens|earth_)').hasMatch(uri)) {
+              offenders.add('${file.path} imports $uri');
+            }
+          }
+          if (RegExp(
+            r'\b(?:AppTheme|DesignTokens|Earth[A-Z])',
+          ).hasMatch(source)) {
+            offenders.add('${file.path} references a legacy design symbol');
+          }
         }
       }
 
@@ -145,9 +158,40 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'High-level app chrome should be text-first or use canonical design icons; raw Icons, AppIcons, and emoji glyphs are not allowed there.',
+            'New app_*.dart components must use Shad primitives directly, not legacy AppTheme, design tokens, or Earth components.',
       );
     });
+    test(
+      'keeps app chrome on canonical design icons instead of raw icons or emoji',
+      () {
+        final offenders = <String>[];
+        const appChromeFiles = [
+          'lib/shared/widgets/loading_dots.dart',
+          'lib/shared/widgets/tab_shell.dart',
+          'lib/features/map/presentation/widgets/map_status_bar.dart',
+          'lib/features/map/presentation/widgets/discovery_notification.dart',
+        ];
+        final rawEmoji = RegExp(r'[🌍🌎🌏🗺👟🔥⟳]');
+        final rawIcons = RegExp(r'\bIcons\.');
+        final legacyIconography = RegExp(r'AppIcons\.');
+
+        for (final path in appChromeFiles) {
+          final source = File(path).readAsStringSync();
+          if (rawEmoji.hasMatch(source) ||
+              rawIcons.hasMatch(source) ||
+              legacyIconography.hasMatch(source)) {
+            offenders.add(path);
+          }
+        }
+
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'High-level app chrome should be text-first or use canonical design icons; raw Icons, AppIcons, and emoji glyphs are not allowed there.',
+        );
+      },
+    );
   });
 }
 

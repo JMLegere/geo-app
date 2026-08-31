@@ -1,0 +1,9 @@
+Molecule: AppCard
+Status: canonical
+Role: region
+Interaction policy: delegates-to-children
+Exports: lib/shared/design/composites/app_card.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Neutral Shad surface grouping related content and actions.

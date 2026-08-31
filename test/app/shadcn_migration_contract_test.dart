@@ -5,15 +5,26 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final root = Directory.current.path;
   final pubspec = File('$root/pubspec.yaml').readAsStringSync();
-  final shadcnUiDeclared = RegExp(
-    r'^\s*shadcn_ui\s*:',
-    multiLine: true,
-  ).hasMatch(pubspec);
+  final pubspecLock = File('$root/pubspec.lock').readAsStringSync();
 
   String read(String path) => File('$root/$path').readAsStringSync();
 
   test('preserves the Phase 0 migration contract', () {
     final appRoot = read('lib/main.dart');
+    expect(appRoot, contains('brightness: Brightness.dark'));
+    expect(appRoot, contains('colorScheme: const ShadZincColorScheme.dark()'));
+    expect(appRoot, contains('themeMode: ThemeMode.dark'));
+    expect(appRoot, contains('theme: Theme.of(context)'));
+    expect(appRoot, contains("supportedLocales: const [Locale('en', 'US')]"));
+    for (final delegate in const [
+      'GlobalShadLocalizations.delegate',
+      'GlobalMaterialLocalizations.delegate',
+      'GlobalCupertinoLocalizations.delegate',
+      'GlobalWidgetsLocalizations.delegate',
+    ]) {
+      expect(appRoot, contains(delegate));
+    }
+    expect(appRoot, isNot(contains('AppTheme.dark(')));
     final tabShell = read('lib/shared/widgets/tab_shell.dart');
     final template = read(
       'product/design/templates/primary-navigation-shell.template',
@@ -33,7 +44,10 @@ void main() {
     expect(appRoot, contains('navigatorObservers: ['));
     expect(appRoot, contains('AppNavigationObserver('));
     expect(appRoot, contains('home: authState.when('));
-    expect(appRoot, contains('authenticated: (user) => AppReadinessGate('));
+    expect(
+      appRoot,
+      matches(RegExp(r'authenticated:\s*\(user\)\s*=>\s*AppReadinessGate\(')),
+    );
     expect(appRoot, contains('loading: () => const LoadingScreen()'));
     expect(appRoot, contains('unauthenticated: () => const LoginScreen()'));
     expect(appRoot, contains('error: (_) => const LoginScreen()'));
@@ -45,10 +59,9 @@ void main() {
     expect(destinations, isNotNull);
     final destinationSource = destinations!.group(1);
     expect(destinationSource, isNotNull);
-    final labels = RegExp(r"label: '([^']+)'")
-        .allMatches(destinationSource!)
-        .map((match) => match.group(1))
-        .toList();
+    final labels = RegExp(
+      r"label: '([^']+)'",
+    ).allMatches(destinationSource!).map((match) => match.group(1)).toList();
     expect(labels, ['Map', 'Pack']);
     expect(destinationSource, contains('PlayerActions.openMap'));
     expect(destinationSource, contains('PlayerActions.openPack'));
@@ -82,30 +95,50 @@ void main() {
     );
   });
 
-  test(
-    'integrates the Shad root when shadcn_ui is declared',
-    () {
-      final appRoot = read('lib/main.dart');
+  test('pins shadcn_ui and integrates the Shad root', () {
+    final appRoot = read('lib/main.dart');
 
-      expect(
-        RegExp(r'^\s*shadcn_ui\s*:\s*0\.56\.2\s*$', multiLine: true)
-            .hasMatch(pubspec),
-        isTrue,
-        reason: 'shadcn_ui must be pinned exactly to 0.56.2',
-      );
-      expect(appRoot, contains("package:shadcn_ui/shadcn_ui.dart"));
+    expect(
+      RegExp(
+        r'^\s*shadcn_ui\s*:\s*0\.56\.2\s*$',
+        multiLine: true,
+      ).hasMatch(pubspec),
+      isTrue,
+      reason: 'shadcn_ui must be pinned exactly to 0.56.2',
+    );
+    final lockEntry = RegExp(
+      r'^  shadcn_ui:\n(.*?)(?=^  [a-zA-Z0-9_]+:\n)',
+      multiLine: true,
+      dotAll: true,
+    ).firstMatch(pubspecLock);
+    expect(lockEntry, isNotNull);
+    expect(lockEntry!.group(1), contains('version: "0.56.2"'));
+    expect(appRoot, contains("package:shadcn_ui/shadcn_ui.dart"));
 
-      expect(
-        appRoot,
-        matches(
-          RegExp(
-            r'ShadApp\.custom\([\s\S]*?appBuilder:\s*\([^)]*\)\s*=>\s*MaterialApp\([\s\S]*?builder:\s*\([^)]*\)\s*=>\s*ShadAppBuilder\(',
-          ),
+    for (final requiredRootContract in const [
+      'brightness: Brightness.dark',
+      'colorScheme: const ShadZincColorScheme.dark()',
+      'themeMode: ThemeMode.dark',
+      'theme: Theme.of(context)',
+      "supportedLocales: const [Locale('en', 'US')]",
+      'GlobalShadLocalizations.delegate',
+      'GlobalMaterialLocalizations.delegate',
+      'GlobalCupertinoLocalizations.delegate',
+      'GlobalWidgetsLocalizations.delegate',
+    ]) {
+      expect(appRoot, contains(requiredRootContract));
+    }
+    expect(appRoot, isNot(contains('AppTheme.dark()')));
+
+    expect(
+      appRoot,
+      matches(
+        RegExp(
+          r'ShadApp\.custom\([\s\S]*?appBuilder:\s*\([^)]*\)\s*=>\s*MaterialApp\([\s\S]*?builder:\s*\([^)]*\)\s*=>\s*ShadAppBuilder\(',
         ),
-        reason:
-            'ShadApp.custom.appBuilder must return MaterialApp whose builder returns ShadAppBuilder',
-      );
-    },
-    skip: !shadcnUiDeclared,
-  );
+      ),
+      reason:
+          'ShadApp.custom.appBuilder must return MaterialApp whose builder returns ShadAppBuilder',
+    );
+  });
 }

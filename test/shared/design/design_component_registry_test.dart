@@ -7,8 +7,9 @@ void main() {
   group('design component registry', () {
     test('matches the public design widget taxonomy', () {
       final exportedNames = _exportedTaxonomyWidgetNames();
-      final registeredNames =
-          designComponentRegistry.map((component) => component.name).toSet();
+      final registeredNames = designComponentRegistry
+          .map((component) => component.name)
+          .toSet();
 
       expect(registeredNames, exportedNames);
       expect(publicDesignComponentNames.toSet(), exportedNames);
@@ -34,17 +35,18 @@ void main() {
       for (final component in designComponentRegistry) {
         expect(component.name, isNotEmpty);
         expect(component.purpose, isNotEmpty);
-        expect(names.add(component.name), isTrue,
-            reason: '${component.name} is duplicated.');
+        expect(
+          names.add(component.name),
+          isTrue,
+          reason: '${component.name} is duplicated.',
+        );
 
-        if (component.category == DesignComponentCategory.pattern) {
-          expect(
-            component.allowedInScreens,
-            isFalse,
-            reason:
-                '${component.name} is a catalog/pattern artifact and should not be used directly in app screens.',
-          );
-        }
+        expect(
+          component.allowedInScreens,
+          component.name != 'DesignLibraryExample',
+          reason:
+              'Only DesignLibraryExample is catalog-only; reusable patterns may be composed in app screens.',
+        );
       }
     });
   });
@@ -56,8 +58,11 @@ Set<String> _exportedTaxonomyWidgetNames() {
 
   for (final dir in taxonomyDirs) {
     final directory = Directory('lib/shared/design/$dir');
-    expect(directory.existsSync(), isTrue,
-        reason: '${directory.path} must exist.');
+    expect(
+      directory.existsSync(),
+      isTrue,
+      reason: '${directory.path} must exist.',
+    );
 
     for (final entity in directory.listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
@@ -70,6 +75,17 @@ Set<String> _exportedTaxonomyWidgetNames() {
       names.addAll(matches.map((match) => match.group(1)!));
     }
   }
+
+  final loadingDots = File('lib/shared/widgets/loading_dots.dart');
+  expect(
+    loadingDots.existsSync(),
+    isTrue,
+    reason: '${loadingDots.path} must exist.',
+  );
+  final matches = RegExp(
+    r'class\s+([A-Z][A-Za-z0-9]*)\s+extends\s+(?:StatelessWidget|StatefulWidget)',
+  ).allMatches(loadingDots.readAsStringSync());
+  names.addAll(matches.map((match) => match.group(1)!));
 
   return names;
 }

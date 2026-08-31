@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 
-import 'package:earth_nova/shared/theme/app_theme.dart';
-
-/// Animated loading indicator for map/bootstrap surfaces.
+/// Theme-aware loading indicator with a static reduced-motion state.
 class LoadingDots extends StatelessWidget {
   const LoadingDots({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final reducedMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
     return Semantics(
       label: 'Loading',
+      liveRegion: true,
       child: ExcludeSemantics(
-        child: SizedBox(
-          width: 28,
-          height: 28,
+        child: SizedBox.square(
+          dimension: 28,
           child: CircularProgressIndicator(
+            value: reducedMotion ? 0.75 : null,
             strokeWidth: 2.4,
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.tertiary),
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
       ),

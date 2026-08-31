@@ -1,0 +1,9 @@
+Molecule: AppFieldRow
+Status: canonical
+Role: row
+Interaction policy: display
+Exports: lib/shared/design/composites/app_field_row.dart
+Public API: lib/shared/design.dart
+
+Purpose:
+  Neutral Shad label/value row for compact details.

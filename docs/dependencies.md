@@ -9,6 +9,8 @@
 
 | Package | Version | Why |
 |---------|---------|-----|
+| `flutter_localizations` | SDK | Flutter SDK localization delegates. Provides explicit Material/Cupertino/Widgets delegates for the en-US locale contract. |
+| `shadcn_ui` | `0.56.2` | Neutral Shad root/components. Exact pin protects the approved API/visual baseline; Phase 2+ is not authorized. |
 | `flutter_riverpod` | `^3.2.1` | State management. `Notifier` pattern — immutable state, reactive providers, testable without framework. No `StateNotifier`, no `ChangeNotifier`. |
 | `supabase_flutter` | `^2.12.0` | Backend client. Auth, database queries, realtime. Source of truth for all data. |
 | `crypto` | `^3.0.6` | SHA-256 for `_derivePassword` (phone → Supabase password) and phone hashing in observability. Critical — must match v2 exactly. |
