@@ -935,3 +935,9 @@
 - `--check` fails for missing, stale, or unexpected generated files; `docs/INDEX.md` and the documentation authority contract classify `docs/c4/README.md` as `CURRENT-SCOPED`.
 - All Mermaid sources rendered successfully with local Mermaid CLI and were visually inspected at 3× scale. The focused documentation authority test and deterministic generation checks passed.
 - No application behavior, backend schema, external infrastructure, dependency, or production deployment changed.
+
+## Completed 2026-08-31 — shadcn reset Phase 0 evidence
+
+- Phase 0 completed within the existing authorization boundary; Phase 1+ remains paused and requires explicit user authorization. Corrected the contracts/template mapping for Issue #580 and recorded the visual baseline in `.agents/qa/assets/shadcn-phase-0/` (four Chromium PNGs for Login and `DesignLibraryExample` at 390×844 and 1440×900).
+- Verification passed: focused contracts (10 passed; one intentional conditional skip), EAC with no diagnostics, `flutter analyze` with no issues, and the complete Flutter suite (1,504 passed; one intentional conditional skip). All four PNGs were visually inspected with no clipping or render failure.
+- Authentication, production mutation, dependency addition, root integration, UI restyling, and deployment remained unchanged; Phase 1+ implementation remains paused.

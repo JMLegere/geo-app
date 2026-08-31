@@ -6,4 +6,4 @@ Exports: lib/shared/widgets/tab_shell.dart
 Public API: lib/shared/widgets/tab_shell.dart
 
 Purpose:
-  Four-tab app shell that owns primary navigation chrome and maps tab selection to product actions.
+  Two-destination app shell for Map and Pack that owns primary navigation chrome and maps selection to product actions and navigation telemetry.
