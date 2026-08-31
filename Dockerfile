@@ -20,6 +20,9 @@ RUN SHORT=$(printf '%.7s' "$RAILWAY_GIT_COMMIT_SHA"); \
     "--dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" \
     "--dart-define=ENCOUNTER_ENGINE_MODE=$ENCOUNTER_ENGINE_MODE" \
     "--dart-define=ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES=$ENCOUNTER_ENGINE_V3_CLIENT_VERIFIED_WRITES" \
+    "--dart-define=DEPLOYMENT_ENVIRONMENT=prod" \
+    "--dart-define=DESKTOP_CONTROLS_AVAILABLE=true" \
+    "--dart-define=DESKTOP_CONTROLS_DEFAULT=true" \
     "--dart-define=BUILD_TIMESTAMP=$BUILD_TS" \
     "--dart-define=APP_VERSION=$BUILD_TS"
 

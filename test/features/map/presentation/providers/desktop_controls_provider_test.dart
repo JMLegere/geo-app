@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +26,50 @@ Future<void> _emitUser(
 }
 
 void main() {
+  group('desktopControlsAvailableFor', () {
+    test('allows desktop web platforms when the build enables controls', () {
+      for (final platform in [
+        TargetPlatform.linux,
+        TargetPlatform.macOS,
+        TargetPlatform.windows,
+      ]) {
+        expect(
+          desktopControlsAvailableFor(
+            buildEnabled: true,
+            isWeb: true,
+            platform: platform,
+          ),
+          isTrue,
+        );
+      }
+    });
+
+    test('keeps mobile web and native clients on their existing input', () {
+      for (final platform in [
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+        TargetPlatform.fuchsia,
+      ]) {
+        expect(
+          desktopControlsAvailableFor(
+            buildEnabled: true,
+            isWeb: true,
+            platform: platform,
+          ),
+          isFalse,
+        );
+      }
+      expect(
+        desktopControlsAvailableFor(
+          buildEnabled: true,
+          isWeb: false,
+          platform: TargetPlatform.linux,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('DesktopControlsNotifier', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 

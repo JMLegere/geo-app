@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -13,8 +14,27 @@ const _deploymentEnvironment = String.fromEnvironment(
   defaultValue: 'unknown',
 );
 
+bool desktopControlsAvailableFor({
+  required bool buildEnabled,
+  required bool isWeb,
+  required TargetPlatform platform,
+}) =>
+    buildEnabled &&
+    isWeb &&
+    switch (platform) {
+      TargetPlatform.linux ||
+      TargetPlatform.macOS ||
+      TargetPlatform.windows =>
+        true,
+      _ => false,
+    };
+
 final desktopControlsAvailableProvider = Provider<bool>(
-  (ref) => const bool.fromEnvironment('DESKTOP_CONTROLS_AVAILABLE'),
+  (ref) => desktopControlsAvailableFor(
+    buildEnabled: const bool.fromEnvironment('DESKTOP_CONTROLS_AVAILABLE'),
+    isWeb: kIsWeb,
+    platform: defaultTargetPlatform,
+  ),
 );
 
 final desktopControlsProvider = NotifierProvider<DesktopControlsNotifier, bool>(
