@@ -918,3 +918,12 @@
 - Settings now reports the execution client and `prod data` separately instead of implying that `local` is a separate server.
 - Verification passed: `flutter analyze --no-pub`; the complete 1,500-test Flutter suite; focused environment, App Readiness, and Settings tests; workflow YAML parse; `npm run eac:check`; `npm run superbdd:cucumber` (24 scenarios / 148 steps); and `git diff --check`.
 - No production mutation occurred. Production App Readiness remains blocked until the missing Supabase migrations are explicitly deployed.
+
+## Released 2026-08-31 — production laptop keyboard traversal
+
+- Issue #575 and PR #576 enabled the existing Desktop Traversal path in the production web build and merged as `8c80d65d6054b1a9ffebeb24dd26b1de43a27e36`.
+- Production defaults Desktop Controls on only for Linux, macOS, and Windows web clients. Android/iOS web and every native client remain on their existing input path, preserving mobile GPS behavior.
+- Verification passed: `flutter analyze --no-pub`, the complete Flutter suite, focused Desktop Controls/traversal/location/deployment tests, `npm run eac:check`, an exact production release build, desktop and Android-UA browser QA, and reviewer inspection with no findings.
+- GitHub Actions run `33406865249` and authorized deploy run `33407125132` executed zero steps because the repository Actions budget blocked runner startup. The code-only release therefore used the existing Railway CLI fallback from the exact merged commit; deployment `f30c8f8e-f34f-4bb8-863f-d30edee49a91` reached `SUCCESS`. No Supabase migration was required or applied.
+- At `https://geo-app-production-47b0.up.railway.app`, an authenticated 1440×900 session showed `prod client · prod data`, Desktop Controls enabled, a rendered Map and usable Pack, and no loading/error overlay. A one-second ArrowUp hold persisted 91.6625 m north with no failed request or page error.
+- Live proof used the dedicated production test Player and therefore mutated that Player's canonical position and ordinary gameplay state. No other production data, schema, mobile controls, movement model, or backend contract changed.
