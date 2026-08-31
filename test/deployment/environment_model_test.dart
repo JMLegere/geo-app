@@ -22,6 +22,19 @@ void main() {
     expect(workflow, contains('needs: deploy-supabase'));
     expect(workflow, contains('DEPLOYMENT_ENVIRONMENT=prod'));
     expect(workflow, contains('--environment production'));
+    final dockerfile = File('Dockerfile').readAsStringSync();
+    expect(
+      dockerfile,
+      contains('"--dart-define=DEPLOYMENT_ENVIRONMENT=prod"'),
+    );
+    expect(
+      dockerfile,
+      contains('"--dart-define=DESKTOP_CONTROLS_AVAILABLE=true"'),
+    );
+    expect(
+      dockerfile,
+      contains('"--dart-define=DESKTOP_CONTROLS_DEFAULT=true"'),
+    );
     final supabaseWorkflow =
         File('.github/workflows/deploy-supabase.yml').readAsStringSync();
     expect(
