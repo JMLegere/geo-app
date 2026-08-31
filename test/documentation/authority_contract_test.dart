@@ -110,6 +110,7 @@ _DocumentRole? _roleFor(String path) {
     '.agents/decisions.md',
     '.agents/discovery/2026-05-03-earthnova-map-domain-visual-requirements.md',
     '.agents/questions.md',
+    'docs/c4/README.md',
     'docs/dependencies.md',
     'docs/frontend-usability-design-system.md',
     'docs/ios-safari-maplibre.md',
