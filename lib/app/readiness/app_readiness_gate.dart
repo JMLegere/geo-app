@@ -1,11 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/widgets/tab_shell.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+
+import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 
 import 'app_readiness.dart';
 
@@ -62,8 +63,9 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
   }
 
   Future<void> _signOut() async {
-    final purged =
-        await ref.read(appReadinessProvider.notifier).purge(widget.userId);
+    final purged = await ref
+        .read(appReadinessProvider.notifier)
+        .purge(widget.userId);
     if (purged && mounted) await ref.read(authProvider.notifier).signOut();
   }
 
@@ -74,12 +76,13 @@ class _AppReadinessGateState extends ConsumerState<AppReadinessGate> {
       fit: StackFit.expand,
       children: [
         AbsorbPointer(
+          key: const Key('readiness-input-gate'),
           absorbing: !readiness.permitsInput,
           child: widget.child,
         ),
         if (!readiness.permitsInput)
           ColoredBox(
-            color: AppTheme.surface,
+            color: Theme.of(context).colorScheme.surface,
             child: SafeArea(
               child: Center(
                 child: _ReadinessOverlay(
@@ -122,8 +125,7 @@ class _ReadinessOverlay extends StatelessWidget {
     final failed = readiness.phase == AppReadinessPhase.failed;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360),
-      child: Padding(
-        padding: const EdgeInsets.all(Spacing.xl),
+      child: AppCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,51 +134,56 @@ class _ReadinessOverlay extends StatelessWidget {
               failed ? 'We need a moment' : 'Preparing your expedition',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-            const SizedBox(height: Spacing.sm),
+            const SizedBox(height: 8),
             Text(
               failed
                   ? readiness.errorMessage ??
-                      'Your latest map and Pack could not load.'
+                        'Your latest map and Pack could not load.'
                   : _playerPhase(readiness.phase),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             if (!failed) ...[
-              const SizedBox(height: Spacing.lg),
-              LinearProgressIndicator(
-                value: readiness.completedRequiredCheckpoints /
-                    readiness.totalRequiredCheckpoints,
+              const SizedBox(height: 16),
+              Semantics(
+                key: const Key('readiness-progress'),
+                label: 'Readiness progress',
+                value:
+                    '${readiness.completedRequiredCheckpoints} of ${readiness.totalRequiredCheckpoints} checkpoints complete',
+                liveRegion: true,
+                child: ExcludeSemantics(
+                  child: ShadProgress(
+                    value:
+                        readiness.completedRequiredCheckpoints /
+                        readiness.totalRequiredCheckpoints,
+                  ),
+                ),
               ),
               if (showDetails) ...[
-                const SizedBox(height: Spacing.lg),
+                const SizedBox(height: 16),
                 for (final checkpoint in AppReadinessState.requiredCheckpoints)
                   _Checkpoint(
                     label: _checkpointLabel(checkpoint),
-                    complete:
-                        readiness.completedCheckpoints.contains(checkpoint),
+                    complete: readiness.completedCheckpoints.contains(
+                      checkpoint,
+                    ),
                   ),
               ],
             ],
             if (failed) ...[
-              const SizedBox(height: Spacing.xl),
-              EarthActionButton(
-                label: 'Retry',
-                actionId: null,
-                expand: true,
-                onPressed: onRetry,
-              ),
-              const SizedBox(height: Spacing.sm),
-              EarthActionButton(
+              const SizedBox(height: 24),
+              AppButton(label: 'Retry', expand: true, onPressed: onRetry),
+              const SizedBox(height: 8),
+              AppButton(
                 label: 'Sign out',
-                actionId: null,
+                variant: AppButtonVariant.ghost,
                 expand: true,
-                tone: EarthActionTone.neutral,
                 onPressed: onSignOut,
               ),
             ],
@@ -194,22 +201,38 @@ class _Checkpoint extends StatelessWidget {
   final bool complete;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: Spacing.xs),
-        child: Row(
-          children: [
-            Icon(
-              complete ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 18,
-              color: complete
-                  ? Theme.of(context).colorScheme.primary
-                  : AppTheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: Spacing.sm),
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          ],
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final state = complete ? 'Complete' : 'Pending';
+    return Semantics(
+      label: '$label, $state',
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                complete ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: 18,
+                color: complete
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(state, style: Theme.of(context).textTheme.labelMedium),
+            ],
+          ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _SyncStatus extends StatelessWidget {
@@ -218,37 +241,31 @@ class _SyncStatus extends StatelessWidget {
   final bool degraded;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: AppTheme.surface.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(Radii.xl),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.md,
-            vertical: Spacing.sm,
-          ),
-          child: Text(
-            degraded
-                ? 'Using your latest saved expedition'
-                : 'Syncing expedition',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.onSurface,
-                ),
-          ),
-        ),
-      );
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(16),
+    child: AppNotice(
+      title: degraded
+          ? 'Using your latest saved expedition'
+          : 'Syncing expedition',
+      message: degraded
+          ? 'Your saved Map and Pack are available while we reconnect.'
+          : 'Your latest Map and Pack are updating in the background.',
+      tone: degraded ? AppNoticeTone.warning : AppNoticeTone.info,
+    ),
+  );
 }
 
 String _playerPhase(AppReadinessPhase phase) => switch (phase) {
-      AppReadinessPhase.hydrating => 'Gathering your map and Pack.',
-      AppReadinessPhase.usable => 'Your expedition is ready.',
-      AppReadinessPhase.syncing => 'Syncing your latest expedition.',
-      AppReadinessPhase.degraded => 'Using your latest saved expedition.',
-      AppReadinessPhase.failed => 'Your expedition could not be prepared.',
-    };
+  AppReadinessPhase.hydrating => 'Gathering your map and Pack.',
+  AppReadinessPhase.usable => 'Your expedition is ready.',
+  AppReadinessPhase.syncing => 'Syncing your latest expedition.',
+  AppReadinessPhase.degraded => 'Using your latest saved expedition.',
+  AppReadinessPhase.failed => 'Your expedition could not be prepared.',
+};
 
 String _checkpointLabel(String checkpoint) => switch (checkpoint) {
-      'working_set' => 'Saved expedition',
-      'pack' => 'Pack',
-      'map_surface' => 'Map surface',
-      _ => checkpoint,
-    };
+  'working_set' => 'Saved expedition',
+  'pack' => 'Pack',
+  'map_surface' => 'Map surface',
+  _ => checkpoint,
+};

@@ -6,4 +6,7 @@ Exports: lib/shared/widgets/tab_shell.dart
 Public API: lib/shared/widgets/tab_shell.dart
 
 Purpose:
-  Two-destination app shell for Map and Pack that owns primary navigation chrome and maps selection to product actions and navigation telemetry.
+  Two-destination app shell for exactly Map and Pack. Navigation selections remain product actions with the existing Map and Pack action IDs, selection telemetry, lazy IndexedStack materialization, wake-lock behavior, and edge swipe.
+
+Implementation:
+  Material remains structural infrastructure. Primary navigation is text-first ShadButton.ghost chrome with Semantics.selected and a non-color selected indicator. Settings remains a separate named MaterialPageRoute, not a third destination.

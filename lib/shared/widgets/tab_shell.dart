@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:earth_nova/app/readiness/app_readiness.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -21,24 +22,20 @@ import 'package:earth_nova/shared/product/product_action_surface.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 import 'package:earth_nova/shared/debug/debug_gesture_overlay.dart';
 import 'package:earth_nova/shared/debug/debug_mode_provider.dart';
-import 'package:earth_nova/shared/design.dart';
 
 const int _mapTabIndex = 0;
 const int _packTabIndex = 1;
 const _tabScreenNames = ['map', 'pack'];
 
 PlayerActionId? _playerActionIdForTab(int index) => switch (index) {
-      _mapTabIndex => PlayerActions.openMap,
-      _packTabIndex => PlayerActions.openPack,
-      _ => null,
-    };
+  _mapTabIndex => PlayerActions.openMap,
+  _packTabIndex => PlayerActions.openPack,
+  _ => null,
+};
 
 /// 2-tab bottom navigation for Map and Pack.
 class TabShell extends ConsumerStatefulWidget {
-  const TabShell({
-    super.key,
-    this.screens,
-  });
+  const TabShell({super.key, this.screens});
 
   final List<Widget>? screens;
 
@@ -47,41 +44,23 @@ class TabShell extends ConsumerStatefulWidget {
 }
 
 const double _bottomNavHeight = 76;
-const Duration _navMotionDuration = Duration(milliseconds: 280);
-const Duration _navLabelMotionDuration = Duration(milliseconds: 180);
-
-const Color _carbonGray100 = Color(0xFF161616);
-const Color _carbonGray70 = Color(0xFF525252);
-const Color _carbonGray20 = Color(0xFFE0E0E0);
-const Color _carbonWhite = Color(0xFFFFFFFF);
-const Color _carbonBlue60 = Color(0xFF0F62FE);
-const Color _carbonFocus = Color(0xFFD0E2FF);
 
 const double _mapSwipeEdgeWidth = 24;
 
 class _BottomNavDestination {
-  const _BottomNavDestination({
-    required this.label,
-    required this.actionId,
-  });
+  const _BottomNavDestination({required this.label, required this.actionId});
 
   final String label;
   final PlayerActionId actionId;
 }
 
 const _bottomNavItems = [
-  _BottomNavDestination(
-    label: 'Map',
-    actionId: PlayerActions.openMap,
-  ),
-  _BottomNavDestination(
-    label: 'Pack',
-    actionId: PlayerActions.openPack,
-  ),
+  _BottomNavDestination(label: 'Map', actionId: PlayerActions.openMap),
+  _BottomNavDestination(label: 'Pack', actionId: PlayerActions.openPack),
 ];
 
-class _EarthNovaBottomNav extends StatelessWidget {
-  const _EarthNovaBottomNav({
+class _AppBottomNav extends StatelessWidget {
+  const _AppBottomNav({
     required this.selectedIndex,
     required this.onDestinationSelected,
   });
@@ -91,62 +70,28 @@ class _EarthNovaBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final animationDuration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : _navMotionDuration;
+    final colors = Theme.of(context).colorScheme;
 
     return Material(
       key: const Key('tab-shell-bottom-navigation'),
-      color: _carbonWhite,
+      color: colors.surface,
       elevation: 0,
-      shape: const Border(
-        top: BorderSide(color: _carbonGray20),
-      ),
+      shape: Border(top: BorderSide(color: colors.outlineVariant)),
       child: SafeArea(
         top: false,
         child: SizedBox(
           height: _bottomNavHeight,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final tabWidth = constraints.maxWidth / _bottomNavItems.length;
-              final indicatorWidth = tabWidth / 2;
-              final indicatorLeft = (tabWidth * selectedIndex) +
-                  ((tabWidth - indicatorWidth) / 2);
-
-              return Stack(
-                children: [
-                  Row(
-                    children: [
-                      for (var index = 0;
-                          index < _bottomNavItems.length;
-                          index++)
-                        Expanded(
-                          child: _EarthNovaNavItem(
-                            item: _bottomNavItems[index],
-                            selected: index == selectedIndex,
-                            onTap: () => onDestinationSelected(index),
-                          ),
-                        ),
-                    ],
+          child: Row(
+            children: [
+              for (var index = 0; index < _bottomNavItems.length; index++)
+                Expanded(
+                  child: _AppNavItem(
+                    item: _bottomNavItems[index],
+                    selected: index == selectedIndex,
+                    onTap: () => onDestinationSelected(index),
                   ),
-                  AnimatedPositioned(
-                    key: const Key('tab-shell-nav-indicator-position'),
-                    duration: animationDuration,
-                    curve: Curves.easeOutCubic,
-                    left: indicatorLeft,
-                    bottom: 0,
-                    width: indicatorWidth,
-                    height: 2,
-                    child: const IgnorePointer(
-                      child: ColoredBox(
-                        key: Key('tab-shell-nav-indicator'),
-                        color: _carbonBlue60,
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+                ),
+            ],
           ),
         ),
       ),
@@ -154,8 +99,8 @@ class _EarthNovaBottomNav extends StatelessWidget {
   }
 }
 
-class _EarthNovaNavItem extends StatelessWidget {
-  const _EarthNovaNavItem({
+class _AppNavItem extends StatelessWidget {
+  const _AppNavItem({
     required this.item,
     required this.selected,
     required this.onTap,
@@ -167,43 +112,49 @@ class _EarthNovaNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground = selected ? _carbonGray100 : _carbonGray70;
-    final animationDuration = MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : _navLabelMotionDuration;
+    final colors = Theme.of(context).colorScheme;
+    final label = item.label.toLowerCase();
 
     return ProductActionSurface(
       actionId: item.actionId,
-      child: Semantics(
-        button: true,
-        selected: selected,
-        label: item.label,
-        child: Material(
-          key: Key('tab-shell-nav-surface-${item.label.toLowerCase()}'),
-          color: selected ? _carbonGray20 : _carbonWhite,
-          // eac-clickable-owner-logs: _EarthNovaBottomNav receives an ObservableInteraction-wrapped callback from TabShell with per-tab product action IDs.
-          child: InkWell(
-            key: Key('tab-shell-nav-item-${item.label.toLowerCase()}'),
-            focusColor: _carbonFocus,
-            onTap: onTap,
-            child: AnimatedDefaultTextStyle(
-              key: Key('tab-shell-nav-label-${item.label.toLowerCase()}'),
-              duration: animationDuration,
-              curve: Curves.easeOutCubic,
-              style: TextStyle(
-                color: foreground,
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                height: 1,
-              ),
-              child: Column(
+      child: MergeSemantics(
+        child: Semantics(
+          key: Key('tab-shell-nav-item-$label'),
+          button: true,
+          selected: selected,
+          label: item.label,
+          onTap: onTap,
+          child: ExcludeSemantics(
+            child: ShadButton.ghost(
+              key: Key('tab-shell-nav-button-$label'),
+              height: _bottomNavHeight,
+              expands: true,
+              padding: EdgeInsets.zero,
+              backgroundColor: selected
+                  ? colors.secondaryContainer
+                  : Colors.transparent,
+              hoverBackgroundColor: colors.surfaceContainerHighest,
+              foregroundColor: selected
+                  ? colors.onSecondaryContainer
+                  : colors.onSurface,
+              onPressed: onTap,
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  if (selected)
+                    Icon(
+                      Icons.check,
+                      key: Key('tab-shell-nav-selected-$label'),
+                      size: 16,
+                    ),
+                  if (selected) const SizedBox(width: 6),
                   Text(
                     item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
+                    key: Key('tab-shell-nav-label-$label'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ],
               ),
@@ -235,13 +186,18 @@ class _TabShellState extends ConsumerState<TabShell>
     WidgetsBinding.instance.addObserver(this);
     _packPageController = PageController();
     _screenFactories = widget.screens != null
-        ? widget.screens!.map((screen) => () => screen).toList(growable: false)
+        ? widget.screens!
+              .map(
+                (screen) =>
+                    () => screen,
+              )
+              .toList(growable: false)
         : [
             () => const MapRootScreen(),
             () => PackScreen(
-                  pageController: _packPageController,
-                  onEdgeSwipe: _onPackEdgeSwipe,
-                ),
+              pageController: _packPageController,
+              onEdgeSwipe: _onPackEdgeSwipe,
+            ),
           ];
     _screens = List<Widget>.filled(
       _screenFactories.length,
@@ -313,10 +269,7 @@ class _TabShellState extends ConsumerState<TabShell>
     _onTabSelected(index, interaction: interaction);
   }
 
-  void _onTabSelected(
-    int index, {
-    ObservableInteractionTrace? interaction,
-  }) {
+  void _onTabSelected(int index, {ObservableInteractionTrace? interaction}) {
     if (index == _currentIndex) return;
 
     final previousIndex = _currentIndex;
@@ -326,7 +279,9 @@ class _TabShellState extends ConsumerState<TabShell>
       ref.read(wakeLockProvider.notifier).release();
     }
     _materializeScreen(index);
-    ref.read(navigationScreenTransitionLoggerProvider).logScreenChanged(
+    ref
+        .read(navigationScreenTransitionLoggerProvider)
+        .logScreenChanged(
           source: 'tab_shell',
           fromScreen: _tabScreenNames[previousIndex],
           toScreen: _tabScreenNames[index],
@@ -382,17 +337,21 @@ class _TabShellState extends ConsumerState<TabShell>
       return;
     }
 
-    ref.read(appObservabilityProvider).log(
-      'map.debug_unvisited_move_requested',
-      'map',
-      data: {
-        'source': 'debug_controls',
-        'target_cell_id': target.cellId,
-        'lat': target.coord.lat,
-        'lng': target.coord.lng,
-      },
-    );
-    ref.read(locationProvider.notifier).moveDebugLocationTo(
+    ref
+        .read(appObservabilityProvider)
+        .log(
+          'map.debug_unvisited_move_requested',
+          'map',
+          data: {
+            'source': 'debug_controls',
+            'target_cell_id': target.cellId,
+            'lat': target.coord.lat,
+            'lng': target.coord.lng,
+          },
+        );
+    ref
+        .read(locationProvider.notifier)
+        .moveDebugLocationTo(
           lat: target.coord.lat,
           lng: target.coord.lng,
           targetCellId: target.cellId,
@@ -412,15 +371,13 @@ class _TabShellState extends ConsumerState<TabShell>
     String reason, {
     Map<String, dynamic> data = const {},
   }) {
-    ref.read(appObservabilityProvider).log(
-      'map.debug_unvisited_move_unavailable',
-      'map',
-      data: {
-        'source': 'debug_controls',
-        'reason': reason,
-        ...data,
-      },
-    );
+    ref
+        .read(appObservabilityProvider)
+        .log(
+          'map.debug_unvisited_move_unavailable',
+          'map',
+          data: {'source': 'debug_controls', 'reason': reason, ...data},
+        );
   }
 
   void _onDebugResumeGps() {
@@ -440,8 +397,9 @@ class _TabShellState extends ConsumerState<TabShell>
     }
 
     final debugMode = ref.watch(debugModeProvider);
-    final desktopControlsAvailable =
-        ref.watch(desktopControlsAvailableProvider);
+    final desktopControlsAvailable = ref.watch(
+      desktopControlsAvailableProvider,
+    );
     final flyingReward = ref.watch(
       encounterProvider.select((state) => state.flyingReward),
     );
@@ -470,10 +428,7 @@ class _TabShellState extends ConsumerState<TabShell>
       builder: (_) => Scaffold(
         body: Stack(
           children: [
-            IndexedStack(
-              index: _currentIndex,
-              children: _screens,
-            ),
+            IndexedStack(index: _currentIndex, children: _screens),
             if (_currentIndex == _mapTabIndex)
               Positioned(
                 top: 0,
@@ -505,7 +460,7 @@ class _TabShellState extends ConsumerState<TabShell>
                     shape: const CircleBorder(),
                     child: IconButton(
                       key: const Key('desktop_settings_button'),
-                      icon: const EarthIcon(glyph: EarthGlyph.settings),
+                      icon: const Icon(Icons.settings_outlined),
                       tooltip: 'Settings',
                       onPressed: ObservableInteraction.wrapVoidCallback(
                         logger: logger,
@@ -513,7 +468,7 @@ class _TabShellState extends ConsumerState<TabShell>
                         widgetName: 'desktop_settings_button',
                         actionType: 'open_settings',
                         telemetryOnlyReason:
-                            'Settings navigation is account and input chrome outside the gameplay action catalog.',
+                            'Settings navigation is account and input chrome outside the SuperBDD gameplay action catalog.',
                         callback: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
                             settings: const RouteSettings(name: 'settings'),
@@ -536,7 +491,7 @@ class _TabShellState extends ConsumerState<TabShell>
         bottomNavigationBar: Stack(
           clipBehavior: Clip.none,
           children: [
-            _EarthNovaBottomNav(
+            _AppBottomNav(
               selectedIndex: _currentIndex,
               onDestinationSelected: _onPlayerTabSelected,
             ),
@@ -546,12 +501,11 @@ class _TabShellState extends ConsumerState<TabShell>
                 bottom: 8,
                 child: IconButton(
                   key: const Key('debug_nav_button'),
-                  icon: EarthIcon(
-                    glyph: EarthGlyph.debug,
+                  icon: Icon(
+                    _debugOverlayVisible
+                        ? Icons.bug_report
+                        : Icons.bug_report_outlined,
                     size: 20,
-                    tone: _debugOverlayVisible
-                        ? EarthIconTone.primary
-                        : EarthIconTone.neutral,
                   ),
                   onPressed: ObservableInteraction.wrapVoidCallback(
                     logger: logger,
@@ -561,12 +515,15 @@ class _TabShellState extends ConsumerState<TabShell>
                     telemetryOnlyReason:
                         'Debug overlay toggle is developer-only test chrome.',
                     callback: () => setState(
-                        () => _debugOverlayVisible = !_debugOverlayVisible),
+                      () => _debugOverlayVisible = !_debugOverlayVisible,
+                    ),
                   ),
                   tooltip: 'Debug overlay',
                   padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ),
           ],
