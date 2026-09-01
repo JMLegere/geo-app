@@ -134,17 +134,18 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/features/map/presentation/painters/cell_overlay_painter.dart',
     category: DesignSurfaceCategory.painter,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Voronoi cell overlay and border renderer.',
+    purpose: 'Voronoi cell overlay and semantic Fog border renderer.',
     designSystemNotes:
-        'Painter-owned geometry/visual hierarchy; governed by map design docs rather than reusable widget taxonomy.',
+        'Phase 4 Fog composition: FogRenderer owns the grayscale-safe four-state treatments while this painter preserves organic cell geometry, frontier seams, projections, and semantics.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/painters/player_marker.dart',
     category: DesignSurfaceCategory.painter,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Trusted player marker and accuracy ring painter.',
+    purpose:
+        'Retained centered player marker and trust/eligibility ring painter.',
     designSystemNotes:
-        'Painter-owned marker/ring hierarchy; tokens should remain aligned with AppTheme.',
+        'Phase 4 marker ownership: one marker system remains visible for trusted, low-confidence, and paused states; its additive ring communicates trust and eligibility without a second marker.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/city_screen.dart',
@@ -184,7 +185,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Primary GPS map gameplay screen.',
     designSystemNotes:
-        'Phase 3 neutral ownership: readiness, status, reward, and disclosure chrome uses the public design barrel; MapLibre, projections, geometry, and painters remain unchanged.',
+        'Phase 4 calibrated map composition: renderer semantics change only through the Fog, player-marker, and hierarchy visual owners; MapLibre, projections, geometry, routes, providers, and gestures remain unchanged.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/province_screen.dart',
@@ -233,7 +234,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Territory hierarchy exploration mini-map.',
     designSystemNotes:
-        'Map-specific local composition; governed by map visual hierarchy until a map composite exists.',
+        'Phase 4 neutral hierarchy renderer: grayscale-safe semantic progress hierarchy preserves child summary counts and fixed-tile presentation behavior.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/district_footprint_map.dart',
@@ -241,7 +242,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'District-scope footprint map that draws real map-cell geometry.',
     designSystemNotes:
-        'Map-specific painter composition; keeps district scope visually connected to GPS-level cells while adjacent districts remain faded context.',
+        'Phase 4 neutral hierarchy renderer: semantic present, explored, informed, and shrouded contrast preserves real organic cell topology, adjacent context, visit evidence, and projection geometry.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',

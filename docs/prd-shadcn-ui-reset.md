@@ -675,7 +675,7 @@ No visual component should emit duplicate actions because both wrapper and calle
 - reward/feedback;
 - hierarchy headers and hints.
 
-### Phase 4 — Map semantic renderer calibration
+### Phase 4 — Map semantic renderer calibration **(complete)**
 
 - remove nonsemantic legacy colors;
 - retain one marker and trust state;
@@ -932,4 +932,4 @@ The approved product direction is:
 - Native Flutter/MapLibre infrastructure remains where required.
 - Meaning-bearing semantic visualization remains understandable.
 - Product behavior, domain language, state, data, telemetry, and IA do not change.
-- Phase 3 is complete; Phase 4+ implementation remains paused until the user explicitly authorizes it.
+- Phase 4 is complete; Phase 5+ implementation remains paused until the user explicitly authorizes it, and production deployment is not authorized.

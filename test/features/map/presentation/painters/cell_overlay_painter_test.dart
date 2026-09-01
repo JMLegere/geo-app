@@ -148,59 +148,107 @@ void main() {
       expect(source, contains('canvas.restore'));
     });
 
+    test('uses a monochrome category cue with contrasting boundaries', () {
+      final source = File(
+        'lib/features/map/presentation/painters/cell_overlay_painter.dart',
+      ).readAsStringSync();
+
+      expect(source, isNot(contains('AppTheme')));
+      expect(source, isNot(contains('.emoji')));
+      expect(source, contains('FogRenderer.categoryCueColor'));
+      expect(source, contains('FogRenderer.categoryCueUnderlayColor'));
+      expect(source, contains('FogRenderer.categoryCueOutlineColor'));
+    });
+
     test(
-        'Informed paints exactly one category cue with category-only semantics',
-        () async {
-      final informed = _knowledgeState(
-        CellKnowledgeState.informed,
-        category: 'fauna',
-      );
-      final painter = CellOverlayPainter(
-        cellsWithStates: [
-          (cell: _createTestCell('informed-cell'), state: informed),
-        ],
-        project: _testProjector,
-      );
+      'Informed paints exactly one category cue with category-only semantics',
+      () async {
+        final informed = _knowledgeState(
+          CellKnowledgeState.informed,
+          category: 'fauna',
+        );
+        final painter = CellOverlayPainter(
+          cellsWithStates: [
+            (cell: _createTestCell('informed-cell'), state: informed),
+          ],
+          project: _testProjector,
+        );
 
-      final semanticsBuilder = painter.semanticsBuilder;
-      expect(semanticsBuilder, isNotNull);
-      final semantics = semanticsBuilder(const Size(64, 64));
-      final labels = semantics
-          .map((node) => node.properties.label)
-          .whereType<String>()
-          .toList();
+        final semanticsBuilder = painter.semanticsBuilder;
+        expect(semanticsBuilder, isNotNull);
+        final semantics = semanticsBuilder(const Size(64, 64));
+        final labels = semantics
+            .map((node) => node.properties.label)
+            .whereType<String>()
+            .toList();
 
-      expect(labels, ['Informed: fauna']);
-      expect(
-        labels.join(' '),
-        isNot(matches(
-          RegExp(
-            r'encounter|amberwing|outcome|reward',
-            caseSensitive: false,
+        expect(labels, ['Informed: fauna']);
+        expect(
+          labels.join(' '),
+          isNot(
+            matches(
+              RegExp(
+                r'encounter|amberwing|outcome|reward',
+                caseSensitive: false,
+              ),
+            ),
           ),
-        )),
-      );
-      expect(
-        await _paintBytes(informed),
-        isNot(await _paintBytes(_knowledgeState(CellKnowledgeState.explored))),
-        reason: 'The one category cue is the only visual delta from Explored.',
-      );
-    });
+        );
+        expect(
+          await _paintBytes(informed),
+          isNot(
+            await _paintBytes(_knowledgeState(CellKnowledgeState.explored)),
+          ),
+          reason: 'Informed keeps both its fill and single category cue.',
+        );
+      },
+    );
 
-    test('legacy hasLoot paints no star or other compatibility decoration',
-        () async {
-      final emptyBytes = await _paintBytes(
-        _knowledgeState(CellKnowledgeState.explored),
-      );
-      final legacyLootBytes = await _paintBytes(
-        _knowledgeState(
-          CellKnowledgeState.explored,
-          contents: CellContents.hasLoot,
-        ),
-      );
+    test(
+      'composites Informed between Explored and Shrouded away from cue',
+      () async {
+        const background = ui.Color(0xFFB0B0B0);
+        final explored = await _paintPixel(
+          _knowledgeState(CellKnowledgeState.explored),
+          background,
+        );
+        final informed = await _paintPixel(
+          _knowledgeState(CellKnowledgeState.informed, category: 'fauna'),
+          background,
+        );
+        final shrouded = await _paintPixel(
+          _knowledgeState(CellKnowledgeState.shrouded),
+          background,
+        );
 
-      expect(legacyLootBytes, emptyBytes);
-    });
+        expect(informed, isNot(shrouded));
+        expect(
+          explored.computeLuminance(),
+          greaterThan(informed.computeLuminance()),
+        );
+        expect(
+          informed.computeLuminance(),
+          greaterThan(shrouded.computeLuminance()),
+        );
+      },
+    );
+
+    test(
+      'legacy hasLoot paints no star or other compatibility decoration',
+      () async {
+        final emptyBytes = await _paintBytes(
+          _knowledgeState(CellKnowledgeState.explored),
+        );
+        final legacyLootBytes = await _paintBytes(
+          _knowledgeState(
+            CellKnowledgeState.explored,
+            contents: CellContents.hasLoot,
+          ),
+        );
+
+        expect(legacyLootBytes, emptyBytes);
+      },
+    );
   });
 }
 
@@ -229,18 +277,17 @@ CellState _knowledgeState(
   CellKnowledgeState knowledgeState, {
   String? category,
   CellContents contents = CellContents.empty,
-}) =>
-    CellState(
-      knowledgeState: knowledgeState,
-      category: category,
-      relationship: switch (knowledgeState) {
-        CellKnowledgeState.present => CellRelationship.present,
-        CellKnowledgeState.explored => CellRelationship.explored,
-        CellKnowledgeState.informed => CellRelationship.frontier,
-        CellKnowledgeState.shrouded => CellRelationship.unknown,
-      },
-      contents: contents,
-    );
+}) => CellState(
+  knowledgeState: knowledgeState,
+  category: category,
+  relationship: switch (knowledgeState) {
+    CellKnowledgeState.present => CellRelationship.present,
+    CellKnowledgeState.explored => CellRelationship.explored,
+    CellKnowledgeState.informed => CellRelationship.frontier,
+    CellKnowledgeState.shrouded => CellRelationship.unknown,
+  },
+  contents: contents,
+);
 
 Offset _testProjector(({double lat, double lng}) coord) {
   return Offset(12 + coord.lng * 40000, 12 + coord.lat * 40000);
@@ -257,6 +304,28 @@ Future<List<int>> _paintBytes(CellState state) async {
   try {
     final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
     return data!.buffer.asUint8List();
+  } finally {
+    image.dispose();
+  }
+}
+
+Future<ui.Color> _paintPixel(CellState state, ui.Color background) async {
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder)..drawColor(background, ui.BlendMode.src);
+  CellOverlayPainter(
+    cellsWithStates: [(cell: _createTestCell('pixel-cell'), state: state)],
+    project: _testProjector,
+  ).paint(canvas, const Size(64, 64));
+  final image = await recorder.endRecording().toImage(64, 64);
+  try {
+    final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    const pixelOffset = (20 * 64 + 20) * 4;
+    return ui.Color.fromARGB(
+      data!.getUint8(pixelOffset + 3),
+      data.getUint8(pixelOffset),
+      data.getUint8(pixelOffset + 1),
+      data.getUint8(pixelOffset + 2),
+    );
   } finally {
     image.dispose();
   }

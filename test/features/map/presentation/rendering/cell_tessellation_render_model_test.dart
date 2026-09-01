@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
@@ -5,19 +7,36 @@ import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation
 
 void main() {
   group('CellTessellationRenderModel', () {
-    test('dissolves fills by relationship into one path per reveal state', () {
+    test('groups fills by all four knowledge states', () {
       final model = CellTessellationRenderModel.build(
         cellsWithStates: [
-          (cell: _cell('a', 0, 0, 1, 1), state: _explored),
-          (cell: _cell('b', 1, 0, 2, 1), state: _explored),
-          (cell: _cell('c', 2, 0, 3, 1), state: _frontier),
+          (cell: _cell('present', 0, 0, 1, 1), state: _present),
+          (cell: _cell('informed', 1, 0, 2, 1), state: _informed),
+          (cell: _cell('explored-a', 2, 0, 3, 1), state: _explored),
+          (cell: _cell('explored-b', 3, 0, 4, 1), state: _explored),
+          (cell: _cell('shrouded', 4, 0, 5, 1), state: _unknown),
         ],
         project: _project,
       );
 
       expect(
-        model.fillPaths.map((path) => path.relationship),
-        [CellRelationship.explored, CellRelationship.frontier],
+        model.fillPaths.map((path) => path.knowledgeState),
+        CellKnowledgeState.values,
+      );
+      expect(model.fillPaths.map((path) => path.relationship), [
+        CellRelationship.present,
+        CellRelationship.explored,
+        CellRelationship.explored,
+        CellRelationship.unknown,
+      ]);
+      expect(
+        model.fillPaths
+            .where((path) => path.knowledgeState == CellKnowledgeState.explored)
+            .single
+            .path
+            .getBounds(),
+        Rect.fromLTRB(2, 0, 4, 1),
+        reason: 'Same-state polygons must still dissolve into one fill path.',
       );
     });
 
@@ -100,17 +119,34 @@ void main() {
   });
 }
 
+const _present = CellState(
+  knowledgeState: CellKnowledgeState.present,
+  relationship: CellRelationship.present,
+  contents: CellContents.empty,
+);
+
+const _informed = CellState(
+  knowledgeState: CellKnowledgeState.informed,
+  category: 'fauna',
+  relationship: CellRelationship.explored,
+  contents: CellContents.empty,
+);
+
 const _explored = CellState(
+  knowledgeState: CellKnowledgeState.explored,
   relationship: CellRelationship.explored,
   contents: CellContents.empty,
 );
 
 const _frontier = CellState(
+  knowledgeState: CellKnowledgeState.informed,
+  category: 'fauna',
   relationship: CellRelationship.frontier,
   contents: CellContents.empty,
 );
 
 const _unknown = CellState(
+  knowledgeState: CellKnowledgeState.shrouded,
   relationship: CellRelationship.unknown,
   contents: CellContents.empty,
 );

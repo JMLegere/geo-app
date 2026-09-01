@@ -15,9 +15,8 @@ class FogRenderer {
   static Color fillColor(CellState state) {
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => _presentFillColor(),
-      CellKnowledgeState.informed ||
-      CellKnowledgeState.explored =>
-        _exploredFillColor(),
+      CellKnowledgeState.informed => _informedFillColor(),
+      CellKnowledgeState.explored => _exploredFillColor(),
       CellKnowledgeState.shrouded => _unknownFillColor(),
     };
   }
@@ -26,8 +25,7 @@ class FogRenderer {
     return switch (state.knowledgeState) {
       CellKnowledgeState.present => _presentStrokeColor(),
       CellKnowledgeState.informed ||
-      CellKnowledgeState.explored =>
-        _exploredStrokeColor(),
+      CellKnowledgeState.explored => _exploredStrokeColor(),
       CellKnowledgeState.shrouded => _unknownStrokeColor(),
     };
   }
@@ -70,26 +68,34 @@ class FogRenderer {
   }
 
   static Color _presentFillColor() {
-    return const Color(0x00000000);
+    return const Color(0x001B1B1B);
+  }
+
+  static Color _informedFillColor() {
+    return const Color(0x701B1B1B);
   }
 
   static Color _exploredFillColor() {
-    return const Color(0x2ED8C49A);
+    return const Color(0x381B1B1B);
   }
 
   static Color _unknownFillColor() {
-    return const Color(0xFF000000);
+    return const Color(0xFF1B1B1B);
   }
 
+  static const Color categoryCueColor = Color(0xFFE8E8E8);
+  static const Color categoryCueUnderlayColor = Color(0xFF1B1B1B);
+  static const Color categoryCueOutlineColor = Color(0xFFE8E8E8);
+
   static Color _presentStrokeColor() {
-    return const Color(0xE6FFFFFF);
+    return const Color(0xE6E8E8E8);
   }
 
   static Color _exploredStrokeColor() {
-    return const Color(0xCC4A4A4A);
+    return const Color(0xB85C5C5C);
   }
 
   static Color _unknownStrokeColor() {
-    return const Color(0x00000000);
+    return const Color(0x005C5C5C);
   }
 }

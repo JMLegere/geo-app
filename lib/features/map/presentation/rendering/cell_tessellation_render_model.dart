@@ -8,10 +8,12 @@ typedef GeoProjector = Offset Function(GeoCoord coord);
 
 class TessellationFillPath {
   const TessellationFillPath({
+    required this.knowledgeState,
     required this.relationship,
     required this.path,
   });
 
+  final CellKnowledgeState knowledgeState;
   final CellRelationship relationship;
   final Path path;
 }
@@ -44,17 +46,17 @@ class CellTessellationRenderModel {
     required GeoProjector project,
     double edgeSnapTolerancePx = 0.5,
   }) {
-    final fillPaths = <CellRelationship, Path>{};
+    final fillPaths = <(CellKnowledgeState, CellRelationship), Path>{};
     final edges = <_EdgeKey, _EdgeAccumulator>{};
 
     for (final entry in cellsWithStates) {
       final cell = entry.cell;
       if (!cell.hasRenderableGeometry) continue;
 
-      final fillPath = fillPaths.putIfAbsent(
+      final fillPath = fillPaths.putIfAbsent((
+        entry.state.knowledgeState,
         entry.state.relationship,
-        () => Path()..fillType = PathFillType.evenOdd,
-      );
+      ), () => Path()..fillType = PathFillType.evenOdd);
 
       for (final polygon in cell.polygons) {
         for (final ring in polygon) {
@@ -76,12 +78,14 @@ class CellTessellationRenderModel {
 
     return CellTessellationRenderModel(
       fillPaths: [
-        for (final relationship in CellRelationship.values)
-          if (fillPaths[relationship] != null)
-            TessellationFillPath(
-              relationship: relationship,
-              path: fillPaths[relationship]!,
-            ),
+        for (final knowledgeState in CellKnowledgeState.values)
+          for (final relationship in CellRelationship.values)
+            if (fillPaths[(knowledgeState, relationship)] != null)
+              TessellationFillPath(
+                knowledgeState: knowledgeState,
+                relationship: relationship,
+                path: fillPaths[(knowledgeState, relationship)]!,
+              ),
       ],
       boundaryEdges: _visibleBoundaryEdges(edges.values),
     );
@@ -119,12 +123,7 @@ class CellTessellationRenderModel {
       final key = _EdgeKey.fromOffsets(start, end, snapTolerancePx);
       final accumulator = edges.putIfAbsent(key, _EdgeAccumulator.new);
       accumulator.sides.add(
-        _EdgeSide(
-          start: start,
-          end: end,
-          cell: cell,
-          state: state,
-        ),
+        _EdgeSide(start: start, end: end, cell: cell, state: state),
       );
     }
   }
@@ -154,13 +153,17 @@ class CellTessellationRenderModel {
     final visibleSides = sides.where(_isVisibleBoundarySide).toList();
     if (visibleSides.isEmpty) return null;
 
-    visibleSides.sort((a, b) => _relationshipPriority(b.state.relationship)
-        .compareTo(_relationshipPriority(a.state.relationship)));
+    visibleSides.sort(
+      (a, b) => _relationshipPriority(
+        b.state.relationship,
+      ).compareTo(_relationshipPriority(a.state.relationship)),
+    );
     final strongest = visibleSides.first;
 
     if (sides.length > 1 &&
-        sides.every((side) =>
-            side.state.relationship == strongest.state.relationship) &&
+        sides.every(
+          (side) => side.state.relationship == strongest.state.relationship,
+        ) &&
         strongest.state.relationship != CellRelationship.explored) {
       return null;
     }
@@ -172,8 +175,7 @@ class CellTessellationRenderModel {
     return switch (side.state.relationship) {
       CellRelationship.present ||
       CellRelationship.explored ||
-      CellRelationship.frontier =>
-        true,
+      CellRelationship.frontier => true,
       CellRelationship.unknown => false,
     };
   }

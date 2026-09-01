@@ -8,8 +8,6 @@ import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/rendering/cell_tessellation_render_model.dart';
-import 'package:earth_nova/shared/extensions/iconography.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 /// CustomPainter that renders cell polygons with fog-of-war styling.
 ///
@@ -24,9 +22,9 @@ class CellOverlayPainter extends CustomPainter {
     this.project,
     this.projectionRevision = 0,
   }) : assert(
-          project != null || cameraPosition != null,
-          'Provide either exact project or cameraPosition fallback.',
-        );
+         project != null || cameraPosition != null,
+         'Provide either exact project or cameraPosition fallback.',
+       );
 
   final List<({Cell cell, CellState state})> cellsWithStates;
   final GeoCoord? cameraPosition;
@@ -37,6 +35,9 @@ class CellOverlayPainter extends CustomPainter {
 
   static const double _tileSize = 512.0;
 
+  static const double _categoryCueRadius = 12;
+  static const double _categoryCueOutlineWidth = 1.5;
+  static const double _categoryCueIconSize = 16;
   static Offset projectGeoCoord({
     required GeoCoord coord,
     required GeoCoord cameraPosition,
@@ -53,8 +54,8 @@ class CellOverlayPainter extends CustomPainter {
     final cameraLatRad = cameraPosition.lat * pi / 180.0;
     final cameraY =
         (1.0 - log(tan(cameraLatRad) + (1.0 / cos(cameraLatRad))) / pi) /
-            2.0 *
-            scale;
+        2.0 *
+        scale;
 
     return Offset(
       x - cameraX + cameraPixelOffset.dx,
@@ -96,6 +97,10 @@ class CellOverlayPainter extends CustomPainter {
 
     for (final fill in renderModel.fillPaths) {
       final fillState = CellState(
+        knowledgeState: fill.knowledgeState,
+        category: fill.knowledgeState == CellKnowledgeState.informed
+            ? 'renderer'
+            : null,
         relationship: fill.relationship,
         contents: CellContents.empty,
       );
@@ -127,10 +132,7 @@ class CellOverlayPainter extends CustomPainter {
             ..color = strokeColor
             ..style = PaintingStyle.stroke
             ..strokeWidth = glowStrokeWidth
-            ..maskFilter = MaskFilter.blur(
-              BlurStyle.normal,
-              glowBlurSigma,
-            ),
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowBlurSigma),
         );
       }
 
@@ -151,12 +153,27 @@ class CellOverlayPainter extends CustomPainter {
       final geometry = _screenGeometry(entry.cell);
       if (cue == null || geometry == null) continue;
 
+      canvas.drawCircle(
+        geometry.center,
+        _categoryCueRadius,
+        Paint()..color = FogRenderer.categoryCueUnderlayColor,
+      );
+      canvas.drawCircle(
+        geometry.center,
+        _categoryCueRadius,
+        Paint()
+          ..color = FogRenderer.categoryCueOutlineColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _categoryCueOutlineWidth,
+      );
       final cuePainter = TextPainter(
         text: TextSpan(
-          text: cue,
-          style: const TextStyle(
-            color: AppTheme.onSurface,
-            fontSize: 18,
+          text: String.fromCharCode(cue.codePoint),
+          style: TextStyle(
+            color: FogRenderer.categoryCueColor,
+            fontFamily: cue.fontFamily,
+            fontSize: _categoryCueIconSize,
+            package: cue.fontPackage,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -183,8 +200,7 @@ class CellOverlayPainter extends CustomPainter {
     final relationship = switch (state.knowledgeState) {
       CellKnowledgeState.present => CellRelationship.present,
       CellKnowledgeState.informed ||
-      CellKnowledgeState.explored =>
-        CellRelationship.explored,
+      CellKnowledgeState.explored => CellRelationship.explored,
       CellKnowledgeState.shrouded => CellRelationship.unknown,
     };
     return CellState(
@@ -225,10 +241,19 @@ class CellOverlayPainter extends CustomPainter {
     );
   }
 
-  String? _categoryCue(String? value) {
+  IconData? _categoryCue(String? value) {
     if (value == null) return null;
     for (final category in ItemCategory.values) {
-      if (category.name == value) return category.emoji;
+      if (category.name != value) continue;
+      return switch (category) {
+        ItemCategory.fauna => Icons.pets,
+        ItemCategory.flora => Icons.local_florist,
+        ItemCategory.mineral => Icons.diamond,
+        ItemCategory.fossil => Icons.history,
+        ItemCategory.artifact => Icons.account_balance,
+        ItemCategory.food => Icons.restaurant,
+        ItemCategory.orb => Icons.circle,
+      };
     }
     return null;
   }
@@ -244,19 +269,19 @@ class CellOverlayPainter extends CustomPainter {
 
   @override
   SemanticsBuilderCallback get semanticsBuilder => (_) {
-        return [
-          for (final entry in cellsWithStates)
-            if (entry.cell.hasRenderableGeometry)
-              if (_screenGeometry(entry.cell) case final geometry?)
-                CustomPainterSemantics(
-                  rect: geometry.bounds,
-                  properties: SemanticsProperties(
-                    label: _semanticLabel(entry.state),
-                    textDirection: TextDirection.ltr,
-                  ),
-                ),
-        ];
-      };
+    return [
+      for (final entry in cellsWithStates)
+        if (entry.cell.hasRenderableGeometry)
+          if (_screenGeometry(entry.cell) case final geometry?)
+            CustomPainterSemantics(
+              rect: geometry.bounds,
+              properties: SemanticsProperties(
+                label: _semanticLabel(entry.state),
+                textDirection: TextDirection.ltr,
+              ),
+            ),
+    ];
+  };
 
   @override
   bool shouldRebuildSemantics(covariant CellOverlayPainter oldDelegate) {

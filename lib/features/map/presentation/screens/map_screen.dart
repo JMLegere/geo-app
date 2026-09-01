@@ -922,6 +922,14 @@ class _MapScreenState extends ConsumerState<MapScreen>
             : null,
       _ => null,
     };
+    final markerTrust = switch (locationState) {
+      LocationProviderPaused() => PlayerMarkerTrust.paused,
+      LocationProviderActive(location: final location) =>
+        location.isConfident
+            ? PlayerMarkerTrust.trusted
+            : PlayerMarkerTrust.lowConfidence,
+      _ => PlayerMarkerTrust.trusted,
+    };
 
     return ObservableScreen(
       screenName: 'map_screen',
@@ -951,6 +959,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
           cameraFollowState: cameraFollowState,
           readiness: readiness,
           playerMarkerState: playerMarkerState,
+          markerTrust: markerTrust,
           explorationEligibility: explorationEligibility,
           explorationState: explorationState,
           town: townState.town,
@@ -966,6 +975,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     required MapState mapState,
     required MapReadinessState readiness,
     required PlayerMarkerState playerMarkerState,
+    required PlayerMarkerTrust markerTrust,
     required CameraFollowState cameraFollowState,
     required ExplorationEligibility explorationEligibility,
     required ExplorationStateData explorationState,
@@ -1073,6 +1083,10 @@ class _MapScreenState extends ConsumerState<MapScreen>
                     projectGeoCoord(markerGeoCoord)
               : projectGeoCoord(markerGeoCoord);
           final venueAnchors = _knownVenueAnchors(town, cellsWithStates);
+          final markerShowsRing = playerMarkerShowsRing(
+            playerMarkerState,
+            markerTrust,
+          );
           final renderDiagnostics = {
             ...const MapRenderDiagnosticsService().summarize(
               cellsWithStates: cellsWithStates,
@@ -1082,6 +1096,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
               currentCellId: explorationState.currentCellId,
               visitedCellCount: footprint.uniqueCount,
               markerIsRing: playerMarkerState.isRing,
+              markerShowsRing: markerShowsRing,
               markerGapDistanceMeters: playerMarkerState.gapDistance,
             ),
             'projection_mode': projectionMode,
@@ -1240,7 +1255,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 Positioned(
                   left: markerScreenPosition.dx - 24,
                   top: markerScreenPosition.dy - 24,
-                  child: const IgnorePointer(child: PlayerMarker()),
+                  child: IgnorePointer(child: PlayerMarker(trust: markerTrust)),
                 ),
 
               for (final venueAnchor in venueAnchors)
@@ -1731,6 +1746,7 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final fill = FogRenderer.fillColor(state);
     final stroke = FogRenderer.strokeColor(state);
+    final colorScheme = Theme.of(context).colorScheme;
     final semanticLabel = switch (state.knowledgeState) {
       CellKnowledgeState.informed => 'Informed Cell, category known',
       CellKnowledgeState.present => 'Present Cell, player here',
@@ -1745,44 +1761,60 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
+            key: ValueKey(
+              'cell-knowledge-${state.knowledgeState.name}-map-substrate',
+            ),
             width: Spacing.xxl,
             height: Spacing.xxl,
+            padding: const EdgeInsets.all(Spacing.xxs),
             decoration: BoxDecoration(
-              color: fill,
-              border: stroke.a > 0 ? Border.all(color: stroke) : null,
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(Radii.xs),
             ),
-            child: switch (state.knowledgeState) {
-              CellKnowledgeState.informed => const Icon(
-                key: ValueKey('cell-knowledge-informed-category-cue'),
-                Icons.category,
-                size: Spacing.xl,
+            child: DecoratedBox(
+              key: ValueKey(
+                'cell-knowledge-${state.knowledgeState.name}-swatch',
               ),
-              CellKnowledgeState.present => Center(
-                child: Container(
-                  key: const ValueKey('cell-knowledge-present-player-marker'),
-                  width: Spacing.lg,
-                  height: Spacing.lg,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: Spacing.xxs),
-                  ),
+              decoration: BoxDecoration(
+                color: fill,
+                border: stroke.a > 0 ? Border.all(color: stroke) : null,
+                borderRadius: BorderRadius.circular(Radii.xs),
+              ),
+              child: switch (state.knowledgeState) {
+                CellKnowledgeState.informed => const Icon(
+                  key: ValueKey('cell-knowledge-informed-category-cue'),
+                  Icons.category,
+                  size: Spacing.xl,
+                ),
+                CellKnowledgeState.present => Center(
                   child: Container(
-                    key: const ValueKey('cell-knowledge-present-player-dot'),
-                    width: Spacing.xs,
-                    height: Spacing.xs,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    key: const ValueKey('cell-knowledge-present-player-marker'),
+                    width: Spacing.lg,
+                    height: Spacing.lg,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: colorScheme.onSurface,
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colorScheme.surface,
+                        width: Spacing.xxs,
+                      ),
+                    ),
+                    child: Container(
+                      key: const ValueKey('cell-knowledge-present-player-dot'),
+                      width: Spacing.xs,
+                      height: Spacing.xs,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              CellKnowledgeState.explored ||
-              CellKnowledgeState.shrouded => null,
-            },
+                CellKnowledgeState.explored ||
+                CellKnowledgeState.shrouded => null,
+              },
+            ),
           ),
           const SizedBox(width: Spacing.xs),
           Text(
