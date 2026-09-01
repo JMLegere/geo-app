@@ -9,19 +9,26 @@ import 'package:earth_nova/features/map/presentation/widgets/hierarchy_explorati
 import 'package:earth_nova/features/map/presentation/widgets/hierarchy_header.dart';
 import 'package:earth_nova/features/map/presentation/widgets/pinch_hint.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
 
 class CityScreen extends ConsumerWidget {
-  const CityScreen({super.key, this.scopeId});
+  const CityScreen({
+    super.key,
+    this.scopeId,
+    this.onLowerLevelTap,
+    this.onUpperLevelTap,
+  });
 
   final String? scopeId;
+  final VoidCallback? onLowerLevelTap;
+  final VoidCallback? onUpperLevelTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final obs = ref.watch(appObservabilityProvider);
     final authState = ref.watch(authProvider);
-    final userId =
-        authState.status == AuthStatus.authenticated ? authState.user!.id : '';
+    final userId = authState.status == AuthStatus.authenticated
+        ? authState.user!.id
+        : '';
     final hierarchyState = ref.watch(
       hierarchyScopeProvider((
         level: MapLevel.city,
@@ -33,8 +40,8 @@ class CityScreen extends ConsumerWidget {
     return ObservableScreen(
       screenName: 'city_screen',
       observability: obs,
-      builder: (_) => ColoredBox(
-        color: AppTheme.surface,
+      builder: (context) => ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
         child: Column(
           children: [
             _buildHeader(hierarchyState),
@@ -48,52 +55,54 @@ class CityScreen extends ConsumerWidget {
 
   Widget _buildHeader(HierarchyState state) {
     return switch (state) {
-      HierarchyStateLoading() => const _LoadingHeader(scopeLevel: 'CITY'),
+      HierarchyStateLoading() => const _LoadingHeader(scopeLevel: 'City'),
       HierarchyStateData(:final scope, :final children) => HierarchyHeader(
-          scopeLevel: 'CITY',
-          scopeName: scope.name,
-          scopeCode: _initials(scope.name),
-          cellsVisited: scope.cellsVisited,
-          cellsTotal: scope.cellsTotal,
-          progressPercent: scope.progressPercent,
-          rank: scope.rank,
-          explorerCount: children.length,
-        ),
-      HierarchyStateError() => const _LoadingHeader(scopeLevel: 'CITY'),
+        scopeLevel: 'City',
+        scopeName: scope.name,
+        scopeCode: _initials(scope.name),
+        cellsVisited: scope.cellsVisited,
+        cellsTotal: scope.cellsTotal,
+        progressPercent: scope.progressPercent,
+        rank: scope.rank,
+        explorerCount: children.length,
+      ),
+      HierarchyStateError() => const _LoadingHeader(scopeLevel: 'City'),
     };
   }
 
   Widget _buildMap(HierarchyState state) {
     return switch (state) {
       HierarchyStateData(:final children) => HierarchyExplorationMap(
-          children: children
-              .map(
-                (c) => ChildAreaData(
-                  id: c.id,
-                  name: c.name,
-                  cellsVisited: c.cellsVisited,
-                  cellsTotal: c.cellsTotal,
-                  progressPercent: c.progressPercent,
-                ),
-              )
-              .toList(),
-          playerLat: null,
-          playerLng: null,
-        ),
+        children: children
+            .map(
+              (c) => ChildAreaData(
+                id: c.id,
+                name: c.name,
+                cellsVisited: c.cellsVisited,
+                cellsTotal: c.cellsTotal,
+                progressPercent: c.progressPercent,
+              ),
+            )
+            .toList(),
+        playerLat: null,
+        playerLng: null,
+      ),
       _ => const HierarchyExplorationMap(
-          children: [],
-          playerLat: null,
-          playerLng: null,
-        ),
+        children: [],
+        playerLat: null,
+        playerLng: null,
+      ),
     };
   }
 
   Widget _buildPinchHint() {
-    return const Padding(
-      padding: EdgeInsets.only(bottom: 14),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
       child: PinchHint(
         lowerLevelLabel: 'District',
-        upperLevelLabel: 'Province',
+        upperLevelLabel: 'State',
+        onLowerLevelTap: onLowerLevelTap,
+        onUpperLevelTap: onUpperLevelTap,
       ),
     );
   }

@@ -37,6 +37,7 @@ class _ShimmerCellsState extends State<ShimmerCells>
 
   @override
   Widget build(BuildContext context) {
+    final shimmerColor = Theme.of(context).colorScheme.onSurface;
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -46,6 +47,7 @@ class _ShimmerCellsState extends State<ShimmerCells>
             cameraPosition: widget.cameraPosition,
             zoom: widget.zoom,
             progress: _animation.value,
+            color: shimmerColor,
           ),
         );
       },
@@ -58,11 +60,13 @@ class _ShimmerCellsPainter extends CustomPainter {
     required this.cameraPosition,
     required this.zoom,
     required this.progress,
+    required this.color,
   });
 
   final ({double lat, double lng}) cameraPosition;
   final double zoom;
   final double progress;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -96,7 +100,7 @@ class _ShimmerCellsPainter extends CustomPainter {
           canvas.drawRRect(
             rect,
             Paint()
-              ..color = Colors.white.withValues(alpha: shimmerAlpha * 0.15)
+              ..color = color.withValues(alpha: shimmerAlpha * 0.15)
               ..style = PaintingStyle.fill,
           );
         }

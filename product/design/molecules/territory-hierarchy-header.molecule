@@ -6,4 +6,4 @@ Exports: lib/features/map/presentation/widgets/hierarchy_header.dart
 Public API: lib/features/map/presentation/widgets/hierarchy_header.dart
 
 Purpose:
-  Territory hierarchy header that exposes parent-scale navigation while keeping hierarchy browsing tied to product action evidence.
+  Phase 3 neutral territory hierarchy header that exposes parent-scale navigation while keeping hierarchy browsing tied to product action evidence. Player-facing hierarchy copy uses State, never Province.

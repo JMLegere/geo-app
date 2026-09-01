@@ -65,9 +65,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
         'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Feature-local pending Encounter resolution Map overlay.',
+    purpose: 'Pending Encounter resolution layer above the Map.',
     designSystemNotes:
-        'Uses public EarthNova design components for a semantic resolve/retry action while preserving Map gestures outside the card.',
+        'Phase 3 neutral ownership: AppCard, AppFieldRow, AppNotice, and AppButton preserve resolve/retry evidence while map gestures remain outside the card.',
   ),
   DesignSurfaceDefinition(
     path:
@@ -182,9 +182,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/features/map/presentation/screens/map_screen.dart',
     category: DesignSurfaceCategory.featureScreen,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Primary map gameplay screen.',
+    purpose: 'Primary GPS map gameplay screen.',
     designSystemNotes:
-        'Documented local composition; map hierarchy is governed by docs/map-design.md until map-specific design primitives exist.',
+        'Phase 3 neutral ownership: readiness, status, reward, and disclosure chrome uses the public design barrel; MapLibre, projections, geometry, and painters remain unchanged.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/screens/province_screen.dart',
@@ -206,9 +206,9 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Map-cell field-note/detail sheet.',
+    purpose: 'Read-only map Cell detail sheet.',
     designSystemNotes:
-        'Known field-note pattern; migrate toward EarthPanel/EarthFieldRow composites when touched.',
+        'Phase 3 neutral ownership: AppCard, AppBadge, AppFieldRow, and AppButton preserve Cell disclosure and known Venue action evidence.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/desktop_traversal_input.dart',
@@ -224,7 +224,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map discovery acknowledgement notification.',
     designSystemNotes:
-        'Documented notification styling; should become a registered notice/toast pattern before reuse.',
+        'Phase 3 neutral ownership: public design notice chrome preserves the acknowledgement lifecycle and action telemetry.',
   ),
   DesignSurfaceDefinition(
     path:
@@ -247,17 +247,17 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     path: 'lib/features/map/presentation/widgets/hierarchy_header.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Territory hierarchy header.',
+    purpose: 'Territory hierarchy header and parent-scale navigation.',
     designSystemNotes:
-        'Documented local composition; candidate for a territory header composite.',
+        'Phase 3 neutral ownership: public design header chrome preserves hierarchy navigation evidence and uses State in player-facing copy.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/map_status_bar.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Map stats/status bar.',
+    purpose: 'Map stats and status bar.',
     designSystemNotes:
-        'Documented local composition; candidate for EarthStatGrid/EarthTag composition.',
+        'Phase 3 neutral ownership: public design stats and status chrome preserves readiness and discovery state semantics.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/pinch_hint.dart',
@@ -265,15 +265,15 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Map gesture hint overlay.',
     designSystemNotes:
-        'Documented local composition; should use canonical notice/hint component when available.',
+        'Phase 3 neutral ownership: public design hint chrome preserves the existing gesture guidance without changing gesture handling.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/map/presentation/widgets/shimmer_cells.dart',
     category: DesignSurfaceCategory.featureWidget,
     status: DesignSurfaceStatus.canonicalComposition,
-    purpose: 'Map-cell loading shimmer.',
+    purpose: 'Map Cell loading shimmer.',
     designSystemNotes:
-        'Documented loading treatment; candidate for a registered loading primitive/pattern.',
+        'Phase 3 neutral ownership: public design loading chrome preserves the existing Cell loading behavior and painter geometry.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/profile/presentation/screens/settings_screen.dart',

@@ -4,8 +4,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' as maplibre;
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
@@ -110,17 +112,21 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _mapBootstrapSpan = ref.read(appObservabilityProvider).startSpan(
-      'map.bootstrap',
-      attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
-    );
-    ref.read(appObservabilityProvider).logFlowEvent(
-      'map.bootstrap',
-      TelemetryFlowPhase.started,
-      'map',
-      span: _mapBootstrapSpan,
-      data: {'screen': 'map_screen'},
-    );
+    _mapBootstrapSpan = ref
+        .read(appObservabilityProvider)
+        .startSpan(
+          'map.bootstrap',
+          attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
+        );
+    ref
+        .read(appObservabilityProvider)
+        .logFlowEvent(
+          'map.bootstrap',
+          TelemetryFlowPhase.started,
+          'map',
+          span: _mapBootstrapSpan,
+          data: {'screen': 'map_screen'},
+        );
     _mapReadinessSubscription = ref.listenManual<MapReadinessState>(
       mapReadinessProvider,
       (previous, next) {
@@ -141,20 +147,22 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _locationReadinessSubscription = ref.listenManual<LocationProviderState>(
       locationProvider,
       (_, next) {
-        ref.read(mapReadinessProvider.notifier).reportLocationReady(
+        ref
+            .read(mapReadinessProvider.notifier)
+            .reportLocationReady(
               next is LocationProviderActive || next is LocationProviderPaused,
             );
       },
     );
-    _mapReadinessStateSubscription = ref.listenManual<MapState>(
-      mapProvider,
-      (_, next) {
-        ref
-            .read(mapReadinessProvider.notifier)
-            .reportCellsFetched(_renderableMapState(next) != null);
-        if (next is MapStateLoading) _resetOverlayReadinessForRefetch();
-      },
-    );
+    _mapReadinessStateSubscription = ref.listenManual<MapState>(mapProvider, (
+      _,
+      next,
+    ) {
+      ref
+          .read(mapReadinessProvider.notifier)
+          .reportCellsFetched(_renderableMapState(next) != null);
+      if (next is MapStateLoading) _resetOverlayReadinessForRefetch();
+    });
     _baseMapSettledSignal = BaseMapSettledSignal(
       onSettled: (source) {
         if (!mounted) return;
@@ -195,7 +203,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _baseMapStyleLoadedSignal?.dispose();
     final span = _mapBootstrapSpan;
     if (span != null && !_steadyStateLogged) {
-      ref.read(appObservabilityProvider).logFlowEvent(
+      ref
+          .read(appObservabilityProvider)
+          .logFlowEvent(
             'map.bootstrap',
             TelemetryFlowPhase.cancelled,
             'map',
@@ -222,10 +232,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
   TelemetrySpan _ensureMapBootstrapSpan() {
     final existing = _mapBootstrapSpan;
     if (existing != null) return existing;
-    final span = ref.read(appObservabilityProvider).startSpan(
-      'map.bootstrap',
-      attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
-    );
+    final span = ref
+        .read(appObservabilityProvider)
+        .startSpan(
+          'map.bootstrap',
+          attributes: {'flow': 'map.bootstrap', 'screen': 'map_screen'},
+        );
     _mapBootstrapSpan = span;
     return span;
   }
@@ -242,16 +254,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
       TelemetrySpanStatus.error => TelemetryFlowPhase.failed,
       TelemetrySpanStatus.unset => TelemetryFlowPhase.cancelled,
     };
-    ref.read(appObservabilityProvider).endSpan(
-      span,
-      statusCode: statusCode,
-      statusMessage: statusMessage,
-      attributes: {
-        ...?attributes,
-        'flow': 'map.bootstrap',
-        'phase': terminalPhase.wireName,
-      },
-    );
+    ref
+        .read(appObservabilityProvider)
+        .endSpan(
+          span,
+          statusCode: statusCode,
+          statusMessage: statusMessage,
+          attributes: {
+            ...?attributes,
+            'flow': 'map.bootstrap',
+            'phase': terminalPhase.wireName,
+          },
+        );
     _mapBootstrapSpan = null;
   }
 
@@ -261,16 +275,18 @@ class _MapScreenState extends ConsumerState<MapScreen>
     Map<String, dynamic>? data,
   }) {
     final span = _ensureMapBootstrapSpan();
-    ref.read(appObservabilityProvider).log(
-      event,
-      category,
-      data: {
-        ...?data,
-        'flow': data?['flow'] ?? 'map.bootstrap',
-        'trace_id': span.traceId,
-        'span_id': span.spanId,
-      },
-    );
+    ref
+        .read(appObservabilityProvider)
+        .log(
+          event,
+          category,
+          data: {
+            ...?data,
+            'flow': data?['flow'] ?? 'map.bootstrap',
+            'trace_id': span.traceId,
+            'span_id': span.spanId,
+          },
+        );
   }
 
   void _logMapFlowEvent(
@@ -281,7 +297,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     Map<String, dynamic>? data,
   }) {
     final span = _ensureMapBootstrapSpan();
-    ref.read(appObservabilityProvider).logFlowEvent(
+    ref
+        .read(appObservabilityProvider)
+        .logFlowEvent(
           'map.bootstrap',
           phase,
           'map',
@@ -333,7 +351,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   void _syncWebMapLayoutSize(Size mapSize) {
     if (!kIsWeb || mapSize.isEmpty) return;
     final previous = _lastWebMapLayoutSize;
-    final sizeChanged = previous == null ||
+    final sizeChanged =
+        previous == null ||
         (previous.width - mapSize.width).abs() >= 0.5 ||
         (previous.height - mapSize.height).abs() >= 0.5;
     if (!sizeChanged) return;
@@ -444,18 +463,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
       if (!mounted) return;
       _logMapEvent(
         'map.base_map_labels_hidden_failed',
-        data: {
-          'source': source,
-          'reason': error.toString(),
-        },
+        data: {'source': source, 'reason': error.toString()},
       );
     }
   }
 
   void _markBaseMapSettled({required String source}) {
-    ref.read(mapReadinessProvider.notifier).reportBaseMapSettled(
-          source: source,
-        );
+    ref
+        .read(mapReadinessProvider.notifier)
+        .reportBaseMapSettled(source: source);
   }
 
   void _resetOverlayReadinessForRefetch() {
@@ -478,7 +494,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
     MapReadinessState readiness, {
     required Map<String, dynamic> renderDiagnostics,
   }) {
-    final canPaintSteadyOverlay = readiness.locationReady &&
+    final canPaintSteadyOverlay =
+        readiness.locationReady &&
         readiness.mapCreated &&
         readiness.styleLoaded &&
         readiness.baseMapSettled &&
@@ -509,8 +526,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _logMapFlowEvent(
       TelemetryFlowPhase.waitingOn,
       eventName: 'map.readiness_waiting',
-      dependency:
-          readiness.waitingFor.isEmpty ? null : readiness.waitingFor.first,
+      dependency: readiness.waitingFor.isEmpty
+          ? null
+          : readiness.waitingFor.first,
       data: readiness.toLogData(),
     );
   }
@@ -535,10 +553,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     ].join(':');
     if (_lastGeometryDiagnosticsKey == key) return;
     _lastGeometryDiagnosticsKey = key;
-    _logMapEvent(
-      'map.geometry_rendered',
-      data: renderDiagnostics,
-    );
+    _logMapEvent('map.geometry_rendered', data: renderDiagnostics);
   }
 
   void _logSteadyStateReady() {
@@ -561,27 +576,27 @@ class _MapScreenState extends ConsumerState<MapScreen>
   ) {
     return switch (locationState) {
       LocationProviderLoading() => const {
-          'location_state': 'loading',
-          'location_error_message': null,
-        },
+        'location_state': 'loading',
+        'location_error_message': null,
+      },
       LocationProviderActive(location: final location) => {
-          'location_state': 'active',
-          'location_error_message': null,
-          'location_accuracy_meters': location.accuracy,
-          'location_confident': location.isConfident,
-        },
+        'location_state': 'active',
+        'location_error_message': null,
+        'location_accuracy_meters': location.accuracy,
+        'location_confident': location.isConfident,
+      },
       LocationProviderPermissionDenied() => const {
-          'location_state': 'permission_denied',
-          'location_error_message': null,
-        },
+        'location_state': 'permission_denied',
+        'location_error_message': null,
+      },
       LocationProviderPaused() => const {
-          'location_state': 'paused',
-          'location_error_message': null,
-        },
+        'location_state': 'paused',
+        'location_error_message': null,
+      },
       LocationProviderError(message: final message) => {
-          'location_state': 'error',
-          'location_error_message': message,
-        },
+        'location_state': 'error',
+        'location_error_message': message,
+      },
     };
   }
 
@@ -590,9 +605,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
         (a.lng - b.lng).abs() < 0.0000001;
   }
 
-  void _scheduleExactScreenProjection(
-    _ExactScreenProjectionRequest request,
-  ) {
+  void _scheduleExactScreenProjection(_ExactScreenProjectionRequest request) {
     final readiness = ref.read(mapReadinessProvider);
     if (!readiness.mapCreated ||
         !readiness.styleLoaded ||
@@ -645,7 +658,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
         return;
       }
 
-      final hasNewerPending = _pendingExactScreenProjectionRequest != null &&
+      final hasNewerPending =
+          _pendingExactScreenProjectionRequest != null &&
           _pendingExactScreenProjectionRequest!.key != request.key;
       if (hasNewerPending) return;
 
@@ -739,10 +753,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
     return _exactScreenProjectionMarkerScreenPosition;
   }
 
-  Offset? _exactProjectedCellCenter(
-    String projectionKey,
-    String cellId,
-  ) {
+  Offset? _exactProjectedCellCenter(String projectionKey, String cellId) {
     if (_exactScreenProjectionKey != projectionKey) return null;
     return _exactScreenProjectionCellCentersById[cellId];
   }
@@ -753,8 +764,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
     _logMapFlowEvent(
       TelemetryFlowPhase.timedOut,
       eventName: 'map.bootstrap.timed_out',
-      dependency:
-          readiness.waitingFor.isEmpty ? null : readiness.waitingFor.first,
+      dependency: readiness.waitingFor.isEmpty
+          ? null
+          : readiness.waitingFor.first,
       reason: 'steady_state_not_reached',
       data: {
         ...readiness.toLogData(),
@@ -794,8 +806,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
   Widget build(BuildContext context) {
     final obs = ref.watch(appObservabilityProvider);
     final authState = ref.watch(authProvider);
-    final userId =
-        authState.status == AuthStatus.authenticated ? authState.user!.id : '';
+    final userId = authState.status == AuthStatus.authenticated
+        ? authState.user!.id
+        : '';
     final locationState = ref.watch(locationProvider);
     final mapState = ref.watch(mapProvider);
     final readiness = ref.watch(mapReadinessProvider);
@@ -821,15 +834,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     ref.listen<PlayerMarkerState>(playerMarkerProvider, (_, markerState) {
       final mapState = ref.read(mapProvider);
-      if (mapState
-          case MapStateReady(
-            :final cells,
-            :final visitedCellIds,
-            :final knowledgeByCellId,
-          )) {
+      if (mapState case MapStateReady(
+        :final cells,
+        :final visitedCellIds,
+        :final knowledgeByCellId,
+      )) {
         final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
-          ref.read(explorationProvider.notifier).onPositionUpdate(
+          ref
+              .read(explorationProvider.notifier)
+              .onPositionUpdate(
                 markerState: markerState,
                 cells: cells,
                 visitedCellIds: visitedCellIds,
@@ -842,15 +856,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
     });
 
     ref.listen<MapState>(mapProvider, (_, next) {
-      if (next
-          case MapStateReady(
-            :final cells,
-            :final visitedCellIds,
-            :final knowledgeByCellId,
-          )) {
+      if (next case MapStateReady(
+        :final cells,
+        :final visitedCellIds,
+        :final knowledgeByCellId,
+      )) {
         final explorationEligibility = ref.read(explorationEligibilityProvider);
         unawaited(
-          ref.read(explorationProvider.notifier).onPositionUpdate(
+          ref
+              .read(explorationProvider.notifier)
+              .onPositionUpdate(
                 markerState: ref.read(playerMarkerProvider),
                 cells: cells,
                 visitedCellIds: visitedCellIds,
@@ -869,7 +884,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       final previousMapCellEntryId =
           previous?.lastBorderCrossingEvent?.mapCellEntryId;
       final borderCrossingEvent = next.lastBorderCrossingEvent;
-      final isNewGameplayEntry = borderCrossingEvent != null &&
+      final isNewGameplayEntry =
+          borderCrossingEvent != null &&
           borderCrossingEvent.mapCellEntryId != previousMapCellEntryId;
       if (!isNewGameplayEntry) return;
 
@@ -894,15 +910,16 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
     final effectiveLocation = switch (locationState) {
       LocationProviderActive(location: final loc) => loc,
-      LocationProviderPaused() => playerMarkerState.lat != 0.0
-          ? LocationState(
-              lat: playerMarkerState.lat,
-              lng: playerMarkerState.lng,
-              accuracy: 0.0,
-              timestamp: DateTime.now(),
-              isConfident: false,
-            )
-          : null,
+      LocationProviderPaused() =>
+        playerMarkerState.lat != 0.0
+            ? LocationState(
+                lat: playerMarkerState.lat,
+                lng: playerMarkerState.lng,
+                accuracy: 0.0,
+                timestamp: DateTime.now(),
+                isConfident: false,
+              )
+            : null,
       _ => null,
     };
 
@@ -910,37 +927,35 @@ class _MapScreenState extends ConsumerState<MapScreen>
       screenName: 'map_screen',
       observability: obs,
       builder: (_) => switch (locationState) {
-        LocationProviderLoading() => const Scaffold(
-            backgroundColor: AppTheme.surface,
-            body: Center(child: LoadingDots()),
-          ),
+        LocationProviderLoading() => const _MapLoadingScaffold(),
         LocationProviderPermissionDenied() => const _MapStatusScaffold(
-            title: 'Location needed',
-            message: 'Enable location access to explore the map.',
-          ),
+          title: 'Location needed',
+          message: 'Enable location access to explore the map.',
+          tone: AppNoticeTone.warning,
+        ),
         LocationProviderError(message: final message) => _MapStatusScaffold(
-            title: 'Map unavailable',
-            message: message,
-          ),
+          title: 'Map unavailable',
+          message: message,
+        ),
         LocationProviderPaused() when effectiveLocation == null =>
           const _MapStatusScaffold(
             title: 'GPS unavailable',
             message: 'Waiting for GPS signal to resume discovery.',
+            tone: AppNoticeTone.warning,
           ),
         LocationProviderPaused() ||
-        LocationProviderActive() =>
-          _buildMapScaffold(
-            context,
-            location: effectiveLocation!,
-            mapState: mapState,
-            cameraFollowState: cameraFollowState,
-            readiness: readiness,
-            playerMarkerState: playerMarkerState,
-            explorationEligibility: explorationEligibility,
-            explorationState: explorationState,
-            town: townState.town,
-            encounterState: encounterState,
-          ),
+        LocationProviderActive() => _buildMapScaffold(
+          context,
+          location: effectiveLocation!,
+          mapState: mapState,
+          cameraFollowState: cameraFollowState,
+          readiness: readiness,
+          playerMarkerState: playerMarkerState,
+          explorationEligibility: explorationEligibility,
+          explorationState: explorationState,
+          town: townState.town,
+          encounterState: encounterState,
+        ),
       },
     );
   }
@@ -972,8 +987,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
       optimisticVisitedCellIds: explorationState.visitedCellIds,
     );
     final cellsObserved = footprint.uniqueCount;
-    final desktopControlsAvailable =
-        ref.watch(desktopControlsAvailableProvider);
+    final desktopControlsAvailable = ref.watch(
+      desktopControlsAvailableProvider,
+    );
     final desktopControlsEnabled = ref.watch(desktopControlsProvider);
     final pendingEncounterState = ref.watch(pendingEncounterProvider);
     final desktopTraversalEnabled =
@@ -982,7 +998,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final visitQueueState = ref.watch(visitQueueProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.surface,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final mapSize = constraints.biggest;
@@ -1014,13 +1029,15 @@ class _MapScreenState extends ConsumerState<MapScreen>
           _scheduleExactScreenProjection(exactProjectionRequest);
           final exactProjectionReady =
               _exactScreenProjectionKey == exactProjectionRequest.key;
-          final rawExactProjector =
-              _exactScreenProjectionProjector(exactProjectionRequest.key);
+          final rawExactProjector = _exactScreenProjectionProjector(
+            exactProjectionRequest.key,
+          );
           final exactProjectedCameraPosition = exactProjectionReady
-              ? _exactScreenProjectionByCoordKey[
-                  exactProjectionRequest.cameraCoordKey]
+              ? _exactScreenProjectionByCoordKey[exactProjectionRequest
+                    .cameraCoordKey]
               : null;
-          final exactProjectionCenterAligned = !exactProjectionReady ||
+          final exactProjectionCenterAligned =
+              !exactProjectionReady ||
               _isExactProjectionCenterAligned(
                 exactProjectedCameraPosition: exactProjectedCameraPosition,
                 screenCenter: screenCenter,
@@ -1035,11 +1052,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
           }
           final projectionMode = exactProjectionReady
               ? (exactProjectionCenterAligned
-                  ? 'maplibre_exact_screen'
-                  : 'mercator_fallback_misaligned_exact')
+                    ? 'maplibre_exact_screen'
+                    : 'mercator_fallback_misaligned_exact')
               : 'mercator_fallback';
-          final effectiveExactProjector =
-              exactProjectionCenterAligned ? rawExactProjector : null;
+          final effectiveExactProjector = exactProjectionCenterAligned
+              ? rawExactProjector
+              : null;
           Offset projectGeoCoord(GeoCoord coord) {
             return _projectGeoCoordToScreen(
               coord,
@@ -1052,7 +1070,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
           final markerScreenPosition = exactProjectionCenterAligned
               ? _exactProjectedMarkerPosition(exactProjectionRequest.key) ??
-                  projectGeoCoord(markerGeoCoord)
+                    projectGeoCoord(markerGeoCoord)
               : projectGeoCoord(markerGeoCoord);
           final venueAnchors = _knownVenueAnchors(town, cellsWithStates);
           final renderDiagnostics = {
@@ -1067,10 +1085,12 @@ class _MapScreenState extends ConsumerState<MapScreen>
               markerGapDistanceMeters: playerMarkerState.gapDistance,
             ),
             'projection_mode': projectionMode,
-            'screen_projection_revision':
-                exactProjectionReady ? _exactScreenProjectionRevision : null,
+            'screen_projection_revision': exactProjectionReady
+                ? _exactScreenProjectionRevision
+                : null,
           };
-          final desktopTraversalBlocked = !readiness.isSteadyStateReady ||
+          final desktopTraversalBlocked =
+              !readiness.isSteadyStateReady ||
               _isPendingEncounterVisible(pendingEncounterState) ||
               encounterState.hasActiveReward ||
               !(ModalRoute.of(context)?.isCurrent ?? true);
@@ -1102,8 +1122,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   ),
                   onMovementEnded: locationNotifier.persistDesktopPosition,
                   child: maplibre.MapLibreMap(
-                    styleString:
-                        kIsWeb ? _kWebMapStyleUrl : _kNativeMapStyleUrl,
+                    styleString: kIsWeb
+                        ? _kWebMapStyleUrl
+                        : _kNativeMapStyleUrl,
                     initialCameraPosition: maplibre.CameraPosition(
                       target: maplibre.LatLng(
                         desiredCameraPosition.lat,
@@ -1219,9 +1240,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
                 Positioned(
                   left: markerScreenPosition.dx - 24,
                   top: markerScreenPosition.dy - 24,
-                  child: const IgnorePointer(
-                    child: PlayerMarker(),
-                  ),
+                  child: const IgnorePointer(child: PlayerMarker()),
                 ),
 
               for (final venueAnchor in venueAnchors)
@@ -1233,44 +1252,51 @@ class _MapScreenState extends ConsumerState<MapScreen>
                       venue: venueAnchor.venue,
                       displayMode:
                           venueAnchor.relationship == CellRelationship.present
-                              ? VenueMarkerDisplayMode.compactLabel
-                              : VenueMarkerDisplayMode.glyphOnly,
+                          ? VenueMarkerDisplayMode.compactLabel
+                          : VenueMarkerDisplayMode.glyphOnly,
                     ),
                   ),
                 ),
 
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 156,
-                child: IgnorePointer(child: _MapTopFogFeather()),
-              ),
-              // Frosted glass status bar — overlaid at top of map
+              // Neutral status chrome remains overlaid on the edge-to-edge map.
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
-                child: MapStatusBar(
-                  cellsObserved: cellsObserved,
-                  totalSteps: 0,
-                  streakDays: 0,
-                  pendingVisits: visitQueueState.pendingCount,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MapStatusBar(
+                      cellsObserved: cellsObserved,
+                      totalSteps: 0,
+                      streakDays: 0,
+                      pendingVisits: visitQueueState.pendingCount,
+                    ),
+                    if (_notificationCellId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: Spacing.sm,
+                          left: Spacing.lg,
+                          right: Spacing.giant,
+                        ),
+                        child: IgnorePointer(
+                          child: DiscoveryNotification(
+                            cellName: _notificationCellId!,
+                          ),
+                        ),
+                      ),
+                    if (explorationEligibility.isPaused)
+                      const Padding(
+                        padding: EdgeInsets.only(
+                          top: Spacing.sm,
+                          left: Spacing.lg,
+                          right: Spacing.giant,
+                        ),
+                        child: IgnorePointer(child: DiscoveryPausedBanner()),
+                      ),
+                  ],
                 ),
               ),
-
-              // Discovery notification — appears just below status bar on new cell entry
-              if (_notificationCellId != null)
-                Positioned(
-                  top: 44 + 56 + 8,
-                  left: 16,
-                  right: 16,
-                  child: IgnorePointer(
-                    child: DiscoveryNotification(
-                      cellName: _notificationCellId!,
-                    ),
-                  ),
-                ),
 
               if (encounterState.currentEncounter != null)
                 Positioned.fill(
@@ -1300,43 +1326,27 @@ class _MapScreenState extends ConsumerState<MapScreen>
                   child: Center(child: LoadingDots()),
                 ),
 
-              const Positioned(
-                left: Spacing.lg,
-                right: Spacing.lg,
-                bottom: Spacing.huge,
-                child: IgnorePointer(child: MapCellKnowledgeLegend()),
-              ),
+              if (mapState is! MapStateError)
+                const Positioned(
+                  left: Spacing.lg,
+                  right: Spacing.lg,
+                  bottom: Spacing.huge,
+                  child: IgnorePointer(child: MapCellKnowledgeLegend()),
+                ),
 
               // Error message
               if (mapState is MapStateError)
                 Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 24,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.outline),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(
-                        mapState.message,
-                        style: const TextStyle(color: AppTheme.onSurface),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Discovery paused banner — shown when GPS is unavailable or ring state
-              if (explorationEligibility.isPaused)
-                const Positioned(
-                  top: Spacing.lg,
                   left: Spacing.lg,
                   right: Spacing.lg,
-                  child: IgnorePointer(child: DiscoveryPausedBanner()),
+                  bottom: Spacing.xxl,
+                  child: AppCard(
+                    child: AppNotice(
+                      title: 'Map unavailable',
+                      message: mapState.message,
+                      tone: AppNoticeTone.error,
+                    ),
+                  ),
                 ),
 
               if (!readiness.isSteadyStateReady)
@@ -1381,7 +1391,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
 
       final screenPos =
           _exactProjectedCellCenter(exactProjectionKey, cell.id) ??
-              project(center);
+          project(center);
 
       final distance = (tapPosition - screenPos).distance;
       if (distance < closestDistance && distance < 100) {
@@ -1411,10 +1421,7 @@ class _MapScreenState extends ConsumerState<MapScreen>
       });
       return;
     }
-    interaction.complete(
-      transition: 'no_cell_selected',
-      outcome: 'ignored',
-    );
+    interaction.complete(transition: 'no_cell_selected', outcome: 'ignored');
   }
 
   Offset _projectGeoCoordToScreen(
@@ -1501,11 +1508,9 @@ class _MapScreenState extends ConsumerState<MapScreen>
         category: cellState.category,
         knownVenues: switch (cellState.knowledgeState) {
           CellKnowledgeState.explored ||
-          CellKnowledgeState.present =>
-            knownVenues,
+          CellKnowledgeState.present => knownVenues,
           CellKnowledgeState.informed ||
-          CellKnowledgeState.shrouded =>
-            const [],
+          CellKnowledgeState.shrouded => const [],
         },
       ),
     );
@@ -1642,11 +1647,7 @@ class MapCellKnowledgeLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const entries = <({
-      String keyName,
-      String label,
-      CellState state,
-    })>[
+    const entries = <({String keyName, String label, CellState state})>[
       (
         keyName: 'shrouded',
         label: 'Shrouded',
@@ -1690,34 +1691,26 @@ class MapCellKnowledgeLegend extends StatelessWidget {
       container: true,
       explicitChildNodes: true,
       label: 'Cell knowledge',
-      child: DecoratedBox(
+      child: ShadCard(
         key: const ValueKey('map-cell-knowledge-legend'),
-        decoration: BoxDecoration(
-          color: AppTheme.surface.withValues(alpha: 0.9),
-          border: Border.all(
-            color: AppTheme.outline.withValues(alpha: 0.6),
-            width: 0.5,
-          ),
-          borderRadius: BorderRadius.circular(Radii.pill),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Spacing.md,
+          vertical: Spacing.sm,
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Spacing.md,
-            vertical: Spacing.sm,
-          ),
-          child: Wrap(
-            alignment: WrapAlignment.center,
-            spacing: Spacing.md,
-            runSpacing: Spacing.xs,
-            children: [
-              for (final entry in entries)
-                _MapCellKnowledgeLegendItem(
-                  key: ValueKey('cell-knowledge-${entry.keyName}'),
-                  label: entry.label,
-                  state: entry.state,
-                ),
-            ],
-          ),
+        shadows: const [],
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: Spacing.md,
+          runSpacing: Spacing.xs,
+          children: [
+            for (final entry in entries)
+              _MapCellKnowledgeLegendItem(
+                key: ValueKey('cell-knowledge-${entry.keyName}'),
+                label: entry.label,
+                state: entry.state,
+              ),
+          ],
         ),
       ),
     );
@@ -1761,52 +1754,41 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
             ),
             child: switch (state.knowledgeState) {
               CellKnowledgeState.informed => const Icon(
-                  key: ValueKey('cell-knowledge-informed-category-cue'),
-                  Icons.category,
-                  size: Spacing.xl,
-                  color: AppTheme.onSurface,
-                ),
+                key: ValueKey('cell-knowledge-informed-category-cue'),
+                Icons.category,
+                size: Spacing.xl,
+              ),
               CellKnowledgeState.present => Center(
+                child: Container(
+                  key: const ValueKey('cell-knowledge-present-player-marker'),
+                  width: Spacing.lg,
+                  height: Spacing.lg,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: Spacing.xxs),
+                  ),
                   child: Container(
-                    key: const ValueKey(
-                      'cell-knowledge-present-player-marker',
-                    ),
-                    width: Spacing.lg,
-                    height: Spacing.lg,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
+                    key: const ValueKey('cell-knowledge-present-player-dot'),
+                    width: Spacing.xs,
+                    height: Spacing.xs,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white,
-                        width: Spacing.xxs,
-                      ),
-                    ),
-                    child: Container(
-                      key: const ValueKey(
-                        'cell-knowledge-present-player-dot',
-                      ),
-                      width: Spacing.xs,
-                      height: Spacing.xs,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
                     ),
                   ),
                 ),
+              ),
               CellKnowledgeState.explored ||
-              CellKnowledgeState.shrouded =>
-                null,
+              CellKnowledgeState.shrouded => null,
             },
           ),
           const SizedBox(width: Spacing.xs),
           Text(
             label,
-            style: const TextStyle(
-              color: AppTheme.onSurfaceVariant,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1825,50 +1807,13 @@ class DiscoveryPausedBanner extends StatelessWidget {
       container: true,
       liveRegion: true,
       label: 'Discovery paused',
-      child: ExcludeSemantics(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppTheme.surface.withValues(alpha: 0.9),
-            border: Border.all(color: AppTheme.outline),
-            borderRadius: BorderRadius.circular(Radii.md),
+      child: const ExcludeSemantics(
+        child: AppCard(
+          child: AppNotice(
+            title: 'Discovery paused',
+            message: 'Waiting for reliable GPS before recording progress.',
+            tone: AppNoticeTone.warning,
           ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: Spacing.md,
-              vertical: Spacing.sm,
-            ),
-            child: Text(
-              'Discovery paused',
-              style: TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MapTopFogFeather extends StatelessWidget {
-  const _MapTopFogFeather();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppTheme.surface.withValues(alpha: 0.62),
-            AppTheme.surface.withValues(alpha: 0.32),
-            AppTheme.surface.withValues(alpha: 0.0),
-          ],
-          stops: const [0.0, 0.48, 1.0],
         ),
       ),
     );
@@ -1886,28 +1831,50 @@ class _MapSteadyStateLoadingOverlay extends StatelessWidget {
         ? 'Revealing map...'
         : 'Revealing map... ${waitingFor.first.replaceAll('_', ' ')}';
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: AppTheme.surface),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const LoadingDots(),
-            const SizedBox(height: 16),
-            Text(
-              waitingText,
-              style: const TextStyle(
-                color: AppTheme.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(Spacing.xxl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Semantics(
+                key: const ValueKey('map-readiness-cover'),
+                container: true,
+                liveRegion: true,
+                label: waitingText,
+                child: ExcludeSemantics(
+                  child: AppCard(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const LoadingDots(),
+                        const SizedBox(height: Spacing.lg),
+                        Text(
+                          waitingText,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+@visibleForTesting
+Widget buildDiscoveryRewardModalForTesting({
+  required Encounter encounter,
+  required VoidCallback onContinue,
+}) {
+  return _DiscoveryRewardModal(encounter: encounter, onContinue: onContinue);
 }
 
 class _DiscoveryRewardModal extends StatelessWidget {
@@ -1921,27 +1888,61 @@ class _DiscoveryRewardModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into this modal.
-    return GestureDetector(
-      key: const Key('discovery-reward-modal'),
-      behavior: HitTestBehavior.opaque,
-      onTap: onContinue,
-      child: ColoredBox(
-        color: Colors.black.withValues(alpha: 0.56),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _DiscoveryRewardCard(encounter: encounter),
-                const SizedBox(height: 18),
-                // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into this modal.
-                FilledButton(
-                  onPressed: onContinue,
-                  child: const Text('Return to Map'),
+    final rewardLabel =
+        encounter.acquiredItem?.visibleDisplayName ??
+        (encounter.type == EncounterType.species
+            ? 'Unidentified fauna specimen'
+            : encounter.displayName);
+
+    // eac-clickable-owner-logs: MapScreen passes an ObservableInteraction-wrapped continue-discovery-reward callback into every dismissal surface.
+    return BlockSemantics(
+      child: CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): onContinue,
+        },
+        child: FocusScope(
+          child: Semantics(
+            scopesRoute: true,
+            namesRoute: true,
+            liveRegion: true,
+            explicitChildNodes: true,
+            label: 'Discovery reward: $rewardLabel. Added to Pack.',
+            // eac-clickable-owner-logs: onTap uses MapScreen's ObservableInteraction-wrapped continueDiscoveryReward callback and stable action evidence.
+            child: GestureDetector(
+              key: const Key('discovery-reward-modal'),
+              behavior: HitTestBehavior.opaque,
+              onTap: onContinue,
+              child: ColoredBox(
+                color: Theme.of(
+                  context,
+                ).colorScheme.scrim.withValues(alpha: 0.72),
+                child: SafeArea(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(Spacing.xxl),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _DiscoveryRewardCard(encounter: encounter),
+                            const SizedBox(height: Spacing.lg),
+                            // eac-clickable-owner-logs: the same wrapped callback preserves the stable continue action boundary.
+                            Focus(
+                              autofocus: true,
+                              child: AppButton(
+                                label: 'Return to Map',
+                                onPressed: onContinue,
+                                expand: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1957,100 +1958,55 @@ class _DiscoveryRewardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = encounter.acquiredItem?.visibleDisplayName ??
+    final title =
+        encounter.acquiredItem?.visibleDisplayName ??
         (encounter.type == EncounterType.species
             ? 'Unidentified fauna specimen'
             : encounter.displayName);
-    final rarity = encounter.rarity ?? 'common';
-    return Semantics(
-      label: 'Unidentified discovery reward card',
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF123647), Color(0xFF071923)],
-          ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppTheme.primary, width: 1.4),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withValues(alpha: 0.35),
-              blurRadius: 32,
-              spreadRadius: 2,
+
+    return ExcludeSemantics(
+      child: AppCard(
+        title: 'Added to Pack',
+        description: 'Identify this specimen later to reveal the species.',
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 44,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.55),
-              blurRadius: 28,
-              offset: const Offset(0, 18),
+            const SizedBox(height: Spacing.lg),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 104,
-                height: 104,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.primary.withValues(alpha: 0.16),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.26),
-                  ),
-                ),
-                child: Icon(
-                  Icons.pets,
-                  color: Colors.white.withValues(alpha: 0.92),
-                  size: 52,
-                ),
+      ),
+    );
+  }
+}
+
+class _MapLoadingScaffold extends StatelessWidget {
+  const _MapLoadingScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            label: 'Finding your location',
+            child: const ExcludeSemantics(
+              child: AppCard(
+                title: 'Finding your location',
+                child: LoadingDots(),
               ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w800,
-                  height: 1.08,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'A living specimen joined your Pack. Identify it later to reveal the species.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.74),
-                  fontSize: 13,
-                  height: 1.28,
-                ),
-              ),
-              const SizedBox(height: 16),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(999),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                ),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  child: Text(
-                    rarity.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -2059,40 +2015,29 @@ class _DiscoveryRewardCard extends StatelessWidget {
 }
 
 class _MapStatusScaffold extends StatelessWidget {
-  const _MapStatusScaffold({required this.title, required this.message});
+  const _MapStatusScaffold({
+    required this.title,
+    required this.message,
+    this.tone = AppNoticeTone.error,
+  });
 
   final String title;
   final String message;
+  final AppNoticeTone tone;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.surface,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppTheme.onSurface,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                ),
-                textAlign: TextAlign.center,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(Spacing.xxl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: AppCard(
+                child: AppNotice(title: title, message: message, tone: tone),
               ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
+            ),
           ),
         ),
       ),

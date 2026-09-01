@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:earth_nova/shared/design.dart';
 
-/// Frosted glass status bar overlaid at the top of the map.
-///
-/// Shows three stat pills: cells observed, total steps, streak days.
-/// Sits on top of the map (not above it). Uses backdrop blur for frosted glass.
-/// [paddingTop] defaults to 44 to clear the iOS system status bar.
+/// Compact progress HUD overlaid at the top of the map.
 class MapStatusBar extends StatelessWidget {
   const MapStatusBar({
     super.key,
@@ -22,30 +19,25 @@ class MapStatusBar extends StatelessWidget {
   final int streakDays;
   final int pendingVisits;
 
-  /// Top padding to clear the system status bar (44px on iOS).
+  /// Top padding to clear the system status bar.
   final double paddingTop;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surface.withValues(alpha: 0.72),
-        border: Border(
-          bottom: BorderSide(
-            color: AppTheme.outline.withValues(alpha: 0.52),
-            width: 0.5,
-          ),
-        ),
+    return Padding(
+      padding: EdgeInsets.only(
+        top: paddingTop,
+        left: Spacing.lg,
+        right: Spacing.giant + Spacing.lg,
       ),
-      child: Padding(
-        padding: EdgeInsets.only(
-          top: paddingTop,
-          bottom: 10,
-          left: 16,
-          right: 16,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: ShadCard(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Spacing.sm),
+        shadows: const [],
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
           children: [
             _StatPill(
               value: _formatCount(cellsObserved),
@@ -63,6 +55,8 @@ class MapStatusBar extends StatelessWidget {
               _StatPill(
                 value: _formatCount(pendingVisits),
                 label: 'syncing',
+                semanticsLabel: '$pendingVisits visits syncing',
+                liveRegion: true,
               ),
           ],
         ),
@@ -91,39 +85,32 @@ class _StatPill extends StatelessWidget {
   const _StatPill({
     required this.value,
     required this.label,
+    this.semanticsLabel,
+    this.liveRegion = false,
   });
 
   final String value;
   final String label;
+  final String? semanticsLabel;
+  final bool liveRegion;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainerHigh.withValues(alpha: 0.86),
-        border: Border.all(
-          color: AppTheme.outline.withValues(alpha: 0.60),
-          width: 0.5,
-        ),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                color: AppTheme.onSurface,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(width: 4),
-            EarthMetaText(label),
-          ],
+    return Semantics(
+      container: true,
+      liveRegion: liveRegion,
+      label: semanticsLabel ?? '$value $label',
+      child: ExcludeSemantics(
+        child: ShadBadge.secondary(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: Spacing.xs,
+            children: [
+              Text(value, style: Theme.of(context).textTheme.labelLarge),
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
+            ],
+          ),
         ),
       ),
     );

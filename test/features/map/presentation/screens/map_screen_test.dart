@@ -3,9 +3,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
 import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
+import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
@@ -66,8 +68,7 @@ void main() {
       expect(delta.dy, closeTo(0.0, 1e-9));
     });
 
-    test('old degrees-times-meters-per-pixel formula would flatten offsets',
-        () {
+    test('old degrees-times-meters-per-pixel formula would flatten offsets', () {
       const earthCircumference = 156543.03392;
       final metersPerPixel = earthCircumference / math.pow(2, 15);
       final buggyDelta = 1.0 * metersPerPixel;
@@ -103,8 +104,8 @@ void main() {
         habitats: [Habitat.forest, Habitat.mountain],
         polygons: [
           [
-            [(lat: 37.7749, lng: -122.4194)]
-          ]
+            [(lat: 37.7749, lng: -122.4194)],
+          ],
         ],
         districtId: 'd1',
         cityId: 'c1',
@@ -129,8 +130,8 @@ void main() {
         habitats: [Habitat.freshwater],
         polygons: [
           [
-            [(lat: 45.0, lng: -66.0)]
-          ]
+            [(lat: 45.0, lng: -66.0)],
+          ],
         ],
         districtId: 'd1',
         cityId: 'c1',
@@ -139,7 +140,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
+        ShadApp(
           home: Scaffold(
             body: CellDetailSheet(
               cell: cell,
@@ -189,11 +190,7 @@ void main() {
     });
 
     test('constructs with zero values', () {
-      const bar = MapStatusBar(
-        cellsObserved: 0,
-        totalSteps: 0,
-        streakDays: 0,
-      );
+      const bar = MapStatusBar(cellsObserved: 0, totalSteps: 0, streakDays: 0);
       expect(bar, isNotNull);
       expect(bar.cellsObserved, 0);
     });
@@ -221,19 +218,26 @@ void main() {
     });
 
     testWidgets(
-        'labels first-visit map cell feedback without claiming Discovery',
-        (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: DiscoveryNotification(cellName: 'v_22995_-33325'),
+      'labels first-visit map cell feedback without claiming Discovery',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          const ShadApp(
+            home: Scaffold(
+              body: DiscoveryNotification(cellName: 'v_22995_-33325'),
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(find.text('NEW CELL'), findsOneWidget);
-      expect(find.text('NEW DISCOVERY'), findsNothing);
-    });
+        expect(find.text('New cell'), findsOneWidget);
+        expect(find.text('NEW DISCOVERY'), findsNothing);
+        expect(
+          find.bySemanticsLabel('success: New cell. v_22995_-33325'),
+          findsOneWidget,
+        );
+        semantics.dispose();
+      },
+    );
 
     test('is a StatelessWidget', () {
       const notification = DiscoveryNotification(cellName: 'Test Cell');
@@ -243,41 +247,50 @@ void main() {
 
   group('Tileset URL verification', () {
     test(
-        'uses a repo-owned raster basemap style on web and keeps native OpenFreeMap style elsewhere',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final styleFile = File('web/base-map-style.json');
+      'uses a repo-owned raster basemap style on web and keeps native OpenFreeMap style elsewhere',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+        final styleFile = File('web/base-map-style.json');
 
-      expect(mapSource,
-          contains("const _kWebMapStyleUrl = 'base-map-style.json'"));
-      expect(
-        mapSource,
-        contains(
-            "const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty'"),
-      );
-      expect(
-        mapSource,
-        matches(RegExp(
-          r'styleString:\s*kIsWeb\s*\?\s*_kWebMapStyleUrl\s*:\s*_kNativeMapStyleUrl',
-        )),
-        reason:
-            'Web should use the repo-owned browser-safe raster style while native builds keep the existing vector style.',
-      );
-      expect(styleFile.existsSync(), isTrue);
-      final styleJson = styleFile.readAsStringSync();
-      expect(styleJson, contains('"type": "raster"'));
-      expect(styleJson, contains('"glyphs"'));
-      expect(styleJson, contains('light_nolabels'));
-      expect(styleJson,
-          isNot(contains('"url": "https://tiles.openfreemap.org/planet"')));
-    });
+        expect(
+          mapSource,
+          contains("const _kWebMapStyleUrl = 'base-map-style.json'"),
+        );
+        expect(
+          mapSource,
+          contains(
+            "const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty'",
+          ),
+        );
+        expect(
+          mapSource,
+          matches(
+            RegExp(
+              r'styleString:\s*kIsWeb\s*\?\s*_kWebMapStyleUrl\s*:\s*_kNativeMapStyleUrl',
+            ),
+          ),
+          reason:
+              'Web should use the repo-owned browser-safe raster style while native builds keep the existing vector style.',
+        );
+        expect(styleFile.existsSync(), isTrue);
+        final styleJson = styleFile.readAsStringSync();
+        expect(styleJson, contains('"type": "raster"'));
+        expect(styleJson, contains('"glyphs"'));
+        expect(styleJson, contains('light_nolabels'));
+        expect(
+          styleJson,
+          isNot(contains('"url": "https://tiles.openfreemap.org/planet"')),
+        );
+      },
+    );
   });
 
   test('Desktop Mode leaves native map pointer gestures available', () {
-    final source = File('lib/features/map/presentation/screens/map_screen.dart')
-        .readAsStringSync();
+    final source = File(
+      'lib/features/map/presentation/screens/map_screen.dart',
+    ).readAsStringSync();
 
     expect(source, contains('scrollGesturesEnabled: desktopTraversalEnabled'));
     expect(source, contains('zoomGesturesEnabled: desktopTraversalEnabled'));
@@ -287,12 +300,11 @@ void main() {
   });
 
   group('MapScreen canonical Cell knowledge chrome', () {
-    testWidgets('legend exposes exactly the four canonical labels and keys',
-        (tester) async {
+    testWidgets('legend exposes exactly the four canonical labels and keys', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: MapCellKnowledgeLegend()),
-        ),
+        const ShadApp(home: Scaffold(body: MapCellKnowledgeLegend())),
       );
 
       expect(
@@ -300,10 +312,7 @@ void main() {
         findsOneWidget,
       );
       for (final state in ['shrouded', 'informed', 'explored', 'present']) {
-        expect(
-          find.byKey(ValueKey('cell-knowledge-$state')),
-          findsOneWidget,
-        );
+        expect(find.byKey(ValueKey('cell-knowledge-$state')), findsOneWidget);
       }
       expect(find.text('Shrouded'), findsOneWidget);
       expect(find.text('Informed'), findsOneWidget);
@@ -313,14 +322,13 @@ void main() {
       expect(find.text('Unknown'), findsNothing);
     });
 
-    testWidgets('legend exposes category and player shape cues',
-        (tester) async {
+    testWidgets('legend exposes category and player shape cues', (
+      tester,
+    ) async {
       final semanticsHandle = tester.ensureSemantics();
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: MapCellKnowledgeLegend()),
-        ),
+        const ShadApp(home: Scaffold(body: MapCellKnowledgeLegend())),
       );
       final legendSemantics = tester.widget<Semantics>(
         find.byWidgetPredicate(
@@ -331,8 +339,9 @@ void main() {
       );
       expect(legendSemantics.explicitChildNodes, isTrue);
 
-      final informedItem =
-          find.byKey(const ValueKey('cell-knowledge-informed'));
+      final informedItem = find.byKey(
+        const ValueKey('cell-knowledge-informed'),
+      );
       final categoryCue = find.descendant(
         of: informedItem,
         matching: find.byKey(
@@ -384,9 +393,7 @@ void main() {
       final semanticsHandle = tester.ensureSemantics();
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(body: DiscoveryPausedBanner()),
-        ),
+        const ShadApp(home: Scaffold(body: DiscoveryPausedBanner())),
       );
 
       final status = tester.getSemantics(
@@ -399,68 +406,249 @@ void main() {
     });
   });
 
+  group('MapScreen neutral Phase 3 chrome', () {
+    test('uses neutral composition without legacy reward or glow styling', () {
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+      final statusSource = File(
+        'lib/features/map/presentation/widgets/map_status_bar.dart',
+      ).readAsStringSync();
+      final notificationSource = File(
+        'lib/features/map/presentation/widgets/discovery_notification.dart',
+      ).readAsStringSync();
+
+      for (final source in [mapSource, statusSource, notificationSource]) {
+        expect(source, isNot(contains('AppTheme.')));
+        expect(source, isNot(matches(RegExp(r'\bEarth[A-Z]'))));
+        expect(source, isNot(contains('BackdropFilter(')));
+        expect(source, isNot(contains('BoxShadow(')));
+        expect(source, isNot(contains('LinearGradient(')));
+      }
+      expect(mapSource, isNot(contains('rarity.toUpperCase()')));
+      expect(mapSource, isNot(contains('FilledButton(')));
+      expect(mapSource, contains('AppCard('));
+      expect(mapSource, contains('AppButton('));
+      expect(mapSource, contains('AppNotice('));
+      expect(statusSource, contains('ShadCard('));
+      expect(notificationSource, contains('AppNotice('));
+    });
+
+    test('keeps every reward action target at least 44 logical pixels', () {
+      final buttonSource = File(
+        'lib/shared/design/primitives/app_button.dart',
+      ).readAsStringSync();
+
+      expect(buttonSource, contains('height: 44'));
+    });
+
+    test(
+      'keeps reward continuation, stable key, and queue ownership boundary',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+
+        expect(mapSource, contains("key: const Key('discovery-reward-modal')"));
+        expect(mapSource, contains("actionType: 'continue_discovery_reward'"));
+        expect(
+          mapSource,
+          contains('playerActionId: PlayerActions.continueDiscoveryReward'),
+        );
+        expect(mapSource, contains('.continueDiscoveryReward();'));
+        expect(mapSource, contains('encounterState.currentEncounter'));
+        expect(
+          mapSource,
+          isNot(contains('encounterState.queuedRewards')),
+          reason: 'Reward plurality and sequencing remain provider-owned.',
+        );
+      },
+    );
+
+    test('pins live error, paused, and map-readiness semantics', () {
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+
+      expect(mapSource, contains("ValueKey('discovery-paused-status')"));
+      expect(mapSource, contains("ValueKey('map-readiness-cover')"));
+      expect(mapSource, contains('liveRegion: true'));
+      expect(mapSource, contains('AppNoticeTone.error'));
+      expect(mapSource, contains("'Revealing map...'"));
+    });
+
+    test('stacks status safely and hides the legend on hard Map errors', () {
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        mapSource,
+        matches(RegExp(r'MapStatusBar\([\s\S]*?DiscoveryPausedBanner\(\)')),
+      );
+      expect(
+        mapSource,
+        isNot(
+          matches(
+            RegExp(
+              r'if \(explorationEligibility\.isPaused\)[\s\S]{0,80}Positioned\(',
+            ),
+          ),
+        ),
+      );
+      expect(mapSource, contains('if (mapState is! MapStateError)'));
+      expect(
+        RegExp(r'right: Spacing\.giant').allMatches(mapSource).length,
+        2,
+        reason: 'Discovery and paused notices reserve the Map control inset.',
+      );
+      expect(
+        mapSource,
+        matches(
+          RegExp(
+            r'if \(mapState is MapStateError\)[\s\S]*?AppCard\([\s\S]*?AppNotice\(',
+          ),
+        ),
+      );
+      expect(
+        mapSource,
+        matches(
+          RegExp(
+            r'class DiscoveryPausedBanner[\s\S]*?AppCard\([\s\S]*?AppNotice\(',
+          ),
+        ),
+      );
+    });
+
+    test('keeps status errors scrollable and reward feedback modal', () {
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        mapSource,
+        matches(
+          RegExp(
+            r'class _MapStatusScaffold[\s\S]*?SafeArea\([\s\S]*?SingleChildScrollView\(',
+          ),
+        ),
+      );
+      expect(mapSource, contains('BlockSemantics('));
+      expect(mapSource, contains('scopesRoute: true'));
+      expect(mapSource, contains('namesRoute: true'));
+      expect(mapSource, matches(RegExp(r'Focus\(\s*autofocus: true')));
+      expect(
+        mapSource,
+        contains(
+          'const SingleActivator(LogicalKeyboardKey.escape): onContinue',
+        ),
+      );
+      expect(mapSource, contains('explicitChildNodes: true'));
+    });
+
+    testWidgets(
+      'reward modal exposes live content without semantics assertions',
+      (tester) async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          ShadApp(
+            home: Scaffold(
+              body: buildDiscoveryRewardModalForTesting(
+                encounter: const Encounter(
+                  type: EncounterType.species,
+                  speciesId: 'species-1',
+                  displayName: 'Unknown Discovery',
+                  cellId: 'cell-1',
+                  seed: 'seed-1',
+                ),
+                onContinue: () {},
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Added to Pack'), findsOneWidget);
+        expect(find.text('Unidentified fauna specimen'), findsOneWidget);
+        expect(find.text('Return to Map'), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(
+            'Discovery reward: Unidentified fauna specimen. Added to Pack.',
+          ),
+          findsOneWidget,
+        );
+        expect(tester.binding.focusManager.primaryFocus, isNotNull);
+        semantics.dispose();
+      },
+    );
+  });
+
   group('MapScreen encounter boundary', () {
     test(
-        'does not trigger encounters from optimistic exploration while retaining first-discovery notification',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      'does not trigger encounters from optimistic exploration while retaining first-discovery notification',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
 
-      expect(
-        mapSource,
-        isNot(contains('onCellEntered(')),
-        reason:
-            'Encounter entry is invoked only after RecordCellVisit returns the exact CellVisit.',
-      );
-      expect(
-        mapSource,
-        contains('ref.listen<ExplorationStateData>(explorationProvider'),
-        reason: 'The screen still reacts to entry state for non-mutating UI.',
-      );
-      expect(
-        mapSource,
-        contains('_showDiscoveryNotification(enteredCellId)'),
-        reason:
-            'First-visit discovery feedback remains owned by the Map screen.',
-      );
-      expect(
-        mapSource,
-        contains("'map.discovery_notification_shown'"),
-      );
-    });
+        expect(
+          mapSource,
+          isNot(contains('onCellEntered(')),
+          reason:
+              'Encounter entry is invoked only after RecordCellVisit returns the exact CellVisit.',
+        );
+        expect(
+          mapSource,
+          contains('ref.listen<ExplorationStateData>(explorationProvider'),
+          reason: 'The screen still reacts to entry state for non-mutating UI.',
+        );
+        expect(
+          mapSource,
+          contains('_showDiscoveryNotification(enteredCellId)'),
+          reason:
+              'First-visit discovery feedback remains owned by the Map screen.',
+        );
+        expect(mapSource, contains("'map.discovery_notification_shown'"));
+      },
+    );
 
-    test('does not record Venue Visits from UI, map taps, or location events',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final locationSource =
-          File('lib/features/map/presentation/providers/location_provider.dart')
-              .readAsStringSync();
-      final cellSheetSource =
-          File('lib/features/map/presentation/widgets/cell_detail_sheet.dart')
-              .readAsStringSync();
-      final townSource = File(
-              'lib/features/living_world/presentation/screens/town_screen.dart')
-          .readAsStringSync();
+    test(
+      'does not record Venue Visits from UI, map taps, or location events',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+        final locationSource = File(
+          'lib/features/map/presentation/providers/location_provider.dart',
+        ).readAsStringSync();
+        final cellSheetSource = File(
+          'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
+        ).readAsStringSync();
+        final townSource = File(
+          'lib/features/living_world/presentation/screens/town_screen.dart',
+        ).readAsStringSync();
 
-      expect(mapSource, isNot(contains('recordVenueVisit')));
-      expect(locationSource, isNot(contains('recordVenueVisit')));
-      expect(cellSheetSource, isNot(contains('recordVenueVisit')));
-      expect(townSource, isNot(contains('recordVenueVisit')));
-    });
+        expect(mapSource, isNot(contains('recordVenueVisit')));
+        expect(locationSource, isNot(contains('recordVenueVisit')));
+        expect(cellSheetSource, isNot(contains('recordVenueVisit')));
+        expect(townSource, isNot(contains('recordVenueVisit')));
+      },
+    );
   });
 
   group('Startup/recovery — no blank screen', () {
     test('LoadingDots is used for GPS loading state (not blank scaffold)', () {
-      // Verify the loading state uses LoadingDots widget (non-blank UI).
-      // This is a structural test — the actual widget tree is tested via
-      // the import existing in map_screen.dart.
-      expect(true, isTrue,
-          reason:
-              'map_screen.dart uses LoadingDots for LocationProviderLoading '
-              'and AppTheme.surface (dark navy) as background — no blank/lavender state');
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        mapSource,
+        contains('LocationProviderLoading() => const _MapLoadingScaffold()'),
+      );
+      expect(mapSource, contains("label: 'Finding your location'"));
+      expect(mapSource, contains('child: LoadingDots()'));
     });
 
     test('MapStatusBar padding-top accounts for system status bar (44px)', () {
@@ -474,51 +662,54 @@ void main() {
     });
 
     test('map and root screen are wrapped with ObservableScreen', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final rootSource =
-          File('lib/features/map/presentation/screens/map_root_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
+      final rootSource = File(
+        'lib/features/map/presentation/screens/map_root_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('ObservableScreen('));
       expect(rootSource, contains('ObservableScreen('));
     });
 
     test('cell overlay gesture detector is not blocked by IgnorePointer', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(
         mapSource,
-        isNot(contains(
-            'IgnorePointer(\\n                child: GestureDetector')),
+        isNot(
+          contains('IgnorePointer(\\n                child: GestureDetector'),
+        ),
         reason:
             'Cell overlay taps must reach the GestureDetector so cell details open.',
       );
     });
 
     test('uses one app-owned gameplay marker and disables native map puck', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('myLocationEnabled: false'));
       expect(
         mapSource,
-        matches(RegExp(
-          r'myLocationTrackingMode:\s*maplibre\.MyLocationTrackingMode\.none',
-        )),
+        matches(
+          RegExp(
+            r'myLocationTrackingMode:\s*maplibre\.MyLocationTrackingMode\.none',
+          ),
+        ),
       );
       expect(mapSource, contains('child: PlayerMarker()'));
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
     });
 
     test('uses smoothed camera follow instead of raw GPS camera snaps', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('ref.watch(cameraFollowProvider)'));
       expect(mapSource, contains('ref.listen(cameraFollowProvider'));
@@ -531,9 +722,9 @@ void main() {
     });
 
     test('uses map layout constraints for overlay projection math', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('body: LayoutBuilder('));
       expect(mapSource, contains('final mapSize = constraints.biggest'));
@@ -546,9 +737,9 @@ void main() {
     });
 
     test('marker, tap hit testing, and cells share one projection source', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(
         mapSource,
@@ -577,30 +768,33 @@ void main() {
     });
 
     test('keeps MapLibre attribution away from status and bottom overlays', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('attributionButtonPosition:'));
       expect(
         mapSource,
         contains('maplibre.AttributionButtonPosition.topRight'),
       );
-      expect(mapSource,
-          contains('attributionButtonMargins: const math.Point(12, 144)'));
+      expect(
+        mapSource,
+        contains('attributionButtonMargins: const math.Point(12, 144)'),
+      );
     });
 
     test('renders known Town Venues as anchored compact glyph cues', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
       final compactMapSource = mapSource.replaceAll(RegExp(r'\s+'), ' ');
 
       expect(mapSource, contains('TownProjection? town'));
       expect(
         mapSource,
         contains(
-            'final venueAnchors = _knownVenueAnchors(town, cellsWithStates)'),
+          'final venueAnchors = _knownVenueAnchors(town, cellsWithStates)',
+        ),
       );
       expect(mapSource, contains('venue.venue.anchorCellId'));
       expect(mapSource, contains('final position = _cellCenter(entry.cell)'));
@@ -622,29 +816,34 @@ void main() {
           'CellKnowledgeState.informed || CellKnowledgeState.shrouded => const []',
         ),
       );
-      expect(mapSource,
-          contains('left: projectGeoCoord(venueAnchor.position).dx - 16'));
-      expect(mapSource,
-          contains('top: projectGeoCoord(venueAnchor.position).dy - 16'));
+      expect(
+        mapSource,
+        contains('left: projectGeoCoord(venueAnchor.position).dx - 16'),
+      );
+      expect(
+        mapSource,
+        contains('top: projectGeoCoord(venueAnchor.position).dy - 16'),
+      );
       expect(mapSource, isNot(contains('npcVenueProvider')));
       expect(
-          mapSource, isNot(contains('discoverWildlifeRehabilitationCenter')));
+        mapSource,
+        isNot(contains('discoverWildlifeRehabilitationCenter')),
+      );
     });
 
-    test('adds a top fog feather below the status area', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+    test('keeps the Map edge-to-edge without a legacy fog feather', () {
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
-      expect(mapSource, contains('_MapTopFogFeather('));
-      expect(mapSource, contains('height: 156'));
-      expect(mapSource, contains('LinearGradient('));
+      expect(mapSource, isNot(contains('_MapTopFogFeather(')));
+      expect(mapSource, isNot(contains('LinearGradient(')));
     });
 
     test('gates visible board until map reaches steady state', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('ref.watch(mapReadinessProvider)'));
       expect(mapSource, contains('onMapIdle:'));
@@ -661,9 +860,9 @@ void main() {
     });
 
     test('defers initial readiness mutations until after widget build', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('_scheduleInitialMapReadiness();'));
       expect(
@@ -674,9 +873,9 @@ void main() {
     });
 
     test('terminates map bootstrap if steady state never completes', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
       final readinessSource = File(
         'lib/features/map/presentation/providers/map_readiness_provider.dart',
       ).readAsStringSync();
@@ -690,9 +889,9 @@ void main() {
     });
 
     test('bootstrap timeout includes location diagnostics', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('_locationStateDiagnostics'));
       expect(mapSource, contains("'location_state':"));
@@ -700,9 +899,9 @@ void main() {
     });
 
     test('pins overlay projection to actual MapLibre camera movement', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('onCameraMove: (cameraPosition)'));
       expect(mapSource, contains('_updateRenderCamera(cameraPosition)'));
@@ -711,14 +910,16 @@ void main() {
         mapSource,
         contains('_renderCameraPosition ?? desiredCameraPosition'),
       );
-      expect(mapSource,
-          contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'));
+      expect(
+        mapSource,
+        contains('final renderZoom = _renderCameraZoom ?? _kGpsZoom'),
+      );
     });
 
     test('hides base-map text labels after style load', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('_hideBaseMapTextLabels('));
       expect(mapSource, contains('baseMapTextLabelLayerIdsFromStyle'));
@@ -726,9 +927,9 @@ void main() {
       expect(mapSource, contains('map.base_map_labels_hidden'));
     });
     test('uses MapLibre exact screen-coordinate batch projection', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('toScreenLocationBatch('));
       expect(mapSource, contains('_scheduleExactScreenProjection('));
@@ -736,28 +937,29 @@ void main() {
       expect(mapSource, contains("projectionMode = exactProjectionReady"));
     });
     test(
-        'rejects exact MapLibre projections when the camera target is not at the Flutter viewport center',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      'rejects exact MapLibre projections when the camera target is not at the Flutter viewport center',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
 
-      expect(mapSource, contains('_kExactProjectionCenterTolerancePx'));
-      expect(mapSource, contains('exactProjectedCameraPosition'));
-      expect(mapSource, contains('effectiveExactProjector'));
-      expect(
-        mapSource,
-        contains("'mercator_fallback_misaligned_exact'"),
-        reason:
-            'Mobile Safari can leave MapLibre with a stale internal viewport; if project(cameraTarget) is not near the Flutter viewport center, overlays must fall back to Flutter-owned projection math.',
-      );
-      expect(mapSource, contains("reason: 'misaligned_exact_projection'"));
-      expect(mapSource, contains('cameraCoordKey'));
-    });
+        expect(mapSource, contains('_kExactProjectionCenterTolerancePx'));
+        expect(mapSource, contains('exactProjectedCameraPosition'));
+        expect(mapSource, contains('effectiveExactProjector'));
+        expect(
+          mapSource,
+          contains("'mercator_fallback_misaligned_exact'"),
+          reason:
+              'Mobile Safari can leave MapLibre with a stale internal viewport; if project(cameraTarget) is not near the Flutter viewport center, overlays must fall back to Flutter-owned projection math.',
+        );
+        expect(mapSource, contains("reason: 'misaligned_exact_projection'"));
+        expect(mapSource, contains('cameraCoordKey'));
+      },
+    );
     test('resizes web MapLibre when the Flutter map viewport changes', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
 
       expect(mapSource, contains('with WidgetsBindingObserver'));
       expect(mapSource, contains('WidgetsBinding.instance.addObserver(this)'));
@@ -779,9 +981,9 @@ void main() {
     });
 
     test('uses web MapLibre idle bridge before the timer fallback', () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
+      final mapSource = File(
+        'lib/features/map/presentation/screens/map_screen.dart',
+      ).readAsStringSync();
       final readinessSource = File(
         'lib/features/map/presentation/providers/map_readiness_provider.dart',
       ).readAsStringSync();
@@ -795,7 +997,8 @@ void main() {
       expect(
         signalFile.existsSync(),
         isTrue,
-        reason: 'MapScreen needs an app-owned web bridge because '
+        reason:
+            'MapScreen needs an app-owned web bridge because '
             'maplibre_gl_web 0.25.0 does not forward MapLibre JS idle '
             'events into onMapIdle.',
       );
@@ -805,81 +1008,94 @@ void main() {
       expect(readinessSource, contains('kBaseMapSettledFallbackDelay'));
       expect(readinessSource, contains('Duration(seconds: 5)'));
       expect(
-          signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
+        signalFacade.readAsStringSync(),
+        contains('dart.library.js_interop'),
+      );
       expect(signalSource, contains('earthnova.maplibre.idle'));
       expect(signalSource, contains('maplibre_js_idle'));
     });
 
     test(
-        'uses web MapLibre load bridge before relying on plugin style callback',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final signalFile = File(
-        'lib/features/map/presentation/platform/base_map_style_loaded_signal_web.dart',
-      );
-      final signalFacade = File(
-        'lib/features/map/presentation/platform/base_map_style_loaded_signal.dart',
-      );
+      'uses web MapLibre load bridge before relying on plugin style callback',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+        final signalFile = File(
+          'lib/features/map/presentation/platform/base_map_style_loaded_signal_web.dart',
+        );
+        final signalFacade = File(
+          'lib/features/map/presentation/platform/base_map_style_loaded_signal.dart',
+        );
 
-      expect(
-        signalFile.existsSync(),
-        isTrue,
-        reason:
-            'MapScreen needs an app-owned web bridge because style readiness '
-            'must not depend only on the plugin web callback.',
-      );
+        expect(
+          signalFile.existsSync(),
+          isTrue,
+          reason:
+              'MapScreen needs an app-owned web bridge because style readiness '
+              'must not depend only on the plugin web callback.',
+        );
 
-      final signalSource = signalFile.readAsStringSync();
-      expect(mapSource, contains('BaseMapStyleLoadedSignal('));
-      expect(
-          signalFacade.readAsStringSync(), contains('dart.library.js_interop'));
-      expect(signalSource, contains('earthnova.maplibre.load'));
-      expect(signalSource, contains('maplibre_js_load'));
-    });
+        final signalSource = signalFile.readAsStringSync();
+        expect(mapSource, contains('BaseMapStyleLoadedSignal('));
+        expect(
+          signalFacade.readAsStringSync(),
+          contains('dart.library.js_interop'),
+        );
+        expect(signalSource, contains('earthnova.maplibre.load'));
+        expect(signalSource, contains('maplibre_js_load'));
+      },
+    );
 
     test(
-        'encounters use persisted entry handler rather than optimistic map listener',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final entrySource = File(
-        'lib/features/encounters/presentation/providers/encounter_entry_provider.dart',
-      ).readAsStringSync();
+      'encounters use persisted entry handler rather than optimistic map listener',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+        final entrySource = File(
+          'lib/features/encounters/presentation/providers/encounter_entry_provider.dart',
+        ).readAsStringSync();
 
-      expect(mapSource, contains('lastBorderCrossingEvent'));
-      expect(mapSource, isNot(contains('.onCellEntered(')));
-      expect(
-          entrySource, contains('persistedCellVisitEncounterHandlerProvider'));
-      expect(entrySource,
-          contains('mapEntryId: borderCrossingEvent.mapCellEntryId'));
-      expect(
-        mapSource,
-        isNot(contains('next.lastEntrySequence > previousEntrySequence')),
-        reason:
-            'Gameplay entry should follow exact persisted/border identities, not a generic sequence counter.',
-      );
-    });
+        expect(mapSource, contains('lastBorderCrossingEvent'));
+        expect(mapSource, isNot(contains('.onCellEntered(')));
+        expect(
+          entrySource,
+          contains('persistedCellVisitEncounterHandlerProvider'),
+        );
+        expect(
+          entrySource,
+          contains('mapEntryId: borderCrossingEvent.mapCellEntryId'),
+        );
+        expect(
+          mapSource,
+          isNot(contains('next.lastEntrySequence > previousEntrySequence')),
+          reason:
+              'Gameplay entry should follow exact persisted/border identities, not a generic sequence counter.',
+        );
+      },
+    );
 
-    test('uses discovery reward modal instead of toast or Scaffold snackbar',
-        () {
-      final mapSource =
-          File('lib/features/map/presentation/screens/map_screen.dart')
-              .readAsStringSync();
-      final tabShellSource =
-          File('lib/shared/widgets/tab_shell.dart').readAsStringSync();
+    test(
+      'uses discovery reward modal instead of toast or Scaffold snackbar',
+      () {
+        final mapSource = File(
+          'lib/features/map/presentation/screens/map_screen.dart',
+        ).readAsStringSync();
+        final tabShellSource = File(
+          'lib/shared/widgets/tab_shell.dart',
+        ).readAsStringSync();
 
-      expect(mapSource, contains('_DiscoveryRewardModal('));
-      expect(mapSource, contains('continueDiscoveryReward'));
-      expect(tabShellSource, contains('addPostFrameCallback'));
-      expect(tabShellSource, contains('completeRewardFlight'));
-      expect(tabShellSource, isNot(contains('_PackRewardFlightOverlay(')));
-      expect(tabShellSource, isNot(contains('_PackRewardImpactOverlay(')));
-      expect(mapSource, isNot(contains('_EncounterToast(')));
-      expect(mapSource, isNot(contains('showSnackBar')));
-      expect(mapSource, isNot(contains('SnackBar(')));
-    });
+        expect(mapSource, contains('_DiscoveryRewardModal('));
+        expect(mapSource, contains('continueDiscoveryReward'));
+        expect(tabShellSource, contains('addPostFrameCallback'));
+        expect(tabShellSource, contains('completeRewardFlight'));
+        expect(tabShellSource, isNot(contains('_PackRewardFlightOverlay(')));
+        expect(tabShellSource, isNot(contains('_PackRewardImpactOverlay(')));
+        expect(mapSource, isNot(contains('_EncounterToast(')));
+        expect(mapSource, isNot(contains('showSnackBar')));
+        expect(mapSource, isNot(contains('SnackBar(')));
+      },
+    );
   });
 }

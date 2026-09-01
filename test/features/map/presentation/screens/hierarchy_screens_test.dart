@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:earth_nova/shared/design.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:earth_nova/core/domain/entities/auth_state.dart';
 import 'package:earth_nova/core/domain/entities/user_profile.dart';
 import 'package:earth_nova/core/domain/entities/habitat.dart';
@@ -109,7 +112,11 @@ class _FakeAuthNotifier extends AuthNotifier {
   AuthState build() => _state;
 }
 
-Widget _wrap(Widget child, {HierarchyRepository? repo}) {
+Widget _wrap(
+  Widget child, {
+  HierarchyRepository? repo,
+  TextScaler textScaler = TextScaler.noScaling,
+}) {
   return ProviderScope(
     overrides: [
       authProvider.overrideWith(
@@ -129,13 +136,36 @@ Widget _wrap(Widget child, {HierarchyRepository? repo}) {
       hierarchyObservabilityProvider.overrideWithValue(
         _TestObservabilityService(),
       ),
-      appObservabilityProvider.overrideWithValue(
-        _TestObservabilityService(),
-      ),
+      appObservabilityProvider.overrideWithValue(_TestObservabilityService()),
     ],
-    child: MaterialApp(home: child),
+    child: MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+        child: child!,
+      ),
+      home: _designTheme(child),
+    ),
   );
 }
+
+Widget _designTheme(Widget child) => ShadTheme(
+  data: ShadThemeData(
+    brightness: Brightness.dark,
+    colorScheme: const ShadZincColorScheme.dark(),
+  ),
+  child: child,
+);
+
+Widget _designHost(
+  Widget child, {
+  TextScaler textScaler = TextScaler.noScaling,
+}) => MaterialApp(
+  builder: (context, child) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+    child: child!,
+  ),
+  home: Scaffold(body: SingleChildScrollView(child: _designTheme(child))),
+);
 
 Cell _testCell({
   required String id,
@@ -214,110 +244,130 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('HierarchyHeader', () {
-    testWidgets('renders scope level label and scope name', (tester) async {
+    testWidgets('uses neutral header, badge, and stat composition', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HierarchyHeader(
-              scopeLevel: 'DISTRICT',
-              scopeName: 'Downtown',
-              scopeCode: 'DT',
-              cellsVisited: 42,
-              cellsTotal: 100,
-              progressPercent: 42.0,
-              rank: 3,
-              explorerCount: 150,
-            ),
+        _designHost(
+          const HierarchyHeader(
+            scopeLevel: 'City',
+            scopeName: 'San Francisco',
+            scopeCode: 'SF',
+            cellsVisited: 100,
+            cellsTotal: 200,
+            progressPercent: 50,
+            rank: 5,
+            explorerCount: 300,
           ),
         ),
       );
 
-      expect(find.text('DISTRICT'), findsOneWidget);
-      expect(find.text('Downtown'), findsOneWidget);
+      expect(find.byType(AppCard), findsNWidgets(2));
+      expect(find.byType(AppBadge), findsNWidgets(3));
+      expect(find.byType(AppStatGrid), findsOneWidget);
+      expect(find.text('City'), findsOneWidget);
+      expect(find.text('San Francisco'), findsOneWidget);
+      expect(find.text('SF'), findsOneWidget);
+      expect(find.text('50%'), findsOneWidget);
+      expect(find.text('#5'), findsAtLeastNWidgets(1));
+      expect(find.textContaining('100 / 200 cells'), findsOneWidget);
+      expect(find.textContaining('300 explorers'), findsOneWidget);
     });
 
-    testWidgets('renders rank chip with rank number', (tester) async {
+    testWidgets('keeps back action target and telemetry contract', (
+      tester,
+    ) async {
+      var tapped = false;
+      String? loggedEvent;
+      Map<String, dynamic>? loggedData;
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HierarchyHeader(
-              scopeLevel: 'CITY',
-              scopeName: 'San Francisco',
-              scopeCode: 'SF',
-              cellsVisited: 100,
-              cellsTotal: 200,
-              progressPercent: 50.0,
-              rank: 5,
-              explorerCount: 300,
-            ),
+        _designHost(
+          HierarchyHeader(
+            scopeLevel: 'District',
+            scopeName: 'Downtown',
+            scopeCode: 'DT',
+            cellsVisited: 42,
+            cellsTotal: 100,
+            progressPercent: 42,
+            rank: 3,
+            explorerCount: 150,
+            parentScopeName: 'City',
+            onBackTap: () => tapped = true,
+            interactionLogger: ({required event, required category, data}) {
+              loggedEvent = event;
+              loggedData = data;
+            },
           ),
         ),
       );
 
-      expect(find.textContaining('#5'), findsAtLeastNWidgets(1));
+      final backButton = find.byType(AppButton);
+      expect(backButton, findsOneWidget);
+      expect(tester.getSize(backButton).height, greaterThanOrEqualTo(44));
+      await tester.tap(find.text('Back to City'));
+
+      expect(tapped, isTrue);
+      expect(loggedEvent, 'interaction.action');
+      expect(loggedData, containsPair('action_type', 'back_tap'));
+      expect(loggedData, containsPair('screen_name', 'hierarchy_header'));
+      expect(loggedData, containsPair('widget_name', 'back_navigation_row'));
+      expect(
+        loggedData,
+        containsPair('player_action_id', 'change-territory-scale'),
+      );
     });
 
-    testWidgets('shows Unranked when rank is 0 (empty state)', (tester) async {
+    testWidgets('State screen is keyboard-safe at 390x844 and 200% text', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var lowerTaps = 0;
+      var upperTaps = 0;
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HierarchyHeader(
-              scopeLevel: 'DISTRICT',
-              scopeName: 'Downtown',
-              scopeCode: 'DT',
-              cellsVisited: 0,
-              cellsTotal: 100,
-              progressPercent: 0.0,
-              rank: 0,
-              explorerCount: 0,
-            ),
+        _wrap(
+          ProvinceScreen(
+            scopeId: 'state-1',
+            onLowerLevelTap: () => lowerTaps += 1,
+            onUpperLevelTap: () => upperTaps += 1,
           ),
+          textScaler: const TextScaler.linear(2),
         ),
       );
+      await tester.pump();
 
-      expect(find.text('Unranked'), findsOneWidget);
-    });
-
-    testWidgets('renders 0% explored stat in empty state', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HierarchyHeader(
-              scopeLevel: 'DISTRICT',
-              scopeName: 'Downtown',
-              scopeCode: 'DT',
-              cellsVisited: 0,
-              cellsTotal: 100,
-              progressPercent: 0.0,
-              rank: 0,
-              explorerCount: 0,
-            ),
-          ),
-        ),
+      expect(find.text('State'), findsOneWidget);
+      expect(find.textContaining('Explored'), findsOneWidget);
+      expect(find.textContaining('Rank'), findsAtLeastNWidgets(1));
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('pinch_hint_lower_control')))
+            .height,
+        greaterThanOrEqualTo(44),
       );
-
-      expect(find.textContaining('0%'), findsOneWidget);
-    });
-
-    testWidgets('renders scope code letters', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: HierarchyHeader(
-              scopeLevel: 'DISTRICT',
-              scopeName: 'Downtown',
-              scopeCode: 'DT',
-              cellsVisited: 42,
-              cellsTotal: 100,
-              progressPercent: 42.0,
-              rank: 3,
-              explorerCount: 150,
-            ),
-          ),
-        ),
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('pinch_hint_upper_control')))
+            .height,
+        greaterThanOrEqualTo(44),
       );
+      expect(tester.takeException(), isNull);
 
-      expect(find.text('DT'), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(lowerTaps, 1);
+      expect(upperTaps, 1);
+      final visibleText = tester
+          .widgetList<Text>(find.byType(Text))
+          .map((text) => text.data)
+          .join(' ');
+      expect(visibleText, isNot(contains('🏅')));
+      expect(visibleText, isNot(contains('🌍')));
     });
   });
 
@@ -326,36 +376,34 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('PinchHint', () {
-    testWidgets('shows both lower and upper level labels', (tester) async {
+    testWidgets('uses neutral icon and text for both scale directions', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: PinchHint(
-              lowerLevelLabel: 'Map',
-              upperLevelLabel: 'City',
-            ),
-          ),
+        _designHost(
+          const PinchHint(lowerLevelLabel: 'Map', upperLevelLabel: 'City'),
         ),
       );
 
+      expect(find.byType(AppCard), findsNothing);
+      expect(find.byIcon(Icons.pinch_outlined), findsOneWidget);
       expect(find.textContaining('Map'), findsOneWidget);
       expect(find.textContaining('City'), findsOneWidget);
+      expect(find.textContaining('↙'), findsNothing);
+      expect(find.textContaining('↗'), findsNothing);
     });
 
-    testWidgets('world-level hint shows only pinch-in direction',
-        (tester) async {
+    testWidgets('world-level hint shows only pinch-out direction', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: PinchHint(
-              lowerLevelLabel: 'Country',
-              upperLevelLabel: null,
-            ),
-          ),
+        _designHost(
+          const PinchHint(lowerLevelLabel: 'Country', upperLevelLabel: null),
         ),
       );
 
       expect(find.textContaining('Country'), findsOneWidget);
+      expect(find.textContaining('Pinch in'), findsNothing);
     });
   });
 
@@ -364,8 +412,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('HierarchyExplorationMap', () {
-    testWidgets('renders without crashing with empty child list',
-        (tester) async {
+    testWidgets('renders without crashing with empty child list', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -431,40 +480,42 @@ void main() {
   });
 
   group('DistrictFootprintMap', () {
-    testWidgets('renders actual district cells without numeric summary labels',
-        (tester) async {
-      final cells = [
-        _testCell(
-          id: 'current-1',
-          districtId: 'district-1',
-          lat: 45.0,
-          lng: -66.0,
-        ),
-        _testCell(
-          id: 'adjacent-1',
-          districtId: 'district-2',
-          lat: 45.002,
-          lng: -65.998,
-        ),
-      ];
+    testWidgets(
+      'renders actual district cells without numeric summary labels',
+      (tester) async {
+        final cells = [
+          _testCell(
+            id: 'current-1',
+            districtId: 'district-1',
+            lat: 45.0,
+            lng: -66.0,
+          ),
+          _testCell(
+            id: 'adjacent-1',
+            districtId: 'district-2',
+            lat: 45.002,
+            lng: -65.998,
+          ),
+        ];
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: DistrictFootprintMap(
-              cells: cells,
-              currentDistrictId: 'district-1',
-              visitedCellIds: const {'current-1'},
-              currentCellId: 'current-1',
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: DistrictFootprintMap(
+                cells: cells,
+                currentDistrictId: 'district-1',
+                visitedCellIds: const {'current-1'},
+                currentCellId: 'current-1',
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(find.byType(DistrictFootprintMap), findsOneWidget);
-      expect(find.text('0'), findsNothing);
-      expect(find.text('1'), findsNothing);
-    });
+        expect(find.byType(DistrictFootprintMap), findsOneWidget);
+        expect(find.text('0'), findsNothing);
+        expect(find.text('1'), findsNothing);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -488,7 +539,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('DISTRICT'), findsOneWidget);
+      expect(find.text('District'), findsOneWidget);
     });
 
     testWidgets('pinch hint references Map and City', (tester) async {
@@ -502,52 +553,55 @@ void main() {
       expect(hint.upperLevelLabel, 'City');
     });
 
-    testWidgets('wraps root in ObservableScreen with stable name',
-        (tester) async {
+    testWidgets('wraps root in ObservableScreen with stable name', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(const DistrictScreen(scopeId: 'district-1')),
       );
       await tester.pump();
 
-      final wrapper =
-          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      final wrapper = tester.widget<ObservableScreen>(
+        find.byType(ObservableScreen),
+      );
       expect(wrapper.screenName, 'district_screen');
     });
 
     testWidgets(
-        'uses footprint map instead of child summary grid when cells are available',
-        (tester) async {
-      final cells = [
-        _testCell(
-          id: 'current-1',
-          districtId: 'district-1',
-          lat: 45.0,
-          lng: -66.0,
-        ),
-        _testCell(
-          id: 'adjacent-1',
-          districtId: 'district-2',
-          lat: 45.002,
-          lng: -65.998,
-        ),
-      ];
-
-      await tester.pumpWidget(
-        _wrap(
-          DistrictScreen(
-            scopeId: 'district-1',
-            cells: cells,
-            visitedCellIds: const {'current-1'},
-            currentCellId: 'current-1',
+      'uses footprint map instead of child summary grid when cells are available',
+      (tester) async {
+        final cells = [
+          _testCell(
+            id: 'current-1',
+            districtId: 'district-1',
+            lat: 45.0,
+            lng: -66.0,
           ),
-        ),
-      );
-      await tester.pump();
+          _testCell(
+            id: 'adjacent-1',
+            districtId: 'district-2',
+            lat: 45.002,
+            lng: -65.998,
+          ),
+        ];
 
-      expect(find.byType(DistrictFootprintMap), findsOneWidget);
-      expect(find.byType(HierarchyExplorationMap), findsNothing);
-      expect(find.text('Child Area'), findsNothing);
-    });
+        await tester.pumpWidget(
+          _wrap(
+            DistrictScreen(
+              scopeId: 'district-1',
+              cells: cells,
+              visitedCellIds: const {'current-1'},
+              currentCellId: 'current-1',
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byType(DistrictFootprintMap), findsOneWidget);
+        expect(find.byType(HierarchyExplorationMap), findsNothing);
+        expect(find.text('Child Area'), findsNothing);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -556,9 +610,7 @@ void main() {
 
   group('CityScreen', () {
     testWidgets('renders HierarchyHeader and PinchHint', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CityScreen(scopeId: 'city-1')),
-      );
+      await tester.pumpWidget(_wrap(const CityScreen(scopeId: 'city-1')));
       await tester.pump();
 
       expect(find.byType(HierarchyHeader), findsOneWidget);
@@ -566,34 +618,30 @@ void main() {
     });
 
     testWidgets('shows CITY scope level label', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CityScreen(scopeId: 'city-1')),
-      );
+      await tester.pumpWidget(_wrap(const CityScreen(scopeId: 'city-1')));
       await tester.pump();
 
-      expect(find.text('CITY'), findsOneWidget);
+      expect(find.text('City'), findsOneWidget);
     });
 
-    testWidgets('pinch hint references District and Province', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CityScreen(scopeId: 'city-1')),
-      );
+    testWidgets('pinch hint references District and State', (tester) async {
+      await tester.pumpWidget(_wrap(const CityScreen(scopeId: 'city-1')));
       await tester.pump();
 
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
       expect(hint.lowerLevelLabel, 'District');
-      expect(hint.upperLevelLabel, 'Province');
+      expect(hint.upperLevelLabel, 'State');
     });
 
-    testWidgets('wraps root in ObservableScreen with stable name',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CityScreen(scopeId: 'city-1')),
-      );
+    testWidgets('wraps root in ObservableScreen with stable name', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(const CityScreen(scopeId: 'city-1')));
       await tester.pump();
 
-      final wrapper =
-          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      final wrapper = tester.widget<ObservableScreen>(
+        find.byType(ObservableScreen),
+      );
       expect(wrapper.screenName, 'city_screen');
     });
   });
@@ -604,28 +652,22 @@ void main() {
 
   group('ProvinceScreen', () {
     testWidgets('renders HierarchyHeader and PinchHint', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const ProvinceScreen(scopeId: 'state-1')),
-      );
+      await tester.pumpWidget(_wrap(const ProvinceScreen(scopeId: 'state-1')));
       await tester.pump();
 
       expect(find.byType(HierarchyHeader), findsOneWidget);
       expect(find.byType(PinchHint), findsOneWidget);
     });
 
-    testWidgets('shows PROVINCE scope level label', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const ProvinceScreen(scopeId: 'state-1')),
-      );
+    testWidgets('shows STATE scope level label', (tester) async {
+      await tester.pumpWidget(_wrap(const ProvinceScreen(scopeId: 'state-1')));
       await tester.pump();
 
-      expect(find.text('PROVINCE'), findsOneWidget);
+      expect(find.text('State'), findsOneWidget);
     });
 
     testWidgets('pinch hint references City and Country', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const ProvinceScreen(scopeId: 'state-1')),
-      );
+      await tester.pumpWidget(_wrap(const ProvinceScreen(scopeId: 'state-1')));
       await tester.pump();
 
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
@@ -633,15 +675,15 @@ void main() {
       expect(hint.upperLevelLabel, 'Country');
     });
 
-    testWidgets('wraps root in ObservableScreen with stable name',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(const ProvinceScreen(scopeId: 'state-1')),
-      );
+    testWidgets('wraps root in ObservableScreen with stable name', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(const ProvinceScreen(scopeId: 'state-1')));
       await tester.pump();
 
-      final wrapper =
-          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      final wrapper = tester.widget<ObservableScreen>(
+        find.byType(ObservableScreen),
+      );
       expect(wrapper.screenName, 'province_screen');
     });
   });
@@ -652,9 +694,7 @@ void main() {
 
   group('CountryScreen', () {
     testWidgets('renders HierarchyHeader and PinchHint', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CountryScreen(scopeId: 'country-1')),
-      );
+      await tester.pumpWidget(_wrap(const CountryScreen(scopeId: 'country-1')));
       await tester.pump();
 
       expect(find.byType(HierarchyHeader), findsOneWidget);
@@ -662,34 +702,30 @@ void main() {
     });
 
     testWidgets('shows COUNTRY scope level label', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CountryScreen(scopeId: 'country-1')),
-      );
+      await tester.pumpWidget(_wrap(const CountryScreen(scopeId: 'country-1')));
       await tester.pump();
 
-      expect(find.text('COUNTRY'), findsOneWidget);
+      expect(find.text('Country'), findsOneWidget);
     });
 
-    testWidgets('pinch hint references Province and World', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CountryScreen(scopeId: 'country-1')),
-      );
+    testWidgets('pinch hint references State and World', (tester) async {
+      await tester.pumpWidget(_wrap(const CountryScreen(scopeId: 'country-1')));
       await tester.pump();
 
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
-      expect(hint.lowerLevelLabel, 'Province');
+      expect(hint.lowerLevelLabel, 'State');
       expect(hint.upperLevelLabel, 'World');
     });
 
-    testWidgets('wraps root in ObservableScreen with stable name',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(const CountryScreen(scopeId: 'country-1')),
-      );
+    testWidgets('wraps root in ObservableScreen with stable name', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(const CountryScreen(scopeId: 'country-1')));
       await tester.pump();
 
-      final wrapper =
-          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      final wrapper = tester.widget<ObservableScreen>(
+        find.byType(ObservableScreen),
+      );
       expect(wrapper.screenName, 'country_screen');
     });
   });
@@ -700,9 +736,7 @@ void main() {
 
   group('WorldScreen', () {
     testWidgets('renders HierarchyHeader and PinchHint', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const WorldScreen()),
-      );
+      await tester.pumpWidget(_wrap(const WorldScreen()));
       await tester.pump();
 
       expect(find.byType(HierarchyHeader), findsOneWidget);
@@ -710,33 +744,29 @@ void main() {
     });
 
     testWidgets('shows WORLD scope level label', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const WorldScreen()),
-      );
+      await tester.pumpWidget(_wrap(const WorldScreen()));
       await tester.pump();
 
-      expect(find.text('WORLD'), findsOneWidget);
+      expect(find.text('World'), findsOneWidget);
     });
 
     testWidgets('pinch hint has no upper level (world is top)', (tester) async {
-      await tester.pumpWidget(
-        _wrap(const WorldScreen()),
-      );
+      await tester.pumpWidget(_wrap(const WorldScreen()));
       await tester.pump();
 
       final hint = tester.widget<PinchHint>(find.byType(PinchHint));
       expect(hint.upperLevelLabel, isNull);
     });
 
-    testWidgets('wraps root in ObservableScreen with stable name',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(const WorldScreen()),
-      );
+    testWidgets('wraps root in ObservableScreen with stable name', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_wrap(const WorldScreen()));
       await tester.pump();
 
-      final wrapper =
-          tester.widget<ObservableScreen>(find.byType(ObservableScreen));
+      final wrapper = tester.widget<ObservableScreen>(
+        find.byType(ObservableScreen),
+      );
       expect(wrapper.screenName, 'world_screen');
     });
   });
@@ -746,8 +776,9 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('Empty state policy', () {
-    testWidgets('district screen shows 0/total and Unranked with zero visits',
-        (tester) async {
+    testWidgets('district screen shows 0/total and Unranked with zero visits', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           const DistrictScreen(scopeId: 'district-1'),

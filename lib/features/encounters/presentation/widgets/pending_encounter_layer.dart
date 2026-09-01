@@ -33,7 +33,8 @@ class PendingEncounterLayer extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final pending = ready?.pendingEncounter ??
+    final pending =
+        ready?.pendingEncounter ??
         resolving?.pendingEncounter ??
         failure!.pendingEncounter!;
     final option = pending.options.first;
@@ -48,8 +49,9 @@ class PendingEncounterLayer extends ConsumerWidget {
         readinessState: readiness.phase.name,
         screenName: 'pending_encounter_layer',
         widgetName: 'resolve_present_encounter',
-        actionType:
-            retry ? 'retry_present_encounter' : 'resolve_present_encounter',
+        actionType: retry
+            ? 'retry_present_encounter'
+            : 'resolve_present_encounter',
       );
       final notifier = ref.read(pendingEncounterProvider.notifier);
       if (retry) {
@@ -68,64 +70,75 @@ class PendingEncounterLayer extends ConsumerWidget {
         ? null
         : () => resolveWithTrace(retry: isRetry);
 
+    final actionLabel = isResolving
+        ? 'Resolving pending encounter: ${pending.definitionDisplayName}. '
+              'Option: ${option.displayName}.'
+        : 'Pending encounter: ${pending.definitionDisplayName}. '
+              'Option: ${option.displayName}.';
+
     return SafeArea(
       minimum: const EdgeInsets.all(Spacing.lg),
       child: Align(
         alignment: Alignment.bottomCenter,
-        child: EarthPanel(
-          title: pending.definitionDisplayName,
-          eyebrow: 'Pending encounter',
-          tone: EarthPanelTone.accent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              EarthFieldRow(
-                label: 'Option',
-                value: option.displayName,
-              ),
-              const SizedBox(height: Spacing.md),
-              ProductActionSurface(
-                actionId: PlayerActions.resolvePresentEncounter,
-                child: Semantics(
-                  key: const Key('resolve-present-encounter'),
-                  label: 'Pending encounter: ${pending.definitionDisplayName}. '
-                      'Option: ${option.displayName}.',
-                  button: true,
-                  enabled: onPressed != null,
-                  onTap: onPressed,
-                  excludeSemantics: true,
-                  child: isResolving
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox.square(
-                              dimension: Spacing.xl,
-                              child: CircularProgressIndicator(
-                                strokeWidth: Spacing.xxs,
-                              ),
-                            ),
-                            const SizedBox(width: Spacing.sm),
-                            Text(
-                              'Resolving…',
-                              style: Theme.of(context).textTheme.labelLarge,
-                            ),
-                          ],
-                        )
-                      : EarthActionButton(
-                          label: readiness.isDegraded
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: SizedBox(
+              width: double.infinity,
+              child: AppCard(
+                title: pending.definitionDisplayName,
+                description: 'Pending encounter',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppFieldRow(label: 'Option', value: option.displayName),
+                    if (isRetry) ...[
+                      const SizedBox(height: Spacing.sm),
+                      const AppNotice(
+                        title: 'Resolution failed',
+                        message: 'Your choice was not applied. Try again.',
+                        tone: AppNoticeTone.error,
+                      ),
+                    ],
+                    if (readiness.isDegraded) ...[
+                      const SizedBox(height: Spacing.sm),
+                      const AppNotice(
+                        title: 'Sync required',
+                        message: 'Reconnect before resolving this encounter.',
+                        tone: AppNoticeTone.warning,
+                      ),
+                    ],
+                    const SizedBox(height: Spacing.lg),
+                    ProductActionSurface(
+                      actionId: PlayerActions.resolvePresentEncounter,
+                      child: Semantics(
+                        key: const Key('resolve-present-encounter'),
+                        label: actionLabel,
+                        button: true,
+                        enabled: onPressed != null,
+                        liveRegion: isResolving,
+                        onTap: onPressed,
+                        excludeSemantics: true,
+                        child: AppButton(
+                          label: isResolving
+                              ? 'Resolving…'
+                              : readiness.isDegraded
                               ? 'Sync required'
                               : isRetry
-                                  ? 'Retry'
-                                  : 'Resolve',
+                              ? 'Retry'
+                              : 'Resolve',
                           onPressed: onPressed,
-                          actionId: PlayerActions.resolvePresentEncounter,
-                          tone: EarthActionTone.secondary,
+                          leading: isResolving ? const LoadingDots() : null,
+                          variant: AppButtonVariant.secondary,
                           expand: true,
                         ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
