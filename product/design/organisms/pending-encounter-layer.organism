@@ -6,4 +6,4 @@ Exports: lib/features/encounters/presentation/widgets/pending_encounter_layer.da
 Public API: lib/features/encounters/presentation/widgets/pending_encounter_layer.dart
 
 Purpose:
-  Presents the trusted Present Cell's pending Encounter and its authored Option before resolving it into a committed Item reward. Gesture ownership is card-only: its Resolve or Retry control owns activation; outside-map gestures neither resolve nor dismiss the card.
+  Phase 3 neutral layer that presents the trusted Present Cell's pending Encounter and its authored Option before resolving it into a committed Item reward. Gesture ownership is card-only: its Resolve or Retry control owns activation; outside-map gestures neither resolve nor dismiss the card.

@@ -9,14 +9,18 @@ void main() {
     test('match the shared design registry for public design components', () {
       final sharedDesignContracts = _nativeContracts()
           .where((contract) => contract.publicApi == 'lib/shared/design.dart')
-          .where((contract) =>
-              const {'Atom', 'Molecule', 'Organism'}.contains(contract.kind))
+          .where(
+            (contract) =>
+                const {'Atom', 'Molecule', 'Organism'}.contains(contract.kind),
+          )
           .toList();
 
-      final contractNames =
-          sharedDesignContracts.map((contract) => contract.name).toSet();
-      final registryNames =
-          designComponentRegistry.map((component) => component.name).toSet();
+      final contractNames = sharedDesignContracts
+          .map((contract) => contract.name)
+          .toSet();
+      final registryNames = designComponentRegistry
+          .map((component) => component.name)
+          .toSet();
 
       expect(
         contractNames,
@@ -42,9 +46,12 @@ void main() {
           reason:
               '${component.name} native contract status must match the Dart design registry status.',
         );
-        expect(File(contract.exports).existsSync(), isTrue,
-            reason:
-                '${contract.name} exports ${contract.exports}, but it does not exist.');
+        expect(
+          File(contract.exports).existsSync(),
+          isTrue,
+          reason:
+              '${contract.name} exports ${contract.exports}, but it does not exist.',
+        );
       }
     });
 
@@ -52,7 +59,7 @@ void main() {
       const requiredSurfaceContracts = <String, ({String path, String kind})>{
         'PrimaryNavigationShell': (
           path: 'lib/shared/widgets/tab_shell.dart',
-          kind: 'Template'
+          kind: 'Template',
         ),
         'ExplorationMapRoot': (
           path: 'lib/features/map/presentation/screens/map_root_screen.dart',
@@ -93,6 +100,11 @@ void main() {
           path: 'lib/features/map/presentation/widgets/cell_detail_sheet.dart',
           kind: 'Molecule',
         ),
+        'PendingEncounterLayer': (
+          path:
+              'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
+          kind: 'Organism',
+        ),
       };
 
       final contractsByName = {
@@ -102,16 +114,24 @@ void main() {
       for (final entry in requiredSurfaceContracts.entries) {
         final expected = entry.value;
         final contract = contractsByName[entry.key];
-        expect(contract, isNotNull,
-            reason:
-                '${entry.key} needs a native EAC product-surface contract.');
+        expect(
+          contract,
+          isNotNull,
+          reason: '${entry.key} needs a native EAC product-surface contract.',
+        );
         expect(contract!.exports, expected.path);
         expect(File(contract.exports).existsSync(), isTrue);
-        expect(contract.kind, expected.kind,
-            reason:
-                '${entry.key} should be modeled with product-facing Atomic Design language.');
-        expect(contract.interactionPolicy, isNotEmpty,
-            reason: '${entry.key} must declare an interaction policy.');
+        expect(
+          contract.kind,
+          expected.kind,
+          reason:
+              '${entry.key} should be modeled with product-facing Atomic Design language.',
+        );
+        expect(
+          contract.interactionPolicy,
+          isNotEmpty,
+          reason: '${entry.key} must declare an interaction policy.',
+        );
       }
     });
     test('ui-action evidence is anchored to native design exports', () {
@@ -201,7 +221,9 @@ void main() {
       );
       expect(map.purpose, contains('static native fog legend'));
       expect(
-          map.purpose, contains('Present requires trusted physical occupancy'));
+        map.purpose,
+        contains('Present requires trusted physical occupancy'),
+      );
       expect(map.purpose, contains('paused banner is a semantic status'));
       expect(map.purpose, contains('legacy hasLoot never adds a star'));
 
@@ -211,30 +233,71 @@ void main() {
       expect(
         sheet.purpose,
         contains(
-            'never an exact Encounter, fauna identity, Outcome, or reward'),
+          'never an exact Encounter, fauna identity, Outcome, or reward',
+        ),
+      );
+    });
+
+    test('defines Phase 3 neutral Map chrome boundaries', () {
+      final contracts = {
+        for (final contract in _nativeContracts()) contract.name: contract,
+      };
+      final map = contracts['ExplorationMap']!;
+      final sheet = contracts['MapCellDetailSheet']!;
+      final header = contracts['TerritoryHierarchyHeader']!;
+      final encounter = contracts['PendingEncounterLayer']!;
+
+      expect(map.purpose, startsWith('Phase 3 neutral'));
+      expect(
+        map.purpose,
+        contains(
+          'MapLibre, projection, geometry, painter, route, provider, and gesture behavior remain unchanged',
+        ),
+      );
+      expect(sheet.purpose, startsWith('Phase 3 neutral'));
+      expect(header.interactionPolicy, 'action-required');
+      expect(header.purpose, contains('State, never Province'));
+      expect(encounter.interactionPolicy, 'action-required');
+      expect(encounter.purpose, startsWith('Phase 3 neutral'));
+      expect(encounter.purpose, contains('Gesture ownership is card-only'));
+      expect(
+        encounter.purpose,
+        contains('outside-map gestures neither resolve nor dismiss the card'),
       );
     });
 
     test('requires explicit interaction policy on every native contract', () {
       for (final contract in _nativeContracts()) {
-        expect(contract.status, isNotEmpty,
-            reason: '${contract.path} must declare Status.');
-        expect(contract.role, isNotEmpty,
-            reason: '${contract.path} must declare Role.');
-        expect(contract.interactionPolicy, isNotEmpty,
-            reason: '${contract.path} must declare Interaction policy.');
-        expect(contract.purpose, isNotEmpty,
-            reason: '${contract.path} must include a Purpose block.');
+        expect(
+          contract.status,
+          isNotEmpty,
+          reason: '${contract.path} must declare Status.',
+        );
+        expect(
+          contract.role,
+          isNotEmpty,
+          reason: '${contract.path} must declare Role.',
+        );
+        expect(
+          contract.interactionPolicy,
+          isNotEmpty,
+          reason: '${contract.path} must declare Interaction policy.',
+        );
+        expect(
+          contract.purpose,
+          isNotEmpty,
+          reason: '${contract.path} must include a Purpose block.',
+        );
       }
     });
   });
 }
 
 List<Map<String, Object?>> _collectUiActionEvidence() {
-  final collector = Process.runSync(
-    'dart',
-    ['run', 'tool/eac_collect_ui_actions.dart'],
-  );
+  final collector = Process.runSync('dart', [
+    'run',
+    'tool/eac_collect_ui_actions.dart',
+  ]);
 
   expect(
     collector.exitCode,
@@ -243,13 +306,14 @@ List<Map<String, Object?>> _collectUiActionEvidence() {
         'The UI-action collector must run before validating native evidence. stdout: ${collector.stdout} stderr: ${collector.stderr}',
   );
 
-  final evidence = jsonDecode(
-    File('artifacts/eac/ui-actions.json').readAsStringSync(),
-  ) as Map<String, Object?>;
+  final evidence =
+      jsonDecode(File('artifacts/eac/ui-actions.json').readAsStringSync())
+          as Map<String, Object?>;
 
   return (evidence['controls'] as List<Object?>)
-      .map((control) =>
-          (control as Map<Object?, Object?>).cast<String, Object?>())
+      .map(
+        (control) => (control as Map<Object?, Object?>).cast<String, Object?>(),
+      )
       .toList(growable: false);
 }
 
@@ -257,29 +321,40 @@ List<_NativeDesignContract> _nativeContracts() {
   final root = Directory('product/design');
   expect(root.existsSync(), isTrue, reason: 'product/design must exist.');
 
-  final contractFiles = root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => RegExp(r'\.(atom|molecule|organism|template|page)$')
-          .hasMatch(file.path))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final contractFiles =
+      root
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where(
+            (file) => RegExp(
+              r'\.(atom|molecule|organism|template|page)$',
+            ).hasMatch(file.path),
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
-  expect(contractFiles, isNotEmpty,
-      reason: 'Native EAC design contracts must be checked in.');
+  expect(
+    contractFiles,
+    isNotEmpty,
+    reason: 'Native EAC design contracts must be checked in.',
+  );
 
   return contractFiles.map(_parseNativeContract).toList(growable: false);
 }
 
 _NativeDesignContract _parseNativeContract(File file) {
   final source = file.readAsStringSync();
-  final header = RegExp(r'^(Atom|Molecule|Organism|Template|Page):\s*(.+)$',
-          multiLine: true)
-      .firstMatch(source);
+  final header = RegExp(
+    r'^(Atom|Molecule|Organism|Template|Page):\s*(.+)$',
+    multiLine: true,
+  ).firstMatch(source);
 
-  expect(header, isNotNull,
-      reason:
-          '${file.path} must start with Atom/Molecule/Organism/Template/Page.');
+  expect(
+    header,
+    isNotNull,
+    reason:
+        '${file.path} must start with Atom/Molecule/Organism/Template/Page.',
+  );
 
   return _NativeDesignContract(
     path: file.path.replaceAll(Platform.pathSeparator, '/'),
@@ -295,8 +370,10 @@ _NativeDesignContract _parseNativeContract(File file) {
 }
 
 String _field(String source, String field) {
-  final match = RegExp('^${RegExp.escape(field)}:\\s*(.+)\$', multiLine: true)
-      .firstMatch(source);
+  final match = RegExp(
+    '^${RegExp.escape(field)}:\\s*(.+)\$',
+    multiLine: true,
+  ).firstMatch(source);
   return match?.group(1)?.trim() ?? '';
 }
 
@@ -307,20 +384,18 @@ String _purpose(String source) {
 }
 
 DesignComponentCategory _categoryFor(String kind) => switch (kind) {
-      'Atom' => DesignComponentCategory.primitive,
-      'Molecule' => DesignComponentCategory.composite,
-      'Organism' => DesignComponentCategory.pattern,
-      _ => throw ArgumentError.value(
-          kind, 'kind', 'Not a registry component kind'),
-    };
+  'Atom' => DesignComponentCategory.primitive,
+  'Molecule' => DesignComponentCategory.composite,
+  'Organism' => DesignComponentCategory.pattern,
+  _ => throw ArgumentError.value(kind, 'kind', 'Not a registry component kind'),
+};
 
 DesignComponentStatus _statusFor(String status) => switch (status) {
-      'canonical' => DesignComponentStatus.canonical,
-      'experimental' => DesignComponentStatus.experimental,
-      'deprecated' => DesignComponentStatus.deprecated,
-      _ =>
-        throw ArgumentError.value(status, 'status', 'Unknown contract status'),
-    };
+  'canonical' => DesignComponentStatus.canonical,
+  'experimental' => DesignComponentStatus.experimental,
+  'deprecated' => DesignComponentStatus.deprecated,
+  _ => throw ArgumentError.value(status, 'status', 'Unknown contract status'),
+};
 
 class _NativeDesignContract {
   const _NativeDesignContract({

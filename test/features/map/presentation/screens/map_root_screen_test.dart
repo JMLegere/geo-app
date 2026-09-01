@@ -11,8 +11,7 @@ import 'package:earth_nova/features/map/presentation/screens/map_root_screen.dar
 
 void main() {
   group('MapRootScreen HitTestBehavior', () {
-    test(
-        'source uses HitTestBehavior.translucent so injected pointer events '
+    test('source uses HitTestBehavior.translucent so injected pointer events '
         'reach the GestureDetector when a hierarchy screen is mounted', () {
       final source = File(
         'lib/features/map/presentation/screens/map_root_screen.dart',
@@ -21,7 +20,8 @@ void main() {
       expect(
         source,
         contains('HitTestBehavior.translucent'),
-        reason: 'GestureDetector must use translucent so pointer-injected '
+        reason:
+            'GestureDetector must use translucent so pointer-injected '
             'scale events reach the recognizer even when Positioned.fill '
             'hierarchy child is mounted on top.',
       );
@@ -46,7 +46,8 @@ void main() {
       expect(
         source,
         isNot(contains('Offstage(')),
-        reason: 'Keeping the web MapLibre platform view Offstage lets the HTML '
+        reason:
+            'Keeping the web MapLibre platform view Offstage lets the HTML '
             'view keep rendering above hierarchy screens and can keep resize '
             'loops alive while hierarchy RPCs are loading.',
       );
@@ -74,6 +75,29 @@ void main() {
         hasLength(1),
         reason: 'The pending encounter is feature-local to the cell map level.',
       );
+    });
+  });
+
+  group('accessible scale controls', () {
+    test('source routes controls through the existing pinch transition', () {
+      final source = File(
+        'lib/features/map/presentation/screens/map_root_screen.dart',
+      ).readAsStringSync();
+
+      expect(source, contains("source: 'scale_control'"));
+      expect(
+        source,
+        contains("playerActionId: PlayerActions.changeTerritoryScale"),
+      );
+      expect(
+        source,
+        contains("key: const ValueKey('map_district_scale_control')"),
+      );
+      expect(source, contains('onLowerLevelTap: _goToLowerLevel'));
+      expect(source, contains('onUpperLevelTap: _goToUpperLevel'));
+      expect(source, contains("'spread'"));
+      expect(source, contains("'close'"));
+      expect(source, contains('deduplicate: false'));
     });
   });
 
@@ -159,57 +183,59 @@ void main() {
       );
     });
 
-    test('returns null for world, cell, missing map data, or blank scope IDs',
-        () {
-      const explorationState = ExplorationStateData(
-        currentCellId: 'current-cell',
-      );
+    test(
+      'returns null for world, cell, missing map data, or blank scope IDs',
+      () {
+        const explorationState = ExplorationStateData(
+          currentCellId: 'current-cell',
+        );
 
-      expect(
-        hierarchyScopeIdForLevel(
-          level: MapLevel.world,
-          mapState: mapState,
-          explorationState: explorationState,
-        ),
-        isNull,
-      );
-      expect(
-        hierarchyScopeIdForLevel(
-          level: MapLevel.cell,
-          mapState: mapState,
-          explorationState: explorationState,
-        ),
-        isNull,
-      );
-      expect(
-        hierarchyScopeIdForLevel(
-          level: MapLevel.district,
-          mapState: const MapStateLoading(),
-          explorationState: explorationState,
-        ),
-        isNull,
-      );
-      expect(
-        hierarchyScopeIdForLevel(
-          level: MapLevel.district,
-          mapState: MapStateReady(
-            cells: [
-              _cell(
-                id: 'current-cell',
-                districtId: ' ',
-                cityId: 'city-active',
-                stateId: 'state-active',
-                countryId: 'country-active',
-              ),
-            ],
-            visitedCellIds: const {},
-            location: mapState.location,
+        expect(
+          hierarchyScopeIdForLevel(
+            level: MapLevel.world,
+            mapState: mapState,
+            explorationState: explorationState,
           ),
-          explorationState: explorationState,
-        ),
-        isNull,
-      );
-    });
+          isNull,
+        );
+        expect(
+          hierarchyScopeIdForLevel(
+            level: MapLevel.cell,
+            mapState: mapState,
+            explorationState: explorationState,
+          ),
+          isNull,
+        );
+        expect(
+          hierarchyScopeIdForLevel(
+            level: MapLevel.district,
+            mapState: const MapStateLoading(),
+            explorationState: explorationState,
+          ),
+          isNull,
+        );
+        expect(
+          hierarchyScopeIdForLevel(
+            level: MapLevel.district,
+            mapState: MapStateReady(
+              cells: [
+                _cell(
+                  id: 'current-cell',
+                  districtId: ' ',
+                  cityId: 'city-active',
+                  stateId: 'state-active',
+                  countryId: 'country-active',
+                ),
+              ],
+              visitedCellIds: const {},
+              location: mapState.location,
+            ),
+            explorationState: explorationState,
+          ),
+          isNull,
+        );
+      },
+    );
   });
 }
 
@@ -225,11 +251,7 @@ Cell _cell({
     habitats: const [Habitat.forest],
     polygons: const [
       [
-        [
-          (lat: 0.0, lng: 0.0),
-          (lat: 0.0, lng: 1.0),
-          (lat: 1.0, lng: 0.0),
-        ],
+        [(lat: 0.0, lng: 0.0), (lat: 0.0, lng: 1.0), (lat: 1.0, lng: 0.0)],
       ],
     ],
     districtId: districtId,

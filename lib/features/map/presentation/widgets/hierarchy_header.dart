@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_interaction.dart';
 import 'package:earth_nova/shared/product/player_actions.dart';
-import 'package:earth_nova/shared/theme/app_theme.dart';
+import 'package:flutter/material.dart';
 
 class HierarchyHeader extends StatelessWidget {
   const HierarchyHeader({
@@ -33,275 +33,154 @@ class HierarchyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppTheme.surfaceContainer,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+    final pct = progressPercent.toStringAsFixed(0);
+    final useCompactStats = MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Spacing.lg,
+        vertical: Spacing.sm,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _BackNavRow(
-            parentScopeName: parentScopeName,
-            onBackTap: onBackTap,
-            interactionLogger: interactionLogger,
-          ),
-          const SizedBox(height: 8),
-          _ScopeRow(
-            scopeLevel: scopeLevel,
-            scopeName: scopeName,
-            scopeCode: scopeCode,
-          ),
-          const SizedBox(height: 8),
-          _RankChip(
-            rank: rank,
-            scopeName: scopeName,
-          ),
-          const SizedBox(height: 8),
-          _StatChipsRow(
-            cellsVisited: cellsVisited,
-            cellsTotal: cellsTotal,
-            progressPercent: progressPercent,
-            rank: rank,
-            explorerCount: explorerCount,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BackNavRow extends StatelessWidget {
-  const _BackNavRow({
-    this.parentScopeName,
-    this.onBackTap,
-    this.interactionLogger,
-  });
-
-  final String? parentScopeName;
-  final VoidCallback? onBackTap;
-  final InteractionLogger? interactionLogger;
-
-  @override
-  Widget build(BuildContext context) {
-    final logger = interactionLogger ??
-        (
-            {required String event,
-            required String category,
-            Map<String, dynamic>? data}) {};
-
-    final wrappedOnTap = onBackTap == null
-        ? null
-        : ObservableInteraction.wrapVoidCallback(
-            logger: logger,
-            screenName: 'hierarchy_header',
-            widgetName: 'back_navigation_row',
-            actionType: 'back_tap',
-            playerActionId: PlayerActions.changeTerritoryScale,
-            callback: onBackTap!,
-          );
-
-    // eac-clickable-owner-logs: HierarchyHeader wraps navigation callbacks with ObservableInteraction before this control runs.
-    return GestureDetector(
-      onTap: wrappedOnTap,
-      child: Row(
-        children: [
-          const Icon(
-            Icons.arrow_back_ios,
-            size: 14,
-            color: AppTheme.primary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            parentScopeName ?? '',
-            style: const TextStyle(
-              color: AppTheme.primary,
-              fontSize: 13,
+          if (onBackTap != null) ...[
+            _BackButton(
+              parentScopeName: parentScopeName,
+              onBackTap: onBackTap!,
+              interactionLogger: interactionLogger,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScopeRow extends StatelessWidget {
-  const _ScopeRow({
-    required this.scopeLevel,
-    required this.scopeName,
-    required this.scopeCode,
-  });
-
-  final String scopeLevel;
-  final String scopeName;
-  final String scopeCode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: Spacing.sm),
+          ],
+          Wrap(
+            spacing: Spacing.sm,
+            runSpacing: Spacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                scopeLevel,
-                style: const TextStyle(
-                  color: AppTheme.onSurfaceVariant,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                ),
+              AppBadge(
+                label: scopeLevel,
+                leading: const Icon(Icons.map_outlined, size: 16),
               ),
-              Text(
-                scopeName,
-                style: const TextStyle(
-                  color: AppTheme.onSurface,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                ),
+              AppBadge(label: scopeCode, variant: AppBadgeVariant.outline),
+              AppBadge(
+                label: rank == 0 ? 'Unranked' : 'Rank #$rank',
+                variant: AppBadgeVariant.outline,
+                leading: const Icon(Icons.leaderboard_outlined, size: 16),
               ),
             ],
           ),
-        ),
-        Text(
-          scopeCode,
-          style: const TextStyle(
-            color: AppTheme.primary,
-            fontSize: 58,
-            fontWeight: FontWeight.w900,
-            height: 1.0,
-          ).copyWith(
-            color: AppTheme.primary.withValues(alpha: 0.15),
+          const SizedBox(height: Spacing.xs),
+          Text(
+            scopeName,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _RankChip extends StatelessWidget {
-  const _RankChip({required this.rank, required this.scopeName});
-
-  final int rank;
-  final String scopeName;
-
-  @override
-  Widget build(BuildContext context) {
-    final label =
-        rank == 0 ? 'Unranked' : '🏅 #$rank most explored in $scopeName';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.15),
-        border: Border.all(
-          color: AppTheme.primary.withValues(alpha: 0.3),
-        ),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppTheme.tertiary,
-          fontSize: 12,
-        ),
+          const SizedBox(height: Spacing.xs),
+          if (useCompactStats)
+            _CompactStats(
+              progressPercent: pct,
+              cellsVisited: cellsVisited,
+              cellsTotal: cellsTotal,
+              rank: rank,
+              explorerCount: explorerCount,
+            )
+          else
+            AppStatGrid(
+              items: [
+                AppStatItem(
+                  label: 'Explored',
+                  value: '$pct%',
+                  helper: '$cellsVisited / $cellsTotal cells',
+                ),
+                AppStatItem(
+                  label: 'Rank',
+                  value: rank == 0 ? '—' : '#$rank',
+                  helper: rank == 0
+                      ? 'No visits yet'
+                      : '$explorerCount explorers',
+                ),
+              ],
+            ),
+        ],
       ),
     );
   }
 }
 
-class _StatChipsRow extends StatelessWidget {
-  const _StatChipsRow({
+class _CompactStats extends StatelessWidget {
+  const _CompactStats({
+    required this.progressPercent,
     required this.cellsVisited,
     required this.cellsTotal,
-    required this.progressPercent,
     required this.rank,
     required this.explorerCount,
   });
 
+  final String progressPercent;
   final int cellsVisited;
   final int cellsTotal;
-  final double progressPercent;
   final int rank;
   final int explorerCount;
 
   @override
   Widget build(BuildContext context) {
-    final pct = progressPercent.toStringAsFixed(0);
-
-    return Row(
+    return Wrap(
+      spacing: Spacing.sm,
+      runSpacing: Spacing.xs,
       children: [
-        Expanded(
-          child: _StatChip(
-            value: '$pct%',
-            label: 'EXPLORED',
-            sub: '$cellsVisited / $cellsTotal cells',
-          ),
+        AppBadge(label: 'Explored $progressPercent%'),
+        AppBadge(
+          label: '$cellsVisited / $cellsTotal cells',
+          variant: AppBadgeVariant.outline,
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatChip(
-            value: rank == 0 ? '—' : '#$rank',
-            label: 'RANK',
-            sub: rank == 0 ? 'No visits yet' : '$explorerCount explorers',
-          ),
+        AppBadge(label: rank == 0 ? 'Rank —' : 'Rank #$rank'),
+        AppBadge(
+          label: rank == 0 ? 'No visits yet' : '$explorerCount explorers',
+          variant: AppBadgeVariant.outline,
         ),
       ],
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.value,
-    required this.label,
-    required this.sub,
+class _BackButton extends StatelessWidget {
+  const _BackButton({
+    required this.parentScopeName,
+    required this.onBackTap,
+    required this.interactionLogger,
   });
 
-  final String value;
-  final String label;
-  final String sub;
+  final String? parentScopeName;
+  final VoidCallback onBackTap;
+  final InteractionLogger? interactionLogger;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceContainer,
-        border: Border.all(
-          color: AppTheme.surfaceContainerHigh,
-          width: 0.5,
-        ),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppTheme.onSurface,
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppTheme.onSurfaceVariant,
-              fontSize: 10,
-              letterSpacing: 1.0,
-            ),
-          ),
-          Text(
-            sub,
-            style: const TextStyle(
-              color: AppTheme.onSurfaceVariant,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
+    final logger =
+        interactionLogger ??
+        ({
+          required String event,
+          required String category,
+          Map<String, dynamic>? data,
+        }) {};
+    final wrappedOnTap = ObservableInteraction.wrapVoidCallback(
+      logger: logger,
+      screenName: 'hierarchy_header',
+      widgetName: 'back_navigation_row',
+      actionType: 'back_tap',
+      playerActionId: PlayerActions.changeTerritoryScale,
+      callback: onBackTap,
+    );
+    final parent = parentScopeName?.trim();
+
+    // eac-clickable-owner-logs: HierarchyHeader logs before the back callback.
+    return AppButton(
+      label: parent == null || parent.isEmpty ? 'Back' : 'Back to $parent',
+      variant: AppButtonVariant.ghost,
+      leading: const Icon(Icons.arrow_back),
+      onPressed: wrappedOnTap,
     );
   }
 }

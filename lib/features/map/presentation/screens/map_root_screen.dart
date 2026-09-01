@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/features/encounters/presentation/widgets/pending_encounter_layer.dart';
 import 'package:earth_nova/features/map/domain/entities/cell.dart';
@@ -42,17 +43,19 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   @override
   void initState() {
     super.initState();
-    _mapLevelSubscription = ref.listenManual<MapLevel>(
-      mapLevelProvider,
-      (previous, next) {
-        if (previous == null) return;
-        ref.read(navigationScreenTransitionLoggerProvider).logScreenChanged(
-              source: 'map_level',
-              fromScreen: 'map.${previous.name}',
-              toScreen: 'map.${next.name}',
-            );
-      },
-    );
+    _mapLevelSubscription = ref.listenManual<MapLevel>(mapLevelProvider, (
+      previous,
+      next,
+    ) {
+      if (previous == null) return;
+      ref
+          .read(navigationScreenTransitionLoggerProvider)
+          .logScreenChanged(
+            source: 'map_level',
+            fromScreen: 'map.${previous.name}',
+            toScreen: 'map.${next.name}',
+          );
+    });
     _mapLevelGestureBridge = MapLevelGestureBridge(
       onPinch: (direction, source) {
         if (!mounted) return;
@@ -121,21 +124,50 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
               Positioned.fill(child: const MapScreen()),
             if (level == MapLevel.cell)
               const Positioned.fill(child: PendingEncounterLayer()),
+            if (level == MapLevel.cell)
+              Positioned(
+                right: Spacing.lg,
+                bottom: Spacing.giant + Spacing.massive,
+                child: AppButton(
+                  key: const ValueKey('map_district_scale_control'),
+                  label: 'District',
+                  variant: AppButtonVariant.outline,
+                  leading: const Icon(Icons.zoom_out),
+                  onPressed: _goToUpperLevel,
+                ),
+              ),
             // Hierarchy screens are only mounted when active.
             if (level != MapLevel.cell)
               Positioned.fill(
                 child: switch (level) {
                   MapLevel.district => DistrictScreen(
-                      scopeId: hierarchyScopeId,
-                      cells: _mapCellsForHierarchy(mapState),
-                      visitedCellIds: _visitedCellIdsForHierarchy(mapState),
-                      currentCellId: explorationState.currentCellId ??
-                          explorationState.lastEnteredCellId,
-                    ),
-                  MapLevel.city => CityScreen(scopeId: hierarchyScopeId),
-                  MapLevel.state => ProvinceScreen(scopeId: hierarchyScopeId),
-                  MapLevel.country => CountryScreen(scopeId: hierarchyScopeId),
-                  MapLevel.world => const WorldScreen(),
+                    scopeId: hierarchyScopeId,
+                    cells: _mapCellsForHierarchy(mapState),
+                    visitedCellIds: _visitedCellIdsForHierarchy(mapState),
+                    currentCellId:
+                        explorationState.currentCellId ??
+                        explorationState.lastEnteredCellId,
+                    onLowerLevelTap: _goToLowerLevel,
+                    onUpperLevelTap: _goToUpperLevel,
+                  ),
+                  MapLevel.city => CityScreen(
+                    scopeId: hierarchyScopeId,
+                    onLowerLevelTap: _goToLowerLevel,
+                    onUpperLevelTap: _goToUpperLevel,
+                  ),
+                  MapLevel.state => ProvinceScreen(
+                    scopeId: hierarchyScopeId,
+                    onLowerLevelTap: _goToLowerLevel,
+                    onUpperLevelTap: _goToUpperLevel,
+                  ),
+                  MapLevel.country => CountryScreen(
+                    scopeId: hierarchyScopeId,
+                    onLowerLevelTap: _goToLowerLevel,
+                    onUpperLevelTap: _goToUpperLevel,
+                  ),
+                  MapLevel.world => WorldScreen(
+                    onLowerLevelTap: _goToLowerLevel,
+                  ),
                   MapLevel.cell => const SizedBox.shrink(),
                 },
               ),
@@ -143,6 +175,18 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
         ),
       ),
     );
+  }
+
+  void _goToLowerLevel() {
+    _handlePinchDirection(
+      'spread',
+      source: 'scale_control',
+      deduplicate: false,
+    );
+  }
+
+  void _goToUpperLevel() {
+    _handlePinchDirection('close', source: 'scale_control', deduplicate: false);
   }
 
   String _pinchDirectionForScale(double scale) {
@@ -155,9 +199,10 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
     String direction, {
     required String source,
     void Function(String direction, String source)? logInteraction,
+    bool deduplicate = true,
   }) {
     if (direction != 'close' && direction != 'spread') return;
-    if (_isDuplicatePinch(direction)) return;
+    if (deduplicate && _isDuplicatePinch(direction)) return;
 
     final notifier = ref.read(mapLevelProvider.notifier);
     (logInteraction ?? _logPinchInteraction).call(direction, source);
@@ -171,7 +216,8 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   bool _isDuplicatePinch(String direction) {
     final now = DateTime.now();
     final lastAt = _lastHandledPinchAt;
-    final isDuplicate = _lastHandledPinchDirection == direction &&
+    final isDuplicate =
+        _lastHandledPinchDirection == direction &&
         lastAt != null &&
         now.difference(lastAt).inMilliseconds < 350;
     if (isDuplicate) return true;
@@ -182,7 +228,9 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
   }
 
   void _logPinchInteraction(String direction, String source) {
-    ref.read(appObservabilityProvider).log(
+    ref
+        .read(appObservabilityProvider)
+        .log(
           'interaction.action',
           'ui',
           data: ObservableInteraction.payload(
@@ -190,10 +238,7 @@ class _MapRootScreenState extends ConsumerState<MapRootScreen> {
             screenName: 'map_root_screen',
             widgetName: 'map_level_gesture_detector',
             playerActionId: PlayerActions.changeTerritoryScale,
-            extra: {
-              'gesture_direction': direction,
-              'source': source,
-            },
+            extra: {'gesture_direction': direction, 'source': source},
           ),
         );
   }
