@@ -10,6 +10,7 @@ import 'package:earth_nova/features/map/domain/entities/cell_state.dart';
 import 'package:earth_nova/features/map/domain/entities/encounter.dart';
 import 'package:earth_nova/features/map/presentation/widgets/cell_detail_sheet.dart';
 import 'package:earth_nova/features/map/presentation/painters/cell_overlay_painter.dart';
+import 'package:earth_nova/features/map/presentation/painters/fog_renderer.dart';
 import 'package:earth_nova/features/map/presentation/screens/map_screen.dart';
 import 'package:earth_nova/features/map/presentation/widgets/discovery_notification.dart';
 import 'package:earth_nova/features/map/presentation/widgets/map_status_bar.dart';
@@ -322,6 +323,58 @@ void main() {
       expect(find.text('Unknown'), findsNothing);
     });
 
+    testWidgets('legend layers semantic fills over one neutral map substrate', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const ShadApp(home: Scaffold(body: MapCellKnowledgeLegend())),
+      );
+      final colorScheme = Theme.of(
+        tester.element(find.byType(MapCellKnowledgeLegend)),
+      ).colorScheme;
+      const states = [
+        CellState(
+          knowledgeState: CellKnowledgeState.shrouded,
+          relationship: CellRelationship.unknown,
+          contents: CellContents.empty,
+        ),
+        CellState(
+          knowledgeState: CellKnowledgeState.informed,
+          category: 'category',
+          relationship: CellRelationship.explored,
+          contents: CellContents.empty,
+        ),
+        CellState(
+          knowledgeState: CellKnowledgeState.explored,
+          relationship: CellRelationship.explored,
+          contents: CellContents.empty,
+        ),
+        CellState(
+          knowledgeState: CellKnowledgeState.present,
+          relationship: CellRelationship.present,
+          contents: CellContents.empty,
+        ),
+      ];
+
+      for (final state in states) {
+        final name = state.knowledgeState.name;
+        final substrate = tester.widget<Container>(
+          find.byKey(ValueKey('cell-knowledge-$name-map-substrate')),
+        );
+        final swatch = tester.widget<DecoratedBox>(
+          find.byKey(ValueKey('cell-knowledge-$name-swatch')),
+        );
+        expect(
+          (substrate.decoration! as BoxDecoration).color,
+          colorScheme.surfaceContainerHighest,
+        );
+        expect(
+          (swatch.decoration as BoxDecoration).color,
+          FogRenderer.fillColor(state),
+        );
+      }
+    });
+
     testWidgets('legend exposes category and player shape cues', (
       tester,
     ) async {
@@ -376,11 +429,12 @@ void main() {
       final markerBorder = markerDecoration.border! as Border;
       final dotDecoration =
           tester.widget<Container>(playerDot).decoration! as BoxDecoration;
+      final colorScheme = Theme.of(tester.element(playerMarker)).colorScheme;
       expect(markerDecoration.shape, BoxShape.circle);
-      expect(markerDecoration.color, Colors.green);
-      expect(markerBorder.top.color, Colors.white);
+      expect(markerDecoration.color, colorScheme.onSurface);
+      expect(markerBorder.top.color, colorScheme.surface);
       expect(dotDecoration.shape, BoxShape.circle);
-      expect(dotDecoration.color, Colors.white);
+      expect(dotDecoration.color, colorScheme.surface);
       expect(
         find.bySemanticsLabel('Present Cell, player here'),
         findsOneWidget,
@@ -702,7 +756,22 @@ void main() {
           ),
         ),
       );
-      expect(mapSource, contains('child: PlayerMarker()'));
+      expect(RegExp(r'\bPlayerMarker\(').allMatches(mapSource), hasLength(1));
+      expect(mapSource, contains('trust: markerTrust'));
+      expect(
+        mapSource,
+        contains('final markerShowsRing = playerMarkerShowsRing('),
+      );
+      expect(mapSource, contains('markerShowsRing: markerShowsRing'));
+      expect(
+        mapSource,
+        contains('markerState: ref.read(playerMarkerProvider)'),
+      );
+      expect(
+        mapSource,
+        contains('explorationEligibility: explorationEligibility'),
+      );
+      expect(mapSource, isNot(contains('playerMarkerProvider.notifier')));
       expect(mapSource, isNot(contains('_PlayerMarkerPainter')));
     });
 

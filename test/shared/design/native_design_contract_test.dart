@@ -220,12 +220,17 @@ void main() {
         contains('exactly Shrouded, Informed, Explored, and Present'),
       );
       expect(map.purpose, contains('static native fog legend'));
+      expect(map.purpose, contains('Present is clearest and highest contrast'));
+      expect(map.purpose, contains('Informed is reachable and known'));
+      expect(map.purpose, contains('grayscale-safe'));
+      expect(map.purpose, contains('never depend on hue alone'));
       expect(
         map.purpose,
-        contains('Present requires trusted physical occupancy'),
+        contains('current player center marker remains visible'),
       );
-      expect(map.purpose, contains('paused banner is a semantic status'));
-      expect(map.purpose, contains('legacy hasLoot never adds a star'));
+      expect(map.purpose, contains('frontier edge and seam behavior'));
+      expect(map.purpose, contains('rarity, loot, and warm-hue semantics'));
+      expect(map.purpose, contains('authorizes neither Phase 5'));
 
       expect(sheet.interactionPolicy, 'action-required');
       expect(sheet.purpose, contains('inspect-map-cell'));
@@ -238,7 +243,7 @@ void main() {
       );
     });
 
-    test('defines Phase 3 neutral Map chrome boundaries', () {
+    test('defines Phase 4 Map calibration boundaries', () {
       final contracts = {
         for (final contract in _nativeContracts()) contract.name: contract,
       };
@@ -247,13 +252,11 @@ void main() {
       final header = contracts['TerritoryHierarchyHeader']!;
       final encounter = contracts['PendingEncounterLayer']!;
 
-      expect(map.purpose, startsWith('Phase 3 neutral'));
-      expect(
-        map.purpose,
-        contains(
-          'MapLibre, projection, geometry, painter, route, provider, and gesture behavior remain unchanged',
-        ),
-      );
+      expect(map.purpose, startsWith('Phase 4 calibrated semantic'));
+      expect(map.purpose, contains('Organic geometry provenance'));
+      expect(map.purpose, contains('MapLibre, projections, painters, routes'));
+      expect(map.purpose, contains('FogStateService, providers, data/schema'));
+      expect(map.purpose, contains('persisted geometry or data changes'));
       expect(sheet.purpose, startsWith('Phase 3 neutral'));
       expect(header.interactionPolicy, 'action-required');
       expect(header.purpose, contains('State, never Province'));

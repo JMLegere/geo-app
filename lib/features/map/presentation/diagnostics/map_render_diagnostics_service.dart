@@ -20,6 +20,7 @@ class MapRenderDiagnosticsService {
     required String? currentCellId,
     required int visitedCellCount,
     required bool markerIsRing,
+    required bool markerShowsRing,
     required double markerGapDistanceMeters,
     double markerRadiusPx = 10.0,
     double markerRingRadiusPx = 22.0,
@@ -60,6 +61,11 @@ class MapRenderDiagnosticsService {
         CellRelationship.explored,
         sampleLimit,
       ),
+      'state_informed_cell_ids_sample': _sampleKnowledgeIds(
+        cellsWithStates,
+        CellKnowledgeState.informed,
+        sampleLimit,
+      ),
       'state_frontier_cell_ids_sample': _sampleIds(
         cellsWithStates,
         CellRelationship.frontier,
@@ -83,8 +89,9 @@ class MapRenderDiagnosticsService {
       'marker_radius_px': markerRadiusPx,
       'marker_ring_radius_px': markerRingRadiusPx,
       'marker_is_ring': markerIsRing,
+      'marker_shows_ring': markerShowsRing,
       'marker_gap_distance_m': _roundPx(markerGapDistanceMeters),
-      'marker_visual_mode': markerIsRing ? 'accuracy_ring' : 'solid_marker',
+      'marker_visual_mode': markerShowsRing ? 'accuracy_ring' : 'solid_marker',
       'marker_overlaps_present_cell': _markerOverlapsRelationship(
         markerScreenPosition,
         renderableEntries,
@@ -95,37 +102,49 @@ class MapRenderDiagnosticsService {
   }
 
   Map<String, dynamic> _styleSnapshot() => {
-        'style_present_fill_alpha': _alpha(
-          FogRenderer.fillColor(_state(CellRelationship.present)),
-        ),
-        'style_explored_fill_alpha': _alpha(
-          FogRenderer.fillColor(_state(CellRelationship.explored)),
-        ),
-        'style_frontier_fill_alpha': _alpha(
-          FogRenderer.fillColor(_state(CellRelationship.frontier)),
-        ),
-        'style_unknown_fill_alpha': _alpha(
-          FogRenderer.fillColor(_state(CellRelationship.unknown)),
-        ),
-        'style_present_stroke_alpha': _alpha(
-          FogRenderer.strokeColor(_state(CellRelationship.present)),
-        ),
-        'style_explored_stroke_alpha': _alpha(
-          FogRenderer.strokeColor(_state(CellRelationship.explored)),
-        ),
-        'style_frontier_stroke_alpha': _alpha(
-          FogRenderer.strokeColor(_state(CellRelationship.frontier)),
-        ),
-        'style_overlay_antialias': FogRenderer.overlayAntiAlias,
-        'style_fill_grouping_mode': 'single_path_per_relationship_even_odd',
-        'style_uses_unknown_backdrop': FogRenderer.usesUnknownBackdrop,
-        'style_fill_compositing_mode': FogRenderer.fillCompositingMode,
-      };
+    'style_present_fill_alpha': _alpha(
+      FogRenderer.fillColor(_state(CellRelationship.present)),
+    ),
+    'style_explored_fill_alpha': _alpha(
+      FogRenderer.fillColor(_state(CellRelationship.explored)),
+    ),
+    'style_informed_fill_alpha': _alpha(
+      FogRenderer.fillColor(_informedState()),
+    ),
+    'style_frontier_fill_alpha': _alpha(
+      FogRenderer.fillColor(_state(CellRelationship.frontier)),
+    ),
+    'style_unknown_fill_alpha': _alpha(
+      FogRenderer.fillColor(_state(CellRelationship.unknown)),
+    ),
+    'style_present_stroke_alpha': _alpha(
+      FogRenderer.strokeColor(_state(CellRelationship.present)),
+    ),
+    'style_explored_stroke_alpha': _alpha(
+      FogRenderer.strokeColor(_state(CellRelationship.explored)),
+    ),
+    'style_informed_stroke_alpha': _alpha(
+      FogRenderer.strokeColor(_informedState()),
+    ),
+    'style_frontier_stroke_alpha': _alpha(
+      FogRenderer.strokeColor(_state(CellRelationship.frontier)),
+    ),
+    'style_overlay_antialias': FogRenderer.overlayAntiAlias,
+    'style_fill_grouping_mode':
+        'single_path_per_knowledge_state_and_relationship_even_odd',
+    'style_uses_unknown_backdrop': FogRenderer.usesUnknownBackdrop,
+    'style_fill_compositing_mode': FogRenderer.fillCompositingMode,
+  };
 
-  CellState _state(CellRelationship relationship) => CellState(
-        relationship: relationship,
-        contents: CellContents.empty,
-      );
+  CellState _state(CellRelationship relationship) =>
+      CellState(relationship: relationship, contents: CellContents.empty);
+
+  CellState _informedState() => const CellState(
+    knowledgeState: CellKnowledgeState.informed,
+    category: 'fauna',
+    relationship: CellRelationship.explored,
+    contents: CellContents.empty,
+  );
 
   List<String> _sampleIds(
     List<CellStateEntry> cellsWithStates,
@@ -138,13 +157,27 @@ class MapRenderDiagnosticsService {
     ].take(limit).toList(growable: false);
   }
 
+  List<String> _sampleKnowledgeIds(
+    List<CellStateEntry> cellsWithStates,
+    CellKnowledgeState knowledgeState,
+    int limit,
+  ) {
+    return [
+      for (final entry in cellsWithStates)
+        if (entry.state.knowledgeState == knowledgeState) entry.cell.id,
+    ].take(limit).toList(growable: false);
+  }
+
   Map<CellRelationship, int> _boundaryCountsByRelationship(
     List<TessellationBoundaryEdge> edges,
   ) {
     final counts = <CellRelationship, int>{};
     for (final edge in edges) {
-      counts.update(edge.state.relationship, (value) => value + 1,
-          ifAbsent: () => 1);
+      counts.update(
+        edge.state.relationship,
+        (value) => value + 1,
+        ifAbsent: () => 1,
+      );
     }
     return counts;
   }
@@ -207,10 +240,7 @@ class MapRenderDiagnosticsService {
         polygonCount++;
         final bounds = _boundsFor(exterior);
         projectedExteriors.add(
-          _ProjectedExterior(
-            points: exterior,
-            bounds: bounds,
-          ),
+          _ProjectedExterior(points: exterior, bounds: bounds),
         );
         final areaRatio = viewportArea == 0
             ? 0.0
@@ -222,7 +252,8 @@ class MapRenderDiagnosticsService {
         if (areaRatio > relationshipSummary.largestAreaRatio) {
           relationshipSummary.largestAreaRatio = areaRatio;
         }
-        final crossesViewportEdge = bounds.left < 0 ||
+        final crossesViewportEdge =
+            bounds.left < 0 ||
             bounds.top < 0 ||
             bounds.right > viewportSize.width ||
             bounds.bottom > viewportSize.height;
@@ -280,8 +311,9 @@ class MapRenderDiagnosticsService {
       '${prefix}_polygon_count': summary.polygonCount,
       '${prefix}_viewport_edge_crossing_count':
           summary.viewportEdgeCrossingCount,
-      '${prefix}_largest_bbox_area_ratio':
-          _roundRatio(summary.largestAreaRatio),
+      '${prefix}_largest_bbox_area_ratio': _roundRatio(
+        summary.largestAreaRatio,
+      ),
     };
   }
 
@@ -351,14 +383,22 @@ class MapRenderDiagnosticsService {
 
     return {
       'projection_unknown_visible_ratio': _ratio(unknownSamples, totalSamples),
-      'projection_unknown_left_edge_ratio':
-          _ratio(leftUnknownSamples, leftSamples),
-      'projection_unknown_top_edge_ratio':
-          _ratio(topUnknownSamples, topSamples),
-      'projection_unknown_right_edge_ratio':
-          _ratio(rightUnknownSamples, rightSamples),
-      'projection_unknown_bottom_edge_ratio':
-          _ratio(bottomUnknownSamples, bottomSamples),
+      'projection_unknown_left_edge_ratio': _ratio(
+        leftUnknownSamples,
+        leftSamples,
+      ),
+      'projection_unknown_top_edge_ratio': _ratio(
+        topUnknownSamples,
+        topSamples,
+      ),
+      'projection_unknown_right_edge_ratio': _ratio(
+        rightUnknownSamples,
+        rightSamples,
+      ),
+      'projection_unknown_bottom_edge_ratio': _ratio(
+        bottomUnknownSamples,
+        bottomSamples,
+      ),
     };
   }
 
@@ -388,7 +428,8 @@ class MapRenderDiagnosticsService {
       final previous = polygon[previousIndex];
       final crossesY = (current.dy > point.dy) != (previous.dy > point.dy);
       if (crossesY) {
-        final slopeX = (previous.dx - current.dx) *
+        final slopeX =
+            (previous.dx - current.dx) *
                 (point.dy - current.dy) /
                 (previous.dy - current.dy) +
             current.dx;
@@ -500,10 +541,7 @@ class _ProjectionRelationshipSummary {
 }
 
 class _ProjectedExterior {
-  const _ProjectedExterior({
-    required this.points,
-    required this.bounds,
-  });
+  const _ProjectedExterior({required this.points, required this.bounds});
 
   final List<Offset> points;
   final Rect bounds;

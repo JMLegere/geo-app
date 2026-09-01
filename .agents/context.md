@@ -964,3 +964,34 @@
 - Exact final gates passed: `flutter analyze` with no issues; the complete Flutter suite (1,534 passed); 138 focused Phase 3 tests; EAC with no diagnostics; documentation authority; and `git diff --check`.
 - Fourteen release-mode Chromium captures at 390×844 and 1440×900 are recorded in `.agents/qa/2026-08-31-shadcn-reset-phase-3-map-chrome.md` and `.agents/qa/assets/shadcn-phase-3/`. Rendered review found and corrected a reward-modal Semantics assertion, transparent variable-background notices, large-text overflow, and MapLibre control overlap before final capture.
 - Phase 4 semantic renderer calibration, Phase 5+ migration, backend/data/dependency work, and production deployment remain paused and require separate explicit authorization.
+
+### 2026-09-01 — Issue #580 Phase 4 semantic renderer calibration complete
+
+**Authority**
+
+- The user explicitly authorized PRD Phase 4 only. Phase 5 and later remain paused until separately authorized; production deployment remains unauthorized.
+- Phase 4 preserved the approved Map-domain requirements, current frontier-edge behavior, providers, eligibility, Visit/Encounter behavior, routes, persisted data, schemas, dependencies, geometry sources, and hierarchy counts.
+
+**Implementation**
+
+- Canonical Cell knowledge now renders as a neutral grayscale-safe ladder: Present clear, Explored remembered/faded, Informed darker/reachable with a monochrome category cue, and Shrouded opaque.
+- Tessellated fill paths preserve knowledge state independently from relationship-based seams. A rendered QA failure exposed and corrected an Informed reconstruction that constructor-canonicalized to Shrouded; the focused painter regression now samples an interior pixel away from the cue.
+- The one gameplay `PlayerMarker` remains mounted in trusted, low-confidence, paused, and distance-ring states. Trust adds the same neutral ring with a contrasting edge; the center marker persists. Diagnostics report effective ring visibility.
+- District and State/World renderers use neutral state/progress treatments with non-color stroke/count cues and explicit current/visited/unvisited/context, progress, count, and player-location semantics.
+- Diagnostics now keep canonical knowledge and relationship dimensions separate: Informed has dedicated state/style keys, while frontier remains the relationship-based Shrouded neighbor signal. Autoresearch reveal hardness consumes the Informed style without falsifying frontier telemetry.
+
+**Verification**
+
+- Focused Phase 4 suite: `104` passed.
+- Full `flutter analyze`: no issues.
+- Full Flutter suite: `1556` passed; `12` opt-in screenshot capture cases skipped by default.
+- Documentation authority contract: `3` passed.
+- `npm run eac:check`: no diagnostics.
+- `git diff --check`: passed.
+- Rendered evidence: `.agents/qa/2026-09-01-shadcn-reset-phase-4-semantic-renderers.md`.
+- Final mobile grayscale samples ordered Present `0.408` > Explored `0.341` > Informed `0.275` > Shrouded `0.106`.
+- Independent correctness review cleared the diagnostics blocker and found no remaining concrete merge blocker.
+
+**Outcome**
+
+- Phase 4 is complete. Phase 5 and later remain paused. No production deployment, data migration, schema mutation, provider change, route change, or gameplay expansion was performed.

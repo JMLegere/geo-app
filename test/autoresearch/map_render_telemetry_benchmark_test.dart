@@ -22,6 +22,7 @@ void main() {
       currentCellId: 'present',
       visitedCellCount: 4,
       markerIsRing: false,
+      markerShowsRing: false,
       markerGapDistanceMeters: 0,
     );
 
@@ -39,12 +40,18 @@ void main() {
     final missingKeys = _missingRequiredTelemetryKeys(telemetry);
     final unresolvedHypotheses = _unresolvedHypotheses(telemetry);
     final styleGapCount = _missingKeysWithPrefix(missingKeys, 'style_').length;
-    final renderModelGapCount =
-        _missingKeysWithPrefix(missingKeys, 'render_model_').length;
-    final projectionGapCount =
-        _missingKeysWithPrefix(missingKeys, 'projection_').length;
-    final markerGapCount =
-        _missingKeysWithPrefix(missingKeys, 'marker_').length;
+    final renderModelGapCount = _missingKeysWithPrefix(
+      missingKeys,
+      'render_model_',
+    ).length;
+    final projectionGapCount = _missingKeysWithPrefix(
+      missingKeys,
+      'projection_',
+    ).length;
+    final markerGapCount = _missingKeysWithPrefix(
+      missingKeys,
+      'marker_',
+    ).length;
     final edgeClipDiagnosticGapCount = _edgeClipDiagnosticKeys
         .where((key) => !telemetry.containsKey(key))
         .length;
@@ -94,6 +101,7 @@ void main() {
       currentCellId: 'coverage-present',
       visitedCellCount: 1,
       markerIsRing: false,
+      markerShowsRing: false,
       markerGapDistanceMeters: 0,
     );
     final coverageShortfall = _coverageShortfallScore(coverageTelemetry);
@@ -110,14 +118,16 @@ void main() {
       'ASI truth_frontier_fill_alpha='
       '${FogRenderer.fillColor(_frontierState).a.toStringAsFixed(3)}',
     );
+    print(
+      'ASI truth_informed_fill_alpha='
+      '${FogRenderer.fillColor(_informedState).a.toStringAsFixed(3)}',
+    );
     print('ASI fog_hardness_breakdown=${fogHardness.breakdown}');
     print(
       'ASI unknown_backdrop_hardness_breakdown='
       '${unknownBackdropHardness.breakdown}',
     );
-    print(
-      'ASI coverage_shortfall_breakdown=${coverageShortfall.breakdown}',
-    );
+    print('ASI coverage_shortfall_breakdown=${coverageShortfall.breakdown}');
     print('ASI fetch_selection_breakdown=${fetchSelection.breakdown}');
     print('ASI coverage_source_breakdown=${coverageSource.breakdown}');
     print('ASI assignment_source_breakdown=${assignmentSource.breakdown}');
@@ -207,12 +217,13 @@ void main() {
       'METRIC location_source_observability_gap_count=${locationSourceObservability.score}',
     );
     print(
-        'METRIC observability_surface_gap_count=$observabilitySurfaceGapCount');
+      'METRIC observability_surface_gap_count=$observabilitySurfaceGapCount',
+    );
     print(
       'METRIC coverage_buffer_param_gap_count=${coverageBufferParam.score}',
     );
     print('METRIC fog_hardness_score=${fogHardness.score}');
-    print('METRIC frontier_alpha_excess=${fogHardness.frontierAlphaExcess}');
+    print('METRIC informed_alpha_excess=${fogHardness.informedAlphaExcess}');
     print('METRIC explored_alpha_excess=${fogHardness.exploredAlphaExcess}');
     print('METRIC antialias_penalty=${fogHardness.antialiasPenalty}');
     print('METRIC edge_clip_diagnostic_gap_count=$edgeClipDiagnosticGapCount');
@@ -226,13 +237,11 @@ void main() {
       '${unknownBackdropHardness.unknownAlphaExcess}',
     );
     print(
-      'METRIC unknown_frontier_delta_excess='
-      '${unknownBackdropHardness.unknownFrontierDeltaExcess}',
+      'METRIC unknown_informed_delta_excess='
+      '${unknownBackdropHardness.unknownInformedDeltaExcess}',
     );
     print('METRIC unknown_coverage_gap_count=$unknownCoverageGapCount');
-    print(
-      'METRIC fetch_coverage_shortfall_score=${coverageShortfall.score}',
-    );
+    print('METRIC fetch_coverage_shortfall_score=${coverageShortfall.score}');
     print(
       'METRIC coverage_unknown_visible_excess='
       '${coverageShortfall.unknownVisibleExcess}',
@@ -253,61 +262,62 @@ const _exploredState = CellState(
   relationship: CellRelationship.explored,
   contents: CellContents.empty,
 );
+const _informedState = CellState(
+  knowledgeState: CellKnowledgeState.informed,
+  category: 'fauna',
+  relationship: CellRelationship.explored,
+  contents: CellContents.empty,
+);
+
 const _frontierState = CellState(
   relationship: CellRelationship.frontier,
   contents: CellContents.empty,
 );
 
 List<({Cell cell, CellState state})> _badScreenshotLikeScene() => [
-      (cell: _organicCell('present', 0.0000, 0.0000), state: _presentState),
-      (
-        cell: _organicCell('explored-west', 0.0007, -0.0014),
-        state: _exploredState
+  (cell: _organicCell('present', 0.0000, 0.0000), state: _presentState),
+  (cell: _organicCell('explored-west', 0.0007, -0.0014), state: _exploredState),
+  (
+    cell: _organicCell('explored-south', -0.0012, -0.0001),
+    state: _exploredState,
+  ),
+  (cell: _organicCell('explored-east', 0.0002, 0.0014), state: _exploredState),
+  for (var i = 0; i < 18; i++)
+    (
+      cell: _organicCell(
+        'frontier-$i',
+        ((i ~/ 6) - 1) * 0.0023,
+        ((i % 6) - 2.5) * 0.0020,
       ),
-      (
-        cell: _organicCell('explored-south', -0.0012, -0.0001),
-        state: _exploredState
-      ),
-      (
-        cell: _organicCell('explored-east', 0.0002, 0.0014),
-        state: _exploredState
-      ),
-      for (var i = 0; i < 18; i++)
-        (
-          cell: _organicCell(
-            'frontier-$i',
-            ((i ~/ 6) - 1) * 0.0023,
-            ((i % 6) - 2.5) * 0.0020,
-          ),
-          state: _frontierState,
-        ),
-    ];
+      state: _frontierState,
+    ),
+];
 
 Cell _organicCell(String id, double latOffset, double lngOffset) => Cell(
-      id: id,
-      habitats: const [],
-      polygons: [
-        [
-          [
-            (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
-            (lat: 45.96420 + latOffset, lng: -66.64230 + lngOffset),
-            (lat: 45.96395 + latOffset, lng: -66.64125 + lngOffset),
-            (lat: 45.96310 + latOffset, lng: -66.64105 + lngOffset),
-            (lat: 45.96240 + latOffset, lng: -66.64190 + lngOffset),
-            (lat: 45.96265 + latOffset, lng: -66.64300 + lngOffset),
-            (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
-          ],
-        ],
+  id: id,
+  habitats: const [],
+  polygons: [
+    [
+      [
+        (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
+        (lat: 45.96420 + latOffset, lng: -66.64230 + lngOffset),
+        (lat: 45.96395 + latOffset, lng: -66.64125 + lngOffset),
+        (lat: 45.96310 + latOffset, lng: -66.64105 + lngOffset),
+        (lat: 45.96240 + latOffset, lng: -66.64190 + lngOffset),
+        (lat: 45.96265 + latOffset, lng: -66.64300 + lngOffset),
+        (lat: 45.96360 + latOffset, lng: -66.64310 + lngOffset),
       ],
-      districtId: 'downtown',
-      cityId: 'fredericton',
-      stateId: 'nb',
-      countryId: 'ca',
-      geometrySourceVersion: 'organic-voronoi-beta-v1',
-      geometryGenerationMode: 'db-deterministic-jittered-centroid-voronoi',
-      centroidDatasetVersion: 'benchmark-fixture-v1',
-      geometryContract: 'true-voronoi-clipped-to-lattice-coverage',
-    );
+    ],
+  ],
+  districtId: 'downtown',
+  cityId: 'fredericton',
+  stateId: 'nb',
+  countryId: 'ca',
+  geometrySourceVersion: 'organic-voronoi-beta-v1',
+  geometryGenerationMode: 'db-deterministic-jittered-centroid-voronoi',
+  centroidDatasetVersion: 'benchmark-fixture-v1',
+  geometryContract: 'true-voronoi-clipped-to-lattice-coverage',
+);
 
 Offset _projectToFixtureViewport(GeoCoord coord) {
   const centerLat = 45.9636;
@@ -320,33 +330,33 @@ Offset _projectToFixtureViewport(GeoCoord coord) {
 }
 
 List<({Cell cell, CellState state, double distanceMeters})>
-    _coverageFixtureScene() => [
-          (
-            cell: _screenRectCell('coverage-present', 60, 260, 260, 600),
-            state: _presentState,
-            distanceMeters: 0,
-          ),
-          (
-            cell: _screenRectCell('coverage-top', 60, 0, 390, 260),
-            state: _frontierState,
-            distanceMeters: 1800,
-          ),
-          (
-            cell: _screenRectCell('coverage-right', 260, 260, 390, 844),
-            state: _frontierState,
-            distanceMeters: 1800,
-          ),
-          (
-            cell: _screenRectCell('coverage-bottom', 60, 600, 260, 844),
-            state: _frontierState,
-            distanceMeters: 1800,
-          ),
-          (
-            cell: _screenRectCell('coverage-left', 0, 0, 60, 844),
-            state: _frontierState,
-            distanceMeters: 2200,
-          ),
-        ];
+_coverageFixtureScene() => [
+  (
+    cell: _screenRectCell('coverage-present', 60, 260, 260, 600),
+    state: _presentState,
+    distanceMeters: 0,
+  ),
+  (
+    cell: _screenRectCell('coverage-top', 60, 0, 390, 260),
+    state: _frontierState,
+    distanceMeters: 1800,
+  ),
+  (
+    cell: _screenRectCell('coverage-right', 260, 260, 390, 844),
+    state: _frontierState,
+    distanceMeters: 1800,
+  ),
+  (
+    cell: _screenRectCell('coverage-bottom', 60, 600, 260, 844),
+    state: _frontierState,
+    distanceMeters: 1800,
+  ),
+  (
+    cell: _screenRectCell('coverage-left', 0, 0, 60, 844),
+    state: _frontierState,
+    distanceMeters: 2200,
+  ),
+];
 
 Cell _screenRectCell(
   String id,
@@ -354,26 +364,25 @@ Cell _screenRectCell(
   double top,
   double right,
   double bottom,
-) =>
-    Cell(
-      id: id,
-      habitats: const [],
-      polygons: [
-        [
-          [
-            (lat: top, lng: left),
-            (lat: top, lng: right),
-            (lat: bottom, lng: right),
-            (lat: bottom, lng: left),
-            (lat: top, lng: left),
-          ],
-        ],
+) => Cell(
+  id: id,
+  habitats: const [],
+  polygons: [
+    [
+      [
+        (lat: top, lng: left),
+        (lat: top, lng: right),
+        (lat: bottom, lng: right),
+        (lat: bottom, lng: left),
+        (lat: top, lng: left),
       ],
-      districtId: 'coverage',
-      cityId: 'coverage',
-      stateId: 'coverage',
-      countryId: 'coverage',
-    );
+    ],
+  ],
+  districtId: 'coverage',
+  cityId: 'coverage',
+  stateId: 'coverage',
+  countryId: 'coverage',
+);
 
 Offset _projectCoverageFixtureViewport(GeoCoord coord) =>
     Offset(coord.lng, coord.lat);
@@ -395,14 +404,17 @@ List<String> _missingRequiredTelemetryKeys(Map<String, dynamic> telemetry) {
     'state_present_cell_ids_sample',
     'state_explored_cell_ids_sample',
     'state_frontier_cell_ids_sample',
+    'state_informed_cell_ids_sample',
 
     // Style/compositing explains harsh wedges, darkness, seams, and antialiasing.
     'style_present_fill_alpha',
     'style_explored_fill_alpha',
+    'style_informed_fill_alpha',
     'style_frontier_fill_alpha',
     'style_unknown_fill_alpha',
     'style_present_stroke_alpha',
     'style_explored_stroke_alpha',
+    'style_informed_stroke_alpha',
     'style_frontier_stroke_alpha',
     'style_overlay_antialias',
     'style_fill_grouping_mode',
@@ -474,7 +486,7 @@ List<String> _unresolvedHypotheses(Map<String, dynamic> telemetry) {
       !telemetry.containsKey('render_axis_aligned_edge_ratio')) {
     hypotheses.add('geometry_fallback_or_rectangular_payload');
   }
-  if (!telemetry.containsKey('style_frontier_fill_alpha') ||
+  if (!telemetry.containsKey('style_informed_fill_alpha') ||
       !telemetry.containsKey('style_overlay_antialias')) {
     hypotheses.add('fog_style_or_compositing');
   }
@@ -502,21 +514,25 @@ List<String> _missingKeysWithPrefix(List<String> missingKeys, String prefix) =>
     ];
 
 _FogHardnessScore _fogHardnessScore(Map<String, dynamic> telemetry) {
-  final frontierAlpha = telemetry['style_frontier_fill_alpha'] as double;
+  final informedAlpha = telemetry['style_informed_fill_alpha'] as double;
   final exploredAlpha = telemetry['style_explored_fill_alpha'] as double;
   final antialias = telemetry['style_overlay_antialias'] as bool;
-  final frontierAlphaExcess =
-      _scaledExcess(value: frontierAlpha, targetMax: 0.32);
-  final exploredAlphaExcess =
-      _scaledExcess(value: exploredAlpha, targetMax: 0.22);
+  final informedAlphaExcess = _scaledExcess(
+    value: informedAlpha,
+    targetMax: 0.32,
+  );
+  final exploredAlphaExcess = _scaledExcess(
+    value: exploredAlpha,
+    targetMax: 0.22,
+  );
   final antialiasPenalty = antialias ? 0 : 10;
   return _FogHardnessScore(
-    score: frontierAlphaExcess + exploredAlphaExcess + antialiasPenalty,
-    frontierAlphaExcess: frontierAlphaExcess,
+    score: informedAlphaExcess + exploredAlphaExcess + antialiasPenalty,
+    informedAlphaExcess: informedAlphaExcess,
     exploredAlphaExcess: exploredAlphaExcess,
     antialiasPenalty: antialiasPenalty,
     breakdown:
-        'frontier_alpha=$frontierAlpha explored_alpha=$exploredAlpha antialias=$antialias',
+        'informed_alpha=$informedAlpha explored_alpha=$exploredAlpha antialias=$antialias',
   );
 }
 
@@ -528,14 +544,14 @@ int _scaledExcess({required double value, required double targetMax}) {
 class _FogHardnessScore {
   const _FogHardnessScore({
     required this.score,
-    required this.frontierAlphaExcess,
+    required this.informedAlphaExcess,
     required this.exploredAlphaExcess,
     required this.antialiasPenalty,
     required this.breakdown,
   });
 
   final int score;
-  final int frontierAlphaExcess;
+  final int informedAlphaExcess;
   final int exploredAlphaExcess;
   final int antialiasPenalty;
   final String breakdown;
@@ -545,19 +561,21 @@ _UnknownBackdropHardnessScore _unknownBackdropHardnessScore(
   Map<String, dynamic> telemetry,
 ) {
   final unknownAlpha = telemetry['style_unknown_fill_alpha'] as double;
-  final frontierAlpha = telemetry['style_frontier_fill_alpha'] as double;
-  final unknownAlphaExcess =
-      _scaledExcess(value: unknownAlpha, targetMax: 0.48);
-  final unknownFrontierDeltaExcess = _scaledExcess(
-    value: unknownAlpha - frontierAlpha,
+  final informedAlpha = telemetry['style_informed_fill_alpha'] as double;
+  final unknownAlphaExcess = _scaledExcess(
+    value: unknownAlpha,
+    targetMax: 0.48,
+  );
+  final unknownInformedDeltaExcess = _scaledExcess(
+    value: unknownAlpha - informedAlpha,
     targetMax: 0.18,
   );
   return _UnknownBackdropHardnessScore(
-    score: unknownAlphaExcess + unknownFrontierDeltaExcess,
+    score: unknownAlphaExcess + unknownInformedDeltaExcess,
     unknownAlphaExcess: unknownAlphaExcess,
-    unknownFrontierDeltaExcess: unknownFrontierDeltaExcess,
+    unknownInformedDeltaExcess: unknownInformedDeltaExcess,
     breakdown:
-        'unknown_alpha=$unknownAlpha frontier_alpha=$frontierAlpha delta=${unknownAlpha - frontierAlpha}',
+        'unknown_alpha=$unknownAlpha informed_alpha=$informedAlpha delta=${unknownAlpha - informedAlpha}',
   );
 }
 
@@ -565,26 +583,31 @@ class _UnknownBackdropHardnessScore {
   const _UnknownBackdropHardnessScore({
     required this.score,
     required this.unknownAlphaExcess,
-    required this.unknownFrontierDeltaExcess,
+    required this.unknownInformedDeltaExcess,
     required this.breakdown,
   });
 
   final int score;
   final int unknownAlphaExcess;
-  final int unknownFrontierDeltaExcess;
+  final int unknownInformedDeltaExcess;
   final String breakdown;
 }
 
 _CoverageShortfallScore _coverageShortfallScore(
-    Map<String, dynamic> telemetry) {
+  Map<String, dynamic> telemetry,
+) {
   final unknownVisibleRatio =
       telemetry['projection_unknown_visible_ratio'] as double;
   final unknownLeftEdgeRatio =
       telemetry['projection_unknown_left_edge_ratio'] as double;
-  final unknownVisibleExcess =
-      _scaledExcess(value: unknownVisibleRatio, targetMax: 0.0);
-  final unknownLeftEdgeExcess =
-      _scaledExcess(value: unknownLeftEdgeRatio, targetMax: 0.0);
+  final unknownVisibleExcess = _scaledExcess(
+    value: unknownVisibleRatio,
+    targetMax: 0.0,
+  );
+  final unknownLeftEdgeExcess = _scaledExcess(
+    value: unknownLeftEdgeRatio,
+    targetMax: 0.0,
+  );
   return _CoverageShortfallScore(
     score: unknownVisibleExcess + unknownLeftEdgeExcess,
     unknownVisibleExcess: unknownVisibleExcess,
@@ -612,12 +635,13 @@ _FetchSelectionScore _fetchSelectionScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final target = candidates.reversed.firstWhere(
     (file) =>
         file.readAsStringSync().contains('CREATE FUNCTION fetch_nearby_cells('),
@@ -637,10 +661,7 @@ _FetchSelectionScore _fetchSelectionScore() {
 }
 
 class _FetchSelectionScore {
-  const _FetchSelectionScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _FetchSelectionScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -652,15 +673,18 @@ _CoverageSourceScore _coverageSourceScore() {
   final usesBufferedCoverage = functionSql.contains('ST_Buffer(');
   final writesMissingMetadataColumn =
       functionSql.contains('INSERT INTO cell_geometry_versions (') &&
-          functionSql.contains('    metadata');
-  final writesMissingValidationMessageColumn =
-      functionSql.contains('    validation_message');
-  final includesStagingRuntimeColumns = functionSql.contains('raw_geometry') &&
+      functionSql.contains('    metadata');
+  final writesMissingValidationMessageColumn = functionSql.contains(
+    '    validation_message',
+  );
+  final includesStagingRuntimeColumns =
+      functionSql.contains('raw_geometry') &&
       functionSql.contains('parsed_bbox') &&
       functionSql.contains('parsed_area_m2') &&
       functionSql.contains('validation_errors');
   return _CoverageSourceScore(
-    score: usesBufferedCoverage &&
+    score:
+        usesBufferedCoverage &&
             !writesMissingMetadataColumn &&
             !writesMissingValidationMessageColumn &&
             includesStagingRuntimeColumns
@@ -672,10 +696,7 @@ _CoverageSourceScore _coverageSourceScore() {
 }
 
 class _CoverageSourceScore {
-  const _CoverageSourceScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _CoverageSourceScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -684,7 +705,8 @@ class _CoverageSourceScore {
 _AssignmentSourceScore _assignmentSourceScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final usesContainmentAssignment = functionSql.contains('ST_Covers(') ||
+  final usesContainmentAssignment =
+      functionSql.contains('ST_Covers(') ||
       functionSql.contains('ST_Contains(');
   return _AssignmentSourceScore(
     score: usesContainmentAssignment ? 0 : 1,
@@ -694,10 +716,7 @@ _AssignmentSourceScore _assignmentSourceScore() {
 }
 
 class _AssignmentSourceScore {
-  const _AssignmentSourceScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _AssignmentSourceScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -731,20 +750,21 @@ class _CoverageBufferParamScore {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final target = candidates.reversed.firstWhere(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION stage_cell_geometry_from_organic_centroids(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION stage_cell_geometry_from_organic_centroids(',
-            ),
+          'CREATE FUNCTION stage_cell_geometry_from_organic_centroids(',
+        ),
   );
   final sql = target.readAsStringSync();
   const createOrReplace =
@@ -767,14 +787,18 @@ _StagingDropDiagnosticScore _stagingDropDiagnosticScore() {
   final functionSql = stageFunction.functionSql;
   final emitsNullReason = functionSql.contains('geometry_null_after_clip');
   final emitsEmptyReason = functionSql.contains('geometry_empty_after_clip');
-  final emitsInvalidReason =
-      functionSql.contains('geometry_invalid_after_clip');
-  final emitsAreaReason =
-      functionSql.contains('geometry_nonpositive_area_after_clip');
-  final stillSilentlyFilters = functionSql.contains('WHERE geom IS NOT NULL') &&
+  final emitsInvalidReason = functionSql.contains(
+    'geometry_invalid_after_clip',
+  );
+  final emitsAreaReason = functionSql.contains(
+    'geometry_nonpositive_area_after_clip',
+  );
+  final stillSilentlyFilters =
+      functionSql.contains('WHERE geom IS NOT NULL') &&
       functionSql.contains('ST_Area(geom::geography) > 0');
   return _StagingDropDiagnosticScore(
-    score: emitsNullReason &&
+    score:
+        emitsNullReason &&
             emitsEmptyReason &&
             emitsInvalidReason &&
             emitsAreaReason &&
@@ -800,16 +824,17 @@ _PreviewDiagnosticsScore _previewDiagnosticsScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) => file.readAsStringSync().contains(
-          'CREATE FUNCTION diagnose_stage_cell_geometry_from_organic_centroids(',
-        ),
+      'CREATE FUNCTION diagnose_stage_cell_geometry_from_organic_centroids(',
+    ),
   );
   if (matches.isEmpty) {
     return const _PreviewDiagnosticsScore(
@@ -819,7 +844,8 @@ _PreviewDiagnosticsScore _previewDiagnosticsScore() {
   }
   final target = matches.first;
   final sql = target.readAsStringSync();
-  final hasReasonCounts = sql.contains('null_geom_count') &&
+  final hasReasonCounts =
+      sql.contains('null_geom_count') &&
       sql.contains('empty_geom_count') &&
       sql.contains('invalid_geom_count') &&
       sql.contains('nonpositive_area_count');
@@ -844,16 +870,17 @@ _FocusedPreviewScore _focusedPreviewScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) => file.readAsStringSync().contains(
-          'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
-        ),
+      'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+    ),
   );
   if (matches.isEmpty) {
     return const _FocusedPreviewScore(
@@ -863,10 +890,12 @@ _FocusedPreviewScore _focusedPreviewScore() {
   }
   final target = matches.first;
   final sql = target.readAsStringSync();
-  final hasFocusParams = sql.contains('p_focus_lat DOUBLE PRECISION') &&
+  final hasFocusParams =
+      sql.contains('p_focus_lat DOUBLE PRECISION') &&
       sql.contains('p_focus_lng DOUBLE PRECISION') &&
       sql.contains('p_focus_radius_meters DOUBLE PRECISION');
-  final hasReasonCounts = sql.contains('null_geom_count') &&
+  final hasReasonCounts =
+      sql.contains('null_geom_count') &&
       sql.contains('empty_geom_count') &&
       sql.contains('invalid_geom_count') &&
       sql.contains('nonpositive_area_count');
@@ -878,10 +907,7 @@ _FocusedPreviewScore _focusedPreviewScore() {
 }
 
 class _FocusedPreviewScore {
-  const _FocusedPreviewScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _FocusedPreviewScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -891,20 +917,21 @@ _LatticePreviewSourceScore _latticePreviewSourceScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
-            ),
+          'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+        ),
   );
   if (matches.isEmpty) {
     return const _LatticePreviewSourceScore(
@@ -923,8 +950,9 @@ _LatticePreviewSourceScore _latticePreviewSourceScore() {
   final siteSql = siteStart >= 0 && jitteredStart > siteStart
       ? sql.substring(siteStart, jitteredStart)
       : '';
-  final focusUsesCellProperties =
-      focusSql.contains('FROM lattice_cells lattice');
+  final focusUsesCellProperties = focusSql.contains(
+    'FROM lattice_cells lattice',
+  );
   final siteUsesCellProperties = siteSql.contains('FROM lattice_cells lattice');
   return _LatticePreviewSourceScore(
     score: focusUsesCellProperties && siteUsesCellProperties ? 0 : 1,
@@ -947,20 +975,21 @@ _LatticeDecodeScore _latticeDecodeScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
-            ),
+          'CREATE FUNCTION diagnose_stage_cell_geometry_boundary_window(',
+        ),
   );
   if (matches.isEmpty) {
     return const _LatticeDecodeScore(
@@ -980,18 +1009,16 @@ _LatticeDecodeScore _latticeDecodeScore() {
     "ST_MakePoint(\n          split_part(cp.cell_id, '_', 3)::INTEGER / 500.0,\n          split_part(cp.cell_id, '_', 2)::INTEGER / 500.0",
   );
   return _LatticeDecodeScore(
-    score:
-        usesLatFromPart2 && usesLngFromPart3 && makePointUsesLngThenLat ? 0 : 1,
+    score: usesLatFromPart2 && usesLngFromPart3 && makePointUsesLngThenLat
+        ? 0
+        : 1,
     breakdown:
         'migration=${target.uri.pathSegments.last} lat_from_part2=$usesLatFromPart2 lng_from_part3=$usesLngFromPart3 point_lng_lat=$makePointUsesLngThenLat',
   );
 }
 
 class _LatticeDecodeScore {
-  const _LatticeDecodeScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _LatticeDecodeScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1000,7 +1027,8 @@ class _LatticeDecodeScore {
 _ClusterPartitionScore _clusterPartitionScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final partitionsCoverage = functionSql.contains('ST_ClusterDBSCAN(') ||
+  final partitionsCoverage =
+      functionSql.contains('ST_ClusterDBSCAN(') ||
       functionSql.contains('cluster_id');
   return _ClusterPartitionScore(
     score: partitionsCoverage ? 0 : 1,
@@ -1010,10 +1038,7 @@ _ClusterPartitionScore _clusterPartitionScore() {
 }
 
 class _ClusterPartitionScore {
-  const _ClusterPartitionScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _ClusterPartitionScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1024,7 +1049,7 @@ _ComponentClusterScore _componentClusterScore() {
   final functionSql = stageFunction.functionSql;
   final usesCoverageSquareClustering =
       functionSql.contains('ST_ClusterIntersecting(') ||
-          functionSql.contains('unnest(ST_ClusterIntersecting');
+      functionSql.contains('unnest(ST_ClusterIntersecting');
   final stillUsesDbscan = functionSql.contains('ST_ClusterDBSCAN(');
   return _ComponentClusterScore(
     score: usesCoverageSquareClustering && !stillUsesDbscan ? 0 : 1,
@@ -1034,10 +1059,7 @@ _ComponentClusterScore _componentClusterScore() {
 }
 
 class _ComponentClusterScore {
-  const _ComponentClusterScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _ComponentClusterScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1048,7 +1070,7 @@ _SafeClusteringScore _safeClusteringScore() {
   final functionSql = stageFunction.functionSql;
   final usesCoverageSquareClustering =
       functionSql.contains('ST_ClusterIntersecting(') ||
-          functionSql.contains('unnest(ST_ClusterIntersecting');
+      functionSql.contains('unnest(ST_ClusterIntersecting');
   return _SafeClusteringScore(
     score: usesCoverageSquareClustering ? 0 : 1,
     breakdown:
@@ -1057,10 +1079,7 @@ _SafeClusteringScore _safeClusteringScore() {
 }
 
 class _SafeClusteringScore {
-  const _SafeClusteringScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _SafeClusteringScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1069,8 +1088,8 @@ class _SafeClusteringScore {
 _BufferedComponentClusterScore _bufferedComponentClusterScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final usesBufferedSquareClustering = functionSql
-          .contains('ST_ClusterIntersecting(buffered_square)') ||
+  final usesBufferedSquareClustering =
+      functionSql.contains('ST_ClusterIntersecting(buffered_square)') ||
       functionSql.contains('unnest(ST_ClusterIntersecting(buffered_square))');
   return _BufferedComponentClusterScore(
     score: usesBufferedSquareClustering ? 0 : 1,
@@ -1094,7 +1113,7 @@ _SuperclusterMergeScore _superclusterMergeScore() {
   final functionSql = stageFunction.functionSql;
   final mergesClusterCoverage =
       functionSql.contains('ST_ClusterIntersecting(coverage_geom)') ||
-          functionSql.contains('tmp_cell_geometry_cluster_supercoverage');
+      functionSql.contains('tmp_cell_geometry_cluster_supercoverage');
   return _SuperclusterMergeScore(
     score: mergesClusterCoverage ? 0 : 1,
     breakdown:
@@ -1103,10 +1122,7 @@ _SuperclusterMergeScore _superclusterMergeScore() {
 }
 
 class _SuperclusterMergeScore {
-  const _SuperclusterMergeScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _SuperclusterMergeScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1117,7 +1133,7 @@ _SingletonClusterScore _singletonClusterScore() {
   final functionSql = stageFunction.functionSql;
   final handlesSingletonCluster =
       functionSql.contains('clusters.centroid_count = 1') &&
-          functionSql.contains('ST_Dump(clusters.coverage_geom)');
+      functionSql.contains('ST_Dump(clusters.coverage_geom)');
   return _SingletonClusterScore(
     score: handlesSingletonCluster ? 0 : 1,
     breakdown:
@@ -1126,10 +1142,7 @@ _SingletonClusterScore _singletonClusterScore() {
 }
 
 class _SingletonClusterScore {
-  const _SingletonClusterScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _SingletonClusterScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1138,24 +1151,22 @@ class _SingletonClusterScore {
 _StageDecodeScore _stageDecodeScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final usesLatFromPart2 = functionSql.contains(
+  final usesLatFromPart2 =
+      functionSql.contains(
         "split_part(cell_id, '_', 2)::DOUBLE PRECISION / v_grid_scale AS original_center_lat",
       ) ||
       functionSql.contains(
         "split_part(cp.cell_id, '_', 2)::INTEGER / 500.0 AS original_center_lat",
       ) ||
+      functionSql.contains('grid_x / v_grid_scale AS original_center_lat');
+  final usesLngFromPart3 =
       functionSql.contains(
-        'grid_x / v_grid_scale AS original_center_lat',
-      );
-  final usesLngFromPart3 = functionSql.contains(
         "split_part(cell_id, '_', 3)::DOUBLE PRECISION / v_grid_scale AS original_center_lng",
       ) ||
       functionSql.contains(
         "split_part(cp.cell_id, '_', 3)::INTEGER / 500.0 AS original_center_lng",
       ) ||
-      functionSql.contains(
-        'grid_y / v_grid_scale AS original_center_lng',
-      );
+      functionSql.contains('grid_y / v_grid_scale AS original_center_lng');
   return _StageDecodeScore(
     score: usesLatFromPart2 && usesLngFromPart3 ? 0 : 1,
     breakdown:
@@ -1164,10 +1175,7 @@ _StageDecodeScore _stageDecodeScore() {
 }
 
 class _StageDecodeScore {
-  const _StageDecodeScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _StageDecodeScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1186,10 +1194,7 @@ _StrictContainmentScore _strictContainmentScore() {
 }
 
 class _StrictContainmentScore {
-  const _StrictContainmentScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _StrictContainmentScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1199,20 +1204,21 @@ _OverlapPreviewScore _overlapPreviewScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ),
+          'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ),
   );
   if (matches.isEmpty) {
     return const _OverlapPreviewScore(
@@ -1222,7 +1228,8 @@ _OverlapPreviewScore _overlapPreviewScore() {
   }
   final target = matches.first;
   final sql = target.readAsStringSync();
-  final hasOverlapOutputs = sql.contains('overlap_pair_count') &&
+  final hasOverlapOutputs =
+      sql.contains('overlap_pair_count') &&
       sql.contains('total_overlap_area_m2') &&
       sql.contains('max_overlap_area_m2');
   return _OverlapPreviewScore(
@@ -1233,10 +1240,7 @@ _OverlapPreviewScore _overlapPreviewScore() {
 }
 
 class _OverlapPreviewScore {
-  const _OverlapPreviewScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _OverlapPreviewScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1246,20 +1250,21 @@ _OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ),
+          'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ),
   );
   if (matches.isEmpty) {
     return const _OverlapPreviewDeployableScore(
@@ -1271,11 +1276,12 @@ _OverlapPreviewDeployableScore _overlapPreviewDeployableScore() {
     for (final file in matches)
       (
         name: file.uri.pathSegments.last,
-        avoidsReservedOverlapCte:
-            !file.readAsStringSync().contains('), overlaps AS ('),
+        avoidsReservedOverlapCte: !file.readAsStringSync().contains(
+          '), overlaps AS (',
+        ),
         usesOverlapRows:
             file.readAsStringSync().contains('), overlap_rows AS (') &&
-                file.readAsStringSync().contains('FROM overlap_rows;'),
+            file.readAsStringSync().contains('FROM overlap_rows;'),
       ),
   ];
   final allDeployable = inspected.every(
@@ -1305,10 +1311,12 @@ class _OverlapPreviewDeployableScore {
 _PolygonAssignmentScore _polygonAssignmentScore() {
   final stageFunction = _latestStageFunctionDefinition();
   final functionSql = stageFunction.functionSql;
-  final startsFromVoronoi =
-      functionSql.contains('FROM tmp_cell_geometry_cluster_voronoi voronoi');
-  final coalescesCellIdentity = functionSql
-      .contains('COALESCE(containing.cell_id, nearest.cell_id) AS cell_id');
+  final startsFromVoronoi = functionSql.contains(
+    'FROM tmp_cell_geometry_cluster_voronoi voronoi',
+  );
+  final coalescesCellIdentity = functionSql.contains(
+    'COALESCE(containing.cell_id, nearest.cell_id) AS cell_id',
+  );
   return _PolygonAssignmentScore(
     score: startsFromVoronoi && coalescesCellIdentity ? 0 : 1,
     breakdown:
@@ -1317,10 +1325,7 @@ _PolygonAssignmentScore _polygonAssignmentScore() {
 }
 
 class _PolygonAssignmentScore {
-  const _PolygonAssignmentScore({
-    required this.score,
-    required this.breakdown,
-  });
+  const _PolygonAssignmentScore({required this.score, required this.breakdown});
 
   final int score;
   final String breakdown;
@@ -1330,20 +1335,21 @@ _PositiveOverlapPreviewScore _positiveOverlapPreviewScore() {
   final migrationsDir = Directory(
     '${Directory.current.path}/supabase/migrations',
   );
-  final candidates = migrationsDir
-      .listSync()
-      .whereType<File>()
-      .where((file) => file.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final candidates =
+      migrationsDir
+          .listSync()
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
   final matches = candidates.reversed.where(
     (file) =>
         file.readAsStringSync().contains(
-              'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ) ||
+          'CREATE OR REPLACE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ) ||
         file.readAsStringSync().contains(
-              'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
-            ),
+          'CREATE FUNCTION diagnose_staged_geometry_overlap_window(',
+        ),
   );
   if (matches.isEmpty) {
     return const _PositiveOverlapPreviewScore(
@@ -1353,7 +1359,8 @@ _PositiveOverlapPreviewScore _positiveOverlapPreviewScore() {
   }
   final target = matches.first;
   final sql = target.readAsStringSync();
-  final filtersPositiveArea = sql.contains('WHERE overlap_area_m2 > 0') ||
+  final filtersPositiveArea =
+      sql.contains('WHERE overlap_area_m2 > 0') ||
       sql.contains('WHERE overlap_area_m2 > 0.0');
   return _PositiveOverlapPreviewScore(
     score: filtersPositiveArea ? 0 : 1,
@@ -1375,19 +1382,23 @@ class _PositiveOverlapPreviewScore {
 _WebLayoutObservabilityScore _webLayoutObservabilityScore() {
   final html = File('web/index.html').readAsStringSync();
   final hasEvent = html.contains("push('map', 'web_layout_sample'");
-  final avoidsDoublePrefixedEvent =
-      !html.contains("push('map', 'map.web_layout_sample'");
+  final avoidsDoublePrefixedEvent = !html.contains(
+    "push('map', 'map.web_layout_sample'",
+  );
   final hasContainer = html.contains('canvas_container_height_px');
   final hasPlatformView = html.contains('platform_view_height_px');
   final hasContainerAfter = html.contains('canvas_container_height_after_px');
   final hasPlatformViewAfter = html.contains('platform_view_height_after_px');
-  final hasNormalization = html.contains('layout_normalized') &&
+  final hasNormalization =
+      html.contains('layout_normalized') &&
       html.contains('layout_normalization_requested_resize');
-  final hasLifecycle = html.contains("flow: 'map.web_layout'") &&
+  final hasLifecycle =
+      html.contains("flow: 'map.web_layout'") &&
       html.contains("phase: 'state_changed'") &&
       html.contains("dependency: 'maplibre_layout'");
   return _WebLayoutObservabilityScore(
-    score: hasEvent &&
+    score:
+        hasEvent &&
             avoidsDoublePrefixedEvent &&
             hasContainer &&
             hasContainerAfter &&
@@ -1418,10 +1429,12 @@ _LocationSourceObservabilityScore _locationSourceObservabilityScore() {
   ).readAsStringSync();
   final mainSource = File('lib/main.dart').readAsStringSync();
   final hasSourceEvent = repoSource.contains('map.gps_source_selected');
-  final hasPermissionEvent =
-      repoSource.contains('map.gps_permission_fallback_enabled');
+  final hasPermissionEvent = repoSource.contains(
+    'map.gps_permission_fallback_enabled',
+  );
   final wiredInMain = mainSource.contains('logEvent: obs.log');
-  final hasLifecycle = repoSource.contains("'flow': 'map.bootstrap'") &&
+  final hasLifecycle =
+      repoSource.contains("'flow': 'map.bootstrap'") &&
       repoSource.contains("'phase': 'state_changed'") &&
       repoSource.contains("'dependency': 'gps'");
   return _LocationSourceObservabilityScore(
