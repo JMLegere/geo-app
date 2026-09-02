@@ -13,13 +13,21 @@ void main() {
         'lib/shared/design/index.dart',
         'lib/shared/design/registry.dart',
         'lib/shared/design/surface_inventory.dart',
-        'lib/shared/design/components.dart',
-        'lib/shared/design/examples.dart',
         'lib/shared/design/foundations/index.dart',
+        'lib/shared/design/foundations/spacing.dart',
         'lib/shared/design/primitives/index.dart',
-        'lib/shared/design/primitives/icon.dart',
+        'lib/shared/design/primitives/app_badge.dart',
+        'lib/shared/design/primitives/app_button.dart',
+        'lib/shared/design/primitives/app_notice.dart',
         'lib/shared/design/composites/index.dart',
+        'lib/shared/design/composites/app_card.dart',
+        'lib/shared/design/composites/app_field_row.dart',
+        'lib/shared/design/composites/app_stat_grid.dart',
         'lib/shared/design/patterns/index.dart',
+        'lib/shared/design/patterns/app_empty_state.dart',
+        'lib/shared/design/patterns/app_error_state.dart',
+        'lib/shared/product/product_action_surface.dart',
+        'lib/shared/widgets/loading_dots.dart',
       ];
 
       for (final path in requiredArtifacts) {
@@ -27,17 +35,25 @@ void main() {
       }
     });
 
-    test('keeps app code on the public design API', () {
+    test('forbids imports of internal shared-design taxonomy paths', () {
       final offenders = <String>[];
 
-      for (final file in _dartFilesUnder('lib')) {
-        if (_isWithin(file, 'lib/shared/design')) continue;
+      for (final root in const ['lib', 'test', 'tool']) {
+        for (final file in _dartFilesUnder(root)) {
+          if (_isWithin(file, 'lib/shared/design')) continue;
 
-        final source = file.readAsStringSync();
-        final hasInternalDesignPath = source.contains('shared/design/');
+          final source = file.readAsStringSync();
+          final imports = RegExp(
+            r'''^import\s+['"]([^'"]+)['"]''',
+            multiLine: true,
+          ).allMatches(source);
 
-        if (hasInternalDesignPath) {
-          offenders.add(file.path);
+          for (final import in imports) {
+            final uri = import.group(1)!;
+            if (_targetsInternalSharedDesign(file, uri)) {
+              offenders.add('${file.path} imports $uri');
+            }
+          }
         }
       }
 
@@ -45,7 +61,25 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'App/front-end code must import package:earth_nova/shared/design.dart, not internal design taxonomy paths.',
+            'Dart code outside the taxonomy may import the public shared/design.dart barrel, but never an internal shared-design path.',
+      );
+    });
+
+    test('exposes exact public design component names', () {
+      expect(
+        publicDesignComponentNames,
+        unorderedEquals(const {
+          'AppBadge',
+          'AppButton',
+          'AppCard',
+          'AppEmptyState',
+          'AppErrorState',
+          'AppFieldRow',
+          'AppNotice',
+          'AppStatGrid',
+          'DesignLibraryExample',
+          'LoadingDots',
+        }),
       );
     });
 
@@ -216,4 +250,17 @@ String _normalizedPath(File file) {
         .replaceAll(Platform.pathSeparator, '/');
   }
   return file.path.replaceAll(Platform.pathSeparator, '/');
+}
+
+bool _targetsInternalSharedDesign(File importingFile, String importUri) {
+  if (importUri.startsWith('package:earth_nova/shared/design/')) {
+    return true;
+  }
+  if (importUri.startsWith('package:') || importUri.startsWith('dart:')) {
+    return false;
+  }
+
+  final resolved = importingFile.uri.resolveUri(Uri.parse(importUri));
+  return resolved.scheme == 'file' &&
+      _isWithin(File.fromUri(resolved), 'lib/shared/design');
 }

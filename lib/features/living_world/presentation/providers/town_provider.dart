@@ -8,13 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Bootstrap supplies the authoritative durable Town adapter.
 final livingWorldRepositoryProvider = Provider<LivingWorldRepository>((ref) {
   throw UnimplementedError(
-      'Living World repository must be provided by bootstrap.');
+    'Living World repository must be provided by bootstrap.',
+  );
 });
 
 /// Bootstrap supplies the safe observability sink for this read/command flow.
 final livingWorldObservabilityProvider = Provider<ObservabilityService>((ref) {
   throw UnimplementedError(
-      'Living World observability must be provided by bootstrap.');
+    'Living World observability must be provided by bootstrap.',
+  );
 });
 
 /// Durable Town presentation state. The projection is never derived from map
@@ -41,8 +43,9 @@ final class TownState {
 }
 
 /// Read/command controller for the durable Town projection.
-final townProvider =
-    NotifierProvider<TownNotifier, TownState>(TownNotifier.new);
+final townProvider = NotifierProvider<TownNotifier, TownState>(
+  TownNotifier.new,
+);
 
 final class TownNotifier extends ObservableNotifier<TownState> {
   late LivingWorldRepository _repository;
@@ -137,7 +140,7 @@ final class TownNotifier extends ObservableNotifier<TownState> {
         TownState(
           playerId: playerId,
           town: previousTown,
-          error: 'Unable to load your Town. Pull to retry.',
+          error: 'Unable to load your Town. Try again.',
         ),
         '$operation.failed',
         data: {'failure_kind': _safeFailureKind(error)},
@@ -150,6 +153,6 @@ final class TownNotifier extends ObservableNotifier<TownState> {
 }
 
 String _safeFailureKind(Object error) => switch (error) {
-      LivingWorldFailure(:final kind) => kind.name,
-      _ => LivingWorldFailureKind.unavailable.name,
-    };
+  LivingWorldFailure(:final kind) => kind.name,
+  _ => LivingWorldFailureKind.unavailable.name,
+};

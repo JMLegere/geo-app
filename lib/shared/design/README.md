@@ -1,44 +1,35 @@
 # EarthNova Design Library
 
-This directory is the public shared-design contract for EarthNova. Phase 1 establishes a neutral dark Shad foundation; `ShadApp` owns the root theme and Material derives compatibility values from that theme.
+This directory is the public shared-design contract for EarthNova after the Phase 6 clean cutover. `ShadApp` owns the neutral root visual system; native Flutter/Material infrastructure remains only where it is required.
 
 ## Public vocabulary
 
-Feature code imports only the public barrel:
+Visual feature code imports only the public barrel:
 
 ```dart
 import 'package:earth_nova/shared/design.dart';
 ```
 
-Canonical reusable components are:
-
-- primitives: `AppButton`, `AppBadge`, `AppNotice`, `LoadingDots`
-- composites: `AppCard`, `AppFieldRow`, `AppStatGrid`
-- patterns: `AppEmptyState`, `AppErrorState`
+The approved visual public vocabulary is `AppBadge`, `AppButton`, `AppCard`, `AppEmptyState`, `AppErrorState`, `AppFieldRow`, `AppNotice`, `AppStatGrid`, and `LoadingDots`. `Spacing` is the single shared layout vocabulary and lives in the foundations layer.
 
 `DesignLibraryExample` is experimental and catalog-only. It is not a screen pattern.
 
-New `app_*.dart` components use Shad primitives directly. They must not import legacy `AppTheme`, `design_tokens`, or Earth component implementations.
+`ProductActionSurface` remains a separate nonvisual product-action API/evidence boundary at `lib/shared/product/product_action_surface.dart`; it is not part of the visual design vocabulary or this barrel.
 
-## Temporary Earth boundary
+There are no `AppTheme`, `Earth*`, legacy-token, or design-export aliases. New reusable UI uses the canonical public vocabulary; feature code does not import internal design paths.
 
-Existing `Earth*` components remain exported and operational only to preserve current callers. They are deprecated, are not aliases for `App*`, and remain temporary until authorized surface waves migrate their callers. Phase 1 does not migrate feature screens, shells, authentication, readiness, routes, or gameplay surfaces.
+## Registry, inventory, and exceptions
 
-## Registry and native contracts
+The registry, public barrel, and visual native `product/design` contracts form one exact contract; `surface_inventory.dart` separately accounts for every app UI surface.
 
-Every public shared component is listed in `registry.dart` with category, status, purpose, and screen policy. The registry must exactly match the public component discovery and one native `product/design` atom, molecule, or organism contract.
+Explicit neutral exceptions remain documented rather than becoming a second design system:
 
-The native contracts also cover product-specific exceptions that are not shared design components:
+- Flutter/Material runtime infrastructure and native controls where `shadcn_ui` has no equivalent;
+- MapLibre, Flutter Canvas, and painters that preserve Map semantics;
+- native icons, debug-only UI, and product-action evidence where they are required.
 
-- `ProductActionSurface` in `lib/shared/product/`
-- feature/product molecules, organisms, pages, and templates under `product/design/`
-
-Those contracts describe product surfaces and interaction evidence; they are not additions to the shared `App*` vocabulary.
-
-## Inventory
-
-Every app UI file outside `lib/shared/design/` is listed in `surface_inventory.dart`. The root records Shad as the authority. Feature-surface notes remain pending until their explicitly authorized migration waves.
+`ProductActionSurface` carries nonvisual product-action evidence; it does not introduce a visual style or design component.
 
 ## Phase boundary
 
-Phase 1 stops after the neutral foundation, public contracts, catalog primitive, and inventory alignment. Phase 2+ decides and authorizes individual feature-surface migrations.
+Phase 6 is complete locally. Phase 7 rendered acceptance remains paused pending separate explicit authorization. Production deployment is not authorized.

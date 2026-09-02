@@ -15,9 +15,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'phase_five_capture_support.dart';
+import 'phase_seven_capture_support.dart';
+
+const _phaseSevenIdentificationAssets = [
+  'identification/mobile-committing-390x844.png',
+  'identification/desktop-start-hold-1440x900.png',
+  'identification/desktop-committing-1440x900.png',
+  'identification/desktop-identified-success-1440x900.png',
+  'identification/desktop-preparation-failure-1440x900.png',
+];
 
 void main() {
   group('Phase five identification fixtures', () {
+    test('declares the five phase seven identification assets', () {
+      expect(_phaseSevenIdentificationAssets, hasLength(5));
+      expect(_phaseSevenIdentificationAssets.toSet(), hasLength(5));
+    });
+
     testWidgets('captures mobile prepared', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -109,23 +123,27 @@ void main() {
         },
       );
 
-      await _pumpMobileFixture(tester, child);
-      await tester.tap(find.text('Start identification'));
-      await tester.pump();
-      await tester.longPress(find.byKey(const Key('hold-to-reveal')));
-      await tester.pump();
-      await capturePhaseFiveFixture(
+      await capturePhaseSevenFixture(
         tester,
-        size: phaseFiveMobileSize,
-        name: 'identification/mobile-committing.png',
+        size: phaseSevenMobileSize,
+        name: 'identification/mobile-committing-390x844.png',
         child: child,
+        prepare: (tester) async {
+          await tester.tap(find.text('Start identification'));
+          await tester.pump();
+          await tester.longPress(find.byKey(const Key('hold-to-reveal')));
+          await tester.pump();
+          expect(
+            find.bySemanticsLabel('Revealing identification'),
+            findsOneWidget,
+          );
+        },
       );
 
       expect(prepareCalls, 1);
       expect(commitCalls, 1);
       expect(committedPlan!.item.id.value, item.id);
-      expect(find.bySemanticsLabel('Revealing identification'), findsOneWidget);
-    }, skip: !phaseFiveCaptureEnabled);
+    }, skip: !phaseSevenCaptureEnabled);
 
     testWidgets('captures mobile identified success', (tester) async {
       addTearDown(tester.view.resetPhysicalSize);
@@ -168,7 +186,7 @@ void main() {
         find.byKey(ValueKey('identified-item-${item.id}')),
         findsOneWidget,
       );
-      expect(find.text('Amberwing Warbler'), findsOneWidget);
+      expect(find.text('Yellow Warbler'), findsOneWidget);
       expect(find.text('Setophaga aestiva'), findsOneWidget);
     }, skip: !phaseFiveCaptureEnabled);
 
@@ -231,6 +249,167 @@ void main() {
       expect(find.text('Rowan'), findsOneWidget);
       expect(find.text('Start identification'), findsOneWidget);
     }, skip: !phaseFiveCaptureEnabled);
+
+    testWidgets('captures desktop start-hold', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final item = _examinedItem();
+      var prepareCalls = 0;
+      var commitCalls = 0;
+      await capturePhaseSevenFixture(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'identification/desktop-start-hold-1440x900.png',
+        child: _serviceHost(
+          item: item,
+          prepare: (received) async {
+            expect(received, same(item));
+            prepareCalls++;
+            return _preparation(item.id);
+          },
+          commit: (plan) {
+            expect(plan.item.id.value, item.id);
+            commitCalls++;
+            throw StateError('commit must not be called');
+          },
+        ),
+        prepare: (tester) async {
+          await tester.tap(find.text('Start identification'));
+          await tester.pump();
+          expect(find.bySemanticsLabel('Hold to reveal'), findsOneWidget);
+        },
+      );
+
+      expect(prepareCalls, 1);
+      expect(commitCalls, 0);
+    }, skip: !phaseSevenCaptureEnabled);
+
+    testWidgets('captures desktop committing', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final item = _examinedItem();
+      final pendingCommit = Completer<ItemIdentificationResult>();
+      ItemIdentificationPlan? committedPlan;
+      var prepareCalls = 0;
+      var commitCalls = 0;
+      await capturePhaseSevenFixture(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'identification/desktop-committing-1440x900.png',
+        child: _serviceHost(
+          item: item,
+          prepare: (received) async {
+            expect(received, same(item));
+            prepareCalls++;
+            return _preparation(item.id);
+          },
+          commit: (plan) {
+            expect(plan.item.id.value, item.id);
+            commitCalls++;
+            committedPlan = plan;
+            return pendingCommit.future;
+          },
+        ),
+        prepare: (tester) async {
+          await tester.tap(find.text('Start identification'));
+          await tester.pump();
+          await tester.longPress(find.byKey(const Key('hold-to-reveal')));
+          await tester.pump();
+          expect(
+            find.bySemanticsLabel('Revealing identification'),
+            findsOneWidget,
+          );
+        },
+      );
+
+      expect(prepareCalls, 1);
+      expect(commitCalls, 1);
+      expect(committedPlan!.item.id.value, item.id);
+    }, skip: !phaseSevenCaptureEnabled);
+
+    testWidgets('captures desktop identified success', (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final item = _examinedItem();
+      ItemIdentificationPlan? committedPlan;
+      var prepareCalls = 0;
+      var commitCalls = 0;
+      await capturePhaseSevenFixture(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'identification/desktop-identified-success-1440x900.png',
+        child: _serviceHost(
+          item: item,
+          prepare: (received) async {
+            expect(received, same(item));
+            prepareCalls++;
+            return _preparation(item.id);
+          },
+          commit: (plan) async {
+            expect(plan.item.id.value, item.id);
+            commitCalls++;
+            committedPlan = plan;
+            return _result(plan, item.identify());
+          },
+        ),
+        prepare: (tester) async {
+          await tester.tap(find.text('Start identification'));
+          await tester.pump();
+          await tester.longPress(find.byKey(const Key('hold-to-reveal')));
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(ValueKey('identified-item-${item.id}')),
+            findsOneWidget,
+          );
+          expect(find.text('Yellow Warbler'), findsOneWidget);
+          expect(find.text('Setophaga aestiva'), findsOneWidget);
+        },
+      );
+
+      expect(prepareCalls, 1);
+      expect(commitCalls, 1);
+      expect(committedPlan!.item.id.value, item.id);
+    }, skip: !phaseSevenCaptureEnabled);
+
+    testWidgets(
+      'captures desktop preparation failure without repository details',
+      (tester) async {
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final item = _examinedItem();
+        var prepareCalls = 0;
+        await capturePhaseSevenFixture(
+          tester,
+          size: phaseSevenDesktopSize,
+          name: 'identification/desktop-preparation-failure-1440x900.png',
+          child: _serviceHost(
+            item: item,
+            prepare: (received) {
+              expect(received, same(item));
+              prepareCalls++;
+              return Future.error(
+                StateError('private fixture repository detail'),
+              );
+            },
+            commit: (_) => throw StateError('commit must not be called'),
+          ),
+          prepare: (tester) async {
+            expect(find.text('Identification unavailable'), findsOneWidget);
+            expect(
+              find.text("Couldn't prepare Identification."),
+              findsOneWidget,
+            );
+            expect(
+              find.textContaining('private fixture repository detail'),
+              findsNothing,
+            );
+          },
+        );
+
+        expect(prepareCalls, 1);
+      },
+      skip: !phaseSevenCaptureEnabled,
+    );
 
     testWidgets(
       'captures mobile prepared at 200% text with reduced motion',
@@ -318,7 +497,7 @@ Item _examinedItem() => Item(
   definitionId: 'fauna:amberwing',
   baseItemId: _baseItemId.value,
   baseItemVersionId: _baseItemVersion.versionId.value,
-  displayName: 'Amberwing Warbler',
+  displayName: 'Yellow Warbler',
   scientificName: 'Setophaga aestiva',
   category: ItemCategory.fauna,
   acquiredAt: DateTime.utc(2026, 4, 12),
@@ -326,7 +505,7 @@ Item _examinedItem() => Item(
   examinationState: ItemExaminationState.examined,
   examinedAt: DateTime.utc(2026, 4, 13),
   identificationState: ItemIdentificationState.unidentified,
-  identifiedDisplayName: 'Amberwing Warbler',
+  identifiedDisplayName: 'Yellow Warbler',
   identifiedScientificName: 'Setophaga aestiva',
 );
 

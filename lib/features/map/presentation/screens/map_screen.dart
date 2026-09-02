@@ -56,6 +56,7 @@ import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
 const _kWebMapStyleUrl = 'base-map-style.json';
 const _kNativeMapStyleUrl = 'https://tiles.openfreemap.org/styles/liberty';
 const _kGpsZoom = 15.0;
+const _kMapCellKnowledgeBorderRadius = BorderRadius.all(Radius.circular(4));
 
 /// Duration the discovery notification is visible before auto-dismissing.
 const _kDiscoveryNotificationDuration = Duration(seconds: 3);
@@ -1769,7 +1770,7 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
             padding: const EdgeInsets.all(Spacing.xxs),
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(Radii.xs),
+              borderRadius: _kMapCellKnowledgeBorderRadius,
             ),
             child: DecoratedBox(
               key: ValueKey(
@@ -1778,7 +1779,7 @@ class _MapCellKnowledgeLegendItem extends StatelessWidget {
               decoration: BoxDecoration(
                 color: fill,
                 border: stroke.a > 0 ? Border.all(color: stroke) : null,
-                borderRadius: BorderRadius.circular(Radii.xs),
+                borderRadius: _kMapCellKnowledgeBorderRadius,
               ),
               child: switch (state.knowledgeState) {
                 CellKnowledgeState.informed => const Icon(

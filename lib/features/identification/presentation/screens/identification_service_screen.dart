@@ -262,7 +262,9 @@ class _PreparedService extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            started
+            committing
+                ? 'Revealing the prepared result…'
+                : started
                 ? 'The prepared result is ready. Hold to reveal it.'
                 : 'This Villager can identify the examined find.',
           ),

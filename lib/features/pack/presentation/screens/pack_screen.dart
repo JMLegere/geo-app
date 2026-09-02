@@ -939,7 +939,11 @@ class _ItemSlotState extends ConsumerState<_ItemSlot> {
     final silhouetteLabel = 'Unexamined ${item.category.name} Item';
 
     return Semantics(
-      label: item.isExamined ? item.visibleDisplayName : silhouetteLabel,
+      label: _busy
+          ? 'Examining ${item.category.name} Item'
+          : item.isExamined
+          ? item.visibleDisplayName
+          : silhouetteLabel,
       button: true,
       enabled: !_busy,
       excludeSemantics: true,
@@ -957,10 +961,11 @@ class _ItemSlotState extends ConsumerState<_ItemSlot> {
                       ? Semantics(
                           label: 'Examining Item',
                           liveRegion: true,
-                          child: ExcludeSemantics(
-                            child: SizedBox.square(
-                              dimension: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                          child: const ExcludeSemantics(
+                            child: Icon(
+                              Icons.hourglass_top,
+                              key: Key('pack-examining-icon'),
+                              size: 24,
                             ),
                           ),
                         )
@@ -974,7 +979,11 @@ class _ItemSlotState extends ConsumerState<_ItemSlot> {
                 const SizedBox(height: 6),
               ],
               Text(
-                item.isExamined ? item.visibleDisplayName : silhouetteLabel,
+                _busy
+                    ? 'Examining'
+                    : item.isExamined
+                    ? item.visibleDisplayName
+                    : silhouetteLabel,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

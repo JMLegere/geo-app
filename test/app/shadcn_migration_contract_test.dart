@@ -9,7 +9,7 @@ void main() {
 
   String read(String path) => File('$root/$path').readAsStringSync();
 
-  test('preserves the Phase 0 migration contract', () {
+  test('preserves the migration contract', () {
     final appRoot = read('lib/main.dart');
     expect(appRoot, contains('brightness: Brightness.dark'));
     expect(appRoot, contains('colorScheme: const ShadZincColorScheme.dark()'));

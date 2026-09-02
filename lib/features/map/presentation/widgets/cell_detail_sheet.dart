@@ -43,9 +43,7 @@ class CellDetailSheet extends StatelessWidget {
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(Radii.xxl),
-      ),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
@@ -217,7 +215,7 @@ class _VenueSheetRow extends StatelessWidget {
           child: ExcludeSemantics(
             // eac-clickable-owner-logs: enclosing ProductActionSurface(PlayerActions.openNpcVenueDetail) owns both this label InkWell and the AppButton action evidence.
             child: InkWell(
-              borderRadius: BorderRadius.circular(Radii.sm),
+              borderRadius: const BorderRadius.all(Radius.circular(6)),
               onTap: onOpen,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(

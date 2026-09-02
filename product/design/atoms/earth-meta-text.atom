@@ -1,9 +1,0 @@
-Atom: EarthMetaText
-Status: deprecated
-Role: text
-Interaction policy: display
-Exports: lib/shared/design/primitives/meta_text.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy metadata text; retain only until authorized surface waves migrate callers.

@@ -6,22 +6,40 @@ class LoadingDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reducedMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final child = MediaQuery.disableAnimationsOf(context)
+        ? Icon(
+            Icons.more_horiz,
+            key: const ValueKey('loading-dots-static'),
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          )
+        : SizedBox.square(
+            dimension: 20,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                DecoratedBox(
+                  key: const ValueKey('loading-dots-track'),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 2.4,
+                    ),
+                  ),
+                ),
+                CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          );
 
     return Semantics(
       label: 'Loading',
       liveRegion: true,
-      child: ExcludeSemantics(
-        child: SizedBox.square(
-          dimension: 28,
-          child: CircularProgressIndicator(
-            value: reducedMotion ? 0.75 : null,
-            strokeWidth: 2.4,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-      ),
+      child: ExcludeSemantics(child: child),
     );
   }
 }

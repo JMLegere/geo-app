@@ -1,9 +1,0 @@
-Molecule: EarthStatGrid
-Status: deprecated
-Role: grid
-Interaction policy: display
-Exports: lib/shared/design/composites/stat_grid.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy stat grid; retain only until authorized surface waves migrate callers.

@@ -1,7 +1,9 @@
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/shared/observability/widgets/observable_screen.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 void main() {
   group('ObservableScreen', () {
@@ -11,31 +13,35 @@ void main() {
       observability = _TestObservabilityService();
     });
 
-    testWidgets('emits screen and widget lifecycle events on init and dispose',
-        (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ObservableScreen(
-            screenName: 'LoginScreen',
-            observability: observability,
-            builder: (_) => const SizedBox.shrink(),
+    testWidgets(
+      'emits screen and widget lifecycle events on init and dispose',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ObservableScreen(
+              screenName: 'LoginScreen',
+              observability: observability,
+              builder: (_) => const SizedBox.shrink(),
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(observability.findEvent('ui.widget.init'), isNotNull);
-      expect(observability.findEvent('ui.screen.mounted'), isNotNull);
-      expect(observability.findEvent('ui.screen.first_build'), isNotNull);
-      expect(observability.findEvent('ui.screen.ready'), isNotNull);
+        expect(observability.findEvent('ui.widget.init'), isNotNull);
+        expect(observability.findEvent('ui.screen.mounted'), isNotNull);
+        expect(observability.findEvent('ui.screen.first_build'), isNotNull);
+        expect(observability.findEvent('ui.screen.ready'), isNotNull);
 
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
 
-      expect(observability.findEvent('ui.widget.dispose'), isNotNull);
-      expect(observability.findEvent('ui.screen.disposed'), isNotNull);
-      expect(
-          observability.findEvent('ui.screen.disposed_before_ready'), isNull);
-    });
+        expect(observability.findEvent('ui.widget.dispose'), isNotNull);
+        expect(observability.findEvent('ui.screen.disposed'), isNotNull);
+        expect(
+          observability.findEvent('ui.screen.disposed_before_ready'),
+          isNull,
+        );
+      },
+    );
 
     testWidgets('emits build jank event for 101ms build', (tester) async {
       await tester.pumpWidget(
@@ -55,8 +61,9 @@ void main() {
       expect(jankEvent?['data']?['threshold_ms'], 100);
     });
 
-    testWidgets('does not emit jank event for 99ms and 100ms builds',
-        (tester) async {
+    testWidgets('does not emit jank event for 99ms and 100ms builds', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: ObservableScreen(
@@ -86,13 +93,19 @@ void main() {
       expect(observability.findEvent('ui.widget.build_jank'), isNull);
     });
 
-    testWidgets('renders fallback and executes retry callback after error',
-        (tester) async {
+    testWidgets('renders fallback and executes retry callback after error', (
+      tester,
+    ) async {
       var shouldThrow = true;
       var retryCount = 0;
 
       await tester.pumpWidget(
-        MaterialApp(
+        ShadApp(
+          theme: ShadThemeData(
+            brightness: Brightness.dark,
+            colorScheme: const ShadZincColorScheme.dark(),
+          ),
+          themeMode: ThemeMode.dark,
           home: ObservableScreen(
             screenName: 'SettingsScreen',
             observability: observability,
@@ -110,15 +123,19 @@ void main() {
         ),
       );
 
+      expect(find.byType(AppErrorState), findsOneWidget);
+      expect(find.byType(AppButton), findsOneWidget);
       expect(find.text('Something went wrong'), findsOneWidget);
-      expect(find.widgetWithText(ElevatedButton, 'Retry'), findsOneWidget);
-
-      final boundaryEvent =
-          observability.findEvent('error.screen_boundary_caught');
+      expect(find.text('Please try again.'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+      expect(find.bySemanticsLabel('Retry'), findsOneWidget);
+      final boundaryEvent = observability.findEvent(
+        'error.screen_boundary_caught',
+      );
       expect(boundaryEvent, isNotNull);
       expect(boundaryEvent?['data']?['screen_name'], 'SettingsScreen');
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Retry'));
+      await tester.tap(find.byType(AppButton));
       await tester.pump();
 
       expect(retryCount, 1);
@@ -126,34 +143,40 @@ void main() {
     });
 
     testWidgets(
-        'emits load_timeout and disposed_before_ready when screen never becomes ready',
-        (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ObservableScreen(
-            screenName: 'BrokenScreen',
-            observability: observability,
-            readyTimeoutOverride: const Duration(milliseconds: 1),
-            builder: (_) => throw StateError('boom'),
+      'emits load_timeout and disposed_before_ready when screen never becomes ready',
+      (tester) async {
+        await tester.pumpWidget(
+          ShadApp(
+            theme: ShadThemeData(
+              brightness: Brightness.dark,
+              colorScheme: const ShadZincColorScheme.dark(),
+            ),
+            themeMode: ThemeMode.dark,
+            home: ObservableScreen(
+              screenName: 'BrokenScreen',
+              observability: observability,
+              readyTimeoutOverride: const Duration(milliseconds: 1),
+              builder: (_) => throw StateError('boom'),
+            ),
           ),
-        ),
-      );
+        );
 
-      await tester.pump(const Duration(milliseconds: 2));
+        await tester.pump(const Duration(milliseconds: 2));
 
-      final timeout = observability.findEvent('ui.screen.load_timeout');
-      expect(timeout, isNotNull);
-      expect(timeout?['data']?['screen_name'], 'BrokenScreen');
-      expect(timeout?['data']?['timeout_ms'], 1);
+        final timeout = observability.findEvent('ui.screen.load_timeout');
+        expect(timeout, isNotNull);
+        expect(timeout?['data']?['screen_name'], 'BrokenScreen');
+        expect(timeout?['data']?['timeout_ms'], 1);
 
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
 
-      expect(
-        observability.findEvent('ui.screen.disposed_before_ready'),
-        isNotNull,
-      );
-    });
+        expect(
+          observability.findEvent('ui.screen.disposed_before_ready'),
+          isNotNull,
+        );
+      },
+    );
   });
 }
 

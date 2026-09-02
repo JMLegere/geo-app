@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:earth_nova/core/domain/entities/item.dart';
+import 'package:earth_nova/core/observability/trace_context.dart';
 import 'package:earth_nova/core/observability/app_observability_provider.dart';
 import 'package:earth_nova/core/observability/observability_service.dart';
 import 'package:earth_nova/features/identification/presentation/providers/items_provider.dart';
@@ -11,10 +13,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'phase_five_capture_support.dart';
+import 'phase_seven_capture_support.dart';
 
 final _observability = ObservabilityService(
   sessionId: 'phase-five-pack-fixture',
 );
+
+const _phaseSevenPackSpeciesAssets = [
+  'pack/initial-loading-390x844.png',
+  'pack/initial-loading-1440x900.png',
+  'pack/examination-busy-390x844.png',
+  'pack/examination-busy-1440x900.png',
+  'pack/initial-empty-1440x900.png',
+  'pack/filtered-zero-1440x900.png',
+  'pack/error-retry-1440x900.png',
+  'species/unexamined-1440x900.png',
+  'species/examined-unidentified-1440x900.png',
+  'species/identified-1440x900.png',
+];
 
 final _packItems = <Item>[
   _item(
@@ -109,7 +125,7 @@ final _packItems = <Item>[
   ),
   _item(
     id: 'pack-unexamined-warbler',
-    name: 'Amberwing Warbler',
+    name: 'Yellow Warbler',
     scientificName: 'Setophaga aestiva',
     identificationState: ItemIdentificationState.unidentified,
     examinationState: ItemExaminationState.unexamined,
@@ -119,7 +135,7 @@ final _packItems = <Item>[
 
 final _unexaminedSpecies = _item(
   id: 'species-unexamined',
-  name: 'Amberwing Warbler',
+  name: 'Yellow Warbler',
   scientificName: 'Setophaga aestiva',
   identificationState: ItemIdentificationState.unidentified,
   examinationState: ItemExaminationState.unexamined,
@@ -128,7 +144,7 @@ final _unexaminedSpecies = _item(
 
 final _examinedUnidentifiedSpecies = _item(
   id: 'species-examined-unidentified',
-  name: 'Amberwing Warbler',
+  name: 'Yellow Warbler',
   scientificName: 'Setophaga aestiva',
   taxonomicClass: 'AVES',
   identificationState: ItemIdentificationState.unidentified,
@@ -151,6 +167,11 @@ final _identifiedSpecies = _item(
 );
 
 void main() {
+  test('declares the ten phase seven Pack and species assets', () {
+    expect(_phaseSevenPackSpeciesAssets, hasLength(10));
+    expect(_phaseSevenPackSpeciesAssets.toSet(), hasLength(10));
+  });
+
   for (final viewport in const [
     (name: '390x844', size: phaseFiveMobileSize, columns: 3),
     (name: '1440x900', size: phaseFiveDesktopSize, columns: 6),
@@ -182,6 +203,63 @@ void main() {
         );
       },
       skip: !phaseFiveCaptureEnabled,
+    );
+  }
+
+  for (final viewport in const [
+    (name: '390x844', size: phaseSevenMobileSize),
+    (name: '1440x900', size: phaseSevenDesktopSize),
+  ]) {
+    testWidgets(
+      'captures Pack initial loading at ${viewport.name}',
+      (tester) async {
+        _resetViewAfterTest(tester);
+        await _capturePhaseSevenOffline(
+          tester,
+          size: viewport.size,
+          name: 'pack/initial-loading-${viewport.name}.png',
+          child: _PackScene(
+            _FixtureItemsNotifier(const ItemsState(isLoading: true)),
+          ),
+          prepare: (tester) async {
+            expect(find.bySemanticsLabel('Loading Pack'), findsOneWidget);
+          },
+        );
+      },
+      skip: !phaseSevenCaptureEnabled,
+    );
+  }
+
+  for (final viewport in const [
+    (name: '390x844', size: phaseSevenMobileSize),
+    (name: '1440x900', size: phaseSevenDesktopSize),
+  ]) {
+    testWidgets(
+      'captures Pack examination busy at ${viewport.name}',
+      (tester) async {
+        _resetViewAfterTest(tester);
+        await _capturePhaseSevenOffline(
+          tester,
+          size: viewport.size,
+          name: 'pack/examination-busy-${viewport.name}.png',
+          child: _PackScene(
+            _BusyExaminationItemsNotifier(
+              ItemsState(items: [_packItems.last], hasLoaded: true),
+            ),
+          ),
+          prepare: (tester) async {
+            await tester.tap(
+              find.byKey(const ValueKey('pack-item-pack-unexamined-warbler')),
+            );
+            await tester.pump();
+            expect(
+              find.byKey(const Key('pack-examining-icon')),
+              findsOneWidget,
+            );
+          },
+        );
+      },
+      skip: !phaseSevenCaptureEnabled,
     );
   }
 
@@ -260,6 +338,86 @@ void main() {
     skip: !phaseFiveCaptureEnabled,
   );
 
+  testWidgets(
+    'captures the initially empty Pack on desktop',
+    (tester) async {
+      _resetViewAfterTest(tester);
+      await _capturePhaseSevenOffline(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'pack/initial-empty-1440x900.png',
+        child: _PackScene(
+          _FixtureItemsNotifier(const ItemsState(hasLoaded: true)),
+        ),
+        prepare: (tester) async {
+          expect(find.text('Your Pack is empty'), findsOneWidget);
+          expect(find.text('No discoveries match your filters'), findsNothing);
+          expect(find.text("Couldn't load your collection"), findsNothing);
+        },
+      );
+    },
+    skip: !phaseSevenCaptureEnabled,
+  );
+
+  testWidgets(
+    'captures Pack filtered-zero on desktop without a gesture',
+    (tester) async {
+      _resetViewAfterTest(tester);
+      await _capturePhaseSevenOffline(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'pack/filtered-zero-1440x900.png',
+        child: _PackScene(
+          _FixtureItemsNotifier(ItemsState(items: _packItems, hasLoaded: true)),
+        ),
+        prepare: (tester) async {
+          await tester.enterText(
+            find.byType(TextField),
+            'no matching discovery',
+          );
+          await tester.pumpAndSettle();
+          expect(
+            find.text('No discoveries match your filters'),
+            findsOneWidget,
+          );
+          expect(find.text('Your Pack is empty'), findsNothing);
+          expect(
+            tester
+                .widget<Text>(find.byKey(const Key('compact-bar-count')))
+                .data,
+            '0',
+          );
+        },
+      );
+    },
+    skip: !phaseSevenCaptureEnabled,
+  );
+
+  testWidgets(
+    'captures Pack fetch error with retry on desktop',
+    (tester) async {
+      _resetViewAfterTest(tester);
+      final notifier = _FixtureItemsNotifier(
+        const ItemsState(error: 'Connection timed out'),
+      );
+      await _capturePhaseSevenOffline(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: 'pack/error-retry-1440x900.png',
+        child: _PackScene(notifier),
+        prepare: (tester) async {
+          expect(find.text("Couldn't load your collection"), findsOneWidget);
+          expect(find.text('Try Again'), findsOneWidget);
+          final callsBeforeRetry = notifier.fetchCalls;
+          await tester.tap(find.text('Try Again'));
+          await tester.pump();
+          expect(notifier.fetchCalls, callsBeforeRetry + 1);
+        },
+      );
+    },
+    skip: !phaseSevenCaptureEnabled,
+  );
+
   for (final fixture in [
     (name: 'species/unexamined-390x844.png', item: _unexaminedSpecies),
     (
@@ -320,6 +478,56 @@ void main() {
     }, skip: !phaseFiveCaptureEnabled);
   }
 
+  for (final fixture in [
+    (name: 'species/unexamined-1440x900.png', item: _unexaminedSpecies),
+    (
+      name: 'species/examined-unidentified-1440x900.png',
+      item: _examinedUnidentifiedSpecies,
+    ),
+    (name: 'species/identified-1440x900.png', item: _identifiedSpecies),
+  ]) {
+    testWidgets('captures ${fixture.name}', (tester) async {
+      _resetViewAfterTest(tester);
+      await _capturePhaseSevenOffline(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: fixture.name,
+        child: _SpeciesScene(fixture.item),
+        prepare: (tester) async {
+          if (fixture.item.artUrl != null) {
+            await tester.pump();
+            await tester.pump();
+          }
+          expect(
+            find.byKey(ValueKey('species-card-${fixture.item.id}')),
+            findsOneWidget,
+          );
+          if (!fixture.item.isExamined) {
+            expect(find.text('Unexamined fauna Item'), findsOneWidget);
+          } else {
+            expect(find.text(fixture.item.displayName), findsOneWidget);
+            expect(
+              find.text(
+                fixture.item.isUnidentified ? 'Examined' : 'Identified',
+              ),
+              findsOneWidget,
+            );
+          }
+          if (fixture.item.artUrl != null) {
+            expect(
+              find.byKey(ValueKey('species-art-${fixture.item.id}')),
+              findsOneWidget,
+            );
+            expect(
+              find.byKey(ValueKey('species-media-fallback-${fixture.item.id}')),
+              findsOneWidget,
+            );
+          }
+        },
+      );
+    }, skip: !phaseSevenCaptureEnabled);
+  }
+
   test(
     'fixture identities preserve the three production disclosure states',
     () {
@@ -330,10 +538,7 @@ void main() {
       );
       expect(_unexaminedSpecies.visibleScientificName, isNull);
       expect(_examinedUnidentifiedSpecies.id, 'species-examined-unidentified');
-      expect(
-        _examinedUnidentifiedSpecies.visibleDisplayName,
-        'Amberwing Warbler',
-      );
+      expect(_examinedUnidentifiedSpecies.visibleDisplayName, 'Yellow Warbler');
       expect(_examinedUnidentifiedSpecies.isUnidentified, isTrue);
       expect(_identifiedSpecies.id, 'species-identified');
       expect(_identifiedSpecies.visibleDisplayName, 'Red Fox');
@@ -387,6 +592,16 @@ class _FixtureItemsNotifier extends ItemsNotifier {
   }
 }
 
+class _BusyExaminationItemsNotifier extends _FixtureItemsNotifier {
+  _BusyExaminationItemsNotifier(super.initialState);
+
+  final _pendingExamination = Completer<Item?>();
+
+  @override
+  Future<Item?> examinePackItem(String itemId, {TraceContext? parent}) =>
+      _pendingExamination.future;
+}
+
 class _OfflineHttpClient implements HttpClient {
   @override
   Future<HttpClientRequest> getUrl(Uri url) => Future<HttpClientRequest>.error(
@@ -405,6 +620,25 @@ Future<void> _captureOffline(
 }) {
   return HttpOverrides.runZoned(
     () => capturePhaseFiveFixture(tester, size: size, name: name, child: child),
+    createHttpClient: (_) => _OfflineHttpClient(),
+  );
+}
+
+Future<void> _capturePhaseSevenOffline(
+  WidgetTester tester, {
+  required Size size,
+  required String name,
+  required Widget child,
+  Future<void> Function(WidgetTester tester)? prepare,
+}) {
+  return HttpOverrides.runZoned(
+    () => capturePhaseSevenFixture(
+      tester,
+      size: size,
+      name: name,
+      child: child,
+      prepare: prepare,
+    ),
     createHttpClient: (_) => _OfflineHttpClient(),
   );
 }

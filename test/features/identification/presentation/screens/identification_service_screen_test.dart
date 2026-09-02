@@ -222,6 +222,7 @@ void main() {
       expect(commitCalls, 1);
       expect(committedPlan!.item.id.value, item.id);
       expect(find.bySemanticsLabel('Revealing identification'), findsOneWidget);
+      expect(find.text('Revealing the prepared result…'), findsOneWidget);
       expect(
         tester
             .getSemantics(find.bySemanticsLabel('Revealing identification'))
@@ -317,13 +318,10 @@ void main() {
 
         expect(find.text('Preparing identification'), findsOneWidget);
         expect(
-          tester
-              .widget<CircularProgressIndicator>(
-                find.byType(CircularProgressIndicator),
-              )
-              .value,
-          0.75,
+          find.byKey(const ValueKey('loading-dots-static')),
+          findsOneWidget,
         );
+        expect(find.byType(CircularProgressIndicator), findsNothing);
 
         preparation.complete(_preparation(item.id));
         await tester.pumpAndSettle();

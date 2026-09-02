@@ -23,8 +23,19 @@ import '../features/home/home_test_data.dart' as home_fixture;
 import '../features/living_world/data/living_world_test_data.dart'
     as town_fixture;
 import 'phase_five_capture_support.dart';
+import 'phase_seven_capture_support.dart';
+
+const _phaseSevenTownAssets = [
+  'places/town-empty-1440x900.png',
+  'places/town-error-retry-1440x900.png',
+];
 
 void main() {
+  test('declares the two phase seven Town assets', () {
+    expect(_phaseSevenTownAssets, hasLength(2));
+    expect(_phaseSevenTownAssets.toSet(), hasLength(2));
+  });
+
   final town = _townProjection();
   final captures = <({String name, Size size, Widget child, String expected})>[
     (
@@ -107,6 +118,39 @@ void main() {
       );
       expect(find.text(capture.expected), findsOneWidget);
     }, skip: !phaseFiveCaptureEnabled);
+  }
+
+  for (final capture in <({String name, Widget child, String expected})>[
+    (
+      name: 'places/town-empty-1440x900.png',
+      child: _townScene(
+        _TownRepository((_) async => _townProjection(withVenue: false)),
+      ),
+      expected: 'No Venues known yet',
+    ),
+    (
+      name: 'places/town-error-retry-1440x900.png',
+      child: _townScene(
+        _TownRepository(
+          (_) => Future<TownProjection>.error(
+            const LivingWorldFailure.unavailable(),
+          ),
+        ),
+      ),
+      expected: 'Retry Town load',
+    ),
+  ]) {
+    testWidgets('captures ${capture.name}', (tester) async {
+      await capturePhaseSevenFixture(
+        tester,
+        size: phaseSevenDesktopSize,
+        name: capture.name,
+        child: capture.child,
+        prepare: (tester) async {
+          expect(find.text(capture.expected), findsOneWidget);
+        },
+      );
+    }, skip: !phaseSevenCaptureEnabled);
   }
 
   testWidgets('uses read-only production Places and Home surfaces', (

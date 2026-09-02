@@ -1,9 +1,0 @@
-Atom: EarthTag
-Status: deprecated
-Role: status
-Interaction policy: display
-Exports: lib/shared/design/primitives/tag.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy tag; retain only until authorized surface waves migrate callers.

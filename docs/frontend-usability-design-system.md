@@ -5,12 +5,11 @@ EarthNova uses the same enforcement shape as the `main-website` repo, adapted fo
 ## Canonical flow
 
 ```text
-docs/design.md + docs/map-design.md + .agents/decisions.md
-  -> lib/shared/theme/app_theme.dart
-  -> lib/shared/theme/design_tokens.dart
-  -> lib/shared/design/{foundations,primitives,composites,patterns}
+lib/main.dart (`ShadApp.custom`)
+  -> lib/shared/design.dart
+  -> foundations (`Spacing`) and canonical `App*` components
   -> feature screens/widgets
-  -> test/shared/design/* contract checks
+  -> registry, surface inventory, and contract checks
 ```
 
 The design system is not a style suggestion. It is the place where reusable UI enters the app.
@@ -19,28 +18,37 @@ The design system is not a style suggestion. It is the place where reusable UI e
 
 | Layer | Path | Purpose |
 | --- | --- | --- |
-| Foundations | `lib/shared/design/foundations/` | Internal helpers and conventions, not a screen API |
-| Primitives | `lib/shared/design/primitives/` | Small reusable atoms like action buttons, icons, tags, metadata, notices |
-| Composites | `lib/shared/design/composites/` | Assembled field-note units like panels, field rows, stat grids |
-| Patterns | `lib/shared/design/patterns/` | Larger examples/catalog shapes, not direct app-screen dependencies |
-| Registry | `lib/shared/design/registry.dart` | Formal component inventory with category/status/screen policy |
+| Foundations | `lib/shared/design/foundations/` | Internal conventions; `Spacing` is the shared layout vocabulary |
+| Primitives | `lib/shared/design/primitives/` | Canonical small reusable atoms |
+| Composites | `lib/shared/design/composites/` | Canonical reusable assembled UI |
+| Patterns | `lib/shared/design/patterns/` | Canonical screen-allowed state patterns and catalog-only examples |
+| Registry and inventory | `lib/shared/design/{registry,surface_inventory}.dart` | Exact public-component and app-surface contracts |
 
-Feature screens import the public API only:
+Visual feature screens import the public API only:
 
 ```dart
 import 'package:earth_nova/shared/design.dart';
 ```
 
-They must not import internal taxonomy paths such as `shared/design/primitives/...`.
+Feature code must not import internal taxonomy paths such as
+`shared/design/primitives/...`. Its approved visual public vocabulary is
+`AppBadge`, `AppButton`, `AppCard`, `AppEmptyState`, `AppErrorState`,
+`AppFieldRow`, `AppNotice`, `AppStatGrid`, and `LoadingDots`; `Spacing` is the
+shared layout vocabulary. `DesignLibraryExample` is experimental and
+catalog-only. `ProductActionSurface` remains a separate nonvisual
+product-action API/evidence boundary at
+`lib/shared/product/product_action_surface.dart`; it is not part of the visual
+design vocabulary or public design barrel. There are no `AppTheme`, `Earth*`,
+legacy-token, or design-export aliases.
 
 ## Usability rules
 
 - Map and gameplay screens prioritize state legibility before ornament: marker/ring, current map cell, fog relationship, then secondary cues.
-- Touch targets must stay at or above 44px; canonical actions use `ComponentSizes.buttonHeight`.
+- Touch targets must stay at or above 44px.
 - Visual variants are semantic (`tone`, `status`, `relationship`) instead of raw color/style props.
 - Every app UI implementation outside `lib/shared/design/` must be documented in `designSurfaceInventory` with its purpose, category, status, and design-system notes before it ships.
 - Patterns such as `DesignLibraryExample` are catalog/review artifacts and are not allowed directly in app screens.
-- High-level app chrome should use canonical design icons (`EarthIcon` / `EarthGlyph`) instead of raw `Icons.*`, emoji glyphs, or legacy `AppIcons` strings.
+- Native Flutter/Material infrastructure, MapLibre/Canvas/painters, native icons, debug-only UI, and nonvisual product-action evidence are explicit neutral exceptions when required; they remain inventoried and do not establish a second visual system.
 
 ## Enforcement
 
@@ -48,9 +56,9 @@ The first-pass enforcement lives in tests so it runs in normal Flutter CI:
 
 | Check | File | What fails |
 | --- | --- | --- |
-| Design contract | `test/shared/design/design_contract_test.dart` | Missing artifacts, internal design imports from app code, public API drift, undocumented app UI surfaces, raw style escape hatches in design widgets, raw app-chrome icons/emoji outside the design stack |
-| Registry parity | `test/shared/design/design_component_registry_test.dart` | Exported taxonomy widgets missing registry entries, duplicate/stale entries, empty categories |
-| Widget smoke/usability | `test/shared/design/design_library_widget_test.dart` | Catalog render breakage and action touch-target regressions |
+| Design contract | `test/shared/design/design_contract_test.dart` | Public-barrel drift, retired aliases, undocumented app UI surfaces, or non-neutral exception paths |
+| Registry parity | `test/shared/design/design_component_registry_test.dart` | Public components missing exact registry/inventory coverage |
+| Widget smoke/usability | `test/shared/design/design_library_widget_test.dart` | Canonical component rendering and action touch-target regressions |
 
 Focused command:
 
@@ -69,10 +77,9 @@ mise exec -- flutter test --no-pub --reporter=compact
 
 Every app UI implementation outside `lib/shared/design/` is part of the same
 design system and must be listed in `designSurfaceInventory` with purpose,
-category, status, and design-system notes. There is no separate exception
-path: if a screen, widget, painter, debug overlay, or observability fallback
-exists, it is documented as part of the design system and must pass the shared
-design contract.
+category, status, and design-system notes. Native, Map, painter, debug, and
+observability exceptions remain explicit inventory entries and pass their
+applicable contracts.
 
 When a screen or widget is touched for real product work:
 
