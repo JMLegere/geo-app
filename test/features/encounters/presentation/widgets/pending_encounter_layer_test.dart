@@ -48,8 +48,6 @@ void main() {
       expect(find.byType(AppCard), findsOneWidget);
       expect(find.byType(AppFieldRow), findsOneWidget);
       expect(find.byType(AppButton), findsOneWidget);
-      expect(find.byType(EarthPanel), findsNothing);
-      expect(find.byType(EarthActionButton), findsNothing);
       expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
 
       expect(action, findsOneWidget);

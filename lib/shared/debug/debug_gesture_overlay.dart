@@ -1,16 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:earth_nova/shared/debug/gesture_injector.dart';
 
-// ─── Colour palette ───────────────────────────────────────────────────────────
-// Hardcoded to decouple debug tooling from AppTheme.
-// Mirrors: surfaceContainerHighest · tertiary · onSurfaceVariant · outline · primary
-const Color _kPanelBg = Color(0xFF243A50);
-const Color _kIconColor = Color(0xFF83C5BE);
-const Color _kLabelColor = Color(0xFFADB5BD);
-const Color _kBorder = Color(0xFF3D5060);
-const Color _kSplash = Color(0x66006D77); // primary @ ~40 %
-const Color _kHighlight = Color(0x33006D77); // primary @ ~20 %
-
 // ─── Interface ────────────────────────────────────────────────────────────────
 abstract interface class GestureInjectorInterface {
   Future<void> swipeUp(Offset center, double distance);
@@ -21,12 +11,7 @@ abstract interface class GestureInjectorInterface {
   Future<void> spread(Offset center, double distance);
 }
 
-enum DebugPlayerMoveDirection {
-  north,
-  south,
-  west,
-  east,
-}
+enum DebugPlayerMoveDirection { north, south, west, east }
 
 // ─── Default injector ─────────────────────────────────────────────────────────
 // Uses Flutter pointer injection — works on all Flutter widget trees.
@@ -83,14 +68,14 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
   static const double _handleWidth = 24;
   static const double _kGestureTargetY = 80.0;
 
-  static const BoxDecoration _panelDecoration = BoxDecoration(
-    color: _kPanelBg,
+  BoxDecoration _panelDecoration(ColorScheme colorScheme) => BoxDecoration(
+    color: colorScheme.surfaceContainerHighest,
     border: Border(
-      left: BorderSide(color: _kBorder),
-      top: BorderSide(color: _kBorder),
-      bottom: BorderSide(color: _kBorder),
+      left: BorderSide(color: colorScheme.outline),
+      top: BorderSide(color: colorScheme.outline),
+      bottom: BorderSide(color: colorScheme.outline),
     ),
-    borderRadius: BorderRadius.only(
+    borderRadius: const BorderRadius.only(
       topLeft: Radius.circular(8),
       bottomLeft: Radius.circular(8),
     ),
@@ -98,13 +83,12 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.maybeSizeOf(context) ??
+    final size =
+        MediaQuery.maybeSizeOf(context) ??
         const Size(_defaultWidth, _defaultHeight);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final center = Offset(
-      size.width / 2,
-      (size.height - _bottomNavHeight) / 2,
-    );
+    final center = Offset(size.width / 2, (size.height - _bottomNavHeight) / 2);
     final gestureCenter = Offset(size.width / 2, _kGestureTargetY);
     final swipeDistance = size.height * 0.25;
     final pinchDistance = size.width * 0.4;
@@ -118,7 +102,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
       child: Container(
         width: _expanded ? _panelWidth : _handleWidth,
         clipBehavior: Clip.antiAlias,
-        decoration: _panelDecoration,
+        decoration: _panelDecoration(colorScheme),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -128,23 +112,47 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
             ),
             if (_expanded) ...[
               const SizedBox(height: 8),
-              _btn('Pinch', Icons.zoom_out, 'Pinch',
-                  () => injector.pinch(gestureCenter, pinchDistance)),
+              _btn(
+                'Pinch',
+                Icons.zoom_out,
+                'Pinch',
+                () => injector.pinch(gestureCenter, pinchDistance),
+              ),
               const SizedBox(height: 4),
-              _btn('Spread', Icons.zoom_in, 'Spread',
-                  () => injector.spread(gestureCenter, pinchDistance)),
+              _btn(
+                'Spread',
+                Icons.zoom_in,
+                'Spread',
+                () => injector.spread(gestureCenter, pinchDistance),
+              ),
               const SizedBox(height: 4),
-              _btn('↑ Up', Icons.arrow_upward, 'Up',
-                  () => injector.swipeUp(center, swipeDistance)),
+              _btn(
+                '↑ Up',
+                Icons.arrow_upward,
+                'Up',
+                () => injector.swipeUp(center, swipeDistance),
+              ),
               const SizedBox(height: 4),
-              _btn('↓ Dn', Icons.arrow_downward, 'Down',
-                  () => injector.swipeDown(center, swipeDistance)),
+              _btn(
+                '↓ Dn',
+                Icons.arrow_downward,
+                'Down',
+                () => injector.swipeDown(center, swipeDistance),
+              ),
               const SizedBox(height: 4),
-              _btn('← L', Icons.arrow_back, 'Left',
-                  () => injector.swipeLeft(center, swipeDistance)),
+              _btn(
+                '← L',
+                Icons.arrow_back,
+                'Left',
+                () => injector.swipeLeft(center, swipeDistance),
+              ),
               const SizedBox(height: 4),
-              _btn('→ R', Icons.arrow_forward, 'Right',
-                  () => injector.swipeRight(center, swipeDistance)),
+              _btn(
+                '→ R',
+                Icons.arrow_forward,
+                'Right',
+                () => injector.swipeRight(center, swipeDistance),
+              ),
               if (widget.onMovePlayer != null) ...[
                 const SizedBox(height: 8),
                 _btn(
@@ -207,6 +215,7 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
     String tooltip,
     VoidCallback onPressed,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Tooltip(
       message: tooltip,
       child: Material(
@@ -214,8 +223,8 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
         // eac-clickable-ignore: debug gesture controls are developer-only test chrome outside the product action catalog.
         child: InkWell(
           onTap: onPressed,
-          splashColor: _kSplash,
-          highlightColor: _kHighlight,
+          splashColor: colorScheme.onSurface.withValues(alpha: 0.4),
+          highlightColor: colorScheme.onSurface.withValues(alpha: 0.2),
           child: SizedBox(
             width: double.infinity,
             child: Padding(
@@ -223,12 +232,12 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, color: _kIconColor, size: 18),
+                  Icon(icon, color: colorScheme.onSurface, size: 18),
                   const SizedBox(height: 2),
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: _kLabelColor,
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 9,
                       fontWeight: FontWeight.w500,
                       height: 1.0,
@@ -248,24 +257,22 @@ class _DebugGestureOverlayState extends State<DebugGestureOverlay> {
 
 // ─── Toggle handle ────────────────────────────────────────────────────────────
 class _ToggleHandle extends StatelessWidget {
-  const _ToggleHandle({
-    required this.expanded,
-    required this.onTap,
-  });
+  const _ToggleHandle({required this.expanded, required this.onTap});
 
   final bool expanded;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       // eac-clickable-ignore: debug overlay collapse is developer-only test chrome outside the product action catalog.
       child: InkWell(
         key: const Key('debug_overlay_toggle'),
         onTap: onTap,
-        splashColor: _kSplash,
-        highlightColor: _kHighlight,
+        splashColor: colorScheme.onSurface.withValues(alpha: 0.4),
+        highlightColor: colorScheme.onSurface.withValues(alpha: 0.2),
         borderRadius: const BorderRadius.only(topLeft: Radius.circular(8)),
         child: SizedBox(
           height: 32,
@@ -273,7 +280,7 @@ class _ToggleHandle extends StatelessWidget {
           child: Center(
             child: Icon(
               expanded ? Icons.chevron_right : Icons.chevron_left,
-              color: _kIconColor,
+              color: colorScheme.onSurface,
               size: 18,
             ),
           ),

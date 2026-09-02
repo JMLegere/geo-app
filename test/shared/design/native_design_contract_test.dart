@@ -55,7 +55,7 @@ void main() {
       }
     });
 
-    test('covers the app-level migrated product surfaces', () {
+    test('covers the app-level product surfaces', () {
       const requiredSurfaceContracts = <String, ({String path, String kind})>{
         'PrimaryNavigationShell': (
           path: 'lib/shared/widgets/tab_shell.dart',
@@ -114,8 +114,15 @@ void main() {
               'lib/features/encounters/presentation/widgets/pending_encounter_layer.dart',
           kind: 'Organism',
         ),
+        'ErrorBoundaryRetry': (
+          path: 'lib/shared/observability/widgets/error_boundary_retry.dart',
+          kind: 'Organism',
+        ),
+        'StubScreen': (
+          path: 'lib/shared/widgets/stub_screen.dart',
+          kind: 'Page',
+        ),
       };
-
       final contractsByName = {
         for (final contract in _nativeContracts()) contract.name: contract,
       };
@@ -143,6 +150,19 @@ void main() {
         );
       }
     });
+    test('defines Phase 6 fallback and stub boundaries', () {
+      final contracts = {
+        for (final contract in _nativeContracts()) contract.name: contract,
+      };
+      final errorBoundary = contracts['ErrorBoundaryRetry']!;
+      final stub = contracts['StubScreen']!;
+
+      expect(errorBoundary.interactionPolicy, 'delegates-to-children');
+      expect(errorBoundary.purpose, contains('retry'));
+      expect(stub.interactionPolicy, 'display');
+      expect(stub.purpose, contains('no product action'));
+    });
+
     test('defines Phase 5 neutral ownership and knowledge boundaries', () {
       const inventoryExpectations = <String, String>{
         'lib/features/identification/presentation/screens/identification_service_screen.dart':
@@ -205,16 +225,6 @@ void main() {
         if (contract == null) {
           offenders.add(
             '$source:$line has UI-action evidence but no native design contract exports that source file.',
-          );
-          continue;
-        }
-
-        if (controlComponent == 'EarthActionButton') {
-          expect(
-            component,
-            'EarthActionButton',
-            reason:
-                '$source:$line EarthActionButton evidence should remain anchored to the shared atom.',
           );
           continue;
         }

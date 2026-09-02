@@ -8,7 +8,7 @@ import 'package:earth_nova/features/auth/data/repositories/mock_auth_repository.
 import 'package:earth_nova/features/auth/domain/repositories/auth_repository.dart';
 import 'package:earth_nova/features/auth/presentation/providers/auth_provider.dart';
 import 'package:earth_nova/features/auth/presentation/screens/login_screen.dart';
-import 'package:earth_nova/shared/design/primitives/app_button.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

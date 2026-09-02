@@ -59,10 +59,7 @@ void main() {
     );
 
     expect(find.text('Town could not load'), findsOneWidget);
-    expect(
-      find.text('Unable to load your Town. Pull to retry.'),
-      findsOneWidget,
-    );
+    expect(find.text('Unable to load your Town. Try again.'), findsOneWidget);
 
     await tester.tap(find.text('Retry Town load'));
     await tester.pumpAndSettle();

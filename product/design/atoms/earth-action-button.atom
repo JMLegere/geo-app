@@ -1,9 +1,0 @@
-Atom: EarthActionButton
-Status: deprecated
-Role: button
-Interaction policy: action-required
-Exports: lib/shared/design/primitives/action_button.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy action button; retain only until authorized surface waves migrate callers.

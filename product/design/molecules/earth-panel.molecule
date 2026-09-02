@@ -1,9 +1,0 @@
-Molecule: EarthPanel
-Status: deprecated
-Role: region
-Interaction policy: delegates-to-children
-Exports: lib/shared/design/composites/panel.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy panel; retain only until authorized surface waves migrate callers.

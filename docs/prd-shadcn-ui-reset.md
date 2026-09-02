@@ -4,7 +4,7 @@
 
 | Field | Value |
 |---|---|
-| Status | **PHASE 3 COMPLETE — Phase 4+ implementation remains paused and requires explicit user authorization** |
+| Status | **PHASES 1–7 COMPLETE LOCALLY — final [Phase 7 acceptance](../.agents/qa/2026-09-02-shadcn-reset-phase-7-final-acceptance.md) passed; production deployment remains unauthorized** |
 | Version | 1.0 |
 | Date | 2026-08-31 |
 | Product | EarthNova Flutter client |
@@ -685,7 +685,7 @@ No visual component should emit duplicate actions because both wrapper and calle
 
 ### Phase 5 — Pack and knowledge
 
-**Complete (2026-09-01).** Pack, Species Card, Identification, Town/Venue, and identity-only Home now use the neutral `shadcn_ui` vocabulary with their behavior contracts preserved. Rendered evidence: `.agents/qa/2026-09-01-shadcn-reset-phase-5-pack-knowledge.md`. Phase 6 and later remain paused; production deployment is not authorized.
+**Complete (2026-09-01).** Pack, Species Card, Identification, Town/Venue, and identity-only Home now use the neutral `shadcn_ui` vocabulary with their behavior contracts preserved. Rendered evidence: `.agents/qa/2026-09-01-shadcn-reset-phase-5-pack-knowledge.md`. Phase 6 is complete locally; Phase 7 rendered acceptance remains paused pending separate explicit authorization, and production deployment is not authorized.
 
 - Pack controls/grid/states;
 - Species Card;
@@ -693,14 +693,13 @@ No visual component should emit duplicate actions because both wrapper and calle
 - Town/Venue;
 - Home.
 
-### Phase 6 — Fallbacks and clean cutover
+### Phase 6 — Fallbacks and clean cutover **(complete locally)**
 
-- shared fallback/stub/loading;
-- delete old visual constants and aliases;
-- enforce import/inventory/contracts;
-- remove stale comments and test expectations.
+Shared fallback, stub, and loading surfaces now use the canonical public design vocabulary. Retired visual constants and aliases are removed; public-barrel imports, the complete surface inventory, and component/native contracts are exact; stale current-scoped language and phase-labeled expectations are removed. Phase 7 rendered acceptance remains paused pending separate explicit authorization. Production deployment is not authorized.
 
 ### Phase 7 — Rendered acceptance
+**In progress locally (2026-09-02).** The [Phase 7 fallback/catalog acceptance slice](../.agents/qa/2026-09-02-shadcn-reset-phase-7-fallback-slice.md) passed; the remaining rendered matrix is incomplete. Production deployment remains unauthorized.
+
 
 - run focused and full validation;
 - capture required viewports/states;
@@ -934,4 +933,4 @@ The approved product direction is:
 - Native Flutter/MapLibre infrastructure remains where required.
 - Meaning-bearing semantic visualization remains understandable.
 - Product behavior, domain language, state, data, telemetry, and IA do not change.
-- Phase 4 is complete; Phase 5+ implementation remains paused until the user explicitly authorizes it, and production deployment is not authorized.
+- Phases 1–7 and the local shadcn reset are complete; production deployment is not authorized.

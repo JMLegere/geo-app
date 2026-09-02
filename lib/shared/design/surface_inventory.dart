@@ -42,7 +42,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Authenticated readiness overlay that keeps the existing app shell painted while client state becomes usable.',
     designSystemNotes:
-        'Phase 2 neutral composition: AppCard, AppButton, and AppNotice with ShadProgress. Map and Pack content remain pending later phases.',
+        'Phase 6 canonical readiness fallback: AppCard, AppButton, and AppNotice with ShadProgress keep the existing app shell painted while client state becomes usable.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/loading_screen.dart',
@@ -50,7 +50,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Authentication startup/loading route.',
     designSystemNotes:
-        'Phase 2 neutral composition: AppCard with the existing LoadingDots; no gameplay content is introduced here.',
+        'Phase 6 canonical auth loading route: AppCard with LoadingDots preserves startup behavior without introducing product content.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/features/auth/presentation/screens/login_screen.dart',
@@ -298,7 +298,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Error fallback with retry affordance.',
     designSystemNotes:
-        'Infrastructure UI; should move to EarthNotice/EarthActionButton composition when touched.',
+        'Phase 6 canonical observability fallback delegates its retry affordance without changing safe error handling or recovery behavior.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/observability/widgets/observable_screen.dart',
@@ -314,7 +314,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Shared loading indicator.',
     designSystemNotes:
-        'Documented local widget; should be promoted to a registered loading primitive if reused broadly.',
+        'Phase 6 canonical shared loading indicator for asynchronous waiting states.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/product/product_action_surface.dart',
@@ -330,7 +330,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     status: DesignSurfaceStatus.canonicalComposition,
     purpose: 'Temporary coming-soon screen for unimplemented tabs/routes.',
     designSystemNotes:
-        'Documented local composition; replace with canonical empty-state pattern when added.',
+        'Phase 6 canonical neutral stub page with no product action; it preserves the route label and coming-soon message.',
   ),
   DesignSurfaceDefinition(
     path: 'lib/shared/widgets/tab_shell.dart',
@@ -339,7 +339,7 @@ const designSurfaceInventory = <DesignSurfaceDefinition>[
     purpose:
         'Two-destination Map and Pack shell with a separate Settings route.',
     designSystemNotes:
-        'Phase 2 neutral chrome: Material structural shell with text-first ShadButton.ghost navigation and selected semantics. Map and Pack content remain pending later phases.',
+        'Canonical structural shell: Material layout with text-first ShadButton.ghost navigation and selected semantics; Map and Pack behavior remains unchanged.',
   ),
 ];
 

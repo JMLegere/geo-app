@@ -1021,3 +1021,18 @@
 **Outcome**
 
 - Phase 5 is complete. Phase 6 and later remain paused. No production deployment, data migration, schema mutation, provider change, route change, dependency change, backend change, or gameplay expansion was performed.
+
+## Completed locally 2026-09-02 — Issue #580 Phase 6 and Phase 7 entry slice
+
+- Phase 6 clean cutover removed the retired `Earth*` component/theme/token compatibility layer, migrated the remaining fallback/stub surfaces to the canonical `App*` vocabulary, re-homed `Spacing`, and strengthened registry/import/native-design contracts without changing product behavior, routes, state, data, telemetry, dependencies, or environments.
+- The explicitly authorized local Phase 7 fallback/catalog and entry/readiness/shell/settings slices passed rendered acceptance. Current assets under `.agents/qa/assets/shadcn-final/` contain 42 exact-dimension PNGs: 12 fallback/catalog plus 30 Login, App Readiness, production TabShell, and Settings states at 390×844 and 1440×900.
+- A fixture-only defect excluded Navigator overlays from PNGs; moving the `RepaintBoundary` above the Navigator/Overlay made the real Settings sign-out confirmation visible. Independent pixel review found no blocker across the final 30 entry-slice images.
+- Final local gates after the slice: `flutter analyze` passed; the serialized Flutter suite passed with 1,552 tests and 78 opt-in skips; EAC reported no diagnostics; documentation authority passed 3 tests; 42/42 PNGs passed signature, byte, and exact-dimension checks.
+- Phase 7 remains in progress because the remaining Map/gameplay/knowledge/accessibility matrix still needs reconciliation or current final captures. No push, PR, merge, deployment, data mutation, or external-system mutation was performed.
+
+## Completed locally 2026-09-02 — Issue #580 Phase 7 final acceptance
+
+- The full rendered matrix is closed with 101 current Phase 7 PNGs plus exact unchanged Phase 4/5 evidence. Quiet boundary revisits and hidden Venue markers remain intentionally nonvisual and are covered by focused behavior contracts rather than fabricated screenshots.
+- Final pixel review passed entry, fallback/catalog, Map, hierarchy, gameplay, knowledge, Venue marker, and accessibility evidence with no remaining blocker. Necessary local fixes made shell focus fully visible, made Pack busy state stable and truthful, corrected Identification/Town state copy, aligned fixture identity data, included Navigator overlays, and supplied deterministic Material/offline fixture boundaries.
+- Final gates after the last UI fix: the serialized Flutter suite passed with 1,560 tests and 136 opt-in skips; `flutter analyze` passed; focused Pack/Identification/Town/shell tests passed; EAC and documentation authority passed; `git diff --check` passed.
+- Phases 1–7 and the local shadcn reset are complete. No commit, push, PR, merge, deployment, data mutation, or external-system mutation was performed.

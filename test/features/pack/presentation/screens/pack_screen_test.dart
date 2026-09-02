@@ -570,6 +570,8 @@ void main() {
 
       await tester.tap(surface);
       await tester.pump();
+      expect(find.text('Examining'), findsOneWidget);
+      expect(find.byKey(const Key('pack-examining-icon')), findsOneWidget);
       await tester.tap(surface);
       await tester.pump();
 

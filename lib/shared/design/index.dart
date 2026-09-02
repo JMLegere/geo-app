@@ -1,6 +1,4 @@
 export 'foundations/index.dart';
-export '../theme/app_theme.dart';
-export '../theme/design_tokens.dart';
 export '../widgets/loading_dots.dart';
 export 'primitives/index.dart';
 export 'composites/index.dart';
@@ -18,13 +16,5 @@ const publicDesignComponentNames = <String>{
   'AppNotice',
   'AppStatGrid',
   'DesignLibraryExample',
-  'EarthActionButton',
-  'EarthFieldRow',
-  'EarthIcon',
-  'EarthMetaText',
-  'EarthNotice',
-  'EarthPanel',
-  'EarthStatGrid',
-  'EarthTag',
   'LoadingDots',
 };

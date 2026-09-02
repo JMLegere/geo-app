@@ -1,9 +1,0 @@
-Atom: EarthNotice
-Status: deprecated
-Role: status
-Interaction policy: display
-Exports: lib/shared/design/primitives/notice.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy notice; retain only until authorized surface waves migrate callers.

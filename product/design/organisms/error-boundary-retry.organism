@@ -1,0 +1,9 @@
+Organism: ErrorBoundaryRetry
+Status: canonical
+Role: observability-error-fallback
+Interaction policy: delegates-to-children
+Exports: lib/shared/observability/widgets/error_boundary_retry.dart
+Public API: lib/shared/observability/widgets/error_boundary_retry.dart
+
+Purpose:
+  Phase 6 observability fallback that delegates its retry action to the recovery child without creating a product action.

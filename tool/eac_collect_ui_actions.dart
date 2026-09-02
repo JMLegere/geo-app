@@ -10,8 +10,9 @@ void main() {
   final nativeDesignContracts = _loadNativeDesignContracts();
   final rows = <_UiActionEvidence>[];
 
-  for (final file
-      in Directory('lib').listSync(recursive: true).whereType<File>()) {
+  for (final file in Directory(
+    'lib',
+  ).listSync(recursive: true).whereType<File>()) {
     if (!file.path.endsWith('.dart')) continue;
     if (file.path.startsWith('lib/shared/design/')) continue;
     if (file.path == 'lib/shared/product/product_action_surface.dart') continue;
@@ -23,18 +24,6 @@ void main() {
       fallbackSurface: surface,
     );
     final evidenceSurface = designEntity;
-    rows.addAll(
-      _collectWidgetActionEvidence(
-        source: source,
-        sourcePath: file.path,
-        surface: evidenceSurface,
-        designEntity: 'EarthActionButton',
-        controlComponent: 'EarthActionButton',
-        role: 'button',
-        evidenceType: 'explicit-design-control',
-        playerActions: playerActions,
-      ),
-    );
     rows.addAll(
       _collectWidgetActionEvidence(
         source: source,
@@ -67,16 +56,15 @@ void main() {
     );
   }
 
-  final controls =
-      _dedupe(rows).map((row) => row.toJson()).toList(growable: false);
+  final controls = _dedupe(
+    rows,
+  ).map((row) => row.toJson()).toList(growable: false);
 
   final output = File('artifacts/eac/ui-actions.json');
   output.parent.createSync(recursive: true);
-  output.writeAsStringSync('${const JsonEncoder.withIndent('  ').convert({
-        'schemaVersion': 1,
-        'collector': 'earthnova-flutter-dart-static',
-        'controls': controls,
-      })}\n');
+  output.writeAsStringSync(
+    '${const JsonEncoder.withIndent('  ').convert({'schemaVersion': 1, 'collector': 'earthnova-flutter-dart-static', 'controls': controls})}\n',
+  );
 }
 
 List<_UiActionEvidence> _collectWidgetActionEvidence({
@@ -98,16 +86,18 @@ List<_UiActionEvidence> _collectWidgetActionEvidence({
   for (final match in matches) {
     final actionId = _resolveActionId(match.group(1)!, playerActions);
     if (actionId == null) continue;
-    rows.add(_UiActionEvidence(
-      component: designEntity,
-      controlComponent: controlComponent,
-      actionId: actionId,
-      source: sourcePath,
-      surface: surface,
-      role: role,
-      evidenceType: evidenceType,
-      line: _lineForOffset(source, match.start),
-    ));
+    rows.add(
+      _UiActionEvidence(
+        component: designEntity,
+        controlComponent: controlComponent,
+        actionId: actionId,
+        source: sourcePath,
+        surface: surface,
+        role: role,
+        evidenceType: evidenceType,
+        line: _lineForOffset(source, match.start),
+      ),
+    );
   }
 
   return rows;
@@ -129,16 +119,18 @@ List<_UiActionEvidence> _collectLoggedPlayerActionEvidence({
   for (final match in matches) {
     final actionId = playerActions[match.group(1)];
     if (actionId == null) continue;
-    rows.add(_UiActionEvidence(
-      component: designEntity,
-      controlComponent: 'ObservableInteraction',
-      actionId: actionId,
-      source: sourcePath,
-      surface: surface,
-      role: 'button',
-      evidenceType: 'observable-player-action',
-      line: _lineForOffset(source, match.start),
-    ));
+    rows.add(
+      _UiActionEvidence(
+        component: designEntity,
+        controlComponent: 'ObservableInteraction',
+        actionId: actionId,
+        source: sourcePath,
+        surface: surface,
+        role: 'button',
+        evidenceType: 'observable-player-action',
+        line: _lineForOffset(source, match.start),
+      ),
+    );
   }
 
   return rows;
@@ -162,16 +154,18 @@ List<_UiActionEvidence> _collectStaticNavigationDestinationEvidence({
   for (final match in matches) {
     final actionId = playerActions[match.group(1)];
     if (actionId == null) continue;
-    rows.add(_UiActionEvidence(
-      component: designEntity,
-      controlComponent: '_BottomNavDestination',
-      actionId: actionId,
-      source: sourcePath,
-      surface: surface,
-      role: 'navigation-tab',
-      evidenceType: 'static-navigation-destination',
-      line: _lineForOffset(source, match.start),
-    ));
+    rows.add(
+      _UiActionEvidence(
+        component: designEntity,
+        controlComponent: '_BottomNavDestination',
+        actionId: actionId,
+        source: sourcePath,
+        surface: surface,
+        role: 'navigation-tab',
+        evidenceType: 'static-navigation-destination',
+        line: _lineForOffset(source, match.start),
+      ),
+    );
   }
 
   return rows;
@@ -199,12 +193,14 @@ String? _resolveActionId(String expression, Map<String, String> playerActions) {
   final normalized = expression.trim();
   if (normalized == 'null') return null;
 
-  final literal =
-      RegExp(r'''^[\'\"]([^\'\"]+)[\'\"]$''').firstMatch(normalized);
+  final literal = RegExp(
+    r'''^[\'\"]([^\'\"]+)[\'\"]$''',
+  ).firstMatch(normalized);
   if (literal != null) return literal.group(1);
 
-  final playerAction =
-      RegExp(r'^PlayerActions\.([A-Za-z0-9_]+)$').firstMatch(normalized);
+  final playerAction = RegExp(
+    r'^PlayerActions\.([A-Za-z0-9_]+)$',
+  ).firstMatch(normalized);
   if (playerAction != null) {
     return playerActions[playerAction.group(1)];
   }
@@ -219,19 +215,24 @@ _NativeDesignContracts _loadNativeDesignContracts() {
   }
 
   final byExportPath = <String, String>{};
-  final contractFiles = root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((file) => RegExp(r'\.(atom|molecule|organism|template|page)$')
-          .hasMatch(file.path))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final contractFiles =
+      root
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where(
+            (file) => RegExp(
+              r'\.(atom|molecule|organism|template|page)$',
+            ).hasMatch(file.path),
+          )
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   for (final file in contractFiles) {
     final source = file.readAsStringSync();
-    final header = RegExp(r'^(Atom|Molecule|Organism|Template|Page):\s*(.+)$',
-            multiLine: true)
-        .firstMatch(source);
+    final header = RegExp(
+      r'^(Atom|Molecule|Organism|Template|Page):\s*(.+)$',
+      multiLine: true,
+    ).firstMatch(source);
     if (header == null) {
       throw StateError('${file.path} is missing a native design header.');
     }
@@ -255,8 +256,10 @@ _NativeDesignContracts _loadNativeDesignContracts() {
 }
 
 String? _contractField(String source, String field) {
-  final match = RegExp('^${RegExp.escape(field)}:\\s*(.+)\$', multiLine: true)
-      .firstMatch(source);
+  final match = RegExp(
+    '^${RegExp.escape(field)}:\\s*(.+)\$',
+    multiLine: true,
+  ).firstMatch(source);
   return match?.group(1)?.trim();
 }
 
@@ -266,8 +269,9 @@ String _normalizePath(String path) {
 }
 
 Map<String, String> _loadPlayerActions() {
-  final source =
-      File('lib/shared/product/player_actions.dart').readAsStringSync();
+  final source = File(
+    'lib/shared/product/player_actions.dart',
+  ).readAsStringSync();
   final actions = <String, String>{};
   final matches = RegExp(
     r'''static const PlayerActionId\s+([A-Za-z0-9_]+)\s*=\s*[\'\"]([^\'\"]+)[\'\"]''',
@@ -305,15 +309,14 @@ int _lineForOffset(String source, int offset) {
 
 class _NativeDesignContracts {
   const _NativeDesignContracts({required Map<String, String> byExportPath})
-      : _byExportPath = byExportPath;
+    : _byExportPath = byExportPath;
 
   final Map<String, String> _byExportPath;
 
   String designEntityFor({
     required String sourcePath,
     required String fallbackSurface,
-  }) =>
-      _byExportPath[_normalizePath(sourcePath)] ?? fallbackSurface;
+  }) => _byExportPath[_normalizePath(sourcePath)] ?? fallbackSurface;
 }
 
 class _UiActionEvidence {
@@ -341,13 +344,13 @@ class _UiActionEvidence {
       '$source:$line:$component:$controlComponent:$actionId:$evidenceType';
 
   Map<String, Object> toJson() => {
-        'component': component,
-        'controlComponent': controlComponent,
-        'actionId': actionId,
-        'source': source,
-        'surface': surface,
-        'role': role,
-        'evidenceType': evidenceType,
-        'line': line,
-      };
+    'component': component,
+    'controlComponent': controlComponent,
+    'actionId': actionId,
+    'source': source,
+    'surface': surface,
+    'role': role,
+    'evidenceType': evidenceType,
+    'line': line,
+  };
 }

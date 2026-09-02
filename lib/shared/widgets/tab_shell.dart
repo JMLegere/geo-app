@@ -125,38 +125,43 @@ class _AppNavItem extends StatelessWidget {
           label: item.label,
           onTap: onTap,
           child: ExcludeSemantics(
-            child: ShadButton.ghost(
-              key: Key('tab-shell-nav-button-$label'),
-              height: _bottomNavHeight,
-              expands: true,
-              padding: EdgeInsets.zero,
-              backgroundColor: selected
-                  ? colors.secondaryContainer
-                  : Colors.transparent,
-              hoverBackgroundColor: colors.surfaceContainerHighest,
-              foregroundColor: selected
-                  ? colors.onSecondaryContainer
-                  : colors.onSurface,
-              onPressed: onTap,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (selected)
-                    Icon(
-                      Icons.check,
-                      key: Key('tab-shell-nav-selected-$label'),
-                      size: 16,
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child: ShadButton.ghost(
+                key: Key('tab-shell-nav-button-$label'),
+                height: _bottomNavHeight - 4,
+                expands: true,
+                padding: EdgeInsets.zero,
+                backgroundColor: selected
+                    ? colors.secondaryContainer
+                    : Colors.transparent,
+                hoverBackgroundColor: colors.surfaceContainerHighest,
+                foregroundColor: selected
+                    ? colors.onSecondaryContainer
+                    : colors.onSurface,
+                onPressed: onTap,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (selected)
+                      Icon(
+                        Icons.check,
+                        key: Key('tab-shell-nav-selected-$label'),
+                        size: 16,
+                      ),
+                    if (selected) const SizedBox(width: 6),
+                    Text(
+                      item.label,
+                      key: Key('tab-shell-nav-label-$label'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
                     ),
-                  if (selected) const SizedBox(width: 6),
-                  Text(
-                    item.label,
-                    key: Key('tab-shell-nav-label-$label'),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

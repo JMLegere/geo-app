@@ -12,7 +12,7 @@ import 'package:earth_nova/features/identification/presentation/providers/items_
 import 'package:earth_nova/features/map/domain/entities/location_state.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_provider.dart';
 import 'package:earth_nova/features/map/presentation/providers/map_readiness_provider.dart';
-import 'package:earth_nova/shared/design/components.dart';
+import 'package:earth_nova/shared/design.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

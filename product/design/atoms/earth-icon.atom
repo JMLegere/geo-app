@@ -1,9 +1,0 @@
-Atom: EarthIcon
-Status: deprecated
-Role: image
-Interaction policy: display
-Exports: lib/shared/design/primitives/icon.dart
-Public API: lib/shared/design.dart
-
-Purpose:
-  Temporary legacy icon wrapper; retain only until authorized surface waves migrate callers.

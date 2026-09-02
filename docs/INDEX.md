@@ -58,7 +58,7 @@ Every Markdown file in the repository must match exactly one row below. A docume
 | `docs/observability-interaction-coverage.md` | `CURRENT-SCOPED` | Interaction observability contract |
 | `docs/ios-safari-maplibre.md` | `CURRENT-SCOPED` | Scoped platform compatibility evidence |
 | `docs/c4/README.md` | `CURRENT-SCOPED` | Generated current C4 architecture views and maintenance instructions |
-| `docs/prd-shadcn-ui-reset.md` | `CURRENT-SCOPED` | Phase 5 complete; Phase 6+ paused pending separate authorization for Issue #580's pure `shadcn_ui` reset; production deployment is not authorized |
+| `docs/prd-shadcn-ui-reset.md` | `CURRENT-SCOPED` | Phases 1–7 complete locally; final [Phase 7 acceptance](../.agents/qa/2026-09-02-shadcn-reset-phase-7-final-acceptance.md) passed; production deployment remains unauthorized |
 | `lib/shared/design/README.md` | `CURRENT-SCOPED` | Shared design-library usage |
 | `2026-04-03-*.md` | `HISTORICAL-EVIDENCE` | Dated v3 planning and backlog |
 | `docs/design.md`, `docs/map-design.md`, `docs/prd-game-systems*.md` | `HISTORICAL-EVIDENCE` | Prior product and implementation intent |
